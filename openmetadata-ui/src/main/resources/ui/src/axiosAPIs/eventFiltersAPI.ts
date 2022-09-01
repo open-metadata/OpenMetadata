@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import axiosClient from '.';
-import { EventFilter } from '../generated/settings/settings';
+import { EventFilter, Filters } from '../generated/settings/settings';
 
 const BASE_URL = '/settings';
 
@@ -21,6 +22,26 @@ export const getActivityFeedEventFilters = async () => {
     config_type: string;
     config_value: EventFilter[];
   }>(`${BASE_URL}/activityFeedFilterSetting`);
+
+  return response.data.config_value;
+};
+
+export const createOrUpdateActivityFeedEventFilter = async (
+  entityType: string,
+  payload: Filters[]
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+  const url = `${BASE_URL}/filter/${entityType}/add`;
+
+  const response = await axiosClient.put<
+    Filters[],
+    AxiosResponse<{
+      config_type: string;
+      config_value: EventFilter[];
+    }>
+  >(url, payload, configOptions);
 
   return response.data.config_value;
 };

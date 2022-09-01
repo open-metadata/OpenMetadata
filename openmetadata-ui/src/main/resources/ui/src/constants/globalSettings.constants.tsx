@@ -28,6 +28,7 @@ export enum GlobalSettingsMenuCategory {
   CUSTOM_ATTRIBUTES = 'customAttributes',
   DATA_QUALITY = 'dataQuality',
   INTEGRATIONS = 'integrations',
+  COLLABORATION = 'collaboration',
 }
 
 export enum GlobalSettingOptions {

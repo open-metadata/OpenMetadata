@@ -1,207 +1,49 @@
 import { Button, Col, Collapse, Row, Space, Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, cloneDeep, isEmpty, map, startCase } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { getActivityFeedEventFilters } from '../../axiosAPIs/eventFiltersAPI';
+import {
+  cloneDeep,
+  isArray,
+  isEmpty,
+  isUndefined,
+  map,
+  startCase,
+} from 'lodash';
+import React, { Key, useEffect, useState } from 'react';
+import { ReactComponent as DownArrow } from '../../assets/svg/down-arrow.svg';
+import { ReactComponent as RightArrow } from '../../assets/svg/right-arrow.svg';
+import {
+  createOrUpdateActivityFeedEventFilter,
+  getActivityFeedEventFilters,
+} from '../../axiosAPIs/eventFiltersAPI';
 import Loader from '../../components/Loader/Loader';
+import { TERM_ALL } from '../../constants/constants';
 import { EventFilter, Filters } from '../../generated/settings/settings';
 import jsonData from '../../jsons/en';
-import { showErrorToast } from '../../utils/ToastUtils';
-
-// const entity = [
-//   {
-//     name: 'Tables',
-//     key: 'tables',
-//     data: [
-//       {
-//         title: 'Create',
-//         key: 'create',
-//       },
-//       {
-//         title: 'Update',
-//         key: 'udpate',
-//         children: [
-//           {
-//             title: 'Owner',
-//             key: 'owner',
-//           },
-//           {
-//             title: 'Description',
-//             key: 'description',
-//           },
-//           {
-//             title: 'Tags',
-//             key: 'tags',
-//           },
-//           {
-//             title: 'Followers',
-//             key: 'followers',
-//           },
-//         ],
-//       },
-//       {
-//         title: 'Delete',
-//         key: 'delete',
-//       },
-//     ],
-//   },
-//   {
-//     name: 'Topics',
-//     key: 'topics',
-//     data: [
-//       {
-//         title: 'Create',
-//         key: 'create',
-//       },
-//       {
-//         title: 'Update',
-//         key: 'udpate',
-//         children: [
-//           {
-//             title: 'Owner',
-//             key: 'owner',
-//           },
-//           {
-//             title: 'Description',
-//             key: 'description',
-//           },
-//           {
-//             title: 'Tags',
-//             key: 'tags',
-//           },
-//           {
-//             title: 'Followers',
-//             key: 'followers',
-//           },
-//         ],
-//       },
-//       {
-//         title: 'Delete',
-//         key: 'delete',
-//       },
-//     ],
-//   },
-//   {
-//     name: 'Dashboards',
-//     key: 'dashboards',
-//     data: [
-//       {
-//         title: 'Create',
-//         key: 'create',
-//       },
-//       {
-//         title: 'Update',
-//         key: 'udpate',
-//         children: [
-//           {
-//             title: 'Owner',
-//             key: 'owner',
-//           },
-//           {
-//             title: 'Description',
-//             key: 'description',
-//           },
-//           {
-//             title: 'Tags',
-//             key: 'tags',
-//           },
-//           {
-//             title: 'Followers',
-//             key: 'followers',
-//           },
-//         ],
-//       },
-//       {
-//         title: 'Delete',
-//         key: 'delete',
-//       },
-//     ],
-//   },
-//   {
-//     name: 'Pipelines',
-//     key: 'pipelines',
-//     data: [
-//       {
-//         title: 'Create',
-//         key: 'create',
-//       },
-//       {
-//         title: 'Update',
-//         key: 'udpate',
-//         children: [
-//           {
-//             title: 'Owner',
-//             key: 'owner',
-//           },
-//           {
-//             title: 'Description',
-//             key: 'description',
-//           },
-//           {
-//             title: 'Tags',
-//             key: 'tags',
-//           },
-//           {
-//             title: 'Followers',
-//             key: 'followers',
-//           },
-//         ],
-//       },
-//       {
-//         title: 'Delete',
-//         key: 'delete',
-//       },
-//     ],
-//   },
-//   {
-//     name: 'ML Models',
-//     key: 'mlmodels',
-//     data: [
-//       {
-//         title: 'Create',
-//         key: 'create',
-//       },
-//       {
-//         title: 'Update',
-//         key: 'udpate',
-//         children: [
-//           {
-//             title: 'Owner',
-//             key: 'owner',
-//           },
-//           {
-//             title: 'Description',
-//             key: 'description',
-//           },
-//           {
-//             title: 'Tags',
-//             key: 'tags',
-//           },
-//           {
-//             title: 'Followers',
-//             key: 'followers',
-//           },
-//         ],
-//       },
-//       {
-//         title: 'Delete',
-//         key: 'delete',
-//       },
-//     ],
-//   },
-// ];
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  ActivityFeedEntity,
+  formData,
+} from './ActivityFeedSettingsPage.constants';
+import './ActivityFeedSettingsPage.style.less';
+import { getPayloadFromSelected } from './ActivityFeedSettingsPage.utils';
 
 const ActivityFeedSettingsPage: React.FC = () => {
   const [eventFilters, setEventFilters] = useState<EventFilter[]>();
   const [loading, setLoading] = useState(true);
   const [selectedKeys, setSelectedKeys] = useState<string | string[]>([]);
+  const [selectedKey, setSelectedKey] = useState<string>();
+  const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
   const [updatedTree, setUpdatedTree] = useState<Record<string, string[]>>();
 
   const fetchEventFilters = async () => {
     try {
       const data = await getActivityFeedEventFilters();
 
-      setEventFilters(data);
+      const filteredData = data?.filter(
+        ({ entityType }) => entityType !== TERM_ALL
+      );
+
+      setEventFilters(filteredData);
     } catch (error) {
       const err = error as AxiosError;
       showErrorToast(err, jsonData['api-error-messages']['fetch-settings']);
@@ -210,45 +52,71 @@ const ActivityFeedSettingsPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchEventFilters();
-  }, []);
+  const createActivityFeed = async (
+    entityName: string,
+    selectedData: Filters[]
+  ) => {
+    try {
+      setLoading(true);
+      const data = await createOrUpdateActivityFeedEventFilter(
+        entityName,
+        selectedData
+      );
+      const filteredData = data?.filter(
+        ({ entityType }) => entityType !== TERM_ALL
+      );
+
+      setEventFilters(filteredData);
+      showSuccessToast(
+        jsonData['api-success-messages']['add-settings-success']
+      );
+    } catch {
+      showErrorToast(jsonData['api-error-messages']['add-settings-error']);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleExpandStateChange = (keys: string | string[]) => {
     setSelectedKeys(keys);
+    const key = [...keys];
+
+    setSelectedKey(key[key.length - 1]);
   };
 
   const handleExpandAll = () => {
-    if (selectedKeys.length === eventFilters?.length) {
+    if (isArray(selectedKeys) && selectedKeys.length === eventFilters?.length) {
       setSelectedKeys([]);
     } else {
       setSelectedKeys(eventFilters?.map((e) => e.entityType) || []);
     }
   };
 
-  const generateTreeData = (data?: Filters[]) => {
+  const generateTreeData = (entityType: string, data?: Filters[]) => {
     return data?.map(({ eventType, fields }) => {
+      const key = `${entityType}-${eventType}` as string;
+
       return {
-        key: eventType,
+        key: key,
         title: startCase(eventType),
         data: fields,
         children:
           eventType === 'entityUpdated'
             ? [
                 {
-                  key: `${eventType}-owner`,
+                  key: `${key}-owner`,
                   title: 'Owner',
                 },
                 {
-                  key: `${eventType}-description`,
+                  key: `${key}-description`,
                   title: 'Description',
                 },
                 {
-                  key: `${eventType}-tags`,
+                  key: `${key}-tags`,
                   title: 'Tags',
                 },
                 {
-                  key: `${eventType}-followers`,
+                  key: `${key}-followers`,
                   title: 'Followers',
                 },
               ]
@@ -257,15 +125,68 @@ const ActivityFeedSettingsPage: React.FC = () => {
     });
   };
 
-  const handleTreeCheckChange = (keys: string[], entityType: string) => {
-    setSelectedKeys(entityType);
+  const getCheckedKeys = (eventFilters: EventFilter[]) => {
+    const checkedArray = [] as string[];
+    const clonedFilters = cloneDeep(eventFilters);
 
+    clonedFilters?.map(({ entityType, filters }) => {
+      filters &&
+        filters.map((obj) => {
+          if (
+            obj?.fields &&
+            obj.fields.length === 1 &&
+            obj.fields[0] === 'all'
+          ) {
+            checkedArray.push(`${entityType}-${obj.eventType}`);
+          } else {
+            obj?.fields?.forEach((entityUpdated) => {
+              const name = `${entityType}-${obj.eventType}-${entityUpdated}`;
+              checkedArray.push(name);
+            });
+          }
+        });
+    });
+
+    return checkedArray;
+  };
+
+  const handleTreeCheckChange = (keys: Key[], entityType: string) => {
+    const key = String(keys[0]).split('-')[0];
+    setCheckedKeys(keys as string[]);
     const updateData = cloneDeep(updatedTree || {});
 
-    updateData[entityType] = keys;
+    updateData[entityType] = keys as string[];
 
     setUpdatedTree(updateData);
+    setSelectedKey(key);
   };
+
+  const onSave = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
+    event.stopPropagation();
+
+    if (!isUndefined(updatedTree) && selectedKey) {
+      const deepClonedTree = cloneDeep(updatedTree);
+
+      const selectedTree = {
+        [selectedKey]: deepClonedTree[selectedKey],
+      };
+      const value = getPayloadFromSelected(selectedTree, selectedKey);
+
+      createActivityFeed(selectedKey, value as Filters[]);
+      setUpdatedTree(undefined);
+      setSelectedKey(undefined);
+    }
+  };
+
+  useEffect(() => {
+    fetchEventFilters();
+  }, []);
+
+  useEffect(() => {
+    const checkKeys = getCheckedKeys(eventFilters as EventFilter[]);
+
+    setCheckedKeys(checkKeys);
+  }, [eventFilters, selectedKeys, updatedTree, selectedKey]);
 
   return loading ? (
     <Col span={24}>
@@ -274,41 +195,74 @@ const ActivityFeedSettingsPage: React.FC = () => {
   ) : (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Space align="baseline" className="tw-justify-between">
+        <Space align="baseline" className="tw-flex tw-justify-between">
           <Typography.Title level={5} type="secondary">
             Activity Feed
           </Typography.Title>
-          <Button size="small" type="text" onClick={handleExpandAll}>
+          <Typography.Link onClick={handleExpandAll}>
             {selectedKeys.length === eventFilters?.length
               ? 'Collapse All'
               : 'Expand All'}
-          </Button>
+          </Typography.Link>
         </Space>
       </Col>
       <Col span={24}>
-        <Collapse defaultActiveKey="Table" onChange={handleExpandStateChange}>
-          {map(eventFilters, ({ entityType, filters }) => (
-            <Collapse.Panel
-              extra={
-                <Button
-                  disabled={
-                    !updatedTree ||
-                    (updatedTree && isEmpty(updatedTree[entityType]))
+        <Collapse
+          destroyInactivePanel
+          activeKey={selectedKeys}
+          className="activity-feed-collapse"
+          expandIcon={({ isActive }) => {
+            return (
+              <>
+                {isActive ? (
+                  <Row className="arrow">
+                    <DownArrow />{' '}
+                  </Row>
+                ) : (
+                  <Row className="arrow">
+                    <RightArrow />
+                  </Row>
+                )}
+              </>
+            );
+          }}
+          onChange={handleExpandStateChange}>
+          {map(eventFilters, ({ entityType }) => (
+            <>
+              {entityType !== TERM_ALL ? (
+                <Collapse.Panel
+                  extra={
+                    <Button
+                      disabled={
+                        !updatedTree ||
+                        isUndefined(updatedTree[entityType]) ||
+                        isEmpty(updatedTree[entityType])
+                      }
+                      type="primary"
+                      onClick={(event) => onSave(event)}>
+                      Save
+                    </Button>
                   }
-                  type="primary">
-                  Save
-                </Button>
-              }
-              header={capitalize(entityType)}
-              key={entityType}>
-              <Tree
-                checkable
-                treeData={generateTreeData(filters)}
-                onCheck={(keys: string[]) =>
-                  handleTreeCheckChange(keys, entityType)
-                }
-              />
-            </Collapse.Panel>
+                  header={
+                    <Row>
+                      <Typography.Text strong>
+                        {ActivityFeedEntity[entityType]}
+                      </Typography.Text>
+                    </Row>
+                  }
+                  key={entityType}>
+                  <Tree
+                    checkable
+                    defaultCheckedKeys={checkedKeys}
+                    key={entityType}
+                    treeData={generateTreeData(entityType, formData)}
+                    onCheck={(keys) =>
+                      handleTreeCheckChange(keys as Key[], entityType)
+                    }
+                  />
+                </Collapse.Panel>
+              ) : null}
+            </>
           ))}
         </Collapse>
       </Col>

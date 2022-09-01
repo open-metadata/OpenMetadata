@@ -232,7 +232,7 @@ const GlobalSettingRouter = () => {
         hasPermission
         component={ActivityFeedSettingsPage}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingsMenuCategory.COLLABORATION,
           GlobalSettingOptions.ACTIVITY_FEED
         )}
       />
