@@ -33,6 +33,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -93,6 +94,12 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
+        render: (_, record) =>
+          record?.description ? (
+            <RichTextEditorPreviewer markdown={record?.description || ''} />
+          ) : (
+            'No Description'
+          ),
       },
       {
         title: 'Actions',
