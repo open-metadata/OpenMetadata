@@ -79,7 +79,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       } as Post;
 
       const postLength = thread?.posts?.length || 0;
-      const replies = thread.postsCount ? thread.postsCount - 1 : 0;
+      const replies = thread.postsCount;
       const repliedUsers = [
         ...new Set((thread?.posts || []).map((f) => f.from)),
       ];
@@ -119,35 +119,19 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             </div>
             {postLength > 0 ? (
               <div data-testid="replies-container">
-                {postLength > 1 ? (
-                  <div className="tw-ml-9 tw-my-2">
-                    {Boolean(lastPost) && (
-                      <div className="tw-filter-seperator" />
-                    )}
-                    <div className="tw-flex tw-my-4">
-                      <FeedCardFooter
-                        isFooterVisible
-                        lastReplyTimeStamp={lastPost?.postTs}
-                        repliedUsers={repliedUniqueUsersList}
-                        replies={replies}
-                        threadId={thread.id}
-                        onThreadSelect={() => onThreadSelect(thread.id)}
-                      />
-                    </div>
+                <div className="tw-ml-9 tw-my-2">
+                  {Boolean(lastPost) && <div className="tw-filter-seperator" />}
+                  <div className="tw-flex tw-my-4">
+                    <FeedCardFooter
+                      isFooterVisible
+                      lastReplyTimeStamp={lastPost?.postTs}
+                      repliedUsers={repliedUniqueUsersList}
+                      replies={replies}
+                      threadId={thread.id}
+                      onThreadSelect={() => onThreadSelect(thread.id)}
+                    />
                   </div>
-                ) : null}
-                {/* <div data-testid="latest-reply">
-                  <ActivityFeedCard
-                    isEntityFeed
-                    className="tw-ml-9"
-                    feed={lastPost as Post}
-                    feedType={thread.type || ThreadType.Conversation}
-                    threadId={thread.id}
-                    updateThreadHandler={updateThreadHandler}
-                    onConfirmation={onConfirmation}
-                    onReply={() => toggleReplyEditor(thread.id)}
-                  />
-                </div> */}
+                </div>
               </div>
             ) : null}
             {selectedThreadId === thread.id ? (

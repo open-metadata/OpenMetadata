@@ -32,17 +32,6 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       !isUndefined(replies) &&
       isFooterVisible ? (
         <div className="tw-flex tw-group tw-items-center">
-          {/* {repliedUsers?.map((u, i) => (
-            <ProfilePicture
-              className="tw-mt-0.5 tw-mx-0.5"
-              data-testid="replied-user"
-              id=""
-              key={i}
-              name={u}
-              profileImgClasses="tw-align-baseline"
-              width="18"
-            />
-          ))} */}
           <span
             className="tw-ml-1 tw-text-info tw-text-xs tw-underline tw-self-center"
             data-testid="reply-count"

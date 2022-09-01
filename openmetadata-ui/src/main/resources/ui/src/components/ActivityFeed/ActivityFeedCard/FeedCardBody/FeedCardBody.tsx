@@ -28,8 +28,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   message,
   announcementDetails,
   className,
-  reactions,
-  onReactionSelect,
   isEditPost,
   onPostUpdate,
   onCancelPostUpdate,
@@ -104,9 +102,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
               {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)} to{' '}
               {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
             </Typography.Text>
-            {/* <Typography.Text className="tw-font-semibold">
-              {postMessage}
-            </Typography.Text> */}
             <RichTextEditorPreviewer
               className="activity-feed-card-text"
               markdown={announcementDetails.description || ''}
@@ -116,12 +111,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           feedbody
         )}
       </div>
-      {/* {Boolean(reactions?.length) && (
-        <Reactions
-          reactions={reactions || []}
-          onReactionSelect={onReactionSelect}
-        />
-      )} */}
     </div>
   );
 };
