@@ -90,9 +90,11 @@ class SQAInterface(InterfaceProtocol):
 
         # Allows SQA Interface to be used without OM server config
         self.table = table or self._convert_table_to_orm_object()
+        self.service_connection_config = service_connection_config
 
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()
+        self.set_session_tag(self.session)
 
         self.profile_sample = profile_sample
         self.profile_query = profile_query
@@ -131,25 +133,22 @@ class SQAInterface(InterfaceProtocol):
         garbage collected once the application thread ends
         """
         engine = get_connection(service_connection_config)
-        session = create_and_bind_thread_safe_session(engine)
-        SQAInterface.set_session_tag(service_connection_config, engine)
-        return session
+        return create_and_bind_thread_safe_session(engine)
 
-    @staticmethod
-    def set_session_tag(service_connection_config, engine):
+    def set_session_tag(self, session):
         """
         Set session query tag
         Args:
             service_connection_config: connection details for the specific service
         """
         if (
-            service_connection_config.type.value == SnowflakeType.Snowflake.value
-            and hasattr(service_connection_config, "queryTag")
-            and service_connection_config.queryTag
+            self.service_connection_config.type.value == SnowflakeType.Snowflake.value
+            and hasattr(self.service_connection_config, "queryTag")
+            and self.service_connection_config.queryTag
         ):
-            engine.execute(
+            session.execute(
                 SNOWFLAKE_SESSION_TAG_QUERY.format(
-                    query_tag=service_connection_config.queryTag
+                    query_tag=self.service_connection_config.queryTag
                 )
             )
 
@@ -253,6 +252,7 @@ class SQAInterface(InterfaceProtocol):
         )
         Session = self.session_factory
         session = Session()
+        self.set_session_tag(session)
         sampler = self._create_thread_safe_sampler(
             session,
             table,
