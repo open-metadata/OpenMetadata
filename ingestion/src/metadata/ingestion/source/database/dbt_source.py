@@ -231,7 +231,7 @@ class DBTMixin:
                 logger.info("Processing DBT Tests Suites and Test Definitions")
                 for key, dbt_test in self.dbt_tests.items():
                     test_suite_name = dbt_test["meta"].get(
-                        "test_suite_name", "DBT TEST SUITE"
+                        "test_suite_name", "DBT_TEST_SUITE"
                     )
                     test_suite_desciption = dbt_test["meta"].get(
                         "test_suite_desciption", ""
@@ -283,7 +283,7 @@ class DBTMixin:
                     entity_link_list = self.generate_entity_link(dbt_test)
                     for entity_link in entity_link_list:
                         test_suite_name = dbt_test["meta"].get(
-                            "test_suite_name", "DBT TEST SUITE"
+                            "test_suite_name", "DBT_TEST_SUITE"
                         )
                         test_case = CreateTestCaseRequest(
                             name=dbt_test["name"],
