@@ -72,12 +72,12 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
   return (
     <Fragment>
-      <div className="tw-bg-white tw-border tw-border-main tw-rounded  tw-shadow">
+      <div className="tw-table-container">
         <table
           className="tw-w-full"
           data-testid="entity-custom-properties-table">
           <thead data-testid="table-header">
-            <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
+            <tr className="tableHead-row">
               <th className="tableHead-cell" data-testid="property-name">
                 Name
               </th>
@@ -98,7 +98,6 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <tr
                   className={classNames(
                     `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                    'tw-border-l-0 tw-border-r-0',
                     {
                       'tw-border-b-0': index === customProperties.length - 1,
                     }

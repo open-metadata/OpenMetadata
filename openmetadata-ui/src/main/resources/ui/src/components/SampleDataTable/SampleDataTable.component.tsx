@@ -101,7 +101,9 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
         </button>
       ) : null}
 
-      <div className="tw-table-responsive tw-overflow-x-auto" ref={tableRef}>
+      <div
+        className="tw-table-responsive tw-overflow-x-auto tw-table-container"
+        ref={tableRef}>
         {sampleData?.rows?.length && sampleData?.columns?.length ? (
           <table
             className="tw-min-w-max tw-w-full tw-table-auto"

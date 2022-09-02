@@ -1323,6 +1323,10 @@ div.ant-typography-ellipsis-custom {
 }
 
 /* Feed text pre tag CSS */
+.activity-feed-card-text {
+  padding-top: 6px;
+}
+
 .activity-feed-card-text pre {
   white-space: pre-wrap; /* Since CSS 2.1 */
 }

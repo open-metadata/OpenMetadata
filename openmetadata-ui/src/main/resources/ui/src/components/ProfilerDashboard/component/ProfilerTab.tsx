@@ -233,7 +233,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
             <Col span={8}>
               <Statistic
                 title="Data type"
-                value={activeColumnDetails.dataTypeDisplay || ''}
+                value={activeColumnDetails.dataType || ''}
                 valueStyle={{
                   color: '#1890FF',
                   fontSize: '24px',

@@ -37,7 +37,6 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import {
   getCurrentUserId,
   getEntityName,
-  getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
@@ -104,7 +103,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     if (isColumnFqn) {
       const colVal = [
         {
-          name: getNameFromFQN(entityTypeFQN),
+          name: getPartialNameFromTableFQN(entityTypeFQN, [
+            FqnPart.NestedColumn,
+          ]),
           url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {

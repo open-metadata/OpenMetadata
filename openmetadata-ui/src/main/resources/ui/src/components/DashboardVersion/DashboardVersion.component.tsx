@@ -249,7 +249,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                       description={getDashboardDescription()}
                     />
                   </div>
-                  <div className="tw-table-responsive tw-my-6 tw-col-span-full">
+                  <div className="tw-table-responsive tw-my-6 tw-col-span-full tw-table-container">
                     <table className="tw-w-full" data-testid="schema-table">
                       <thead>
                         <tr className="tableHead-row">

@@ -81,6 +81,7 @@ export interface ProfilerSummaryCardProps {
 export interface DataQualityTabProps {
   testCases: TestCase[];
   onTestUpdate?: () => void;
+  hasAccess: boolean;
 }
 
 export interface TestSummaryProps {
