@@ -1,4 +1,4 @@
-import { intersection, isEmpty, isUndefined, xor } from 'lodash';
+import { isEmpty, isUndefined, xor } from 'lodash';
 import {
   EventFilter,
   EventType,
@@ -77,23 +77,30 @@ export const getEventFilterFromTree = (
     filters: eventFilter.filters?.map((filter) => {
       let includeList = filter.include;
       let excludeList = filter.exclude;
+
+      // derive the merge list
+      const mergedList = [
+        ...(includeList as string[]),
+        ...(excludeList as string[]),
+      ];
+
+      // manipulate tree if event type is present
       if (updatedTree[eventFilter.entityType]) {
+        // Split the value to get list of [eventType, filter, event]
         const temp = updatedTree[eventFilter.entityType].map((key) =>
           key.split('-')
         );
 
+        // grab the list of current eventType
         const eventList = temp.filter((f) => f[1] === filter.eventType);
+
         if (eventList.length > 0) {
           if (filter.eventType === EventType.EntityUpdated) {
-            includeList = isEmpty(filter.include)
-              ? eventList.map((f) => f[2]).filter(Boolean)
-              : intersection(
-                  filter.include,
-                  eventList.map((f) => f[2]).filter(Boolean)
-                );
-            excludeList = !isEmpty(filter.include)
-              ? xor(filter.include, includeList)
-              : [];
+            // derive include list based on selected events
+            includeList = eventList.map((f) => f[2]).filter(Boolean);
+
+            // derive the exclude list by symmetric difference
+            excludeList = xor(mergedList, includeList);
           } else {
             includeList = ['all'];
             excludeList = [];

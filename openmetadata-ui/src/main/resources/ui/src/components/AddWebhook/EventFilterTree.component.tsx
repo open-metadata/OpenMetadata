@@ -110,8 +110,8 @@ const EventFilterTree = ({ value, onChange }: EventFilterTreeProps) => {
 
   return (
     <>
-      {eventFilters &&
-        map(eventFilters, ({ entityType, filters }, index) => (
+      {initialFilters &&
+        map(initialFilters, ({ entityType, filters }, index) => (
           <>
             {entityType !== TERM_ALL ? (
               <div className="tw-rounded-border" key={entityType}>
@@ -126,7 +126,7 @@ const EventFilterTree = ({ value, onChange }: EventFilterTreeProps) => {
                     handleTreeCheckChange(keys as Key[], entityType)
                   }
                 />
-                {index !== eventFilters.length - 1 && <Divider />}
+                {index !== initialFilters.length - 1 && <Divider />}
               </div>
             ) : null}
           </>

@@ -34,7 +34,7 @@ import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const EDIT_HEADER_WEBHOOKS_TITLE: { [key: string]: string } = {
   msteams: 'MS Teams',
@@ -104,6 +104,9 @@ const EditWebhookPage: FunctionComponent = () => {
             setStatus('initial');
             goToWebhooks();
           }, 500);
+          showSuccessToast(
+            jsonData['api-success-messages']['update-webhook-success']
+          );
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];
         }
