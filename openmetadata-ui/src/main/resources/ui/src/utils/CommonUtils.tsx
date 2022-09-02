@@ -774,16 +774,19 @@ export const showPagination = (paging: Paging) => {
   return !isNil(paging.after) || !isNil(paging.before);
 };
 
-export const getTeamsText = (teams: EntityReference[]) => {
-  return teams.length === 0 ? (
-    'No teams'
-  ) : teams.length > 1 ? (
+export const getEntitiesText = (
+  entity: EntityReference[],
+  entityType: EntityType
+) => {
+  return entity.length === 0 ? (
+    `No ${entityType}`
+  ) : entity.length > 1 ? (
     <span>
-      {getEntityName(teams[0])}, &{' '}
+      {getEntityName(entity[0])}, &{' '}
       <Popover
         content={
           <span>
-            {teams.map((t, i) => {
+            {entity.map((t, i) => {
               return i >= 1 ? (
                 <span className="tw-block tw-text-left" key={i}>
                   {getEntityName(t)}
@@ -794,12 +797,12 @@ export const getTeamsText = (teams: EntityReference[]) => {
         }
         trigger="hover">
         <span className="tw-underline tw-cursor-pointer">
-          {teams.length - 1} more
+          {entity.length - 1} more
         </span>
       </Popover>
     </span>
   ) : (
-    `${getEntityName(teams[0])}`
+    `${getEntityName(entity[0])}`
   );
 };
 

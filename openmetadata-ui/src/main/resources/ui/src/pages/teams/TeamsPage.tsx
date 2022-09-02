@@ -174,7 +174,7 @@ const TeamsPage = () => {
     paging = {} as { [key: string]: string }
   ) => {
     setIsDataLoading(true);
-    getUsers('teams', PAGE_SIZE, { team, ...paging })
+    getUsers('teams,roles', PAGE_SIZE, { team, ...paging })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);

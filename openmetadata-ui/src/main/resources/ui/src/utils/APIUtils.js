@@ -62,6 +62,7 @@ export const formatUsersResponse = (hits) => {
       type: d._source.entityType,
       id: d._source.id,
       teams: d._source.teams,
+      roles: d._source.roles,
     };
   });
 };

@@ -20,12 +20,13 @@ import { Link, useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
 import { getUserPath, PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { EntityType } from '../../enums/entity.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { getEntityName, getTeamsText } from '../../utils/CommonUtils';
+import { getEntitiesText, getEntityName } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -134,15 +135,18 @@ const UserListV1: FC<UserListV1Props> = ({
         ),
       },
       {
-        title: 'Email',
-        dataIndex: 'email',
-        key: 'email',
-      },
-      {
         title: 'Teams',
         dataIndex: 'teams',
         key: 'teams',
-        render: (teams: EntityReference[]) => getTeamsText(teams),
+        render: (teams: EntityReference[]) =>
+          getEntitiesText(teams, EntityType.TEAM),
+      },
+      {
+        title: 'Roles',
+        dataIndex: 'roles',
+        key: 'roles',
+        render: (roles: EntityReference[]) =>
+          getEntitiesText(roles, EntityType.ROLE),
       },
       {
         title: 'Actions',
