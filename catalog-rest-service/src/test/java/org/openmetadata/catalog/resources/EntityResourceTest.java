@@ -1358,7 +1358,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+  protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     assertResponse(() -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
