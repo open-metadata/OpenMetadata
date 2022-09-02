@@ -18,6 +18,7 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -67,9 +68,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after)
       throws IOException {
-    RestUtil.validateCursors(before, after);
     OperationContext listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, listOperationContext, getResourceContext(), true);
+    return listInternal(
+        uriInfo,
+        securityContext,
+        fieldsParam,
+        filter,
+        limitParam,
+        before,
+        after,
+        listOperationContext,
+        getResourceContext());
+  }
+
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     Fields fields = getFields(fieldsParam);
 
     ResultList<T> resultList;
@@ -83,8 +107,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include)
       throws IOException {
-    OperationContext getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, getOperationContext, getResourceContextById(id), true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    return getInternal(
+        uriInfo, securityContext, id, fieldsParam, include, operationContext, getResourceContextById(id));
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -92,8 +129,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
-    OperationContext getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, getOperationContext, getResourceContextByName(name), true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    return getByNameInternal(
+        uriInfo, securityContext, name, fieldsParam, include, operationContext, getResourceContextByName(name));
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
