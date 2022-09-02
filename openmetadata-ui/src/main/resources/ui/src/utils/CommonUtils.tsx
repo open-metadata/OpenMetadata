@@ -98,12 +98,6 @@ export const isEven = (value: number): boolean => {
   return value % 2 === 0;
 };
 
-export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
-  const arrColFQN = columnFQN.split(FQN_SEPARATOR_CHAR);
-
-  return arrColFQN.slice(0, arrColFQN.length - 1).join(FQN_SEPARATOR_CHAR);
-};
-
 export const getPartialNameFromFQN = (
   fqn: string,
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
@@ -162,6 +156,14 @@ export const getPartialNameFromTableFQN = (
   }
 
   return arrPartialName.join(joinSeparator);
+};
+
+export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
+  return getPartialNameFromTableFQN(
+    columnFQN,
+    [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+    '.'
+  );
 };
 
 export const getCurrentUserId = (): string => {
