@@ -68,8 +68,9 @@ const ProfilerDashboardPage = () => {
   const fetchTestCases = async (fqn: string) => {
     try {
       const { data } = await getListTestCase({
-        fields: 'testDefinition,testCaseResult',
+        fields: 'testDefinition,testCaseResult,testSuite',
         entityLink: fqn,
+        includeAllTests: !isColumnView,
         limit: API_RES_MAX_SIZE,
       });
       setTestCases(data);

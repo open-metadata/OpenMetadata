@@ -123,7 +123,7 @@ const TestSuiteDetailsPage = () => {
     setIsTestCaseLoaded(false);
     try {
       const response = await getListTestCase({
-        fields: 'testCaseResult,testDefinition',
+        fields: 'testCaseResult,testDefinition,testSuite',
         testSuiteId: testSuiteId,
         limit: limit || PAGE_SIZE,
         before: param && param.before,
