@@ -30,7 +30,7 @@ import {
 } from '../../constants/globalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
-import { Webhook } from '../../generated/entity/events/webhook';
+import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -69,11 +69,23 @@ const EditWebhookPage: FunctionComponent = () => {
   };
 
   const goToWebhooks = () => {
+    let type = GlobalSettingOptions.WEBHOOK;
+    switch (webhookData?.webhookType) {
+      case WebhookType.Msteams:
+        type = GlobalSettingOptions.MSTEAMS;
+
+        break;
+      case WebhookType.Slack:
+        type = GlobalSettingOptions.SLACK;
+
+        break;
+
+      default:
+        break;
+    }
+
     history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        GlobalSettingOptions.WEBHOOK
-      )
+      `${getSettingPath(GlobalSettingsMenuCategory.INTEGRATIONS, type)}`
     );
   };
 
