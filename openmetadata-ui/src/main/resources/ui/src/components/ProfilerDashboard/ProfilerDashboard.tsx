@@ -145,7 +145,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const breadcrumb = useMemo(() => {
     const serviceName = getEntityName(table.service);
     const fqn = table.fullyQualifiedName || '';
-    const columnName = getNameFromFQN(entityTypeFQN);
+    const columnName = getPartialNameFromTableFQN(entityTypeFQN, [
+      FqnPart.NestedColumn,
+    ]);
 
     const data: TitleBreadcrumbProps['titleLinks'] = [
       {
