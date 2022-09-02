@@ -56,6 +56,7 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -641,6 +642,7 @@ export const getEntityName = (
     | Policy
     | Role
     | GlossaryTerm
+    | Webhook
 ) => {
   return entity?.displayName || entity?.name || '';
 };
@@ -893,4 +895,14 @@ export const getDiffArray = (
   toCompare: string[]
 ): string[] => {
   return differenceWith(compareWith, toCompare, isEqual);
+};
+
+export const getHostNameFromURL = (url: string) => {
+  if (isValidUrl(url)) {
+    const domain = new URL(url);
+
+    return domain.hostname;
+  } else {
+    return '';
+  }
 };
