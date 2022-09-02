@@ -17,14 +17,14 @@ import './Badge.less';
 
 const AnnouncementBadge = () => {
   return (
-    <span className="tw-absolute tw--left-3 tw--top-3 tw-flex">
+    <div className="announcement-badge-container">
       <SVGIcons
         alt="announcement"
         className="announcement-badge"
-        icon={Icons.ANNOUNCEMENT_BLACK}
-        width="32px"
+        icon={Icons.ANNOUNCEMENT_PURPLE}
       />
-    </span>
+      <span className="announcement-content">Announcement</span>
+    </div>
   );
 };
 
