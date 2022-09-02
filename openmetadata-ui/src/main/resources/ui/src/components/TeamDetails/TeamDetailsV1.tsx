@@ -874,6 +874,7 @@ const TeamDetailsV1 = ({
                     Add Role
                   </ButtonAntd>
                   <ListEntities
+                    hasAccess={entityPermissions.EditAll}
                     list={currentTeam.defaultRoles || []}
                     type={EntityType.ROLE}
                     onDelete={(record) =>
@@ -904,6 +905,7 @@ const TeamDetailsV1 = ({
                     Add Policy
                   </ButtonAntd>
                   <ListEntities
+                    hasAccess={entityPermissions.EditAll}
                     list={currentTeam.policies || []}
                     type={EntityType.POLICY}
                     onDelete={(record) =>

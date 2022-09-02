@@ -16,11 +16,18 @@ import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
 import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
+import { getTableTabPath } from '../../../constants/constants';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
+import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
+import { getTestSuitePath } from '../../../utils/RouterUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
+import {
+  getEntityFqnFromEntityLink,
+  getTestResultBadgeIcon,
+} from '../../../utils/TableUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
@@ -71,6 +78,37 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
+      },
+      {
+        title: 'Table',
+        dataIndex: 'table',
+        key: 'table',
+        render: (_, record) => {
+          const tableFqn = getEntityFqnFromEntityLink(record.entityLink);
+          const name = getNameFromFQN(tableFqn);
+
+          return (
+            <Link
+              to={getTableTabPath(tableFqn, 'profiler')}
+              onClick={(e) => e.stopPropagation()}>
+              {name}
+            </Link>
+          );
+        },
+      },
+      {
+        title: 'Test Suite',
+        dataIndex: 'testSuite',
+        key: 'testSuite',
+        render: (_, record) => {
+          return (
+            <Link
+              to={getTestSuitePath(record?.testSuite?.fullyQualifiedName || '')}
+              onClick={(e) => e.stopPropagation()}>
+              {getEntityName(record?.testSuite)}
+            </Link>
+          );
+        },
       },
       {
         title: 'Actions',
