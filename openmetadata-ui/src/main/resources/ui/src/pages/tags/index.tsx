@@ -590,10 +590,10 @@ const TagsPage = () => {
                 onDescriptionUpdate={UpdateCategory}
               />
             </div>
-            <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-shadow">
+            <div className="tw-table-container">
               <table className="tw-w-full" data-testid="table">
                 <thead>
-                  <tr className="tableHead-row tw-border-0">
+                  <tr className="tableHead-row">
                     <th className="tableHead-cell" data-testid="heading-name">
                       Name
                     </th>
@@ -615,7 +615,7 @@ const TagsPage = () => {
                       (tag: TagClass, index: number) => {
                         return (
                           <tr
-                            className={`tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0 ${
+                            className={`tableBody-row ${
                               !isEven(index + 1) && 'odd-row'
                             }`}
                             key={index}>

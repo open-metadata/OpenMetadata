@@ -340,13 +340,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     return (
       <div className="tw-flex tw-flex-col tw-mt-2">
         <h6 className="tw-font-medium tw-text-base">Hyper Parameters</h6>
-        <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-shadow tw-mt-2">
+        <div className="tw-table-container tw-mt-2">
           <table
             className="tw-w-full"
             data-testid="hyperparameters-table"
             id="hyperparameters-table">
             <thead>
-              <tr className="tableHead-row tw-border-0">
+              <tr className="tableHead-row">
                 <th className="tableHead-cell">Name</th>
                 <th className="tableHead-cell">Value</th>
               </tr>
@@ -357,9 +357,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 <Fragment>
                   {mlModelDetail.mlHyperParameters.map((param) => (
                     <tr
-                      className={classNames(
-                        'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0'
-                      )}
+                      className={classNames('tableBody-row')}
                       data-testid="tableBody-row"
                       key={uniqueId()}>
                       <td
@@ -377,9 +375,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </Fragment>
               ) : (
                 <tr
-                  className={classNames(
-                    'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0'
-                  )}
+                  className={classNames('tableBody-row')}
                   data-testid="tableBody-row"
                   key={uniqueId()}>
                   <td
@@ -402,13 +398,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <div className="tw-flex tw-flex-col tw-mt-2">
         <h6 className="tw-font-medium tw-text-base">Model Store</h6>
         {mlModelDetail.mlStore ? (
-          <div className="tw-mt-2 tw-bg-white tw-border tw-border-main tw-rounded tw-shadow">
+          <div className="tw-mt-2 tw-table-container">
             <table
               className="tw-w-full"
               data-testid="model-store-table"
               id="model-store-table">
               <thead>
-                <tr className="tableHead-row tw-border-0">
+                <tr className="tableHead-row">
                   {Object.keys(mlModelDetail.mlStore).map((key) => (
                     <th className="tableHead-cell" key={uniqueId()}>
                       {startCase(key)}
@@ -418,9 +414,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               </thead>
               <tbody className="tableBody">
                 <tr
-                  className={classNames(
-                    'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0'
-                  )}
+                  className={classNames('tableBody-row')}
                   data-testid="tableBody-row"
                   key={uniqueId()}>
                   <td className="tableBody-cell" data-testid="tableBody-cell">

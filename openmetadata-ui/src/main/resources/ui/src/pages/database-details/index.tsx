@@ -667,12 +667,12 @@ const DatabaseDetails: FunctionComponent = () => {
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
                   <Fragment>
-                    <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-shadow tw-mb-4">
+                    <div className="tw-table-container tw-mb-4">
                       <table
                         className="tw-bg-white tw-w-full"
                         data-testid="database-databaseSchemas">
                         <thead data-testid="table-header">
-                          <tr className="tableHead-row tw-border-0">
+                          <tr className="tableHead-row">
                             <th
                               className="tableHead-cell"
                               data-testid="header-name">
@@ -700,7 +700,7 @@ const DatabaseDetails: FunctionComponent = () => {
                             schemaData.map((schema, index) => (
                               <tr
                                 className={classNames(
-                                  'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0',
+                                  'tableBody-row',
                                   !isEven(index + 1) ? 'odd-row' : null
                                 )}
                                 data-testid="table-column"

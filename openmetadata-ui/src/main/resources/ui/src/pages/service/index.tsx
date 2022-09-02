@@ -996,22 +996,20 @@ const ServicePage: FunctionComponent = () => {
                 {activeTab === 1 && (
                   <Fragment>
                     <div
-                      className="tw-my-4 tw-bg-white tw-border tw-border-main tw-rounded tw-shadow"
+                      className="tw-my-4 tw-table-container"
                       data-testid="table-container">
                       <table
                         className="tw-bg-white tw-w-full"
                         data-testid="database-tables">
                         <thead>
-                          <tr className="tableHead-row tw-border-0">
-                            {getTableHeaders()}
-                          </tr>
+                          <tr className="tableHead-row">{getTableHeaders()}</tr>
                         </thead>
                         <tbody className="tableBody">
                           {data.length > 0 ? (
                             data.map((dataObj, index) => (
                               <tr
                                 className={classNames(
-                                  'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0',
+                                  'tableBody-row',
                                   !isEven(index + 1) ? 'odd-row' : null
                                 )}
                                 data-testid="column"
