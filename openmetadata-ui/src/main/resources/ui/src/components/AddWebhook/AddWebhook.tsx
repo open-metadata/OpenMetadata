@@ -14,7 +14,6 @@
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip } from 'antd';
-import { Store } from 'antd/lib/form/interface';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { cloneDeep, isEmpty, isNil } from 'lodash';
@@ -26,7 +25,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ROUTES, TERM_ALL } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -55,7 +54,6 @@ import {
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getEventFilters } from '../../utils/WebhookUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import CardV1 from '../common/Card/CardV1';
@@ -67,8 +65,7 @@ import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { AddWebhookProps } from './AddWebhook.interface';
-import EventFilterSelect from './EventFilterSelect.component';
-import { EVENT_FILTER_FORM_INITIAL_VALUE } from './WebhookConstants';
+import EventFilterTree from './EventFilterTree.component';
 
 const CONFIGURE_TEXT: { [key: string]: string } = {
   msteams: CONFIGURE_MS_TEAMS_TEXT,
@@ -78,26 +75,6 @@ const CONFIGURE_TEXT: { [key: string]: string } = {
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
-};
-
-const getFormData = (eventFilters: EventFilter[]): Store => {
-  if (eventFilters.length === 1 && eventFilters[0].entityType === TERM_ALL) {
-    return EVENT_FILTER_FORM_INITIAL_VALUE;
-  }
-
-  const formEventFilters = {} as Store;
-
-  eventFilters?.forEach((eventFilter) => {
-    if (eventFilter.entityType === TERM_ALL) {
-      return;
-    }
-
-    formEventFilters[eventFilter.entityType] = true;
-    formEventFilters[`${eventFilter.entityType}-tree`] =
-      eventFilter.filters?.map((filter) => filter.eventType) || [];
-  });
-
-  return formEventFilters;
 };
 
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
@@ -113,11 +90,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   onSave,
 }: AddWebhookProps) => {
   const markdownRef = useRef<EditorContentRef>();
-  const [eventFilterFormData, setEventFilterFormData] = useState<Store>(
-    data?.eventFilters
-      ? getFormData(data?.eventFilters)
-      : EVENT_FILTER_FORM_INITIAL_VALUE
-  );
+  const [eventFilterFormData, setEventFilterFormData] = useState<
+    EventFilter[] | undefined
+  >(data?.eventFilters);
   const [name, setName] = useState<string>(data?.name || '');
   const [endpointUrl, setEndpointUrl] = useState<string>(data?.endpoint || '');
   const [description] = useState<string>(data?.description || '');
@@ -250,7 +225,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         name,
         description: markdownRef.current?.getEditorContent() || undefined,
         endpoint: endpointUrl,
-        eventFilters: getEventFilters(eventFilterFormData),
+        eventFilters: eventFilterFormData ?? ([] as EventFilter[]),
         batchSize,
         timeout: connectionTimeout,
         enabled: active,
@@ -468,9 +443,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               </span>,
               'tw-mt-3'
             )}
-            <EventFilterSelect
-              eventFilterFormData={eventFilterFormData}
-              setEventFilterFormData={(data) => setEventFilterFormData(data)}
+            <EventFilterTree
+              value={eventFilterFormData || []}
+              onChange={setEventFilterFormData}
             />
             <Field>
               <div className="tw-flex tw-justify-end tw-pt-1">

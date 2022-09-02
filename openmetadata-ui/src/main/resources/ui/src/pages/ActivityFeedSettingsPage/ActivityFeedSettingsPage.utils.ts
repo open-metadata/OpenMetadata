@@ -85,11 +85,15 @@ export const getEventFilterFromTree = (
         const eventList = temp.filter((f) => f[1] === filter.eventType);
         if (eventList.length > 0) {
           if (filter.eventType === EventType.EntityUpdated) {
-            includeList = intersection(
-              filter.include ?? [],
-              eventList.map((f) => f[2])
-            );
-            excludeList = xor(filter.include, includeList);
+            includeList = isEmpty(filter.include)
+              ? eventList.map((f) => f[2]).filter(Boolean)
+              : intersection(
+                  filter.include,
+                  eventList.map((f) => f[2]).filter(Boolean)
+                );
+            excludeList = !isEmpty(filter.include)
+              ? xor(filter.include, includeList)
+              : [];
           } else {
             includeList = ['all'];
             excludeList = [];
