@@ -18,6 +18,7 @@ import './app.less';
 import './components/glossary.less';
 import './components/step.less';
 import './fonts.css';
+import './modal.less';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
 import './tailwind.css';
