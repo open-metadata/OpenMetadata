@@ -111,6 +111,7 @@ import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
+import IconAddTest from '../assets/svg/icon-add-test.svg';
 import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
@@ -228,6 +229,7 @@ export const Icons = {
   LINEAGE: 'icon-lineage',
   MANAGE: 'icon-manage',
   HOME: 'icon-home',
+  ADD_TEST: 'icon-add-test',
   GROWTH_ARROW: 'icon-growth-arrow',
   LOSS_ARROW: 'icon-loss-arrow',
   CHECK_CIRCLE: 'icon-check-circle',
@@ -419,6 +421,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO_SMALL:
       IconComponent = LogoMonogram;
+
+      break;
+    case Icons.ADD_TEST:
+      IconComponent = IconAddTest;
 
       break;
     case Icons.WELCOME_POPPER:
