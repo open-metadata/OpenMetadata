@@ -32,6 +32,7 @@ import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
+import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -159,6 +160,25 @@ public class SettingsResource {
   public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
       throws IOException {
     return bootStrappedFilters;
+  }
+
+  @POST
+  @Path("/resetFilters")
+  @Operation(
+      operationId = "resetFilters",
+      summary = "Reset filters to initial state",
+      tags = "settings",
+      description = "Reset filters to it's initial state",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Filters",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
+      })
+  public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    Settings settings =
+        new Settings().withConfigType(ACTIVITY_FEED_FILTER_SETTING).withConfigValue(bootStrappedFilters);
+    return settingsRepository.createNewSetting(settings);
   }
 
   @GET
