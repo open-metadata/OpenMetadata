@@ -323,14 +323,23 @@ def _(
     column_name: str,
     test_case_name: str,
 ) -> str:
-    return _build(
-        service_name,
-        database_name,
-        schema_name,
-        table_name,
-        column_name,
-        test_case_name,
-    )
+    if column_name:
+        return _build(
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            column_name,
+            test_case_name,
+        )
+    else:
+        return _build(
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            test_case_name,
+        )
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:

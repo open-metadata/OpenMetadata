@@ -28,7 +28,11 @@ from metadata.generated.schema.entity.data.table import (
     Table,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
@@ -225,22 +229,42 @@ class DBTMixin:
                 and self.dbt_catalog
             ):
                 logger.info("Processing DBT Tests Suites and Test Definitions")
-                test_suite = CreateTestSuiteRequest(
-                    name="DBT_TESTS",
-                    description="Test Suite for DBT Tests",
-                )
-                yield test_suite
                 for key, dbt_test in self.dbt_tests.items():
-                    test_definition = CreateTestDefinitionRequest(
-                        name=dbt_test["name"],
-                        description=dbt_test["description"],
-                        entityType=EntityType.COLUMN,
-                        testPlatforms=[TestPlatform.DBT],
-                        parameterDefinition=self.create_test_case_parameter_definitions(
-                            dbt_test
-                        ),
+                    test_suite_name = dbt_test["meta"].get(
+                        "test_suite_name", "DBT TEST SUITE"
                     )
-                    yield test_definition
+                    test_suite_desciption = dbt_test["meta"].get(
+                        "test_suite_desciption", ""
+                    )
+                    check_test_suite_exists = self.metadata.get_by_name(
+                        fqn=test_suite_name, entity=TestSuite
+                    )
+                    if not check_test_suite_exists:
+                        test_suite = CreateTestSuiteRequest(
+                            name=test_suite_name,
+                            description=test_suite_desciption,
+                        )
+                        yield test_suite
+                    check_test_definition_exists = self.metadata.get_by_name(
+                        fqn=dbt_test["name"],
+                        entity=TestDefinition,
+                    )
+                    if not check_test_definition_exists:
+                        column_name = dbt_test.get("column_name")
+                        if column_name:
+                            entity_type = (EntityType.COLUMN,)
+                        else:
+                            entity_type = EntityType.TABLE
+                        test_definition = CreateTestDefinitionRequest(
+                            name=dbt_test["name"],
+                            description=dbt_test["description"],
+                            entityType=entity_type,
+                            testPlatforms=[TestPlatform.DBT],
+                            parameterDefinition=self.create_test_case_parameter_definitions(
+                                dbt_test
+                            ),
+                        )
+                        yield test_definition
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Failed to parse the node to capture tests {err}")
 
@@ -258,6 +282,9 @@ class DBTMixin:
                 try:
                     entity_link_list = self.generate_entity_link(dbt_test)
                     for entity_link in entity_link_list:
+                        test_suite_name = dbt_test["meta"].get(
+                            "test_suite_name", "DBT TEST SUITE"
+                        )
                         test_case = CreateTestCaseRequest(
                             name=dbt_test["name"],
                             description=dbt_test["description"],
@@ -271,7 +298,7 @@ class DBTMixin:
                             entityLink=entity_link,
                             testSuite=EntityReference(
                                 id=self.metadata.get_by_name(
-                                    fqn="DBT_TESTS", entity=TestSuite
+                                    fqn=test_suite_name, entity=TestSuite
                                 ).id.__root__,
                                 type="testSuite",
                             ),
@@ -296,10 +323,13 @@ class DBTMixin:
                 try:
                     # Process the Test Status
                     test_case_status = TestCaseStatus.Aborted
+                    test_result_value = -1
                     if dbt_test_result.get("status") == "success":
                         test_case_status = TestCaseStatus.Success
+                        test_result_value = 1
                     elif dbt_test_result.get("status") == "failure":
                         test_case_status = TestCaseStatus.Failed
+                        test_result_value = 0
 
                     # Process the Test Timings
                     dbt_test_timings = dbt_test_result["timing"]
@@ -315,7 +345,14 @@ class DBTMixin:
                         dbt_timestamp = self.unix_time_millis(dbt_timestamp)
 
                     test_case_result = TestCaseResult(
-                        timestamp=dbt_timestamp, testCaseStatus=test_case_status
+                        timestamp=dbt_timestamp,
+                        testCaseStatus=test_case_status,
+                        testResultValue=[
+                            TestResultValue(
+                                name=dbt_test_result.get("unique_id"),
+                                value=str(test_result_value),
+                            )
+                        ],
                     )
 
                     dbt_test_node = self.dbt_tests.get(dbt_test_result["unique_id"])
@@ -375,10 +412,13 @@ class DBTMixin:
                 schema_name=model.get("schema"),
                 table_name=model.get("name"),
             )
-            column_name = dbt_test["test_metadata"]["kwargs"]["column_name"]
-            entity_link = (
-                f"<#E::table::" f"{table_fqn}" f"::columns::" f"{column_name}>"
-            )
+            column_name = dbt_test.get("column_name")
+            if column_name:
+                entity_link = (
+                    f"<#E::table::" f"{table_fqn}" f"::columns::" f"{column_name}>"
+                )
+            else:
+                entity_link = f"<#E::table::" f"{table_fqn}>"
             entity_link_list.append(entity_link)
         return entity_link_list
 
