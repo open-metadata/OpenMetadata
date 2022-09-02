@@ -272,7 +272,7 @@ describe('Test MyDataDetailsPage page', () => {
     const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
     const sampleDataTab = await findByTestId(tabs, 'Sample Data');
     const queriesTab = await findByTestId(tabs, 'Queries');
-    const profilerTab = await findByTestId(tabs, 'Profiler');
+    const profilerTab = await findByTestId(tabs, 'Profiler & Data Quality');
     const lineageTab = await findByTestId(tabs, 'Lineage');
     const dbtTab = queryByTestId(tabs, 'DBT');
 

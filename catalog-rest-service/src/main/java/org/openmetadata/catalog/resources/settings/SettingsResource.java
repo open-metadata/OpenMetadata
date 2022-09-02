@@ -32,6 +32,7 @@ import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
+import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -43,6 +44,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -65,6 +67,7 @@ import org.openmetadata.common.utils.CommonUtil;
 public class SettingsResource {
   private final SettingsRepository settingsRepository;
   private final Authorizer authorizer;
+  private List<EventFilter> bootStrappedFilters;
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
@@ -84,6 +87,9 @@ public class SettingsResource {
       settings.forEach(
           (setting) -> {
             try {
+              if (setting.getConfigType() == ACTIVITY_FEED_FILTER_SETTING) {
+                bootStrappedFilters = FilterUtil.getEventFilterFromSettings(setting);
+              }
               Settings storedSettings = settingsRepository.getConfigWithKey(setting.getConfigType().toString());
               if (storedSettings == null) {
                 // Only in case a config doesn't exist in DB we insert it
@@ -136,6 +142,43 @@ public class SettingsResource {
   public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
       throws IOException {
     return settingsRepository.listAllConfigs();
+  }
+
+  @GET
+  @Path("/bootstrappedFilters")
+  @Operation(
+      operationId = "listBootstrappedFilter",
+      summary = "List All BootStrapped Filters",
+      tags = "settings",
+      description = "Get a List of all OpenMetadata Bootstrapped Filters",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Settings",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
+      })
+  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    return bootStrappedFilters;
+  }
+
+  @POST
+  @Path("/resetFilters")
+  @Operation(
+      operationId = "resetFilters",
+      summary = "Reset filters to initial state",
+      tags = "settings",
+      description = "Reset filters to it's initial state",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Filters",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
+      })
+  public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    Settings settings =
+        new Settings().withConfigType(ACTIVITY_FEED_FILTER_SETTING).withConfigValue(bootStrappedFilters);
+    return settingsRepository.createNewSetting(settings);
   }
 
   @GET

@@ -39,6 +39,9 @@ jest.mock('antd', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
   Table: jest.fn().mockImplementation(({ columns, dataSource }) => (
     <table>
       <thead>
@@ -102,6 +105,7 @@ const mockProps: ColumnProfileTableProps = {
   columns: MOCK_TABLE.columns,
   onAddTestClick: jest.fn,
   columnTests: [],
+  hasEditAccess: true,
 };
 
 describe('Test ColumnProfileTable component', () => {
