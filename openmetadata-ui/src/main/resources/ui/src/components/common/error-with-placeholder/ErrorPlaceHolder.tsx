@@ -26,6 +26,7 @@ type Props = {
   buttonListener?: () => void;
   heading?: string;
   doc?: string;
+  buttons?: React.ReactNode;
 };
 
 const ErrorPlaceHolder = ({
@@ -35,6 +36,7 @@ const ErrorPlaceHolder = ({
   heading,
   buttonLabel,
   buttonListener,
+  buttons,
 }: Props) => {
   const { Paragraph, Link } = Typography;
 
@@ -59,14 +61,18 @@ const ErrorPlaceHolder = ({
         </Paragraph>
 
         <div className="tw-text-lg tw-text-center">
-          <Button
-            data-testid="add-service-button"
-            size="small"
-            theme="primary"
-            variant="outlined"
-            onClick={buttonListener}>
-            {buttonLabel}
-          </Button>
+          {buttons ? (
+            buttons
+          ) : (
+            <Button
+              data-testid="add-service-button"
+              size="small"
+              theme="primary"
+              variant="outlined"
+              onClick={buttonListener}>
+              {buttonLabel}
+            </Button>
+          )}
         </div>
       </div>
     </div>

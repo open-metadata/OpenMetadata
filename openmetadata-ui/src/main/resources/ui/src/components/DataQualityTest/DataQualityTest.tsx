@@ -176,10 +176,11 @@ const DataQualityTest = ({
           </div>
         </div>
       ) : (
-        <ErrorPlaceHolder>
-          <p className="tw-mb-5">No test available.</p>
-          {addTestButton(false)}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          buttons={addTestButton(false)}
+          heading="test"
+          type="ADD_DATA"
+        />
       )}
     </div>
   );

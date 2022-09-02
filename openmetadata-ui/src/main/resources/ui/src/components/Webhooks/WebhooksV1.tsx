@@ -75,27 +75,31 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   const fetchErrorPlaceHolder = useMemo(
     () => (message: string) => {
       return (
-        <ErrorPlaceHolder>
-          <p className="tw-text-center">{message}</p>
-          <p className="tw-text-center">
-            <Tooltip
-              placement="left"
-              title={
-                addWebhookPermission ? 'Add Webhook' : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className={classNames('tw-h-8 tw-rounded tw-my-3')}
-                data-testid="add-webhook-button"
-                disabled={!addWebhookPermission}
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={onAddWebhook}>
-                Add {WEBHOOKS_INTEGRATION[webhookType]}
-              </Button>
-            </Tooltip>
-          </p>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          buttons={
+            <p className="tw-text-center">
+              <Tooltip
+                placement="left"
+                title={
+                  addWebhookPermission
+                    ? 'Add Webhook'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className={classNames('tw-h-8 tw-rounded tw-my-3')}
+                  data-testid="add-webhook-button"
+                  disabled={!addWebhookPermission}
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={onAddWebhook}>
+                  Add {WEBHOOKS_INTEGRATION[webhookType]}
+                </Button>
+              </Tooltip>
+            </p>
+          }
+          heading={message}
+        />
       );
     },
     []

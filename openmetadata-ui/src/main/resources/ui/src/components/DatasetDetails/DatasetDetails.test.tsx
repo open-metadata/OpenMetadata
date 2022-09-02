@@ -52,6 +52,9 @@ jest.mock('antd', () => ({
   Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Typorgraphy: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {

@@ -46,7 +46,6 @@ interface Props {
 }
 
 const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
-  const { Paragraph } = Typography;
   const tableRef = useRef<HTMLDivElement>(null);
   const [scrollOffset, setScrollOffSet] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -54,6 +53,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
     left: boolean;
     right: boolean;
   }>({ left: true, right: true });
+  const { Paragraph } = Typography;
 
   const scrollHandler = (scrollOffset: number) => {
     if (tableRef.current) {
