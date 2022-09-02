@@ -159,6 +159,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       setFields(testCase, EntityUtil.Fields.EMPTY_FIELDS);
     }
 
+    setFields(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
     ChangeEvent changeEvent = getChangeEvent(testCase, change, entityType, testCase.getVersion());
