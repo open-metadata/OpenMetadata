@@ -97,22 +97,6 @@ describe('Test Popover content component', () => {
     expect(replyButton).toBe(null);
   });
 
-  it('Should not render the edit button if user is not a author and not a announcement', async () => {
-    render(<PopoverContent {...mockProps} isThread isAuthor={false} />);
-
-    const editButton = screen.queryByTestId('edit-message');
-
-    expect(editButton).toBe(null);
-  });
-
-  it('Should not render the delete button if user is not a author', async () => {
-    render(<PopoverContent {...mockProps} isAuthor={false} />);
-
-    const deleteButton = screen.queryByTestId('delete-message');
-
-    expect(deleteButton).toBe(null);
-  });
-
   it('Should render reaction popover on click of reaction button', async () => {
     render(<PopoverContent {...mockProps} />);
 
