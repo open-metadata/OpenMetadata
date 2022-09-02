@@ -252,7 +252,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                   <div className="tw-table-responsive tw-my-6 tw-col-span-full tw-table-container">
                     <table className="tw-w-full" data-testid="schema-table">
                       <thead>
-                        <tr className="tableHead-row0">
+                        <tr className="tableHead-row">
                           <th className="tableHead-cell">Chart Name</th>
                           <th className="tableHead-cell">Chart Type</th>
                           <th className="tableHead-cell">Description</th>
