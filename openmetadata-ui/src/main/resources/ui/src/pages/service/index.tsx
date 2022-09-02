@@ -952,7 +952,7 @@ const ServicePage: FunctionComponent = () => {
                   <EntitySummaryDetails
                     data={info}
                     updateOwner={
-                      servicePermission.EditOwner
+                      servicePermission.EditAll || servicePermission.EditOwner
                         ? handleUpdateOwner
                         : undefined
                     }
@@ -975,7 +975,9 @@ const ServicePage: FunctionComponent = () => {
                 entityFqn={serviceFQN}
                 entityName={serviceFQN}
                 entityType={serviceCategory.slice(0, -1)}
-                hasEditAccess={servicePermission.EditDescription}
+                hasEditAccess={
+                  servicePermission.EditAll || servicePermission.EditDescription
+                }
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
