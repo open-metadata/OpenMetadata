@@ -21,19 +21,8 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import ServicePage from './index';
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: true,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 const mockData = {
   description: '',
@@ -82,6 +71,12 @@ const mockDatabase = {
     before: null,
   },
 };
+
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue(DEFAULT_ENTITY_PERMISSION),
+  }),
+}));
 
 jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>

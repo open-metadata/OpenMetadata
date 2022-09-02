@@ -202,7 +202,7 @@ const EntitySummaryDetails = ({
                 <span
                   data-testid={`edit-${data.key}-icon`}
                   onClick={() => setShow(true)}>
-                  <EditIcon />
+                  {updateOwner ? <EditIcon /> : null}
                 </span>
               )}
             </>

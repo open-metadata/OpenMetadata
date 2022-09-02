@@ -1,5 +1,6 @@
-import { Space } from 'antd';
+import { Space, Tooltip } from 'antd';
 import React from 'react';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { IcDeleteColored } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -19,6 +20,7 @@ const TestSuiteDetails = ({
   testSuiteDescription,
   descriptionHandler,
   handleDescriptionUpdate,
+  permissions,
 }: TestSuiteDetailsProps) => {
   return (
     <>
@@ -30,20 +32,24 @@ const TestSuiteDetails = ({
           data-testid="test-suite-breadcrumb"
           titleLinks={slashedBreadCrumb}
         />
-        <Button
-          data-testid="test-suite-delete"
-          size="small"
-          theme="primary"
-          variant="outlined"
-          onClick={() => handleDeleteWidgetVisible(true)}>
-          <IcDeleteColored
-            className="tw-mr-1.5"
-            height={14}
-            viewBox="0 0 24 24"
-            width={14}
-          />
-          <span>Delete</span>
-        </Button>
+        <Tooltip
+          title={permissions.Delete ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+          <Button
+            data-testid="test-suite-delete"
+            disabled={!permissions.Delete}
+            size="small"
+            theme="primary"
+            variant="outlined"
+            onClick={() => handleDeleteWidgetVisible(true)}>
+            <IcDeleteColored
+              className="tw-mr-1.5"
+              height={14}
+              viewBox="0 0 24 24"
+              width={14}
+            />
+            <span>Delete</span>
+          </Button>
+        </Tooltip>
         <DeleteWidgetModal
           allowSoftDelete
           entityId={testSuite?.id}
@@ -57,17 +63,22 @@ const TestSuiteDetails = ({
       <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
         {extraInfo.map((info, index) => (
           <span className="tw-flex" key={index}>
-            <EntitySummaryDetails data={info} updateOwner={handleUpdateOwner} />
+            <EntitySummaryDetails
+              data={info}
+              updateOwner={
+                permissions.EditOwner ? handleUpdateOwner : undefined
+              }
+            />
           </span>
         ))}
       </div>
 
       <Space>
         <Description
-          hasEditAccess
           className="test-suite-description"
           description={testSuiteDescription || ''}
           entityName={testSuite?.displayName ?? testSuite?.name}
+          hasEditAccess={permissions.EditDescription}
           isEdit={isDescriptionEditable}
           onCancel={() => descriptionHandler(false)}
           onDescriptionEdit={() => descriptionHandler(true)}

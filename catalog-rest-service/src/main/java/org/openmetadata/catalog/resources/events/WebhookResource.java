@@ -359,6 +359,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         .withEnabled(create.getEnabled())
         .withSecretKey(create.getSecretKey())
         .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED)
-        .withWebhookType(WebhookType.fromValue(create.getWebhookType().value()));
+        .withWebhookType(create.getWebhookType() == null ? WebhookType.generic : create.getWebhookType());
   }
 }

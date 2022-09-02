@@ -103,6 +103,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
+    RedpandaConnection,
+)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
@@ -329,8 +332,9 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
     return deltalake_connection
 
 
-@get_connection.register
-def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
+@get_connection.register(KafkaConnection)
+@get_connection.register(RedpandaConnection)
+def _(connection, verbose: bool = False) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """

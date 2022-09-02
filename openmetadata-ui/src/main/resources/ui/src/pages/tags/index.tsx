@@ -61,7 +61,10 @@ import {
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
 import {
   getExplorePathWithInitFilters,
   getTagPath,
@@ -105,7 +108,7 @@ const TagsPage = () => {
     state: false,
   });
   const [categoryPermissions, setCategoryPermissions] =
-    useState<OperationPermission>({} as OperationPermission);
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const createCategoryPermission = useMemo(
     () =>

@@ -14,7 +14,15 @@
 import { Popover } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
+import {
+  capitalize,
+  differenceWith,
+  isEmpty,
+  isEqual,
+  isNil,
+  isNull,
+  isUndefined,
+} from 'lodash';
 import {
   EntityFieldThreadCount,
   ExtraInfo,
@@ -878,4 +886,11 @@ export const getIngestionStatuses = (ingestion: IngestionPipeline) => {
       status
     );
   });
+};
+
+export const getDiffArray = (
+  compareWith: string[],
+  toCompare: string[]
+): string[] => {
+  return differenceWith(compareWith, toCompare, isEqual);
 };

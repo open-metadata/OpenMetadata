@@ -12,9 +12,12 @@
 IP endpoint
 """
 import traceback
+from typing import Optional
 
 import requests
 from openmetadata_managed_apis.utils.logger import routes_logger
+from requests.exceptions import ConnectionError
+from urllib3.exceptions import NewConnectionError
 
 try:
     from importlib.metadata import version
@@ -29,6 +32,25 @@ from openmetadata_managed_apis.api.response import ApiResponse
 
 logger = routes_logger()
 
+IP_SERVICES = ["https://api.ipify.org", "https://api.my-ip.io/ip"]
+
+
+def _get_ip_safely(url: str) -> Optional[str]:
+    """
+    Safely retrieve the public IP
+    :param url: Service giving us the IP
+    :return: Host IP
+    """
+    try:
+        host_ip = requests.get(url)
+        return host_ip.text
+    except (NewConnectionError, ConnectionError, ValueError) as err:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Could not extract IP info from {url} due to {err}. Retrying..."
+        )
+        return None
+
 
 @blueprint.route("/ip", methods=["GET"])
 @csrf.exempt
@@ -40,7 +62,17 @@ def get_host_ip():
     """
 
     try:
-        return ApiResponse.success({"ip": requests.get("https://api.ipify.org").text})
+
+        for ip_service in IP_SERVICES:
+            host_ip = _get_ip_safely(ip_service)
+            if host_ip:
+                return ApiResponse.success({"ip": host_ip})
+
+        return ApiResponse.error(
+            status=ApiResponse.STATUS_SERVER_ERROR,
+            error=f"Could not extract the host IP from neither {IP_SERVICES}. Verify connectivity.",
+        )
+
     except Exception as exc:
         msg = f"Internal error obtaining host IP due to [{exc}] "
         logger.debug(traceback.format_exc())

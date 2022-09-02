@@ -41,7 +41,7 @@ import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
-import { hasPemission } from '../../utils/PermissionsUtils';
+import { hasPermission } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -133,7 +133,7 @@ const TeamDetails = ({
       isHidden: !(
         hasAccess ||
         isOwner() ||
-        hasPemission(Operation.EditOwner, EntityType.TEAM, userPermissions)
+        hasPermission(Operation.EditOwner, EntityType.TEAM, userPermissions)
       ),
       position: 4,
     },
@@ -346,7 +346,7 @@ const TeamDetails = ({
                     : `added yet.`}
                 </p>
                 {isActionAllowed(
-                  hasPemission(
+                  hasPermission(
                     Operation.EditUsers,
                     EntityType.TEAM,
                     userPermissions

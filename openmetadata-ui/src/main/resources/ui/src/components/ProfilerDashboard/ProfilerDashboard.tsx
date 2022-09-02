@@ -55,6 +55,7 @@ import {
 } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayout from '../containers/PageLayout';
 import DataQualityTab from './component/DataQualityTab';
 import ProfilerTab from './component/ProfilerTab';
@@ -129,7 +130,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     const fqn = table.fullyQualifiedName || '';
     const columnName = getNameFromFQN(entityTypeFQN);
 
-    return [
+    const data: TitleBreadcrumbProps['titleLinks'] = [
       {
         name: getEntityName(table.service),
         url: serviceName
@@ -152,14 +153,21 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       },
       {
         name: getEntityName(table),
-        url: getTableTabPath(table.fullyQualifiedName || ''),
+        url: isColumnView
+          ? getTableTabPath(table.fullyQualifiedName || '', 'profiler')
+          : '',
       },
-      {
+    ];
+
+    if (isColumnView) {
+      data.push({
         name: columnName,
         url: '',
         activeTitle: true,
-      },
-    ];
+      });
+    }
+
+    return data;
   }, [table]);
 
   const extraInfo: Array<ExtraInfo> = useMemo(() => {

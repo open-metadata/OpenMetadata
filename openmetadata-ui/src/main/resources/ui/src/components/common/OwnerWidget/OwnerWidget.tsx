@@ -26,7 +26,7 @@ import { useAuth } from '../../../hooks/authHooks';
 import jsonData from '../../../jsons/en';
 import { hasEditAccess } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
-import { hasPemission } from '../../../utils/PermissionsUtils';
+import { hasPermission } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { isCurrentUserAdmin } from '../../../utils/UserDataUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -162,7 +162,7 @@ const OwnerWidget = ({
           return false;
         }
 
-        return hasPemission(
+        return hasPermission(
           Operation.EditOwner,
           entityType as EntityType,
           userPermissions
