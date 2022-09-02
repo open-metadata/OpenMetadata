@@ -68,7 +68,7 @@ export const getPayloadFromSelected = (
   }
 };
 
-export const udpateKeys = (
+export const getEventFilterFromTree = (
   updatedTree: Record<string, string[]>,
   eventFilters: EventFilter[]
 ): EventFilter[] => {

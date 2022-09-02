@@ -57,3 +57,14 @@ export const updateFilters = async (data: ActivityFeedSettings) => {
 
   return response.data;
 };
+
+export const resetAllFilters = async () => {
+  const url = `${BASE_URL}/resetFilters`;
+
+  const response = await axiosClient.post<
+    null,
+    AxiosResponse<ActivityFeedSettings>
+  >(url);
+
+  return response.data;
+};

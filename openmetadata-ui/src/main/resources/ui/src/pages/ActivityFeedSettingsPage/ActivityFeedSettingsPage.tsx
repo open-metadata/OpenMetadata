@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/camelcase */
-import { Button, Col, Row, Space, Tree, Typography } from 'antd';
+import { Button, Card, Col, Divider, Row, Space, Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { cloneDeep, isArray, isUndefined, map, startCase } from 'lodash';
+import { cloneDeep, isUndefined, map, startCase } from 'lodash';
 import React, { Key, useEffect, useState } from 'react';
 import {
   ActivityFeedSettings,
   getActivityFeedEventFilters,
+  resetAllFilters,
   updateFilters,
 } from '../../axiosAPIs/eventFiltersAPI';
 import Loader from '../../components/Loader/Loader';
@@ -18,12 +19,11 @@ import {
 import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './ActivityFeedSettingsPage.style.less';
-import { udpateKeys } from './ActivityFeedSettingsPage.utils';
+import { getEventFilterFromTree } from './ActivityFeedSettingsPage.utils';
 
 const ActivityFeedSettingsPage: React.FC = () => {
   const [eventFilters, setEventFilters] = useState<EventFilter[]>();
   const [loading, setLoading] = useState(true);
-  const [selectedKeys, setSelectedKeys] = useState<string | string[]>([]);
   const [selectedKey, setSelectedKey] = useState<string>();
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
   const [updatedTree, setUpdatedTree] = useState<Record<string, string[]>>();
@@ -61,14 +61,6 @@ const ActivityFeedSettingsPage: React.FC = () => {
       showErrorToast(jsonData['api-error-messages']['add-settings-error']);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleExpandAll = () => {
-    if (isArray(selectedKeys) && selectedKeys.length === eventFilters?.length) {
-      setSelectedKeys([]);
-    } else {
-      setSelectedKeys(eventFilters?.map((e) => e.entityType) || []);
     }
   };
 
@@ -152,25 +144,7 @@ const ActivityFeedSettingsPage: React.FC = () => {
 
       const data = {
         config_type: SettingType.ActivityFeedFilterSetting,
-        config_value: udpateKeys(deepClonedTree, eventFilters),
-        // eventFilters?.map((filter) =>
-        //   deepClonedTree[filter.entityType]
-        //     ? {
-        //         ...filter,
-        //         filters: getPayloadFromSelected(
-        //           deepClonedTree,
-        //           filter.entityType,
-        //           flatMap(
-        //             filter.filters?.map((f) => {
-        //               return f.eventType === EventType.EntityUpdated
-        //                 ? [...(f.include ?? []), ...(f.exclude ?? [])]
-        //                 : [];
-        //             })
-        //           )
-        //         ),
-        //       }
-        //     : filter
-        // ),
+        config_value: getEventFilterFromTree(deepClonedTree, eventFilters),
       } as ActivityFeedSettings;
 
       createActivityFeed(data);
@@ -187,7 +161,26 @@ const ActivityFeedSettingsPage: React.FC = () => {
     const checkKeys = getCheckedKeys(eventFilters as EventFilter[]);
 
     setCheckedKeys(checkKeys);
-  }, [eventFilters, selectedKeys, updatedTree, selectedKey]);
+  }, [eventFilters, updatedTree, selectedKey]);
+
+  const handleResetClick = async () => {
+    try {
+      setLoading(true);
+      const data = await resetAllFilters();
+      const filteredData = data.config_value?.filter(
+        ({ entityType }) => entityType !== TERM_ALL
+      );
+
+      setEventFilters(filteredData);
+      showSuccessToast(
+        jsonData['api-success-messages']['add-settings-success']
+      );
+    } catch {
+      showErrorToast(jsonData['api-error-messages']['add-settings-error']);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return loading ? (
     <Col span={24}>
@@ -196,39 +189,48 @@ const ActivityFeedSettingsPage: React.FC = () => {
   ) : (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Space align="baseline" className="tw-flex tw-justify-between">
-          <Typography.Title level={5} type="secondary">
-            Activity Feed
-          </Typography.Title>
-          <Typography.Link onClick={handleExpandAll}>
-            <Button type="primary" onClick={onSave}>
-              Save
-            </Button>
-          </Typography.Link>
-        </Space>
+        <Typography.Title level={5} type="secondary">
+          Activity Feed
+        </Typography.Title>
       </Col>
       <Col span={24}>
-        {map(eventFilters, ({ entityType, filters }) => (
-          <>
-            {entityType !== TERM_ALL ? (
-              <div className="tw-rounded-border" key={entityType}>
-                <Tree
-                  checkable
-                  defaultExpandAll
-                  className="activity-feed-settings-tree"
-                  defaultCheckedKeys={checkedKeys}
-                  icon={null}
-                  key={entityType}
-                  treeData={generateTreeData(entityType, filters)}
-                  onCheck={(keys) =>
-                    handleTreeCheckChange(keys as Key[], entityType)
-                  }
-                />
-              </div>
-            ) : null}
-          </>
-        ))}
+        <Card size="small">
+          {eventFilters &&
+            map(eventFilters, ({ entityType, filters }, index) => (
+              <>
+                {entityType !== TERM_ALL ? (
+                  <div className="tw-rounded-border" key={entityType}>
+                    <Tree
+                      checkable
+                      defaultExpandAll
+                      className="activity-feed-settings-tree"
+                      defaultCheckedKeys={checkedKeys}
+                      icon={null}
+                      key={entityType}
+                      treeData={generateTreeData(entityType, filters)}
+                      onCheck={(keys) =>
+                        handleTreeCheckChange(keys as Key[], entityType)
+                      }
+                    />
+                    {index !== eventFilters?.length - 1 && <Divider />}
+                  </div>
+                ) : null}
+              </>
+            ))}
+        </Card>
       </Col>
+      <Col>
+        <Space direction="horizontal" size={16}>
+          <Button type="primary" onClick={onSave}>
+            Save
+          </Button>
+          <Button type="text" onClick={handleResetClick}>
+            Reset all
+          </Button>
+        </Space>
+      </Col>
+      <Col span={24} />
+      <Col span={24} />
     </Row>
   );
 };
