@@ -83,7 +83,7 @@ const TestActions = ({ record, onTestEdit, onTestSelect }: Props) => {
         }>
         <Button
           className="flex-center"
-          disabled={!permission.EditAll && !permission.EditTests}
+          disabled={!(permission.EditAll || permission.EditTests)}
           icon={
             <SVGIcons
               alt="edit"

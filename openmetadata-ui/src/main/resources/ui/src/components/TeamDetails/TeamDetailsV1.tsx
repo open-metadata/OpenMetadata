@@ -221,10 +221,10 @@ const TeamDetailsV1 = ({
             <Tooltip
               placement="bottomRight"
               title={
-                entityPermissions?.EditAll ? 'Remove' : NO_PERMISSION_FOR_ACTION
+                entityPermissions.EditAll ? 'Remove' : NO_PERMISSION_FOR_ACTION
               }>
               <ButtonAntd
-                disabled={!entityPermissions?.EditAll}
+                disabled={!entityPermissions.EditAll}
                 icon={
                   <SVGIcons
                     alt="Remove"
@@ -508,11 +508,11 @@ const TeamDetailsV1 = ({
               <Button
                 className="tw-h-8 tw-px-2"
                 data-testid="add-user"
-                disabled={!entityPermissions?.EditAll}
+                disabled={!entityPermissions.EditAll}
                 size="small"
                 theme="primary"
                 title={
-                  entityPermissions?.EditAll
+                  entityPermissions.EditAll
                     ? 'Add User'
                     : NO_PERMISSION_FOR_ACTION
                 }
@@ -541,11 +541,11 @@ const TeamDetailsV1 = ({
                 <Button
                   className="tw-h-8 tw-rounded tw-my-2"
                   data-testid="add-new-user"
-                  disabled={!entityPermissions?.EditAll}
+                  disabled={!entityPermissions.EditAll}
                   size="small"
                   theme="primary"
                   title={
-                    entityPermissions?.EditAll
+                    entityPermissions.EditAll
                       ? 'Add New User'
                       : NO_PERMISSION_FOR_ACTION
                   }
@@ -702,14 +702,20 @@ const TeamDetailsV1 = ({
                 <Tooltip
                   placement="bottomLeft"
                   title={
-                    entityPermissions?.EditDisplayName
+                    entityPermissions.EditAll ||
+                    entityPermissions.EditDisplayName
                       ? 'Edit Display Name'
                       : NO_PERMISSION_FOR_ACTION
                   }>
                   <button
                     className="tw-ml-2 focus:tw-outline-none"
                     data-testid="edit-synonyms"
-                    disabled={!entityPermissions?.EditDisplayName}
+                    disabled={
+                      !(
+                        entityPermissions.EditDisplayName ||
+                        entityPermissions.EditAll
+                      )
+                    }
                     onClick={() => setIsHeadingEditing(true)}>
                     <SVGIcons
                       alt="edit"
@@ -727,8 +733,7 @@ const TeamDetailsV1 = ({
     );
   };
 
-  const viewPermission =
-    !isEmpty(entityPermissions) && entityPermissions.ViewAll;
+  const viewPermission = entityPermissions.ViewAll;
 
   return viewPermission ? (
     <div
@@ -787,7 +792,11 @@ const TeamDetailsV1 = ({
           )}
           <EntitySummaryDetails
             data={extraInfo}
-            updateOwner={entityPermissions.EditAll ? updateOwner : undefined}
+            updateOwner={
+              entityPermissions.EditAll || entityPermissions.EditOwner
+                ? updateOwner
+                : undefined
+            }
           />
           <div
             className="tw-mb-3 tw--ml-5 tw-mt-2"
@@ -795,7 +804,9 @@ const TeamDetailsV1 = ({
             <Description
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
-              hasEditAccess={entityPermissions.EditDescription}
+              hasEditAccess={
+                entityPermissions.EditDescription || entityPermissions.EditAll
+              }
               isEdit={isDescriptionEditable}
               onCancel={() => descriptionHandler(false)}
               onDescriptionEdit={() => descriptionHandler(true)}
