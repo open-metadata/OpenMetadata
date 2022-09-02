@@ -43,6 +43,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -65,6 +66,7 @@ import org.openmetadata.common.utils.CommonUtil;
 public class SettingsResource {
   private final SettingsRepository settingsRepository;
   private final Authorizer authorizer;
+  private List<EventFilter> bootStrappedFilters;
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
@@ -84,6 +86,9 @@ public class SettingsResource {
       settings.forEach(
           (setting) -> {
             try {
+              if (setting.getConfigType() == ACTIVITY_FEED_FILTER_SETTING) {
+                bootStrappedFilters = FilterUtil.getEventFilterFromSettings(setting);
+              }
               Settings storedSettings = settingsRepository.getConfigWithKey(setting.getConfigType().toString());
               if (storedSettings == null) {
                 // Only in case a config doesn't exist in DB we insert it
@@ -136,6 +141,24 @@ public class SettingsResource {
   public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
       throws IOException {
     return settingsRepository.listAllConfigs();
+  }
+
+  @GET
+  @Path("/bootstrappedFilters")
+  @Operation(
+      operationId = "listBootstrappedFilter",
+      summary = "List All BootStrapped Filters",
+      tags = "settings",
+      description = "Get a List of all OpenMetadata Bootstrapped Filters",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Settings",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
+      })
+  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    return bootStrappedFilters;
   }
 
   @GET

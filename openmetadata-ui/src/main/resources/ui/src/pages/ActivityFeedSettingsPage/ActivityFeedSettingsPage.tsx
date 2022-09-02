@@ -1,28 +1,23 @@
-import { Button, Col, Collapse, Row, Space, Tree, Typography } from 'antd';
+/* eslint-disable @typescript-eslint/camelcase */
+import { Button, Col, Row, Space, Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import {
-  cloneDeep,
-  isArray,
-  isEmpty,
-  isUndefined,
-  map,
-  startCase,
-} from 'lodash';
+import { cloneDeep, isArray, isUndefined, map, startCase } from 'lodash';
 import React, { Key, useEffect, useState } from 'react';
-import { ReactComponent as DownArrow } from '../../assets/svg/down-arrow.svg';
-import { ReactComponent as RightArrow } from '../../assets/svg/right-arrow.svg';
 import {
-  createOrUpdateActivityFeedEventFilter,
   getActivityFeedEventFilters,
+  updateFilters,
 } from '../../axiosAPIs/eventFiltersAPI';
 import Loader from '../../components/Loader/Loader';
 import { TERM_ALL } from '../../constants/constants';
-import { EventFilter, Filters } from '../../generated/settings/settings';
+import {
+  EventFilter,
+  Filters,
+  Settings,
+  SettingType,
+} from '../../generated/settings/settings';
 import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { ActivityFeedEntity } from './ActivityFeedSettingsPage.constants';
 import './ActivityFeedSettingsPage.style.less';
-import { getPayloadFromSelected } from './ActivityFeedSettingsPage.utils';
 
 const ActivityFeedSettingsPage: React.FC = () => {
   const [eventFilters, setEventFilters] = useState<EventFilter[]>();
@@ -49,21 +44,15 @@ const ActivityFeedSettingsPage: React.FC = () => {
     }
   };
 
-  const createActivityFeed = async (
-    entityName: string,
-    selectedData: Filters[]
-  ) => {
+  const createActivityFeed = async (req: Settings) => {
     try {
       setLoading(true);
-      const data = await createOrUpdateActivityFeedEventFilter(
-        entityName,
-        selectedData
-      );
-      const filteredData = data?.filter(
-        ({ entityType }) => entityType !== TERM_ALL
-      );
+      await updateFilters(req);
+      // const filteredData = data?.filter(
+      //   ({ entityType }) => entityType !== TERM_ALL
+      // );
 
-      setEventFilters(filteredData);
+      // setEventFilters(filteredData);
       showSuccessToast(
         jsonData['api-success-messages']['add-settings-success']
       );
@@ -72,13 +61,6 @@ const ActivityFeedSettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleExpandStateChange = (keys: string | string[]) => {
-    setSelectedKeys(keys);
-    const key = [...keys];
-
-    setSelectedKey(key[key.length - 1]);
   };
 
   const handleExpandAll = () => {
@@ -90,30 +72,38 @@ const ActivityFeedSettingsPage: React.FC = () => {
   };
 
   const generateTreeData = (entityType: string, data?: Filters[]) => {
-    return data?.map(({ eventType, include, exclude }) => {
-      const key = `${entityType}-${eventType}` as string;
-
-      return {
-        key: key,
-        title: startCase(eventType),
-        data: include,
+    return [
+      {
+        key: entityType,
+        title: <strong>{startCase(entityType)}</strong>,
+        data: true,
         children:
-          include?.length === 1 && include[0] === TERM_ALL
-            ? undefined
-            : [
-                ...(include?.map((inc) => ({
-                  key: `${key}-${inc}`,
-                  title: startCase(inc),
-                  data: true,
-                })) || []),
-                ...(exclude?.map((ex) => ({
-                  key: `${key}-${ex}`,
-                  title: startCase(ex),
-                  data: false,
-                })) || []),
-              ],
-      };
-    });
+          data?.map(({ eventType, include, exclude }) => {
+            const key = `${entityType}-${eventType}` as string;
+
+            return {
+              key: key,
+              title: startCase(eventType),
+              data: include,
+              children:
+                include?.length === 1 && include[0] === TERM_ALL
+                  ? undefined
+                  : [
+                      ...(include?.map((inc) => ({
+                        key: `${key}-${inc}`,
+                        title: startCase(inc),
+                        data: true,
+                      })) || []),
+                      ...(exclude?.map((ex) => ({
+                        key: `${key}-${ex}`,
+                        title: startCase(ex),
+                        data: false,
+                      })) || []),
+                    ],
+            };
+          }) || [],
+      },
+    ];
   };
 
   const getCheckedKeys = (eventFilters: EventFilter[]) => {
@@ -156,14 +146,26 @@ const ActivityFeedSettingsPage: React.FC = () => {
     event.stopPropagation();
 
     if (!isUndefined(updatedTree) && selectedKey) {
-      const deepClonedTree = cloneDeep(updatedTree);
+      // const deepClonedTree = cloneDeep(updatedTree);
 
-      const selectedTree = {
-        [selectedKey]: deepClonedTree[selectedKey],
-      };
-      const value = getPayloadFromSelected(selectedTree, selectedKey);
+      const data = {
+        config_type: SettingType.ActivityFeedFilterSetting,
+        config_value: [],
+        // eventFilters?.map((filter) =>
+        //   deepClonedTree[filter.entityType]
+        //     ? map(deepClonedTree, (_value, key) => ({
+        //         entityType: key,
+        //         filters: getPayloadFromSelected(deepClonedTree, key),
+        //       }))
+        //     : filter
+        // ),
+      } as Settings;
 
-      createActivityFeed(selectedKey, value as Filters[]);
+      //   console.log(data);
+
+      //   const value = ;
+
+      createActivityFeed(data);
       setUpdatedTree(undefined);
       setSelectedKey(undefined);
     }
@@ -191,71 +193,56 @@ const ActivityFeedSettingsPage: React.FC = () => {
             Activity Feed
           </Typography.Title>
           <Typography.Link onClick={handleExpandAll}>
-            {selectedKeys.length === eventFilters?.length
-              ? 'Collapse All'
-              : 'Expand All'}
+            <Button type="primary" onClick={onSave}>
+              Save
+            </Button>
           </Typography.Link>
         </Space>
       </Col>
       <Col span={24}>
-        <Collapse
-          destroyInactivePanel
-          activeKey={selectedKeys}
-          className="activity-feed-collapse"
-          expandIcon={({ isActive }) => {
-            return (
-              <>
-                {isActive ? (
-                  <Row className="arrow">
-                    <DownArrow />{' '}
-                  </Row>
-                ) : (
-                  <Row className="arrow">
-                    <RightArrow />
-                  </Row>
-                )}
-              </>
-            );
-          }}
-          onChange={handleExpandStateChange}>
-          {map(eventFilters, ({ entityType, filters }) => (
-            <>
-              {entityType !== TERM_ALL ? (
-                <Collapse.Panel
-                  extra={
-                    <Button
-                      disabled={
-                        !updatedTree ||
-                        isUndefined(updatedTree[entityType]) ||
-                        isEmpty(updatedTree[entityType])
-                      }
-                      type="primary"
-                      onClick={(event) => onSave(event)}>
-                      Save
-                    </Button>
+        {map(eventFilters, ({ entityType, filters }) => (
+          <>
+            {entityType !== TERM_ALL ? (
+              <div className="tw-rounded-border" key={entityType}>
+                <Tree
+                  checkable
+                  defaultExpandAll
+                  className="activity-feed-settings-tree"
+                  defaultCheckedKeys={checkedKeys}
+                  icon={null}
+                  key={entityType}
+                  treeData={generateTreeData(entityType, filters)}
+                  onCheck={(keys) =>
+                    handleTreeCheckChange(keys as Key[], entityType)
                   }
-                  header={
-                    <Row>
-                      <Typography.Text strong>
-                        {ActivityFeedEntity[entityType]}
-                      </Typography.Text>
-                    </Row>
-                  }
-                  key={entityType}>
-                  <Tree
-                    checkable
-                    defaultCheckedKeys={checkedKeys}
-                    key={entityType}
-                    treeData={generateTreeData(entityType, filters)}
-                    onCheck={(keys) =>
-                      handleTreeCheckChange(keys as Key[], entityType)
-                    }
-                  />
-                </Collapse.Panel>
-              ) : null}
-            </>
-          ))}
-        </Collapse>
+                />
+              </div>
+            ) : //     <Collapse.Panel
+            //       extra={
+            //         <Button
+            //           disabled={
+            //             !updatedTree ||
+            //             isUndefined(updatedTree[entityType]) ||
+            //             isEmpty(updatedTree[entityType])
+            //           }
+            //           type="primary"
+            //           onClick={(event) => onSave(event)}>
+            //           Save
+            //         </Button>
+            //       }
+            //       header={
+            //         <Row>
+            //           <Typography.Text strong>
+            //             {ActivityFeedEntity[entityType]}
+            //           </Typography.Text>
+            //         </Row>
+            //       }
+            //       key={entityType}>
+
+            //     </Collapse.Panel>
+            null}
+          </>
+        ))}
       </Col>
     </Row>
   );

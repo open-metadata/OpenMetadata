@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
-import { EventFilter, Filters } from '../generated/settings/settings';
+import { EventFilter, Filters, Settings } from '../generated/settings/settings';
 
 const BASE_URL = '/settings';
 
@@ -44,4 +44,15 @@ export const createOrUpdateActivityFeedEventFilter = async (
   >(url, payload, configOptions);
 
   return response.data.config_value;
+};
+
+export const updateFilters = async (data: Settings) => {
+  const url = `${BASE_URL}`;
+
+  const response = await axiosClient.put<Settings, AxiosResponse<Settings>>(
+    url,
+    data
+  );
+
+  return response.data;
 };
