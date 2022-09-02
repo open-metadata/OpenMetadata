@@ -46,6 +46,7 @@ def get_dbt_details(config):
 @get_dbt_details.register
 def _(config: DbtLocalConfig):
     try:
+        dbt_run_results = None
         if config.dbtCatalogFilePath is not None:
             logger.debug(
                 f"Reading [dbtCatalogFilePath] from: {config.dbtCatalogFilePath}"
@@ -69,7 +70,7 @@ def _(config: DbtLocalConfig):
         return (
             json.loads(dbt_catalog),
             json.loads(dbt_manifest),
-            json.loads(dbt_run_results),
+            json.loads(dbt_run_results) if dbt_run_results else None,
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -180,7 +181,7 @@ def _(config: DbtS3Config):
         return (
             json.loads(dbt_catalog),
             json.loads(dbt_manifest),
-            json.loads(dbt_run_results),
+            json.loads(dbt_run_results) if dbt_run_results else None,
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -221,7 +222,7 @@ def _(config: DbtGCSConfig):
         return (
             json.loads(dbt_catalog),
             json.loads(dbt_manifest),
-            json.loads(dbt_run_results),
+            json.loads(dbt_run_results) if dbt_run_results else None,
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())

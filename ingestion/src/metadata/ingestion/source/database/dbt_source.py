@@ -252,7 +252,7 @@ class DBTMixin:
                     if not check_test_definition_exists:
                         column_name = dbt_test.get("column_name")
                         if column_name:
-                            entity_type = (EntityType.COLUMN,)
+                            entity_type = EntityType.COLUMN
                         else:
                             entity_type = EntityType.TABLE
                         test_definition = CreateTestDefinitionRequest(
