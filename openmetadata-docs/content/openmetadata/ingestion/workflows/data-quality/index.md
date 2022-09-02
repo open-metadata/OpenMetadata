@@ -46,12 +46,13 @@ Test Definitions are generic tests definition elements specific to a test such a
 Test Cases specify a Test Definition. It will define what condition a test must meet to be successful (e.g. `max=n`, etc.). One Test Definition can be linked to multiple Test Cases.
 
 ## Adding Tests Through the UI
+
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ### Step 1: Creating a Test Suite
 From your table service click on the `profiler` tab. From there you will be able to create table tests by clicking on the purple background `Add Test` top button or column tests by clicking on the white background `Add Test` button.
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/profiler-tab-view.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/profiler-tab-view.png"}
     alt="Write your first test"
     caption="Write your first test"
 />  
@@ -59,7 +60,7 @@ From your table service click on the `profiler` tab. From there you will be able
 On the next page you will be able to either select an existing Test Suite or Create a new one. If you select an existing one your Test Case will automatically be added to the Test Suite
 
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/test-suite-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-page.png"}
     alt="Create test suite"
     caption="Create test suite"
 />  
@@ -70,7 +71,7 @@ On the next page, you will create a Test Case. You will need to select a Test De
 **Note:** Test Case name needs to be unique across the whole platform. A warning message will show if your Test Case name is not unique.
 
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/test-case-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-case-page.png"}
     alt="Create test case"
     caption="Create test case"
 /> 
@@ -81,7 +82,7 @@ If you have created a new test suite you will see a purple background `Add Inges
 After clicking `Add Ingestion` you will be able to select an execution schedule for your Test Suite (note that you can edit this later). Once you have selected the desired scheduling time, click submit and you are all set.
 
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/ingestion-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/ingestion-page.png"}
     alt="Create ingestion workflow"
     caption="Create ingestion workflow"
 /> 
@@ -117,12 +118,12 @@ processor:
                 value: [value]
               - ...
 ```
-The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/openmetadata-docs/content/openmetadata/ingestion/workflows/data-quality/tests.md).
+The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/content/openmetadata/ingestion/workflows/data-quality/tests.md).
 
 
 `sink` and `workflowConfig` will have the same settings than the ingestion and profiler workflow.
 
-### Full `yaml` config example
+### Full  `yaml` config example
 
 ```
 source:
@@ -168,21 +169,21 @@ metadata test -c /path/to/my/config.yaml
 ### From the Test Suite View
 From the home page click on the Test Suite menu in the left pannel.
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/test-suite-home-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-home-page.png"}
     alt="Test suite home page"
     caption="Test suite home page"
 /> 
 
 This will bring you to the Test Suite page where you can select a specific Test Suite.
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/test-suite-landing.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-landing.png"}
     alt="Test suite landing page"
     caption="Test suite landing page"
 />
 
 From there you can select a Test Suite and visualize the results associated with this specific Test Suite.
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/test-suite-results.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-results.png"}
     alt="Test suite results page"
     caption="Test suite results page"
 />
@@ -192,7 +193,7 @@ Navigate to your table and click on the `profiler` tab. From there you'll be abl
 #### Table Level Test Results
 In the top pannel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/table-results-entity.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/table-results-entity.png"}
     alt="Test suite results table"
     caption="Test suite results table"
 />
@@ -200,7 +201,7 @@ In the top pannel, click on the white background `Data Quality` button. This wil
 #### Column Level Test Results
 On the profiler page, click on a specific column name. This will bring you to a new page where you can click the white background `Quality Test` button to see all the tests results related to your column.
 <Image
-    src={"openmetadata-docs/images/openmetadata/ingestion/workflows/data-quality/colum-level-test-results.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/colum-level-test-results.png"}
     alt="Test suite results table"
     caption="Test suite results table"
 />
@@ -208,15 +209,144 @@ On the profiler page, click on a specific column name. This will bring you to a 
 ## Adding Custom Tests
 While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite. This is very easy to do using the API.
 ### Creating a `TestDefinition`
+First, you'll need to create a Test Definition for your test. You can use the following endpoint `/api/v1/testDefinition` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
+```
+{
+    "description": "<you test definition description>",
+    "entityType": "<TABLE or COLUMN>",
+    "name": "<your_test_name>",
+    "testPlatforms": ["<any of OpenMetadata,GreatExpectations, DBT, Deequ, Soda, Other>"],
+    "parameterDefinition": [
+      {
+        "name": "<name>"
+      },
+      {
+        "name": "<name>"
+      }
+    ]
+}
+```
+
+Here is a complete CURL request
+
+```
+curl --request POST 'http://localhost:8585/api/v1/testDefinition' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "description": "A demo custom test",
+    "entityType": "TABLE",
+    "name": "demo_test_definition",
+    "testPlatforms": ["Soda", "DBT"],
+    "parameterDefinition": [{
+        "name": "ColumnOne"
+    }]
+}'
+```
+
+Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
+
+### Creating a `TestSuite`
+You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuite` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+
+```
+{
+  "name": "<test_suite_name>",
+  "description": "<test suite description>"
+}
+```
+
+Here is a complete CURL request
+
+```
+curl --request POST 'http://localhost:8585/api/v1/testSuite' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "name": "<test_suite_name>",
+  "description": "<test suite description>"
+}'
+```
+
+Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
 
 
 ### Creating a `TestCase`
+Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCase` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
+
+```
+{
+    "entityLink": "<#E::table::fqn> or <#E::table::fqn::columns::column name>",
+    "name": "<test_case_name>",
+    "testDefinition": {
+        "id": "<test definition UUID>",
+        "type": "testDefinition"
+    },
+    "testSuite": {
+        "id": "<test suite UUID>",
+        "type": "testSuite"
+    }
+}
+```
+**Important:** for `entityLink` make sure to include the starting and ending `<>`
+
+Here is a complete CURL request
+
+```
+curl --request POST 'http://localhost:8585/api/v1/testCase' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "entityLink": "<#E::table::local_redshift.dev.dbt_jaffle.customers>",
+    "name": "custom_test_Case",
+    "testDefinition": {
+        "id": "1f3ce6f5-67be-45db-8314-2ee42d73239f",
+        "type": "testDefinition"
+    },
+    "testSuite": {
+        "id": "3192ed9b-5907-475d-a623-1b3a1ef4a2f6",
+        "type": "testSuite"
+    },
+    "parameterValues": [
+        {
+            "name": "colName",
+            "value": 10
+        }
+    ]
+}'
+```
+
+Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
+
 
 ### Writing `TestCaseResults`
+Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCase/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
 
-## Test From 3rd Party Tools
+```
+{
+    "result": "<result message>",
+    "testCaseStatus": "<Success or Failed or Aborted>",
+    "timestamp": <Unix timestamp>,
+    "testResultValue": [
+      {
+        "value": "<value>"
+      }
+    ]
+}
+```
 
+Here is a complete CURL request
 
+```
+curl --location --request PUT 'http://localhost:8585/api/v1/testCase/local_redshift.dev.dbt_jaffle.customers.custom_test_Case/testCaseResult' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "result": "found 1 values expected n",
+    "testCaseStatus": "Success",
+    "timestamp": 1662129151,
+    "testResultValue": [{
+        "value": "10"
+    }]
+}'
+```
 
-## Where are the Tests stored?
+You will now be able to see your test in the Test Suite or the table entity.
+

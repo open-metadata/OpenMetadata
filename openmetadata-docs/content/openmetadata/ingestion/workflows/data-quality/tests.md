@@ -1,6 +1,6 @@
 ---
 title: Tests
-slug: /openmetadata/data-quality/tests
+slug: /openmetadata/ingestion/workflows/data-quality/tests
 ---
 
 # Tests

@@ -11,7 +11,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
-- [Data Profiler](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 ## Requirements
