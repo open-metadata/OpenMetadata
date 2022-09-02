@@ -426,7 +426,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           </div>
         </div>
         {getSearchedIngestions().length ? (
-          <div className="tw-table-responsive tw-mb-6">
+          <div className="tw-table-responsive tw-mb-6 tw-table-container">
             <table
               className="tw-bg-white tw-w-full tw-mb-4"
               data-testid="ingestion-table">

@@ -549,7 +549,7 @@ const TagsPage = () => {
                       className="tw-h-8 tw-rounded tw-mb-3"
                       data-testid="add-new-tag-button"
                       disabled={
-                        !createTagPermission && !categoryPermissions.EditAll
+                        !(createTagPermission || categoryPermissions.EditAll)
                       }
                       size="small"
                       type="primary"
@@ -583,14 +583,17 @@ const TagsPage = () => {
                 entityName={
                   currentCategory?.displayName ?? currentCategory?.name
                 }
-                hasEditAccess={categoryPermissions.EditDescription}
+                hasEditAccess={
+                  categoryPermissions.EditDescription ||
+                  categoryPermissions.EditAll
+                }
                 isEdit={isEditCategory}
                 onCancel={() => setIsEditCategory(false)}
                 onDescriptionEdit={() => setIsEditCategory(true)}
                 onDescriptionUpdate={UpdateCategory}
               />
             </div>
-            <div className="tw-bg-white">
+            <div className="tw-table-container">
               <table className="tw-w-full" data-testid="table">
                 <thead>
                   <tr className="tableHead-row">
@@ -636,22 +639,23 @@ const TagsPage = () => {
                                   )}
                                 </div>
 
-                                {categoryPermissions.EditDescription && (
-                                  <button
-                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                    onClick={() => {
-                                      setIsEditTag(true);
-                                      setEditTag(tag);
-                                    }}>
-                                    <SVGIcons
-                                      alt="edit"
-                                      data-testid="editTagDescription"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="16px"
-                                    />
-                                  </button>
-                                )}
+                                {categoryPermissions.EditDescription ||
+                                  (categoryPermissions.EditAll && (
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() => {
+                                        setIsEditTag(true);
+                                        setEditTag(tag);
+                                      }}>
+                                      <SVGIcons
+                                        alt="edit"
+                                        data-testid="editTagDescription"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="16px"
+                                      />
+                                    </button>
+                                  ))}
                               </div>
                               <div className="tw-mt-1" data-testid="usage">
                                 <span className="tw-text-grey-muted tw-mr-1">

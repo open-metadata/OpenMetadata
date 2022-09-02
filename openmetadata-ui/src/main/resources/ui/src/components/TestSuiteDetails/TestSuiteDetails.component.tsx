@@ -66,7 +66,9 @@ const TestSuiteDetails = ({
             <EntitySummaryDetails
               data={info}
               updateOwner={
-                permissions.EditOwner ? handleUpdateOwner : undefined
+                permissions.EditAll || permissions.EditOwner
+                  ? handleUpdateOwner
+                  : undefined
               }
             />
           </span>
@@ -78,7 +80,7 @@ const TestSuiteDetails = ({
           className="test-suite-description"
           description={testSuiteDescription || ''}
           entityName={testSuite?.displayName ?? testSuite?.name}
-          hasEditAccess={permissions.EditDescription}
+          hasEditAccess={permissions.EditDescription || permissions.EditAll}
           isEdit={isDescriptionEditable}
           onCancel={() => descriptionHandler(false)}
           onDescriptionEdit={() => descriptionHandler(true)}

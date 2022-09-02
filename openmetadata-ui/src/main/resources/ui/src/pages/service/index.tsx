@@ -996,10 +996,10 @@ const ServicePage: FunctionComponent = () => {
                 {activeTab === 1 && (
                   <Fragment>
                     <div
-                      className="tw-mt-4 tw-px-1"
+                      className="tw-my-4 tw-table-container"
                       data-testid="table-container">
                       <table
-                        className="tw-bg-white tw-w-full tw-mb-4"
+                        className="tw-bg-white tw-w-full"
                         data-testid="database-tables">
                         <thead>
                           <tr className="tableHead-row">{getTableHeaders()}</tr>

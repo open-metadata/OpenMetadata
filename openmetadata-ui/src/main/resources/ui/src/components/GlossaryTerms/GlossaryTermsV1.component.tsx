@@ -415,7 +415,7 @@ const GlossaryTermsV1 = ({
               removeBlur
               description={glossaryTerm.description || ''}
               entityName={glossaryTerm?.displayName ?? glossaryTerm?.name}
-              hasEditAccess={permissions.EditDescription}
+              hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
@@ -605,7 +605,7 @@ const GlossaryTermsV1 = ({
             ) : (
               <Button
                 className="tw-p-0"
-                disabled={!permissions.EditTags}
+                disabled={!(permissions.EditTags || permissions.EditAll)}
                 type="text">
                 <Tags
                   className="tw-text-primary"

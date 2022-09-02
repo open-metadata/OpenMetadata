@@ -16,10 +16,14 @@ import { observer } from 'mobx-react';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
 import AppState from '../../../AppState';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, User } from '../../../generated/entity/teams/user';
 import { getEntityName } from '../../../utils/CommonUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import Loader from '../../Loader/Loader';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import Avatar from '../avatar/Avatar';
 
 type UserData = Pick<User, 'id' | 'name' | 'displayName'>;
@@ -44,8 +48,14 @@ const ProfilePicture = ({
   height,
   profileImgClasses,
 }: Props) => {
+  const { permissions } = usePermissionProvider();
+
+  const viewUserPermission = useMemo(() => {
+    return checkPermission(Operation.ViewAll, ResourceEntity.USER, permissions);
+  }, [permissions]);
+
   const profilePic = useMemo(() => {
-    return getUserProfilePic(id, name);
+    return getUserProfilePic(viewUserPermission, id, name);
   }, [id, name, AppState.userProfilePics]);
 
   const isPicLoading = useMemo(() => {

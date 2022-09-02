@@ -296,9 +296,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const getSaveButton = () => {
-    const savePermission =
-      (mode === 'add' && addWebhookPermission) ||
-      (mode === 'edit' && editWebhookPermission);
+    const savePermission = addWebhookPermission || editWebhookPermission;
 
     return (
       <>

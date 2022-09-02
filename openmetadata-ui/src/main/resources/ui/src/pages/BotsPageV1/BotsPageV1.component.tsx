@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Switch } from 'antd';
+import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import BotListV1 from '../../components/BotListV1/BotListV1.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getCreateUserPath } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { checkPermission } from '../../utils/PermissionsUtils';
 
@@ -55,11 +56,15 @@ export const BotsPageV1 = () => {
             <label htmlFor="switch-deleted">Show deleted</label>
           </Space>
 
-          {createPermission && (
-            <Button type="primary" onClick={handleAddBotClick}>
+          <Tooltip
+            title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              disabled={!createPermission}
+              type="primary"
+              onClick={handleAddBotClick}>
               Add Bot
             </Button>
-          )}
+          </Tooltip>
         </Space>
       </Col>
       <Col span={24}>

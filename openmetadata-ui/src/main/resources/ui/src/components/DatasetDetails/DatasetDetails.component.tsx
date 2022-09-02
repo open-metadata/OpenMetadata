@@ -269,7 +269,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 4,
     },
     {
-      name: 'Profiler',
+      name: 'Profiler & Data Quality',
       icon: {
         alt: 'profiler',
         name: 'icon-profiler',
