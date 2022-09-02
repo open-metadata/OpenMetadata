@@ -13,19 +13,17 @@
 
 import { Col } from 'antd';
 import { orderBy } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
+import { Operation } from '../../generated/entity/policies/policy';
 import { TestCase } from '../../generated/tests/testCase';
 import { Paging } from '../../generated/type/paging';
+import { checkPermission } from '../../utils/PermissionsUtils';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
-const TestCasesTab = ({
-  testCases,
-  testCasesPaging,
-  currentPage,
-  onTestUpdate,
-  testCasePageHandler,
-}: {
+interface TestCasesTabProps {
   testCases: Array<TestCase>;
   testCasesPaging: Paging;
   currentPage: number;
@@ -34,14 +32,32 @@ const TestCasesTab = ({
     cursorValue: string | number,
     activePage?: number | undefined
   ) => void;
-}) => {
+}
+
+const TestCasesTab = ({
+  testCases,
+  testCasesPaging,
+  currentPage,
+  onTestUpdate,
+  testCasePageHandler,
+}: TestCasesTabProps) => {
+  const { permissions } = usePermissionProvider();
   const sortedTestCases = orderBy(testCases || [], ['name'], 'asc');
+
+  const createPermission = useMemo(() => {
+    return checkPermission(
+      Operation.Create,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
 
   return (
     <TestCaseCommonTabContainer
       isPaging
       buttonName="Add Test"
       currentPage={currentPage}
+      hasAccess={createPermission}
       paging={testCasesPaging}
       showButton={false}
       testCasePageHandler={testCasePageHandler}>

@@ -3,19 +3,23 @@ import { Filters } from '../../generated/settings/settings';
 export const formData = [
   {
     eventType: 'entityCreated',
-    fields: [],
+    include: [],
+    exclude: [],
   },
   {
     eventType: 'entityUpdated',
-    fields: [],
+    include: [],
+    exclude: [],
   },
   {
     eventType: 'entitySoftDeleted',
-    fields: [],
+    include: [],
+    exclude: [],
   },
   {
     eventType: 'entityDeleted',
-    fields: [],
+    include: [],
+    exclude: [],
   },
 ] as Filters[];
 
@@ -25,4 +29,5 @@ export const ActivityFeedEntity = {
   dashboard: 'Dashboard',
   pipeline: 'Pipeline',
   mlmodel: 'ML Model',
+  testCase: 'Test Case',
 } as Record<string, string>;

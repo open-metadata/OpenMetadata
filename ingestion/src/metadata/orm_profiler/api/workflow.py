@@ -35,7 +35,10 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -207,6 +210,9 @@ class ProfilerWorkflow:
         Args:
             entity: table entity
         """
+        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
+        if entity.serviceType != DatabaseServiceType.BigQuery:
+            return None
         entity_config: TableConfig = self.get_config_for_entity(entity)
         if entity_config:
             return entity_config.partitionConfig

@@ -1,5 +1,18 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Row, Table } from 'antd';
+import { Button, Col, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
@@ -13,23 +26,30 @@ import {
   triggerIngestionPipelineById,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../constants/HelperTextUtil';
+import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
 import { getIngestionStatuses } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
 const TestSuitePipelineTab = () => {
   const { testSuiteFQN } = useParams<Record<string, string>>();
+  const { permissions } = usePermissionProvider();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
@@ -47,6 +67,45 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+
+  const viewPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.INGESTION_PIPELINE,
+        permissions
+      ),
+    [permissions]
+  );
+  const createPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.INGESTION_PIPELINE,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const deletePermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Delete,
+        ResourceEntity.INGESTION_PIPELINE,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const editPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.EditAll,
+        ResourceEntity.INGESTION_PIPELINE,
+        permissions
+      ),
+    [permissions]
+  );
 
   const handleCancelConfirmationModal = () => {
     setIsConfirmationModalOpen(false);
@@ -161,39 +220,45 @@ const TestSuitePipelineTab = () => {
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
-        <Button
-          data-testid="run"
-          type="link"
-          onClick={() =>
-            handleTriggerIngestion(ingestion.id as string, ingestion.name)
-          }>
-          {currTriggerId.id === ingestion.id ? (
-            currTriggerId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
+        <Tooltip title={editPermission ? 'Run' : NO_PERMISSION_FOR_ACTION}>
+          <Button
+            data-testid="run"
+            disabled={!editPermission}
+            type="link"
+            onClick={() =>
+              handleTriggerIngestion(ingestion.id as string, ingestion.name)
+            }>
+            {currTriggerId.id === ingestion.id ? (
+              currTriggerId.state === 'success' ? (
+                <FontAwesomeIcon icon="check" />
+              ) : (
+                <Loader size="small" type="default" />
+              )
             ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Run'
-          )}
-        </Button>
+              'Run'
+            )}
+          </Button>
+        </Tooltip>
       );
     } else {
       return (
-        <Button
-          data-testid="deploy"
-          type="link"
-          onClick={() => handleDeployIngestion(ingestion.id as string)}>
-          {currDeployId.id === ingestion.id ? (
-            currDeployId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
+        <Tooltip title={editPermission ? 'Deploy' : NO_PERMISSION_FOR_ACTION}>
+          <Button
+            data-testid="deploy"
+            disabled={!editPermission}
+            type="link"
+            onClick={() => handleDeployIngestion(ingestion.id as string)}>
+            {currDeployId.id === ingestion.id ? (
+              currDeployId.state === 'success' ? (
+                <FontAwesomeIcon icon="check" />
+              ) : (
+                <Loader size="small" type="default" />
+              )
             ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Deploy'
-          )}
-        </Button>
+              'Deploy'
+            )}
+          </Button>
+        </Tooltip>
       );
     }
   };
@@ -211,10 +276,8 @@ const TestSuitePipelineTab = () => {
         key: 'name',
         render: (name: string) => {
           return (
-            <>
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Tooltip title={viewPermission ? name : NO_PERMISSION_TO_VIEW}>
+              <Button type="link">
                 <a
                   className="link-text tw-mr-2"
                   data-testid="airflow-tree-view"
@@ -229,8 +292,8 @@ const TestSuitePipelineTab = () => {
                     width="16px"
                   />
                 </a>
-              </NonAdminAction>
-            </>
+              </Button>
+            </Tooltip>
           );
         },
       },
@@ -286,36 +349,48 @@ const TestSuitePipelineTab = () => {
         render: (_, record) => {
           return (
             <>
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <div className="tw-flex">
-                  {record.enabled ? (
-                    <Fragment>
-                      {getTriggerDeployButton(record)}
-                      {separator}
+              <div className="tw-flex">
+                {record.enabled ? (
+                  <Fragment>
+                    {getTriggerDeployButton(record)}
+                    {separator}
+                    <Tooltip
+                      title={
+                        editPermission ? 'Pause' : NO_PERMISSION_FOR_ACTION
+                      }>
                       <Button
                         data-testid="pause"
+                        disabled={!editPermission}
                         type="link"
                         onClick={() =>
                           handleEnableDisableIngestion(record.id || '')
                         }>
                         Pause
                       </Button>
-                    </Fragment>
-                  ) : (
+                    </Tooltip>
+                  </Fragment>
+                ) : (
+                  <Tooltip
+                    title={
+                      editPermission ? 'UnPause' : NO_PERMISSION_FOR_ACTION
+                    }>
                     <Button
                       data-testid="unpause"
+                      disabled={!editPermission}
                       type="link"
                       onClick={() =>
                         handleEnableDisableIngestion(record.id || '')
                       }>
                       Unpause
                     </Button>
-                  )}
-                  {separator}
+                  </Tooltip>
+                )}
+                {separator}
+                <Tooltip
+                  title={editPermission ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
                   <Button
                     data-testid="edit"
+                    disabled={!editPermission}
                     type="link"
                     onClick={() => {
                       history.push(
@@ -327,9 +402,15 @@ const TestSuitePipelineTab = () => {
                     }}>
                     Edit
                   </Button>
-                  {separator}
+                </Tooltip>
+                {separator}
+                <Tooltip
+                  title={
+                    deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     data-testid="delete"
+                    disabled={!deletePermission}
                     type="link"
                     onClick={() =>
                       confirmDelete(record.id as string, record.name)
@@ -344,9 +425,13 @@ const TestSuitePipelineTab = () => {
                       'Delete'
                     )}
                   </Button>
-                  {separator}
+                </Tooltip>
+                {separator}
+                <Tooltip
+                  title={editPermission ? 'Kill' : NO_PERMISSION_FOR_ACTION}>
                   <Button
                     data-testid="kill"
+                    disabled={!editPermission}
                     type="link"
                     onClick={() => {
                       setIsKillModalOpen(true);
@@ -354,9 +439,13 @@ const TestSuitePipelineTab = () => {
                     }}>
                     Kill
                   </Button>
-                  {separator}
+                </Tooltip>
+                {separator}
+                <Tooltip
+                  title={viewPermission ? 'Logs' : NO_PERMISSION_FOR_ACTION}>
                   <Button
                     data-testid="logs"
+                    disabled={!viewPermission}
                     type="link"
                     onClick={() => {
                       setIsLogsModalOpen(true);
@@ -364,8 +453,9 @@ const TestSuitePipelineTab = () => {
                     }}>
                     Logs
                   </Button>
-                </div>
-              </NonAdminAction>
+                </Tooltip>
+              </div>
+
               {isLogsModalOpen &&
                 selectedPipeline &&
                 record.id === selectedPipeline?.id && (
@@ -410,6 +500,7 @@ const TestSuitePipelineTab = () => {
   return (
     <TestCaseCommonTabContainer
       buttonName="Add Ingestion"
+      hasAccess={createPermission}
       showButton={testSuitePipelines.length === 0}
       onButtonClick={() => {
         history.push(getTestSuiteIngestionPath(testSuiteFQN));

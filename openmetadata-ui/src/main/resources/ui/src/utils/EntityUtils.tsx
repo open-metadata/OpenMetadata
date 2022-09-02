@@ -16,7 +16,6 @@ import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
-import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -143,26 +142,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Rows',
-          value: profile ? (
-            <TableProfilerGraph
-              className="tw--mt-5"
-              data={
-                [
-                  {
-                    date: new Date(profile?.timestamp || 0),
-                    value: profile.rowCount ?? 0,
-                  },
-                ] as Array<{
-                  date: Date;
-                  value: number;
-                }>
-              }
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-          ) : (
-            '--'
-          ),
+          value: profile && profile?.rowCount ? profile.rowCount : '--',
           isLink: false,
         },
       ];

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.settings.Settings;
@@ -36,6 +37,7 @@ import org.openmetadata.catalog.type.FieldChange;
 public class FilterUtil {
 
   private static final String TEST_CASE_RESULT = "testCaseResult";
+  private static final String WILDCARD_FILTER = "all";
 
   public static boolean shouldProcessRequest(ChangeEvent changeEvent, Map<String, Map<EventType, Filters>> filtersMap) {
     if (filtersMap != null && !filtersMap.isEmpty()) {
@@ -44,20 +46,16 @@ public class FilterUtil {
       Map<EventType, Filters> filtersOfEntity = filtersMap.get(entityType);
       if (filtersOfEntity == null || filtersOfEntity.size() == 0) {
         // check if we have all entities Filter
-        return handleWithWildCardFilter(filtersMap.get("all"), eventType, getUpdateField(changeEvent));
+        return handleWithWildCardFilter(filtersMap.get(WILDCARD_FILTER), eventType, getUpdateField(changeEvent));
       } else {
         Filters sf;
         if ((sf = filtersOfEntity.get(eventType)) == null) {
           return false;
         } else {
-          if (sf.getFields().contains("all")) {
-            return true;
+          if (entityType.equals(Entity.TEST_CASE)) {
+            return handleTestCaseFilter(changeEvent, sf);
           } else {
-            if (entityType.equals("testCase")) {
-              return handleTestCaseFilter(changeEvent, sf);
-            } else {
-              return checkIfFilterContainField(sf, getUpdateField(changeEvent));
-            }
+            return checkIfFilterContainField(sf, getUpdateField(changeEvent));
           }
         }
       }
@@ -68,15 +66,18 @@ public class FilterUtil {
   private static boolean handleTestCaseFilter(ChangeEvent changeEvent, Filters sf) {
     List<FieldChange> fieldChanges = getAllFieldChange(changeEvent);
     for (FieldChange fieldChange : fieldChanges) {
-      if (fieldChange.getName().equals(TEST_CASE_RESULT)) {
+      if (fieldChange.getName().equals(TEST_CASE_RESULT) && fieldChange.getNewValue() != null) {
         TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
-        if (sf.getFields().contains(TEST_CASE_RESULT + status.toString())) {
+        String statusField = TEST_CASE_RESULT + status.toString();
+        if (sf.getInclude().contains(statusField)) {
           return true;
+        } else if (sf.getExclude().contains(statusField)) {
+          return false;
         }
       }
     }
-    return checkIfFilterContainField(sf, getUpdateField(changeEvent));
+    return sf.getInclude().contains(WILDCARD_FILTER);
   }
 
   public static boolean handleWithWildCardFilter(
@@ -84,8 +85,7 @@ public class FilterUtil {
     if (wildCardFilter != null && !wildCardFilter.isEmpty()) {
       // check if we have all entities Filter
       Filters f = wildCardFilter.get(type);
-      boolean allFieldCheck = checkIfFilterContainField(f, updatedField);
-      return f != null && (f.getFields().contains("all") || allFieldCheck);
+      return checkIfFilterContainField(f, updatedField);
     }
     return false;
   }
@@ -93,10 +93,14 @@ public class FilterUtil {
   public static boolean checkIfFilterContainField(Filters f, List<String> updatedField) {
     if (f != null) {
       for (String changed : updatedField) {
-        if (f.getFields().contains(changed)) {
+        // field is present in excluded
+        if (f.getExclude().contains(changed)) {
+          return false;
+        } else if (f.getInclude().contains(changed)) {
           return true;
         }
       }
+      return f.getInclude().contains(WILDCARD_FILTER);
     }
     return false;
   }
@@ -111,12 +115,13 @@ public class FilterUtil {
   }
 
   public static List<FieldChange> getAllFieldChange(ChangeEvent changeEvent) {
-    ChangeDescription description = changeEvent.getChangeDescription();
     List<FieldChange> allFieldChange = new ArrayList<>();
-    allFieldChange.addAll(description.getFieldsAdded());
-    allFieldChange.addAll(description.getFieldsUpdated());
-    allFieldChange.addAll(description.getFieldsDeleted());
-
+    ChangeDescription description = changeEvent.getChangeDescription();
+    if (description != null) {
+      allFieldChange.addAll(description.getFieldsAdded());
+      allFieldChange.addAll(description.getFieldsUpdated());
+      allFieldChange.addAll(description.getFieldsDeleted());
+    }
     return allFieldChange;
   }
 

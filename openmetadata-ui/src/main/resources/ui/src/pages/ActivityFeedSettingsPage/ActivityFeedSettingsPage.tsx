@@ -93,13 +93,13 @@ const ActivityFeedSettingsPage: React.FC = () => {
   };
 
   const generateTreeData = (entityType: string, data?: Filters[]) => {
-    return data?.map(({ eventType, fields }) => {
+    return data?.map(({ eventType, include }) => {
       const key = `${entityType}-${eventType}` as string;
 
       return {
         key: key,
         title: startCase(eventType),
-        data: fields,
+        data: include,
         children:
           eventType === 'entityUpdated'
             ? [
@@ -133,13 +133,13 @@ const ActivityFeedSettingsPage: React.FC = () => {
       filters &&
         filters.map((obj) => {
           if (
-            obj?.fields &&
-            obj.fields.length === 1 &&
-            obj.fields[0] === 'all'
+            obj.include &&
+            obj.include.length === 1 &&
+            obj.include[0] === 'all'
           ) {
             checkedArray.push(`${entityType}-${obj.eventType}`);
           } else {
-            obj?.fields?.forEach((entityUpdated) => {
+            obj?.include?.forEach((entityUpdated) => {
               const name = `${entityType}-${obj.eventType}-${entityUpdated}`;
               checkedArray.push(name);
             });

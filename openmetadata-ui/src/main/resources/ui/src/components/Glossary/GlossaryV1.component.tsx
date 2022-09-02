@@ -38,7 +38,10 @@ import { useAfterMount } from '../../hooks/useAfterMount';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { getEntityDeleteMessage, getEntityName } from '../../utils/CommonUtils';
 import { generateTreeData } from '../../utils/GlossaryUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -138,10 +141,10 @@ const GlossaryV1 = ({
   const [displayName, setDisplayName] = useState<string>();
 
   const [glossaryPermission, setGlossaryPermission] =
-    useState<OperationPermission>({} as OperationPermission);
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
-    useState<OperationPermission>({} as OperationPermission);
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const fetchGlossaryPermission = async () => {
     try {

@@ -270,7 +270,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["columnValuesToBeInSet"](
+        res = validation_enum_registry.registry["ColumnValuesToBeInSet"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -292,7 +292,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
+        res = validation_enum_registry.registry["columnValuesMissingCount"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -313,7 +313,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
+        res = validation_enum_registry.registry["columnValuesMissingCount"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,

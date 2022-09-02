@@ -223,6 +223,15 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
+  DEFAULT_ENTITY_PERMISSION: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  },
 }));
 
 jest.mock('../../axiosAPIs/tagAPI', () => ({

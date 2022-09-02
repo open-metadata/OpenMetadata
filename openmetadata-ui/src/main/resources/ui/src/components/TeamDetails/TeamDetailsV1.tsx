@@ -65,7 +65,10 @@ import {
   hasEditAccess,
 } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -148,7 +151,7 @@ const TeamDetailsV1 = ({
     record: EntityReference;
   }>();
   const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>({} as OperationPermission);
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const createTeamPermission = useMemo(
     () =>
@@ -765,17 +768,27 @@ const TeamDetailsV1 = ({
           </div>
           {!isOrganization && (
             <div className="tw-mb-3">
-              <Switch
-                checked={currentTeam.isJoinable}
-                className="tw-mr-2"
-                size="small"
-                title="Open Group"
-                onChange={handleOpenToJoinToggle}
-              />
+              <Tooltip
+                title={
+                  entityPermissions.EditAll
+                    ? 'Open Group'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Switch
+                  checked={currentTeam.isJoinable}
+                  className="tw-mr-2"
+                  disabled={!entityPermissions.EditAll}
+                  size="small"
+                  onChange={handleOpenToJoinToggle}
+                />
+              </Tooltip>
               <span>Open Group</span>
             </div>
           )}
-          <EntitySummaryDetails data={extraInfo} updateOwner={updateOwner} />
+          <EntitySummaryDetails
+            data={extraInfo}
+            updateOwner={entityPermissions.EditAll ? updateOwner : undefined}
+          />
           <div
             className="tw-mb-3 tw--ml-5 tw-mt-2"
             data-testid="description-container">
@@ -861,6 +874,7 @@ const TeamDetailsV1 = ({
                     Add Role
                   </ButtonAntd>
                   <ListEntities
+                    hasAccess={entityPermissions.EditAll}
                     list={currentTeam.defaultRoles || []}
                     type={EntityType.ROLE}
                     onDelete={(record) =>
@@ -891,6 +905,7 @@ const TeamDetailsV1 = ({
                     Add Policy
                   </ButtonAntd>
                   <ListEntities
+                    hasAccess={entityPermissions.EditAll}
                     list={currentTeam.policies || []}
                     type={EntityType.POLICY}
                     onDelete={(record) =>

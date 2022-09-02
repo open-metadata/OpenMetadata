@@ -90,19 +90,23 @@ const mockData = {
       filters: [
         {
           eventType: 'entityCreated',
-          fields: ['all'],
+          include: ['all'],
+          exclude: [],
         },
         {
           eventType: 'entityUpdated',
-          fields: ['all'],
+          include: ['all'],
+          exclude: [],
         },
         {
           eventType: 'entityDeleted',
-          fields: ['all'],
+          include: ['all'],
+          exclude: [],
         },
         {
           eventType: 'entitySoftDeleted',
-          fields: ['all'],
+          include: ['all'],
+          exclude: [],
         },
       ],
     },
