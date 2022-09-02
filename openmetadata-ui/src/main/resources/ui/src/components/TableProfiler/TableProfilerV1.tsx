@@ -176,7 +176,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         />
 
         <Space>
-          <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip
+            title={hasEditAccess ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
             <Link
               to={
                 hasEditAccess
@@ -195,14 +196,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               </Button>
             </Link>
           </Tooltip>
-          <Button
-            className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
-            data-testid="profiler-setting-btn"
-            icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
-            type="default"
-            onClick={() => handleSettingModal(true)}>
-            Settings
-          </Button>
+          <Tooltip
+            title={hasEditAccess ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+              data-testid="profiler-setting-btn"
+              disabled={!hasEditAccess}
+              icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+              type="default"
+              onClick={() => handleSettingModal(true)}>
+              Settings
+            </Button>
+          </Tooltip>
         </Space>
       </Row>
 
@@ -252,6 +257,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           ...col,
           key: col.name,
         }))}
+        hasEditAccess={hasEditAccess}
         onAddTestClick={onAddTestClick}
       />
 

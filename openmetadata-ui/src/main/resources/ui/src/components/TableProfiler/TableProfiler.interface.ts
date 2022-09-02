@@ -34,10 +34,13 @@ export type TableTestsType = {
   };
 };
 
-export type columnTestResultType = { [key: string]: TableTestsType['results'] };
+export type columnTestResultType = {
+  [key: string]: { results: TableTestsType['results']; count: number };
+};
 
 export interface ColumnProfileTableProps {
   columns: Column[];
+  hasEditAccess: boolean;
   columnTests: TestCase[];
   onAddTestClick: (
     tabValue: number,
