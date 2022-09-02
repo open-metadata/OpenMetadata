@@ -46,6 +46,7 @@ import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
@@ -58,6 +59,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayout from '../containers/PageLayout';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from './component/DataQualityTab';
 import ProfilerTab from './component/ProfilerTab';
 import {
@@ -75,6 +81,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   profilerData,
   onTableChange,
 }) => {
+  const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
@@ -93,6 +100,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
   );
+
+  const [permission, setPermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchTestCasePermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.TABLE,
+        table.id as string
+      );
+      setPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const tabOptions = useMemo(() => {
     return Object.values(ProfilerDashboardTab).filter((value) => {
@@ -390,6 +413,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       setIsFollowing(
         follower.some(({ id }: { id: string }) => id === getCurrentUserId())
       );
+      fetchTestCasePermission();
     }
   }, [table]);
 
@@ -474,6 +498,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
+              hasAccess={permission.EditAll}
               testCases={getFilterTestCase()}
               onTestUpdate={onTestCaseUpdate}
             />

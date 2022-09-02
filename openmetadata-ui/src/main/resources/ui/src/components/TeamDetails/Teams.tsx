@@ -20,6 +20,7 @@ import {
 } from '../../constants/HelperTextUtil';
 import { Team } from '../../generated/entity/teams/team';
 import jsonData from '../../jsons/en';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
@@ -50,7 +51,7 @@ const Teams: FC<TeamsProps> = ({
 }) => {
   const { getResourcePermission } = usePermissionProvider();
   const [resourcePermissions, setResourcePermissions] =
-    useState<OperationPermission>();
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const filteredData = useMemo(
     () =>
@@ -77,7 +78,7 @@ const Teams: FC<TeamsProps> = ({
     fetchPermissions();
   }, []);
 
-  return resourcePermissions?.ViewAll ? (
+  return resourcePermissions.ViewAll ? (
     <Row className="team-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>

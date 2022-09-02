@@ -639,7 +639,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <EntitySummaryDetails
                     data={info}
                     updateOwner={
-                      databaseSchemaPermission.EditOwner
+                      databaseSchemaPermission.EditOwner ||
+                      databaseSchemaPermission.EditAll
                         ? handleUpdateOwner
                         : undefined
                     }
@@ -664,7 +665,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 entityFqn={databaseSchemaFQN}
                 entityName={databaseSchemaName}
                 entityType={EntityType.DATABASE_SCHEMA}
-                hasEditAccess={databaseSchemaPermission.EditDescription}
+                hasEditAccess={
+                  databaseSchemaPermission.EditDescription ||
+                  databaseSchemaPermission.EditAll
+                }
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}

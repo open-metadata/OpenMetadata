@@ -295,12 +295,14 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         <Tooltip
           placement="topRight"
           title={
-            permissions.EditOwner ? 'Update Owner' : NO_PERMISSION_FOR_ACTION
+            permissions.EditAll || permissions.EditOwner
+              ? 'Update Owner'
+              : NO_PERMISSION_FOR_ACTION
           }>
           <ButtonAntd
             className="tw-p-0"
             data-testid="owner-dropdown"
-            disabled={!permissions.EditOwner}
+            disabled={!(permissions.EditOwner || permissions.EditAll)}
             size="small"
             type="text"
             onClick={handleSelectOwnerDropdown}>
@@ -428,7 +430,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             {glossary?.tags && glossary?.tags.length ? (
               <button
                 className=" tw-ml-1 focus:tw-outline-none"
-                disabled={!permissions.EditTags}>
+                disabled={!(permissions.EditTags || permissions.EditAll)}>
                 <SVGIcons
                   alt="edit"
                   icon="icon-edit"
@@ -439,7 +441,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             ) : (
               <ButtonAntd
                 className="tw-p-0"
-                disabled={!permissions.EditTags}
+                disabled={!(permissions.EditTags || permissions.EditAll)}
                 type="text">
                 <Tags
                   className="tw-text-primary"
@@ -460,7 +462,9 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
                 removeBlur
                 description={glossary?.description}
                 entityName={glossary?.displayName ?? glossary?.name}
-                hasEditAccess={permissions.EditDescription}
+                hasEditAccess={
+                  permissions.EditDescription || permissions.EditAll
+                }
                 isEdit={isDescriptionEditable}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
