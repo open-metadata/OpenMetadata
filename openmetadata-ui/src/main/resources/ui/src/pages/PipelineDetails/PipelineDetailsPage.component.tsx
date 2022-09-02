@@ -199,7 +199,9 @@ const PipelineDetailsPage = () => {
       getEntityFeedLink(EntityType.PIPELINE, pipelineFQN),
       after,
       threadType,
-      feedFilter
+      feedFilter,
+      undefined,
+      USERId
     )
       .then((res) => {
         const { data, paging: pagingObj } = res;

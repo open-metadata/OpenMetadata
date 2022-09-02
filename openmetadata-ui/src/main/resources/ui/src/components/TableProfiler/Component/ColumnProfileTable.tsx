@@ -27,7 +27,6 @@ import {
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import {
   getAddDataQualityTableTestPath,
@@ -123,8 +122,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Value Count',
         dataIndex: 'profile',
         key: 'valuesCount',
-        render: (profile: ColumnProfile) =>
-          formatNumberWithComma(profile?.valuesCount || 0),
+        render: (profile: ColumnProfile) => profile?.valuesCount || 0,
       },
       {
         title: 'Test',

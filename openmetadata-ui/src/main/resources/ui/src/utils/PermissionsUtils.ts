@@ -29,7 +29,7 @@ import { Operation } from '../generated/entity/policies/policy';
  * @deprecated
  * TODO: Remove this method once we have new permission structure everywhere
  */
-export const hasPemission = (
+export const hasPermission = (
   operation: Operation,
   entityType: EntityType,
   permissions: ResourcePermission[]
@@ -60,18 +60,19 @@ export const checkPermission = (
   const isAuthDisabled = AppState.authDisabled;
   const allResource = permissions?.all;
   const entityResource = permissions?.[resourceType];
-  let hasPemission = isAuthDisabled;
+  let hasPermission = isAuthDisabled;
 
   /**
    * If allresource is present then check for permission and return it
    */
-  if (allResource && !hasPemission) {
-    hasPemission = allResource.All || allResource[operation];
+  if (allResource && !hasPermission) {
+    hasPermission = allResource.All || allResource[operation];
   }
 
-  hasPemission = hasPemission || (entityResource && entityResource[operation]);
+  hasPermission =
+    hasPermission || (entityResource && entityResource[operation]);
 
-  return hasPemission;
+  return hasPermission;
 };
 
 /**

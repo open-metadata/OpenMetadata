@@ -172,7 +172,9 @@ const DashboardDetailsPage = () => {
       getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
       after,
       threadType,
-      feedFilter
+      feedFilter,
+      undefined,
+      USERId
     )
       .then((res) => {
         const { data, paging: pagingObj } = res;

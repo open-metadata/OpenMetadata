@@ -70,6 +70,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
+import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.settings.Settings;
@@ -867,7 +868,11 @@ public interface CollectionDAO {
         TaskStatus status,
         Boolean activeAnnouncement,
         boolean resolved,
-        int relation) {
+        int relation,
+        String userName,
+        List<String> teamNames,
+        FilterType filterType) {
+      int filterRelation = -1;
       if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
         String mysqlCondition;
         String postgresCondition;
@@ -881,7 +886,13 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkBefore(
             fqnPrefix, toType, limit, before, type, relation, mysqlCondition, postgresCondition);
       }
-      return listThreadsByEntityLinkBefore(fqnPrefix, toType, limit, before, type, status, resolved, relation);
+      if (userName != null) {
+        if (filterType == FilterType.MENTIONS) {
+          filterRelation = Relationship.MENTIONED_IN.ordinal();
+        }
+      }
+      return listThreadsByEntityLinkBefore(
+          fqnPrefix, toType, limit, before, type, status, resolved, relation, userName, teamNames, filterRelation);
     }
 
     @ConnectionAwareSqlQuery(
@@ -921,6 +932,9 @@ public interface CollectionDAO {
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
             + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
+            + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
+            + " ((fromType='user' AND fromFQN= :userName) OR"
+            + " (fromType='team' AND fromFQN IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLinkBefore(
@@ -931,7 +945,10 @@ public interface CollectionDAO {
         @Bind("type") ThreadType type,
         @Bind("status") TaskStatus status,
         @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("filterRelation") int filterRelation);
 
     default List<String> listThreadsByEntityLinkAfter(
         String fqnPrefix,
@@ -942,7 +959,11 @@ public interface CollectionDAO {
         TaskStatus status,
         Boolean activeAnnouncement,
         boolean resolved,
-        int relation) {
+        int relation,
+        String userName,
+        List<String> teamNames,
+        FilterType filterType) {
+      int filterRelation = -1;
       if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
         String mysqlCondition;
         String postgresCondition;
@@ -956,7 +977,13 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkAfter(
             fqnPrefix, toType, limit, after, type, relation, mysqlCondition, postgresCondition);
       }
-      return listThreadsByEntityLinkAfter(fqnPrefix, toType, limit, after, type, status, resolved, relation);
+      if (userName != null) {
+        if (filterType == FilterType.MENTIONS) {
+          filterRelation = Relationship.MENTIONED_IN.ordinal();
+        }
+      }
+      return listThreadsByEntityLinkAfter(
+          fqnPrefix, toType, limit, after, type, status, resolved, relation, userName, teamNames, filterRelation);
     }
 
     @ConnectionAwareSqlQuery(
@@ -996,6 +1023,9 @@ public interface CollectionDAO {
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
             + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
+            + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
+            + " ((fromType='user' AND fromFQN= :userName) OR"
+            + " (fromType='team' AND fromFQN IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLinkAfter(
@@ -1006,7 +1036,10 @@ public interface CollectionDAO {
         @Bind("type") ThreadType type,
         @Bind("status") TaskStatus status,
         @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("filterRelation") int filterRelation);
 
     default int listCountThreadsByEntityLink(
         String fqnPrefix,
@@ -1015,7 +1048,11 @@ public interface CollectionDAO {
         TaskStatus status,
         Boolean activeAnnouncement,
         boolean resolved,
-        int relation) {
+        int relation,
+        String userName,
+        List<String> teamNames,
+        FilterType filterType) {
+      int filterRelation = -1;
       if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
         String mysqlCondition;
         String postgresCondition;
@@ -1028,7 +1065,13 @@ public interface CollectionDAO {
         }
         return listCountAnnouncementsByEntityLink(fqnPrefix, toType, type, relation, mysqlCondition, postgresCondition);
       }
-      return listCountThreadsByEntityLink(fqnPrefix, toType, type, status, resolved, relation);
+      if (userName != null) {
+        if (filterType == FilterType.MENTIONS) {
+          filterRelation = Relationship.MENTIONED_IN.ordinal();
+        }
+      }
+      return listCountThreadsByEntityLink(
+          fqnPrefix, toType, type, status, resolved, relation, userName, teamNames, filterRelation);
     }
 
     @ConnectionAwareSqlQuery(
@@ -1061,14 +1104,20 @@ public interface CollectionDAO {
             + "AND (:type IS NULL OR type = :type) "
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
             + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)")
+            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
+            + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
+            + " ((fromType='user' AND fromFQN= :userName) OR"
+            + " (fromType='team' AND fromFQN IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )")
     int listCountThreadsByEntityLink(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("toType") String toType,
         @Bind("type") ThreadType type,
         @Bind("status") TaskStatus status,
         @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("filterRelation") int filterRelation);
 
     @ConnectionAwareSqlUpdate(value = "UPDATE thread_entity SET json = :json where id = :id", connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(

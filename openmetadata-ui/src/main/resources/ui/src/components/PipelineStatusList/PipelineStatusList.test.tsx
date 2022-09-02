@@ -13,7 +13,7 @@
 
 import { render } from '@testing-library/react';
 import React from 'react';
-import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import PipelineStatusListComponent from './PipelineStatusList.component';
 
 const mockPipelineStatus: Pipeline['pipelineStatus'] = {
@@ -34,37 +34,6 @@ const mockPipelineStatus: Pipeline['pipelineStatus'] = {
 const mockSelectExec = jest.fn();
 
 jest.mock('../../utils/PipelineDetailsUtils', () => ({
-  getModifiedPipelineStatus: jest.fn().mockReturnValue([
-    {
-      executionDate: 1649669589,
-      executionStatus: 'Successful',
-      name: 'dim_address_task',
-    },
-    {
-      executionDate: 1649669589,
-      executionStatus: 'Successful',
-      name: 'assert_table_exists',
-    },
-    {
-      executionDate: 1649669474,
-      executionStatus: 'Pending',
-      name: 'dim_address_task',
-    },
-  ]),
-  getStatusBadgeIcon: jest.fn().mockImplementation((status: StatusType) => {
-    return status;
-  }),
-  getFilteredPipelineStatus: jest
-    .fn()
-    .mockImplementation(
-      (status: StatusType, pipelineStatus: Pipeline['pipelineStatus'] = {}) => {
-        if (!status) {
-          return pipelineStatus;
-        } else {
-          return pipelineStatus.executionStatus === status;
-        }
-      }
-    ),
   STATUS_OPTIONS: [],
 }));
 
@@ -74,10 +43,26 @@ jest.mock('../ExecutionStrip/ExecutionStrip', () => {
     .mockReturnValue(<p data-testid="exec-strip">Execution Strip</p>);
 });
 
+jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+  getPipelineStatus: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [
+        {
+          executionDate: 1649669589,
+          executionStatus: 'Successful',
+          name: 'dim_address_task',
+        },
+      ],
+      paging: 1,
+    })
+  ),
+}));
+
 describe('Test PipelineStatus list component', () => {
   it('Should render all child elements', async () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
+        pipelineFQN="testfqn"
         pipelineStatus={mockPipelineStatus}
         selectedExec={mockPipelineStatus || {}}
         onSelectExecution={mockSelectExec}
@@ -95,6 +80,7 @@ describe('Test PipelineStatus list component', () => {
   it('Should render no data placeholder if pipelinestatus is undefined', async () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
+        pipelineFQN="testfqn"
         pipelineStatus={undefined}
         selectedExec={{}}
         onSelectExecution={mockSelectExec}
@@ -109,6 +95,7 @@ describe('Test PipelineStatus list component', () => {
   it('Should render no data placeholder if pipelinestatus is empty list', async () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
+        pipelineFQN="testfqn"
         pipelineStatus={{}}
         selectedExec={{}}
         onSelectExecution={mockSelectExec}
