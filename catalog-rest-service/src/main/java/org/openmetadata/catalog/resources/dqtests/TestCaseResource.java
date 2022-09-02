@@ -41,13 +41,20 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TestCaseRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
-import org.openmetadata.catalog.resources.feeds.MessageParser;
+import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.catalog.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -158,11 +165,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString());
+    ResourceContextInterface resourceContext;
     if (entityLink != null) {
-      MessageParser.EntityLink entityLinkParsed = MessageParser.EntityLink.parse(entityLink);
+      EntityLink entityLinkParsed = EntityLink.parse(entityLink);
       filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
+      resourceContext = TestCaseResourceContext.builder().entityLink(entityLinkParsed).build();
+    } else {
+      resourceContext = TestCaseResourceContext.builder().build();
     }
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, operationContext, resourceContext);
   }
 
   @GET
@@ -215,7 +230,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    // TODO fix hardcoded entity type
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, operationContext, resourceContext);
   }
 
   @GET
@@ -248,7 +267,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    // TODO fix hardcoded entity type
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(name).build();
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, operationContext, resourceContext);
   }
 
   @GET
@@ -296,8 +319,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestCase create)
       throws IOException {
-    TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, test, true);
+    // Override OperationContext to change the entity to table and operation from CREATE to EDIT_TESTS
+    EntityLink entityLink = EntityLink.parse(create.getEntityLink());
+    TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    test = addHref(uriInfo, dao.create(uriInfo, test));
+    LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(test), test.getId());
+    return Response.created(test.getHref()).entity(test).build();
   }
 
   @PATCH
@@ -309,7 +339,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       description = "Update an existing test using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
@@ -323,7 +353,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    // Override OperationContext to change the entity to table and operation from UPDATE to EDIT_TESTS
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    PatchResponse<TestCase> response = dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -341,8 +377,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestCase create)
       throws IOException {
-    TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, test, true);
+    // Override OperationContext to change the entity to table and operation from CREATE/UPDATE to EDIT_TESTS
+    EntityLink entityLink = EntityLink.parse(create.getEntityLink());
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
+
+    dao.prepare(test);
+    authorizer.authorize(
+        securityContext, operationContext, getResourceContextByName(test.getFullyQualifiedName()), true);
+    PutResponse<TestCase> response = dao.createOrUpdate(uriInfo, test);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE
@@ -365,7 +412,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           boolean hardDelete,
       @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    // Override OperationContext to change the entity to table and operation from DELETE to EDIT_TESTS
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    DeleteResponse<TestCase> response = dao.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -477,8 +530,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return dao.deleteTestCaseResult(fqn, timestamp).toResponse();
   }
 
-  private TestCase getTestCase(CreateTestCase create, String user) throws IOException {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(create.getEntityLink());
+  private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) throws IOException {
     return copy(new TestCase(), create, user)
         .withDescription(create.getDescription())
         .withName(create.getName())
