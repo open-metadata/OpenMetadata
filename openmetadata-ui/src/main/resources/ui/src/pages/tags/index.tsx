@@ -30,6 +30,7 @@ import {
 import Description from '../../components/common/description/Description';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
@@ -445,11 +446,8 @@ const TagsPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <div
-        className="tw-h-full"
-        data-testid="data-summary-container"
-        id="tags-left-panel">
-        <div className="tw-bg-white tw-h-full tw-py-2">
+      <LeftPanelCard id="tags">
+        <div className="tw-py-2" data-testid="data-summary-container">
           <div className="tw-px-3">
             <div className="tw-flex tw-justify-between tw-items-center">
               <h6 className="tw-heading tw-text-sm tw-font-semibold">
@@ -508,7 +506,7 @@ const TagsPage = () => {
               </div>
             ))}
         </div>
-      </div>
+      </LeftPanelCard>
     );
   };
 

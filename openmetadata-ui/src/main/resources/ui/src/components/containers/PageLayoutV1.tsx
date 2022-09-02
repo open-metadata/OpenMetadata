@@ -12,7 +12,6 @@
  */
 
 import { Col, Row } from 'antd';
-import classNames from 'classnames';
 import React, { FC, HTMLAttributes, ReactNode } from 'react';
 import './../../styles/layout/page-layout.less';
 
@@ -32,7 +31,6 @@ export const pageContainerStyles = {
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
-  defaultLeftPanelStyle = true,
   children,
   rightPanel,
   className,
@@ -41,13 +39,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     <Row className={className} gutter={[16, 16]} style={pageContainerStyles}>
       {leftPanel && (
         <Col flex="284px" id="left-panelV1">
-          <div
-            className={classNames(
-              { 'page-layout-v1-left-panel': defaultLeftPanelStyle },
-              'page-layout-v1-vertical-scroll'
-            )}>
-            {leftPanel}
-          </div>
+          {leftPanel}
         </Col>
       )}
       <Col

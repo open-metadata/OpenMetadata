@@ -61,6 +61,7 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
+import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import { AdvanceField, ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
@@ -646,8 +647,8 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-h-full" id="explorer-left-panel">
-        <div className="tw-bg-white tw-h-full tw-py-3">
+      <LeftPanelCard id="explorer">
+        <div className="tw-py-3">
           <div className="tw-w-64 tw-px-3 tw-flex-shrink-0">
             <Button
               className={classNames('tw-underline tw-pb-4')}
@@ -673,7 +674,7 @@ const Explore: React.FC<ExploreProps> = ({
             />
           )}
         </div>
-      </div>
+      </LeftPanelCard>
     );
   };
 

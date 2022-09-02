@@ -47,6 +47,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -321,8 +322,8 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-h-full" id="glossary-left-panel">
-        <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
+      <LeftPanelCard id="glossary">
+        <div className="tw-h-full tw-py-2">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
             <h6 className="tw-heading tw-text-sm tw-font-semibold">Glossary</h6>
           </div>
@@ -377,7 +378,7 @@ const GlossaryV1 = ({
             )}
           </div>
         </div>
-      </div>
+      </LeftPanelCard>
     );
   };
 
