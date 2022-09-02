@@ -61,9 +61,11 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.TypeRegistry;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.tags.Tag;
+import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -1019,7 +1021,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (owner == null) {
       return;
     }
-    EntityReference ref = Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+    EntityReference ref = validateOwner(owner);
     EntityUtil.copy(ref, owner);
   }
 
@@ -1082,6 +1084,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ingestionPipelines.add(daoCollection.ingestionPipelineDAO().findEntityReferenceById(record.getId(), Include.ALL));
     }
     return ingestionPipelines;
+  }
+
+  public EntityReference validateOwner(EntityReference owner) throws IOException {
+    if (owner == null) {
+      return null;
+    }
+    // Entities can be only owned by team of type 'group'
+    if (owner.getType().equals(Entity.TEAM)) {
+      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, Include.ALL);
+      if (!team.getTeamType().equals(TeamType.GROUP)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+      }
+      return team.getEntityReference();
+    }
+    return Entity.getEntityReferenceById(owner.getType(), owner.getId(), Include.ALL);
   }
 
   public enum Operation {
