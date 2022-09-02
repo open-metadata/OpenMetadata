@@ -408,7 +408,7 @@ const PoliciesDetailPage = () => {
         </Dropdown>
       );
     },
-    [policy]
+    [policy, policyPermission]
   );
 
   useEffect(() => {
