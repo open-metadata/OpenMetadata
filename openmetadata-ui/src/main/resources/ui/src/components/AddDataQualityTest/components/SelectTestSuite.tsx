@@ -70,7 +70,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
   };
 
   const handleCancelClick = () => {
-    history.push(getTableTabPath(entityTypeFQN));
+    history.push(getTableTabPath(entityTypeFQN, 'profiler'));
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {

@@ -1125,7 +1125,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
-      this.updatingUser = SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
+      this.updatingUser =
+          updated.getUpdatedBy().equalsIgnoreCase("admin")
+              ? new User().withName("admin").withIsAdmin(true)
+              : SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */

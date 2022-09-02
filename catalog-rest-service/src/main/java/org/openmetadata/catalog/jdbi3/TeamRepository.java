@@ -328,21 +328,21 @@ public class TeamRepository extends EntityRepository<Team> {
     String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
     if (json == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
-      EntityReference organizationPolicy = Entity.getEntityReferenceByName(POLICY, "OrganizationPolicy", Include.ALL);
-      EntityReference dataConsumerRole = Entity.getEntityReferenceByName(ROLE, "DataConsumer", Include.ALL);
-      Team team =
-          new Team()
-              .withId(UUID.randomUUID())
-              .withName(ORGANIZATION_NAME)
-              .withDisplayName(ORGANIZATION_NAME)
-              .withDescription("Organization under which all the other team hierarchy is created")
-              .withTeamType(ORGANIZATION)
-              .withUpdatedBy("admin")
-              .withUpdatedAt(System.currentTimeMillis())
-              .withPolicies(new ArrayList<>(List.of(organizationPolicy)))
-              .withDefaultRoles(new ArrayList<>(List.of(dataConsumerRole)));
       // Teams
       try {
+        EntityReference organizationPolicy = Entity.getEntityReferenceByName(POLICY, "OrganizationPolicy", Include.ALL);
+        EntityReference dataConsumerRole = Entity.getEntityReferenceByName(ROLE, "DataConsumer", Include.ALL);
+        Team team =
+            new Team()
+                .withId(UUID.randomUUID())
+                .withName(ORGANIZATION_NAME)
+                .withDisplayName(ORGANIZATION_NAME)
+                .withDescription("Organization under which all the other team hierarchy is created")
+                .withTeamType(ORGANIZATION)
+                .withUpdatedBy("admin")
+                .withUpdatedAt(System.currentTimeMillis())
+                .withPolicies(new ArrayList<>(List.of(organizationPolicy)))
+                .withDefaultRoles(new ArrayList<>(List.of(dataConsumerRole)));
         organization = create(null, team);
         LOG.info("Organization {}:{} is successfully initialized", ORGANIZATION_NAME, organization.getId());
       } catch (Exception e) {

@@ -16,6 +16,7 @@ Workflow definition for the test suite
 from __future__ import annotations
 
 import traceback
+from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
@@ -30,7 +31,10 @@ from metadata.generated.schema.entity.data.table import IntervalType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -149,7 +153,13 @@ class TestSuiteWorkflow:
                         "databaseservice",
                     )
                 )
-                return service_connection.__root__.config
+                service_connection_config = deepcopy(service_connection.__root__.config)
+                if (
+                    hasattr(service_connection_config, "supportsDatabase")
+                    and not service_connection_config.database
+                ):
+                    service_connection_config.database = table_fqn.split(".")[1]
+                return service_connection_config
 
             logger.error(
                 f"Could not retrive connection details for entity {entity_link}"
@@ -195,6 +205,9 @@ class TestSuiteWorkflow:
         Args:
             entity: table entity
         """
+        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
+        if entity.serviceType != DatabaseServiceType.BigQuery:
+            return None
         if entity.tablePartition:
             if entity.tablePartition.intervalType in {
                 IntervalType.TIME_UNIT,

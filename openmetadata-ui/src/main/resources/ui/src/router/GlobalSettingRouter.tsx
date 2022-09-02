@@ -105,9 +105,14 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={TestSuitePage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.DATA_QUALITY,
           GlobalSettingOptions.TEST_SUITE
@@ -262,7 +267,7 @@ const GlobalSettingRouter = () => {
         component={CustomPropertiesPageV1}
         hasPermission={checkPermission(
           Operation.ViewAll,
-          ResourceEntity.ALL,
+          ResourceEntity.TYPE,
           permissions
         )}
         path={getSettingCategoryPath(

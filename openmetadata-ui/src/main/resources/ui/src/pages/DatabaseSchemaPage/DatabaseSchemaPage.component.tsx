@@ -51,6 +51,11 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -88,6 +93,7 @@ import {
   getEntityFieldThreadCounts,
   updateThreadData,
 } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
@@ -101,6 +107,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+
+  const { getEntityPermission } = usePermissionProvider();
 
   const { databaseSchemaFQN, tab } = useParams<Record<string, string>>();
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +143,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const history = useHistory();
   const isMounting = useRef(true);
+
+  const [databaseSchemaPermission, setDatabaseSchemaPermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchDatabaseSchemaPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.DATABASE_SCHEMA,
+        databaseSchema?.id as string
+      );
+      setDatabaseSchemaPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const tabs = [
     {
@@ -559,10 +582,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
-
-  useEffect(() => {
     const currentTab = getCurrentDatabaseSchemaDetailsTab(tab);
     const currentTabIndex = currentTab - 1;
 
@@ -570,7 +589,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       activeTabHandler(1);
     }
     getDetailsByFQN();
+    getEntityFeedCount();
   }, []);
+
+  useEffect(() => {
+    if (databaseSchema?.id) {
+      fetchDatabaseSchemaPermission();
+    }
+  }, [databaseSchema]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -599,6 +625,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <ManageButton
                 isRecursiveDelete
                 allowSoftDelete={false}
+                canDelete={databaseSchemaPermission.Delete}
                 entityFQN={databaseSchemaFQN}
                 entityId={databaseSchemaId}
                 entityName={databaseSchemaName}
@@ -611,7 +638,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
                     data={info}
-                    updateOwner={handleUpdateOwner}
+                    updateOwner={
+                      databaseSchemaPermission.EditOwner
+                        ? handleUpdateOwner
+                        : undefined
+                    }
                   />
 
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
@@ -633,6 +664,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 entityFqn={databaseSchemaFQN}
                 entityName={databaseSchemaName}
                 entityType={EntityType.DATABASE_SCHEMA}
+                hasEditAccess={databaseSchemaPermission.EditDescription}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
