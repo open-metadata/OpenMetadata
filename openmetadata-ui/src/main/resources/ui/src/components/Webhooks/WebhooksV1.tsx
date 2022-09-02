@@ -12,37 +12,28 @@
  */
 
 import { Col, Row, Select, Space, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { deleteWebhook } from '../../axiosAPIs/webhookAPI';
 import { PAGE_SIZE } from '../../constants/constants';
-import {
-  MS_TEAMS_LISTING_TEXT,
-  NO_PERMISSION_FOR_ACTION,
-  SLACK_LISTING_TEXT,
-  WEBHOOK_LISTING_TEXT,
-} from '../../constants/HelperTextUtil';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission } from '../../utils/PermissionsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
-import CardV1 from '../common/Card/CardV1';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { WebhooksV1Props } from './WebhooksV1.interface';
+import WebhookTable from './WebhookTable';
 import './webhookV1.less';
-
-const LISTING_TEXT: { [key: string]: string } = {
-  msteams: MS_TEAMS_LISTING_TEXT,
-  slack: SLACK_LISTING_TEXT,
-  generic: WEBHOOK_LISTING_TEXT,
-};
 
 const WEBHOOKS_INTEGRATION: { [key: string]: string } = {
   msteams: 'MS Teams',
@@ -62,6 +53,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   currentPage,
 }) => {
   const [filteredData, setFilteredData] = useState<Array<Webhook>>(data);
+  const [selectedWebhook, setWebhook] = useState<Webhook>();
 
   const { permissions } = usePermissionProvider();
 
@@ -79,14 +71,6 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
         )
       : data;
   };
-
-  const rightPanel = useMemo(() => {
-    return (
-      <div style={leftPanelAntCardStyle}>
-        <CardV1 description={LISTING_TEXT[webhookType]} id="data" />
-      </div>
-    );
-  }, []);
 
   const fetchErrorPlaceHolder = useMemo(
     () => (message: string) => {
@@ -117,6 +101,21 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
     []
   );
 
+  const handleDelete = async () => {
+    try {
+      const response = await deleteWebhook(selectedWebhook?.id as string);
+      if (response) {
+        setFilteredData((prev) =>
+          prev.filter((webhook) => webhook.id !== response.id)
+        );
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setWebhook(undefined);
+    }
+  };
+
   useEffect(() => {
     setFilteredData(getFilteredWebhooks());
   }, [data, selectedStatus]);
@@ -128,83 +127,80 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   }
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col flex="auto">
-        <Row gutter={[16, 16]}>
-          <Col xs={18}>
-            <Select
-              showArrow
-              bordered={false}
-              className="tw-text-body webhook-filter-select cursor-pointer"
-              mode="multiple"
-              options={statuses}
-              placeholder="Filter by status"
-              style={{ minWidth: '148px' }}
-              onChange={onStatusFilter}
-            />
-          </Col>
-          <Col xs={6}>
-            <Space
-              align="center"
-              className="tw-w-full tw-justify-end"
-              size={16}>
-              {filteredData.length > 0 && (
-                <Tooltip
-                  placement="left"
-                  title={
-                    addWebhookPermission
-                      ? 'Add Webhook'
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <Button
-                    className={classNames('tw-h-8 tw-rounded ')}
-                    data-testid="add-webhook-button"
-                    disabled={!addWebhookPermission}
-                    size="small"
-                    theme="primary"
-                    variant="contained"
-                    onClick={onAddWebhook}>
-                    Add {WEBHOOKS_INTEGRATION[webhookType]}
-                  </Button>
-                </Tooltip>
-              )}
-            </Space>
-          </Col>
-          <Col xs={24}>
-            {filteredData.length ? (
-              <>
-                {filteredData.map((webhook, index) => (
-                  <div className="tw-mb-3" key={index}>
-                    <WebhookDataCard
-                      description={webhook.description}
-                      endpoint={webhook.endpoint}
-                      name={webhook.name}
-                      status={webhook.status}
-                      type={webhook.webhookType}
-                      onClick={onClickWebhook}
-                    />
-                  </div>
-                ))}
-                {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-                  <NextPrevious
-                    currentPage={currentPage}
-                    pageSize={PAGE_SIZE}
-                    paging={paging}
-                    pagingHandler={onPageChange}
-                    totalCount={paging.total}
-                  />
+    <>
+      <Row gutter={[16, 16]}>
+        <Col>
+          <Row gutter={[16, 16]}>
+            <Col xs={18}>
+              <Select
+                showArrow
+                bordered={false}
+                className="tw-text-body webhook-filter-select cursor-pointer"
+                mode="multiple"
+                options={statuses}
+                placeholder="Filter by status"
+                style={{ minWidth: '148px' }}
+                onChange={onStatusFilter}
+              />
+            </Col>
+            <Col xs={6}>
+              <Space
+                align="center"
+                className="tw-w-full tw-justify-end"
+                size={16}>
+                {filteredData.length > 0 && (
+                  <Tooltip
+                    placement="left"
+                    title={
+                      addWebhookPermission
+                        ? 'Add Webhook'
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
+                      className={classNames('tw-h-8 tw-rounded ')}
+                      data-testid="add-webhook-button"
+                      disabled={!addWebhookPermission}
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={onAddWebhook}>
+                      Add {WEBHOOKS_INTEGRATION[webhookType]}
+                    </Button>
+                  </Tooltip>
                 )}
-              </>
-            ) : (
-              fetchErrorPlaceHolder('No webhooks found for applied filters')
-            )}
-          </Col>
-        </Row>
-      </Col>
-      <Col flex="312px">
-        <div className="webhook-right-panel">{rightPanel}</div>
-      </Col>
-    </Row>
+              </Space>
+            </Col>
+            <Col xs={24}>
+              <WebhookTable
+                webhookList={filteredData || []}
+                onDelete={(data) => setWebhook(data)}
+                onEdit={onClickWebhook}
+              />
+              {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+                <NextPrevious
+                  currentPage={currentPage}
+                  pageSize={PAGE_SIZE}
+                  paging={paging}
+                  pagingHandler={onPageChange}
+                  totalCount={paging.total}
+                />
+              )}
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+      {selectedWebhook && (
+        <ConfirmationModal
+          bodyText={`You want to delete webhook ${selectedWebhook.name} permanently? This action cannot be reverted.`}
+          cancelText="Cancel"
+          confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
+          confirmText="Delete"
+          header="Are you sure?"
+          onCancel={() => setWebhook(undefined)}
+          onConfirm={handleDelete}
+        />
+      )}
+    </>
   );
 };
 
