@@ -143,26 +143,22 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
         </Col>
         <Col xs={6}>
           <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-            {filteredData.length > 0 && (
-              <Tooltip
-                placement="left"
-                title={
-                  addWebhookPermission
-                    ? 'Add Webhook'
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  className={classNames('tw-h-8 tw-rounded ')}
-                  data-testid="add-webhook-button"
-                  disabled={!addWebhookPermission}
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={onAddWebhook}>
-                  Add {WEBHOOKS_INTEGRATION[webhookType]}
-                </Button>
-              </Tooltip>
-            )}
+            <Tooltip
+              placement="left"
+              title={
+                addWebhookPermission ? 'Add Webhook' : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                className={classNames('tw-h-8 tw-rounded ')}
+                data-testid="add-webhook-button"
+                disabled={!addWebhookPermission}
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={onAddWebhook}>
+                Add {WEBHOOKS_INTEGRATION[webhookType]}
+              </Button>
+            </Tooltip>
           </Space>
         </Col>
         <Col xs={24}>
