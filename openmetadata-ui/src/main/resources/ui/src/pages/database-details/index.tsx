@@ -667,90 +667,92 @@ const DatabaseDetails: FunctionComponent = () => {
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
                   <Fragment>
-                    <table
-                      className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-databaseSchemas">
-                      <thead data-testid="table-header">
-                        <tr className="tableHead-row">
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-name">
-                            Schema Name
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-description">
-                            Description
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-owner">
-                            Owner
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-usage">
-                            Usage
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {schemaData.length > 0 ? (
-                          schemaData.map((schema, index) => (
-                            <tr
-                              className={classNames(
-                                'tableBody-row',
-                                !isEven(index + 1) ? 'odd-row' : null
-                              )}
-                              data-testid="table-column"
-                              key={index}>
-                              <td className="tableBody-cell">
-                                <Link
-                                  to={
-                                    schema.fullyQualifiedName
-                                      ? getDatabaseSchemaDetailsPath(
-                                          schema.fullyQualifiedName
-                                        )
-                                      : ''
-                                  }>
-                                  {schema.name}
-                                </Link>
-                              </td>
-                              <td className="tableBody-cell">
-                                {schema.description?.trim() ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={schema.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description
-                                  </span>
+                    <div className="tw-table-container tw-mb-4">
+                      <table
+                        className="tw-bg-white tw-w-full"
+                        data-testid="database-databaseSchemas">
+                        <thead data-testid="table-header">
+                          <tr className="tableHead-row">
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-name">
+                              Schema Name
+                            </th>
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-description">
+                              Description
+                            </th>
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-owner">
+                              Owner
+                            </th>
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-usage">
+                              Usage
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="tableBody">
+                          {schemaData.length > 0 ? (
+                            schemaData.map((schema, index) => (
+                              <tr
+                                className={classNames(
+                                  'tableBody-row',
+                                  !isEven(index + 1) ? 'odd-row' : null
                                 )}
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>{getEntityName(schema?.owner) || '--'}</p>
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>
-                                  {getUsagePercentile(
-                                    schema.usageSummary?.weeklyStats
-                                      ?.percentileRank || 0
+                                data-testid="table-column"
+                                key={index}>
+                                <td className="tableBody-cell">
+                                  <Link
+                                    to={
+                                      schema.fullyQualifiedName
+                                        ? getDatabaseSchemaDetailsPath(
+                                            schema.fullyQualifiedName
+                                          )
+                                        : ''
+                                    }>
+                                    {schema.name}
+                                  </Link>
+                                </td>
+                                <td className="tableBody-cell">
+                                  {schema.description?.trim() ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={schema.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description
+                                    </span>
                                   )}
-                                </p>
+                                </td>
+                                <td className="tableBody-cell">
+                                  <p>{getEntityName(schema?.owner) || '--'}</p>
+                                </td>
+                                <td className="tableBody-cell">
+                                  <p>
+                                    {getUsagePercentile(
+                                      schema.usageSummary?.weeklyStats
+                                        ?.percentileRank || 0
+                                    )}
+                                  </p>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="tableBody-row">
+                              <td
+                                className="tableBody-cell tw-text-center"
+                                colSpan={5}>
+                                No records found.
                               </td>
                             </tr>
-                          ))
-                        ) : (
-                          <tr className="tableBody-row">
-                            <td
-                              className="tableBody-cell tw-text-center"
-                              colSpan={5}>
-                              No records found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                     {Boolean(
                       !isNil(databaseSchemaPaging.after) ||
                         !isNil(databaseSchemaPaging.before)

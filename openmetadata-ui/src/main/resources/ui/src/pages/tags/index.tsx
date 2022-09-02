@@ -590,7 +590,7 @@ const TagsPage = () => {
                 onDescriptionUpdate={UpdateCategory}
               />
             </div>
-            <div className="tw-bg-white">
+            <div className="tw-table-container">
               <table className="tw-w-full" data-testid="table">
                 <thead>
                   <tr className="tableHead-row">
