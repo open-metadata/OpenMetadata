@@ -53,7 +53,6 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
     left: boolean;
     right: boolean;
   }>({ left: true, right: true });
-  const { Paragraph } = Typography;
 
   const scrollHandler = (scrollOffset: number) => {
     if (tableRef.current) {
@@ -160,11 +159,11 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
               <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
             </div>
             <div className="tw-mt-8 tw-max-w-x tw-text-center">
-              <Paragraph style={{ marginBottom: '4px' }}>
+              <Typography.Paragraph style={{ marginBottom: '4px' }}>
                 {' '}
                 No sample data available
-              </Paragraph>
-              <Paragraph>
+              </Typography.Paragraph>
+              <Typography.Paragraph>
                 {' '}
                 To view Sample Data, run the Profiler Ingestion. Please refer to
                 this doc to schedule the{' '}
@@ -177,7 +176,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                   }}>
                   Profiler Ingestion
                 </Link>
-              </Paragraph>
+              </Typography.Paragraph>
             </div>
           </div>
         )}

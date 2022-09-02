@@ -27,6 +27,7 @@ type Props = {
   heading?: string;
   doc?: string;
   buttons?: React.ReactNode;
+  buttonId?: string;
 };
 
 const ErrorPlaceHolder = ({
@@ -37,6 +38,7 @@ const ErrorPlaceHolder = ({
   buttonLabel,
   buttonListener,
   buttons,
+  buttonId,
 }: Props) => {
   const { Paragraph, Link } = Typography;
 
@@ -65,7 +67,7 @@ const ErrorPlaceHolder = ({
             buttons
           ) : (
             <Button
-              data-testid="add-service-button"
+              data-testId={buttonId}
               size="small"
               theme="primary"
               variant="outlined"

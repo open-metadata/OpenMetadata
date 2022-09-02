@@ -558,6 +558,7 @@ const GlossaryV1 = ({
   ) : (
     <PageLayout>
       <ErrorPlaceHolder
+        buttonId="add-webhook-button"
         buttonLabel="Add New Glossary"
         buttonListener={handleAddGlossaryClick}
         heading="glossaries"

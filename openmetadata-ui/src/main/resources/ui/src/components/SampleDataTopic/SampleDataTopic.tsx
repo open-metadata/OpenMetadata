@@ -82,7 +82,9 @@ const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
     );
   } else {
     return (
-      <div className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8">
+      <div
+        className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8"
+        data-testid="no-data">
         <div className="tw-mt-12">
           <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
         </div>
@@ -102,7 +104,7 @@ const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
                 pathname:
                   'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata',
               }}>
-              MetaData Ingestio
+              MetaData Ingestion
             </Link>
           </Typography.Paragraph>
         </div>

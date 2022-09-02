@@ -52,7 +52,7 @@ jest.mock('antd', () => ({
   Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Typorgraphy: jest
+  Typography: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
