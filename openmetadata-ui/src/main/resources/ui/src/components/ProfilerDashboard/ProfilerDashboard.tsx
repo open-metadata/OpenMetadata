@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Radio, Row, Select, Space } from 'antd';
+import { Button, Col, Form, Radio, Row, Select, Space } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -35,6 +35,7 @@ import {
   Table,
   TestCaseStatus,
 } from '../../generated/entity/data/table';
+import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -86,6 +87,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
+  const [selectedTestType, setSelectedTestType] = useState('');
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
@@ -117,7 +119,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       value: value,
     }));
     testCaseStatus.unshift({
-      label: 'All Test',
+      label: 'All',
+      value: '',
+    });
+
+    return testCaseStatus;
+  }, []);
+
+  const testCaseTypeOption = useMemo(() => {
+    const testCaseStatus: Record<string, string>[] = Object.entries(
+      TestType
+    ).map(([key, value]) => ({
+      label: key,
+      value: value,
+    }));
+    testCaseStatus.unshift({
+      label: 'All',
       value: '',
     });
 
@@ -145,11 +162,13 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       },
       {
         name: getPartialNameFromTableFQN(fqn, [FqnPart.Database]),
-        url: getDatabaseDetailsPath(fqn),
+        url: getDatabaseDetailsPath(table.database?.fullyQualifiedName || ''),
       },
       {
         name: getPartialNameFromTableFQN(fqn, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(fqn),
+        url: getDatabaseSchemaDetailsPath(
+          table.databaseSchema?.fullyQualifiedName || ''
+        ),
       },
       {
         name: getEntityName(table),
@@ -331,12 +350,29 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
   };
 
+  const handleTestCaseTypeChange = (value: string) => {
+    if (value !== selectedTestType) {
+      setSelectedTestType(value);
+    }
+  };
+
   const getFilterTestCase = () => {
-    return testCases.filter(
+    const dataByStatus = testCases.filter(
       (data) =>
         selectedTestCaseStatus === '' ||
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
     );
+
+    return isColumnView
+      ? dataByStatus
+      : dataByStatus.filter(
+          (data) =>
+            selectedTestType === '' ||
+            (selectedTestType === TestType.Table &&
+              entityTypeFQN === data.entityFQN) ||
+            (selectedTestType === TestType.Column &&
+              entityTypeFQN !== data.entityFQN)
+        );
   };
 
   useEffect(() => {
@@ -390,13 +426,24 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             />
 
             <Space size={16}>
+              {activeTab === ProfilerDashboardTab.DATA_QUALITY &&
+                !isColumnView && (
+                  <Form.Item className="tw-mb-0 tw-w-40" label="Type">
+                    <Select
+                      options={testCaseTypeOption}
+                      value={selectedTestType}
+                      onChange={handleTestCaseTypeChange}
+                    />
+                  </Form.Item>
+                )}
               {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
-                <Select
-                  className="tw-w-32"
-                  options={testCaseStatusOption}
-                  value={selectedTestCaseStatus}
-                  onChange={handleTestCaseStatusChange}
-                />
+                <Form.Item className="tw-mb-0 tw-w-40" label="Status">
+                  <Select
+                    options={testCaseStatusOption}
+                    value={selectedTestCaseStatus}
+                    onChange={handleTestCaseStatusChange}
+                  />
+                </Form.Item>
               )}
               {activeTab === ProfilerDashboardTab.PROFILER && (
                 <Select

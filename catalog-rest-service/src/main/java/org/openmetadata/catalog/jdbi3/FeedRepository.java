@@ -633,6 +633,21 @@ public class FeedRepository {
         } else {
           // Only data assets are added as about
           List<String> jsons;
+          String userName = null;
+          List<String> teamNames = new ArrayList<>();
+          if (userId != null) {
+            List<EntityReference> teams =
+                populateEntityReferences(
+                    dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM),
+                    Entity.TEAM);
+            teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+            User user = dao.userDAO().findEntityById(UUID.fromString(userId));
+            userName = user.getName();
+          }
+          if (teamNames.isEmpty()) {
+            teamNames = List.of(StringUtils.EMPTY);
+          }
+
           if (paginationType == PaginationType.BEFORE) {
             jsons =
                 dao.feedDAO()
@@ -645,7 +660,10 @@ public class FeedRepository {
                         taskStatus,
                         activeAnnouncement,
                         isResolved,
-                        IS_ABOUT.ordinal());
+                        IS_ABOUT.ordinal(),
+                        userName,
+                        teamNames,
+                        filterType);
           } else {
             jsons =
                 dao.feedDAO()
@@ -658,7 +676,10 @@ public class FeedRepository {
                         taskStatus,
                         activeAnnouncement,
                         isResolved,
-                        IS_ABOUT.ordinal());
+                        IS_ABOUT.ordinal(),
+                        userName,
+                        teamNames,
+                        filterType);
           }
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
@@ -670,7 +691,10 @@ public class FeedRepository {
                       taskStatus,
                       activeAnnouncement,
                       isResolved,
-                      IS_ABOUT.ordinal());
+                      IS_ABOUT.ordinal(),
+                      userName,
+                      teamNames,
+                      filterType);
         }
       } else {
         // userId filter present

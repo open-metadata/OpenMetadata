@@ -260,7 +260,9 @@ const TopicDetailsPage: FunctionComponent = () => {
       getEntityFeedLink(EntityType.TOPIC, topicFQN),
       after,
       threadType,
-      feedType
+      feedType,
+      undefined,
+      USERId
     )
       .then((res) => {
         const { data, paging: pagingObj } = res;
