@@ -48,11 +48,16 @@ export const getTeams = async (
 
 export const getTeamByName = async (
   name: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  include?: string
 ) => {
   const url = getURLWithQueryFields(`/teams/name/${name}`, arrQueryFields);
 
-  const response = await APIClient.get<Team>(url);
+  const response = await APIClient.get<Team>(url, {
+    params: {
+      include,
+    },
+  });
 
   return response.data;
 };
