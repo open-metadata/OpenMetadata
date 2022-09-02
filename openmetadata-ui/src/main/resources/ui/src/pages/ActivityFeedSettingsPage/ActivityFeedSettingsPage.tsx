@@ -4,6 +4,7 @@ import { AxiosError } from 'axios';
 import { cloneDeep, isArray, isUndefined, map, startCase } from 'lodash';
 import React, { Key, useEffect, useState } from 'react';
 import {
+  ActivityFeedSettings,
   getActivityFeedEventFilters,
   updateFilters,
 } from '../../axiosAPIs/eventFiltersAPI';
@@ -12,12 +13,12 @@ import { TERM_ALL } from '../../constants/constants';
 import {
   EventFilter,
   Filters,
-  Settings,
   SettingType,
 } from '../../generated/settings/settings';
 import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './ActivityFeedSettingsPage.style.less';
+import { udpateKeys } from './ActivityFeedSettingsPage.utils';
 
 const ActivityFeedSettingsPage: React.FC = () => {
   const [eventFilters, setEventFilters] = useState<EventFilter[]>();
@@ -44,15 +45,15 @@ const ActivityFeedSettingsPage: React.FC = () => {
     }
   };
 
-  const createActivityFeed = async (req: Settings) => {
+  const createActivityFeed = async (req: ActivityFeedSettings) => {
     try {
       setLoading(true);
-      await updateFilters(req);
-      // const filteredData = data?.filter(
-      //   ({ entityType }) => entityType !== TERM_ALL
-      // );
+      const data = await updateFilters(req);
+      const filteredData = data.config_value?.filter(
+        ({ entityType }) => entityType !== TERM_ALL
+      );
 
-      // setEventFilters(filteredData);
+      setEventFilters(filteredData);
       showSuccessToast(
         jsonData['api-success-messages']['add-settings-success']
       );
@@ -145,25 +146,31 @@ const ActivityFeedSettingsPage: React.FC = () => {
   const onSave = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
     event.stopPropagation();
 
-    if (!isUndefined(updatedTree) && selectedKey) {
-      // const deepClonedTree = cloneDeep(updatedTree);
+    if (!isUndefined(updatedTree) && selectedKey && eventFilters) {
+      const deepClonedTree = cloneDeep(updatedTree);
 
       const data = {
         config_type: SettingType.ActivityFeedFilterSetting,
-        config_value: [],
+        config_value: udpateKeys(deepClonedTree, eventFilters),
         // eventFilters?.map((filter) =>
         //   deepClonedTree[filter.entityType]
-        //     ? map(deepClonedTree, (_value, key) => ({
-        //         entityType: key,
-        //         filters: getPayloadFromSelected(deepClonedTree, key),
-        //       }))
+        //     ? {
+        //         ...filter,
+        //         filters: getPayloadFromSelected(
+        //           deepClonedTree,
+        //           filter.entityType,
+        //           flatMap(
+        //             filter.filters?.map((f) => {
+        //               return f.eventType === EventType.EntityUpdated
+        //                 ? [...(f.include ?? []), ...(f.exclude ?? [])]
+        //                 : [];
+        //             })
+        //           )
+        //         ),
+        //       }
         //     : filter
         // ),
-      } as Settings;
-
-      //   console.log(data);
-
-      //   const value = ;
+      } as ActivityFeedSettings;
 
       createActivityFeed(data);
       setUpdatedTree(undefined);
