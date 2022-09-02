@@ -188,8 +188,9 @@ const GlossaryV1 = ({
 
   const editDisplayNamePermission = useMemo(() => {
     return isGlossaryActive
-      ? glossaryPermission.EditDisplayName
-      : glossaryTermPermission.EditDisplayName;
+      ? glossaryPermission.EditAll || glossaryPermission.EditDisplayName
+      : glossaryTermPermission.EditAll ||
+          glossaryTermPermission.EditDisplayName;
   }, [glossaryPermission, glossaryTermPermission]);
 
   /**
