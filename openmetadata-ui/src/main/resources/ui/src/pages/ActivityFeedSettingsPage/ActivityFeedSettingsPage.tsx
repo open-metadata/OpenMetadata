@@ -87,7 +87,8 @@ const ActivityFeedSettingsPage: React.FC = () => {
               title: startCase(eventType),
               data: include,
               children:
-                include?.length === 1 && include[0] === TERM_ALL
+                (include?.length === 1 && include[0] === TERM_ALL) ||
+                (exclude?.length === 1 && exclude[0] === TERM_ALL)
                   ? undefined
                   : [
                       ...(include?.map((inc) => ({
@@ -224,30 +225,7 @@ const ActivityFeedSettingsPage: React.FC = () => {
                   }
                 />
               </div>
-            ) : //     <Collapse.Panel
-            //       extra={
-            //         <Button
-            //           disabled={
-            //             !updatedTree ||
-            //             isUndefined(updatedTree[entityType]) ||
-            //             isEmpty(updatedTree[entityType])
-            //           }
-            //           type="primary"
-            //           onClick={(event) => onSave(event)}>
-            //           Save
-            //         </Button>
-            //       }
-            //       header={
-            //         <Row>
-            //           <Typography.Text strong>
-            //             {ActivityFeedEntity[entityType]}
-            //           </Typography.Text>
-            //         </Row>
-            //       }
-            //       key={entityType}>
-
-            //     </Collapse.Panel>
-            null}
+            ) : null}
           </>
         ))}
       </Col>

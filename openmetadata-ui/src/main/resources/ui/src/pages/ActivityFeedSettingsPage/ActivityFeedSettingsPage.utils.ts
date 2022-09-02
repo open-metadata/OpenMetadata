@@ -90,6 +90,9 @@ export const udpateKeys = (
               eventList.map((f) => f[2])
             );
             excludeList = xor(filter.include, includeList);
+          } else {
+            includeList = ['all'];
+            excludeList = [];
           }
         } else {
           excludeList = [...(includeList ?? []), ...(excludeList ?? [])];
