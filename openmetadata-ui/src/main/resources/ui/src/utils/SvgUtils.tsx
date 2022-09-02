@@ -24,6 +24,7 @@ import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
+import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
@@ -110,6 +111,7 @@ import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
+import IconAddTest from '../assets/svg/icon-add-test.svg';
 import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
@@ -227,6 +229,7 @@ export const Icons = {
   LINEAGE: 'icon-lineage',
   MANAGE: 'icon-manage',
   HOME: 'icon-home',
+  ADD_TEST: 'icon-add-test',
   GROWTH_ARROW: 'icon-growth-arrow',
   LOSS_ARROW: 'icon-loss-arrow',
   CHECK_CIRCLE: 'icon-check-circle',
@@ -307,6 +310,7 @@ export const Icons = {
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
+  ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -417,6 +421,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO_SMALL:
       IconComponent = LogoMonogram;
+
+      break;
+    case Icons.ADD_TEST:
+      IconComponent = IconAddTest;
 
       break;
     case Icons.WELCOME_POPPER:
@@ -835,6 +843,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ANNOUNCEMENT:
       IconComponent = IconAnnouncements;
+
+      break;
+    case Icons.ANNOUNCEMENT_PURPLE:
+      IconComponent = IconAnnouncementsPurple;
 
       break;
     case Icons.ANNOUNCEMENT_BLACK:

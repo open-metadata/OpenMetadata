@@ -63,6 +63,7 @@ const TestCasesTab = ({
       testCasePageHandler={testCasePageHandler}>
       <Col span={24}>
         <DataQualityTab
+          hasAccess
           testCases={sortedTestCases}
           onTestUpdate={onTestUpdate}
         />

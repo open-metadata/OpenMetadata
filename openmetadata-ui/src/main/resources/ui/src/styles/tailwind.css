@@ -78,7 +78,7 @@
 
   /* Table css start */
   .tableHead-row {
-    @apply tw-border tw-border-main tw-leading-normal;
+    @apply tw-leading-normal;
   }
   .tableHead-cell {
     @apply tw-py-3 tw-px-6 tw-font-medium tw-text-left tw-whitespace-nowrap;
@@ -87,10 +87,10 @@
     @apply tw-text-grey-body;
   }
   .tableBody-row {
-    @apply tw-border tw-border-main hover:tw-bg-body-hover;
+    @apply tw-border-t tw-border-main hover:tw-bg-body-hover;
   }
   .tableBody-cell {
-    @apply tw-py-3 tw-px-6 tw-text-left;
+    @apply tw-py-2 tw-px-6 tw-text-left;
   }
   /* Table css end */
 
@@ -493,5 +493,9 @@
 
   .tw-max-w-75 {
     max-width: 75%;
+  }
+
+  .tw-table-container {
+    @apply tw-bg-white tw-border tw-border-main tw-rounded tw-shadow;
   }
 }

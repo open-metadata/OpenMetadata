@@ -17,11 +17,15 @@ import { EventFilter, Filters } from '../generated/settings/settings';
 
 const BASE_URL = '/settings';
 
+export interface ActivityFeedSettings {
+  config_type: string;
+  config_value: EventFilter[];
+}
+
 export const getActivityFeedEventFilters = async () => {
-  const response = await axiosClient.get<{
-    config_type: string;
-    config_value: EventFilter[];
-  }>(`${BASE_URL}/activityFeedFilterSetting`);
+  const response = await axiosClient.get<ActivityFeedSettings>(
+    `${BASE_URL}/activityFeedFilterSetting`
+  );
 
   return response.data.config_value;
 };
@@ -37,11 +41,30 @@ export const createOrUpdateActivityFeedEventFilter = async (
 
   const response = await axiosClient.put<
     Filters[],
-    AxiosResponse<{
-      config_type: string;
-      config_value: EventFilter[];
-    }>
+    AxiosResponse<ActivityFeedSettings>
   >(url, payload, configOptions);
 
   return response.data.config_value;
+};
+
+export const updateFilters = async (data: ActivityFeedSettings) => {
+  const url = `${BASE_URL}`;
+
+  const response = await axiosClient.put<
+    ActivityFeedSettings,
+    AxiosResponse<ActivityFeedSettings>
+  >(url, data);
+
+  return response.data;
+};
+
+export const resetAllFilters = async () => {
+  const url = `${BASE_URL}/resetFilters`;
+
+  const response = await axiosClient.post<
+    null,
+    AxiosResponse<ActivityFeedSettings>
+  >(url);
+
+  return response.data;
 };

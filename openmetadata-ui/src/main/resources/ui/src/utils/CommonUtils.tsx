@@ -56,6 +56,7 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -95,12 +96,6 @@ export const arraySorterByKey = (
 
 export const isEven = (value: number): boolean => {
   return value % 2 === 0;
-};
-
-export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
-  const arrColFQN = columnFQN.split(FQN_SEPARATOR_CHAR);
-
-  return arrColFQN.slice(0, arrColFQN.length - 1).join(FQN_SEPARATOR_CHAR);
 };
 
 export const getPartialNameFromFQN = (
@@ -161,6 +156,14 @@ export const getPartialNameFromTableFQN = (
   }
 
   return arrPartialName.join(joinSeparator);
+};
+
+export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
+  return getPartialNameFromTableFQN(
+    columnFQN,
+    [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+    '.'
+  );
 };
 
 export const getCurrentUserId = (): string => {
@@ -641,6 +644,7 @@ export const getEntityName = (
     | Policy
     | Role
     | GlossaryTerm
+    | Webhook
 ) => {
   return entity?.displayName || entity?.name || '';
 };
@@ -893,4 +897,14 @@ export const getDiffArray = (
   toCompare: string[]
 ): string[] => {
   return differenceWith(compareWith, toCompare, isEqual);
+};
+
+export const getHostNameFromURL = (url: string) => {
+  if (isValidUrl(url)) {
+    const domain = new URL(url);
+
+    return domain.hostname;
+  } else {
+    return '';
+  }
 };

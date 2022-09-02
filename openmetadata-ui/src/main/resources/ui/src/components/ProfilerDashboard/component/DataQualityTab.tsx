@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
@@ -20,10 +20,11 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
 import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
 import { getTableTabPath } from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
-import SVGIcons from '../../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getEntityFqnFromEntityLink,
   getTestResultBadgeIcon,
@@ -31,12 +32,12 @@ import {
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
-import TestActions from './TestActions';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   testCases,
   onTestUpdate,
+  hasAccess,
 }) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
   const [editTestCase, setEditTestCase] = useState<TestCase>();
@@ -117,16 +118,56 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 100,
         render: (_, record) => {
           return (
-            <TestActions
-              record={record}
-              onTestEdit={(data) => setEditTestCase(data)}
-              onTestSelect={(data) => setSelectedTestCase(data)}
-            />
+            <Row align="middle">
+              <Tooltip
+                placement="bottomLeft"
+                title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+                <Button
+                  className="flex-center"
+                  disabled={!hasAccess}
+                  icon={
+                    <SVGIcons
+                      alt="Delete"
+                      className="tw-h-4"
+                      icon={Icons.DELETE}
+                    />
+                  }
+                  type="text"
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of delete button
+                    e.stopPropagation();
+                    setSelectedTestCase(record);
+                  }}
+                />
+              </Tooltip>
+              <Tooltip
+                placement="bottomRight"
+                title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                <Button
+                  className="flex-center"
+                  disabled={!hasAccess}
+                  icon={
+                    <SVGIcons
+                      alt="edit"
+                      className="tw-h-4"
+                      icon={Icons.EDIT}
+                      title="Edit"
+                    />
+                  }
+                  type="text"
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of edit button
+                    e.stopPropagation();
+                    setEditTestCase(record);
+                  }}
+                />
+              </Tooltip>
+            </Row>
           );
         },
       },
     ];
-  }, []);
+  }, [hasAccess]);
 
   return (
     <>
