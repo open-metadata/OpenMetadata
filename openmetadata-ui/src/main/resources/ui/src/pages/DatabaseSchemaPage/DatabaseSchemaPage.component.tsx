@@ -514,12 +514,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTableList = () => {
     return (
-      <Fragment>
+      <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-shadow tw-mb-4">
         <table
-          className="tw-bg-white tw-w-full tw-mb-4"
+          className="tw-bg-white tw-w-full"
           data-testid="databaseSchema-tables">
           <thead data-testid="table-header">
-            <tr className="tableHead-row">
+            <tr className="tableHead-row tw-border-0">
               <th className="tableHead-cell" data-testid="header-name">
                 Table Name
               </th>
@@ -533,7 +533,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               tableData.map((table, index) => (
                 <tr
                   className={classNames(
-                    'tableBody-row',
+                    'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0',
                     !isEven(index + 1) ? 'odd-row' : null
                   )}
                   data-testid="table-column"
@@ -565,7 +565,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             )}
           </tbody>
         </table>
-      </Fragment>
+      </div>
     );
   };
 

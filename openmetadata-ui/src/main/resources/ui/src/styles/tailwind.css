@@ -90,7 +90,7 @@
     @apply tw-border tw-border-main hover:tw-bg-body-hover;
   }
   .tableBody-cell {
-    @apply tw-py-3 tw-px-6 tw-text-left;
+    @apply tw-py-2 tw-px-6 tw-text-left;
   }
   /* Table css end */
 

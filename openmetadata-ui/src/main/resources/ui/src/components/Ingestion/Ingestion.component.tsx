@@ -426,12 +426,14 @@ const Ingestion: React.FC<IngestionProps> = ({
           </div>
         </div>
         {getSearchedIngestions().length ? (
-          <div className="tw-table-responsive tw-mb-6">
+          <div className="tw-table-responsive tw-mb-6 tw-bg-white tw-border tw-border-main tw-rounded tw-shadow">
             <table
               className="tw-bg-white tw-w-full tw-mb-4"
               data-testid="ingestion-table">
               <thead>
-                <tr className="tableHead-row" data-testid="table-header">
+                <tr
+                  className="tableHead-row tw-border-0"
+                  data-testid="table-header">
                   <th className="tableHead-cell">Name</th>
                   <th className="tableHead-cell">Type</th>
                   <th className="tableHead-cell">Schedule</th>
@@ -443,7 +445,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 {getSearchedIngestions().map((ingestion, index) => (
                   <tr
                     className={classNames(
-                      'tableBody-row',
+                      'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0',
                       !isEven(index + 1) ? 'odd-row' : null
                     )}
                     key={index}>

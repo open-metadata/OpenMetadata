@@ -101,13 +101,15 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
         </button>
       ) : null}
 
-      <div className="tw-table-responsive tw-overflow-x-auto" ref={tableRef}>
+      <div
+        className="tw-table-responsive tw-overflow-x-auto tw-bg-white tw-border tw-border-main tw-rounded tw-shadow"
+        ref={tableRef}>
         {sampleData?.rows?.length && sampleData?.columns?.length ? (
           <table
             className="tw-min-w-max tw-w-full tw-table-auto"
             data-testid="sample-data-table">
             <thead>
-              <tr className="tableHead-row">
+              <tr className="tableHead-row tw-border-0">
                 {sampleData.columns.map((column) => {
                   return (
                     <th
@@ -130,7 +132,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                 return (
                   <tr
                     className={classNames(
-                      'tableBody-row',
+                      'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0',
                       !isEven(rowIndex + 1) ? 'odd-row' : null
                     )}
                     data-testid="row"

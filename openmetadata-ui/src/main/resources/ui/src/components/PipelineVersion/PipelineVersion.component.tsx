@@ -246,10 +246,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                       description={getPipelineDescription()}
                     />
                   </div>
-                  <div className="tw-table-responsive tw-my-6 tw-col-span-full">
+                  <div className="tw-table-responsive tw-my-6 tw-col-span-full tw-bg-white tw-border tw-border-main tw-rounded tw-shadow">
                     <table className="tw-w-full" data-testid="schema-table">
                       <thead>
-                        <tr className="tableHead-row">
+                        <tr className="tableHead-row tw-border-0">
                           <th className="tableHead-cell">Task Name</th>
                           <th className="tableHead-cell">Description</th>
                           <th className="tableHead-cell">Task Type</th>
@@ -260,7 +260,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                           (task, index) => (
                             <tr
                               className={classNames(
-                                'tableBody-row',
+                                'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0',
                                 !isEven(index + 1) ? 'odd-row' : null
                               )}
                               key={index}>
