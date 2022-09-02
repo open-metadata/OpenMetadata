@@ -504,18 +504,20 @@ const PoliciesDetailPage = () => {
                             direction="vertical"
                             size="middle"
                             style={{ display: 'flex' }}>
-                            <Row data-testid="description">
-                              <Col span={2}>
-                                <Typography.Text className="tw-text-grey-muted">
-                                  Description:
-                                </Typography.Text>
-                              </Col>
-                              <Col span={22}>
-                                <RichTextEditorPreviewer
-                                  markdown={rule.description || ''}
-                                />
-                              </Col>
-                            </Row>
+                            {rule.description && (
+                              <Row data-testid="description">
+                                <Col span={2}>
+                                  <Typography.Text className="tw-text-grey-muted">
+                                    Description:
+                                  </Typography.Text>
+                                </Col>
+                                <Col span={22}>
+                                  <RichTextEditorPreviewer
+                                    markdown={rule.description || ''}
+                                  />
+                                </Col>
+                              </Row>
+                            )}
 
                             <Row data-testid="resources">
                               <Col span={2}>
@@ -557,16 +559,14 @@ const PoliciesDetailPage = () => {
                               </Col>
                             </Row>
                             {rule.condition && (
-                              <Row>
+                              <Row data-testid="condition">
                                 <Col span={2}>
                                   <Typography.Text className="tw-text-grey-muted">
                                     Condition:
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
-                                  <code data-testid="condition">
-                                    {rule.condition}
-                                  </code>
+                                  <code>{rule.condition}</code>
                                 </Col>
                               </Row>
                             )}

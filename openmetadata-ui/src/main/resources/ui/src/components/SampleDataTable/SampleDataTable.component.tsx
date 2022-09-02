@@ -155,7 +155,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
             </tbody>
           </table>
         ) : (
-          <div className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+          <div className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8">
             <div className="tw-mt-12">
               <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
             </div>
