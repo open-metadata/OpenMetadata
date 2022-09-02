@@ -199,11 +199,14 @@ const RolesDetailPage = () => {
   );
 
   const fetchRolePermission = async () => {
+    setLoading(true);
     try {
       const response = await getEntityPermission(ResourceEntity.ROLE, role.id);
       setRolePermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -196,6 +196,7 @@ const PoliciesDetailPage = () => {
   );
 
   const fetchPolicyPermission = async () => {
+    setLoading(true);
     try {
       const response = await getEntityPermission(
         ResourceEntity.POLICY,
@@ -204,6 +205,8 @@ const PoliciesDetailPage = () => {
       setPolicyPermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
     }
   };
 
