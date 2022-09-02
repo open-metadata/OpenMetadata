@@ -557,21 +557,12 @@ const GlossaryV1 = ({
     </PageLayout>
   ) : (
     <PageLayout>
-      <ErrorPlaceHolder>
-        <p className="tw-text-center">No glossaries found</p>
-        <p className="tw-text-center">
-          <Button
-            className="tw-h-8 tw-rounded tw-my-3"
-            data-testid="add-webhook-button"
-            disabled={!createGlossaryPermission}
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={handleAddGlossaryClick}>
-            Add New Glossary
-          </Button>
-        </p>
-      </ErrorPlaceHolder>
+      <ErrorPlaceHolder
+        buttonLabel="Add New Glossary"
+        buttonListener={handleAddGlossaryClick}
+        heading="glossaries"
+        type="ADD_DATA"
+      />
     </PageLayout>
   );
 };

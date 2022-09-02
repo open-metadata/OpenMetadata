@@ -62,6 +62,7 @@ import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
+import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
@@ -351,6 +352,7 @@ export const Icons = {
   MSTEAMS: 'msteams',
   MSTEAMS_GREY: 'msteams-grey',
   ALL_ACTIVITY: 'all-activity',
+  FILTER_PRIMARY: 'filter-primary',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -1026,6 +1028,10 @@ const SVGIcons: FunctionComponent<Props> = ({
 
     case Icons.ALL_ACTIVITY:
       IconComponent = IconAllActivity;
+
+      break;
+    case Icons.FILTER_PRIMARY:
+      IconComponent = IconFilterPrimary;
 
       break;
     default:

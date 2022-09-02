@@ -42,7 +42,7 @@ const PageNotFound = () => {
                 </Button>
               </Link>
               <Link to={ROUTES.EXPLORE}>
-                <Button className="tw-opacity-40" theme="primary">
+                <Button theme="primary" variant="outlined">
                   Explore
                 </Button>
               </Link>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tooltip } from 'antd';
+import { Card, Col, Row, Tooltip, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -23,7 +23,7 @@ import {
 } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
-  NoDataFoundPlaceHolder,
+  AddPlaceHolder,
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -63,6 +63,8 @@ const Services = ({
   currentPage,
   onPageChange,
 }: ServicesProps) => {
+  const { Paragraph, Link: AntdLink } = Typography;
+
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
@@ -184,10 +186,23 @@ const Services = ({
       ) : (
         <div className="tw-flex tw-items-center tw-flex-col">
           <div className="tw-mt-24">
-            <img alt="No Service" src={NoDataFoundPlaceHolder} width={250} />
+            <img alt="No Service" src={AddPlaceHolder} width={120} />
           </div>
-          <div className="tw-mt-11">
-            <p className="tw-text-lg tw-text-center">No services found</p>
+          <div className="tw-mt-8 tw-max-w-x tw-text-center">
+            <Paragraph style={{ marginBottom: '4px' }}>
+              {' '}
+              Adding a new {servicesDisplayName[serviceName]} is easy, just give
+              it a spin!
+            </Paragraph>
+            <Paragraph>
+              {' '}
+              Still need help? Refer to our{' '}
+              <AntdLink href="https://ant.design" target="_blank">
+                docs
+              </AntdLink>{' '}
+              for more information.
+            </Paragraph>
+
             <div className="tw-text-lg tw-text-center">
               <NonAdminAction
                 position="bottom"
@@ -198,10 +213,9 @@ const Services = ({
                   theme="primary"
                   variant="outlined"
                   onClick={handleAddServiceClick}>
-                  Click here
+                  Add new {servicesDisplayName[serviceName]}
                 </Button>
               </NonAdminAction>{' '}
-              to add new {servicesDisplayName[serviceName]}
             </div>
           </div>
         </div>

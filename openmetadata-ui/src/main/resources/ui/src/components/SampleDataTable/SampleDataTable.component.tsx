@@ -16,7 +16,7 @@ import {
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Empty, Space } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, {
@@ -27,6 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
@@ -45,6 +46,7 @@ interface Props {
 }
 
 const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
+  const { Paragraph } = Typography;
   const tableRef = useRef<HTMLDivElement>(null);
   const [scrollOffset, setScrollOffSet] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -153,27 +155,30 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
             </tbody>
           </table>
         ) : (
-          <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-            <Empty
-              description={
-                <>
-                  <p>No sample data available</p>
-                  <p className="tw-mt-2">
-                    To view Sample Data, run the Profiler Ingestion. Please
-                    refer to this doc to schedule the{' '}
-                    <Link
-                      className="tw-ml-1"
-                      target="_blank"
-                      to={{
-                        pathname:
-                          'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
-                      }}>
-                      Profiler Ingestion
-                    </Link>
-                  </p>
-                </>
-              }
-            />
+          <div className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+            <div className="tw-mt-12">
+              <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
+            </div>
+            <div className="tw-mt-8 tw-max-w-x tw-text-center">
+              <Paragraph style={{ marginBottom: '4px' }}>
+                {' '}
+                No sample data available
+              </Paragraph>
+              <Paragraph>
+                {' '}
+                To view Sample Data, run the Profiler Ingestion. Please refer to
+                this doc to schedule the{' '}
+                <Link
+                  className="tw-ml-1"
+                  target="_blank"
+                  to={{
+                    pathname:
+                      'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+                  }}>
+                  Profiler Ingestion
+                </Link>
+              </Paragraph>
+            </div>
           </div>
         )}
       </div>
