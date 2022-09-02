@@ -36,7 +36,6 @@ import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
-  getUserPath,
   PAGE_SIZE,
 } from '../../constants/constants';
 import {
@@ -61,7 +60,7 @@ import jsonData from '../../jsons/en';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import UserCard from '../../pages/teams/UserCard';
 import {
-  getEntitiesText,
+  commonUserDetailColumns,
   getEntityName,
   hasEditAccess,
 } from '../../utils/CommonUtils';
@@ -187,32 +186,7 @@ const TeamDetailsV1 = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      {
-        title: 'Username',
-        dataIndex: 'username',
-        key: 'username',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getUserPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: 'Teams',
-        dataIndex: 'teams',
-        key: 'teams',
-        render: (teams: EntityReference[]) =>
-          getEntitiesText(teams, EntityType.TEAM),
-      },
-      {
-        title: 'Roles',
-        dataIndex: 'roles',
-        key: 'roles',
-        render: (roles: EntityReference[]) =>
-          getEntitiesText(roles, EntityType.ROLE),
-      },
+      ...commonUserDetailColumns,
       {
         title: 'Actions',
         dataIndex: 'actions',
@@ -488,13 +462,15 @@ const TeamDetailsV1 = ({
     return `Are you sure you want to ${text}`;
   };
 
-  const openGroupIcon = useMemo(() => {
-    if (currentTeam.isJoinable) {
-      return <SVGIcons alt="Delete" icon={Icons.OPEN_LOCK} />;
-    } else {
-      return <SVGIcons alt="Delete" icon={Icons.CLOSED_LOCK} />;
-    }
-  }, [currentTeam.isJoinable]);
+  const openGroupIcon = useMemo(
+    () => (
+      <SVGIcons
+        alt="Delete"
+        icon={currentTeam.isJoinable ? Icons.OPEN_LOCK : Icons.CLOSED_LOCK}
+      />
+    ),
+    [currentTeam.isJoinable]
+  );
 
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
@@ -516,7 +492,6 @@ const TeamDetailsV1 = ({
                   <Switch
                     checked={currentTeam.isJoinable}
                     className="tw-mr-2"
-                    disabled={!entityPermissions.EditAll}
                     size="small"
                   />
                 </Col>

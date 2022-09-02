@@ -16,17 +16,19 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
-import { getUserPath, PAGE_SIZE, ROUTES } from '../../constants/constants';
+import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { EntityType } from '../../enums/entity.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Operation } from '../../generated/entity/policies/policy';
-import { EntityReference, User } from '../../generated/entity/teams/user';
+import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { getEntitiesText, getEntityName } from '../../utils/CommonUtils';
+import {
+  commonUserDetailColumns,
+  getEntityName,
+} from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -122,32 +124,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      {
-        title: 'Username',
-        dataIndex: 'username',
-        key: 'username',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getUserPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: 'Teams',
-        dataIndex: 'teams',
-        key: 'teams',
-        render: (teams: EntityReference[]) =>
-          getEntitiesText(teams, EntityType.TEAM),
-      },
-      {
-        title: 'Roles',
-        dataIndex: 'roles',
-        key: 'roles',
-        render: (roles: EntityReference[]) =>
-          getEntitiesText(roles, EntityType.ROLE),
-      },
+      ...commonUserDetailColumns,
       {
         title: 'Actions',
         dataIndex: 'actions',
