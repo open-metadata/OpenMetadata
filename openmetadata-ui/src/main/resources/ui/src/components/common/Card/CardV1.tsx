@@ -13,13 +13,11 @@
 
 import { Card } from 'antd';
 import { lowerCase } from 'lodash';
-import React, { CSSProperties } from 'react';
-interface CardProps {
-  children: React.ReactElement | string;
+import React, { HTMLAttributes } from 'react';
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   id: string;
   heading?: string;
   classes?: string;
-  style?: CSSProperties;
 }
 
 const CardV1 = ({ children, id, heading, classes, style }: CardProps) => {

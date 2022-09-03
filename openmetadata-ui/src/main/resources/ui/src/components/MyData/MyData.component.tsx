@@ -68,13 +68,13 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getLeftPanel = () => {
     return (
-      <div>
+      <>
         <MyAssetStats entityCounts={entityCounts} />
         <div className="tw-mb-5" />
         <RecentlyViewed />
         <div className="tw-mb-5" />
         <RecentSearchedTermsAntd />
-      </div>
+      </>
     );
   };
 
@@ -82,7 +82,7 @@ const MyData: React.FC<MyDataProps> = ({
     const currentUserDetails = AppState.getCurrentUserDetails();
 
     return (
-      <div>
+      <>
         {/* Pending task count card */}
         {pendingTaskCount ? (
           <div className="tw-mb-5" data-testid="my-tasks-container ">
@@ -171,7 +171,7 @@ const MyData: React.FC<MyDataProps> = ({
           />
         </div>
         <div className="tw-mt-5" />
-      </div>
+      </>
     );
   }, [ownedData, followedData, pendingTaskCount]);
 
@@ -220,10 +220,7 @@ const MyData: React.FC<MyDataProps> = ({
   );
 
   return (
-    <PageLayoutV1
-      defaultLeftPanelStyle={false}
-      leftPanel={getLeftPanel()}
-      rightPanel={getRightPanel()}>
+    <PageLayoutV1 leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (

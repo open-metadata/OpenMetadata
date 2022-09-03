@@ -17,7 +17,6 @@ import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
-  defaultLeftPanelStyle?: boolean;
   header?: ReactNode;
   rightPanel?: ReactNode;
 }

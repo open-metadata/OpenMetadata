@@ -13,9 +13,9 @@
 
 import { Card } from 'antd';
 import { lowerCase } from 'lodash';
-import React from 'react';
+import React, { HTMLAttributes } from 'react';
 
-interface CardProps {
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: React.ReactElement | string;
   id: string;
   classes?: string;
