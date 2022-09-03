@@ -2,10 +2,9 @@ import { Card, Popover, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TableDetail } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getCategory } from '../../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';
 import { TagsCategory } from '../../../pages/tags/tagsTypes';
@@ -14,7 +13,6 @@ import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
 import Loader from '../../Loader/Loader';
 import { Status } from '../../ManageTab/ManageTab.interface';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
 import './tier-card.css';
 
 export interface TierCardProps {
@@ -107,35 +105,25 @@ const TierCard = ({
         }}
         title={<Typography.Title level={5}>Edit Tier</Typography.Title>}>
         {tierData.map((card, i) => (
-          <NonAdminAction
-            html={
-              <Fragment>
-                <p>You need to be owner to perform this action</p>
-                <p>Claim ownership from above </p>
-              </Fragment>
-            }
-            isOwner={Boolean(owner && !currentUser)}
+          <CardListItem
+            card={card}
+            className={classNames(
+              'tw-mb-0 tw-rounded-t-none pl-[16px]',
+              {
+                'tw-rounded-t-md': i === 0,
+              },
+              {
+                'tw-rounded-b-md ': i === tierData.length - 1,
+              }
+            )}
+            index={i}
+            isActive={activeTier === card.id}
+            isSelected={card.id === currentTier}
             key={i}
-            permission={Operation.EditTags}
-            position="left">
-            <CardListItem
-              card={card}
-              className={classNames(
-                'tw-mb-0 tw-shadow tw-rounded-t-none pl-[16px]',
-                {
-                  'tw-rounded-t-md': i === 0,
-                },
-                {
-                  'tw-rounded-b-md ': i === tierData.length - 1,
-                }
-              )}
-              isActive={activeTier === card.id}
-              isSelected={card.id === currentTier}
-              tierStatus={statusTier}
-              onCardSelect={handleCardSelection}
-              onSave={handleTierSave}
-            />
-          </NonAdminAction>
+            tierStatus={statusTier}
+            onCardSelect={handleCardSelection}
+            onSave={handleTierSave}
+          />
         ))}
       </Card>
     );
