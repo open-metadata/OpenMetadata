@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space, Tag } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -22,6 +23,7 @@ import {
   isNil,
   isNull,
   isUndefined,
+  uniqueId,
 } from 'lodash';
 import {
   EntityFieldThreadCount,
@@ -32,6 +34,7 @@ import {
   RecentlyViewedData,
 } from 'Models';
 import React, { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
@@ -39,6 +42,7 @@ import { Button } from '../components/buttons/Button/Button';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getUserPath,
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
@@ -68,7 +72,12 @@ import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
-import { getExplorePathWithInitFilters } from './RouterUtils';
+import { LIST_CAP } from './PermissionsUtils';
+import {
+  getExplorePathWithInitFilters,
+  getRoleWithFqnPath,
+  getTeamsWithFqnPath,
+} from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 import { TASK_ENTITIES } from './TasksUtils';
@@ -774,35 +783,6 @@ export const showPagination = (paging: Paging) => {
   return !isNil(paging.after) || !isNil(paging.before);
 };
 
-export const getTeamsText = (teams: EntityReference[]) => {
-  return teams.length === 0 ? (
-    'No teams'
-  ) : teams.length > 1 ? (
-    <span>
-      {getEntityName(teams[0])}, &{' '}
-      <Popover
-        content={
-          <span>
-            {teams.map((t, i) => {
-              return i >= 1 ? (
-                <span className="tw-block tw-text-left" key={i}>
-                  {getEntityName(t)}
-                </span>
-              ) : null;
-            })}
-          </span>
-        }
-        trigger="hover">
-        <span className="tw-underline tw-cursor-pointer">
-          {teams.length - 1} more
-        </span>
-      </Popover>
-    </span>
-  ) : (
-    `${getEntityName(teams[0])}`
-  );
-};
-
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-IN', { maximumSignificantDigits: 3 }).format(
     number
@@ -908,3 +888,114 @@ export const getHostNameFromURL = (url: string) => {
     return '';
   }
 };
+
+export const commonUserDetailColumns: ColumnsType<User> = [
+  {
+    title: 'Username',
+    dataIndex: 'username',
+    key: 'username',
+    render: (_, record) => (
+      <Link
+        className="hover:tw-underline tw-cursor-pointer"
+        to={getUserPath(record.fullyQualifiedName || record.name)}>
+        {getEntityName(record)}
+      </Link>
+    ),
+  },
+  {
+    title: 'Teams',
+    dataIndex: 'teams',
+    key: 'teams',
+    render: (_, record) => {
+      const listLength = record.teams?.length ?? 0;
+      const hasMore = listLength > LIST_CAP;
+
+      if (isUndefined(record.teams) || isEmpty(record.teams)) {
+        return <>No Team</>;
+      } else {
+        return (
+          <Space wrap data-testid="policy-link" size={4}>
+            {record.teams.slice(0, LIST_CAP).map((team) => (
+              <Link
+                className="hover:tw-underline tw-cursor-pointer"
+                key={uniqueId()}
+                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                {getEntityName(team)}
+              </Link>
+            ))}
+            {hasMore && (
+              <Popover
+                className="tw-cursor-pointer"
+                content={
+                  <Space wrap size={4}>
+                    {record.teams.slice(LIST_CAP).map((team) => (
+                      <Link
+                        className="hover:tw-underline tw-cursor-pointer"
+                        key={uniqueId()}
+                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                        {getEntityName(team)}
+                      </Link>
+                    ))}
+                  </Space>
+                }
+                overlayClassName="tw-w-40 tw-text-center"
+                trigger="click">
+                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                  listLength - LIST_CAP
+                } more`}</Tag>
+              </Popover>
+            )}
+          </Space>
+        );
+      }
+    },
+  },
+  {
+    title: 'Roles',
+    dataIndex: 'roles',
+    key: 'roles',
+    render: (_, record) => {
+      const listLength = record.roles?.length ?? 0;
+      const hasMore = listLength > LIST_CAP;
+
+      if (isUndefined(record.roles) || isEmpty(record.roles)) {
+        return <>No Role</>;
+      } else {
+        return (
+          <Space wrap data-testid="policy-link" size={4}>
+            {record.roles.slice(0, LIST_CAP).map((role) => (
+              <Link
+                className="hover:tw-underline tw-cursor-pointer"
+                key={uniqueId()}
+                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                {getEntityName(role)}
+              </Link>
+            ))}
+            {hasMore && (
+              <Popover
+                className="tw-cursor-pointer"
+                content={
+                  <Space wrap size={4}>
+                    {record.roles.slice(LIST_CAP).map((role) => (
+                      <Link
+                        className="hover:tw-underline tw-cursor-pointer"
+                        key={uniqueId()}
+                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                        {getEntityName(role)}
+                      </Link>
+                    ))}
+                  </Space>
+                }
+                overlayClassName="tw-w-40 tw-text-center"
+                trigger="click">
+                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                  listLength - LIST_CAP
+                } more`}</Tag>
+              </Popover>
+            )}
+          </Space>
+        );
+      }
+    },
+  },
+];

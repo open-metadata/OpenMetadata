@@ -33,6 +33,7 @@ import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
+import IconClosedLock from '../assets/svg/closed-lock.svg';
 import IconComments from '../assets/svg/comment.svg';
 import IconTaskClose from '../assets/svg/complete.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
@@ -136,6 +137,7 @@ import IconMinus from '../assets/svg/minus.svg';
 import IconMlModal from '../assets/svg/mlmodal.svg';
 import IconMSTeamsGrey from '../assets/svg/ms-teams-grey.svg';
 import IconMSTeams from '../assets/svg/ms-teams.svg';
+import IconOpenLock from '../assets/svg/open-lock.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
@@ -353,6 +355,8 @@ export const Icons = {
   MSTEAMS: 'msteams',
   MSTEAMS_GREY: 'msteams-grey',
   ALL_ACTIVITY: 'all-activity',
+  OPEN_LOCK: 'open-lock',
+  CLOSED_LOCK: 'closed-lock',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -1034,6 +1038,17 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAllActivity;
 
       break;
+
+    case Icons.OPEN_LOCK:
+      IconComponent = IconOpenLock;
+
+      break;
+
+    case Icons.CLOSED_LOCK:
+      IconComponent = IconClosedLock;
+
+      break;
+
     default:
       IconComponent = null;
 
