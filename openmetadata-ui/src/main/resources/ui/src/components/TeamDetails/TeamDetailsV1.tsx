@@ -356,7 +356,7 @@ const TeamDetailsV1 = ({
       return updateTeamHandler(updatedData);
     }
 
-    return Promise.reject();
+    return;
   };
 
   const handleTeamSearch = (value: string) => {

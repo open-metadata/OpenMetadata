@@ -1,4 +1,4 @@
-import { Dropdown, Menu, Space } from 'antd';
+import { Button as AntdButton, Dropdown, Menu, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { isString, isUndefined } from 'lodash';
@@ -287,9 +287,11 @@ const EntitySummaryDetails = ({
                 overlay={<Menu items={getTeamTypeMenuItems(updateTeamType)} />}
                 placement="bottomRight"
                 trigger={['click']}>
-                <span className="tw-flex" data-testid={`edit-${data.key}-icon`}>
+                <AntdButton
+                  className="tw-flex"
+                  data-testid={`edit-${data.key}-icon`}>
                   {updateTeamType ? <EditIcon /> : null}
-                </span>
+                </AntdButton>
               </Dropdown>
             </>
           ) : (
