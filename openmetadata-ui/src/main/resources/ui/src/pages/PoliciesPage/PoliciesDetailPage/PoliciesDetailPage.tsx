@@ -481,14 +481,17 @@ const PoliciesDetailPage = () => {
                     size={20}>
                     {policy.rules.map((rule) => (
                       <Card key={rule.name || 'rule'}>
-                        <div className="tw-w-full tw-flex tw-justify-between tw-pb-7">
+                        <Space
+                          align="baseline"
+                          className="tw-w-full tw-justify-between tw-pb-5"
+                          direction="horizontal">
                           <Typography.Text
                             className="tw-font-medium tw-text-base tw-text-grey-body"
                             data-testid="rule-name">
                             {rule.name}
                           </Typography.Text>
                           {getRuleActionElement(rule)}
-                        </div>
+                        </Space>
 
                         <Space
                           className="tw-w-full"
