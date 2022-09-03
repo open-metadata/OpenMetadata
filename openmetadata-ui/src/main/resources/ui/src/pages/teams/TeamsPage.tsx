@@ -188,15 +188,7 @@ const TeamsPage = () => {
     try {
       const data = await getTeamByName(
         name,
-        [
-          'users',
-          'owns',
-          'defaultRoles',
-          'policies',
-          'owner',
-          'parents',
-          'children',
-        ],
+        ['users', 'owns', 'defaultRoles', 'policies', 'owner', 'parents'],
         'all'
       );
 

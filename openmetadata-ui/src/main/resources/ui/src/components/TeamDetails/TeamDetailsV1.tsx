@@ -782,6 +782,7 @@ const TeamDetailsV1 = ({
                 {entityPermissions.EditAll && (
                   <ManageButton
                     afterDeleteAction={afterDeleteAction}
+                    allowSoftDelete={!currentTeam.deleted}
                     buttonClassName="tw-p-4"
                     canDelete={entityPermissions.EditAll}
                     entityId={currentTeam.id}

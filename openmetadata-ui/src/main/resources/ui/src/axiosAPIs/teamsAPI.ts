@@ -37,7 +37,7 @@ export const getTeams = async (
     limit: 100000,
     ...params,
   };
-  const url = getURLWithQueryFields('/teams', arrQueryFields);
+  const url = getURLWithQueryFields('/teams');
 
   const response = await APIClient.get<{ data: Team[]; paging: Paging }>(url, {
     params: updatedParams,
