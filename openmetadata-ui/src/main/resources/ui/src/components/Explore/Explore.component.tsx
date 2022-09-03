@@ -648,7 +648,7 @@ const Explore: React.FC<ExploreProps> = ({
   const fetchLeftPanel = () => {
     return (
       <LeftPanelCard id="explorer">
-        <div className="tw-py-3">
+        <div className="tw-py-3" data-testid="data-summary-container">
           <div className="tw-w-64 tw-px-3 tw-flex-shrink-0">
             <Button
               className={classNames('tw-underline tw-pb-4')}
