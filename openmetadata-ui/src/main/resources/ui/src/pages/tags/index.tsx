@@ -509,7 +509,7 @@ const TagsPage = () => {
   };
 
   return (
-    <PageContainerV1 className="tw-py-4">
+    <PageContainerV1>
       <PageLayoutV1 leftPanel={fetchLeftPanel()}>
         {isLoading ? (
           <Loader />

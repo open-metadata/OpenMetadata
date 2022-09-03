@@ -37,7 +37,10 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Row className={className} gutter={[16, 16]} style={pageContainerStyles}>
       {leftPanel && (
-        <Col flex="284px" id="left-panelV1">
+        <Col
+          className="page-layout-v1-vertical-scroll"
+          flex="284px"
+          id="left-panelV1">
           {leftPanel}
         </Col>
       )}
@@ -53,7 +56,10 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         {children}
       </Col>
       {rightPanel && (
-        <Col flex="284px" id="right-panelV1">
+        <Col
+          className="page-layout-v1-vertical-scroll"
+          flex="284px"
+          id="right-panelV1">
           {rightPanel}
         </Col>
       )}

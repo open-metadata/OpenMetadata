@@ -268,10 +268,6 @@
     @apply tw-border-b tw-border-separator;
   }
 
-  .activeCategory {
-    @apply tw-bg-primary-lite tw-border-l-2 tw-border-primary;
-  }
-
   .activeCategory .label-category {
     @apply tw-text-primary;
   }
