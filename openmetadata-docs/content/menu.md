@@ -441,6 +441,10 @@ site_menu:
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
     url: /openmetadata/ingestion/workflows/profiler/metrics
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality 
+    url: /openmetadata/ingestion/workflows/data-quality
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality / Tests
+    url: /openmetadata/ingestion/workflows/data-quality/tests
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
   - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually
