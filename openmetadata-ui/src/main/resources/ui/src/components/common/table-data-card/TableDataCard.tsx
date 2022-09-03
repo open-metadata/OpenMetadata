@@ -26,14 +26,22 @@ import React, { FunctionComponent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+  ROUTES,
+} from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { TableType } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityId, getEntityName } from '../../../utils/CommonUtils';
+import {
+  getEntityId,
+  getEntityName,
+  getEntityPlaceHolder,
+} from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
@@ -91,11 +99,21 @@ const TableDataCard: FunctionComponent<Props> = ({
   const OtherDetails: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value: getEntityName(owner),
+      value:
+        owner?.type === 'team'
+          ? getTeamAndUserDetailsPath(owner?.name || '')
+          : owner?.type === 'user'
+          ? getUserPath(owner?.fullyQualifiedName ?? '')
+          : '',
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
       id: getEntityId(owner),
-      avatarWidth: '16',
+      isEntityDetails: true,
+      isLink: true,
+      openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
-      isEntityCard: true,
     },
     { key: 'Tier', value: getTier() },
   ];

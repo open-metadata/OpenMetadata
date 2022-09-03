@@ -380,7 +380,7 @@ const EntityTable = ({
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -413,7 +413,7 @@ const EntityTable = ({
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
         data-testid="request-tags"
         onClick={() =>
           hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
@@ -566,13 +566,13 @@ const EntityTable = ({
                   {hasDescriptionEditAccess && (
                     <>
                       <button
-                        className="tw-self-start tw-w-8 tw-h-8 tw-ml-1 focus:tw-outline-none tw-flex-none hover-cell-icon"
+                        className="tw-self-start tw-w-7 tw-h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
                         onClick={() => handleUpdate(record, index)}>
                         <SVGIcons
                           alt="edit"
                           icon="icon-edit"
                           title="Edit"
-                          width="14px"
+                          width="16px"
                         />
                       </button>
                     </>

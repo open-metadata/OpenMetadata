@@ -17,7 +17,11 @@ import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+  ROUTES,
+} from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -390,14 +394,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       value:
         owner?.type === 'team'
           ? getTeamAndUserDetailsPath(owner?.name || '')
-          : getEntityName(owner),
+          : owner?.type === 'user'
+          ? getUserPath(owner?.fullyQualifiedName ?? '')
+          : '',
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
       ),
       id: getEntityId(owner),
       isEntityDetails: true,
-      isLink: owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
