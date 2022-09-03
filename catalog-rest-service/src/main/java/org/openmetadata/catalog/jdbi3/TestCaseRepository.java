@@ -10,11 +10,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.test.TestCaseParameter;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
@@ -35,19 +35,13 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 public class TestCaseRepository extends EntityRepository<TestCase> {
+  public static final String COLLECTION_PATH = "/v1/testCase";
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {
-    super(
-        TestSuiteResource.COLLECTION_PATH,
-        TEST_CASE,
-        TestCase.class,
-        dao.testCaseDAO(),
-        dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+    super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
@@ -129,7 +123,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> addTestCaseResult(String fqn, TestCaseResult testCaseResult) throws IOException {
+  public RestUtil.PutResponse<?> addTestCaseResult(UriInfo uriInfo, String fqn, TestCaseResult testCaseResult)
+      throws IOException {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
@@ -158,11 +153,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               JsonUtils.pojoToJson(testCaseResult));
       setFields(testCase, EntityUtil.Fields.EMPTY_FIELDS);
     }
-
     setFields(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
-    ChangeEvent changeEvent = getChangeEvent(testCase, change, entityType, testCase.getVersion());
+    ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }

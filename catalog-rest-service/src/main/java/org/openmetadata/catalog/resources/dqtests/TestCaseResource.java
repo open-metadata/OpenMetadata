@@ -441,7 +441,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Valid TestCaseResult testCaseResult)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    return dao.addTestCaseResult(fqn, testCaseResult).toResponse();
+    return dao.addTestCaseResult(uriInfo, fqn, testCaseResult).toResponse();
   }
 
   @GET
