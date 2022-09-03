@@ -91,7 +91,7 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import ListEntities from './RolesAndPoliciesList';
-import { getTabs } from './TeamDetailsV1.utils';
+import { getTabs, searchTeam } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -221,23 +221,33 @@ const TeamDetailsV1 = ({
     ];
   }, [deleteUserHandler]);
 
-  const extraInfo: ExtraInfo = {
-    key: 'Owner',
-    value:
-      currentTeam?.owner?.type === 'team'
-        ? getTeamAndUserDetailsPath(
-            currentTeam?.owner?.displayName || currentTeam?.owner?.name || ''
-          )
-        : currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-    placeholderText:
-      currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-    isLink: currentTeam?.owner?.type === 'team',
-    openInNewTab: false,
-    profileName:
-      currentTeam?.owner?.type === OwnerType.USER
-        ? currentTeam?.owner?.name
-        : undefined,
-  };
+  const extraInfo: ExtraInfo[] = [
+    {
+      key: 'Owner',
+      value:
+        currentTeam?.owner?.type === 'team'
+          ? getTeamAndUserDetailsPath(
+              currentTeam?.owner?.displayName || currentTeam?.owner?.name || ''
+            )
+          : currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
+      placeholderText:
+        currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
+      isLink: currentTeam?.owner?.type === 'team',
+      openInNewTab: false,
+      profileName:
+        currentTeam?.owner?.type === OwnerType.USER
+          ? currentTeam?.owner?.name
+          : undefined,
+    },
+    ...(isOrganization
+      ? []
+      : [
+          {
+            key: 'TeamType',
+            value: currentTeam.teamType || '',
+          },
+        ]),
+  ];
 
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
@@ -336,16 +346,23 @@ const TeamDetailsV1 = ({
     return Promise.reject();
   };
 
+  const updateTeamType = (type: TeamType) => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        teamType: type,
+      };
+
+      return updateTeamHandler(updatedData);
+    }
+
+    return Promise.reject();
+  };
+
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(
-        childTeams?.filter(
-          (team) =>
-            team?.name?.toLowerCase().includes(value.toLowerCase()) ||
-            team?.displayName?.toLowerCase().includes(value.toLowerCase())
-        ) || []
-      );
+      setTable(searchTeam(childTeams, value));
     } else {
       setTable(childTeams ?? []);
     }
@@ -796,14 +813,28 @@ const TeamDetailsV1 = ({
               </Space>
             )}
           </div>
-          <EntitySummaryDetails
-            data={extraInfo}
-            updateOwner={
-              entityPermissions.EditAll || entityPermissions.EditOwner
-                ? updateOwner
-                : undefined
-            }
-          />
+          <Space size={0}>
+            {extraInfo.map((info, index) => (
+              <>
+                <EntitySummaryDetails
+                  data={info}
+                  updateOwner={
+                    entityPermissions.EditAll || entityPermissions.EditOwner
+                      ? updateOwner
+                      : undefined
+                  }
+                  updateTeamType={
+                    entityPermissions.EditAll ? updateTeamType : undefined
+                  }
+                />
+                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
+                  <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                    |
+                  </span>
+                ) : null}
+              </>
+            ))}
+          </Space>
           <div
             className="tw-mb-3 tw--ml-5 tw-mt-2"
             data-testid="description-container">
@@ -824,7 +855,12 @@ const TeamDetailsV1 = ({
             <TabsPane
               activeTab={currentTab}
               setActiveTab={(tab) => setCurrentTab(tab)}
-              tabs={getTabs(currentTeam, teamUserPagin, isOrganization)}
+              tabs={getTabs(
+                currentTeam,
+                teamUserPagin,
+                isOrganization,
+                searchTerm ? table.length : undefined
+              )}
             />
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">

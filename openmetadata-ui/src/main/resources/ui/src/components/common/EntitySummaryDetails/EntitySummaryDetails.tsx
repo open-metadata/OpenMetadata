@@ -1,12 +1,14 @@
-import { Dropdown, Space } from 'antd';
+import { Dropdown, Menu, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
+import { TeamType } from '../../../generated/entity/teams/team';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
+import { getTeamTypeMenuItems } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
@@ -20,6 +22,7 @@ export interface GetInfoElementsProps {
   tier?: TagLabel;
   currentTier?: string;
   updateTier?: (value: string) => void;
+  updateTeamType?: (type: TeamType) => void;
 }
 
 const EditIcon = (): JSX.Element => (
@@ -47,22 +50,25 @@ const EntitySummaryDetails = ({
   tier,
   updateOwner,
   updateTier,
+  updateTeamType,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const displayVal = data.placeholderText || data.value;
   const [show, setShow] = useState(false);
 
-  const { isEntityDetails, userDetails, isTier, isOwner } = useMemo(() => {
-    const userDetails = getTeamsUser(data);
+  const { isEntityDetails, userDetails, isTier, isOwner, isTeamType } =
+    useMemo(() => {
+      const userDetails = getTeamsUser(data);
 
-    return {
-      isEntityCard: data?.isEntityCard,
-      isEntityDetails: data?.isEntityDetails,
-      userDetails,
-      isTier: data.key === 'Tier',
-      isOwner: data.key === 'Owner',
-    };
-  }, [data]);
+      return {
+        isEntityCard: data?.isEntityCard,
+        isEntityDetails: data?.isEntityDetails,
+        userDetails,
+        isTier: data.key === 'Tier',
+        isOwner: data.key === 'Owner',
+        isTeamType: data.key === 'TeamType',
+      };
+    }, [data]);
 
   switch (data.key) {
     case 'Owner':
@@ -108,6 +114,7 @@ const EntitySummaryDetails = ({
       }
 
       break;
+
     case 'Tier':
       {
         retVal =
@@ -133,6 +140,14 @@ const EntitySummaryDetails = ({
       }
 
       break;
+
+    case 'TeamType':
+      {
+        retVal = displayVal ? <>Type - </> : <></>;
+      }
+
+      break;
+
     default:
       {
         retVal = (
@@ -206,80 +221,79 @@ const EntitySummaryDetails = ({
                 </span>
               )}
             </>
-          ) : (
-            <>
-              {isOwner ? (
-                <>
-                  <span
-                    className={classNames(
-                      'tw-inline-block tw-truncate tw-align-middle',
-                      {
-                        'tw-w-52': (displayVal as string).length > 32,
-                      }
-                    )}
-                    data-testid="owner-name"
-                    title={displayVal as string}>
-                    <Button
-                      data-testid="owner-dropdown"
-                      size="custom"
-                      theme="primary"
-                      variant="text">
-                      {displayVal}
-                    </Button>
-
-                    <span
-                      className="tw-ml-2"
-                      data-testid={`edit-${data.key}-icon`}
-                      onClick={() => setShow(true)}>
-                      {updateOwner ? <EditIcon /> : null}
-                    </span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  {isTier ? (
-                    <>
-                      <Space
-                        className={classNames(
-                          'tw-mr-1  tw-truncate tw-align-middle',
-                          { 'tw-w-52': (displayVal as string).length > 32 }
-                        )}
-                        data-testid="tier-name"
-                        direction="horizontal"
-                        size={0.1}
-                        title={displayVal as string}>
-                        <Button
-                          data-testid="tier-dropdown"
-                          size="custom"
-                          theme="primary"
-                          variant="text">
-                          {displayVal}
-                        </Button>
-                        <span>
-                          <Dropdown
-                            overlay={
-                              <TierCard
-                                currentTier={tier?.tagFQN}
-                                updateTier={updateTier}
-                              />
-                            }
-                            placement="bottomRight"
-                            trigger={['click']}>
-                            <span
-                              className="tw-flex"
-                              data-testid={`edit-${data.key}-icon`}>
-                              {updateTier ? <EditIcon /> : null}
-                            </span>
-                          </Dropdown>
-                        </span>
-                      </Space>
-                    </>
-                  ) : (
-                    <span>{displayVal}</span>
-                  )}
-                </>
+          ) : isOwner ? (
+            <span
+              className={classNames(
+                'tw-inline-block tw-truncate tw-align-middle',
+                {
+                  'tw-w-52': (displayVal as string).length > 32,
+                }
               )}
+              data-testid="owner-name"
+              title={displayVal as string}>
+              <Button
+                data-testid="owner-dropdown"
+                size="custom"
+                theme="primary"
+                variant="text">
+                {displayVal}
+              </Button>
+
+              <span
+                className="tw-ml-2"
+                data-testid={`edit-${data.key}-icon`}
+                onClick={() => setShow(true)}>
+                {updateOwner ? <EditIcon /> : null}
+              </span>
+            </span>
+          ) : isTier ? (
+            <Space
+              className={classNames('tw-mr-1  tw-truncate tw-align-middle', {
+                'tw-w-52': (displayVal as string).length > 32,
+              })}
+              data-testid="tier-name"
+              direction="horizontal"
+              size={0.1}
+              title={displayVal as string}>
+              <Button
+                data-testid="tier-dropdown"
+                size="custom"
+                theme="primary"
+                variant="text">
+                {displayVal}
+              </Button>
+              <span>
+                <Dropdown
+                  overlay={
+                    <TierCard
+                      currentTier={tier?.tagFQN}
+                      updateTier={updateTier}
+                    />
+                  }
+                  placement="bottomRight"
+                  trigger={['click']}>
+                  <span
+                    className="tw-flex"
+                    data-testid={`edit-${data.key}-icon`}>
+                    {updateTier ? <EditIcon /> : null}
+                  </span>
+                </Dropdown>
+              </span>
+            </Space>
+          ) : isTeamType ? (
+            <>
+              {displayVal}
+              <Dropdown
+                overlay={<Menu items={getTeamTypeMenuItems(updateTeamType)} />}
+                placement="bottomRight"
+                trigger={['click']}>
+                <span className="tw-flex" data-testid={`edit-${data.key}-icon`}>
+                  {updateTeamType ? <EditIcon /> : null}
+                </span>
+              </Dropdown>
             </>
+          ) : (
+            <span>{displayVal}</span>
           )}
         </>
       )}
