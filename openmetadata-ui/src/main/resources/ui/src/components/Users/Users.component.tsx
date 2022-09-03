@@ -818,10 +818,7 @@ const Users = ({
   );
 
   return (
-    <PageLayoutV1
-      className="tw-h-full"
-      defaultLeftPanelStyle={false}
-      leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
       <div className="tw-mb-10">
         <TabsPane
           activeTab={activeTab}
