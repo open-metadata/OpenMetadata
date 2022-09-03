@@ -68,3 +68,11 @@ export const resetAllFilters = async () => {
 
   return response.data;
 };
+
+export const getInitialFilters = async () => {
+  const url = `${BASE_URL}/bootstrappedFilters`;
+
+  const response = await axiosClient.get<EventFilter[]>(url);
+
+  return response.data;
+};

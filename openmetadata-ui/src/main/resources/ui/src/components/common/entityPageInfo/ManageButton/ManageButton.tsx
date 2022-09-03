@@ -13,6 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Dropdown, Menu, Space, Tooltip } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, { FC, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
@@ -26,7 +27,6 @@ interface Props {
   allowSoftDelete?: boolean;
   afterDeleteAction?: () => void;
   buttonClassName?: string;
-  disabled?: boolean;
   entityName: string;
   entityId?: string;
   entityType?: string;
@@ -34,7 +34,7 @@ interface Props {
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
   canDelete?: boolean;
-  title?: string;
+  extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
 }
 
@@ -43,13 +43,12 @@ const ManageButton: FC<Props> = ({
   afterDeleteAction,
   buttonClassName,
   deleteMessage,
-  disabled,
   entityName,
   entityType,
   canDelete,
   entityId,
   isRecursiveDelete,
-  title,
+  extraDropdownContent,
   onAnnouncementClick,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
@@ -119,6 +118,7 @@ const ManageButton: FC<Props> = ({
               },
             ]
           : []),
+        ...(extraDropdownContent ? extraDropdownContent : []),
       ]}
     />
   );
@@ -127,7 +127,6 @@ const ManageButton: FC<Props> = ({
     <>
       <Dropdown
         align={{ targetOffset: [-12, 0] }}
-        disabled={disabled}
         overlay={menu}
         overlayStyle={{ width: '350px' }}
         placement="bottomRight"
@@ -140,9 +139,8 @@ const ManageButton: FC<Props> = ({
             buttonClassName
           )}
           data-testid="manage-button"
-          disabled={disabled}
           size="small"
-          title={title ?? 'Manage'}
+          title="Manage"
           type="default"
           onClick={() => setShowActions(true)}>
           <FontAwesomeIcon

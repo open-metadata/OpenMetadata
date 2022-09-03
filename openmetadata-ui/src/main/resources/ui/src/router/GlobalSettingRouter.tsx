@@ -24,7 +24,11 @@ import { TeamType } from '../generated/entity/teams/team';
 import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { checkPermission } from '../utils/PermissionsUtils';
-import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
+import {
+  getSettingCategoryPath,
+  getSettingPath,
+  getTeamsWithFqnPath,
+} from '../utils/RouterUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -81,12 +85,7 @@ const GlobalSettingRouter = () => {
   return (
     <Switch>
       <Route exact path={getSettingPath()}>
-        <Redirect
-          to={`${getSettingPath(
-            GlobalSettingsMenuCategory.MEMBERS,
-            GlobalSettingOptions.TEAMS
-          )}/${TeamType.Organization}`}
-        />
+        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
       <Route
         exact

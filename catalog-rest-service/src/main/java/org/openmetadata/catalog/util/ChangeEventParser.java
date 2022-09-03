@@ -16,6 +16,7 @@ package org.openmetadata.catalog.util;
 import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.TEST_CASE;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.difflib.text.DiffRow;
@@ -42,6 +43,8 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.slack.SlackAttachment;
 import org.openmetadata.catalog.slack.SlackMessage;
 import org.openmetadata.catalog.slack.TeamsMessage;
+import org.openmetadata.catalog.tests.TestCase;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
@@ -243,7 +246,10 @@ public final class ChangeEventParser {
       String newFieldValue = getFieldValue(field.getNewValue());
       String oldFieldValue = getFieldValue(field.getOldValue());
       EntityLink link = getEntityLink(fieldName, entity);
-      if (!fieldName.equals("failureDetails")) {
+      if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
+        String message = handleTestCaseResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        messages.put(link, message);
+      } else if (!fieldName.equals("failureDetails")) {
         String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
         messages.put(link, message);
       }
@@ -490,6 +496,31 @@ public final class ChangeEventParser {
       }
     }
     return getPlainTextUpdateMessage(publishTo, updatedField, oldValue.toString(), newValue.toString());
+  }
+
+  public static String handleTestCaseResult(
+      PUBLISH_TO publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+    String testCaseName = entity.getName();
+    TestCaseResult result = (TestCaseResult) newValue;
+    TestCase testCaseEntity = (TestCase) entity;
+    if (result != null) {
+      String format =
+          String.format(
+              "Test Case %s is %s in %s/%s",
+              getBold(publishTo),
+              getBold(publishTo),
+              EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+              testCaseEntity.getTestSuite().getName());
+      return String.format(format, testCaseName, result.getTestCaseStatus());
+    } else {
+      String format =
+          String.format(
+              "Test Case %s is updated in %s/%s",
+              getBold(publishTo),
+              EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+              testCaseEntity.getTestSuite().getName());
+      return String.format(format, testCaseName);
+    }
   }
 
   public static String getPlaintextDiff(PUBLISH_TO publishTo, String oldValue, String newValue) {

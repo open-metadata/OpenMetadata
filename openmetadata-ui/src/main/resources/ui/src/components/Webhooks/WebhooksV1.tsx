@@ -129,64 +129,53 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   return (
     <>
       <Row gutter={[16, 16]}>
-        <Col>
-          <Row gutter={[16, 16]}>
-            <Col xs={18}>
-              <Select
-                showArrow
-                bordered={false}
-                className="tw-text-body webhook-filter-select cursor-pointer"
-                mode="multiple"
-                options={statuses}
-                placeholder="Filter by status"
-                style={{ minWidth: '148px' }}
-                onChange={onStatusFilter}
-              />
-            </Col>
-            <Col xs={6}>
-              <Space
-                align="center"
-                className="tw-w-full tw-justify-end"
-                size={16}>
-                {filteredData.length > 0 && (
-                  <Tooltip
-                    placement="left"
-                    title={
-                      addWebhookPermission
-                        ? 'Add Webhook'
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      className={classNames('tw-h-8 tw-rounded ')}
-                      data-testid="add-webhook-button"
-                      disabled={!addWebhookPermission}
-                      size="small"
-                      theme="primary"
-                      variant="contained"
-                      onClick={onAddWebhook}>
-                      Add {WEBHOOKS_INTEGRATION[webhookType]}
-                    </Button>
-                  </Tooltip>
-                )}
-              </Space>
-            </Col>
-            <Col xs={24}>
-              <WebhookTable
-                webhookList={filteredData || []}
-                onDelete={(data) => setWebhook(data)}
-                onEdit={onClickWebhook}
-              />
-              {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-                <NextPrevious
-                  currentPage={currentPage}
-                  pageSize={PAGE_SIZE}
-                  paging={paging}
-                  pagingHandler={onPageChange}
-                  totalCount={paging.total}
-                />
-              )}
-            </Col>
-          </Row>
+        <Col xs={18}>
+          <Select
+            showArrow
+            bordered={false}
+            className="tw-text-body webhook-filter-select cursor-pointer"
+            mode="multiple"
+            options={statuses}
+            placeholder="Filter by status"
+            style={{ minWidth: '148px' }}
+            onChange={onStatusFilter}
+          />
+        </Col>
+        <Col xs={6}>
+          <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+            <Tooltip
+              placement="left"
+              title={
+                addWebhookPermission ? 'Add Webhook' : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                className={classNames('tw-h-8 tw-rounded ')}
+                data-testid="add-webhook-button"
+                disabled={!addWebhookPermission}
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={onAddWebhook}>
+                Add {WEBHOOKS_INTEGRATION[webhookType]}
+              </Button>
+            </Tooltip>
+          </Space>
+        </Col>
+        <Col xs={24}>
+          <WebhookTable
+            webhookList={filteredData || []}
+            onDelete={(data) => setWebhook(data)}
+            onEdit={onClickWebhook}
+          />
+          {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE}
+              paging={paging}
+              pagingHandler={onPageChange}
+              totalCount={paging.total}
+            />
+          )}
         </Col>
       </Row>
       {selectedWebhook && (
