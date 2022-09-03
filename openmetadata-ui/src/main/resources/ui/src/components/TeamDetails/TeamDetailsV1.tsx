@@ -935,23 +935,24 @@ const TeamDetailsV1 = ({
           </div>
         </Fragment>
       ) : (
-        <ErrorPlaceHolder>
-          <p className="tw-text-lg tw-text-center">No Teams Added.</p>
-          <div className="tw-text-lg tw-text-center">
-            <Button
-              disabled={!createTeamPermission}
-              size="small"
-              theme="primary"
-              title={
-                createTeamPermission ? 'Add Team' : NO_PERMISSION_FOR_ACTION
-              }
-              variant="outlined"
-              onClick={() => handleAddTeam(true)}>
-              Click here
-            </Button>
-            {' to add new Team'}
-          </div>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          buttons={
+            <div className="tw-text-lg tw-text-center">
+              <Button
+                disabled={!createTeamPermission}
+                size="small"
+                theme="primary"
+                title={
+                  createTeamPermission ? 'Add Team' : NO_PERMISSION_FOR_ACTION
+                }
+                variant="outlined"
+                onClick={() => handleAddTeam(true)}>
+                Add new Team
+              </Button>
+            </div>
+          }
+          heading="Teams"
+        />
       )}
 
       {deletingUser.state && (
