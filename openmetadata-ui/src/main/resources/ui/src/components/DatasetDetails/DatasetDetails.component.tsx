@@ -277,7 +277,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-profilercolor',
       },
       isProtected: false,
-      isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewDataProfile),
+      isHidden: !(
+        tablePermissions.ViewAll ||
+        tablePermissions.ViewDataProfile ||
+        tablePermissions.ViewTests
+      ),
       position: 5,
     },
     {

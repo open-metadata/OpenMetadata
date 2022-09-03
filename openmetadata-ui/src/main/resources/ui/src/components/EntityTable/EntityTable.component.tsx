@@ -301,8 +301,7 @@ const EntityTable = ({
     return searchedValue;
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const getColumnName = (cell: any) => {
+  const getColumnName = (cell: ModifiedTableColumn) => {
     const fqn = cell?.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
     // wrap it in quotes if dot is present
@@ -312,8 +311,7 @@ const EntityTable = ({
       : columnName;
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onRequestDescriptionHandler = (cell: any) => {
+  const onRequestDescriptionHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -326,8 +324,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onUpdateDescriptionHandler = (cell: any) => {
+  const onUpdateDescriptionHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -340,8 +337,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onRequestTagsHandler = (cell: any) => {
+  const onRequestTagsHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -349,8 +345,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onUpdateTagsHandler = (cell: any) => {
+  const onUpdateTagsHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -381,7 +376,7 @@ const EntityTable = ({
   };
 
   const getRequestDescriptionElement = (cell: ModifiedTableColumn) => {
-    const hasDescription = Boolean(cell.fullyQualifiedName);
+    const hasDescription = Boolean(cell?.description ?? '');
 
     return (
       <button
@@ -412,9 +407,8 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const getRequestTagsElement = (cell: any) => {
-    const hasTags = !isEmpty(cell.value || []);
+  const getRequestTagsElement = (cell: ModifiedTableColumn) => {
+    const hasTags = !isEmpty(cell?.tags || []);
     const text = hasTags ? 'Update request tags' : 'Request tags';
 
     return (
