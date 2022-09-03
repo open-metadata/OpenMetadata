@@ -14,23 +14,21 @@
 import { Card } from 'antd';
 import { lowerCase } from 'lodash';
 import React, { HTMLAttributes } from 'react';
+
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  children: React.ReactElement | string;
   id: string;
-  heading?: string;
   classes?: string;
 }
 
-const CardV1 = ({ children, id, heading, classes, style }: CardProps) => {
+const LeftPanelCard = ({ children, id, classes }: CardProps) => {
   return (
     <Card
-      className={`${classes} tw-h-full`}
-      data-testid={`${lowerCase(id)}-summary-container`}
-      size="small"
-      style={style}>
-      {heading ? <h6 className="tw-heading tw-text-base">{heading}</h6> : ''}
-      <div style={{ textAlign: 'justify' }}>{children}</div>
+      className={`${classes} left-panel-card tw-h-full page-layout-v1-left-panel  page-layout-v1-vertical-scroll`}
+      data-testid={`${lowerCase(id)}-left-panel`}>
+      <div>{children}</div>
     </Card>
   );
 };
 
-export default CardV1;
+export default LeftPanelCard;

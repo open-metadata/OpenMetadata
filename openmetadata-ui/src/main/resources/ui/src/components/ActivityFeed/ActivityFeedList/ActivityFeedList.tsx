@@ -148,10 +148,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const getFilterDropDown = () => {
     return hideFeedFilter && hideThreadFilter ? null : (
-      <div className="tw-flex tw-justify-between tw-px-1.5">
+      <div className="tw-flex tw-justify-between tw-py-2 tw-px-1.5">
         {/* Feed filter */}
         {!hideFeedFilter && (
-          <div className="tw-relative tw-mt-5 tw-mr-5">
+          <div className="tw-relative tw-mr-5">
             <Button
               className="hover:tw-no-underline focus:tw-no-underline"
               data-testid="feeds"
@@ -175,7 +175,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         )}
         {/* Thread filter */}
         {!hideThreadFilter && (
-          <div className="tw-relative tw-mt-5">
+          <div className="tw-relative">
             <Button
               className="hover:tw-no-underline focus:tw-no-underline"
               data-testid="thread-filter"

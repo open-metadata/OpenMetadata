@@ -285,7 +285,7 @@ jest.mock('../RecentSearchedTerms/RecentSearchedTerms', () => {
 });
 
 jest.mock(
-  '../containers/PageLayout',
+  '../containers/PageLayoutV1',
   () =>
     ({
       children,
@@ -297,7 +297,7 @@ jest.mock(
       leftPanel: ReactNode;
     }) =>
       (
-        <div data-testid="PageLayout">
+        <div data-testid="PageLayoutV1">
           <div data-testid="left-panel-content">{leftPanel}</div>
           <div data-testid="right-panel-content">{rightPanel}</div>
           {children}
@@ -366,7 +366,7 @@ describe('Test MyData page', () => {
     const { container } = render(<MyData {...mockProp} />, {
       wrapper: MemoryRouter,
     });
-    const pageLayout = await findByTestId(container, 'PageLayout');
+    const pageLayout = await findByTestId(container, 'PageLayoutV1');
     const leftPanel = await findByTestId(container, 'left-panel-content');
     const rightPanel = await findByTestId(container, 'right-panel-content');
     const recentSearchedTerms = await findByText(
