@@ -43,6 +43,7 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TMetric,
 )
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
@@ -216,13 +217,21 @@ class Profiler(Generic[TMetric]):
             self.profiler_interface.table_entity.tableProfilerConfig
             and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
         ):
-            metric_names = (
-                metric_array
-                for col_name, metric_array in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
-                if col_name == column
+            metric_names = next(
+                (
+                    include_columns.metrics
+                    for include_columns in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+                    if include_columns.columnName == column.name
+                ),
+                None,
             )
+
             if metric_names:
-                metrics = [Metric.get(metric_name) for metric_name in metric_names]
+                metrics = [
+                    Metric.value
+                    for Metric in Metrics
+                    if Metric.value.name() in metric_names
+                ]
 
         return [metric for metric in metrics if metric.is_col_metric()]
 
