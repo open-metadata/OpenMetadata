@@ -1,0 +1,20 @@
+source:
+  type: redpanda
+  serviceName: local_redpanda
+  serviceConnection:
+    config:
+      type: Redpanda
+      bootstrapServers: localhost:9092
+      schemaRegistryURL: http://localhost:8081
+      consumerConfig: {}
+      schemaRegistryConfig: {}
+  sourceConfig:
+    config:
+      generateSampleData: true
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
