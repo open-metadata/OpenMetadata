@@ -9,6 +9,7 @@ import {
   resetAllFilters,
   updateFilters,
 } from '../../axiosAPIs/eventFiltersAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { TERM_ALL } from '../../constants/constants';
 import {
@@ -187,51 +188,61 @@ const ActivityFeedSettingsPage: React.FC = () => {
       <Loader />
     </Col>
   ) : (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <Typography.Title level={5} type="secondary">
-          Activity Feed
-        </Typography.Title>
-      </Col>
-      <Col span={24}>
-        <Card size="small">
-          {eventFilters &&
-            map(eventFilters, ({ entityType, filters }, index) => (
-              <>
-                {entityType !== TERM_ALL ? (
-                  <div className="tw-rounded-border" key={entityType}>
-                    <Tree
-                      checkable
-                      defaultExpandAll
-                      className="activity-feed-settings-tree"
-                      defaultCheckedKeys={checkedKeys}
-                      icon={null}
-                      key={entityType}
-                      treeData={generateTreeData(entityType, filters)}
-                      onCheck={(keys) =>
-                        handleTreeCheckChange(keys as Key[], entityType)
-                      }
-                    />
-                    {index !== eventFilters?.length - 1 && <Divider />}
-                  </div>
-                ) : null}
-              </>
-            ))}
-        </Card>
-      </Col>
-      <Col>
-        <Space direction="horizontal" size={16}>
-          <Button type="primary" onClick={onSave}>
-            Save
-          </Button>
-          <Button type="text" onClick={handleResetClick}>
-            Reset all
-          </Button>
-        </Space>
-      </Col>
-      <Col span={24} />
-      <Col span={24} />
-    </Row>
+    <>
+      {eventFilters ? (
+        <>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Typography.Title level={5} type="secondary">
+                Activity Feed
+              </Typography.Title>
+            </Col>
+            <Col span={24}>
+              <Card size="small">
+                {eventFilters &&
+                  map(eventFilters, ({ entityType, filters }, index) => (
+                    <>
+                      {entityType !== TERM_ALL ? (
+                        <div className="tw-rounded-border" key={entityType}>
+                          <Tree
+                            checkable
+                            defaultExpandAll
+                            className="activity-feed-settings-tree"
+                            defaultCheckedKeys={checkedKeys}
+                            icon={null}
+                            key={entityType}
+                            treeData={generateTreeData(entityType, filters)}
+                            onCheck={(keys) =>
+                              handleTreeCheckChange(keys as Key[], entityType)
+                            }
+                          />
+                          {index !== eventFilters?.length - 1 && <Divider />}
+                        </div>
+                      ) : null}
+                    </>
+                  ))}
+              </Card>
+            </Col>
+            <Col>
+              <Space direction="horizontal" size={16}>
+                <Button type="primary" onClick={onSave}>
+                  Save
+                </Button>
+                <Button type="text" onClick={handleResetClick}>
+                  Reset all
+                </Button>
+              </Space>
+            </Col>
+            <Col span={24} />
+            <Col span={24} />
+          </Row>
+        </>
+      ) : (
+        <ErrorPlaceHolder>
+          <Typography.Text>No activity feed settings available</Typography.Text>
+        </ErrorPlaceHolder>
+      )}
+    </>
   );
 };
 
