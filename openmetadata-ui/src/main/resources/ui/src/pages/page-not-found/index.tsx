@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import notFoundImage from '../../assets/img/404-image.png';
 import notFoundNumber from '../../assets/svg/404-number.svg';
-import { Button } from '../../components/buttons/Button/Button';
 import { ROUTES } from '../../constants/constants';
 
 const PageNotFound = () => {
@@ -35,14 +35,14 @@ const PageNotFound = () => {
             <p className="tw-text-lg tw-text-grey-muted-muted">
               The page you are looking for is not available
             </p>
-            <div className="tw-text-center tw-mt-16" data-testid="route-links">
+            <div className="tw-text-center tw-mt-10" data-testid="route-links">
               <Link to={ROUTES.HOME}>
-                <Button className="tw-mr-5" theme="primary">
+                <Button className="tw-mr-5" type="primary">
                   Go To Homepage
                 </Button>
               </Link>
               <Link to={ROUTES.EXPLORE}>
-                <Button className="tw-opacity-40" theme="primary">
+                <Button ghost type="primary">
                   Explore
                 </Button>
               </Link>

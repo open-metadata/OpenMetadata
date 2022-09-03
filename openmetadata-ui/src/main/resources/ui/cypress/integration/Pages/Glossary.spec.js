@@ -111,7 +111,7 @@ describe('Glossary page should work properly', () => {
 
   it('Create new glossary flow should work properly', () => {
     // check for no data placeholder
-    cy.contains('No glossaries found').should('be.visible');
+    cy.contains('glossaries').should('be.visible');
 
     // Redirecting to add glossary page
     cy.get('[data-testid="add-webhook-button"]').should('be.visible').click();
@@ -456,6 +456,6 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
     cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
     cy.wait(500);
-    cy.contains('No glossaries found').should('be.visible');
+    cy.contains('glossaries').should('be.visible');
   });
 });

@@ -30,6 +30,7 @@ import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -392,7 +393,7 @@ const GlossaryV1 = ({
   }, [selectedData]);
 
   return glossaryList.length ? (
-    <PageLayoutV1 defaultLeftPanelStyle={false} leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1 leftPanel={fetchLeftPanel()}>
       <div
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
@@ -560,21 +561,14 @@ const GlossaryV1 = ({
     </PageLayoutV1>
   ) : (
     <PageLayoutV1>
-      <ErrorPlaceHolder>
-        <p className="tw-text-center">No glossaries found</p>
-        <p className="tw-text-center">
-          <Button
-            className="tw-h-8 tw-rounded tw-my-3"
-            data-testid="add-webhook-button"
-            disabled={!createGlossaryPermission}
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={handleAddGlossaryClick}>
-            Add New Glossary
-          </Button>
-        </p>
-      </ErrorPlaceHolder>
+      <ErrorPlaceHolder
+        buttonId="add-webhook-button"
+        buttonLabel="Add New Glossary"
+        buttonListener={handleAddGlossaryClick}
+        doc={GLOSSARIES_DOCS}
+        heading="glossaries"
+        type="ADD_DATA"
+      />
     </PageLayoutV1>
   );
 };
