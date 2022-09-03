@@ -30,6 +30,7 @@ import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -561,6 +562,7 @@ const GlossaryV1 = ({
         buttonId="add-webhook-button"
         buttonLabel="Add New Glossary"
         buttonListener={handleAddGlossaryClick}
+        doc={GLOSSARIES_DOCS}
         heading="glossaries"
         type="ADD_DATA"
       />

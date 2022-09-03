@@ -21,6 +21,7 @@ import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   AddPlaceHolder,
@@ -197,7 +198,7 @@ const Services = ({
             <Paragraph>
               {' '}
               Still need help? Refer to our{' '}
-              <AntdLink href="https://ant.design" target="_blank">
+              <AntdLink href={CONNECTORS_DOCS} target="_blank">
                 docs
               </AntdLink>{' '}
               for more information.

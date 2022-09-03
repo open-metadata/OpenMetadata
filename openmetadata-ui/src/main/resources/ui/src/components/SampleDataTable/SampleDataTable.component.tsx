@@ -27,6 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
@@ -171,8 +172,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                   className="tw-ml-1"
                   target="_blank"
                   to={{
-                    pathname:
-                      'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+                    pathname: WORKFLOWS_PROFILER_DOCS,
                   }}>
                   Profiler Ingestion
                 </Link>

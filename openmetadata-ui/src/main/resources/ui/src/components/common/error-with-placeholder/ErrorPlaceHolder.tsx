@@ -43,7 +43,7 @@ const ErrorPlaceHolder = ({
   const { Paragraph, Link } = Typography;
 
   return type === 'ADD_DATA' ? (
-    <div>
+    <>
       <div className="flex-center flex-col tw-mt-24 " data-testid="error">
         {' '}
         <img data-testid="no-data-image" src={AddPlaceHolder} width="100" />
@@ -70,16 +70,15 @@ const ErrorPlaceHolder = ({
               data-testId={buttonId}
               size="small"
               theme="primary"
-              variant="outlined"
               onClick={buttonListener}>
               {buttonLabel}
             </Button>
           )}
         </div>
       </div>
-    </div>
+    </>
   ) : (
-    <div>
+    <>
       <div className="flex-center flex-col tw-mt-24 " data-testid="error">
         {' '}
         <img
@@ -93,7 +92,7 @@ const ErrorPlaceHolder = ({
           {children}
         </div>
       )}
-    </div>
+    </>
   );
 };
 
