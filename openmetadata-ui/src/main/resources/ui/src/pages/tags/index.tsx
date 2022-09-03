@@ -449,11 +449,9 @@ const TagsPage = () => {
       <LeftPanelCard id="tags">
         <div className="tw-py-2" data-testid="data-summary-container">
           <div className="tw-px-3">
-            <div className="tw-flex tw-justify-between tw-items-center">
-              <h6 className="tw-heading tw-text-sm tw-font-semibold">
-                Tag Categories
-              </h6>
-            </div>
+            <h6 className="tw-heading tw-text-sm tw-font-semibold">
+              Tag Categories
+            </h6>
             <div className="tw-mb-3">
               <Tooltip
                 title={
@@ -530,7 +528,7 @@ const TagsPage = () => {
                   data-testid="category-name">
                   {currentCategory.displayName ?? currentCategory.name}
                 </div>
-                <div className="tw-flex tw-justify-between tw-items-center">
+                <div className="flex-center">
                   <Tooltip
                     title={
                       createTagPermission || categoryPermissions.EditAll
