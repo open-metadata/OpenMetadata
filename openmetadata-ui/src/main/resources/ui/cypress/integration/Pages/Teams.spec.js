@@ -230,7 +230,7 @@ describe('Teams flow should work properly', () => {
     );
   });
 
-  it('Asset tab should work properly', () => {
+  it.skip('Asset tab should work properly', () => {
     //Click on created team name
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 

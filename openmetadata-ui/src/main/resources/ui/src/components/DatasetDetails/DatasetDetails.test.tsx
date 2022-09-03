@@ -52,6 +52,9 @@ jest.mock('antd', () => ({
   Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -208,6 +211,12 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel.tsx', () => {
 });
 jest.mock('../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+});
+
+jest.mock('../SampleDataTable/SampleDataTable.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="sample-data">Sample Data</p>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({
