@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import appState from '../../../AppState';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
+import { TeamType } from '../../../generated/entity/teams/team';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getOwnerList } from '../../../utils/ManageUtils';
 import {
@@ -46,7 +47,10 @@ const OwnerWidgetWrapper = ({
       suggestFormattedUsersAndTeams(qSearchText)
         .then((res) => {
           const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams));
+          const filterTeam = teams.filter(
+            (team) => team.teamType === TeamType.Group
+          );
+          setListOwners(getOwnerList(users, filterTeam));
         })
         .catch(() => {
           setListOwners([]);
@@ -133,10 +137,6 @@ const OwnerWidgetWrapper = ({
   }, [visible]);
 
   useEffect(() => {
-    setOwner(currentUser);
-  }, [currentUser]);
-
-  useEffect(() => {
     visible ? debounceOnSearch(searchText) : null;
   }, [appState.users, appState.userDetails, appState.userTeams]);
 
@@ -156,6 +156,7 @@ const OwnerWidgetWrapper = ({
         setInitialOwnerLoadingState();
       }, 300);
     }
+    setOwner(currentUser);
   }, [currentUser]);
 
   return visible ? (
