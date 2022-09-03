@@ -213,6 +213,12 @@ jest.mock('../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
+jest.mock('../SampleDataTable/SampleDataTable.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="sample-data">Sample Data</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
