@@ -363,7 +363,8 @@ export const AuthProvider = ({
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
         } else {
-          showErrorToast(err);
+          // eslint-disable-next-line no-console
+          console.error(err);
           history.push(ROUTES.SIGNIN);
         }
       })
