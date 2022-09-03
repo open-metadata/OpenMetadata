@@ -315,7 +315,7 @@ describe('Teams flow should work properly', () => {
       .click();
 
     cy.wait(1000);
-    cy.get('.ant-dropdown-menu-item')
+    cy.get('[data-testid="delete-button-title"]')
       .should('exist')
       .should('be.visible')
       .click();

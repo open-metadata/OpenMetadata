@@ -2,14 +2,19 @@ package org.openmetadata.catalog.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
 import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
@@ -42,8 +47,11 @@ import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
+import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -75,6 +83,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .createRequest(test)
             .withName("testCaseTable")
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
+            .withOwner(USER1_REF)
             .withColumns(
                 List.of(
                     new Column()
@@ -344,6 +353,58 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
     TestUtils.put(target, data, CREATED, authHeaders);
+  }
+
+  @Test
+  @Override
+  public void post_entity_as_non_admin_401(TestInfo test) {
+    // Override the default behavior where entities are created vs. for test case
+    // the operation is the entity to which tests are attached is edited
+    assertResponse(
+        () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_TESTS)));
+  }
+
+  @Test
+  void post_put_patch_delete_testCase_table_owner(TestInfo test) throws IOException {
+    // Table owner should be able to create, update, and delete tests
+    Map<String, String> ownerAuthHeaders = authHeaders(USER1_REF.getName());
+    TestCase testCase = createAndCheckEntity(createRequest(test), ownerAuthHeaders);
+
+    // Update description with PUT
+    String oldDescription = testCase.getDescription();
+    String newDescription = "description1";
+    ChangeDescription change = getChangeDescription(testCase.getVersion());
+    fieldUpdated(change, "description", oldDescription, newDescription);
+    testCase =
+        updateAndCheckEntity(
+            createRequest(test).withDescription(newDescription), OK, ownerAuthHeaders, UpdateType.MINOR_UPDATE, change);
+
+    // Update description with PATCH
+    oldDescription = testCase.getDescription();
+    newDescription = "description2";
+    change = getChangeDescription(testCase.getVersion());
+    fieldUpdated(change, "description", oldDescription, newDescription);
+    String json = JsonUtils.pojoToJson(testCase);
+    testCase.setDescription(newDescription);
+    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, UpdateType.MINOR_UPDATE, change);
+
+    // Delete the testcase
+    deleteAndCheckEntity(testCase, ownerAuthHeaders);
+  }
+
+  @Test
+  @Override
+  public void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    // Override the default behavior where entities are deleted vs. for test case
+    // the operation is the entity to which tests are attached is edited
+    CreateTestCase request = createRequest(getEntityName(test), "", "", null);
+    TestCase entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_TESTS)));
   }
 
   public static void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)

@@ -52,6 +52,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
 
   const [validationError, setValidationError] = useState<string>('');
   const [isValidatingCondition, setIsvalidating] = useState<boolean>(false);
+  const [isValidCondition, setIsvalidCondition] = useState<boolean>(false);
 
   /**
    * Derive the resources from policy resources
@@ -146,21 +147,25 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
     }
   };
 
-  const handleConditionValidation = async () => {
+  const handleConditionValidation = async (condition: string) => {
     const defaultErrorText = 'Condition is invalid';
-    if (ruleData.condition) {
+    if (condition) {
       setIsvalidating(true);
       try {
-        const response = await validateRuleCondition(ruleData.condition);
+        const response = await validateRuleCondition(condition);
 
         /**
          * If request is successful then we will only get response as success without any data
          * So, here we have to check the response status code
          */
-
-        [200, 204].includes(response.status)
-          ? setValidationError('')
-          : setValidationError(defaultErrorText);
+        const check = [200, 204].includes(response.status);
+        if (check) {
+          setValidationError('');
+          setIsvalidCondition(true);
+          setTimeout(() => setIsvalidCondition(false), 2000);
+        } else {
+          setValidationError(defaultErrorText);
+        }
       } catch (error) {
         setValidationError(getErrorText(error as AxiosError, defaultErrorText));
       } finally {
@@ -283,21 +288,26 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             options={conditionOptions}
             placeholder="Condition"
             value={ruleData.condition}
-            onBlur={handleConditionValidation}
             onChange={(value) => {
               setRuleData((prev: Rule) => ({ ...prev, condition: value }));
               !value && setValidationError('');
+              handleConditionValidation(value);
             }}
             onSearch={handleConditionSearch}
           />
           {validationError && (
-            <div className="ant-form-item-explain-error" role="alert">
-              {validationError}
+            <div className="tw-mt-1" role="alert">
+              {`❌ Invalid condition : ${validationError}`}
             </div>
           )}
           {isValidatingCondition && (
-            <div className="tw-text-grey-body" role="alert">
+            <div className="tw-mt-1" role="alert">
               Validating the condition...
+            </div>
+          )}
+          {isValidCondition && !isValidatingCondition && !validationError && (
+            <div className="tw-mt-1" role="alert">
+              ✅ Valid condition
             </div>
           )}
         </>
