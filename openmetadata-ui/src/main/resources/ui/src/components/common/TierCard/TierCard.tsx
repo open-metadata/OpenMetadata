@@ -34,7 +34,6 @@ const TierCard = ({
   updateTier,
 }: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
-  const [owner, setOwner] = useState(currentUser);
   const [activeTier, setActiveTier] = useState(currentTier);
   const [statusTier, setStatusTier] = useState<Status>('initial');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
@@ -144,7 +143,6 @@ const TierCard = ({
   }, []);
 
   useEffect(() => {
-    setOwner(currentUser);
     setActiveTier(currentTier);
     if (statusTier === 'waiting') {
       setStatusTier('success');
