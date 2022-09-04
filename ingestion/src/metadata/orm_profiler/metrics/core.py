@@ -12,14 +12,23 @@
 """
 Metric Core definitions
 """
-
+import logging
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import wraps
 from typing import Any, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
+
+try:
+    from sqlalchemy.orm import DeclarativeMeta
+except ImportError:
+    logging.warning(
+        "Cannot import DeclarativeMeta from SQLAlchemy version <1.4. This will break the profiler."
+        " Make sure to install `openmetadata-ingestion` with the `profiler` plugin if you"
+        " need to run the Profiler Workflow."
+    )
 
 # When creating complex metrics, use inherit_cache = CACHE
 CACHE = True
@@ -173,7 +182,7 @@ class QueryMetric(Metric, ABC):
 
     @abstractmethod
     def query(
-        self, sample: Optional[DeclarativeMeta], session: Optional[Session] = None
+        self, sample: Optional["DeclarativeMeta"], session: Optional[Session] = None
     ):
         """
         SQLAlchemy query to execute with .all()

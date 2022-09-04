@@ -36,7 +36,6 @@ base_requirements = {
     "email-validator>=1.0.3",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
-    "sqlalchemy>=1.4.0",
     "requests>=2.23",
     "cryptography",
     "Jinja2>=2.11.3",
@@ -49,11 +48,14 @@ base_requirements = {
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",
-    "croniter~=1.3.0",
 }
 
 
 plugins: Dict[str, Set[str]] = {
+    "profiler": {
+        "sqlalchemy>=1.4.0",
+        "croniter~=1.3.0",
+    },
     "airflow": {
         "apache-airflow==2.3.3"
     },  # Same as ingestion container. For development.
@@ -161,7 +163,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.12.0.dev0",
+    version="0.12.0.dev6",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

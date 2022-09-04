@@ -16,14 +16,37 @@ The most comfortable way to extract metadata out of GCS Composer is by directly 
 that will handle the connection to the metadata database automatically and push the contents
 to your OpenMetadata server.
 
-## Install the Requirements
+## Install the Requirements in Composer 2.1.4
 
 In your environment you will need to install the following packages:
 
-- `openmetadata-ingestion==0.11.1`
+- `openmetadata-ingestion==x.y.z` (e.g., `openmetadata-ingestion==0.12.0`).
 - `sqlalchemy==1.4.27`: This is needed to align OpenMetadata version with the Composer internal requirements.
 - `flask-appbuilder==3.4.5`: Again, this is just an alignment of versions so that `openmetadata-ingestion` can
   work with GCS Composer internals.
+
+## Install the Requirements in Composer 2.2.5
+
+In your environment you will need to install the following packages:
+
+- `openmetadata-ingestion==x.y.z` (e.g., `openmetadata-ingestion==0.12.0`).
+- `flask-appbuilder==3.4.5`: This is just an alignment of versions so that `openmetadata-ingestion` can
+  work with GCS Composer internals.
+
+<Note>
+
+While `openmetadata-ingestion` uses SQLAlchemy > 1.4.0, the composer environment in 2.2.5 requires it < 1.4.0. This will
+not have any impact as the greater SQAlchemy version is only required for the profiler workflow, which is separated
+from the Airflow data we need to pick up here.
+
+</Note>
+
+<Tip>
+
+You can follow these [docs](https://cloud.google.com/composer/docs/how-to/using/installing-python-dependencies) to 
+learn how to install packages in GCS composer. 
+
+</Tip>
 
 ## Prepare the DAG!
 

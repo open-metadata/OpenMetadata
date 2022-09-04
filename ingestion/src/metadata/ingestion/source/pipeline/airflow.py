@@ -134,6 +134,9 @@ class AirflowSource(PipelineServiceSource):
             .all()
         )
 
+        # We need to handle https://github.com/open-metadata/OpenMetadata/issues/7210
+        logger.debug(f"DAG id {dag_id} has the following runs: {dag_run_list}")
+
         dag_run_dict = [dict(elem) for elem in dag_run_list]
 
         # Build DagRun manually to not fall into new/old columns from
@@ -186,36 +189,45 @@ class AirflowSource(PipelineServiceSource):
     def yield_pipeline_status(
         self, pipeline_details: SerializedDAG
     ) -> OMetaPipelineStatus:
-        dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
+        try:
+            dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
 
-        for dag_run in dag_run_list:
-            tasks = self.get_task_instances(
-                dag_id=dag_run.dag_id,
-                run_id=dag_run.run_id,
-            )
+            for dag_run in dag_run_list:
+                tasks = self.get_task_instances(
+                    dag_id=dag_run.dag_id,
+                    run_id=dag_run.run_id,
+                )
 
-            task_statuses = [
-                TaskStatus(
-                    name=task.task_id,
+                task_statuses = [
+                    TaskStatus(
+                        name=task.task_id,
+                        executionStatus=STATUS_MAP.get(
+                            task.state, StatusType.Pending.value
+                        ),
+                        startTime=datetime_to_ts(task.start_date),
+                        endTime=datetime_to_ts(
+                            task.end_date
+                        ),  # Might be None for running tasks
+                    )  # Log link might not be present in all Airflow versions
+                    for task in tasks
+                ]
+
+                pipeline_status = PipelineStatus(
+                    taskStatus=task_statuses,
                     executionStatus=STATUS_MAP.get(
-                        task.state, StatusType.Pending.value
+                        dag_run.state, StatusType.Pending.value
                     ),
-                    startTime=datetime_to_ts(task.start_date),
-                    endTime=datetime_to_ts(
-                        task.end_date
-                    ),  # Might be None for running tasks
-                )  # Log link might not be present in all Airflow versions
-                for task in tasks
-            ]
-
-            pipeline_status = PipelineStatus(
-                taskStatus=task_statuses,
-                executionStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
-                timestamp=dag_run.execution_date.timestamp(),
-            )
-            yield OMetaPipelineStatus(
-                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                pipeline_status=pipeline_status,
+                    timestamp=dag_run.execution_date.timestamp(),
+                )
+                yield OMetaPipelineStatus(
+                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                    pipeline_status=pipeline_status,
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Wild error trying to extract status from DAG {pipeline_details.dag_id} - {exc}."
+                " Skipping status ingestion."
             )
 
     def get_pipelines_list(self) -> Iterable[OMSerializedDagDetails]:
@@ -225,9 +237,16 @@ class AirflowSource(PipelineServiceSource):
         We are using the SerializedDagModel as it helps
         us retrieve all the task and inlets/outlets information
         """
+
+        json_data_column = (
+            SerializedDagModel._data  # For 2.3.0 onwards
+            if hasattr(SerializedDagModel, "_data")
+            else SerializedDagModel.data  # For 2.2.5 and 2.1.4
+        )
+
         for serialized_dag in self.session.query(
             SerializedDagModel.dag_id,
-            SerializedDagModel._data,
+            json_data_column,
             SerializedDagModel.fileloc,
         ).all():
 
