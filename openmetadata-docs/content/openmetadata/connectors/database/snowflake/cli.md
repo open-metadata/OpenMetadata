@@ -39,9 +39,11 @@ pip3 install "openmetadata-ingestion[snowflake-usage]"
 
 <Note>
 
-While running the usage workflow, OpenMetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
-
-For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+- While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
+  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database).
+- If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.
+  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+- If during the ingestion you want to set the session tags, note that the user should have `ALTER SESSION` permissions.
 
 </Note>
 
