@@ -16,7 +16,6 @@ import { Status } from '../../ManageTab/ManageTab.interface';
 import './tier-card.css';
 
 export interface TierCardProps {
-  currentUser?: EntityReference;
   currentTier?: string;
   hideTier?: boolean;
   updateTier?: (value: string) => void;
@@ -27,12 +26,7 @@ export interface TierCardProps {
   ) => Promise<void>;
 }
 
-const TierCard = ({
-  currentUser,
-  currentTier,
-  hideTier,
-  updateTier,
-}: TierCardProps) => {
+const TierCard = ({ currentTier, hideTier, updateTier }: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [activeTier, setActiveTier] = useState(currentTier);
   const [statusTier, setStatusTier] = useState<Status>('initial');
