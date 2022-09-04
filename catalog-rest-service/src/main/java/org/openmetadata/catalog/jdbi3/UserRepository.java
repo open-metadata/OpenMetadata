@@ -13,17 +13,21 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -123,6 +127,7 @@ public class UserRepository extends EntityRepository<User> {
   public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
+    user.setGroups(fields.contains("groups") ? getGroupTeams(getTeams(user)) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
@@ -189,6 +194,29 @@ public class UserRepository extends EntityRepository<User> {
       validatedRoles.add(daoCollection.roleDAO().findEntityReferenceById(roleId));
     }
     return validatedRoles;
+  }
+
+  private List<EntityReference> getTeamChildren(UUID teamId) throws IOException {
+    if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
+      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
+      return EntityUtil.populateEntityReferencesById(children, Entity.TEAM);
+    }
+    List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
+    return EntityUtil.populateEntityReferences(children, TEAM);
+  }
+
+  public List<EntityReference> getGroupTeams(List<EntityReference> teams) throws IOException {
+    Set<EntityReference> result = new HashSet<>();
+    for (EntityReference t : teams) {
+      Team team = Entity.getEntity(t, Fields.EMPTY_FIELDS, Include.ALL);
+      if (TeamType.GROUP.equals(team.getTeamType())) {
+        result.add(t);
+      } else {
+        List<EntityReference> children = getTeamChildren(team.getId());
+        result.addAll(getGroupTeams(children));
+      }
+    }
+    return new ArrayList<>(result);
   }
 
   /* Get all the roles that user has been assigned and inherited from the team to User entity */

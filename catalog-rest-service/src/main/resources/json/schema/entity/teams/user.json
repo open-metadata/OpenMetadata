@@ -95,6 +95,10 @@
       "description": "Teams that the user belongs to.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "groups": {
+      "description": "Teams of type 'Group' that the user belongs to.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "owns": {
       "description": "List of entities owned by the user.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
