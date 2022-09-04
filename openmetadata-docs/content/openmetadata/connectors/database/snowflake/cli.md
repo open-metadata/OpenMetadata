@@ -45,6 +45,8 @@ pip3 install "openmetadata-ingestion[snowflake-usage]"
   For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
 - If during the ingestion you want to set the session tags, note that the user should have `ALTER SESSION` permissions.
 
+You can find more information about the Account Usage [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+
 </Note>
 
 ## Metadata Ingestion
