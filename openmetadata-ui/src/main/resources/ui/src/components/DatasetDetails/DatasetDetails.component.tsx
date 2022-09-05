@@ -15,19 +15,9 @@ import { Col, Empty, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -50,6 +40,7 @@ import {
   getEntityId,
   getEntityName,
   getEntityPlaceHolder,
+  getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
@@ -394,21 +385,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
-  const ownerValue = useMemo(() => {
-    switch (owner?.type) {
-      case 'team':
-        return getTeamAndUserDetailsPath(owner?.name || '');
-      case 'user':
-        return getUserPath(owner?.fullyQualifiedName ?? '');
-      default:
-        return '';
-    }
-  }, [owner]);
-
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value: ownerValue,
+      value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted

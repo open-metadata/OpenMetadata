@@ -14,18 +14,8 @@
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-} from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -45,6 +35,7 @@ import {
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
+  getOwnerValue,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -221,21 +212,10 @@ const PipelineDetails = ({
     },
   ];
 
-  const ownerValue = useMemo(() => {
-    switch (owner?.type) {
-      case 'team':
-        return getTeamAndUserDetailsPath(owner?.name || '');
-      case 'user':
-        return getUserPath(owner?.fullyQualifiedName ?? '');
-      default:
-        return '';
-    }
-  }, [owner]);
-
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value: ownerValue,
+      value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted

@@ -35,7 +35,6 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
-  getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -45,7 +44,11 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
-import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import {
+  getEntityName,
+  getEntityPlaceHolder,
+  getOwnerValue,
+} from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -163,15 +166,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const mlModelPageInfo: ExtraInfo[] = [
     {
       key: 'Owner',
-      value:
-        mlModelDetail.owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(mlModelDetail.owner?.name || '')
-          : getEntityName(mlModelDetail.owner),
+      value: getOwnerValue(mlModelDetail.owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(mlModelDetail.owner),
         mlModelDetail.owner?.deleted
       ),
-      isLink: mlModelDetail.owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName:
         mlModelDetail.owner?.type === OwnerType.USER

@@ -22,15 +22,11 @@ import {
   uniqueId,
 } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FunctionComponent, useMemo } from 'react';
+import React, { FunctionComponent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  ROUTES,
-} from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -41,6 +37,7 @@ import {
   getEntityId,
   getEntityName,
   getEntityPlaceHolder,
+  getOwnerValue,
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -96,21 +93,10 @@ const TableDataCard: FunctionComponent<Props> = ({
     return '';
   };
 
-  const ownerValue = useMemo(() => {
-    switch (owner?.type) {
-      case 'team':
-        return getTeamAndUserDetailsPath(owner?.name || '');
-      case 'user':
-        return getUserPath(owner?.fullyQualifiedName ?? '');
-      default:
-        return '';
-    }
-  }, [owner]);
-
   const OtherDetails: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value: ownerValue,
+      value: getOwnerValue(owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
