@@ -107,7 +107,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           updateDbtConfig('dbtManifestHttpPath', val);
         }}
         handleRunResultsHttpPathChange={(val) => {
-          updateDbtConfig('dbtRunResultsFilePath', val);
+          updateDbtConfig('dbtRunResultsHttpPath', val);
         }}
         okText={okText}
         onCancel={onCancel}
