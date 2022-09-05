@@ -1,6 +1,5 @@
 package org.openmetadata.catalog.resources;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
@@ -14,14 +13,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CreateEntity;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
-import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
-import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -39,25 +36,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final List<String> allowedFields;
   protected final K dao;
   protected final Authorizer authorizer;
-  private final boolean supportsOwner;
-  protected final OperationContext createOperationContext;
-  protected final OperationContext deleteOperationContext;
-  protected final OperationContext getOperationContext;
-  protected final OperationContext listOperationContext;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
     entityType = Entity.getEntityTypeFromClass(entityClass);
     allowedFields = Entity.getAllowedFields(entityClass);
-    supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.dao = repository;
     this.authorizer = authorizer;
-
-    createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    deleteOperationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-
-    listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
   }
 
   public final Fields getFields(String fields) {
@@ -83,8 +68,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after)
       throws IOException {
+    OperationContext listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    return listInternal(
+        uriInfo,
+        securityContext,
+        fieldsParam,
+        filter,
+        limitParam,
+        before,
+        after,
+        listOperationContext,
+        getResourceContext());
+  }
+
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
     RestUtil.validateCursors(before, after);
-    authorizer.authorize(securityContext, listOperationContext, getResourceContext(), true);
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     Fields fields = getFields(fieldsParam);
 
     ResultList<T> resultList;
@@ -98,7 +107,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include)
       throws IOException {
-    authorizer.authorize(securityContext, getOperationContext, getResourceContextById(id), true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    return getInternal(
+        uriInfo, securityContext, id, fieldsParam, include, operationContext, getResourceContextById(id));
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -106,7 +129,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
-    authorizer.authorize(securityContext, getOperationContext, getResourceContextByName(name), true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    return getByNameInternal(
+        uriInfo, securityContext, name, fieldsParam, include, operationContext, getResourceContextByName(name));
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
@@ -121,6 +158,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, boolean allowBots)
       throws IOException {
+    OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     dao.prepare(entity);
     authorizer.authorize(
         securityContext, createOperationContext, getResourceContextByName(entity.getFullyQualifiedName()), allowBots);
@@ -168,7 +206,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {
-    EntityReference owner = validateOwner(request.getOwner());
+    EntityReference owner = dao.validateOwner(request.getOwner());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
@@ -180,31 +218,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return entity;
   }
 
-  private EntityReference validateOwner(EntityReference owner) throws IOException {
-    if (owner == null) {
-      return null;
-    }
-    if (owner.getType().equals(Entity.TEAM)) {
-      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, Include.ALL);
-      if (!team.getTeamType().equals(TeamType.GROUP)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
-      }
-      return team.getEntityReference();
-    }
-    return Entity.getEntityReferenceById(owner.getType(), owner.getId(), Include.ALL);
-  }
-
   protected ResourceContext getResourceContext() {
     return ResourceContext.builder().resource(entityType).entityRepository(dao).build();
   }
 
   protected ResourceContext getResourceContextById(UUID id) {
-    String fields = supportsOwner ? FIELD_OWNER : null;
-    return ResourceContext.builder().resource(entityType).entityRepository(dao).id(id).fields(fields).build();
+    return ResourceContext.builder().resource(entityType).entityRepository(dao).id(id).build();
   }
 
   protected ResourceContext getResourceContextByName(String name) {
-    String fields = supportsOwner ? FIELD_OWNER : null;
-    return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).fields(fields).build();
+    return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).build();
   }
 }

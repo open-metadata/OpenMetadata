@@ -16,7 +16,6 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import TableProfilerConfig
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -68,55 +67,27 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_record(self, record: ProfilerResponse) -> None:
         try:
-            self.metadata.ingest_table_profile_data(
-                table=record.table, table_profile=record.profile
+            self.metadata.ingest_profile_data(
+                table=record.table, profile_request=record.profile
             )
-            if record.profile:
-                if record.profile.profileQuery and record.profile.profileSample:
-                    self.metadata.create_or_update_table_profiler_config(
-                        fqn=record.table.fullyQualifiedName.__root__,
-                        table_profiler_config=TableProfilerConfig(
-                            profileSample=record.profile.profileSample,
-                            profileQuery=record.profile.profileQuery,
-                        ),
-                    )
-                if record.profile.profileSample and not record.profile.profileQuery:
-                    self.metadata.create_or_update_table_profiler_config(
-                        fqn=record.table.fullyQualifiedName.__root__,
-                        table_profiler_config=TableProfilerConfig(
-                            profileSample=record.profile.profileSample,
-                        ),
-                    )
-                if record.profile.profileQuery and not record.profile.profileSample:
-                    self.metadata.create_or_update_table_profiler_config(
-                        fqn=record.table.fullyQualifiedName.__root__,
-                        table_profiler_config=TableProfilerConfig(
-                            profileQuery=record.profile.profileQuery,
-                        ),
-                    )
-
-            if record.test_results:
-                for test_result in record.test_results:
-                    self.metadata.add_test_case_results(
-                        test_result[0],
-                        test_result[1],
-                    )
+            logger.info(
+                f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"
+            )
 
             if record.sample_data:
                 self.metadata.ingest_table_sample_data(
                     table=record.table, sample_data=record.sample_data
                 )
-
-            logger.info(
-                f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName.__root__}"
-            )
+                logger.info(
+                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
+                )
             self.status.records_written(
                 f"Table: {record.table.fullyQualifiedName.__root__}"
             )
 
         except APIError as err:
-            logger.error(
-                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__} - {err}"
-            )
             logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__}: {err}"
+            )
             self.status.failure(f"Table: {record.table.fullyQualifiedName.__root__}")

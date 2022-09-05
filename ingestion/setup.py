@@ -70,6 +70,7 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
+    "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "datalake": {
         "google-cloud-storage==1.43.0",
         "pandas==1.3.5",
@@ -92,6 +93,7 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser==0.0.2",
     },
     "kafka": {"confluent_kafka==1.8.2", "fastavro>=1.2.0", "avro-python3"},
+    "redpanda": {"confluent_kafka==1.8.2", "fastavro>=1.2.0", "avro-python3"},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.4.0"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
@@ -129,6 +131,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake": {"delta-spark~=2.0.0"},
     "great-expectations": {"great-expectations~=0.15.0"},
     "pinotdb": {"pinotdb~=0.3.11"},
+    "nifi": {},
 }
 dev = {
     "datamodel-code-generator==0.12.0",
@@ -175,6 +178,7 @@ setup(
         "Source": "https://github.com/open-metadata/OpenMetadata",
     },
     packages=find_namespace_packages(where="./src", exclude=["tests*"]),
+    namespace_package=["metadata"],
     entry_points={
         "console_scripts": ["metadata = metadata.cmd:metadata"],
         "apache_airflow_provider": [

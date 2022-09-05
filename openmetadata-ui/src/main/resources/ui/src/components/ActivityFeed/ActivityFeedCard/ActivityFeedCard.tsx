@@ -22,7 +22,6 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
-import { useAuth } from '../../../hooks/authHooks';
 import {
   getEntityField,
   getEntityFQN,
@@ -60,7 +59,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const entityFQN = getEntityFQN(entityLink as string);
   const entityField = getEntityField(entityLink as string);
 
-  const { isAdminUser } = useAuth();
   const currentUser = AppState.getCurrentUserDetails();
 
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
@@ -69,9 +67,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const [isEditAnnouncement, setEditAnnouncement] = useState<boolean>(false);
   const [isEditPost, setEditPost] = useState<boolean>(false);
 
-  const isAuthor = Boolean(
-    feedDetail.from === currentUser?.name || isAdminUser
-  );
+  const isAuthor = feedDetail.from === currentUser?.name;
 
   const onFeedUpdate = (data: Operation[]) => {
     updateThreadHandler(

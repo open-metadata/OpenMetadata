@@ -13,6 +13,7 @@
 
 import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { isEmpty } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Team } from '../../generated/entity/teams/team';
@@ -21,9 +22,14 @@ import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 
 interface TeamHierarchyProps {
   data: Team[];
+  onTeamExpand: (
+    isPageLoading?: boolean,
+    parentTeam?: string,
+    updateChildNode?: boolean
+  ) => void;
 }
 
-const TeamHierarchy: FC<TeamHierarchyProps> = ({ data }) => {
+const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
   const columns: ColumnsType<Team> = useMemo(() => {
     return [
       {
@@ -45,24 +51,24 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data }) => {
       },
       {
         title: 'Sub Teams',
-        dataIndex: 'subTeams',
+        dataIndex: 'childrenCount',
         key: 'subTeams',
-        render: (_, record) => record.children?.length || '--',
+        render: (childrenCount: number) => childrenCount ?? '--',
       },
       {
         title: 'Users',
-        dataIndex: 'users',
+        dataIndex: 'userCount',
         key: 'users',
-        render: (users) => users?.length || '--',
+        render: (userCount: number) => userCount ?? '--',
       },
       {
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
-        render: (description) => description || '--',
+        render: (description: string) => description || '--',
       },
     ];
-  }, []);
+  }, [data, onTeamExpand]);
 
   return (
     <Table
@@ -70,7 +76,12 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data }) => {
       columns={columns}
       dataSource={data}
       pagination={false}
-      size="middle"
+      size="small"
+      onExpand={(isOpen, record) => {
+        if (isOpen && isEmpty(record.children)) {
+          onTeamExpand(false, record.fullyQualifiedName, true);
+        }
+      }}
     />
   );
 };

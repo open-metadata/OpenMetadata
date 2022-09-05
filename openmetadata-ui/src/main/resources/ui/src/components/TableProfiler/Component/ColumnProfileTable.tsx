@@ -11,119 +11,146 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table } from 'antd';
+import { Button, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   PRIMERY_COLOR,
   SECONDARY_COLOR,
   SUCCESS_COLOR,
 } from '../../../constants/constants';
-import { ColumnProfile } from '../../../generated/entity/data/table';
-import { TestCaseStatus } from '../../../generated/tests/tableTest';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
-import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import {
+  DEFAULT_TEST_VALUE,
+  INITIAL_TEST_RESULT_SUMMARY,
+} from '../../../constants/profiler.constant';
+import { ProfilerDashboardType } from '../../../enums/table.enum';
+import { Column, ColumnProfile } from '../../../generated/entity/data/table';
+import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
-import { ColumnProfileTableProps } from '../TableProfiler.interface';
+import TestIndicator from '../../common/TestIndicator/TestIndicator';
+import {
+  ColumnProfileTableProps,
+  columnTestResultType,
+} from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
-import TestIndicator from './TestIndicator';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
-  columnProfile,
-  onAddTestClick,
+  columnTests,
+  hasEditAccess,
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
-  const [data, setData] = useState(columnProfile);
-  // TODO:- Once column level test filter is implemented in test case API, remove this hardcoded value
-  const testDetails = [
-    {
-      value: 0,
-      type: TestCaseStatus.Success,
-    },
-    {
-      value: 0,
-      type: TestCaseStatus.Aborted,
-    },
-    {
-      value: 0,
-      type: TestCaseStatus.Failed,
-    },
-  ];
-  const tableColumn: ColumnsType<ColumnProfile> = useMemo(() => {
+  const [data, setData] = useState<Column[]>(columns);
+  const [columnTestSummary, setColumnTestSummary] =
+    useState<columnTestResultType>();
+
+  const tableColumn: ColumnsType<Column> = useMemo(() => {
     return [
       {
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
+        render: (name: string, record) => {
+          return (
+            <Link
+              to={getProfilerDashboardWithFqnPath(
+                ProfilerDashboardType.COLUMN,
+                record.fullyQualifiedName || ''
+              )}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: 'Data Type',
-        dataIndex: 'name',
+        dataIndex: 'dataTypeDisplay',
         key: 'dataType',
-        render: (name) => {
-          const dataType = columns.find((col) => col.name === name);
-
+        render: (dataTypeDisplay: string) => {
           return (
             <Ellipses tooltip className="tw-w-24">
-              {dataType?.dataTypeDisplay || 'N/A'}
+              {dataTypeDisplay || 'N/A'}
             </Ellipses>
           );
         },
       },
       {
         title: 'Null %',
-        dataIndex: 'nullProportion',
+        dataIndex: 'profile',
         key: 'nullProportion',
         width: 200,
-        render: (nullValue) => {
+        render: (profile: ColumnProfile) => {
           return (
             <ProfilerProgressWidget
               strokeColor={PRIMERY_COLOR}
-              value={nullValue}
+              value={profile?.nullProportion || 0}
             />
           );
         },
       },
       {
         title: 'Unique %',
-        dataIndex: 'uniqueProportion',
+        dataIndex: 'profile',
         key: 'uniqueProportion',
         width: 200,
-        render: (uniqueValue) => (
+        render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SECONDARY_COLOR}
-            value={uniqueValue}
+            value={profile?.uniqueProportion || 0}
           />
         ),
       },
       {
         title: 'Distinct %',
-        dataIndex: 'distinctProportion',
+        dataIndex: 'profile',
         key: 'distinctProportion',
         width: 200,
-        render: (distValue) => (
+        render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SUCCESS_COLOR}
-            value={distValue}
+            value={profile?.distinctProportion || 0}
           />
         ),
       },
       {
         title: 'Value Count',
-        dataIndex: 'valuesCount',
+        dataIndex: 'profile',
         key: 'valuesCount',
-        render: (valuesCount) => formatNumberWithComma(valuesCount),
+        render: (profile: ColumnProfile) => profile?.valuesCount || 0,
       },
       {
-        title: 'Test',
+        title: 'Tests',
+        dataIndex: 'Tests',
+        key: 'Tests',
+        render: (_, record) =>
+          columnTestSummary?.[record.fullyQualifiedName || '']?.count || 0,
+      },
+      {
+        title: 'Status',
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
-        render: () => {
+        render: (_, record) => {
+          const summary =
+            columnTestSummary?.[record.fullyQualifiedName || '']?.results;
+          const currentResult = summary
+            ? Object.entries(summary).map(([key, value]) => ({
+                value,
+                type: key,
+              }))
+            : DEFAULT_TEST_VALUE;
+
           return (
             <Space size={16}>
-              {testDetails.map((test, i) => (
+              {currentResult.map((test, i) => (
                 <TestIndicator key={i} type={test.type} value={test.value} />
               ))}
             </Space>
@@ -135,35 +162,64 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
-          <Button
-            className="tw-border tw-border-primary tw-rounded tw-text-primary"
-            size="small"
-            onClick={() =>
-              onAddTestClick(
-                getCurrentDatasetTab('data-quality'),
-                'column',
-                record.name
-              )
-            }>
-            Add Test
-          </Button>
+          <Tooltip
+            placement="bottom"
+            title={hasEditAccess ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+            <Link
+              to={getAddDataQualityTableTestPath(
+                ProfilerDashboardType.COLUMN,
+                record.fullyQualifiedName || ''
+              )}>
+              <Button
+                className="flex-center"
+                disabled={!hasEditAccess}
+                icon={
+                  <SVGIcons
+                    alt="add test"
+                    className="tw-h-4"
+                    icon={Icons.ADD_TEST}
+                  />
+                }
+                type="link"
+              />
+            </Link>
+          </Tooltip>
         ),
       },
     ];
-  }, [columns]);
+  }, [columns, columnTestSummary]);
 
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
     if (searchText) {
-      setData(columnProfile.filter((col) => col.name?.includes(searchText)));
+      setData(columns.filter((col) => col.name?.includes(searchText)));
     } else {
-      setData(columnProfile);
+      setData(columns);
     }
   };
 
   useEffect(() => {
-    setData(columnProfile);
-  }, [columnProfile]);
+    setData(columns);
+  }, [columns]);
+
+  useEffect(() => {
+    if (columnTests.length) {
+      const colResult = columnTests.reduce((acc, curr) => {
+        const fqn = curr.entityFQN || '';
+        if (isUndefined(acc[fqn])) {
+          acc[fqn] = { results: { ...INITIAL_TEST_RESULT_SUMMARY }, count: 0 };
+        }
+        updateTestResults(
+          acc[fqn].results,
+          curr.testCaseResult?.testCaseStatus || ''
+        );
+        acc[fqn].count += 1;
+
+        return acc;
+      }, {} as columnTestResultType);
+      setColumnTestSummary(colResult);
+    }
+  }, [columnTests]);
 
   return (
     <div data-testid="column-profile-table-container">

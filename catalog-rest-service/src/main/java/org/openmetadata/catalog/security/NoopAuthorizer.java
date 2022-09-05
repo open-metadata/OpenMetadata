@@ -27,6 +27,7 @@ import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Permission.Access;
 import org.openmetadata.catalog.type.ResourcePermission;
@@ -37,13 +38,25 @@ import org.openmetadata.catalog.util.RestUtil;
 public class NoopAuthorizer implements Authorizer {
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
+    SubjectCache.initialize();
     addAnonymousUser();
   }
 
   @Override
-  public List<ResourcePermission> listPermissions(SecurityContext securityContext) {
+  public List<ResourcePermission> listPermissions(SecurityContext securityContext, String user) {
     // Return all operations.
     return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
+  }
+
+  @Override
+  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resource) {
+    return PolicyEvaluator.getResourcePermission(resource, Access.ALLOW);
+  }
+
+  @Override
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+    return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
   }
 
   @Override

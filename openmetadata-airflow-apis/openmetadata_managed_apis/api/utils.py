@@ -10,10 +10,10 @@
 #  limitations under the License.
 
 import importlib
-import logging
 import os
 import re
 import sys
+import traceback
 from multiprocessing import Process
 from typing import Optional
 
@@ -21,6 +21,9 @@ from airflow import settings
 from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagBag
 from flask import request
+from openmetadata_managed_apis.utils.logger import api_logger
+
+logger = api_logger()
 
 
 class MissingArgException(Exception):
@@ -105,8 +108,9 @@ class ScanDagsTask(Process):
         scheduler_job.run()
         try:
             scheduler_job.kill()
-        except Exception:
-            logging.info("Rescan Complete: Killed Job")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.info(f"Rescan Complete: Killed Job: {exc}")
 
 
 def scan_dags_job_background():

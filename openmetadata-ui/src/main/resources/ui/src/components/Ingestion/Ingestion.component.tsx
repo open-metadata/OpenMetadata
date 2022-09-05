@@ -13,12 +13,12 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button } from 'antd';
+import { Button, Empty } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   PAGE_SIZE,
@@ -94,11 +94,13 @@ const Ingestion: React.FC<IngestionProps> = ({
       config.supportsMetadataExtraction &&
         pipelineType.push(PipelineType.Metadata);
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
+      config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
       config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
     } else {
       pipelineType = [
         PipelineType.Metadata,
         PipelineType.Usage,
+        PipelineType.Lineage,
         PipelineType.Profiler,
       ];
     }
@@ -111,7 +113,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     if (ingestionList.length > 0) {
       return pipelineType.reduce((prev, curr) => {
         if (
-          curr !== PipelineType.Profiler &&
+          // Prevent adding multiple usage pipeline
+          curr === PipelineType.Usage &&
           ingestionList.find((d) => d.pipelineType === curr)
         ) {
           return prev;
@@ -121,7 +124,12 @@ const Ingestion: React.FC<IngestionProps> = ({
       }, [] as PipelineType[]);
     }
 
-    return [PipelineType.Metadata, PipelineType.Usage, PipelineType.Profiler];
+    return [
+      PipelineType.Metadata,
+      PipelineType.Usage,
+      PipelineType.Lineage,
+      PipelineType.Profiler,
+    ];
   };
 
   const handleTriggerIngestion = (id: string, displayName: string) => {
@@ -256,12 +264,21 @@ const Ingestion: React.FC<IngestionProps> = ({
   const getAddIngestionElement = () => {
     const types = getIngestionPipelineTypeOption();
     let element: JSX.Element | null = null;
+    // Check if service has atleast one metadata pipeline available or not
+    const hasMetadata = ingestionList.find(
+      (ingestion) => ingestion.pipelineType === PipelineType.Metadata
+    );
 
     if (types.length) {
-      if (types[0] === PipelineType.Metadata || types.length === 1) {
-        element = getAddIngestionButton(types[0]);
-      } else {
+      // if service has metedata then show all available option
+      if (hasMetadata) {
         element = getAddIngestionDropdown(types);
+      } else {
+        /**
+         * If service does not have any metedata pipeline then
+         * show only option for metadata ingestion
+         */
+        element = getAddIngestionButton(PipelineType.Metadata);
       }
     }
 
@@ -409,7 +426,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           </div>
         </div>
         {getSearchedIngestions().length ? (
-          <div className="tw-table-responsive tw-mb-6">
+          <div className="tw-table-responsive tw-mb-6 tw-table-container">
             <table
               className="tw-bg-white tw-w-full tw-mb-4"
               data-testid="ingestion-table">
@@ -613,17 +630,31 @@ const Ingestion: React.FC<IngestionProps> = ({
             )}
           </div>
         ) : (
-          <div className="tw-flex tw-items-center tw-flex-col">
-            {isRequiredDetailsAvailable && ingestionList.length === 0 && (
-              <div className="tw-mt-24">
-                <p className="tw-text-lg tw-text-center">
-                  {`No ingestion workflows found ${
-                    searchText ? `for "${searchText}"` : ''
-                  }`}
-                </p>
-              </div>
-            )}
-          </div>
+          isRequiredDetailsAvailable &&
+          ingestionList.length === 0 && (
+            <div className="tw-border tw-border-main tw-rounded-md tw-mt-2 tw-p-8 tw-w-full tw-bg-white">
+              <Empty
+                description={
+                  <>
+                    <p>No ingestion data available</p>
+                    <p className="tw-mt-2">
+                      To view Ingestion Data, run the MetaData Ingestion. Please
+                      refer to this doc to schedule the{' '}
+                      <Link
+                        className="tw-ml-1"
+                        target="_blank"
+                        to={{
+                          pathname:
+                            'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata',
+                        }}>
+                        Metadata Ingestion
+                      </Link>
+                    </p>
+                  </>
+                }
+              />
+            </div>
+          )
         )}
       </div>
     );

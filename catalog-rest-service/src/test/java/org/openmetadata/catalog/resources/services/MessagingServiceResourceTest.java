@@ -16,6 +16,8 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
@@ -37,7 +39,6 @@ import org.openmetadata.catalog.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
 import org.openmetadata.catalog.services.connections.messaging.PulsarConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MessagingConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -145,7 +146,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     CreateMessagingService update =
         createRequest(test).withDescription("description1").withConnection(messagingConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Update connection
@@ -154,13 +155,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             .withConfig(
                 new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
     change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("connection")
-                .withNewValue(messagingConnection1)
-                .withOldValue(messagingConnection));
+    fieldUpdated(change, "connection", messagingConnection, messagingConnection1);
     update.withConnection(messagingConnection1);
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
@@ -171,13 +166,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                 new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
     update.withConnection(messagingConnection1);
     change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("connection")
-                .withOldValue(messagingConnection1)
-                .withNewValue(messagingConnection2));
+    fieldUpdated(change, "connection", messagingConnection1, messagingConnection2);
     update.setConnection(messagingConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }

@@ -12,8 +12,11 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Dropdown, Menu, Space } from 'antd';
+import { Button, Dropdown, Menu, Space, Tooltip } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import classNames from 'classnames';
 import React, { FC, useState } from 'react';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
@@ -22,22 +25,30 @@ import './ManageButton.less';
 
 interface Props {
   allowSoftDelete?: boolean;
+  afterDeleteAction?: () => void;
+  buttonClassName?: string;
   entityName: string;
   entityId?: string;
   entityType?: string;
   entityFQN?: string;
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
+  canDelete?: boolean;
+  extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
 }
 
 const ManageButton: FC<Props> = ({
   allowSoftDelete,
+  afterDeleteAction,
+  buttonClassName,
   deleteMessage,
   entityName,
   entityType,
+  canDelete,
   entityId,
   isRecursiveDelete,
+  extraDropdownContent,
   onAnnouncementClick,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
@@ -48,25 +59,31 @@ const ManageButton: FC<Props> = ({
       items={[
         {
           label: (
-            <Space
-              className="tw-cursor-pointer manage-button"
-              size={8}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDelete(true);
-                setShowActions(false);
-              }}>
-              <SVGIcons alt="Delete" icon={Icons.DELETE} />
-              <div className="tw-text-left" data-testid="delete-button">
-                <p className="tw-font-medium" data-testid="delete-button-title">
-                  Delete
-                </p>
-                <p className="tw-text-grey-muted tw-text-xs">
-                  Deleting this {entityType} will permanently remove its
-                  metadata from OpenMetadata.
-                </p>
-              </div>
-            </Space>
+            <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+              <Space
+                className={classNames('tw-cursor-pointer manage-button', {
+                  'tw-cursor-not-allowed tw-opacity-50': !canDelete,
+                })}
+                size={8}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDelete(true);
+                  setShowActions(false);
+                }}>
+                <SVGIcons alt="Delete" icon={Icons.DELETE} />
+                <div className="tw-text-left" data-testid="delete-button">
+                  <p
+                    className="tw-font-medium"
+                    data-testid="delete-button-title">
+                    Delete
+                  </p>
+                  <p className="tw-text-grey-muted tw-text-xs">
+                    Deleting this {entityType} will permanently remove its
+                    metadata from OpenMetadata.
+                  </p>
+                </div>
+              </Space>
+            </Tooltip>
           ),
           key: 'delete-button',
         },
@@ -101,6 +118,7 @@ const ManageButton: FC<Props> = ({
               },
             ]
           : []),
+        ...(extraDropdownContent ? extraDropdownContent : []),
       ]}
     />
   );
@@ -116,19 +134,24 @@ const ManageButton: FC<Props> = ({
         visible={showActions}
         onVisibleChange={setShowActions}>
         <Button
-          className="tw-rounded tw-flex tw-border tw-border-primary"
+          className={classNames(
+            'tw-rounded tw-flex tw-justify-center tw-w-6 manage-dropdown-button',
+            buttonClassName
+          )}
           data-testid="manage-button"
           size="small"
+          title="Manage"
           type="default"
           onClick={() => setShowActions(true)}>
           <FontAwesomeIcon
-            className="tw-text-primary tw-self-center"
+            className="tw-text-primary tw-self-center manage-dropdown-icon"
             icon="ellipsis-vertical"
           />
         </Button>
       </Dropdown>
       {isDelete && (
         <DeleteWidgetModal
+          afterDeleteAction={afterDeleteAction}
           allowSoftDelete={allowSoftDelete}
           deleteMessage={deleteMessage}
           entityId={entityId || ''}

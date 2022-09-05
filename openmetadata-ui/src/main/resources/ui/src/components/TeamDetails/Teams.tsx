@@ -11,9 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Switch } from 'antd';
-import React, { FC } from 'react';
-import { Team, TeamType } from '../../generated/entity/teams/team';
+import { Button, Col, Empty, Row, Space, Switch, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../constants/HelperTextUtil';
+import { Team } from '../../generated/entity/teams/team';
+import jsonData from '../../jsons/en';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -22,6 +35,11 @@ interface TeamsProps {
   onShowDeletedTeamChange: (checked: boolean) => void;
   data: Team[];
   onAddTeamClick: (value: boolean) => void;
+  onTeamExpand: (
+    isPageLoading?: boolean,
+    parentTeam?: string,
+    updateChildNode?: boolean
+  ) => void;
 }
 
 const Teams: FC<TeamsProps> = ({
@@ -29,49 +47,71 @@ const Teams: FC<TeamsProps> = ({
   showDeletedTeam,
   onShowDeletedTeamChange,
   onAddTeamClick,
+  onTeamExpand,
 }) => {
-  const generateTeamsData = (teams: Team[]) => {
-    const orgnization = teams
-      .filter((team) => team.teamType === TeamType.Organization)
-      .map((team) => {
-        const children = team.children?.map((child) => {
-          const updatedChildren: Team =
-            teams.find((team: Team) => team.id === child.id) || ({} as Team);
-          if (updatedChildren.children?.length === 0) {
-            delete updatedChildren.children;
-          }
+  const { getResourcePermission } = usePermissionProvider();
+  const [resourcePermissions, setResourcePermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-          return updatedChildren;
-        });
+  const filteredData = useMemo(
+    () =>
+      data.filter(
+        (d) =>
+          (showDeletedTeam && d.deleted) || (!showDeletedTeam && !d.deleted)
+      ),
+    [data, showDeletedTeam]
+  );
 
-        return {
-          ...team,
-          key: team.id,
-          children,
-        };
-      });
-
-    return orgnization;
+  const fetchPermissions = async () => {
+    try {
+      const perms = await getResourcePermission(ResourceEntity.TEAM);
+      setResourcePermissions(perms);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-user-permission-error']
+      );
+    }
   };
 
-  return (
+  useEffect(() => {
+    fetchPermissions();
+  }, []);
+
+  return resourcePermissions.ViewAll ? (
     <Row className="team-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <span>
+          <Space align="end" size={5}>
             <Switch
               checked={showDeletedTeam}
+              size="small"
               onClick={onShowDeletedTeamChange}
             />
-            <span className="tw-ml-2">Deleted Teams</span>
-          </span>
-          <Button type="primary" onClick={() => onAddTeamClick(true)}>
-            Add Team
-          </Button>
+            <span>Deleted Teams</span>
+          </Space>
+          <Tooltip
+            placement="bottom"
+            title={
+              resourcePermissions.Create ? 'Add Team' : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              disabled={!resourcePermissions.Create}
+              type="primary"
+              onClick={() => onAddTeamClick(true)}>
+              Add Team
+            </Button>
+          </Tooltip>
         </Space>
       </Col>
       <Col span={24}>
-        <TeamHierarchy data={generateTeamsData(data) as Team[]} />
+        <TeamHierarchy data={filteredData} onTeamExpand={onTeamExpand} />
+      </Col>
+    </Row>
+  ) : (
+    <Row align="middle" className="tw-h-full">
+      <Col span={24}>
+        <Empty description={NO_PERMISSION_TO_VIEW} />
       </Col>
     </Row>
   );

@@ -62,13 +62,13 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	@echo "Make sure to first run the install_dev recipe"
 	mkdir -p ingestion/src/metadata/generated
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json/schema --input-file-type jsonschema --output ingestion/src/metadata/generated/schema --set-default-enum-member
-	$(MAKE) py_antlr
+	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
@@ -184,11 +184,16 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 
 .PHONY: core_py_antlr
 core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
-	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4
 
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
-	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4
+
+.PHONY: js_antlr
+js_antlr:  ## Generate the Python code for parsing FQNs
+	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4
+
 
 .PHONY: install_antlr_cli
 install_antlr_cli:  ## Install antlr CLI locally
@@ -198,15 +203,15 @@ install_antlr_cli:  ## Install antlr CLI locally
 
 .PHONY: docker-docs
 docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest
 
 .PHONY: docker-docs-validate
 docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest -c 'npm run export'
+	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'npm run export'
 
 .PHONY: docker-docs-local
 docker-docs-local:  ## Runs the OM docs in docker with a local image
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local
 
 
 ## SNYK

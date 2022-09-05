@@ -1,11 +1,15 @@
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.TEST_CASE;
 import static org.openmetadata.catalog.Entity.TEST_SUITE;
 
 import java.io.IOException;
+import java.util.List;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.tests.TestSuite;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
@@ -26,12 +30,20 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) throws IOException {
     entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
+    entity.setPipeline(fields.contains("pipelines") ? getIngestionPipeline(entity) : null);
+    entity.setTests(fields.contains("tests") ? getTestCases(entity) : null);
     return entity;
   }
 
   @Override
   public void prepare(TestSuite entity) throws IOException {
     setFullyQualifiedName(entity);
+  }
+
+  private List<EntityReference> getTestCases(TestSuite entity) throws IOException {
+    List<CollectionDAO.EntityRelationshipRecord> testCases =
+        findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    return EntityUtil.getEntityReferences(testCases);
   }
 
   @Override
@@ -48,6 +60,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public void storeRelationships(TestSuite entity) {
     storeOwner(entity, entity.getOwner());
+  }
+
+  private EntityReference getIngestionPipeline(TestSuite testSuite) throws IOException {
+    return getToEntityRef(testSuite.getId(), Relationship.CONTAINS, Entity.INGESTION_PIPELINE, false);
   }
 
   public class TestSuiteUpdater extends EntityUpdater {

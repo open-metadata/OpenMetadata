@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CustomProperty, Type } from '../../generated/entity/type';
 import { getEntityName, isEven } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -22,6 +24,7 @@ import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 interface CustomPropertyTableProp {
+  hasAccess: boolean;
   customProperties: CustomProperty[];
   updateEntityType: (customProperties: Type['customProperties']) => void;
 }
@@ -31,6 +34,7 @@ type Operation = 'delete' | 'update' | 'no-operation';
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
   updateEntityType,
+  hasAccess,
 }) => {
   const [selectedProperty, setSelectedProperty] = useState<CustomProperty>(
     {} as CustomProperty
@@ -68,12 +72,12 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
   return (
     <Fragment>
-      <div className="tw-bg-white tw-border tw-border-main tw-rounded  tw-shadow">
+      <div className="tw-table-container">
         <table
           className="tw-w-full"
           data-testid="entity-custom-properties-table">
           <thead data-testid="table-header">
-            <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
+            <tr className="tableHead-row">
               <th className="tableHead-cell" data-testid="property-name">
                 Name
               </th>
@@ -94,7 +98,6 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <tr
                   className={classNames(
                     `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                    'tw-border-l-0 tw-border-r-0',
                     {
                       'tw-border-b-0': index === customProperties.length - 1,
                     }
@@ -120,34 +123,42 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                   </td>
                   <td className="tableBody-cell">
                     <div className="tw-flex">
-                      <button
-                        className="tw-cursor-pointer"
-                        data-testid="edit-button"
-                        onClick={() => {
-                          setSelectedProperty(property);
-                          setOperation('update');
-                        }}>
-                        <SVGIcons
-                          alt="edit"
-                          icon={Icons.EDIT}
-                          title="Edit"
-                          width="16px"
-                        />
-                      </button>
-                      <button
-                        className="tw-cursor-pointer tw-ml-4"
-                        data-testid="delete-button"
-                        onClick={() => {
-                          setSelectedProperty(property);
-                          setOperation('delete');
-                        }}>
-                        <SVGIcons
-                          alt="delete"
-                          icon={Icons.DELETE}
-                          title="Delete"
-                          width="16px"
-                        />
-                      </button>
+                      <Tooltip
+                        title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                        <button
+                          className="tw-cursor-pointer"
+                          data-testid="edit-button"
+                          disabled={!hasAccess}
+                          onClick={() => {
+                            setSelectedProperty(property);
+                            setOperation('update');
+                          }}>
+                          <SVGIcons
+                            alt="edit"
+                            icon={Icons.EDIT}
+                            title="Edit"
+                            width="16px"
+                          />
+                        </button>
+                      </Tooltip>
+                      <Tooltip
+                        title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+                        <button
+                          className="tw-cursor-pointer tw-ml-4"
+                          data-testid="delete-button"
+                          disabled={!hasAccess}
+                          onClick={() => {
+                            setSelectedProperty(property);
+                            setOperation('delete');
+                          }}>
+                          <SVGIcons
+                            alt="delete"
+                            icon={Icons.DELETE}
+                            title="Delete"
+                            width="16px"
+                          />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>

@@ -55,6 +55,10 @@ jest.mock('../common/DBTConfigFormBuilder/DBTConfigFormBuilder', () => {
     .mockImplementation(() => <div>DBTConfigFormBuilder.component</div>);
 });
 
+jest.mock('../IngestionStepper/IngestionStepper.component', () => {
+  return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
+});
+
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {
     const { container } = render(<AddIngestion {...mockAddIngestionProps} />);

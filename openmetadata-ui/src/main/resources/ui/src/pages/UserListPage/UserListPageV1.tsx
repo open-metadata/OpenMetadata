@@ -21,8 +21,8 @@ import Loader from '../../components/Loader/Loader';
 import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
-  INITIAL_PAGIN_VALUE,
-  PAGE_SIZE,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
@@ -47,7 +47,7 @@ const UserListPageV1 = () => {
   const [userList, setUserList] = useState<User[]>([]);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [searchValue, setSearchValue] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGIN_VALUE);
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const initialSetup = () => {
     setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
@@ -55,13 +55,13 @@ const UserListPageV1 = () => {
     setIsDataLoading(true);
     setShowDeletedUser(false);
     setSearchValue('');
-    setCurrentPage(INITIAL_PAGIN_VALUE);
+    setCurrentPage(INITIAL_PAGING_VALUE);
   };
 
   const fetchUsersList = async (
     isAdmin: boolean | undefined = undefined,
     param = {} as Record<string, string>,
-    limit = PAGE_SIZE
+    limit = PAGE_SIZE_MEDIUM
   ) => {
     setIsDataLoading(true);
     try {
@@ -109,7 +109,7 @@ const UserListPageV1 = () => {
       searchData(
         text,
         currentPage,
-        PAGE_SIZE,
+        PAGE_SIZE_MEDIUM,
         filters,
         '',
         '',
@@ -161,7 +161,7 @@ const UserListPageV1 = () => {
   };
 
   const handleShowDeletedUserChange = (value: boolean) => {
-    setCurrentPage(INITIAL_PAGIN_VALUE);
+    setCurrentPage(INITIAL_PAGING_VALUE);
     setSearchValue('');
     setShowDeletedUser(value);
     fetchUsersList(isAdminPage, {
@@ -171,9 +171,9 @@ const UserListPageV1 = () => {
 
   const handleSearch = (value: string) => {
     setSearchValue(value);
-    setCurrentPage(INITIAL_PAGIN_VALUE);
+    setCurrentPage(INITIAL_PAGING_VALUE);
     if (value) {
-      getSearchedUsers(value, INITIAL_PAGIN_VALUE);
+      getSearchedUsers(value, INITIAL_PAGING_VALUE);
     } else {
       handleFetch();
     }

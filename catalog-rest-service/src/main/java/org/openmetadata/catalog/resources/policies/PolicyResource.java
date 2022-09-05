@@ -48,9 +48,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.FunctionList;
 import org.openmetadata.catalog.ResourceRegistry;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.policies.Policy;
@@ -58,16 +58,21 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.CompiledRule;
 import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
+import org.openmetadata.catalog.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Function;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 @Path("/v1/policies")
@@ -290,16 +295,21 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       operationId = "listPolicyResources",
       summary = "Get list of policy resources used in authoring a policy.",
       tags = "policies",
-      description = "Get all the resources used in policy authoring",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "policy", content = @Content(mediaType = "application/json")),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Policy for instance {id} and version {version} is" + " " + "not found")
-      })
+      description = "Get list of policy resources used in authoring a policy.")
   public ResultList<ResourceDescriptor> listPolicyResources(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new ResourceDescriptorList(ResourceRegistry.listResourceDescriptors());
+  }
+
+  @GET
+  @Path("/functions")
+  @Operation(
+      operationId = "listPolicyFunctions",
+      summary = "Get list of policy functions used in authoring conditions in policy rules.",
+      tags = "policies",
+      description = "Get list of policy functions used in authoring conditions in policy rules.")
+  public ResultList<Function> listPolicyFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return new FunctionList(CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class));
   }
 
   @POST
@@ -397,12 +407,25 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return response;
   }
 
+  @GET
+  @Path("/validation/condition/{expression}")
+  @Operation(
+      operationId = "validateCondition",
+      summary = "Validate a given condition",
+      tags = "policies",
+      description = "Validate a given condition expression used in authoring rules.",
+      responses = {
+        @ApiResponse(responseCode = "204", description = "No value is returned"),
+        @ApiResponse(responseCode = "400", description = "Invalid expression")
+      })
+  public void validateCondition(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression)
+      throws IOException {
+    CompiledRule.validateExpression(expression, Boolean.class);
+  }
+
   private Policy getPolicy(CreatePolicy create, String user) throws IOException {
-    Policy policy =
-        copy(new Policy(), create, user)
-            .withPolicyType(create.getPolicyType())
-            .withRules(create.getRules())
-            .withEnabled(create.getEnabled());
+    Policy policy = copy(new Policy(), create, user).withRules(create.getRules()).withEnabled(create.getEnabled());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }
@@ -417,7 +440,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
     String jsonDataFile = jsonDataFiles.get(0);
     try {
-      String json = IOUtil.toString(PolicyResource.class.getClassLoader().getResourceAsStream(jsonDataFile));
+      String json = CommonUtil.getResourceAsStream(PolicyResource.class.getClassLoader(), jsonDataFile);
       return JsonUtils.readObjects(json, ResourceDescriptor.class);
     } catch (Exception e) {
       LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);

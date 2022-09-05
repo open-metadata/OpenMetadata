@@ -21,6 +21,7 @@
       "default": "Superset"
     },
     "hostPort": {
+      "expose": true,
       "title": "Host and Port",
       "description": "URL for the superset instance.",
       "type": "string",
@@ -40,7 +41,7 @@
     },
     "provider": {
       "title": "Provider",
-      "description": "Authentication provider for the Superset service.",
+      "description": "Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API.",
       "type": "string",
       "default": "db"
     },

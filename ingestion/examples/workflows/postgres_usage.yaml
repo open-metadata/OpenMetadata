@@ -1,0 +1,29 @@
+source:
+  type: postgres-usage
+  serviceName: local_postgres
+  serviceConnection:
+    config:
+      type: Postgres
+      username: username
+      password: password
+      hostPort: localhost:5432
+      database: database_name
+  sourceConfig:
+    config:
+      queryLogDuration: 1
+processor:
+  type: query-parser
+  config: {}
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/postgres_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/postgres_usage
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

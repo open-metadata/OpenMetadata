@@ -26,6 +26,7 @@ import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import {
   deletePostById,
+  deleteThread,
   getFeedById,
   updatePost,
   updateThread,
@@ -47,7 +48,8 @@ import {
 } from '../constants/feed.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Post, Thread, ThreadType } from '../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import jsonData from '../jsons/en';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -318,22 +320,6 @@ export const getFrontEndFormat = (message: string) => {
   return updatedMessage;
 };
 
-export const deletePost = (threadId: string, postId: string) => {
-  return new Promise<Post>((resolve, reject) => {
-    deletePostById(threadId, postId)
-      .then((res) => {
-        if (res.status === 200) {
-          resolve(res.data);
-        } else {
-          reject(res.data);
-        }
-      })
-      .catch((error: AxiosError) => {
-        reject(error);
-      });
-  });
-};
-
 export const getUpdatedThread = (id: string) => {
   return new Promise<Thread>((resolve, reject) => {
     getFeedById(id)
@@ -348,6 +334,60 @@ export const getUpdatedThread = (id: string) => {
         reject(error);
       });
   });
+};
+
+/**
+ *
+ * @param threadId thread to be deleted
+ * @param postId post to be deleted
+ * @param isThread boolean, if true delete the thread else post
+ * @param callback optional callback function to get the updated threads
+ */
+export const deletePost = async (
+  threadId: string,
+  postId: string,
+  isThread: boolean,
+  callback?: (value: React.SetStateAction<Thread[]>) => void
+) => {
+  /**
+   * Delete the thread if isThread is true
+   */
+  if (isThread) {
+    try {
+      const data = await deleteThread(threadId);
+      callback &&
+        callback((prev) => prev.filter((thread) => thread.id !== data.id));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  } else {
+    try {
+      const deletResponse = await deletePostById(threadId, postId);
+      // get updated thread only if delete response and callback is present
+      if (deletResponse && callback) {
+        const data = await getUpdatedThread(threadId);
+        callback((pre) => {
+          return pre.map((thread) => {
+            if (thread.id === data.id) {
+              return {
+                ...thread,
+                posts: data.posts && data.posts.slice(-3),
+                postsCount: data.postsCount,
+              };
+            } else {
+              return thread;
+            }
+          });
+        });
+      } else {
+        throw jsonData['api-error-messages'][
+          'fetch-updated-conversation-error'
+        ];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }
 };
 
 /**

@@ -104,11 +104,17 @@ kubectl create -f nfs-cluster-ip-service.yml
 ```
 
 We create a CluserIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
-Now your nfs server pods are accessible either at the IP (note yours from the service output) or via its name nfs-server.default.svc.cluster.local. By default every service is addressable via name `<service-name>.<namespace>.svc.cluster.local`.
 
 </Collapse>
 
 ### Provision NFS backed PV and PVC for Airflow DAGs and Airflow Logs
+
+Update `<NFS_SERVER_CLUSTER_IP>` with the NFS Service Cluster IP Address for below code snippets.
+You can get the clusterIP using the following command
+
+```commandline
+kubectl get service nfs-server -o jsonpath='{.spec.clusterIP}'
+```
 
 <Collapse title="Code Samples for PV and PVC for Airflow DAGs">
 
@@ -124,7 +130,7 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    server: nfs-server.default.svc.cluster.local
+    server: <NFS_SERVER_CLUSTER_IP>
     path: "/"
 
 ---
@@ -167,7 +173,7 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    server: nfs-server.default.svc.cluster.local
+    server: <NFS_SERVER_CLUSTER_IP>
     path: "/"
 
 ---
@@ -210,17 +216,13 @@ metadata:
   name: my-permission-pod
 spec:
   containers:
-  - image: busybox
+  - image: nginx
     name: my-permission-pod
     volumeMounts:
     - name: airflow-dags
       mountPath: /airflow-dags
     - name: airflow-logs
       mountPath: /airflow-logs
-    command:
-    - "chown -R 50000 /airflow-dags /airflow-logs"
-    # if needed
-    - "chmod -R a+rwx /airflow-dags"
   volumes:
   - name: airflow-logs
     persistentVolumeClaim:
@@ -233,13 +235,23 @@ spec:
 ```
 
 <Note>
+
 Airflow runs the pods with linux user name as airflow and linux user id as 50000.
+
 </Note>
 
 Run the below command to create the pod and fix the permissions
 
 ```commandline
 kubectl create -f permissions_pod.yml
+```
+
+Once the permissions pod is up and running, execute the below commands within the container.
+
+```commandline
+kubectl exec --tty my-permission-pod --container my-permission-pod -- chown -R 50000 /airflow-dags /airflow-log
+# If needed
+kubectl exec --tty my-permission-pod --container my-permission-pod -- chmod -R a+rwx /airflow-dags
 ```
 
 ## Create OpenMetadata dependencies Values

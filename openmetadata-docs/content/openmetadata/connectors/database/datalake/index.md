@@ -3,59 +3,165 @@ title: Datalake
 slug: /openmetadata/connectors/database/datalake
 ---
 
-<ConnectorIntro connector="Datalake" goal="Airflow" />
+# Datalake
 
-<Requirements />
+In this section, we provide guides and references to use the Datalake connector.
 
+Configure and schedule Datalake metadata and profiler workflows from the OpenMetadata UI:
+- [Requirements](#requirements)
+- [Metadata Ingestion](#metadata-ingestion)
+
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
+the following docs to connect using Airflow SDK or with the CLI.
+
+<TileContainer>
+  <Tile
+    icon="air"
+    title="Ingest with Airflow"
+    text="Configure the ingestion using Airflow SDK"
+    link="/openmetadata/connectors/database/datalake/airflow"
+    size="half"
+  />
+  <Tile
+    icon="account_tree"
+    title="Ingest with the CLI"
+    text="Run a one-time ingestion using the metadata CLI"
+    link="/openmetadata/connectors/database/datalake/cli"
+    size="half"
+  />
+</TileContainer>
+
+## Requirements
+
+<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
+To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
+</InlineCallout>
+
+To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
+custom Airflow plugins to handle the workflow deployment.
 
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page
 
+The first step is ingesting the metadata from your sources. Under
+Settings, you will find a Services link an external source system to
+OpenMetadata. Once a service is created, it can be used to configure
+metadata, usage, and profiler workflows.
 
-The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
+To visit the Services page, select Services from the Settings menu.
 
-To visit the _Services_ page, select _Services_ from the _Settings_ menu.
-
-
-![Navigate to Settings >> Services](<https://raw.githubusercontent.com/open-metadata/OpenMetadata/0.10.1-docs/.gitbook/assets/image%20(14).png>)
-
-
+<Image
+src="/images/openmetadata/connectors/visit-services.png"
+alt="Visit Services Page"
+caption="Find Services under the Settings menu"
+/>
 
 ### 2. Create a New Service
 
-Click on the _Add New Service_ button to start the Service creation.
+Click on the Add New Service button to start the Service creation.
 
-
-<Image src="/images/openmetadata/connectors/datalake/create-new-service.png" alt="create-new-service"/>
+<Image
+src="/images/openmetadata/connectors/create-service.png"
+alt="Create a new service"
+caption="Add a new Service from the Services page"
+/>
 
 ### 3. Select the Service Type
 
-Select Datalake as the service type and click _Next_.
+Select Datalake as the service type and click Next.
 
-<Image src="/images/openmetadata/connectors/datalake/select-service.png" alt="select-service"/>
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/datalake/select-service.png"
+  alt="Select Service"
+  caption="Select your service from the list"
+/>
+</div>
 
 ### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-<Image src="/images/openmetadata/connectors/datalake/describe-service.png" alt="describe-service"/>
-
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Datalake services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their Service Name. Provide
+a name that distinguishes your deployment from other services, including
+the other {connector} services that you might be ingesting metadata
+from.
+
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/datalake/add-new-service.png"
+  alt="Add New Service"
+  caption="Provide a Name and description for your Service"
+/>
+</div>
+
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Datalake service as desired.
+In this step, we will configure the connection settings required for
+this connector. Please follow the instructions below to ensure that
+you've configured the connector to read from your datalake service as
+desired.
 
-**Datalake using AWS S3**
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/datalake/service-connection.png"
+  alt="Configure service connection"
+  caption="Configure the service connection by filling the form"
+/>
+</div>
+
+
+Once the credentials have been added, click on `Test Connection` and Save
+the changes.
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/test-connection.png"
+  alt="Test Connection"
+  caption="Test the connection and save the Service"
+/>
+</div>
+
+#### Connection Options
+
+<br/>
+
+** S3 Permissions **
+
+<p> To execute metadata extraction AWS account should have enough access to fetch required data. The <strong>Bucket Policy</strong> in AWS requires at least these permissions: </p>
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::<my bucket>",
+                "arn:aws:s3:::<my bucket>/*"
+            ]
+        }
+    ]
+}
+```
+
+<MetadataIngestionService connector="Datalake"/>
+
+<h4>Connection Options</h4>
+
+<Collapse title="Datalake using AWS S3">
 
 <Image src="/images/openmetadata/connectors/datalake/service-connection-using-aws-s3.png" alt="create-account"/>
 
-<details>
-
-<summary>Connection Options for AWS S3</summary>
 
 **AWS Access Key ID**
 
@@ -91,24 +197,11 @@ Enter the details for any additional connection options that can be sent to Dyna
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to DynamoDB during the connection. These details must be added as Key-Value pairs.
 
-In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
+</Collapse>
 
-`"authenticator" : "sso_login_url"`
-
-In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
-
-`"authenticator" : "externalbrowser"`
-
-</details>
-
-**Datalake using GCS**
+<Collapse title="Datalake using GCS">
 
 <Image src="/images/openmetadata/connectors/datalake/service-connection-using-gcs.png" alt="service-connection-using-gcs"/>
-
-
-<details>
-
-<summary>Connection Options for GCS</summary>
 
 **BUCKET NAME**
 
@@ -120,7 +213,7 @@ This is the Bucket Name in GCS.
 
 **GCS Credentials**
 
-We support two ways of authenticating to BigQuery:
+We support two ways of authenticating to GCS:
 
 1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
    1. Credentials type, e.g. `service_account`.
@@ -134,127 +227,81 @@ We support two ways of authenticating to BigQuery:
    9. Authentication Provider X509 Certificate URL, [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
    10. Client X509 Certificate URL
 
-</details>
+</Collapse>
 
-After hitting Save you will see that your Datalake connector has been added successfully, and you can add an ingestion.
+### 6. Configure Metadata Ingestion
 
-<Image src="/images/openmetadata/connectors/datalake/created-service.png" alt="created-service"/>
+In this step we will configure the metadata ingestion pipeline,
+Please follow the instructions below
 
-### 6. Configure the Metadata Ingestion
+<Image
+src="/images/openmetadata/connectors/configure-metadata-ingestion-database.png"
+alt="Configure Metadata Ingestion"
+caption="Configure Metadata Ingestion Page"
+/>
 
-Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
+#### Metadata Ingestion Options
 
-<Image src="/images/openmetadata/connectors/datalake/service-page.png" alt="service-page"/>
-
-<details>
-
-<summary>Metadata Ingestion Options</summary>
-
-**Include (Table Filter Pattern)**
-
-Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
-
-Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
-
-**Exclude (Table Filter Pattern)**
-
-Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
-
-**Include (Schema Filter Pattern)**
-
-Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
-
-Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
-
-**Exclude (Schema Filter Pattern)**
-
-Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
-
-**Include views (toggle)**
-
-Set the _Include views_ toggle to the on position to control whether or not to include views as part of metadata ingestion and data profiling.
-
-Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
-
-**Enable data profiler (toggle)**
-
-Glue does not provide querying capabilities, so the data profiler is not supported.
-
-**Ingest sample data (toggle)**
-
-Glue does not provide querying capabilities, so sample data is not supported.
-
-</details>
-
-
-<Image src="/images/openmetadata/connectors/datalake/deployed-service.png" alt="deploy-service"/>
+- **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
+- **Database Filter Pattern (Optional)**: Use to database filter patterns to control whether or not to include database as part of metadata ingestion.
+   - **Include**: Explicitly include databases by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all databases with names matching one or more of the supplied regular expressions. All other databases will be excluded.
+   - **Exclude**: Explicitly exclude databases by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all databases with names matching one or more of the supplied regular expressions. All other databases will be included.
+- **Schema Filter Pattern (Optional)**: Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion.
+   - **Include**: Explicitly include schemas by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
+   - **Exclude**: Explicitly exclude schemas by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
+- **Table Filter Pattern (Optional)**: Use to table filter patterns to control whether or not to include tables as part of metadata ingestion.
+   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
+   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
+- **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
+- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
+- **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
 ### 7. Schedule the Ingestion and Deploy
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
+Scheduling can be set up at an hourly, daily, or weekly cadence. The
+timezone is in UTC. Select a Start Date to schedule for ingestion. It is
+optional to add an End Date.
 
-Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
+Review your configuration settings. If they match what you intended,
+click Deploy to create the service and schedule metadata ingestion.
 
-If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
+If something doesn't look right, click the Back button to return to the
+appropriate step and change the settings as needed.
 
-<details>
+<Image
+src="/images/openmetadata/connectors/schedule.png"
+alt="Schedule the Workflow"
+caption="Schedule the Ingestion Pipeline and Deploy"
+/>
 
-<summary><strong>Scheduling Options</strong></summary>
-
-**Every**
-
-Use the _Every_ drop down menu to select the interval at which you want to ingest metadata. Your options are as follows:
-
-* _Hour_: Ingest metadata once per hour
-* _Day_: Ingest metadata once per day
-* _Week_: Ingest metadata once per week
-
-**Day**
-
-The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
-
-**Minute**
-
-The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
-
-**Time**
-
-The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
-
-**Start date (UTC)**
-
-Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
-
-**End date (UTC)**
-
-Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
-
-</details>
-
-After configuring the workflow, you can click on _Deploy_ to create the pipeline.
-
-<Image src="/images/openmetadata/connectors/datalake/schedule-options.png" alt="schedule-options"/>
-
-
+After configuring the workflow, you can click on Deploy to create the
+pipeline.
 
 ### 8. View the Ingestion Pipeline
 
-Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
+Once the workflow has been successfully deployed, you can view the
+Ingestion Pipeline running from the Service Page.
 
-<Image src="/images/openmetadata/connectors/datalake/ingestion-pipeline.png" alt="ingestion-pipeline"/>
+<Image
+src="/images/openmetadata/connectors/view-ingestion-pipeline.png"
+alt="View Ingestion Pipeline"
+caption="View the Ingestion Pipeline from the Service Page"
+/>
 
 ### 9. Workflow Deployment Error
 
-If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
+If there were any errors during the workflow deployment process, the
+Ingestion Pipeline Entity will still be created, but no workflow will be
+present in the Ingestion container.
 
-You can then edit the Ingestion Pipeline and _Deploy_ it again.
+You can then edit the Ingestion Pipeline and Deploy it again.
 
-<Image src="/images/openmetadata/connectors/datalake/workflow-deployment-error.png" alt="create-account"/>
+<Image
+src="/images/openmetadata/connectors/workflow-deployment-error.png"
+alt="Workflow Deployment Error"
+caption="Edit and Deploy the Ingestion Pipeline"
+/>
 
-From the _Connection_ tab, you can also _Edit_ the Service if needed.
-
-
-
-<IngestionScheduleAndDeploy />
-
-<ConnectorOutro connector="Datalake" goal="Airflow"  />
+From the Connection tab, you can also Edit the Service if needed.

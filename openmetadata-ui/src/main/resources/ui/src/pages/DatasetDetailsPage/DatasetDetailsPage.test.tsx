@@ -275,6 +275,18 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockUseParams),
 }));
 
+jest.mock('../../utils/CommonUtils', () => ({
+  addToRecentViewed: jest.fn(),
+  getCurrentUserId: jest.fn().mockReturnValue('test'),
+  getEntityMissingError: jest
+    .fn()
+    .mockImplementation(() => <span>Entity missing error</span>),
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getFeedCounts: jest.fn(),
+  getFields: jest.fn().mockReturnValue('field'),
+  getPartialNameFromTableFQN: jest.fn().mockReturnValue('name'),
+}));
+
 describe('Test DatasetDetails page', () => {
   it('Component should render properly', async () => {
     const { container } = render(<DatasetDetailsPage />, {
@@ -1104,195 +1116,6 @@ describe('Test DatasetDetails page', () => {
       fireEvent.click(removeLineageHandler);
       fireEvent.click(postFeedHandler);
       fireEvent.click(createThread);
-    });
-
-    // deletePost api test
-
-    it('Show error message on fail of deletePost api with error message', async () => {
-      (deletePost as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: { data: { message: 'Error!' } } })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
-    });
-
-    it('Show error message on fail of deletePost api with empty response', async () => {
-      (deletePost as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: {} })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
-    });
-
-    it('Show error message on fail of deletePost api with empty object', async () => {
-      (deletePost as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({})
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
-    });
-
-    it('Show error message on fail of deletePost api with no response', async () => {
-      (deletePost as jest.Mock).mockImplementationOnce(() => Promise.reject());
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
-    });
-
-    // getUpdatedThread api test
-
-    it('Show error message on fail of getUpdatedThread api with error message', async () => {
-      (deletePost as jest.Mock).mockImplementationOnce(() => Promise.resolve());
-      (getUpdatedThread as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: { data: { message: 'Error!' } } })
-      );
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
-    });
-
-    it('Show error message on fail of getUpdatedThread api with empty response', async () => {
-      (getUpdatedThread as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: {} })
-      );
-      (deletePost as jest.Mock).mockImplementationOnce(() => Promise.resolve());
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
-    });
-
-    it('Show error message on fail of getUpdatedThread api with empty object', async () => {
-      (getUpdatedThread as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({})
-      );
-      (deletePost as jest.Mock).mockImplementationOnce(() => Promise.resolve());
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
-    });
-
-    it('Show error message on fail of getUpdatedThread api with no response', async () => {
-      (getUpdatedThread as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      (deletePost as jest.Mock).mockImplementationOnce(() => Promise.resolve());
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const deletePostHandler = await findByTestId(
-        container,
-        'deletePostHandler'
-      );
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(deletePostHandler).toBeInTheDocument();
-
-      fireEvent.click(deletePostHandler);
     });
 
     it('Show error message on resolve of getUpdatedThread api without response data', async () => {

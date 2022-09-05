@@ -11,21 +11,20 @@
  *  limitations under the License.
  */
 
+import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
 import { EntityField } from '../../../constants/feed.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { Table } from '../../../generated/entity/data/table';
-import { Operation } from '../../../generated/entity/policies/accessControl/rule';
-import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import Card from '../Card/Card';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+const { Text } = Typography;
 
 interface Props {
   entityName?: string;
@@ -45,9 +44,7 @@ interface Props {
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
 }
-
 const DescriptionV1 = ({
-  owner,
   hasEditAccess,
   onDescriptionEdit,
   description = '',
@@ -67,48 +64,46 @@ const DescriptionV1 = ({
 
   const editButton = () => {
     return !isReadOnly ? (
-      <NonAdminAction
-        html={getHtmlForNonAdminAction(Boolean(owner))}
-        isOwner={hasEditAccess}
-        permission={Operation.EditDescription}
-        position="right">
+      <Tooltip
+        title={hasEditAccess ? 'Edit Description' : NO_PERMISSION_FOR_ACTION}>
         <button
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-description"
+          disabled={!hasEditAccess}
           onClick={onDescriptionEdit}>
-          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+          <SVGIcons
+            alt="edit"
+            icon={Icons.IC_EDIT_PRIMARY}
+            title="Edit"
+            width="16px"
+          />
         </button>
-      </NonAdminAction>
+      </Tooltip>
     ) : (
       <></>
     );
   };
 
   return (
-    <div className="schema-description tw-relative">
+    <Space className="schema-description tw-flex" direction="vertical">
+      <Space
+        style={{
+          display: 'flex',
+          width: '100%',
+          justifyContent: 'space-between',
+        }}>
+        <Text type="secondary">Description</Text>
+        <div>{editButton()}</div>
+      </Space>
       <div>
-        <Card
-          action={editButton()}
-          className="tw-relative"
-          heading="Description">
-          <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative"
-            data-testid="description"
-            id="center">
-            {description?.trim() ? (
-              <RichTextEditorPreviewer
-                blurClasses="see-more-blur-white"
-                enableSeeMoreVariant={!removeBlur}
-                markdown={description}
-                maxHtClass="tw-max-h-36"
-                maxLen={800}
-              />
-            ) : (
-              <span className="tw-no-description tw-p-2">No description </span>
-            )}
-          </div>
-        </Card>
-
+        {description?.trim() ? (
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={!removeBlur}
+            markdown={description}
+          />
+        ) : (
+          <span className="">No description </span>
+        )}
         {isEdit && (
           <ModalWithMarkdownEditor
             header={`Edit description for ${entityName}`}
@@ -187,7 +182,7 @@ const DescriptionV1 = ({
           )}
         </div>
       ) : null}
-    </div>
+    </Space>
   );
 };
 

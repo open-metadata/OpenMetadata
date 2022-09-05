@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.orm_profiler.profiler.core import Profiler
@@ -56,9 +56,6 @@ class SampleTest(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
-    engine = sqa_profiler_interface.session.get_bind()
-    session = sqa_profiler_interface.session
 
     table_entity = Table(
         id=uuid4(),
@@ -70,6 +67,12 @@ class SampleTest(TestCase):
             )
         ],
     )
+
+    sqa_profiler_interface = SQAInterface(
+        sqlite_conn, table=User, table_entity=table_entity
+    )
+    engine = sqa_profiler_interface.session.get_bind()
+    session = sqa_profiler_interface.session
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -121,15 +124,17 @@ class SampleTest(TestCase):
         Sample property should be properly generated
         """
 
-        self.sqa_profiler_interface.create_sampler(User, profile_sample=50.0)
-
         # Randomly pick table_count to init the Profiler, we don't care for this test
         table_count = Metrics.ROW_COUNT.value
-        profiler = Profiler(
-            table_count,
-            profiler_interface=self.sqa_profiler_interface,
+        sqa_profiler_interface = SQAInterface(
+            self.sqlite_conn,
             table=User,
             table_entity=self.table_entity,
+            profile_sample=50,
+        )
+        profiler = Profiler(
+            table_count,
+            profiler_interface=sqa_profiler_interface,
         )
 
         res = self.session.query(func.count()).select_from(profiler.sample).first()
@@ -144,11 +149,8 @@ class SampleTest(TestCase):
         profiler = Profiler(
             table_count,
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            profile_sample=50.0,
-            table_entity=self.table_entity,
         )
-        res = profiler.execute()._table_results
+        res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
 
     def test_random_sample_count(self):
@@ -162,25 +164,15 @@ class SampleTest(TestCase):
         count = Metrics.COUNT.value
         profiler = Profiler(
             count,
-            profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            use_cols=[User.name],
-            profile_sample=50,
-            table_entity=self.table_entity,
+            profiler_interface=SQAInterface(
+                self.sqlite_conn,
+                table=User,
+                table_entity=self.table_entity,
+                profile_sample=50,
+            ),
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
-
-        profiler = Profiler(
-            count,
-            profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            profile_sample=100.0,
-            use_cols=[User.name],
-            table_entity=self.table_entity,
-        )
-        res = profiler.execute()._column_results
-        assert res.get(User.name.name)[Metrics.COUNT.name] == 30
 
     def test_random_sample_histogram(self):
         """
@@ -189,13 +181,14 @@ class SampleTest(TestCase):
         hist = Metrics.HISTOGRAM.value
         profiler = Profiler(
             hist,
-            profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            use_cols=[User.id],
-            profile_sample=50.0,
-            table_entity=self.table_entity,
+            profiler_interface=SQAInterface(
+                self.sqlite_conn,
+                table=User,
+                table_entity=self.table_entity,
+                profile_sample=50,
+            ),
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
@@ -203,12 +196,8 @@ class SampleTest(TestCase):
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            use_cols=[User.id],
-            profile_sample=100.0,
-            table_entity=self.table_entity,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 30.0
@@ -218,40 +207,22 @@ class SampleTest(TestCase):
         Unique count should run correctly
         """
 
-        self.sqa_profiler_interface.create_sampler(
-            User,
-            profile_sample=50.0,
-        )
-        self.sqa_profiler_interface.create_runner(User)
-
         hist = Metrics.UNIQUE_COUNT.value
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            use_cols=[User.name],
-            table_entity=self.table_entity,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # As we repeat data, we expect 0 unique counts.
         # This tests might very rarely, fail, depending on the sampled random data.
         assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] <= 1
 
-        self.sqa_profiler_interface.create_sampler(
-            User,
-            profile_sample=100.0,
-        )
-        self.sqa_profiler_interface.create_runner(User)
-
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            use_cols=[User.name],
-            table_entity=self.table_entity,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # As we repeat data, we expect 0 unique counts.
         # This tests might very rarely, fail, depending on the sampled random data.

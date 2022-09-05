@@ -180,9 +180,9 @@ class MlflowSource(MlModelServiceSource):
 
             # pylint: disable=broad-except)
             except Exception as exc:
-                reason = f"Cannot extract properties from RunData {exc}"
-                logger.warning(reason)
                 logger.debug(traceback.format_exc())
+                reason = f"Cannot extract properties from RunData: {exc}"
+                logger.warning(reason)
                 self.status.warned(model_name, reason)
 
         return None

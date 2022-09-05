@@ -21,19 +21,8 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import ServicePage from './index';
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: true,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 const mockData = {
   description: '',
@@ -82,6 +71,12 @@ const mockDatabase = {
     before: null,
   },
 };
+
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue(DEFAULT_ENTITY_PERMISSION),
+  }),
+}));
 
 jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
@@ -182,6 +177,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
       field: 'databases',
     },
   ]),
+  getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
@@ -212,6 +208,11 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  () => jest.fn().mockReturnValue(<p>EntitySummaryDetails</p>)
+);
+
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
   return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
 });
@@ -230,6 +231,12 @@ jest.mock('antd', () => ({
 jest.mock('../../utils/TableUtils', () => ({
   getEntityLink: jest.fn(),
   getUsagePercentile: jest.fn(),
+}));
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Row: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+  Col: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({

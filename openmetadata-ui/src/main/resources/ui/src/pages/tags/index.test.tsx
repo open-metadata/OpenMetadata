@@ -44,6 +44,13 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+  useParams: jest.fn().mockReturnValue({
+    entityTypeFQN: 'entityTypeFQN',
+  }),
+}));
+
 const mockTagsCategory = [
   {
     categoryType: 'Classification',
@@ -182,6 +189,50 @@ const mockCategory = [
     deleted: false,
   },
 ];
+
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+    }),
+    permissions: {
+      tagCategory: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+      },
+      tag: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+  DEFAULT_ENTITY_PERMISSION: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  },
+}));
 
 jest.mock('../../axiosAPIs/tagAPI', () => ({
   createTag: jest.fn(),

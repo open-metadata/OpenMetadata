@@ -49,6 +49,10 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.annotations.ExposedField;
+import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
+import org.openmetadata.annotations.MaskedField;
+import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
 
@@ -58,6 +62,8 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
+  private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
 
@@ -67,6 +73,16 @@ public final class JsonUtils {
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
+  }
+
+  static {
+    EXPOSED_OBJECT_MAPPER = OBJECT_MAPPER.copy();
+    EXPOSED_OBJECT_MAPPER.setAnnotationIntrospector(new OnlyExposedFieldAnnotationIntrospector());
+  }
+
+  static {
+    MASKER_OBJECT_MAPPER = OBJECT_MAPPER.copy();
+    MASKER_OBJECT_MAPPER.setAnnotationIntrospector(new IgnoreMaskedFieldAnnotationIntrospector());
   }
 
   private JsonUtils() {}
@@ -125,7 +141,7 @@ public final class JsonUtils {
   /** Read an array of objects of type {@code T} from json */
   public static <T> List<T> readObjects(String json, Class<T> clz) throws IOException {
     if (json == null) {
-      return null;
+      return Collections.emptyList();
     }
     TypeFactory typeFactory = OBJECT_MAPPER.getTypeFactory();
     return OBJECT_MAPPER.readValue(json, typeFactory.constructCollectionType(List.class, clz));
@@ -134,7 +150,7 @@ public final class JsonUtils {
   /** Read an object of type {@code T} from json */
   public static <T> List<T> readObjects(List<String> jsons, Class<T> clz) throws IOException {
     if (jsons == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<T> list = new ArrayList<>();
     for (String json : jsons) {
@@ -150,8 +166,15 @@ public final class JsonUtils {
     return OBJECT_MAPPER.convertValue(object, clz);
   }
 
+  public static <T> T convertValue(Object object, TypeReference<T> toValueTypeRef) {
+    if (object == null) {
+      return null;
+    }
+    return OBJECT_MAPPER.convertValue(object, toValueTypeRef);
+  }
+
   /** Applies the patch on original object and returns the updated object */
-  public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
+  public static JsonValue applyPatch(Object original, JsonPatch patch) {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
 
     //
@@ -253,8 +276,12 @@ public final class JsonUtils {
     JsonPatch sortedPatch = Json.createPatch(arrayBuilder.build());
 
     // Apply sortedPatch
-    JsonValue patchedJson = sortedPatch.apply(targetJson);
-    return OBJECT_MAPPER.convertValue(patchedJson, clz);
+    return sortedPatch.apply(targetJson);
+  }
+
+  public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
+    JsonValue value = applyPatch(original, patch);
+    return OBJECT_MAPPER.convertValue(value, clz);
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
@@ -382,5 +409,24 @@ public final class JsonUtils {
   /** Given a json schema file name .../json/schema/entity/data/table.json - return data */
   private static String getSchemaGroup(String path) {
     return Paths.get(path).getParent().getFileName().toString();
+  }
+
+  /**
+   * Serialize object removing all the fields annotated with @{@link MaskedField}
+   *
+   * @return Serialized JSON string
+   */
+  public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
+    return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
+  }
+
+  /**
+   * Serialize object removing all the fields annotated with @{@link ExposedField}
+   *
+   * @return Object if the serialization of `entity` does not result in an empty JSON string.
+   */
+  public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
+    String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
+    return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
   }
 }

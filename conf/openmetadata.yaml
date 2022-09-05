@@ -119,10 +119,11 @@ database:
   # the name of the JDBC driver, mysql in our case
   driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
   # the username and password
-  user: ${MYSQL_USER:-openmetadata_user}
-  password: ${MYSQL_USER_PASSWORD:-openmetadata_password}
+  user: ${DB_USER:-openmetadata_user}
+  password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:${DB_SCHEME:-mysql}://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
+  url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
+
 
 migrationConfiguration:
   path: "./bootstrap/sql"
@@ -186,6 +187,7 @@ eventHandlerConfiguration:
 
 airflowConfiguration:
   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
+  hostIp: ${AIRFLOW_HOST_IP:-""}
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
@@ -216,37 +218,18 @@ airflowConfiguration:
     openmetadata:
       jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
 
-slackEventPublishers:
-  - name: "slack events"
-    webhookUrl: ${SLACK_WEBHOOK_URL:-""}
-    openMetadataUrl: ${OPENMETADATA_SERVER_URL}
-    filters:
-      - eventType: "entityCreated"
-        entities:
-         - "*"
-      - eventType: "entityUpdated"
-        entities:
-         - "*"
-      - eventType: "entitySoftDeleted"
-        entities:
-         - "*"
-      - eventType: "entityDeleted"
-        entities:
-         - "*"
-
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
 fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws"
-#  secretsManager: aws
+  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws", "aws-ssm"
 # it will use the default auth provider for the secrets' manager service if parameters are not set
-#  parameters:
-#    region:
-#    accessKeyId:
-#    secretAccessKey:
+  parameters:
+    region: ${OM_SM_REGION:-""}
+    accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -262,6 +245,4 @@ health:
 
 sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
 slackChat:
-  apiToken: ${SLACK_CHAT_API_TOKEN:-""}
-  botName: ${SLACK_CHAT_BOT_NAME:-""}
-  channels: ${SLACK_CHAT_CHANNELS:-[]}
+  slackUrl: ${SLACK_CHAT_SLACK_URL:-""}

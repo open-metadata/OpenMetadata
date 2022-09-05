@@ -12,9 +12,20 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Input,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, includes, isEmpty, isEqual, isUndefined } from 'lodash';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import {
   EntityTags,
   FormattedGlossaryTermData,
@@ -22,15 +33,11 @@ import {
   GlossaryTermAssets,
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import {
-  TITLE_FOR_NON_ADMIN_ACTION,
-  TITLE_FOR_NON_OWNER_ACTION,
-} from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../generated/entity/type';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -41,23 +48,23 @@ import {
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
-import Card from '../common/Card/Card';
 import DescriptionV1 from '../common/description/DescriptionV1';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TabsPane from '../common/TabsPane/TabsPane';
 import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
+import SummaryDetail from './SummaryDetail';
 import AssetsTabs from './tabs/AssetsTabs.component';
+const { Text } = Typography;
 
 type Props = {
   assetData: GlossaryTermAssets;
-  isHasAccess: boolean;
+  permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   currentPage: number;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
@@ -68,12 +75,12 @@ type Props = {
 
 const GlossaryTermsV1 = ({
   assetData,
-  isHasAccess,
   glossaryTerm,
   handleGlossaryTermUpdate,
   onAssetPaginate,
   onRelatedTermClick,
   currentPage,
+  permissions,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -278,9 +285,6 @@ const GlossaryTermsV1 = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    if (isHasAccess) {
-      return;
-    }
     const value = event.target.value;
     const eleName = event.target.name;
 
@@ -290,18 +294,6 @@ const GlossaryTermsV1 = ({
 
         break;
       }
-    }
-  };
-
-  const handleRemoveSynonym = (_e: React.MouseEvent, synonym: string) => {
-    if (!isUndefined(glossaryTerm.synonyms)) {
-      const synonyms = glossaryTerm.synonyms.filter((d) => d !== synonym);
-      const updatedGlossaryTerm = {
-        ...glossaryTerm,
-        synonyms: synonyms,
-      };
-      setSynonyms(synonyms.join(','));
-      handleGlossaryTermUpdate(updatedGlossaryTerm);
     }
   };
 
@@ -333,46 +325,18 @@ const GlossaryTermsV1 = ({
 
   const addReviewerButton = () => {
     return (
-      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <button
-          className="tw-text-primary tw-flex tw-items-center"
+      <Tooltip
+        placement="topRight"
+        title={permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
+        <Button
+          className="tw-p-0"
           data-testid="add-new-reviewer"
-          disabled={isHasAccess}
+          disabled={!permissions.EditAll}
+          type="text"
           onClick={() => setShowRevieweModal(true)}>
           <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
-        </button>
-      </NonAdminAction>
-    );
-  };
-
-  const addButton = (title: string, onClick: () => void) => {
-    return (
-      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <Button
-          className={classNames('tw-h-8 tw-rounded', {
-            'tw-opacity-40': isHasAccess,
-          })}
-          data-testid="add-related-term-button"
-          size="small"
-          theme="primary"
-          variant="outlined"
-          onClick={onClick}>
-          {title}
         </Button>
-      </NonAdminAction>
-    );
-  };
-
-  const editButton = (onClick: () => void) => {
-    return (
-      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <button
-          className="focus:tw-outline-none tw-text-primary"
-          data-testid="edit-referencfe"
-          onClick={onClick}>
-          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
-        </button>
-      </NonAdminAction>
+      </Tooltip>
     );
   };
 
@@ -405,9 +369,7 @@ const GlossaryTermsV1 = ({
                   <span>{getEntityName(term)}</span>
                 </div>
                 <span>
-                  <NonAdminAction
-                    html={<p>{TITLE_FOR_NON_OWNER_ACTION}</p>}
-                    position="bottom">
+                  <Button disabled={!permissions.EditAll} type="text">
                     <span
                       className={classNames('tw-h-8 tw-rounded tw-mb-3')}
                       data-testid="remove"
@@ -417,7 +379,7 @@ const GlossaryTermsV1 = ({
                         icon="remove"
                       />
                     </span>
-                  </NonAdminAction>
+                  </Button>
                 </span>
               </div>
             ))}
@@ -431,162 +393,125 @@ const GlossaryTermsV1 = ({
     );
   };
 
-  const getSynonyms = (synonyms: string) => {
-    return !isEmpty(synonyms) ? (
-      synonyms
-        .split(',')
-        .map((synonym) => (
-          <Tags
-            editable
-            isRemovable
-            key={synonym}
-            removeTag={handleRemoveSynonym}
-            tag={synonym}
-            type="border"
-          />
-        ))
+  const getSynonyms = (synonymsList: string) => {
+    return !isEmpty(synonymsList) ? (
+      synonymsList.split(',').map((synonym, index) => (
+        <>
+          {index > 0 ? <span className="tw-mr-2">,</span> : null}
+          <span>{synonym}</span>
+        </>
+      ))
     ) : (
       <></>
     );
   };
 
-  const relatedTermActionBtn = () => {
-    return relatedTerms.length > 0 ? (
-      editButton(() => setShowRelatedTermsModal(true))
-    ) : (
-      <></>
-    );
-  };
-
-  const referenceActionBtn = () => {
-    return references.length > 0 ? (
-      editButton(() => setIsReferencesEditing(true))
-    ) : (
-      <></>
-    );
-  };
-
-  const summaryTab = () => {
+  const SummaryTab = () => {
     return (
-      <div className="tw-flex tw-gap-3">
-        <div className="tw-w-9/12">
-          <div className="tw-mb-4" data-testid="description-container">
+      <Row gutter={16}>
+        <Col flex="75%">
+          <Card className="glossary-card">
             <DescriptionV1
               removeBlur
               description={glossaryTerm.description || ''}
               entityName={glossaryTerm?.displayName ?? glossaryTerm?.name}
+              hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
               onDescriptionUpdate={onDescriptionUpdate}
             />
-          </div>
-          <Card
-            action={relatedTermActionBtn()}
-            className="tw-mb-4"
-            heading="Related Terms">
-            <Fragment>
-              {relatedTerms.length > 0 ? (
-                <div className="tw-flex">
-                  {relatedTerms.map((d, i) => (
-                    <Fragment key={i}>
-                      {i > 0 && <span className="tw-mr-1">,</span>}
+            <Divider className="m-r-1" />
+            <SummaryDetail
+              data={relatedTerms}
+              hasAccess={permissions.EditAll}
+              key="related_term"
+              setShow={setShowRelatedTermsModal}
+              title="Related Terms">
+              <>
+                {relatedTerms.map((d, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <span className="tw-mr-2">,</span>}
+                    <span
+                      className="link-text-info tw-flex"
+                      data-testid={`related-term-${d?.name}`}
+                      onClick={() => {
+                        onRelatedTermClick?.(d.fullyQualifiedName);
+                      }}>
                       <span
-                        className="link-text-info tw-flex"
-                        data-testid={`related-term-${d?.name}`}
-                        onClick={() => {
-                          onRelatedTermClick?.(d.fullyQualifiedName);
-                        }}>
-                        <span
-                          className={classNames('tw-inline-block tw-truncate', {
-                            'tw-w-52': (d?.name as string).length > 32,
-                          })}
-                          title={d?.name as string}>
-                          {d?.name}
-                        </span>
+                        className={classNames('tw-inline-block tw-truncate', {
+                          'tw-w-52': (d?.name as string).length > 32,
+                        })}
+                        title={d?.name as string}>
+                        {d?.name}
                       </span>
-                    </Fragment>
-                  ))}
-                </div>
-              ) : (
-                addButton('Add Related Term', () =>
-                  setShowRelatedTermsModal(true)
-                )
-              )}
-            </Fragment>
-          </Card>
+                    </span>
+                  </Fragment>
+                ))}
+              </>
+            </SummaryDetail>
+            <Divider className="m-r-1" />
 
-          <Card className="tw-mb-4" heading="Synonyms">
-            <Fragment>
-              {isSynonymsEditing ? (
-                <div className="tw-flex tw-items-center tw-gap-1">
-                  <input
-                    className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-72"
-                    data-testid="synonyms"
-                    id="synonyms"
-                    name="synonyms"
-                    placeholder="Enter comma seprated term"
-                    type="text"
-                    value={synonyms}
-                    onChange={handleValidation}
-                  />
-                  <div className="tw-flex tw-justify-end" data-testid="buttons">
-                    <Button
-                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                      data-testid="cancelAssociatedTag"
-                      size="custom"
-                      theme="primary"
-                      variant="contained"
-                      onMouseDown={() => setIsSynonymsEditing(false)}>
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="times"
-                      />
-                    </Button>
-                    <Button
-                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                      data-testid="saveAssociatedTag"
-                      size="custom"
-                      theme="primary"
-                      variant="contained"
-                      onMouseDown={handleSynonymsSave}>
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="check"
-                      />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="tw-flex tw-group">
-                  <NonAdminAction
-                    position="right"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <button
-                      className="focus:tw-outline-none tw-text-primary"
-                      data-testid="edit-synonyms"
-                      onClick={() => setIsSynonymsEditing(true)}>
-                      <Tags
-                        className="tw-font-semibold"
-                        startWith="+ "
-                        tag="Synonym"
-                        type="border"
-                      />
-                    </button>
-                  </NonAdminAction>
-                  {getSynonyms(synonyms)}
-                </div>
-              )}
-            </Fragment>
-          </Card>
+            <SummaryDetail
+              hasAccess={permissions.EditAll}
+              key="synonyms"
+              setShow={setIsSynonymsEditing}
+              title="Synonyms">
+              <>
+                {isSynonymsEditing ? (
+                  <Space>
+                    <Input
+                      autoFocus
+                      data-testid="synonyms"
+                      id="synonyms"
+                      key="synonym-input"
+                      name="synonyms"
+                      placeholder="Enter comma separated term"
+                      value={synonyms}
+                      onChange={handleValidation}
+                    />
+                    <Space data-testid="buttons">
+                      <Button
+                        data-testid="cancelAssociatedTag"
+                        size="small"
+                        type="primary"
+                        onMouseDown={() => setIsSynonymsEditing(false)}>
+                        <FontAwesomeIcon
+                          className="tw-w-3.5 tw-h-3.5"
+                          icon="times"
+                        />
+                      </Button>
+                      <Button
+                        data-testid="saveAssociatedTag"
+                        size="small"
+                        type="primary"
+                        onMouseDown={handleSynonymsSave}>
+                        <FontAwesomeIcon
+                          className="tw-w-3.5 tw-h-3.5"
+                          icon="check"
+                        />
+                      </Button>
+                    </Space>
+                  </Space>
+                ) : (
+                  <>{getSynonyms(synonyms)}</>
+                )}
+              </>
+            </SummaryDetail>
+            <Divider className="m-r-1" />
 
-          <Card action={referenceActionBtn()} heading="References">
-            <Fragment>
-              {references && references.length > 0 ? (
-                <div className="tw-flex">
-                  {references.map((d, i) => (
+            <SummaryDetail
+              data={references}
+              hasAccess={permissions.EditAll}
+              key="references"
+              setShow={setIsReferencesEditing}
+              title="References">
+              <>
+                {references &&
+                  references.length > 0 &&
+                  references.map((d, i) => (
                     <Fragment key={i}>
-                      {i > 0 && <span className="tw-mr-1">,</span>}
+                      {i > 0 && <span className="tw-mr-2">,</span>}
                       <a
                         className="link-text-info tw-flex"
                         data-testid="owner-link"
@@ -603,19 +528,23 @@ const GlossaryTermsV1 = ({
                       </a>
                     </Fragment>
                   ))}
-                </div>
-              ) : (
-                addButton('Add Reference', () => setIsReferencesEditing(true))
-              )}
-            </Fragment>
+              </>
+            </SummaryDetail>
           </Card>
-        </div>
-        <div className="tw-px-2 tw-w-3/12">
-          <Card action={addReviewerButton()} heading="Reviewer">
+        </Col>
+        <Col className="tw-px-10" flex="25%">
+          <Card
+            className="glossary-card right-card"
+            extra={addReviewerButton()}
+            title={
+              <Text strong className="p-bt-3">
+                Reviewer
+              </Text>
+            }>
             <div>{getReviewerTabData()}</div>
           </Card>
-        </div>
-      </div>
+        </Col>
+      </Row>
     );
   };
 
@@ -623,16 +552,13 @@ const GlossaryTermsV1 = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-term">
-      <p className="tw-text-lg tw-font-medium tw--mt-3">
-        {getEntityName(glossaryTerm as unknown as EntityReference)}
-      </p>
       {/* TODO: Add this stat when supporting status updation  */}
       {/* <div className="tw-flex tw-gap-11 tw-mb-2">
         <div className="tw-font-medium">Status</div>
         <div>{glossaryTerm.status}</div>
       </div> */}
 
-      <div className="tw-flex tw-flex-wrap tw-group tw-mt-3" data-testid="tags">
+      <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
         {!isTagEditable && (
           <>
             {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
@@ -648,50 +574,49 @@ const GlossaryTermsV1 = ({
             )}
           </>
         )}
-        <NonAdminAction
-          position="bottom"
-          title={TITLE_FOR_NON_ADMIN_ACTION}
-          trigger="click">
-          <div className="tw-inline-block" onClick={handleTagContainerClick}>
-            <TagsContainer
-              buttonContainerClass="tw--mt-0"
-              containerClass="tw-flex tw-items-center tw-gap-2"
-              dropDownHorzPosRight={false}
-              editable={isTagEditable}
-              isLoading={isTagLoading}
-              selectedTags={getSelectedTags()}
-              showTags={false}
-              size="small"
-              tagList={getTagOptionsFromFQN(tagList)}
-              type="label"
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags);
-              }}>
-              {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
-                <button className="tw-ml-1 focus:tw-outline-none">
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                </button>
-              ) : (
-                <span>
-                  <Tags
-                    className="tw-text-primary"
-                    startWith="+ "
-                    tag="Add tag"
-                    type="label"
-                  />
-                </span>
-              )}
-            </TagsContainer>
-          </div>
-        </NonAdminAction>
+
+        <div className="tw-inline-block" onClick={handleTagContainerClick}>
+          <TagsContainer
+            buttonContainerClass="tw--mt-0"
+            containerClass="tw-flex tw-items-center tw-gap-2"
+            dropDownHorzPosRight={false}
+            editable={isTagEditable}
+            isLoading={isTagLoading}
+            selectedTags={getSelectedTags()}
+            showTags={false}
+            size="small"
+            tagList={getTagOptionsFromFQN(tagList)}
+            type="label"
+            onCancel={() => {
+              handleTagSelection();
+            }}
+            onSelectionChange={(tags) => {
+              handleTagSelection(tags);
+            }}>
+            {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
+              <button className="tw-ml-1 focus:tw-outline-none">
+                <SVGIcons
+                  alt="edit"
+                  icon="icon-edit"
+                  title="Edit"
+                  width="16px"
+                />
+              </button>
+            ) : (
+              <Button
+                className="tw-p-0"
+                disabled={!(permissions.EditTags || permissions.EditAll)}
+                type="text">
+                <Tags
+                  className="tw-text-primary"
+                  startWith="+ "
+                  tag="Add tag"
+                  type="label"
+                />
+              </Button>
+            )}
+          </TagsContainer>
+        </div>
       </div>
 
       <div className="tw-flex tw-flex-col tw-flex-grow">
@@ -703,7 +628,7 @@ const GlossaryTermsV1 = ({
         />
 
         <div className="tw-flex-grow tw-py-4">
-          {activeTab === 1 && summaryTab()}
+          {activeTab === 1 && <SummaryTab />}
 
           {activeTab === 2 && (
             <AssetsTabs

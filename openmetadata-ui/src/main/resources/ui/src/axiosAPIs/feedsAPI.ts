@@ -33,8 +33,10 @@ export const getAllFeeds = async (
   after?: string,
   type?: ThreadType,
   filterType?: FeedFilter,
-  taskStatus?: ThreadTaskStatus
+  taskStatus?: ThreadTaskStatus,
+  userId?: string
 ) => {
+  const isFilterAll = filterType === FeedFilter.ALL;
   const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
     `/feed`,
     {
@@ -42,8 +44,9 @@ export const getAllFeeds = async (
         entityLink: entityLink,
         after,
         type,
-        filterType: filterType !== FeedFilter.ALL ? filterType : undefined,
+        filterType: isFilterAll ? undefined : filterType,
         taskStatus,
+        userId: isFilterAll ? undefined : userId,
       },
     }
   );
@@ -58,27 +61,17 @@ export const getFeedsWithFilter = async (
   type?: ThreadType,
   taskStatus?: ThreadTaskStatus
 ) => {
-  let config = {};
+  const feedFilterType = filterType === FeedFilter.ALL ? undefined : filterType;
 
-  if (filterType !== FeedFilter.ALL) {
-    config = {
-      params: {
-        userId,
-        filterType,
-        after,
-        type,
-        taskStatus,
-      },
-    };
-  } else {
-    config = {
-      params: {
-        after,
-        type,
-        taskStatus,
-      },
-    };
-  }
+  const config = {
+    params: {
+      userId,
+      filterType: feedFilterType,
+      after,
+      type,
+      taskStatus,
+    },
+  };
 
   const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
     `/feed`,
@@ -182,6 +175,12 @@ export const getActiveAnnouncement = async (entityLink: string) => {
       },
     }
   );
+
+  return response.data;
+};
+
+export const deleteThread = async (threadId: string) => {
+  const response = await APIClient.delete<Thread>(`/feed/${threadId}`);
 
   return response.data;
 };

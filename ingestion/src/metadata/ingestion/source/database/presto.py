@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import re
+import traceback
 from typing import Iterable
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
@@ -60,9 +61,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                 coltype = coltype(
                     *args,
                 )
-        except KeyError:
+        except KeyError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error reading row [{row}]: {err}")
             util.warn(
-                "Did not recognize type '%s' of column '%s'" % (col_type, row.Column)
+                "Did not recognize type '%s' of column '%s'" % (row.Type, row.Column)
             )
             coltype = types.NullType
         result.append(

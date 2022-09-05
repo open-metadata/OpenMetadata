@@ -17,7 +17,9 @@ import json
 import traceback
 from typing import List, Optional, Union
 
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.location import Location
@@ -77,28 +79,29 @@ class OMetaTableMixin:
                 f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
                 data=sample_data.json(),
             )
-        except Exception as err:
-            logger.error(
-                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__} - {err}"
-            )
+        except Exception as exc:
             logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__}: {exc}"
+            )
 
         if resp:
             try:
                 return TableData(**resp["sampleData"])
             except UnicodeError as err:
-                logger.error(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__} - {err}"
-                )
                 logger.debug(traceback.format_exc())
-            except Exception as err:
-                logger.error(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__} - {err}"
+                logger.warning(
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__}: {err}"
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
                 )
 
-    def ingest_table_profile_data(
-        self, table: Table, table_profile: TableProfile
-    ) -> List[TableProfile]:
+    def ingest_profile_data(
+        self, table: Table, profile_request: CreateTableProfileRequest
+    ) -> Table:
         """
         PUT profile data for a table
 
@@ -107,10 +110,9 @@ class OMetaTableMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfile",
-            data=table_profile.json(),
+            data=profile_request.json(),
         )
-
-        return TableProfile(**resp["tableProfile"])
+        return Table(**resp)
 
     def ingest_table_data_model(self, table: Table, data_model: DataModel) -> Table:
         """

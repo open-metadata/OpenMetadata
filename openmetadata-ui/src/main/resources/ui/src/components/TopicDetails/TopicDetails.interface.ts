@@ -72,7 +72,11 @@ export interface TopicDetailsProps {
   tagUpdateHandler: (updatedTopic: Topic) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (threadId: string, postId: string) => void;
+  deletePostHandler: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   lineageTabData: {
     loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;

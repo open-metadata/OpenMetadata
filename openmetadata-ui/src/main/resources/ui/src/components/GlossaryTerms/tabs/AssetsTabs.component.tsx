@@ -40,7 +40,7 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
 
   return (
     <div>
-      <div className="" data-testid="table-container">
+      <div className="tw-table-container" data-testid="table-container">
         <table
           className="tw-bg-white tw-w-full tw-mb-4"
           data-testid="database-tables">

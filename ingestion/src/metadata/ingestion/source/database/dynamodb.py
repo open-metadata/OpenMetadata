@@ -150,10 +150,9 @@ class DynamodbSource(DatabaseServiceSource):
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                 yield Column(**parsed_string)
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -182,9 +181,9 @@ class DynamodbSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )

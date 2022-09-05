@@ -50,12 +50,13 @@ jobs:
         # stop relying on apt cache of GitHub runners
         sudo apt-get update
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        librdkafka-dev unixodbc-dev libevent-dev antlr4
+        librdkafka-dev unixodbc-dev libevent-dev
 
     - name: Generate models
       run: |
         python3 -m venv env
         source env/bin/activate
+        sudo make install_antlr_cli
         make install_dev generate
 
     - name: Install open-metadata dependencies
@@ -66,7 +67,7 @@ jobs:
     - name: Start Server and Ingest Sample Data
       env:
         INGESTION_DEPENDENCY: "airflow-container,sample-data,elasticsearch"
-      run: ./docker/run_local_docker.sh no-ui
+      run: ./docker/run_local_docker.sh -m no-ui
       timeout-minutes: 30
 
     - name: Run Python Tests & Record Coverage

@@ -16,12 +16,10 @@ package org.openmetadata.client.interceptors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import org.openmetadata.client.gateway.OpenMetadata;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class CustomRequestInterceptor<K> implements RequestInterceptor {
-  private static final Logger LOG = LoggerFactory.getLogger(OpenMetadata.class);
   private final Class<K> type;
   ObjectMapper mapper;
 
@@ -38,7 +36,7 @@ public class CustomRequestInterceptor<K> implements RequestInterceptor {
       K value = mapper.readValue(body, this.getType());
       requestTemplate.body(mapper.writeValueAsString(value));
     } catch (Exception ex) {
-      LOG.error("[CustomInterceptor] Failed in transforming request with exception :" + ex.getMessage());
+      LOG.error("[CustomInterceptor] Failed in transforming request with exception {}", ex.getMessage());
     }
   }
 

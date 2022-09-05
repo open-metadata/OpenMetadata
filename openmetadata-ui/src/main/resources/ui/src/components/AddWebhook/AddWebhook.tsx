@@ -13,110 +13,68 @@
 
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
+import { cloneDeep, isEmpty, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { FunctionComponent, useRef, useState } from 'react';
-import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
+import {
+  CONFIGURE_MS_TEAMS_TEXT,
+  CONFIGURE_SLACK_TEXT,
+  CONFIGURE_WEBHOOK_TEXT,
+  NO_PERMISSION_FOR_ACTION,
+} from '../../constants/HelperTextUtil';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import {
   CreateWebhook,
   EventFilter,
-  EventType,
 } from '../../generated/api/events/createWebhook';
 import { WebhookType } from '../../generated/entity/events/webhook';
+import { Operation } from '../../generated/entity/policies/policy';
 import {
   errorMsg,
   getSeparator,
   isValidUrl,
   requiredField,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import CardV1 from '../common/Card/CardV1';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { AddWebhookProps } from './AddWebhook.interface';
-import {
-  CREATE_EVENTS_DEFAULT_VALUE,
-  DELETE_EVENTS_DEFAULT_VALUE,
-  UPDATE_EVENTS_DEFAULT_VALUE,
-} from './WebhookConstants';
+import EventFilterTree from './EventFilterTree.component';
+
+const CONFIGURE_TEXT: { [key: string]: string } = {
+  msteams: CONFIGURE_MS_TEAMS_TEXT,
+  slack: CONFIGURE_SLACK_TEXT,
+  generic: CONFIGURE_WEBHOOK_TEXT,
+};
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
-};
-
-const getEntitiesList = () => {
-  const retVal: Array<{ name: string; value: string }> = [
-    EntityType.TABLE,
-    EntityType.TOPIC,
-    EntityType.DASHBOARD,
-    EntityType.PIPELINE,
-  ].map((item) => {
-    return {
-      name: startCase(item),
-      value: item,
-    };
-  });
-  retVal.unshift({ name: 'All entities', value: WILD_CARD_CHAR });
-
-  return retVal;
-};
-
-const getHiddenEntitiesList = (entities: Array<string> = []) => {
-  if (entities.includes(WILD_CARD_CHAR)) {
-    return entities.filter((item) => item !== WILD_CARD_CHAR);
-  } else {
-    return undefined;
-  }
-};
-
-const getSelectedEvents = (prev: EventFilter, value: string) => {
-  let entities = prev.entities || [];
-  if (entities.includes(value)) {
-    if (value === WILD_CARD_CHAR) {
-      entities = [];
-    } else {
-      if (entities.includes(WILD_CARD_CHAR)) {
-        const allIndex = entities.indexOf(WILD_CARD_CHAR);
-        entities.splice(allIndex, 1);
-      }
-      const index = entities.indexOf(value);
-      entities.splice(index, 1);
-    }
-  } else {
-    if (value === WILD_CARD_CHAR) {
-      entities = getEntitiesList().map((item) => item.value);
-    } else {
-      entities.push(value);
-    }
-  }
-
-  return { ...prev, entities };
-};
-
-const getEventFilterByType = (
-  filters: Array<EventFilter>,
-  type: EventType
-): EventFilter => {
-  let eventFilter =
-    filters.find((item) => item.eventType === type) || ({} as EventFilter);
-  if (eventFilter.entities?.includes(WILD_CARD_CHAR)) {
-    eventFilter = getSelectedEvents(
-      { ...eventFilter, entities: [] },
-      WILD_CARD_CHAR
-    );
-  }
-
-  return eventFilter;
 };
 
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
@@ -132,6 +90,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   onSave,
 }: AddWebhookProps) => {
   const markdownRef = useRef<EditorContentRef>();
+  const [eventFilterFormData, setEventFilterFormData] = useState<
+    EventFilter[] | undefined
+  >(data?.eventFilters);
   const [name, setName] = useState<string>(data?.name || '');
   const [endpointUrl, setEndpointUrl] = useState<string>(data?.endpoint || '');
   const [description] = useState<string>(data?.description || '');
@@ -139,21 +100,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     !isNil(data?.enabled) ? Boolean(data?.enabled) : true
   );
   const [showAdv, setShowAdv] = useState<boolean>(false);
-  const [createEvents, setCreateEvents] = useState<EventFilter>(
-    data
-      ? getEventFilterByType(data.eventFilters, EventType.EntityCreated)
-      : (CREATE_EVENTS_DEFAULT_VALUE as EventFilter)
-  );
-  const [updateEvents, setUpdateEvents] = useState<EventFilter>(
-    data
-      ? getEventFilterByType(data.eventFilters, EventType.EntityUpdated)
-      : (UPDATE_EVENTS_DEFAULT_VALUE as EventFilter)
-  );
-  const [deleteEvents, setDeleteEvents] = useState<EventFilter>(
-    data
-      ? getEventFilterByType(data.eventFilters, EventType.EntityDeleted)
-      : (DELETE_EVENTS_DEFAULT_VALUE as EventFilter)
-  );
+
   const [secretKey, setSecretKey] = useState<string>(data?.secretKey || '');
   const [batchSize, setBatchSize] = useState<number | undefined>(
     data?.batchSize
@@ -171,6 +118,29 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   });
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+
+  const { permissions } = usePermissionProvider();
+
+  const editWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.EditAll, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const addWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const deleteWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Delete, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
 
   const handleDelete = () => {
     if (data) {
@@ -237,125 +207,12 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     setSecretKey('');
   };
 
-  const toggleEventFilters = (type: EventType, value: boolean) => {
-    if (!allowAccess) {
-      return;
-    }
-    let setter;
-    switch (type) {
-      case EventType.EntityCreated: {
-        setter = setCreateEvents;
-
-        break;
-      }
-      case EventType.EntityUpdated: {
-        setter = setUpdateEvents;
-
-        break;
-      }
-      case EventType.EntityDeleted: {
-        setter = setDeleteEvents;
-
-        break;
-      }
-    }
-    if (setter) {
-      setter(
-        value
-          ? {
-              eventType: type,
-            }
-          : ({} as EventFilter)
-      );
-      setShowErrorMsg((prev) => {
-        return { ...prev, eventFilters: false, invalidEventFilters: false };
-      });
-    }
-  };
-
-  const handleEntitySelection = (type: EventType, value: string) => {
-    let setter;
-    switch (type) {
-      case EventType.EntityCreated: {
-        setter = setCreateEvents;
-
-        break;
-      }
-      case EventType.EntityUpdated: {
-        setter = setUpdateEvents;
-
-        break;
-      }
-      case EventType.EntityDeleted: {
-        setter = setDeleteEvents;
-
-        break;
-      }
-    }
-    if (setter) {
-      setter((prev) => getSelectedEvents(prev, value));
-      setShowErrorMsg((prev) => {
-        return { ...prev, eventFilters: false, invalidEventFilters: false };
-      });
-    }
-  };
-
-  const getEventFiltersData = () => {
-    const eventFilters: Array<EventFilter> = [];
-    if (!isEmpty(createEvents)) {
-      const event = createEvents.entities?.includes(WILD_CARD_CHAR)
-        ? { ...createEvents, entities: [WILD_CARD_CHAR] }
-        : createEvents;
-      eventFilters.push(event);
-    }
-    if (!isEmpty(updateEvents)) {
-      const event = updateEvents.entities?.includes(WILD_CARD_CHAR)
-        ? { ...updateEvents, entities: [WILD_CARD_CHAR] }
-        : updateEvents;
-      eventFilters.push(event);
-    }
-    if (!isEmpty(deleteEvents)) {
-      const event = deleteEvents.entities?.includes(WILD_CARD_CHAR)
-        ? { ...deleteEvents, entities: [WILD_CARD_CHAR] }
-        : deleteEvents;
-      eventFilters.push(event);
-    }
-
-    return eventFilters;
-  };
-
-  const validateEventFilters = () => {
-    const isValid = [];
-    if (!isEmpty(createEvents)) {
-      isValid.push(Boolean(createEvents.entities?.length));
-    }
-    if (!isEmpty(updateEvents)) {
-      isValid.push(Boolean(updateEvents.entities?.length));
-    }
-    if (!isEmpty(deleteEvents)) {
-      isValid.push(Boolean(deleteEvents.entities?.length));
-    }
-
-    return (
-      isValid.length > 0 &&
-      isValid.reduce((prev, curr) => {
-        return prev && curr;
-      }, isValid[0])
-    );
-  };
-
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
       endpointUrl: !endpointUrl.trim(),
-      eventFilters: isEmpty({
-        ...createEvents,
-        ...updateEvents,
-        ...deleteEvents,
-      }),
       invalidName: UrlEntityCharRegEx.test(name.trim()),
       invalidEndpointUrl: !isValidUrl(endpointUrl.trim()),
-      invalidEventFilters: !validateEventFilters(),
     };
     setShowErrorMsg(errMsg);
 
@@ -368,19 +225,20 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         name,
         description: markdownRef.current?.getEditorContent() || undefined,
         endpoint: endpointUrl,
-        eventFilters: getEventFiltersData(),
+        eventFilters: eventFilterFormData ?? ([] as EventFilter[]),
         batchSize,
         timeout: connectionTimeout,
         enabled: active,
         secretKey,
         webhookType,
       };
+
       onSave(oData);
     }
   };
 
   const getDeleteButton = () => {
-    return allowAccess ? (
+    return (
       <>
         {deleteState === 'waiting' ? (
           <Button
@@ -392,24 +250,30 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             <Loader size="small" type="default" />
           </Button>
         ) : (
-          <Button
-            className={classNames({
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="delete-webhook"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={() => setIsDelete(true)}>
-            Delete
-          </Button>
+          <Tooltip
+            placement="left"
+            title={
+              deleteWebhookPermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              data-testid="delete-webhook"
+              disabled={!deleteWebhookPermission}
+              size="regular"
+              theme="primary"
+              variant="text"
+              onClick={() => setIsDelete(true)}>
+              Delete
+            </Button>
+          </Tooltip>
         )}
       </>
-    ) : null;
+    );
   };
 
   const getSaveButton = () => {
-    return allowAccess ? (
+    const savePermission = addWebhookPermission || editWebhookPermission;
+
+    return (
       <>
         {saveState === 'waiting' ? (
           <Button
@@ -430,45 +294,65 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-webhook"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
+          <Tooltip
+            placement="left"
+            title={savePermission ? 'Save' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className={classNames('tw-w-16 tw-h-10')}
+              data-testid="save-webhook"
+              disabled={!savePermission}
+              size="regular"
+              theme="primary"
+              variant="contained"
+              onClick={handleSave}>
+              Save
+            </Button>
+          </Tooltip>
         )}
       </>
-    ) : null;
-  };
-
-  const fetchRightPanel = () => {
-    return (
-      <div className="tw-px-2">
-        <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
-        <div className="tw-mb-5">
-          OpenMetadata can be configured to automatically send out event
-          notifications to registered webhooks. Enter the webhook name, and an
-          Endpoint URL to receive the HTTP call back on. Use Event Filters to
-          only receive notifications based on events of interest, like when an
-          entity is created, updated, or deleted; and for the entities your
-          application is interested in. Add a description to help people
-          understand the purpose of the webhook and to keep track of the use
-          case. Use advanced configuration to set up a shared secret key to
-          verify the webhook events using HMAC signature.
-        </div>
-      </div>
     );
   };
+
+  const fetchRightPanel = useCallback(() => {
+    return (
+      <div className="tw-px-2">
+        <CardV1
+          description={CONFIGURE_TEXT[webhookType]}
+          heading="Configure Webhooks"
+          id="webhook"
+        />
+      </div>
+    );
+  }, [webhookType]);
 
   return (
     <div className="add-webhook-container">
       <PageLayout
-        classes="tw-max-w-full-hd tw-bg-white tw-pt-4"
+        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+        header={
+          <TitleBreadcrumb
+            titleLinks={[
+              {
+                name: 'Settings',
+                url: ROUTES.SETTINGS,
+              },
+              {
+                name: webhookType === WebhookType.Slack ? 'Slack' : 'Webhook',
+                url: getSettingPath(
+                  GlobalSettingsMenuCategory.INTEGRATIONS,
+                  webhookType === WebhookType.Slack
+                    ? GlobalSettingOptions.SLACK
+                    : GlobalSettingOptions.WEBHOOK
+                ),
+              },
+              {
+                name: header,
+                url: '',
+                activeTitle: true,
+              },
+            ]}
+          />
+        }
         layout={PageLayoutType['2ColRTL']}
         rightPanel={fetchRightPanel()}>
         <div className="tw-form-container tw-p">
@@ -559,140 +443,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               </span>,
               'tw-mt-3'
             )}
-            <Field>
-              <div
-                className="filter-group tw-justify-between tw-mb-3"
-                data-testid="cb-entity-created">
-                <div className="tw-flex">
-                  <input
-                    checked={!isEmpty(createEvents)}
-                    className="tw-mr-1 custom-checkbox"
-                    data-testid="entity-created-checkbox"
-                    disabled={!allowAccess}
-                    type="checkbox"
-                    onChange={(e) => {
-                      toggleEventFilters(
-                        EventType.EntityCreated,
-                        e.target.checked
-                      );
-                    }}
-                  />
-                  <div
-                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                    data-testid="checkbox-label">
-                    <div className="tw-ml-1">
-                      Trigger when entity is created
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <DropDown
-                className="tw-bg-white"
-                disabled={!allowAccess || isEmpty(createEvents)}
-                dropDownList={getEntitiesList()}
-                hiddenItems={getHiddenEntitiesList(createEvents.entities)}
-                label="select entities"
-                selectedItems={createEvents.entities}
-                type="checkbox"
-                onSelect={(_e, value) =>
-                  handleEntitySelection(
-                    EventType.EntityCreated,
-                    value as string
-                  )
-                }
-              />
-            </Field>
-            <Field>
-              <div
-                className="filter-group tw-justify-between tw-mb-3"
-                data-testid="cb-entity-created">
-                <div className="tw-flex">
-                  <input
-                    checked={!isEmpty(updateEvents)}
-                    className="tw-mr-1 custom-checkbox"
-                    data-testid="entity-updated-checkbox"
-                    disabled={!allowAccess}
-                    type="checkbox"
-                    onChange={(e) => {
-                      toggleEventFilters(
-                        EventType.EntityUpdated,
-                        e.target.checked
-                      );
-                    }}
-                  />
-                  <div
-                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                    data-testid="checkbox-label">
-                    <div className="tw-ml-1">
-                      Trigger when entity is updated
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <DropDown
-                className="tw-bg-white"
-                disabled={!allowAccess || isEmpty(updateEvents)}
-                dropDownList={getEntitiesList()}
-                hiddenItems={getHiddenEntitiesList(updateEvents.entities)}
-                label="select entities"
-                selectedItems={updateEvents.entities}
-                type="checkbox"
-                onSelect={(_e, value) =>
-                  handleEntitySelection(
-                    EventType.EntityUpdated,
-                    value as string
-                  )
-                }
-              />
-            </Field>
-            <Field>
-              <div
-                className="filter-group tw-justify-between tw-mb-3"
-                data-testid="cb-entity-created">
-                <div className="tw-flex">
-                  <input
-                    checked={!isEmpty(deleteEvents)}
-                    className="tw-mr-1 custom-checkbox"
-                    data-testid="entity-deleted-checkbox"
-                    disabled={!allowAccess}
-                    type="checkbox"
-                    onChange={(e) => {
-                      toggleEventFilters(
-                        EventType.EntityDeleted,
-                        e.target.checked
-                      );
-                    }}
-                  />
-                  <div
-                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                    data-testid="checkbox-label">
-                    <div className="tw-ml-1">
-                      Trigger when entity is deleted
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <DropDown
-                className="tw-bg-white"
-                disabled={!allowAccess || isEmpty(deleteEvents)}
-                dropDownList={getEntitiesList()}
-                hiddenItems={getHiddenEntitiesList(deleteEvents.entities)}
-                label="select entities"
-                selectedItems={deleteEvents.entities}
-                type="checkbox"
-                onSelect={(_e, value) =>
-                  handleEntitySelection(
-                    EventType.EntityDeleted,
-                    value as string
-                  )
-                }
-              />
-              {showErrorMsg.eventFilters
-                ? errorMsg('Webhook event filters are required.')
-                : showErrorMsg.invalidEventFilters
-                ? errorMsg('Webhook event filters are invalid.')
-                : null}
-            </Field>
+            <EventFilterTree
+              value={eventFilterFormData || []}
+              onChange={setEventFilterFormData}
+            />
             <Field>
               <div className="tw-flex tw-justify-end tw-pt-1">
                 <Button
@@ -705,6 +459,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 </Button>
               </div>
             </Field>
+
             {showAdv ? (
               <>
                 {getSeparator(
@@ -863,7 +618,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 </div>
               )}
             </Field>
-            {data && isDelete && (
+            {data && isDelete && deleteWebhookPermission && (
               <ConfirmationModal
                 bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
                 cancelText="Cancel"

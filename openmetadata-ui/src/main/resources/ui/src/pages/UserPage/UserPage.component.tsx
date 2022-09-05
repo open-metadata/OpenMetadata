@@ -25,10 +25,6 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
 import { UserDetails } from '../../components/Users/Users.interface';
-import {
-  onErrorText,
-  onUpdatedConversastionError,
-} from '../../constants/feed.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import {
@@ -41,11 +37,7 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import {
-  deletePost,
-  getUpdatedThread,
-  updateThreadData,
-} from '../../utils/FeedUtils';
+import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
@@ -180,34 +172,12 @@ const UserPage = () => {
       });
   };
 
-  const deletePostHandler = (threadId: string, postId: string) => {
-    deletePost(threadId, postId)
-      .then(() => {
-        getUpdatedThread(threadId)
-          .then((data) => {
-            setEntityThread((pre) => {
-              return pre.map((thread) => {
-                if (thread.id === data.id) {
-                  return {
-                    ...thread,
-                    posts: data.posts && data.posts.slice(-3),
-                    postsCount: data.postsCount,
-                  };
-                } else {
-                  return thread;
-                }
-              });
-            });
-          })
-          .catch((error) => {
-            const message = error?.message;
-            showErrorToast(message ?? onUpdatedConversastionError);
-          });
-      })
-      .catch((error) => {
-        const message = error?.message;
-        showErrorToast(message ?? onErrorText);
-      });
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread, setEntityThread);
   };
 
   const updateThreadHandler = (

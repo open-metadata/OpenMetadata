@@ -10,6 +10,10 @@
       "description": "API host endpoint for Airflow",
       "type": "string"
     },
+    "hostIp": {
+      "description": "Airflow host IP that will be used to connect to the sources.",
+      "type": "string"
+    },
     "username": {
       "description": "Username for Login",
       "type": "string"

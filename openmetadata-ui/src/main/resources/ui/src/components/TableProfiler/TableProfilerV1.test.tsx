@@ -20,38 +20,22 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { MOCK_TABLE } from '../../mocks/TableData.mock';
-import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
+import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
 import { TableProfilerProps } from './TableProfiler.interface';
-// internel imports
+// internal imports
 import TableProfilerV1 from './TableProfilerV1';
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockImplementation(() => {
+    jest.fn();
+  }),
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
-jest.mock('antd', () => ({
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <button {...props}>{children}</button>
-    )),
 
-  Col: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Row: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-}));
-
-// mock internel imports
+// mock internal imports
 jest.mock('./Component/ProfilerSettingsModal', () => {
   return jest.fn().mockImplementation(() => {
     return <div>ProfilerSettingsModal.component</div>;
@@ -62,15 +46,21 @@ jest.mock('./Component/ColumnProfileTable', () => {
     return <div>ColumnProfileTable.component</div>;
   });
 });
-jest.mock('../../utils/DatasetDetailsUtils');
+
 jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   formTwoDigitNmber: jest.fn(),
 }));
-const mockGetCurrentDatasetTab = getCurrentDatasetTab as jest.Mock;
+
+jest.mock('../../axiosAPIs/testAPI', () => ({
+  getListTestCase: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(TEST_CASE)),
+}));
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
+  hasEditAccess: true,
   onAddTestClick: jest.fn(),
 };
 
@@ -95,21 +85,6 @@ describe('Test TableProfiler component', () => {
     expect(addTableTest).toBeInTheDocument();
   });
 
-  it('No data placeholder should be visible where there is no profiler', async () => {
-    render(
-      <TableProfilerV1
-        {...mockProps}
-        table={{ ...mockProps.table, tableProfile: undefined }}
-      />
-    );
-
-    const noProfiler = await screen.findByTestId(
-      'no-profiler-placeholder-container'
-    );
-
-    expect(noProfiler).toBeInTheDocument();
-  });
-
   it('CTA: Add table test should work properly', async () => {
     render(<TableProfilerV1 {...mockProps} />);
 
@@ -118,19 +93,9 @@ describe('Test TableProfiler component', () => {
     );
 
     expect(addTableTest).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(addTableTest);
-    });
-
-    expect(mockProps.onAddTestClick).toHaveBeenCalledTimes(1);
-    expect(mockGetCurrentDatasetTab).toHaveBeenCalledTimes(1);
   });
 
   it('CTA: Setting button should work properly', async () => {
-    const setSettingModalVisible = jest.fn();
-    const handleClick = jest.spyOn(React, 'useState');
-    handleClick.mockImplementation(() => [false, setSettingModalVisible]);
     render(<TableProfilerV1 {...mockProps} />);
 
     const settingBtn = await screen.findByTestId('profiler-setting-btn');
@@ -141,6 +106,8 @@ describe('Test TableProfiler component', () => {
       fireEvent.click(settingBtn);
     });
 
-    expect(setSettingModalVisible).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText('ProfilerSettingsModal.component')
+    ).toBeInTheDocument();
   });
 });

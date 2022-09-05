@@ -59,7 +59,7 @@ export interface DatasetDetailsProps {
   activeTab: number;
   owner: EntityReference;
   description: string;
-  tableProfile: Table['tableProfile'];
+  tableProfile: Table['profile'];
   tableQueries: Table['tableQueries'];
   columns: ModifiedTableColumn[];
   tier: TagLabel;
@@ -111,7 +111,11 @@ export interface DatasetDetailsProps {
     columnName: string,
     testType: ColumnTestType
   ) => void;
-  deletePostHandler: (threadId: string, postId: string) => void;
+  deletePostHandler: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
   fetchFeedHandler: (
     after?: string,
     feedType?: FeedFilter,

@@ -177,33 +177,11 @@ pre {
   box-shadow: none;
 }
 .search-grey {
-  width: 600px;
+  width: calc(100vw - 800px);
   background: #f8f9fa;
 }
 .search-grey::placeholder {
   color: #6b7280;
-}
-
-.search-grey.has-search {
-  padding: 18px 20px;
-  padding-left: 12px;
-}
-.search-grey.has-search .form-control.search {
-  padding-left: 2.375rem;
-  background: #f3f3f3;
-  border-radius: 20px;
-  border: none;
-}
-.search-grey.has-search .search-icon {
-  position: absolute;
-  z-index: 2;
-  display: block;
-  width: 2.375rem;
-  height: 1.95rem;
-  line-height: 1.95rem;
-  text-align: center;
-  pointer-events: none;
-  color: #aaa;
 }
 
 /* Breadcrumb */
@@ -804,11 +782,12 @@ body .profiler-graph .recharts-active-dot circle {
   height: calc(100vh - 110px);
 }
 
+/* 64 header + ( 16 + 16 )spacing Y = 96*/
 #left-panel {
   position: fixed;
   overflow-y: scroll;
   width: 304px;
-  height: calc(100vh - 90px);
+  height: calc(100vh - 96px);
 }
 
 #right-panel {
@@ -1344,7 +1323,30 @@ div.ant-typography-ellipsis-custom {
 }
 
 /* Feed text pre tag CSS */
+.activity-feed-card-text {
+  padding-top: 6px;
+}
+
 .activity-feed-card-text pre {
   white-space: pre-wrap; /* Since CSS 2.1 */
 }
 /* Feed text pre tag CSS */
+
+.ant-switch-checked {
+  background: rgb(244, 240, 253);
+}
+
+/* 64 header + ( 16 + 16 )spacing Y = 96*/
+.left-panel-container {
+  height: calc(100vh - 96px);
+  border: 1px solid rgb(229, 231, 235);
+  border-radius: 4px;
+  box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.06);
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.left-panel-container::-webkit-scrollbar {
+  display: none;
+}

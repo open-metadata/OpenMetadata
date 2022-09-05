@@ -32,17 +32,6 @@
       "$ref": "#/definitions/databricksScheme",
       "default": "databricks+connector"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username to connect to Databricks. This user should have privileges to read all the metadata in Databricks.",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Databricks.",
-      "type": "string",
-      "format": "password"
-    },
     "hostPort": {
       "title": "Host and Port",
       "description": "Host and port of the Databricks service.",
@@ -74,6 +63,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// organize-imports-ignore
 
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
+  import { Paging } from './../generated/type/paging';
+
   export interface EntityReference {
     deleted?: boolean;
 
@@ -196,9 +199,7 @@ declare module 'Models' {
   };
 
   export type SlackChatConfig = {
-    apiToken: string;
-    botName: string;
-    channels: string[];
+    slackUrl: string;
   };
 
   export type FormattedTableData = {
@@ -492,12 +493,15 @@ declare module 'Models' {
   export type ExtraInfo = {
     key?: string;
     value: string | number | React.ReactNode;
+    id?: string;
     isLink?: boolean;
     placeholderText?: string;
     openInNewTab?: boolean;
     showLabel?: boolean;
     avatarWidth?: string;
     profileName?: string;
+    isEntityCard?: boolean;
+    isEntityDetails?: boolean;
   };
 
   export interface FormErrorData {
@@ -578,6 +582,11 @@ declare module 'Models' {
   export interface ScrollHandle {
     left: boolean;
     right: boolean;
+  }
+
+  export interface PagingResponse<T> {
+    data: T;
+    paging: Paging;
   }
 
   // ES interface end

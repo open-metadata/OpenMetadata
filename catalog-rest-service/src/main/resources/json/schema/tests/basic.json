@@ -4,6 +4,21 @@
   "title": "Basic",
   "description": "This schema defines basic types that are used by other test schemas.",
   "definitions": {
+    "testResultValue": {
+      "description": "Schema to capture test case result values.",
+      "javaType": "org.openmetadata.catalog.tests.type.TestResultValue",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "name of the value",
+          "type": "string"
+        },
+        "value": {
+          "description": "test result value",
+          "type": "string"
+        }
+      }
+    },
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.catalog.tests.type.TestCaseResult",
@@ -37,6 +52,12 @@
         "sampleData": {
           "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
           "type": "string"
+        },
+        "testResultValue": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testResultValue"
+          }
         }
       },
       "additionalProperties": false

@@ -6,6 +6,26 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.Webhook",
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+  "definitions": {
+    "webhookType": {
+      "description": "Type of webhook slack, generic, msteams, etc.",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.WebhookType",
+      "default": "generic",
+      "enum": ["slack", "generic", "msteams"],
+      "javaEnums": [
+        {
+          "name": "slack"
+        },
+        {
+          "name": "generic"
+        },
+        {
+          "name": "msteams"
+        }
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique ID associated with a webhook subscription.",
@@ -24,18 +44,8 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack,generic etc",
-      "type": "string",
-      "default": "generic",
-      "enum": ["slack", "generic"],
-      "javaEnums": [
-        {
-          "name": "slack"
-        },
-        {
-          "name": "generic"
-        }
-      ]
+      "description": "Type of webhook slack, generic, msteams, etc.",
+      "$ref": "#/definitions/webhookType"
     },
     "description": {
       "description": "Description of the application.",
@@ -62,6 +72,11 @@
       "description": "Connection timeout in seconds. (Default 10s).",
       "type": "integer",
       "default": 10
+    },
+    "readTimeout": {
+      "description": "Read timeout in seconds. (Default 12s).",
+      "type": "integer",
+      "default": 12
     },
     "enabled": {
       "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`).",

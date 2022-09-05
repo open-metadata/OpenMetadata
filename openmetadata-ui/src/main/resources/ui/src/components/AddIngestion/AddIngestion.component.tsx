@@ -154,6 +154,15 @@ const AddIngestion = ({
         )
       : undefined
   );
+  const [markDeletedTablesFromFilterOnly, setMarkDeletedTablesFromFilterOnly] =
+    useState(
+      isDatabaseService
+        ? Boolean(
+            (data?.sourceConfig.config as ConfigClass)
+              ?.markDeletedTablesFromFilterOnly ?? false
+          )
+        : undefined
+    );
   const [includeView, setIncludeView] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
   );
@@ -212,12 +221,18 @@ const AddIngestion = ({
       '/tmp/query_log'
   );
   const [resultLimit, setResultLimit] = useState<number>(
-    (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
+    (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 1000
   );
   const usageIngestionType = useMemo(() => {
     return (
       (data?.sourceConfig.config as ConfigClass)?.type ??
       ConfigType.DatabaseUsage
+    );
+  }, [data]);
+  const lineageIngestionType = useMemo(() => {
+    return (
+      (data?.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.DatabaseLineage
     );
   }, [data]);
   const profilerIngestionType = useMemo(() => {
@@ -394,6 +409,7 @@ const AddIngestion = ({
             showTableFilter
           ),
           markDeletedTables,
+          markDeletedTablesFromFilterOnly,
           ...DatabaseConfigData,
           type: ConfigType.DatabaseMetadata,
         };
@@ -446,6 +462,13 @@ const AddIngestion = ({
           resultLimit,
           stageFileLocation,
           type: usageIngestionType,
+        };
+      }
+      case PipelineType.Lineage: {
+        return {
+          queryLogDuration,
+          resultLimit,
+          type: lineageIngestionType,
         };
       }
       case PipelineType.Profiler: {
@@ -527,7 +550,9 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: repeatFrequency,
+          scheduleInterval: isEmpty(repeatFrequency)
+            ? undefined
+            : repeatFrequency,
         },
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {
@@ -599,9 +624,7 @@ const AddIngestion = ({
 
       <IngestionStepper
         activeStep={activeIngestionStep}
-        className="tw-justify-between tw-w-10/12 tw-mx-auto"
         excludeSteps={!showDBTConfig ? [2] : undefined}
-        stepperLineClassName="add-ingestion-line"
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
@@ -625,6 +648,9 @@ const AddIngestion = ({
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
+            handleMarkDeletedTablesFromFilterOnly={() =>
+              setMarkDeletedTablesFromFilterOnly((pre) => !pre)
+            }
             handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={setResultLimit}
@@ -637,6 +663,7 @@ const AddIngestion = ({
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
             markDeletedTables={markDeletedTables}
+            markDeletedTablesFromFilterOnly={markDeletedTablesFromFilterOnly}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
             profileSample={profileSample}

@@ -14,6 +14,8 @@
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   IN_PAGE_SEARCH_ROUTES,
+  PLACEHOLDER_DASHBOARD_TYPE,
+  PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
   PLACEHOLDER_ROUTE_FQN,
@@ -23,7 +25,10 @@ import {
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
+  PLACEHOLDER_TAG_NAME,
+  PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
@@ -140,13 +145,6 @@ export const getExplorePathWithInitFilters = (
     : path;
 };
 
-export const getServicesWithTabPath = (serviceCat: string) => {
-  let path = ROUTES.SERVICES_WITH_TAB;
-  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat);
-
-  return path;
-};
-
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
@@ -233,7 +231,7 @@ export const getTeamsWithFqnPath = (fqn: string) => {
   let path = ROUTES.SETTINGS_WITH_TAB_FQN;
 
   path = path
-    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.ACCESS)
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
     .replace(PLACEHOLDER_ROUTE_FQN, fqn);
 
@@ -258,6 +256,114 @@ export const getPolicyWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.ACCESS)
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.POLICIES)
     .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getPath = (pathName: string) => {
+  switch (pathName) {
+    case GlobalSettingOptions.TEAMS:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.TEAMS
+      );
+
+    case GlobalSettingOptions.USERS:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.USERS
+      );
+
+    case GlobalSettingOptions.ROLES:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.ROLES
+      );
+
+    case GlobalSettingOptions.POLICIES:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.POLICIES
+      );
+
+    default:
+      return getSettingPath();
+  }
+};
+
+export const getProfilerDashboardWithFqnPath = (
+  dashboardType: string,
+  entityTypeFQN: string
+) => {
+  let path = ROUTES.PROFILER_DASHBOARD;
+
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getAddPolicyRulePath = (fqn: string) => {
+  let path = ROUTES.ADD_POLICY_RULE;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
+  let path = ROUTES.EDIT_POLICY_RULE;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_RULE_NAME, ruleName);
+
+  return path;
+};
+
+export const getTagPath = (fqn?: string) => {
+  let path = ROUTES.TAGS;
+  if (fqn) {
+    path = ROUTES.TAG_DETAILS;
+    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+  }
+
+  return path;
+};
+
+export const getAddDataQualityTableTestPath = (
+  dashboardType: string,
+  fqn: string
+) => {
+  let path = ROUTES.ADD_DATA_QUALITY_TEST_CASE;
+
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+
+  return path;
+};
+
+export const getTestSuitePath = (testSuiteName: string) => {
+  let path = ROUTES.TEST_SUITES;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+
+  return path;
+};
+
+export const getTestSuiteIngestionPath = (
+  testSuiteName: string,
+  ingestionFQN?: string
+) => {
+  let path = ingestionFQN
+    ? ROUTES.TEST_SUITES_EDIT_INGESTION
+    : ROUTES.TEST_SUITES_ADD_INGESTION;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+
+  if (ingestionFQN) {
+    path = path.replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN);
+  }
 
   return path;
 };

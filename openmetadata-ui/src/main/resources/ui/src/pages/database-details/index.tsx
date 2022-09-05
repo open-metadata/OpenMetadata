@@ -53,6 +53,11 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -63,6 +68,7 @@ import {
   pagingObject,
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -85,14 +91,17 @@ import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
-  getUpdatedThread,
   updateThreadData,
 } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getExplorePathWithInitFilters,
-  getServicesWithTabPath,
+  getSettingPath,
 } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import {
+  getServiceRouteFromServiceType,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -101,6 +110,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const { getEntityPermission } = usePermissionProvider();
 
   const { databaseFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
@@ -141,6 +151,21 @@ const DatabaseDetails: FunctionComponent = () => {
   const history = useHistory();
   const isMounting = useRef(true);
 
+  const [databasePermission, setDatabasePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchDatabasePermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.DATABASE,
+        database?.id as string
+      );
+      setDatabasePermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const tabs = [
     {
       name: 'Schemas',
@@ -155,7 +180,7 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feeds',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -270,7 +295,12 @@ const DatabaseDetails: FunctionComponent = () => {
           setSlashedDatabaseName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
-              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              ),
             },
             {
               name: service.name ?? '',
@@ -477,44 +507,12 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
 
-  const deletePostHandler = (threadId: string, postId: string) => {
-    deletePost(threadId, postId)
-      .then(() => {
-        getUpdatedThread(threadId)
-          .then((data) => {
-            if (data) {
-              setEntityThread((pre) => {
-                return pre.map((thread) => {
-                  if (thread.id === data.id) {
-                    return {
-                      ...thread,
-                      posts: data.posts && data.posts.slice(-3),
-                      postsCount: data.postsCount,
-                    };
-                  } else {
-                    return thread;
-                  }
-                });
-              });
-            } else {
-              showErrorToast(
-                jsonData['api-error-messages']['unexpected-server-response']
-              );
-            }
-          })
-          .catch((error) => {
-            showErrorToast(
-              error,
-              jsonData['api-error-messages']['fetch-updated-conversation-error']
-            );
-          });
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['delete-message-error']
-        );
-      });
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread, setEntityThread);
   };
 
   const updateThreadHandler = (
@@ -578,6 +576,12 @@ const DatabaseDetails: FunctionComponent = () => {
     fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
   }, [isInView, paging, isentityThreadLoading]);
 
+  useEffect(() => {
+    if (database?.id) {
+      fetchDatabasePermission();
+    }
+  }, [database]);
+
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -605,6 +609,7 @@ const DatabaseDetails: FunctionComponent = () => {
               <ManageButton
                 isRecursiveDelete
                 allowSoftDelete={false}
+                canDelete={databasePermission.Delete}
                 entityFQN={databaseFQN}
                 entityId={databaseId}
                 entityName={databaseName}
@@ -617,7 +622,11 @@ const DatabaseDetails: FunctionComponent = () => {
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
                     data={info}
-                    updateOwner={handleUpdateOwner}
+                    updateOwner={
+                      databasePermission.EditOwner || databasePermission.EditAll
+                        ? handleUpdateOwner
+                        : undefined
+                    }
                   />
 
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
@@ -631,7 +640,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
             <div className="tw-pl-2" data-testid="description-container">
               <Description
-                blurWithBodyBG
                 description={description}
                 entityFieldThreads={getEntityFieldThreadCounts(
                   EntityField.DESCRIPTION,
@@ -640,6 +648,10 @@ const DatabaseDetails: FunctionComponent = () => {
                 entityFqn={databaseFQN}
                 entityName={databaseName}
                 entityType={EntityType.DATABASE}
+                hasEditAccess={
+                  databasePermission.EditDescription ||
+                  databasePermission.EditAll
+                }
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
@@ -658,90 +670,92 @@ const DatabaseDetails: FunctionComponent = () => {
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
                   <Fragment>
-                    <table
-                      className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-databaseSchemas">
-                      <thead data-testid="table-header">
-                        <tr className="tableHead-row">
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-name">
-                            Schema Name
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-description">
-                            Description
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-owner">
-                            Owner
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-usage">
-                            Usage
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {schemaData.length > 0 ? (
-                          schemaData.map((schema, index) => (
-                            <tr
-                              className={classNames(
-                                'tableBody-row',
-                                !isEven(index + 1) ? 'odd-row' : null
-                              )}
-                              data-testid="table-column"
-                              key={index}>
-                              <td className="tableBody-cell">
-                                <Link
-                                  to={
-                                    schema.fullyQualifiedName
-                                      ? getDatabaseSchemaDetailsPath(
-                                          schema.fullyQualifiedName
-                                        )
-                                      : ''
-                                  }>
-                                  {schema.name}
-                                </Link>
-                              </td>
-                              <td className="tableBody-cell">
-                                {schema.description?.trim() ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={schema.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description
-                                  </span>
+                    <div className="tw-table-container tw-mb-4">
+                      <table
+                        className="tw-bg-white tw-w-full"
+                        data-testid="database-databaseSchemas">
+                        <thead data-testid="table-header">
+                          <tr className="tableHead-row">
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-name">
+                              Schema Name
+                            </th>
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-description">
+                              Description
+                            </th>
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-owner">
+                              Owner
+                            </th>
+                            <th
+                              className="tableHead-cell"
+                              data-testid="header-usage">
+                              Usage
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="tableBody">
+                          {schemaData.length > 0 ? (
+                            schemaData.map((schema, index) => (
+                              <tr
+                                className={classNames(
+                                  'tableBody-row',
+                                  !isEven(index + 1) ? 'odd-row' : null
                                 )}
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>{getEntityName(schema?.owner) || '--'}</p>
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>
-                                  {getUsagePercentile(
-                                    schema.usageSummary?.weeklyStats
-                                      ?.percentileRank || 0
+                                data-testid="table-column"
+                                key={index}>
+                                <td className="tableBody-cell">
+                                  <Link
+                                    to={
+                                      schema.fullyQualifiedName
+                                        ? getDatabaseSchemaDetailsPath(
+                                            schema.fullyQualifiedName
+                                          )
+                                        : ''
+                                    }>
+                                    {schema.name}
+                                  </Link>
+                                </td>
+                                <td className="tableBody-cell">
+                                  {schema.description?.trim() ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={schema.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description
+                                    </span>
                                   )}
-                                </p>
+                                </td>
+                                <td className="tableBody-cell">
+                                  <p>{getEntityName(schema?.owner) || '--'}</p>
+                                </td>
+                                <td className="tableBody-cell">
+                                  <p>
+                                    {getUsagePercentile(
+                                      schema.usageSummary?.weeklyStats
+                                        ?.percentileRank || 0
+                                    )}
+                                  </p>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="tableBody-row">
+                              <td
+                                className="tableBody-cell tw-text-center"
+                                colSpan={5}>
+                                No records found.
                               </td>
                             </tr>
-                          ))
-                        ) : (
-                          <tr className="tableBody-row">
-                            <td
-                              className="tableBody-cell tw-text-center"
-                              colSpan={5}>
-                              No records found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                     {Boolean(
                       !isNil(databaseSchemaPaging.after) ||
                         !isNil(databaseSchemaPaging.before)

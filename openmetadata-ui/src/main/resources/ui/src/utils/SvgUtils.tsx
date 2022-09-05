@@ -21,8 +21,11 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
+import IconAdmin from '../assets/svg/admin.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
+import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
+import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
@@ -31,6 +34,7 @@ import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
+import IconClosedLock from '../assets/svg/closed-lock.svg';
 import IconComments from '../assets/svg/comment.svg';
 import IconTaskClose from '../assets/svg/complete.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
@@ -60,12 +64,16 @@ import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
+import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconCommentGrey from '../assets/svg/ic-comment-grey.svg';
+import IconDeleteColored, {
+  ReactComponent as IcDeleteColored,
+} from '../assets/svg/ic-delete-colored.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
@@ -106,12 +114,17 @@ import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
+import IconAddTest from '../assets/svg/icon-add-test.svg';
 import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
+import IcEditPrimary from '../assets/svg/icon-edit-primary.svg';
+import IconInfoSecondary from '../assets/svg/icon-info.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
+import IconTestSuite from '../assets/svg/icon-test-suite.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconUp from '../assets/svg/icon-up.svg';
@@ -124,6 +137,9 @@ import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
 import IconMlModal from '../assets/svg/mlmodal.svg';
+import IconMSTeamsGrey from '../assets/svg/ms-teams-grey.svg';
+import IconMSTeams from '../assets/svg/ms-teams.svg';
+import IconOpenLock from '../assets/svg/open-lock.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
@@ -136,6 +152,7 @@ import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconReaction from '../assets/svg/Reaction.svg';
+import IconRemove from '../assets/svg/Remove.svg';
 import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
@@ -195,6 +212,7 @@ export const Icons = {
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
+  TEST_SUITE: 'icon-test-suite',
   WORKFLOWS: 'icon-workflows',
   MENU: 'icon-menu',
   FEED: 'icon-feed',
@@ -215,6 +233,7 @@ export const Icons = {
   LINEAGE: 'icon-lineage',
   MANAGE: 'icon-manage',
   HOME: 'icon-home',
+  ADD_TEST: 'icon-add-test',
   GROWTH_ARROW: 'icon-growth-arrow',
   LOSS_ARROW: 'icon-loss-arrow',
   CHECK_CIRCLE: 'icon-check-circle',
@@ -269,6 +288,7 @@ export const Icons = {
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
   ICON_PLUS_PRIMERY: 'icon-plus-primary',
+  ICON_PLUS_PRIMARY_OUTLINED: 'icon-plus-primary-outlined',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TAG_GREY: 'icon-tag-grey',
@@ -294,6 +314,7 @@ export const Icons = {
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
+  ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -329,6 +350,17 @@ export const Icons = {
   FOREGIN_KEY: 'foreign-key',
   ROLE_GREY: 'role-grey',
   POLICIES: 'policies',
+  INFO_SECONDARY: 'info-secondary',
+  ICON_REMOVE: 'icon-remove',
+  DELETE_COLORED: 'icon-delete-colored',
+  IC_EDIT_PRIMARY: 'ic-edit-primary',
+  MSTEAMS: 'msteams',
+  MSTEAMS_GREY: 'msteams-grey',
+  ALL_ACTIVITY: 'all-activity',
+  OPEN_LOCK: 'open-lock',
+  CLOSED_LOCK: 'closed-lock',
+  FILTER_PRIMARY: 'filter-primary',
+  ADMIN: 'admin',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -397,6 +429,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO_SMALL:
       IconComponent = LogoMonogram;
+
+      break;
+    case Icons.ADD_TEST:
+      IconComponent = IconAddTest;
 
       break;
     case Icons.WELCOME_POPPER:
@@ -817,6 +853,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAnnouncements;
 
       break;
+    case Icons.ANNOUNCEMENT_PURPLE:
+      IconComponent = IconAnnouncementsPurple;
+
+      break;
     case Icons.ANNOUNCEMENT_BLACK:
       IconComponent = IconAnnouncementsBlack;
 
@@ -964,6 +1004,63 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconPolicies;
 
       break;
+    case Icons.ICON_REMOVE:
+      IconComponent = IconRemove;
+
+      break;
+    case Icons.IC_EDIT_PRIMARY:
+      IconComponent = IcEditPrimary;
+
+      break;
+    case Icons.ICON_PLUS_PRIMARY_OUTLINED:
+      IconComponent = IconPlusPrimaryOutlined;
+
+      break;
+
+    case Icons.INFO_SECONDARY:
+      IconComponent = IconInfoSecondary;
+
+      break;
+    case Icons.MSTEAMS:
+      IconComponent = IconMSTeams;
+
+      break;
+    case Icons.MSTEAMS_GREY:
+      IconComponent = IconMSTeamsGrey;
+
+      break;
+    case Icons.DELETE_COLORED:
+      IconComponent = IconDeleteColored;
+
+      break;
+    case Icons.TEST_SUITE:
+      IconComponent = IconTestSuite;
+
+      break;
+
+    case Icons.ALL_ACTIVITY:
+      IconComponent = IconAllActivity;
+
+      break;
+    case Icons.FILTER_PRIMARY:
+      IconComponent = IconFilterPrimary;
+
+      break;
+
+    case Icons.OPEN_LOCK:
+      IconComponent = IconOpenLock;
+
+      break;
+
+    case Icons.CLOSED_LOCK:
+      IconComponent = IconClosedLock;
+
+      break;
+
+    case Icons.ADMIN:
+      IconComponent = IconAdmin;
+
+      break;
 
     default:
       IconComponent = null;
@@ -984,3 +1081,5 @@ const SVGIcons: FunctionComponent<Props> = ({
 };
 
 export default SVGIcons;
+
+export { IcDeleteColored };

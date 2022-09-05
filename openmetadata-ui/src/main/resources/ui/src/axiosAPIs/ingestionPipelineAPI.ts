@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
@@ -96,8 +97,29 @@ export const updateIngestionPipeline = async (
   return response.data;
 };
 
+export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<IngestionPipeline>
+  >(`/services/ingestionPipelines/${id}`, data, configOptions);
+
+  return response.data;
+};
+
 export const checkAirflowStatus = (): Promise<AxiosResponse> => {
   return APIClient.get('/services/ingestionPipelines/status');
+};
+
+export const getPipelineServiceHostIp = async () => {
+  const response = await APIClient.get<{ ip?: string }>(
+    '/services/ingestionPipelines/ip'
+  );
+
+  return response.data;
 };
 
 export const getIngestionPipelineLogById = (

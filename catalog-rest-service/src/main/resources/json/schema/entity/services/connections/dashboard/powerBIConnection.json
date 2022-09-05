@@ -43,6 +43,7 @@
       "default": "https://login.microsoftonline.com/"
     },
     "hostPort": {
+      "expose": true,
       "title": "Host and Port",
       "description": "Dashboard URL for PowerBI service.",
       "type": "string",

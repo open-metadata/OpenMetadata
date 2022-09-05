@@ -24,13 +24,23 @@ import {
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
-import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
-import { Webhook } from '../../generated/entity/events/webhook';
+import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+const EDIT_HEADER_WEBHOOKS_TITLE: { [key: string]: string } = {
+  msteams: 'MS Teams',
+  slack: 'Edit Slack',
+  generic: 'Edit Webhook',
+};
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
@@ -59,7 +69,24 @@ const EditWebhookPage: FunctionComponent = () => {
   };
 
   const goToWebhooks = () => {
-    history.push(ROUTES.WEBHOOKS);
+    let type = GlobalSettingOptions.WEBHOOK;
+    switch (webhookData?.webhookType) {
+      case WebhookType.Msteams:
+        type = GlobalSettingOptions.MSTEAMS;
+
+        break;
+      case WebhookType.Slack:
+        type = GlobalSettingOptions.SLACK;
+
+        break;
+
+      default:
+        break;
+    }
+
+    history.push(
+      `${getSettingPath(GlobalSettingsMenuCategory.INTEGRATIONS, type)}`
+    );
   };
 
   const handleCancel = () => {
@@ -77,6 +104,9 @@ const EditWebhookPage: FunctionComponent = () => {
             setStatus('initial');
             goToWebhooks();
           }, 500);
+          showSuccessToast(
+            jsonData['api-success-messages']['update-webhook-success']
+          );
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];
         }
@@ -116,9 +146,12 @@ const EditWebhookPage: FunctionComponent = () => {
             allowAccess={isAdminUser || isAuthDisabled}
             data={webhookData}
             deleteState={deleteStatus}
-            header="Edit Webhook"
+            header={
+              EDIT_HEADER_WEBHOOKS_TITLE[webhookData?.webhookType || 'generic']
+            }
             mode={FormSubmitType.EDIT}
             saveState={status}
+            webhookType={webhookData?.webhookType}
             onCancel={handleCancel}
             onDelete={handleDelete}
             onSave={handleSave}

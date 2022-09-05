@@ -32,28 +32,25 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
-import {
-  onErrorText,
-  onUpdatedConversastionError,
-} from '../../constants/feed.constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Operation as RuleOperation } from '../../generated/entity/policies/accessControl/rule';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import {
-  deletePost,
-  getUpdatedThread,
-  updateThreadData,
-} from '../../utils/FeedUtils';
+import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
+  const { permissions } = usePermissionProvider();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [entityCounts, setEntityCounts] = useState<EntitiesCount>(
@@ -79,6 +76,13 @@ const MyDataPage = () => {
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+
+  const viewUserPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(RuleOperation.ViewAll, ResourceEntity.USER, permissions)
+    );
+  }, [permissions]);
 
   const fetchEntityCount = () => {
     getAllEntityCount()
@@ -145,12 +149,11 @@ const MyDataPage = () => {
     type?: ThreadType
   ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(
-      currentUser?.id,
-      filterType ?? FeedFilter.ALL,
-      after,
-      type
-    )
+    const feedFilterType = filterType ?? FeedFilter.ALL;
+    const userId =
+      feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
+
+    getFeedsWithFilter(userId, feedFilterType, after, type)
       .then((res) => {
         const { data, paging: pagingObj } = res;
         setPaging(pagingObj);
@@ -200,34 +203,12 @@ const MyDataPage = () => {
       });
   };
 
-  const deletePostHandler = (threadId: string, postId: string) => {
-    deletePost(threadId, postId)
-      .then(() => {
-        getUpdatedThread(threadId)
-          .then((data) => {
-            setEntityThread((pre) => {
-              return pre.map((thread) => {
-                if (thread.id === data.id) {
-                  return {
-                    ...thread,
-                    posts: data.posts && data.posts.slice(-3),
-                    postsCount: data.postsCount,
-                  };
-                } else {
-                  return thread;
-                }
-              });
-            });
-          })
-          .catch((error) => {
-            const message = error?.message;
-            showErrorToast(message ?? onUpdatedConversastionError);
-          });
-      })
-      .catch((error) => {
-        const message = error?.message;
-        showErrorToast(message ?? onErrorText);
-      });
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread, setEntityThread);
   };
 
   const updateThreadHandler = (
@@ -289,7 +270,7 @@ const MyDataPage = () => {
         !isEmpty(AppState.userDetails)) &&
       (isNil(ownedData) || isNil(followedData))
     ) {
-      fetchMyData();
+      viewUserPermission && fetchMyData();
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 

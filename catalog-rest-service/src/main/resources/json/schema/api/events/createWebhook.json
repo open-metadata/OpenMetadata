@@ -52,18 +52,8 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack,generic etc",
-      "type": "string",
-      "default": "generic",
-      "enum": ["slack", "generic"],
-      "javaEnums": [
-        {
-          "name": "slack"
-        },
-        {
-          "name": "generic"
-        }
-      ]
+      "description": "Type of webhook slack,generic,msteams etc",
+      "$ref": "../../entity/events/webhook.json#/definitions/webhookType"
     }
   },
   "required": ["name", "endpoint", "eventFilters"],

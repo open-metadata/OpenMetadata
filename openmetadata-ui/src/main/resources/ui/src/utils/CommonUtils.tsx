@@ -11,28 +11,41 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space, Tag } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
+import {
+  capitalize,
+  differenceWith,
+  isEmpty,
+  isEqual,
+  isNil,
+  isNull,
+  isUndefined,
+  uniqueId,
+} from 'lodash';
 import {
   EntityFieldThreadCount,
+  ExtraInfo,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
 import React, { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
+import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getUserPath,
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
-  SUPPORTED_DOMAIN_TYPES,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import {
@@ -43,11 +56,14 @@ import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -56,7 +72,12 @@ import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
-import { getExplorePathWithInitFilters } from './RouterUtils';
+import { LIST_CAP } from './PermissionsUtils';
+import {
+  getExplorePathWithInitFilters,
+  getRoleWithFqnPath,
+  getTeamsWithFqnPath,
+} from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 import { TASK_ENTITIES } from './TasksUtils';
@@ -84,12 +105,6 @@ export const arraySorterByKey = (
 
 export const isEven = (value: number): boolean => {
   return value % 2 === 0;
-};
-
-export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
-  const arrColFQN = columnFQN.split(FQN_SEPARATOR_CHAR);
-
-  return arrColFQN.slice(0, arrColFQN.length - 1).join(FQN_SEPARATOR_CHAR);
 };
 
 export const getPartialNameFromFQN = (
@@ -152,15 +167,18 @@ export const getPartialNameFromTableFQN = (
   return arrPartialName.join(joinSeparator);
 };
 
-export const getCurrentUserId = (): string => {
-  // TODO: Replace below with USERID from Logged-in data
-  const { id: userId } = !isEmpty(AppState.userDetails)
-    ? AppState.userDetails
-    : AppState.users?.length
-    ? AppState.users[0]
-    : { id: undefined };
+export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
+  return getPartialNameFromTableFQN(
+    columnFQN,
+    [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+    '.'
+  );
+};
 
-  return userId as string;
+export const getCurrentUserId = (): string => {
+  const currentUser = AppState.getCurrentUserDetails();
+
+  return currentUser?.id || '';
 };
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {
@@ -634,9 +652,26 @@ export const getEntityName = (
     | Team
     | Policy
     | Role
+    | GlossaryTerm
+    | Webhook
 ) => {
   return entity?.displayName || entity?.name || '';
 };
+
+export const getEntityId = (
+  entity?:
+    | EntityReference
+    | ServicesType
+    | User
+    | Topic
+    | Database
+    | Dashboard
+    | Table
+    | Pipeline
+    | Team
+    | Policy
+    | Role
+) => entity?.id || '';
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
@@ -739,10 +774,6 @@ export const getFeedCounts = (
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
 
-export const isAllowedHost = () => {
-  return SUPPORTED_DOMAIN_TYPES.includes(window.location.host);
-};
-
 /**
  * Utility function to show pagination
  * @param paging paging object
@@ -750,35 +781,6 @@ export const isAllowedHost = () => {
  */
 export const showPagination = (paging: Paging) => {
   return !isNil(paging.after) || !isNil(paging.before);
-};
-
-export const getTeamsText = (teams: EntityReference[]) => {
-  return teams.length === 0 ? (
-    'No teams'
-  ) : teams.length > 1 ? (
-    <span>
-      {getEntityName(teams[0])}, &{' '}
-      <Popover
-        content={
-          <span>
-            {teams.map((t, i) => {
-              return i >= 1 ? (
-                <span className="tw-block tw-text-left" key={i}>
-                  {getEntityName(t)}
-                </span>
-              ) : null;
-            })}
-          </span>
-        }
-        trigger="hover">
-        <span className="tw-underline tw-cursor-pointer">
-          {teams.length - 1} more
-        </span>
-      </Popover>
-    </span>
-  ) : (
-    `${getEntityName(teams[0])}`
-  );
 };
 
 export const formatNumberWithComma = (number: number) => {
@@ -793,3 +795,207 @@ export const formTwoDigitNmber = (number: number) => {
     useGrouping: false,
   });
 };
+
+export const getTeamsUser = (
+  data?: ExtraInfo
+): Record<string, string | undefined> | undefined => {
+  if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
+    const currentUser = AppState.getCurrentUserDetails();
+    const teams = currentUser?.teams;
+
+    const dataFound = teams?.find((team) => {
+      return data.id === team.id;
+    });
+
+    if (dataFound) {
+      return {
+        ownerName: currentUser?.displayName as string,
+        id: currentUser?.id as string,
+      };
+    }
+  }
+
+  return;
+};
+
+export const getIngestionStatuses = (ingestion: IngestionPipeline) => {
+  const lastFiveIngestions = ingestion.pipelineStatuses
+    ?.sort((a, b) => {
+      // Turn your strings into millis, and then subtract them
+      // to get a value that is either negative, positive, or zero.
+      const date1 = new Date(a.startDate || '');
+      const date2 = new Date(b.startDate || '');
+
+      return date1.getTime() - date2.getTime();
+    })
+    .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
+
+  return lastFiveIngestions?.map((r, i) => {
+    const status =
+      i === lastFiveIngestions.length - 1 ? (
+        <p
+          className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+          key={i}>
+          {capitalize(r.state)}
+        </p>
+      ) : (
+        <p
+          className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+          key={i}
+        />
+      );
+
+    return r?.endDate || r?.startDate || r?.timestamp ? (
+      <PopOver
+        html={
+          <div className="tw-text-left">
+            {r.timestamp ? (
+              <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
+            ) : null}
+            {r.startDate ? (
+              <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+            ) : null}
+            {r.endDate ? (
+              <p>End Date: {new Date(r.endDate).toUTCString()}</p>
+            ) : null}
+          </div>
+        }
+        key={i}
+        position="bottom"
+        theme="light"
+        trigger="mouseenter">
+        {status}
+      </PopOver>
+    ) : (
+      status
+    );
+  });
+};
+
+export const getDiffArray = (
+  compareWith: string[],
+  toCompare: string[]
+): string[] => {
+  return differenceWith(compareWith, toCompare, isEqual);
+};
+
+export const getHostNameFromURL = (url: string) => {
+  if (isValidUrl(url)) {
+    const domain = new URL(url);
+
+    return domain.hostname;
+  } else {
+    return '';
+  }
+};
+
+export const commonUserDetailColumns: ColumnsType<User> = [
+  {
+    title: 'Username',
+    dataIndex: 'username',
+    key: 'username',
+    render: (_, record) => (
+      <Link
+        className="hover:tw-underline tw-cursor-pointer"
+        to={getUserPath(record.fullyQualifiedName || record.name)}>
+        {getEntityName(record)}
+      </Link>
+    ),
+  },
+  {
+    title: 'Teams',
+    dataIndex: 'teams',
+    key: 'teams',
+    render: (_, record) => {
+      const listLength = record.teams?.length ?? 0;
+      const hasMore = listLength > LIST_CAP;
+
+      if (isUndefined(record.teams) || isEmpty(record.teams)) {
+        return <>No Team</>;
+      } else {
+        return (
+          <Space wrap data-testid="policy-link" size={4}>
+            {record.teams.slice(0, LIST_CAP).map((team) => (
+              <Link
+                className="hover:tw-underline tw-cursor-pointer"
+                key={uniqueId()}
+                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                {getEntityName(team)}
+              </Link>
+            ))}
+            {hasMore && (
+              <Popover
+                className="tw-cursor-pointer"
+                content={
+                  <Space wrap size={4}>
+                    {record.teams.slice(LIST_CAP).map((team) => (
+                      <Link
+                        className="hover:tw-underline tw-cursor-pointer"
+                        key={uniqueId()}
+                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                        {getEntityName(team)}
+                      </Link>
+                    ))}
+                  </Space>
+                }
+                overlayClassName="tw-w-40 tw-text-center"
+                trigger="click">
+                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                  listLength - LIST_CAP
+                } more`}</Tag>
+              </Popover>
+            )}
+          </Space>
+        );
+      }
+    },
+  },
+  {
+    title: 'Roles',
+    dataIndex: 'roles',
+    key: 'roles',
+    render: (_, record) => {
+      const listLength = record.roles?.length ?? 0;
+      const hasMore = listLength > LIST_CAP;
+
+      if (isUndefined(record.roles) || isEmpty(record.roles)) {
+        return <>No Role</>;
+      } else {
+        return (
+          <Space wrap data-testid="policy-link" size={4}>
+            {record.roles.slice(0, LIST_CAP).map((role) => (
+              <Link
+                className="hover:tw-underline tw-cursor-pointer"
+                key={uniqueId()}
+                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                {getEntityName(role)}
+              </Link>
+            ))}
+            {hasMore && (
+              <Popover
+                className="tw-cursor-pointer"
+                content={
+                  <Space wrap size={4}>
+                    {record.roles.slice(LIST_CAP).map((role) => (
+                      <Link
+                        className="hover:tw-underline tw-cursor-pointer"
+                        key={uniqueId()}
+                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                        {getEntityName(role)}
+                      </Link>
+                    ))}
+                  </Space>
+                }
+                overlayClassName="tw-w-40 tw-text-center"
+                trigger="click">
+                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                  listLength - LIST_CAP
+                } more`}</Tag>
+              </Popover>
+            )}
+          </Space>
+        );
+      }
+    },
+  },
+];

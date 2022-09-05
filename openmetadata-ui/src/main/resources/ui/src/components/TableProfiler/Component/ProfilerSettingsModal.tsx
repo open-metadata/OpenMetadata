@@ -30,7 +30,7 @@ import {
   codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,
   PROFILER_METRIC,
-} from '../../../constants/entity.constants';
+} from '../../../constants/profiler.constant';
 import {
   ColumnProfilerConfig,
   TableProfilerConfig,
@@ -43,24 +43,24 @@ import '../tableProfiler.less';
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
-  columnProfile,
+  columns,
   visible,
   onVisibilityChange,
 }) => {
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
-  const [profileSample, setProfileSample] = useState<number>(0);
+  const [profileSample, setProfileSample] = useState<number>(100);
   const [excludeCol, setExcludeCol] = useState<string[]>([]);
   const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
     DEFAULT_INCLUDE_PROFILE
   );
 
   const selectOptions = useMemo(() => {
-    return columnProfile.map(({ name }) => ({
+    return columns.map(({ name }) => ({
       label: name,
       value: name,
     }));
-  }, [columnProfile]);
+  }, [columns]);
   const metricsOptions = useMemo(() => {
     const metricsOptions = [
       {
@@ -76,12 +76,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     ];
 
     return metricsOptions;
-  }, [columnProfile]);
+  }, [columns]);
 
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
     const { includeColumns } = tableProfilerConfig;
     setSqlQuery(tableProfilerConfig.profileQuery || '');
-    setProfileSample(tableProfilerConfig.profileSample || 0);
+    setProfileSample(tableProfilerConfig.profileSample || 100);
     setExcludeCol(tableProfilerConfig.excludeColumns || []);
     if (includeColumns && includeColumns?.length > 0) {
       const includeColValue = includeColumns.map((col) => {

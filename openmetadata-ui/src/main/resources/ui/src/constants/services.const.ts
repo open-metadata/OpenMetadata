@@ -12,17 +12,21 @@
  */
 
 import { ServiceTypes, StepperStepType } from 'Models';
+import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
-import noDataFound from '../assets/img/no-data-placeholder.png';
+import noDataFound from '../assets/img/no-data-placeholder.svg';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
 import athena from '../assets/img/service-icon-athena.png';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
+import datalake from '../assets/img/service-icon-datalake.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
+import fivetran from '../assets/img/service-icon-fivetran.png';
 import databaseDefault from '../assets/img/service-icon-generic.png';
 import glue from '../assets/img/service-icon-glue.png';
 import hive from '../assets/img/service-icon-hive.png';
@@ -31,9 +35,10 @@ import kafka from '../assets/img/service-icon-kafka.png';
 import looker from '../assets/img/service-icon-looker.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
 import metabase from '../assets/img/service-icon-metabase.png';
-import mlflow from '../assets/img/service-icon-mlflow.png';
+import mode from '../assets/img/service-icon-mode.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
+import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import powerbi from '../assets/img/service-icon-power-bi.png';
 import prefect from '../assets/img/service-icon-prefect.png';
@@ -56,6 +61,7 @@ import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
+import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
@@ -65,6 +71,7 @@ import { MlModelServiceType } from '../generated/entity/services/mlmodelService'
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 
 export const NoDataFoundPlaceHolder = noDataFound;
+export const AddPlaceHolder = addPlaceHolder;
 export const MYSQL = mysql;
 export const SQLITE = sqlite;
 export const MSSQL = mssql;
@@ -100,6 +107,11 @@ export const SCIKIT = scikit;
 export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
 export const AIRBYTE = airbyte;
+export const PINOT = pinot;
+export const DATALAKE = datalake;
+export const MODE = mode;
+export const DAGSTER = dagster;
+export const FIVETRAN = fivetran;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
@@ -153,8 +165,10 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
 export const DEF_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsLineageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
 };
 

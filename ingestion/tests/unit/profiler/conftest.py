@@ -23,9 +23,6 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig
-from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
-from metadata.orm_profiler.validations.models import TestDef, TestSuite
 from metadata.utils.connections import create_and_bind_session
 
 
@@ -40,17 +37,6 @@ def session():
     yield session
 
     session.close()
-
-
-def base_profiler_processor_config():
-    return ProfilerProcessorConfig(
-        test_suite=TestSuite(
-            name="test suite",
-            tests=[
-                TestDef(table="my.awesome.table"),
-            ],
-        )
-    )
 
 
 @fixture
@@ -69,17 +55,4 @@ def base_table():
                 dataType=DataType.NUMERIC,
             ),
         ],
-    )
-
-
-@fixture
-@patch(
-    "metadata.orm_profiler.processor.orm_profiler.OpenMetadata",
-    autospec=True,
-)
-def base_orm_profiler_processor(mocked_metadata_config_object):
-    return OrmProfilerProcessor(
-        base_profiler_processor_config(),
-        metadata_connection_object(),
-        session(),
     )

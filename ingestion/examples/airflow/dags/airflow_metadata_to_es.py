@@ -54,13 +54,13 @@ config = """
       "index_tables": "true",
       "index_topics": "true",
       "index_dashboards": "true",
-      "es_host": "localhost",
+      "es_host": "elasticsearch",
       "es_port": 9200
     }
   },
   "workflowConfig": {
     "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
+      "hostPort": "http://openmetadata-server:8585/api",
       "authProvider": "no-auth"
     }
   }

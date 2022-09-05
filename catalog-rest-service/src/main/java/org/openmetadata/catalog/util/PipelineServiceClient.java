@@ -1,6 +1,7 @@
 package org.openmetadata.catalog.util;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -10,9 +11,14 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
+import java.util.Properties;
+import java.util.regex.Pattern;
+import javax.ws.rs.core.Response;
+import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
+import org.openmetadata.catalog.exception.PipelineServiceVersionException;
 
 /**
  * Client to make API calls to add, deleted, and deploy pipelines on a PipelineService, such as Airflow. Core
@@ -30,12 +36,25 @@ public abstract class PipelineServiceClient {
   protected final URL serviceURL;
   protected final String username;
   protected final String password;
+  protected final String hostIp;
   protected final HttpClient client;
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
 
-  public PipelineServiceClient(String userName, String password, String apiEndpoint, int apiTimeout) {
+  public static final String SERVER_VERSION;
+
+  static {
+    String rawServerVersion;
+    try {
+      rawServerVersion = getServerVersion();
+    } catch (IOException e) {
+      rawServerVersion = "unknown";
+    }
+    SERVER_VERSION = rawServerVersion;
+  }
+
+  public PipelineServiceClient(String userName, String password, String apiEndpoint, String hostIp, int apiTimeout) {
     try {
       this.serviceURL = new URL(apiEndpoint);
     } catch (MalformedURLException e) {
@@ -43,6 +62,7 @@ public abstract class PipelineServiceClient {
     }
     this.username = userName;
     this.password = password;
+    this.hostIp = hostIp;
     this.client =
         HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -71,8 +91,46 @@ public abstract class PipelineServiceClient {
     return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
   }
 
+  public static String getServerVersion() throws IOException {
+    InputStream fileInput = CatalogApplication.class.getResourceAsStream("/catalog/VERSION");
+    Properties props = new Properties();
+    props.load(fileInput);
+    return props.getProperty("version", "unknown");
+  }
+
+  public final String getVersionFromString(String version) {
+    if (version != null) {
+      return Pattern.compile("(\\d+.\\d+.\\d+)")
+          .matcher(version)
+          .results()
+          .map(m -> m.group(1))
+          .findFirst()
+          .orElseThrow(
+              () ->
+                  new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
+    } else {
+      throw new PipelineServiceVersionException("Received version as null");
+    }
+  }
+
+  public final Boolean validServerClientVersions(String clientVersion) {
+    return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
+  }
+
+  public final Map<String, String> getHostIp() {
+    try {
+      if (this.hostIp == null || this.hostIp.isEmpty()) {
+        return requestGetHostIp();
+      } else {
+        return Map.of("ip", this.hostIp);
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());
+    }
+  }
+
   /* Check the status of pipeline service to ensure it is healthy */
-  public abstract HttpResponse<String> getServiceStatus();
+  public abstract Response getServiceStatus();
 
   /* Test the connection to the service such as database service a pipeline depends on. */
   public abstract HttpResponse<String> testConnection(TestServiceConnection testServiceConnection);
@@ -97,4 +155,10 @@ public abstract class PipelineServiceClient {
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
+
+  /*
+  Get the Pipeline Service host IP to whitelist in source systems
+  Should return a map in the shape {"ip": "111.11.11.1"}
+  */
+  public abstract Map<String, String> requestGetHostIp();
 }

@@ -154,7 +154,14 @@ const NavBar = ({
       icon: Logo,
     });
     notification.onclick = () => {
-      history.push(path);
+      const isChrome = window.navigator.userAgent.indexOf('Chrome');
+      // Applying logic to open a new window onclick of browser notification from chrome
+      // As it does not open the concerned tab by default.
+      if (isChrome > -1) {
+        window.open(path);
+      } else {
+        history.push(path);
+      }
     };
   };
 
@@ -217,15 +224,6 @@ const NavBar = ({
                 }}>
                 Explore
               </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-settings"
-                style={navStyle(pathname.startsWith('/settings'))}
-                to={{
-                  pathname: ROUTES.SETTINGS,
-                }}>
-                Settings
-              </NavLink>
 
               <NavLink
                 className="focus:tw-no-underline"
@@ -246,17 +244,27 @@ const NavBar = ({
                 }}>
                 Tags
               </NavLink>
+
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-settings"
+                style={navStyle(pathname.startsWith('/settings'))}
+                to={{
+                  pathname: ROUTES.SETTINGS,
+                }}>
+                Settings
+              </NavLink>
             </Space>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
+            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16"
             data-testid="appbar-item">
             <Input
               autoComplete="off"
               className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
-              placeholder="Search for Table, Topics, Dashboards,Pipeline and ML Models"
+              placeholder="Search for Tables, Topics, Dashboards, Pipelines and ML Models"
               style={{
                 borderRadius: '0.24rem',
                 boxShadow: 'none',

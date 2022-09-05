@@ -14,7 +14,11 @@
 import 'tailwindcss/tailwind.css';
 import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import './antd-master.less';
+import './app.less';
+import './components/glossary.less';
+import './components/step.less';
 import './fonts.css';
+import './modal.less';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
 import './tailwind.css';

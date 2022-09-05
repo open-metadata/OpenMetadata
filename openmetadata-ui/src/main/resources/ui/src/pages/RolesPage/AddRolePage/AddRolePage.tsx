@@ -11,28 +11,43 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  Row,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
+import { ADD_ROLE_TEXT } from '../../../constants/HelperTextUtil';
 import { Policy } from '../../../generated/entity/policies/policy';
-import { getRoleWithFqnPath, getSettingPath } from '../../../utils/RouterUtils';
+import {
+  getPath,
+  getRoleWithFqnPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
+const rolesPath = getPath(GlobalSettingOptions.ROLES);
+
 const breadcrumb = [
   {
+    name: 'Settings',
+    url: getSettingPath(),
+  },
+  {
     name: 'Roles',
-    url: getSettingPath(
-      GlobalSettingsMenuCategory.ACCESS,
-      GlobalSettingOptions.ROLES
-    ),
+    url: rolesPath,
   },
   {
     name: 'Add New Role',
@@ -49,7 +64,12 @@ const AddRolePage = () => {
 
   const fetchPolicies = async () => {
     try {
-      const data = await getPolicies('owner,location,roles,teams');
+      const data = await getPolicies(
+        'owner,location,roles,teams',
+        undefined,
+        undefined,
+        100
+      );
 
       setPolicies(data.data || []);
     } catch (error) {
@@ -58,12 +78,7 @@ const AddRolePage = () => {
   };
 
   const handleCancel = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.ACCESS,
-        GlobalSettingOptions.ROLES
-      )
-    );
+    history.push(rolesPath);
   };
 
   const handleSumbit = async () => {
@@ -91,12 +106,18 @@ const AddRolePage = () => {
   }, []);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Row
+      className="tw-bg-body-main tw-h-full"
+      data-testid="add-role-container"
+      gutter={[16, 16]}>
+      <Col offset={4} span={12}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
-      <Col span={18}>
-        <Card title="Add New Role">
+        <Card>
+          <Typography.Paragraph
+            className="tw-text-base"
+            data-testid="form-title">
+            Add New Role
+          </Typography.Paragraph>
           <Form
             data-testid="role-form"
             id="role-form"
@@ -110,9 +131,11 @@ const AddRolePage = () => {
                   required: true,
                   max: 128,
                   min: 1,
+                  message: 'Invalid name',
                 },
               ]}>
               <Input
+                data-testid="name"
                 placeholder="Role name"
                 type="text"
                 value={name}
@@ -134,9 +157,11 @@ const AddRolePage = () => {
               rules={[
                 {
                   required: true,
+                  message: 'At least one policy is required!',
                 },
               ]}>
               <Select
+                data-testid="policies"
                 mode="multiple"
                 placeholder="Select Policy"
                 value={selectedPolicies}
@@ -150,15 +175,28 @@ const AddRolePage = () => {
             </Form.Item>
 
             <Space align="center" className="tw-w-full tw-justify-end">
-              <Button type="link" onClick={handleCancel}>
+              <Button
+                data-testid="cancel-btn"
+                type="link"
+                onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button form="role-form" htmlType="submit" type="primary">
+              <Button
+                data-testid="submit-btn"
+                form="role-form"
+                htmlType="submit"
+                type="primary">
                 Submit
               </Button>
             </Space>
           </Form>
         </Card>
+      </Col>
+      <Col className="tw-mt-4" span={4}>
+        <Typography.Paragraph className="tw-text-base tw-font-medium">
+          Add Role
+        </Typography.Paragraph>
+        <Typography.Text>{ADD_ROLE_TEXT}</Typography.Text>
       </Col>
     </Row>
   );

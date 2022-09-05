@@ -13,12 +13,12 @@
 
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
-    <selenium.version>4.1.2</selenium.version>
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.17.2</org.testcontainers.version>
+    <org.testcontainers.version>1.17.3</org.testcontainers.version>
+    <awssdk.version>2.17.256</awssdk.version>
   </properties>
 
   <dependencyManagement>
@@ -26,7 +26,7 @@
       <dependency>
         <groupId>com.amazonaws</groupId>
         <artifactId>aws-java-sdk-bom</artifactId>
-        <version>2.17.190</version>
+        <version>${awssdk.version}</version>
         <type>pom</type>
       </dependency>
     </dependencies>
@@ -259,21 +259,26 @@
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
-      <version>2.17.2</version>
+      <version>${log4j.version}</version>
     </dependency>
 
     <!-- Diff util to compute diffs in plain text -->
     <dependency>
       <groupId>io.github.java-diff-utils</groupId>
       <artifactId>java-diff-utils</artifactId>
-      <version>4.11</version>
+      <version>4.12</version>
     </dependency>
 
     <!-- Dependencies for secret store manager providers -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>secretsmanager</artifactId>
-      <version>2.17.188</version>
+      <version>${awssdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>ssm</artifactId>
+      <version>${awssdk.version}</version>
     </dependency>
 
     <!--test dependencies-->
@@ -397,14 +402,6 @@
       <artifactId>jwks-rsa</artifactId>
       <version>${jwks-rsa.version}</version>
     </dependency>
-
-
-    <dependency>
-      <groupId>org.seleniumhq.selenium</groupId>
-      <artifactId>selenium-java</artifactId>
-      <version>${selenium.version}</version>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>io.github.artsok</groupId>
       <artifactId>rerunner-jupiter</artifactId>
@@ -451,6 +448,11 @@
       <groupId>org.springframework</groupId>
       <artifactId>spring-expression</artifactId>
       <version>${spring-expression.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.dropwizard.modules</groupId>
+      <artifactId>dropwizard-kafka</artifactId>
+      <version>1.8.0</version>
     </dependency>
     <dependency>
       <groupId>com.onelogin</groupId>
@@ -555,7 +557,15 @@
           <targetPackage>org.openmetadata.catalog</targetPackage>
           <includeJsr303Annotations>true</includeJsr303Annotations>
           <generateBuilders>true</generateBuilders>
+          <customAnnotator>org.openmetadata.annotations.OpenMetadataAnnotator</customAnnotator>
         </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.open-metadata</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <goals>

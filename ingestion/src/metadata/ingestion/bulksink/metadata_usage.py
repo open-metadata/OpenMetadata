@@ -14,7 +14,7 @@ import os
 import shutil
 import traceback
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import ValidationError
 
@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
     JoinedWith,
-    SqlQuery,
     Table,
     TableJoins,
 )
@@ -35,14 +34,12 @@ from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
-    get_lineage_by_query,
     get_table_entities_from_query,
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.lru_cache import LRUCache
 
 logger = ingestion_logger()
 
@@ -77,35 +74,6 @@ class MetadataUsageBulkSink(BulkSink):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def ingest_sql_queries_lineage(
-        self, queries: List[SqlQuery], database_name: str, schema_name: str
-    ) -> None:
-        """
-        Method to ingest lineage by sql queries
-        """
-
-        create_or_insert_queries = [
-            query.query
-            for query in queries
-            if "create" in query.query.lower() or "insert" in query.query.lower()
-        ]
-        seen_queries = LRUCache(LRU_CACHE_SIZE)
-
-        for query in create_or_insert_queries:
-            if query in seen_queries:
-                continue
-            lineages = get_lineage_by_query(
-                self.metadata,
-                query=query,
-                service_name=self.service_name,
-                database_name=database_name,
-                schema_name=schema_name,
-            )
-            for lineage in lineages or []:
-                created_lineage = self.metadata.add_lineage(lineage)
-                logger.info(f"Successfully added Lineage {created_lineage}")
-            seen_queries.put(query, None)  # None because it really doesn't matter.
-
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount
     ) -> None:
@@ -132,7 +100,7 @@ class MetadataUsageBulkSink(BulkSink):
 
     def __publish_usage_records(self) -> None:
         """
-        Method to publish SQL Queries, Table Usage & Lineage
+        Method to publish SQL Queries, Table Usage
         """
         for _, value_dict in self.table_usage_map.items():
             table_usage_request = None
@@ -144,35 +112,36 @@ class MetadataUsageBulkSink(BulkSink):
                     table=value_dict["table_entity"],
                     table_queries=value_dict["sql_queries"],
                 )
-                self.ingest_sql_queries_lineage(
-                    queries=value_dict["sql_queries"],
-                    database_name=value_dict["database"],
-                    schema_name=value_dict["database_schema"],
-                )
                 self.metadata.publish_table_usage(
                     value_dict["table_entity"], table_usage_request
                 )
                 logger.info(
                     "Successfully table usage published for {}".format(
-                        value_dict["table_entity"].name.__root__
+                        value_dict["table_entity"].fullyQualifiedName.__root__
                     )
                 )
                 self.status.records_written(
-                    "Table: {}".format(value_dict["table_entity"].name.__root__)
-                )
-            except ValidationError as err:
-                logger.error(
-                    f"Cannot construct UsageRequest from {value_dict['table_entity']} - {err}"
-                )
-            except Exception as err:
-                self.status.failures.append(table_usage_request)
-                logger.error(
-                    "Failed to update usage for {} {}".format(
-                        value_dict["table_entity"].name.__root__, err
+                    "Table: {}".format(
+                        value_dict["table_entity"].fullyQualifiedName.__root__
                     )
                 )
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Cannot construct UsageRequest from {value_dict['table_entity']}: {err}"
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Failed to update usage for {} :{}".format(
+                        value_dict["table_entity"].fullyQualifiedName.__root__, exc
+                    )
+                )
+                self.status.failures.append(table_usage_request)
                 self.status.failures.append(
-                    "Table: {}".format(value_dict["table_entity"].name.__root__)
+                    "Table: {}".format(
+                        value_dict["table_entity"].fullyQualifiedName.__root__
+                    )
                 )
 
     def iterate_files(self):
@@ -206,11 +175,11 @@ class MetadataUsageBulkSink(BulkSink):
                         database_schema=table_usage.databaseSchema,
                         table_name=table_usage.table,
                     )
-                except Exception as err:
-                    logger.error(
-                        f"Cannot get table entities from query table {table_usage.table} - {err}"
-                    )
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Cannot get table entities from query table {table_usage.table}: {exc}"
+                    )
 
                 if not table_entities:
                     logger.warning(
@@ -240,17 +209,18 @@ class MetadataUsageBulkSink(BulkSink):
                                     table_entity, table_join_request
                                 )
                         except APIError as err:
-                            self.status.failures.append(table_join_request)
-                            logger.error(
-                                "Failed to update query join for {}, {}".format(
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                "Failed to update query join for {}: {}".format(
                                     table_usage.table, err
                                 )
                             )
-                        except Exception as err:
-                            logger.error(
-                                f"Error getting usage and join information for {table_entity.name.__root__} - {err}"
-                            )
+                            self.status.failures.append(table_join_request)
+                        except Exception as exc:
                             logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Error getting usage and join information for {table_entity.name.__root__}: {exc}"
+                            )
                     else:
                         logger.warning(
                             f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
@@ -261,8 +231,9 @@ class MetadataUsageBulkSink(BulkSink):
         try:
             self.metadata.compute_percentile(Table, self.today)
             self.metadata.compute_percentile(Database, self.today)
-        except APIError:
-            logger.error("Failed to publish compute.percentile")
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to publish compute.percentile: {err}")
 
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount

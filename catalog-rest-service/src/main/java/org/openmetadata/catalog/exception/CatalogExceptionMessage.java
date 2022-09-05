@@ -25,6 +25,8 @@ public final class CatalogExceptionMessage {
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
   public static final String FIELD_ALREADY_TOKENIZED = "Field is already tokenized";
   public static final String INVALID_ENTITY_LINK = "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
+  public static final String EMPTY_POLICIES_IN_ROLE = "At least one policy is required in a role";
+  public static final String EMPTY_RULES_IN_POLICY = "At least one rule is required in a policy";
 
   private CatalogExceptionMessage() {}
 
@@ -54,6 +56,10 @@ public final class CatalogExceptionMessage {
 
   public static String entityTypeNotFound(String entityType) {
     return String.format("Entity type %s not found", entityType);
+  }
+
+  public static String resourceTypeNotFound(String resourceType) {
+    return String.format("Resource type %s not found", resourceType);
   }
 
   public static String entityTypeNotSupported(String entityType) {
@@ -168,5 +174,13 @@ public final class CatalogExceptionMessage {
 
   public static String announcementInvalidStartTime() {
     return "Announcement start time must be earlier than the end time";
+  }
+
+  public static String failedToParse(String message) {
+    return String.format("Failed to parse - %s", message);
+  }
+
+  public static String failedToEvaluate(String message) {
+    return String.format("Failed to evaluate - %s", message);
   }
 }

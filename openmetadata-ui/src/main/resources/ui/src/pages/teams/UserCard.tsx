@@ -28,7 +28,7 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import { hasPemission } from '../../utils/PermissionsUtils';
+import { hasPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
@@ -239,7 +239,7 @@ const UserCard = ({
                     !isAdminUser &&
                     !isAuthDisabled &&
                     !isOwner &&
-                    !hasPemission(
+                    !hasPermission(
                       Operation.EditUsers,
                       EntityType.TEAM,
                       userPermissions

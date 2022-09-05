@@ -19,6 +19,9 @@
               "$ref": "databaseServiceQueryUsagePipeline.json"
             },
             {
+              "$ref": "databaseServiceQueryLineagePipeline.json"
+            },
+            {
               "$ref": "dashboardServiceMetadataPipeline.json"
             },
             {
@@ -32,6 +35,9 @@
             },
             {
               "$ref": "mlmodelServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "testSuitePipeline.json"
             }
           ]
         }

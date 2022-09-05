@@ -3,10 +3,31 @@ title: Run Datalake Connector using the CLI
 slug: /openmetadata/connectors/database/datalake/cli
 ---
 
-<ConnectorIntro connector="Datalake" />
+# Run Datalake using the metadata CLI
 
-<Requirements />
+In this section, we provide guides and references to use the Datalake connector.
 
+Configure and schedule Datalake metadata and profiler workflows from the OpenMetadata UI:
+- [Requirements](#requirements)
+- [Metadata Ingestion](#metadata-ingestion)
+- [DBT Integration](#dbt-integration)
+
+## Requirements
+
+<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
+To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
+</InlineCallout>
+
+To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
+custom Airflow plugins to handle the workflow deployment.
+
+### Python Requirements
+
+To run the Datalake ingestion, you will need to install:
+
+```bash
+pip3 install "openmetadata-ingestion[datalake]"
+```
 
 ## Metadata Ingestion
 All connectors are defined as JSON Schemas. Here you can find the structure to create a connection to Datalake.
@@ -42,13 +63,12 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
-  
 
 ```
-
 
 #### Source Configuration - Source Config using AWS S3
 
@@ -59,22 +79,17 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **awsRegion**: Specify the region in which your DynamoDB is located. This setting is required even if you have configured a local AWS profile.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
-
-
-
 This is a sample config for Datalake using GCS:
 
 ```yaml
-
-
 source:
   type: datalake
   serviceName: local_datalake
   serviceConnection:
     config:
       type: Datalake
-      configSource:      
-        securityConfig: 
+      configSource:
+        securityConfig:
           gcsConfig:
             type: type of account
             projectId: project id
@@ -92,25 +107,25 @@ source:
     config:
       tableFilterPattern:
         includes:
-        - ''
+          - ''
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
-
 ```
 
 
-<h4>Source Configuration - Service Connection using GCS</h4>
+#### Source Configuration - Service Connection using GCS
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **type**: Credentials type, e.g. `service_account`.
 * **projectId**
-* **privat**eKe**y**
+* **privateKey**
 * **privateKeyId**
 * **clientEmail**
 * **clientId**
@@ -118,8 +133,174 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **tokenUri**: [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
 * **authProviderX509CertUrl**: [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
 * **clientX509CertUrl**
-* **bucketName :** name of the bucket in GCS
-* **Prefix** :  prefix in gcs bucket
+* **bucketName**: name of the bucket in GCS
+* **Prefix**: prefix in gcs bucket
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
-<MetadataIngestionConfig service="database" connector="Datalake" goal="CLI" />
+#### Source Configuration - Source Config
+
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
+
+- `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
+- `includeTables`: true or false, to ingest table data. Default is true.
+- `includeViews`: true or false, to ingest views definitions.
+- `databaseFilterPattern`, `schemaFilterPattern`, `tableFilternPattern`: Note that the they support regex as include or exclude. E.g.,
+
+```yaml
+tableFilterPattern:
+  includes:
+    - users
+    - type_test
+```
+
+#### Sink Configuration
+
+To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
+
+#### Workflow Configuration
+
+The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
+
+For a simple, local installation using our docker containers, this looks like:
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+```
+
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client).
+You can find the different implementation of the ingestion below.
+
+<Collapse title="Configure SSO in the Ingestion Workflows">
+
+### Auth0 SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: auth0
+    securityConfig:
+      clientId: '{your_client_id}'
+      secretKey: '{your_client_secret}'
+      domain: '{your_domain}'
+```
+
+### Azure SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: azure
+    securityConfig:
+      clientSecret: '{your_client_secret}'
+      authority: '{your_authority_url}'
+      clientId: '{your_client_id}'
+      scopes:
+        - your_scopes
+```
+
+### Custom OIDC SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: custom-oidc
+    securityConfig:
+      clientId: '{your_client_id}'
+      secretKey: '{your_client_secret}'
+      domain: '{your_domain}'
+```
+
+### Google SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: google
+    securityConfig:
+      secretKey: '{path-to-json-creds}'
+```
+
+### Okta SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: okta
+    securityConfig:
+      clientId: "{CLIENT_ID - SPA APP}"
+      orgURL: "{ISSUER_URL}/v1/token"
+      privateKey: "{public/private keypair}"
+      email: "{email}"
+      scopes:
+        - token
+```
+
+### Amazon Cognito SSO
+
+The ingestion can be configured by [Enabling JWT Tokens](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens)
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: auth0
+    securityConfig:
+      clientId: '{your_client_id}'
+      secretKey: '{your_client_secret}'
+      domain: '{your_domain}'
+```
+
+### OneLogin SSO
+
+Which uses Custom OIDC for the ingestion
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: custom-oidc
+    securityConfig:
+      clientId: '{your_client_id}'
+      secretKey: '{your_client_secret}'
+      domain: '{your_domain}'
+```
+
+### KeyCloak SSO
+
+Which uses Custom OIDC for the ingestion
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: custom-oidc
+    securityConfig:
+      clientId: '{your_client_id}'
+      secretKey: '{your_client_secret}'
+      domain: '{your_domain}'
+```
+
+</Collapse>
+
+### 2. Run with the CLI
+
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
+
+```bash
+metadata ingest -c <path-to-yaml>
+```
+
+Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
+you will be able to extract metadata from different sources.
+
+## DBT Integration
+
+You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).

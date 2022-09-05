@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 
 public class SecretsManagerFactoryTest {
 
@@ -49,10 +49,20 @@ public class SecretsManagerFactoryTest {
 
   @Test
   void testIsCreatedIfAWSSecretsManager() {
-    config.setSecretsManager(SecretsManagerProvider.AWS);
+    initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSecretsManager);
+  }
+
+  @Test
+  void testIsCreatedIfAWSSSMSecretsManager() {
+    initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS_SSM);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSSMSecretsManager);
+  }
+
+  private void initConfigForAWSBasedSecretManager(SecretsManagerProvider secretManagerProvider) {
+    config.setSecretsManager(secretManagerProvider);
     config.getParameters().put("region", "eu-west-1");
     config.getParameters().put("accessKeyId", "123456");
     config.getParameters().put("secretAccessKey", "654321");
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSecretsManager);
   }
 }

@@ -1,20 +1,35 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+SQL Queries used during ingestion
+"""
+
 import textwrap
 
-REDSHIFT_SQL_STATEMENT = """
+# Not able to use SYS_QUERY_HISTORY here. Few users not getting any results
+REDSHIFT_SQL_STATEMENT = textwrap.dedent(
+    """
   WITH
   queries AS (
     SELECT *
       FROM pg_catalog.stl_query
      WHERE userid > 1
+          {filters}
           -- Filter out all automated & cursor queries
-          AND querytxt NOT ILIKE 'fetch %%'
-          AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
-          AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
           AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
+          LIMIT {result_limit}
           
   ),
   full_queries AS (
@@ -59,8 +74,11 @@ REDSHIFT_SQL_STATEMENT = """
           ON q.userid = u.usesysid
     ORDER BY q.endtime DESC
 """
+)
 
-REDSHIFT_GET_ALL_RELATION_INFO = """
+
+REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
+    """
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -82,8 +100,11 @@ REDSHIFT_GET_ALL_RELATION_INFO = """
           AND n.nspname !~ '^pg_'
         ORDER BY c.relkind, n.oid, n.nspname;
         """
+)
 
-REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
+
+REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
+    """
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -171,8 +192,10 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
             FROM svv_external_columns
             ORDER BY "schema", "table_name", "attnum";
             """
+)
 
-SNOWFLAKE_SQL_STATEMENT = """
+SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
+    """
         SELECT 
           query_type,
           query_text,
@@ -181,17 +204,15 @@ SNOWFLAKE_SQL_STATEMENT = """
           schema_name,
           start_time,
           end_time
-        FROM table(
-          information_schema.query_history(
-            end_time_range_start => to_timestamp_ltz('{start_time}'),
-            end_time_range_end => to_timestamp_ltz('{end_time}'),
-            RESULT_LIMIT => {result_limit}
-            )
-        )
-        WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES')
-          AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
+        from snowflake.account_usage.query_history
+        WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        AND start_time between to_timestamp_ltz('{start_time}') and to_timestamp_ltz('{end_time}')
+        {filters}
+        LIMIT {result_limit}
         """
+)
+
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
 NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(
@@ -293,7 +314,8 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
         """
 )
 
-VERTICA_GET_COLUMNS = """
+VERTICA_GET_COLUMNS = textwrap.dedent(
+    """
         SELECT column_name, data_type, column_default, is_nullable, comment
         FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id and com.object_type='COLUMN' and col.column_name=com.child_object  
         WHERE lower(table_name) = '{table}'
@@ -304,24 +326,30 @@ VERTICA_GET_COLUMNS = """
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
     """
+)
 
-VERTICA_GET_PRIMARY_KEYS = """
+VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
+    """
         SELECT column_name
         FROM v_catalog.primary_keys
         WHERE lower(table_name) = '{table}'
         AND constraint_type = 'p'
         AND {schema_condition}
     """
+)
 
-VERTICA_VIEW_DEFINITION = """
+VERTICA_VIEW_DEFINITION = textwrap.dedent(
+    """
       SELECT VIEW_DEFINITION
       FROM V_CATALOG.VIEWS
       WHERE table_name='{view_name}'
       AND {schema_condition}
-"""
+    """
+)
 
-MSSQL_SQL_USAGE_STATEMENT = """
-      SELECT
+MSSQL_SQL_STATEMENT = textwrap.dedent(
+    """
+      SELECT TOP {result_limit}
         db.NAME database_name,
         t.text query_text,
         s.last_execution_time start_time,
@@ -338,11 +366,15 @@ MSSQL_SQL_USAGE_STATEMENT = """
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
           AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
-      ORDER BY s.last_execution_time DESC;
+          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND p.objtype != 'Prepared'
+          {filters}
+      ORDER BY s.last_execution_time DESC
 """
+)
 
-CLICKHOUSE_SQL_USAGE_STATEMENT = """
+CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
+    """
         Select
           query_start_time start_time,
           DATEADD(query_duration_ms, query_start_time) end_time,
@@ -359,16 +391,21 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
         and CAST(type,'Int8') <> 4
         and query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
         and query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        {filters}
         and (`type`='QueryFinish' or `type`='QueryStart')
+        LIMIT {result_limit}
 """
+)
 
 
-SNOWFLAKE_FETCH_ALL_TAGS = """
+SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
+    """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from snowflake.account_usage.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
 """
+)
 
 
 SNOWFLAKE_GET_TABLE_NAMES = """
@@ -379,14 +416,17 @@ SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
 """
 
-SNOWFLAKE_GET_COMMENTS = """
+SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
+    """
     select COMMENT
     from information_schema.TABLES 
     WHERE TABLE_SCHEMA = '{schema_name}'
       AND TABLE_NAME = '{table_name}'
 """
+)
 
-BIGQUERY_USAGE_STATEMENT = """
+BIGQUERY_STATEMENT = textwrap.dedent(
+    """
  SELECT
    project_id as database_name,
    user_email as user_name,
@@ -397,15 +437,19 @@ BIGQUERY_USAGE_STATEMENT = """
    null as schema_name
 FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
 WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
+  {filters}
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
   AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
   AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  LIMIT {result_limit}
 """
+)
 
 
-TRINO_GET_COLUMNS = """
+TRINO_GET_COLUMNS = textwrap.dedent(
+    """
     SELECT
         "column_name",
         "data_type",
@@ -415,4 +459,85 @@ TRINO_GET_COLUMNS = """
     WHERE "table_schema" = :schema
         AND "table_name" = :table
     ORDER BY "ordinal_position" ASC
+"""
+)
+
+
+POSTGRES_SQL_STATEMENT = textwrap.dedent(
+    """
+      SELECT
+        u.usename,
+        d.datname,
+        s.query query_text,
+        a.query_start start_time,
+        s.total_exec_time,
+        s.mean_exec_time,
+        s.calls
+      FROM
+        pg_stat_statements s
+        JOIN pg_catalog.pg_database d ON s.dbid = d.oid
+        JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
+        JOIN pg_catalog.pg_stat_activity a ON d.datname = a.datname
+      WHERE
+        a.query_start >= '{start_time}' AND
+        a.state_change <  current_timestamp
+        AND s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        {filters}
+      LIMIT {result_limit}
+    """
+)
+
+POSTGRES_GET_TABLE_NAMES = """
+    SELECT c.relname FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = :schema AND c.relkind in ('r', 'p') AND relispartition = false
+"""
+
+POSTGRES_PARTITION_DETAILS = textwrap.dedent(
+    """
+select 
+    par.relnamespace::regnamespace::text as schema, 
+    par.relname as table_name, 
+    partition_strategy,
+    col.column_name
+from   
+    (select
+         partrelid,
+         partnatts,
+         case partstrat 
+              when 'l' then 'list'
+              when 'h' then 'hash'
+              when 'r' then 'range' end as partition_strategy,
+         unnest(partattrs) column_index
+     from
+         pg_partitioned_table) pt 
+join   
+    pg_class par 
+on     
+    par.oid = pt.partrelid
+left join
+    information_schema.columns col
+on  
+    col.table_schema = par.relnamespace::regnamespace::text
+    and col.table_name = par.relname
+    and ordinal_position = pt.column_index
+ where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
+"""
+)
+
+SNOWFLAKE_GET_CLUSTER_KEY = """
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
+  from   information_schema.tables 
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
+"""
+
+
+REDSHIFT_PARTITION_DETAILS = """
+  select "schema", "table", diststyle
+  from SVV_TABLE_INFO
+  where diststyle not like 'AUTO%%'
 """

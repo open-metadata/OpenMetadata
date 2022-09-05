@@ -13,6 +13,7 @@ import logging
 import os
 import pathlib
 import sys
+import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
@@ -21,10 +22,11 @@ from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import run_backup
-from metadata.cli.docker import run_docker
+from metadata.cli.docker import BACKEND_DATABASES, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
 
 logger = cli_logger()
@@ -77,19 +79,46 @@ def ingest(config: str) -> None:
     "-c",
     "--config",
     type=click.Path(exists=True, dir_okay=False),
-    help="Profiler and Testing Workflow config",
+    help="test suite Workflow config",
+    required=True,
+)
+def test(config: str) -> None:
+    """Main command for running test suites"""
+    config_file = pathlib.Path(config)
+    workflow_config = load_config_file(config_file)
+    try:
+        logger.debug(f"Using config: {workflow_config}")
+        workflow = TestSuiteWorkflow.create(workflow_config)
+    except ValidationError as err:
+        click.echo(err, err=True)
+        sys.exit(1)
+
+    workflow.execute()
+    workflow.stop()
+    ret = workflow.print_status()
+    sys.exit(ret)
+
+
+@metadata.command()
+@click.option(
+    "-c",
+    "--config",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Profiler Workflow config",
     required=True,
 )
 def profile(config: str) -> None:
-    """Main command for profiling and testing Table sources into Metadata"""
+    """Main command for profiling Table sources into Metadata"""
     config_file = pathlib.Path(config)
     workflow_config = load_config_file(config_file)
 
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = ProfilerWorkflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error creating Profiler Workflow: {err}")
+        click.echo(err, err=True)
         sys.exit(1)
 
     workflow.execute()
@@ -160,6 +189,12 @@ def webhook(host: str, port: int) -> None:
 @click.option(
     "--ingest-sample-data", help="Enable the sample metadata ingestion", is_flag=True
 )
+@click.option(
+    "-db",
+    "--database",
+    type=click.Choice(list(BACKEND_DATABASES.keys())),
+    default="mysql",
+)
 def docker(
     start,
     stop,
@@ -170,6 +205,7 @@ def docker(
     env_file_path,
     reset_db,
     ingest_sample_data,
+    database,
 ) -> None:
     """
     Checks Docker Memory Allocation
@@ -186,6 +222,7 @@ def docker(
         env_file_path,
         reset_db,
         ingest_sample_data,
+        database,
     )
 
 

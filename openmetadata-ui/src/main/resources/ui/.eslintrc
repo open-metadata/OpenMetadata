@@ -67,6 +67,7 @@
         "code": 200,
         "comments": 120,
         "ignoreTrailingComments": true,
+        "ignoreUrls": true,
         "tabWidth": 2
       }
     ],

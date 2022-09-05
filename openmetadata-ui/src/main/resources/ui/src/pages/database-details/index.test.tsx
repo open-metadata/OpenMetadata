@@ -18,6 +18,7 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseDetails from './';
 
 const mockDatabase = {
@@ -100,17 +101,11 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue(DEFAULT_ENTITY_PERMISSION),
+  }),
+}));
 
 jest.mock(
   '../../components/common/rich-text-editor/RichTextEditorPreviewer',

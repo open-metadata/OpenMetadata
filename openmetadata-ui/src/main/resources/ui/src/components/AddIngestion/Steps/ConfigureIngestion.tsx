@@ -40,6 +40,7 @@ const ConfigureIngestion = ({
   includeView,
   includeTags,
   markDeletedTables,
+  markDeletedTablesFromFilterOnly,
   serviceCategory,
   pipelineType,
   showDatabaseFilter,
@@ -66,6 +67,7 @@ const ConfigureIngestion = ({
   handleIncludeView,
   handleIncludeTags,
   handleMarkDeletedTables,
+  handleMarkDeletedTablesFromFilterOnly,
   handleIngestSampleData,
   handleDatasetServiceName,
   handleQueryLogDuration,
@@ -228,6 +230,27 @@ const ConfigureIngestion = ({
               {getSeparator('')}
             </Field>
           )}
+          {!isNil(markDeletedTablesFromFilterOnly) && (
+            <Field>
+              <div className="tw-flex tw-gap-1">
+                <label>Mark Deleted Tables from Filter Only</label>
+                <ToggleSwitchV1
+                  checked={markDeletedTablesFromFilterOnly}
+                  handleCheck={() => {
+                    if (handleMarkDeletedTablesFromFilterOnly) {
+                      handleMarkDeletedTablesFromFilterOnly();
+                    }
+                  }}
+                  testId="mark-deleted-filter-only"
+                />
+              </div>
+              <p className="tw-text-grey-muted tw-mt-3">
+                Optional configuration to mark deleted tables only to the
+                filtered schema
+              </p>
+              {getSeparator('')}
+            </Field>
+          )}
         </div>
       </>
     );
@@ -288,45 +311,53 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getFilterPatterns = () => {
+    return (
+      <div>
+        <FilterPattern
+          checked={showDatabaseFilter}
+          excludePattern={databaseFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.DATABASE)
+          }
+          includePattern={databaseFilterPattern?.includes ?? []}
+          type={FilterPatternEnum.DATABASE}
+        />
+        <FilterPattern
+          checked={showSchemaFilter}
+          excludePattern={schemaFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.SCHEMA)
+          }
+          includePattern={schemaFilterPattern?.includes ?? []}
+          type={FilterPatternEnum.SCHEMA}
+        />
+        <FilterPattern
+          checked={showTableFilter}
+          excludePattern={tableFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.TABLE)
+          }
+          includePattern={tableFilterPattern?.includes ?? []}
+          showSeparator={false}
+          type={FilterPatternEnum.TABLE}
+        />
+      </div>
+    );
+  };
+
   const getMetadataFilterPatternField = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
         return (
           <Fragment>
-            <FilterPattern
-              checked={showDatabaseFilter}
-              excludePattern={databaseFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.DATABASE)
-              }
-              includePattern={databaseFilterPattern?.includes ?? []}
-              type={FilterPatternEnum.DATABASE}
-            />
-            <FilterPattern
-              checked={showSchemaFilter}
-              excludePattern={schemaFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.SCHEMA)
-              }
-              includePattern={schemaFilterPattern?.includes ?? []}
-              type={FilterPatternEnum.SCHEMA}
-            />
-            <FilterPattern
-              checked={showTableFilter}
-              excludePattern={tableFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.TABLE)
-              }
-              includePattern={tableFilterPattern?.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.TABLE}
-            />
+            {getFilterPatterns()}
             {getSeparator('')}
             {getDatabaseFieldToggles()}
           </Fragment>
@@ -413,6 +444,24 @@ const ConfigureIngestion = ({
   const getMetadataFields = () => {
     return (
       <>
+        <Field>
+          <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+            Name
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Name that identifies this pipeline instance uniquely.
+          </p>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="name"
+            id="name"
+            name="name"
+            type="text"
+            value={ingestionName}
+            onChange={(e) => handleIngestionName(e.target.value)}
+          />
+          {getSeparator('')}
+        </Field>
         <div>{getMetadataFilterPatternField()}</div>
       </>
     );
@@ -488,6 +537,55 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getLineageFields = () => {
+    return (
+      <>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-1"
+            htmlFor="query-log-duration">
+            Query Log Duration
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Configuration to tune how far we want to look back in query logs to
+            process usage data.
+          </p>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="query-log-duration"
+            id="query-log-duration"
+            name="query-log-duration"
+            type="number"
+            value={queryLogDuration}
+            onChange={(e) => handleQueryLogDuration(parseInt(e.target.value))}
+          />
+          {getSeparator('')}
+        </Field>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-1"
+            htmlFor="result-limit">
+            Result Limit
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Configuration to set the limit for query logs.
+          </p>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="result-limit"
+            id="result-limit"
+            name="result-limit"
+            type="number"
+            value={resultLimit}
+            onChange={(e) => handleResultLimit(parseInt(e.target.value))}
+          />
+          {getSeparator('')}
+        </Field>
+        {getDebugLogToggle()}
+      </>
+    );
+  };
+
   const getProfilerFields = () => {
     return (
       <>
@@ -511,7 +609,7 @@ const ConfigureIngestion = ({
             {getSeparator('')}
           </Field>
         </div>
-        <div>{getMetadataFilterPatternField()}</div>
+        {getFilterPatterns()}
         {getSeparator('')}
         {getProfileSample()}
         {getSeparator('')}
@@ -546,6 +644,9 @@ const ConfigureIngestion = ({
     switch (pipelineType) {
       case PipelineType.Usage: {
         return getUsageFields();
+      }
+      case PipelineType.Lineage: {
+        return getLineageFields();
       }
       case PipelineType.Profiler: {
         return getProfilerFields();

@@ -33,6 +33,7 @@ export const confirmStateInitialValue = {
   state: false,
   threadId: undefined,
   postId: undefined,
+  isThread: false,
 };
 
 export const confirmationBodyText =
@@ -75,6 +76,6 @@ export enum EntityField {
   TASKS = 'tasks',
 }
 
-export const ANNOUNCEMENT_BG = '#fffbf3';
-export const ANNOUNCEMENT_BORDER = '#FFC143';
+export const ANNOUNCEMENT_BG = '#FCF6FC';
+export const ANNOUNCEMENT_BORDER = 'rgba(176, 42, 172, 0.6)';
 export const TASK_BORDER = '#C6B5F6';

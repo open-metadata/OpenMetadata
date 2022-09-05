@@ -11,7 +11,6 @@
 """
 Trigger endpoint
 """
-import logging
 import traceback
 
 from airflow.api_connexion import security
@@ -22,6 +21,9 @@ from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_arg, get_request_dag_id
 from openmetadata_managed_apis.operations.trigger import trigger
+from openmetadata_managed_apis.utils.logger import routes_logger
+
+logger = routes_logger()
 
 
 @blueprint.route("/trigger", methods=["POST"])
@@ -40,8 +42,9 @@ def trigger_dag() -> Response:
         return response
 
     except Exception as exc:
-        logging.info(f"Failed to trigger dag {dag_id}")
+        logger.debug(traceback.format_exc())
+        logger.error(f"Failed to trigger dag [{dag_id}]: {exc}")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Workflow {dag_id} has filed to trigger due to {exc} - {traceback.format_exc()}",
+            error=f"Workflow [{dag_id}] has filed to trigger due to [{exc}] ",
         )

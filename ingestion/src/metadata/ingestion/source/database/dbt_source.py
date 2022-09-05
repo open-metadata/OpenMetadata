@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -77,6 +78,14 @@ class DBTMixin:
                     schema = mnode["schema"] if mnode["schema"] else "default"
                     raw_sql = mnode.get("raw_sql", "")
                     description = mnode.get("description")
+                    dbt_user_name = cnode["metadata"].get("owner")
+                    user_name = f"*{dbt_user_name}*"
+                    user_fqn = fqn.build(
+                        self.metadata, entity_type=User, user_name=user_name
+                    )
+                    owner = self.metadata.get_entity_reference(
+                        entity=User, fqn=user_fqn
+                    )
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=description if description else None,
@@ -85,6 +94,7 @@ class DBTMixin:
                         sql=mnode.get("compiled_sql", raw_sql),
                         columns=columns,
                         upstream=upstream_nodes,
+                        owner=owner,
                     )
                     model_fqn = fqn.build(
                         self.metadata,
@@ -95,9 +105,9 @@ class DBTMixin:
                         model_name=model_name,
                     )
                     self.data_models[model_fqn] = model
-                except Exception as err:
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(f"Unexpected exception parsing data model: {exc}")
 
     def _parse_data_model_upstream(self, mnode):
         upstream_nodes = []
@@ -119,9 +129,10 @@ class DBTMixin:
                     )
                     if parent_fqn:
                         upstream_nodes.append(parent_fqn)
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(
-                        f"Failed to parse the node {node} to capture lineage {err}"
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse the node {node} to capture lineage: {exc}"
                     )
                     continue
         return upstream_nodes
@@ -149,8 +160,9 @@ class DBTMixin:
                     ordinalPosition=ccolumn["index"],
                 )
                 columns.append(col)
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(f"Failed to parse column {col_name} due to {err}")
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Failed to parse column {col_name}: {exc}")
 
         return columns
 
@@ -182,7 +194,8 @@ class DBTMixin:
                             )
                         )
 
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(
-                        f"Failed to parse the node {upstream_node} to capture lineage {err}"
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                     )

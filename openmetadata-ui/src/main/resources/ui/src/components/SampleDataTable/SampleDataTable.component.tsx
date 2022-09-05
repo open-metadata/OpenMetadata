@@ -16,6 +16,7 @@ import {
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, {
@@ -25,6 +26,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Link } from 'react-router-dom';
+import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
+import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
@@ -99,7 +103,9 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
         </button>
       ) : null}
 
-      <div className="tw-table-responsive tw-overflow-x-auto" ref={tableRef}>
+      <div
+        className="tw-table-responsive tw-overflow-x-auto tw-table-container"
+        ref={tableRef}>
         {sampleData?.rows?.length && sampleData?.columns?.length ? (
           <table
             className="tw-min-w-max tw-w-full tw-table-auto"
@@ -112,10 +118,12 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                       className="tableHead-cell"
                       data-testid="column-name"
                       key={column.name}>
-                      {column.name}
-                      <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
-                        ({lowerCase(column.dataType)})
-                      </span>
+                      <Space direction="vertical" size={0}>
+                        <span>{column.name}</span>
+                        <span className="tw-text-grey-muted">
+                          ({lowerCase(column.dataType)})
+                        </span>
+                      </Space>
                     </th>
                   );
                 })}
@@ -147,8 +155,29 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
             </tbody>
           </table>
         ) : (
-          <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-            No sample data available
+          <div className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8">
+            <div className="tw-mt-12">
+              <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
+            </div>
+            <div className="tw-mt-8 tw-max-w-x tw-text-center">
+              <Typography.Paragraph style={{ marginBottom: '4px' }}>
+                {' '}
+                No sample data available
+              </Typography.Paragraph>
+              <Typography.Paragraph>
+                {' '}
+                To view Sample Data, run the Profiler Ingestion. Please refer to
+                this doc to schedule the{' '}
+                <Link
+                  className="tw-ml-1"
+                  target="_blank"
+                  to={{
+                    pathname: WORKFLOWS_PROFILER_DOCS,
+                  }}>
+                  Profiler Ingestion
+                </Link>
+              </Typography.Paragraph>
+            </div>
           </div>
         )}
       </div>

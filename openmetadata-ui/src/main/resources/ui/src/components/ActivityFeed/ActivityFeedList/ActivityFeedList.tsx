@@ -84,7 +84,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const onPostDelete = () => {
     if (confirmationState.postId && confirmationState.threadId) {
-      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+      deletePostHandler?.(
+        confirmationState.threadId,
+        confirmationState.postId,
+        confirmationState.isThread
+      );
     }
     onDiscard();
   };
@@ -155,10 +159,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               tag="button"
               variant="link"
               onClick={() => setFieldListVisible((visible) => !visible)}>
-              <span className="tw-font-medium tw-text-grey">
+              <span className="tw-font-medium tw-text-primary">
                 {feedFilterList.find((f) => f.value === feedFilter)?.name}
               </span>
-              <DropDownIcon />
+              <DropDownIcon style={{ color: '#7147E8' }} />
             </Button>
             {fieldListVisible && (
               <DropDownList
@@ -179,15 +183,20 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               tag="button"
               variant="link"
               onClick={() => setShowThreadTypeList((visible) => !visible)}>
-              <SVGIcons alt="filter" icon={Icons.FILTERS} width="14px" />
-              <span className="tw-font-medium tw-text-grey tw-ml-1">
+              <SVGIcons
+                alt="filter"
+                className="tw-text-primary"
+                icon={Icons.FILTER_PRIMARY}
+                width="14px"
+              />
+              <span className="tw-font-medium tw-text-primary tw-ml-1">
                 {
                   threadFilterList.find(
                     (f) => f.value === (threadType ?? 'ALL')
                   )?.name
                 }
               </span>
-              <DropDownIcon />
+              <DropDownIcon style={{ color: '#7147E8' }} />
             </Button>
             {showThreadTypeList && (
               <DropDownList

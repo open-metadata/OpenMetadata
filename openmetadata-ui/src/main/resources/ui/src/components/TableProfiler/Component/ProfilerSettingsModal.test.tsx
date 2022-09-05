@@ -40,7 +40,7 @@ jest.mock('../../../axiosAPIs/tableAPI', () => ({
 
 const mockProps: ProfilerSettingsModalProps = {
   tableId: MOCK_TABLE.id,
-  columnProfile: MOCK_TABLE.tableProfile?.columnProfile || [],
+  columns: MOCK_TABLE.columns || [],
   visible: true,
   onVisibilityChange: jest.fn(),
 };

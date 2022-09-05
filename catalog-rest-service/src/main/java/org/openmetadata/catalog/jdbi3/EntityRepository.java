@@ -25,6 +25,8 @@ import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.type.Include.NON_DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
@@ -45,7 +47,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -53,16 +54,18 @@ import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.TypeRegistry;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.tags.Tag;
+import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -71,6 +74,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -91,6 +95,7 @@ import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -132,10 +137,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final CollectionDAO daoCollection;
   protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
-  protected final boolean supportsTags;
-  protected final boolean supportsOwner;
+  @Getter protected final boolean supportsTags;
+  @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
-  protected boolean allowEdits = false;
 
   /** Fields that can be updated during PATCH operation */
   private final Fields patchFields;
@@ -245,8 +249,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
+            String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
             initSeedData(JsonUtils.readValue(json, entityClass));
           } catch (Exception e) {
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
@@ -490,9 +493,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     addRelationship(userId, entityId, Entity.USER, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName(FIELD_FOLLOWERS).withNewValue(List.of(user.getEntityReference())));
+    fieldAdded(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -638,9 +639,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName(FIELD_FOLLOWERS).withOldValue(List.of(user.getEntityReference())));
+    fieldDeleted(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -713,7 +712,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public void removeExtension(EntityInterface entity) throws JsonProcessingException {
+  public void removeExtension(EntityInterface entity) {
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
@@ -814,7 +813,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getFollowers(T entity) throws IOException {
     if (!supportsFollower || entity == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
@@ -1022,7 +1021,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (owner == null) {
       return;
     }
-    EntityReference ref = Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+    EntityReference ref = validateOwner(owner);
     EntityUtil.copy(ref, owner);
   }
 
@@ -1068,7 +1067,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static List<UUID> toIds(List<String> ids) {
     if (ids == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<UUID> uuids = new ArrayList<>();
     for (String id : ids) {
@@ -1085,6 +1084,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ingestionPipelines.add(daoCollection.ingestionPipelineDAO().findEntityReferenceById(record.getId(), Include.ALL));
     }
     return ingestionPipelines;
+  }
+
+  public EntityReference validateOwner(EntityReference owner) throws IOException {
+    if (owner == null) {
+      return null;
+    }
+    // Entities can be only owned by team of type 'group'
+    if (owner.getType().equals(Entity.TEAM)) {
+      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, Include.ALL);
+      if (!team.getTeamType().equals(TeamType.GROUP)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+      }
+      return team.getEntityReference();
+    }
+    return Entity.getEntityReferenceById(owner.getType(), owner.getId(), Include.ALL);
   }
 
   public enum Operation {
@@ -1121,12 +1135,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected final Operation operation;
     protected final ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
+    protected final User updatingUser;
     private boolean entityRestored = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
+      this.updatingUser =
+          updated.getUpdatedBy().equalsIgnoreCase("admin")
+              ? new User().withName("admin").withIsAdmin(true)
+              : SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -1153,11 +1172,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDescription() throws JsonProcessingException {
-      if (operation.isPut()
-          && original.getDescription() != null
-          && !original.getDescription().isEmpty()
-          && !allowEdits) {
-        // Update description only when stored is empty to retain user authored descriptions
+      if (operation.isPut() && !nullOrEmpty(original.getDescription()) && updatedByBot()) {
+        // Revert change to non-empty description if it is being updated by a bot
         updated.setDescription(original.getDescription());
         return;
       }
@@ -1182,11 +1198,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() throws JsonProcessingException {
-      if (operation.isPut()
-          && original.getDisplayName() != null
-          && !original.getDisplayName().isEmpty()
-          && !allowEdits) {
-        // Update displayName only when stored is empty to retain user authored descriptions
+      if (operation.isPut() && !nullOrEmpty(original.getDisplayName()) && updatedByBot()) {
+        // Revert change to non-empty displayName if it is being updated by a bot
         updated.setDisplayName(original.getDisplayName());
         return;
       }
@@ -1230,9 +1243,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateExtension() throws JsonProcessingException {
+      if (updatedByBot()) {
+        // Revert changes to extension field, if being updated by a bot
+        updated.setExtension(original.getExtension());
+        return;
+      }
+
       removeExtension(original);
       storeExtension(updated);
-      // TODO change descriptions for custom attributes
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -1278,7 +1296,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     public final <K> boolean recordChange(
         String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch)
         throws JsonProcessingException {
-      if (orig == null && updated == null) {
+      if (orig == updated) {
         return false;
       }
       FieldChange fieldChange =
@@ -1325,12 +1343,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
       if (!addedItems.isEmpty()) {
-        FieldChange fieldChange = new FieldChange().withName(field).withNewValue(JsonUtils.pojoToJson(addedItems));
-        changeDescription.getFieldsAdded().add(fieldChange);
+        fieldAdded(changeDescription, field, JsonUtils.pojoToJson(addedItems));
       }
       if (!deletedItems.isEmpty()) {
-        FieldChange fieldChange = new FieldChange().withName(field).withOldValue(JsonUtils.pojoToJson(deletedItems));
-        changeDescription.getFieldsDeleted().add(fieldChange);
+        fieldDeleted(changeDescription, field, JsonUtils.pojoToJson(deletedItems));
       }
       return !addedItems.isEmpty() || !deletedItems.isEmpty();
     }
@@ -1420,6 +1436,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void storeNewVersion() throws IOException {
       EntityRepository.this.storeEntity(updated, true);
+    }
+
+    public final boolean updatedByBot() {
+      return Boolean.TRUE.equals(updatingUser.getIsBot());
     }
   }
 }

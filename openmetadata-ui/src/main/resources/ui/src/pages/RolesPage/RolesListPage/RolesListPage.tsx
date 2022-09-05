@@ -11,15 +11,26 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getRoles } from '../../../axiosAPIs/rolesAPIV1';
+import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
-import { ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RolesList from './RolesList';
 import './RolesList.less';
@@ -29,6 +40,17 @@ const RolesListPage = () => {
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [paging, setPaging] = useState<Paging>();
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+
+  const { permissions } = usePermissionProvider();
+
+  const addRolePermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.ROLE, permissions)
+    );
+  }, [permissions]);
 
   const fetchRoles = async (paging?: Paging) => {
     setIsLoading(true);
@@ -40,6 +62,7 @@ const RolesListPage = () => {
       );
 
       setRoles(data.data || []);
+      setPaging(data.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -51,6 +74,11 @@ const RolesListPage = () => {
     history.push(ROUTES.ADD_ROLE);
   };
 
+  const handlePaging = (_: string | number, activePage?: number) => {
+    setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    fetchRoles(paging);
+  };
+
   useEffect(() => {
     fetchRoles();
   }, []);
@@ -58,16 +86,38 @@ const RolesListPage = () => {
   return isLoading ? (
     <Loader />
   ) : (
-    <Row className="roles-list-container" gutter={[16, 16]}>
+    <Row
+      className="roles-list-container"
+      data-testid="roles-list-container"
+      gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <Button type="primary" onClick={handleAddRole}>
-            Add Role
-          </Button>
+          <Tooltip
+            placement="left"
+            title={addRolePermission ? 'Add Role' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              data-testid="add-role"
+              disabled={!addRolePermission}
+              type="primary"
+              onClick={handleAddRole}>
+              Add Role
+            </Button>
+          </Tooltip>
         </Space>
       </Col>
       <Col span={24}>
-        <RolesList roles={roles} />
+        <RolesList fetchRoles={fetchRoles} roles={roles} />
+      </Col>
+      <Col span={24}>
+        {paging && paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={handlePaging}
+            totalCount={paging.total}
+          />
+        )}
       </Col>
     </Row>
   );

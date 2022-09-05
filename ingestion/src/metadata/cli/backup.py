@@ -12,6 +12,7 @@
 """
 Backup utility for the metadata CLI
 """
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -72,6 +73,7 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
         import boto3
         from boto3.exceptions import S3UploadFailedError
     except ModuleNotFoundError as err:
+        logger.debug(traceback.format_exc())
         logger.error(
             "Trying to import boto3 to run the backup upload."
             + " Please install openmetadata-ingestion[backup]."
@@ -89,9 +91,11 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
         resource.Object(bucket, str(s3_key)).upload_file(str(file.absolute()))
 
     except ValueError as err:
+        logger.debug(traceback.format_exc())
         logger.error("Revisit the values of --upload")
         raise err
     except S3UploadFailedError as err:
+        logger.debug(traceback.format_exc())
         logger.error(
             "Error when uploading the backup to S3. Revisit the config and permissions."
             + " You should have set the environment values for AWS_ACCESS_KEY_ID"

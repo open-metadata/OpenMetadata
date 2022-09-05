@@ -19,7 +19,8 @@
         "SecureView",
         "MaterializedView",
         "Iceberg",
-        "Local"
+        "Local",
+        "Partitioned"
       ],
       "javaEnums": [
         {
@@ -42,6 +43,9 @@
         },
         {
           "name": "Local"
+        },
+        {
+          "name": "Partitioned"
         }
       ]
     },
@@ -62,6 +66,7 @@
         "DECIMAL",
         "NUMERIC",
         "TIMESTAMP",
+        "TIMESTAMPZ",
         "TIME",
         "DATE",
         "DATETIME",
@@ -85,7 +90,8 @@
         "GEOGRAPHY",
         "ENUM",
         "JSON",
-        "UUID"
+        "UUID",
+        "VARIANT"
       ]
     },
     "constraint": {
@@ -149,7 +155,6 @@
           "description": "partition interval , example hourly, daily, monthly."
         }
       },
-      "required": ["columns", "intervalType", "interval"],
       "additionalProperties": false
     },
     "column": {
@@ -237,6 +242,11 @@
           "items": {
             "$ref": "../../tests/customMetric.json"
           },
+          "default": null
+        },
+        "profile": {
+          "description": "Latest Data profile for a Column.",
+          "$ref": "#/definitions/columnProfile",
           "default": null
         }
       },
@@ -352,6 +362,10 @@
           "description": "Column Name.",
           "type": "string"
         },
+        "timestamp": {
+          "description": "Timestamp on which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
         "valuesCount": {
           "description": "Total count of the values in this column.",
           "type": "number"
@@ -402,11 +416,21 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/dateTime" }, { "$ref": "../../type/basic.json#/definitions/date" }]
+          "oneOf": [
+            { "type": "number" },
+            { "type": "integer" },
+            { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/date" }
+          ]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/dateTime" }, { "$ref": "../../type/basic.json#/definitions/date" }]
+          "oneOf": [
+            { "type": "number" },
+            { "type": "integer" },
+            { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/date" }
+          ]
         },
         "minLength": {
           "description": "Minimum string length in a column.",
@@ -459,26 +483,27 @@
           "default": null
         }
       },
+      "required": ["name", "timestamp"],
       "additionalProperties": false
     },
     "columnProfilerConfig": {
       "description": "This schema defines the type for Table profile config include Columns.",
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.ColumnProfilerConfig",
-       "properties": {
-          "columnName": {
-            "description": "Column Name of the table to be included.",
+      "properties": {
+        "columnName": {
+          "description": "Column Name of the table to be included.",
+          "type": "string"
+        },
+        "metrics": {
+          "description": "Include only following metrics.",
+          "type": "array",
+          "items": {
             "type": "string"
           },
-          "metrics": {
-            "description": "Include only following metrics.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "default": null
-          }
-       }
+          "default": null
+        }
+      }
     },
     "tableProfilerConfig": {
       "type": "object",
@@ -525,14 +550,11 @@
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "profileSample": {
-          "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",
+          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
           "type": "number",
           "exclusiveMinimum": 0,
-          "maximum": 100
-        },
-        "profileQuery": {
-          "description": "Users' raw SQL query to fetch sample data and profile the table",
-          "type": "string"
+          "maximum": 100,
+          "default": null
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -541,15 +563,9 @@
         "rowCount": {
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
-        },
-        "columnProfile": {
-          "description": "List of local column profiles of the table.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/columnProfile"
-          }
         }
       },
+      "required": ["timestamp"],
       "additionalProperties": false
     },
     "sqlQuery": {
@@ -625,6 +641,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "owner": {
+          "description": "Owner of this Model.",
+          "$ref": "../../type/entityReference.json",
+          "default": null
         },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
@@ -762,7 +783,7 @@
       "description": "Table Profiler Config to include or exclude columns from profiling.",
       "$ref": "#/definitions/tableProfilerConfig"
     },
-    "tableProfile": {
+    "profile": {
       "description": "Latest Data profile for a table.",
       "$ref": "#/definitions/tableProfile",
       "default": null

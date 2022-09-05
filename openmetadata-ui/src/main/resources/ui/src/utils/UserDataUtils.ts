@@ -22,7 +22,7 @@ import {
   getSuggestedTeams,
   getSuggestedUsers,
 } from '../axiosAPIs/miscAPI';
-import { getRoles } from '../axiosAPIs/rolesAPI';
+import { getRoles } from '../axiosAPIs/rolesAPIV1';
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
@@ -42,7 +42,7 @@ export const getAllUsersList = (arrQueryFields = ''): void => {
 };
 
 const getAllRoles = (): void => {
-  getRoles()
+  getRoles('', undefined, undefined, false, 100)
     .then((res) => {
       AppState.updateUserRole(res.data);
     })
@@ -129,14 +129,19 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
     });
 };
 
-export const getUserProfilePic = (userId?: string, username?: string) => {
+export const getUserProfilePic = (
+  permission: boolean,
+  userId?: string,
+  username?: string
+) => {
   let profile;
   if (userId || username) {
     profile = AppState.getUserProfilePic(userId, username);
 
     if (
       isUndefined(profile) &&
-      !AppState.isProfilePicLoading(userId, username)
+      !AppState.isProfilePicLoading(userId, username) &&
+      permission
     ) {
       fetchUserProfilePic(userId, username);
     }

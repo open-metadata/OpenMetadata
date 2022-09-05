@@ -16,6 +16,7 @@ import { observer } from 'mobx-react';
 import React from 'react';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { NoDataFoundPlaceHolder } from '../../../constants/services.const';
 
 type Props = {
   type: 'error' | 'noData';
@@ -29,13 +30,13 @@ const stepsData = [
     title: 'Ingest Sample Data',
     description:
       'Run sample data to ingest sample entities into your OpenMetadata.',
-    link: 'https://docs.open-metadata.org/integrations/ingest-sample-data',
+    link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
   },
   {
     step: 2,
     title: 'Start Elasticsearch Docker',
     description: 'Ensure that the Elasticsearch docker is up and running.',
-    link: 'https://docs.open-metadata.org/integrations/ingest-sample-data#index-sample-data-into-elasticsearch',
+    link: 'https://docs.open-metadata.org/quick-start/local-deployment',
   },
   {
     step: 3,
@@ -64,15 +65,26 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   };
   const noRecordForES = () => {
     return (
-      <p className="tw-text-center" data-testid="no-search-results">
-        No matching data assets found
-        {query ? (
-          <>
-            {' '}
-            for <span className="tw-text-primary tw-font-medium">{query}</span>
-          </>
-        ) : null}
-      </p>
+      <div className="tw-text-center" data-testid="no-search-results">
+        <div className="flex-center flex-col tw-mt-32 " data-testid="error">
+          {' '}
+          <img
+            data-testid="no-data-image"
+            src={NoDataFoundPlaceHolder}
+            width="100"
+          />
+        </div>
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-6 tw-text-base tw-font-medium">
+          No matching data assets found
+          {query ? (
+            <>
+              {' '}
+              for{' '}
+              <span className="tw-text-primary tw-font-medium">{query}</span>
+            </>
+          ) : null}
+        </div>
+      </div>
     );
   };
 

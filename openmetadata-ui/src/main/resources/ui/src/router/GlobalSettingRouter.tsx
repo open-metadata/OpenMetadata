@@ -13,13 +13,23 @@
 
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import { ROUTES } from '../constants/constants';
+import { usePermissionProvider } from '../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
+import { Operation } from '../generated/entity/policies/policy';
+import { TeamType } from '../generated/entity/teams/team';
+import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
-import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
+import { checkPermission } from '../utils/PermissionsUtils';
+import {
+  getSettingCategoryPath,
+  getSettingPath,
+  getTeamsWithFqnPath,
+} from '../utils/RouterUtils';
+import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const WebhooksPageV1 = withSuspenseFallback(
@@ -28,12 +38,12 @@ const WebhooksPageV1 = withSuspenseFallback(
 const ServicesPage = withSuspenseFallback(
   React.lazy(() => import('../pages/services/ServicesPage'))
 );
-const BotsListPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/BotsListpage/BotsListpage.component'))
+const BotsPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../pages/BotsPageV1/BotsPageV1.component'))
 );
 const CustomPropertiesPageV1 = withSuspenseFallback(
   React.lazy(
-    () => import('../pages/CustomPropertiesPage/CustomPropertiesPageV1')
+    () => import('../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
 const RolesListPage = withSuspenseFallback(
@@ -41,10 +51,6 @@ const RolesListPage = withSuspenseFallback(
 );
 const RolesDetailPage = withSuspenseFallback(
   React.lazy(() => import('../pages/RolesPage/RolesDetailPage/RolesDetailPage'))
-);
-
-const AddRolePage = withSuspenseFallback(
-  React.lazy(() => import('../pages/RolesPage/AddRolePage/AddRolePage'))
 );
 
 const PoliciesDetailPage = withSuspenseFallback(
@@ -66,23 +72,26 @@ const SlackSettingsPage = withSuspenseFallback(
     () => import('../pages/SlackSettingsPage/SlackSettingsPage.component')
   )
 );
+const TestSuitePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
+);
+const MsTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
+);
 
 const GlobalSettingRouter = () => {
+  const { permissions } = usePermissionProvider();
+
   return (
     <Switch>
       <Route exact path={getSettingPath()}>
-        <Redirect
-          to={getSettingPath(
-            GlobalSettingsMenuCategory.ACCESS,
-            GlobalSettingOptions.TEAMS
-          )}
-        />
+        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
       <Route
         exact
         component={TeamsPage}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS
         )}
       />
@@ -90,26 +99,49 @@ const GlobalSettingRouter = () => {
         exact
         component={TeamsPage}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TestSuitePage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.DATA_QUALITY,
+          GlobalSettingOptions.TEST_SUITE
         )}
       />
       {/* Roles route start
        * Do not change the order of these route
        */}
-      <Route
+      <AdminProtectedRoute
         exact
         component={RolesListPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
         )}
       />
-      <Route exact component={AddRolePage} path={ROUTES.ADD_ROLE} />
-      <Route
+
+      <AdminProtectedRoute
         exact
         component={RolesDetailPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES,
@@ -120,52 +152,106 @@ const GlobalSettingRouter = () => {
        * Do not change the order of these route
        */}
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={PoliciesListPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={PoliciesDetailPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
           true
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={UserListPageV1}
-        path={getSettingCategoryPath(GlobalSettingsMenuCategory.ACCESS)}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.USER,
+          permissions
+        )}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
       />
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={WebhooksPageV1}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.WEBHOOK
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
-        component={BotsListPage}
+        component={BotsPageV1}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.BOT,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
         )}
       />
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={SlackSettingsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.SLACK
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        // Currently we don't have any permission related to ActivityFeed settings page
+        // update below once we have it
+        hasPermission
+        component={ActivityFeedSettingsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingOptions.ACTIVITY_FEED
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={MsTeamsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.MSTEAMS
         )}
       />
 
@@ -175,9 +261,14 @@ const GlobalSettingRouter = () => {
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
       />
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TYPE,
+          permissions
+        )}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}

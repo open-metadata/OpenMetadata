@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Column,
-  ColumnProfile,
-  Table,
-} from '../../generated/entity/data/table';
-import { TestCaseStatus } from '../../generated/tests/tableTest';
+import { Column, Table } from '../../generated/entity/data/table';
+import { TestCase } from '../../generated/tests/testCase';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 
 export interface TableProfilerProps {
@@ -26,11 +22,26 @@ export interface TableProfilerProps {
     columnName?: string
   ) => void;
   table: Table;
+  hasEditAccess: boolean;
 }
+
+export type TableTestsType = {
+  tests: TestCase[];
+  results: {
+    success: number;
+    aborted: number;
+    failed: number;
+  };
+};
+
+export type columnTestResultType = {
+  [key: string]: { results: TableTestsType['results']; count: number };
+};
 
 export interface ColumnProfileTableProps {
   columns: Column[];
-  columnProfile: ColumnProfile[];
+  hasEditAccess: boolean;
+  columnTests: TestCase[];
   onAddTestClick: (
     tabValue: number,
     testMode?: DatasetTestModeType,
@@ -45,14 +56,14 @@ export interface ProfilerProgressWidgetProps {
 
 export interface ProfilerSettingsModalProps {
   tableId: string;
-  columnProfile: ColumnProfile[];
+  columns: Column[];
   visible: boolean;
   onVisibilityChange: (visible: boolean) => void;
 }
 
 export interface TestIndicatorProps {
-  value: number;
-  type: TestCaseStatus;
+  value: number | string;
+  type: string;
 }
 
 export type OverallTableSummeryType = {

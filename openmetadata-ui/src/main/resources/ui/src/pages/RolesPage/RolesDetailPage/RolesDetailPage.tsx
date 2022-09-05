@@ -11,34 +11,75 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Table, Tabs } from 'antd';
+import {
+  Button,
+  Empty,
+  Modal,
+  Space,
+  Table,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqueId } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { getRoleByName } from '../../../axiosAPIs/rolesAPIV1';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
+import { getUserByName, updateUserDetail } from '../../../axiosAPIs/userAPI';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { getUserPath } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { getEntityName } from '../../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getSettingPath,
+  getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
 import './RolesDetail.less';
 
 const { TabPane } = Tabs;
 
-const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
+type Attribute = 'policies' | 'teams' | 'users';
+
+interface AddAttribute {
+  type: EntityType;
+  selectedData: EntityReference[];
+}
+
+const List = ({
+  list,
+  type,
+  onDelete,
+  hasAccess,
+}: {
+  list: EntityReference[];
+  type: 'policy' | 'team' | 'user';
+  onDelete: (record: EntityReference) => void;
+  hasAccess: boolean;
+}) => {
   const columns: ColumnsType<EntityReference> = useMemo(() => {
     return [
       {
@@ -46,13 +87,35 @@ const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          let link = '';
+          switch (type) {
+            case 'policy':
+              link = getPolicyWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+            case 'team':
+              link = getTeamsWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+            case 'user':
+              link = getUserPath(record.fullyQualifiedName || '');
+
+              break;
+
+            default:
+              break;
+          }
+
+          return (
+            <Link
+              className="hover:tw-underline tw-cursor-pointer"
+              data-testid="entity-name"
+              to={link}>
+              {getEntityName(record)}
+            </Link>
+          );
+        },
       },
       {
         title: 'Description',
@@ -62,14 +125,37 @@ const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
           <RichTextEditorPreviewer markdown={record?.description || ''} />
         ),
       },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        width: '80px',
+        key: 'actions',
+        render: (_, record) => {
+          return (
+            <Tooltip title={hasAccess ? 'Remove' : NO_PERMISSION_FOR_ACTION}>
+              <Button
+                data-testid={`remove-action-${getEntityName(record)}`}
+                disabled={!hasAccess}
+                type="text"
+                onClick={() => onDelete(record)}>
+                <SVGIcons
+                  alt="remove"
+                  icon={Icons.ICON_REMOVE}
+                  title="Remove"
+                />
+              </Button>
+            </Tooltip>
+          );
+        },
+      },
     ];
   }, []);
 
   return (
     <Table
-      className="policies-list-table"
+      className="list-table"
       columns={columns}
-      dataSource={policies}
+      dataSource={list}
       pagination={false}
       size="middle"
     />
@@ -77,19 +163,32 @@ const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
 };
 
 const RolesDetailPage = () => {
+  const history = useHistory();
+  const { getEntityPermission } = usePermissionProvider();
   const { fqn } = useParams<{ fqn: string }>();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
+  const [editDescription, setEditDescription] = useState<boolean>(false);
+  const [selectedEntity, setEntity] =
+    useState<{ attribute: Attribute; record: EntityReference }>();
+
+  const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+
+  const [rolePermission, setRolePermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const rolesPath = getSettingPath(
+    GlobalSettingsMenuCategory.ACCESS,
+    GlobalSettingOptions.ROLES
+  );
 
   const breadcrumb = useMemo(
     () => [
       {
         name: 'Roles',
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.ROLES
-        ),
+        url: rolesPath,
       },
       {
         name: fqn,
@@ -98,6 +197,18 @@ const RolesDetailPage = () => {
     ],
     [fqn]
   );
+
+  const fetchRolePermission = async () => {
+    setLoading(true);
+    try {
+      const response = await getEntityPermission(ResourceEntity.ROLE, role.id);
+      setRolePermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchRole = async () => {
     setLoading(true);
@@ -111,9 +222,126 @@ const RolesDetailPage = () => {
     }
   };
 
+  const handleDescriptionUpdate = async (description: string) => {
+    const patch = compare(role, { ...role, description });
+    try {
+      const data = await patchRole(patch, role.id);
+      setRole({ ...role, description: data.description });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setEditDescription(false);
+    }
+  };
+
+  const handleTeamsUpdate = async (data: EntityReference) => {
+    try {
+      const team = await getTeamByName(
+        data.fullyQualifiedName || '',
+        'defaultRoles'
+      );
+      const updatedAttributeData = (team.defaultRoles ?? []).filter(
+        (attrData) => attrData.id !== role.id
+      );
+
+      const patch = compare(team, {
+        ...team,
+        defaultRoles: updatedAttributeData,
+      });
+
+      const response = await patchTeamDetail(team.id, patch);
+
+      if (response) {
+        const updatedTeams = (role.teams ?? []).filter(
+          (team) => team.id !== data.id
+        );
+        setRole((prev) => ({ ...prev, teams: updatedTeams }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleUsersUpdate = async (data: EntityReference) => {
+    try {
+      const user = await getUserByName(data.fullyQualifiedName || '', 'roles');
+      const updatedAttributeData = (user.roles ?? []).filter(
+        (attrData) => attrData.id !== role.id
+      );
+
+      const patch = compare(user, {
+        ...user,
+        roles: updatedAttributeData,
+      });
+
+      const response = await updateUserDetail(user.id, patch);
+
+      if (response) {
+        const updatedUsers = (role.users ?? []).filter(
+          (user) => user.id !== data.id
+        );
+        setRole((prev) => ({ ...prev, users: updatedUsers }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    if (attribute === 'teams') {
+      handleTeamsUpdate(data);
+    } else if (attribute === 'users') {
+      handleUsersUpdate(data);
+    } else {
+      const attributeData =
+        (role[attribute as keyof Role] as EntityReference[]) ?? [];
+      const updatedAttributeData = attributeData.filter(
+        (attrData) => attrData.id !== data.id
+      );
+
+      const patch = compare(role, {
+        ...role,
+        [attribute as keyof Role]: updatedAttributeData,
+      });
+      try {
+        const data = await patchRole(patch, role.id);
+        setRole(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
+  const handleAddAttribute = async (selectedIds: string[]) => {
+    if (addAttribute) {
+      const updatedPolicies = selectedIds.map((id) => {
+        const existingData = addAttribute.selectedData.find(
+          (data) => data.id === id
+        );
+
+        return existingData ? existingData : { id, type: addAttribute.type };
+      });
+      const patch = compare(role, { ...role, policies: updatedPolicies });
+      try {
+        const data = await patchRole(patch, role.id);
+        setRole(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setAddAttribute(undefined);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchRole();
   }, [fqn]);
+
+  useEffect(() => {
+    if (role.id) {
+      fetchRolePermission();
+    }
+  }, [role]);
 
   if (isLoading) {
     return <Loader />;
@@ -123,52 +351,112 @@ const RolesDetailPage = () => {
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       {isEmpty(role) ? (
-        <Empty description={`No roles found for ${fqn}`} />
+        <Empty data-testid="no-data" description={`No roles found for ${fqn}`}>
+          <Button
+            size="small"
+            type="primary"
+            onClick={() => history.push(rolesPath)}>
+            Go Back
+          </Button>
+        </Empty>
       ) : (
         <div className="roles-detail" data-testid="role-details">
           <div className="tw--ml-5">
-            <Description description={role.description || ''} />
+            <Description
+              description={role.description || ''}
+              entityFqn={role.fullyQualifiedName}
+              entityName={getEntityName(role)}
+              entityType={EntityType.ROLE}
+              hasEditAccess={
+                rolePermission.EditAll || rolePermission.EditDescription
+              }
+              isEdit={editDescription}
+              onCancel={() => setEditDescription(false)}
+              onDescriptionEdit={() => setEditDescription(true)}
+              onDescriptionUpdate={handleDescriptionUpdate}
+            />
           </div>
-          <Tabs defaultActiveKey="policies">
+          <Tabs data-testid="tabs" defaultActiveKey="policies">
             <TabPane key="policies" tab="Policies">
-              <PoliciesList policies={role.policies ?? []} />
+              <Space className="tw-w-full" direction="vertical">
+                <Tooltip
+                  title={
+                    rolePermission.EditAll
+                      ? 'Add Policy'
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    data-testid="add-policy"
+                    disabled={!rolePermission.EditAll}
+                    type="primary"
+                    onClick={() =>
+                      setAddAttribute({
+                        type: EntityType.POLICY,
+                        selectedData: role.policies || [],
+                      })
+                    }>
+                    Add Policy
+                  </Button>
+                </Tooltip>
+                <List
+                  hasAccess={rolePermission.EditAll}
+                  list={role.policies ?? []}
+                  type="policy"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'policies' })
+                  }
+                />
+              </Space>
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              {isEmpty(role.teams) ? (
-                <Empty description="No teams found" />
-              ) : (
-                <Row gutter={[16, 16]}>
-                  {role.teams?.map((team) => (
-                    <Col key={uniqueId()} span={6}>
-                      <Card title={getEntityName(team)}>
-                        <RichTextEditorPreviewer
-                          markdown={team.description || ''}
-                        />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              )}
+              <List
+                hasAccess={rolePermission.EditAll}
+                list={role.teams ?? []}
+                type="team"
+                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
+              />
             </TabPane>
             <TabPane key="users" tab="Users">
-              {isEmpty(role.users) ? (
-                <Empty description="No users found" />
-              ) : (
-                <Row gutter={[16, 16]}>
-                  {role.users?.map((user) => (
-                    <Col key={uniqueId()} span={6}>
-                      <Card title={getEntityName(user)}>
-                        <RichTextEditorPreviewer
-                          markdown={user.description || ''}
-                        />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              )}
+              <List
+                hasAccess={rolePermission.EditAll}
+                list={role.users ?? []}
+                type="user"
+                onDelete={(record) => setEntity({ record, attribute: 'users' })}
+              />
             </TabPane>
           </Tabs>
         </div>
+      )}
+      {selectedEntity && (
+        <Modal
+          centered
+          okText="Confirm"
+          title={`Remove ${getEntityName(
+            selectedEntity.record
+          )} from ${getEntityName(role)}`}
+          visible={!isUndefined(selectedEntity.record)}
+          onCancel={() => setEntity(undefined)}
+          onOk={() => {
+            handleDelete(selectedEntity.record, selectedEntity.attribute);
+            setEntity(undefined);
+          }}>
+          <Typography.Text>
+            Are you sure you want to remove the{' '}
+            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
+              role
+            )}?`}
+          </Typography.Text>
+        </Modal>
+      )}
+      {addAttribute && (
+        <AddAttributeModal
+          isOpen={!isUndefined(addAttribute)}
+          selectedKeys={addAttribute.selectedData.map((data) => data.id)}
+          title={`Add ${addAttribute.type}`}
+          type={addAttribute.type}
+          onCancel={() => setAddAttribute(undefined)}
+          onSave={(data) => handleAddAttribute(data)}
+        />
       )}
     </div>
   );

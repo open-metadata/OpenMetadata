@@ -35,6 +35,7 @@ const DeleteWidgetModal = ({
   entityType,
   onCancel,
   entityId,
+  prepareType = true,
   isRecursiveDelete,
   afterDeleteAction,
 }: DeleteWidgetModalProps) => {
@@ -95,6 +96,10 @@ const DeleteWidgetModal = ({
       return `services/${entityType}s`;
     } else if (entityType === EntityType.GLOSSARY) {
       return `glossaries`;
+    } else if (entityType === EntityType.POLICY) {
+      return 'policies';
+    } else if (entityType === EntityType.TEST_SUITE) {
+      return entityType;
     } else {
       return `${entityType}s`;
     }
@@ -107,7 +112,7 @@ const DeleteWidgetModal = ({
   const handleOnEntityDeleteConfirm = () => {
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(
-      prepareEntityType(),
+      prepareType ? prepareEntityType() : entityType,
       entityId ?? '',
       Boolean(isRecursiveDelete),
       entityDeleteState.softDelete

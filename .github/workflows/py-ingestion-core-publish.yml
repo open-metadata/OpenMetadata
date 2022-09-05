@@ -38,10 +38,11 @@ jobs:
           python-version: 3.9
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv antlr4
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install, Generate and Publish Test PyPi packages
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
+          sudo make install_antlr_cli
           make core_publish

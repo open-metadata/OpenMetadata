@@ -117,7 +117,7 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "inheritedRoles": {
-      "description": "Roles that a user is inheriting either as part of system default role or through membership in teams that have set team default roles.",
+      "description": "Roles that a user is inheriting through membership in teams that have set team default roles.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

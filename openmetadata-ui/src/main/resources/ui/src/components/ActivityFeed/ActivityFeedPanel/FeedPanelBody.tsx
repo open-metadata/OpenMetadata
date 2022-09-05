@@ -49,7 +49,9 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                 className="tw-mb-3"
                 feed={mainThread as Post}
                 feedType={threadData.type || ThreadType.Conversation}
+                threadId={threadData.id}
                 updateThreadHandler={updateThreadHandler}
+                onConfirmation={onConfirmation}
               />
             </div>
           ) : null}

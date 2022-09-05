@@ -13,12 +13,13 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
@@ -29,10 +30,8 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 import javax.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
@@ -42,11 +41,11 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -59,83 +58,23 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   public void setupRoles(TestInfo test) throws HttpResponseException {
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    DATA_CONSUMER_ROLE =
-        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_ROLE_REFERENCE = DATA_CONSUMER_ROLE.getEntityReference();
+    DATA_CONSUMER_ROLE = getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_ROLE_REF = DATA_CONSUMER_ROLE.getEntityReference();
 
-    DATA_STEWARD_ROLE =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_STEWARD_ROLE_REFERENCE = DATA_STEWARD_ROLE.getEntityReference();
+    DATA_STEWARD_ROLE = getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_STEWARD_ROLE_REF = DATA_STEWARD_ROLE.getEntityReference();
 
-    ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    ROLE1_REFERENCE = ROLE1.getEntityReference();
+    ROLE1 = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    ROLE1_REF = ROLE1.getEntityReference();
   }
 
-  @Test
-  void defaultRole(TestInfo test) throws IOException {
-    // Check if there is a default role in the beginning. DataConsumer is a default role.
-    List<Role> defaultRoles = getDefaultRoles();
-    assertEquals(1, defaultRoles.size());
-    Role prevDefaultRole = defaultRoles.get(0);
-
-    // Update the default role and check the following:
-    // - the default role has changed
-    // - the previous default role is no longer set as default
-    // - all users have roles set correctly (only current default role should exist)
-    for (int i = 0; i < 2; i++) { // Run two iterations for this test.
-      Role defaultRole = createRolesAndSetDefault(test, 7, i * 10);
-      defaultRoles = getDefaultRoles();
-      assertEquals(1, defaultRoles.size());
-      assertEquals(defaultRole.getId(), defaultRoles.get(0).getId());
-      assertNotEquals(defaultRole.getId(), prevDefaultRole.getId());
-
-      List<User> users = new UserResourceTest().listEntities(Map.of("fields", "roles"), ADMIN_AUTH_HEADERS).getData();
-      for (User user : users) {
-        UUID prevDefaultRoleId = prevDefaultRole.getId();
-        boolean prevDefaultRoleExists =
-            user.getInheritedRoles().stream().anyMatch(role -> role.getId().equals(prevDefaultRoleId));
-        if (prevDefaultRoleExists) {
-          fail(
-              String.format(
-                  "Previous default role %s has not been removed for user %s",
-                  prevDefaultRole.getName(), user.getName()));
-        }
-        boolean defaultRoleExists =
-            user.getInheritedRoles().stream().anyMatch(role -> role.getId().equals(defaultRole.getId()));
-        if (!defaultRoleExists) {
-          fail(String.format("Default role %s was not set for user %s", defaultRole.getName(), user.getName()));
-        }
-      }
-      prevDefaultRole = defaultRole;
-    }
-  }
-
-  public List<Role> getDefaultRoles() throws HttpResponseException {
-    return listEntities(Map.of("default", "true"), ADMIN_AUTH_HEADERS).getData();
-  }
-
-  /** Creates the given number of roles and sets one of them as the default role. */
-  public Role createRolesAndSetDefault(TestInfo test, @Positive int numberOfRoles, @Positive int offset)
-      throws IOException {
+  /** Creates the given number of roles */
+  public void createRoles(TestInfo test, @Positive int numberOfRoles, @Positive int offset) throws IOException {
     // Create a set of roles.
     for (int i = 0; i < numberOfRoles; i++) {
       CreateRole create = createRequest(test, offset + i);
       createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     }
-
-    // Set one of the roles as default.
-    Role role =
-        getEntityByName(
-            getEntityName(test, offset + new Random().nextInt(numberOfRoles)),
-            Collections.emptyMap(),
-            RoleResource.FIELDS,
-            ADMIN_AUTH_HEADERS);
-    String originalJson = JsonUtils.pojoToJson(role);
-    role.setDefaultRole(true);
-    ChangeDescription change = getChangeDescription(role.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("default").withOldValue(false).withNewValue(true));
-    return patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -164,6 +103,37 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
         () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS),
         FORBIDDEN,
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
+  }
+
+  @Test
+  void patch_rolePolicies(TestInfo test) throws IOException {
+    Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Add new DATA_STEWARD_POLICY to role in addition to DATA_CONSUMER_POLICY
+    String originalJson = JsonUtils.pojoToJson(role);
+    role.getPolicies().addAll(DATA_STEWARD_ROLE.getPolicies());
+    ChangeDescription change = getChangeDescription(role.getVersion());
+    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove new DATA_CONSUMER_POLICY
+    originalJson = JsonUtils.pojoToJson(role);
+    role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
+    change = getChangeDescription(role.getVersion());
+    fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove all the policies. It should be disallowed
+    final String originalJson1 = JsonUtils.pojoToJson(role);
+    final UUID id = role.getId();
+    final Role role1 = role;
+    role1.setPolicies(null);
+    change = getChangeDescription(role1.getVersion());
+    fieldAdded(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
+    assertResponse(
+        () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
   }
 
   private static void validateRole(
@@ -240,6 +210,15 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("policies")) {
+      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEntityReferences(expectedRefs, actualRefs);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

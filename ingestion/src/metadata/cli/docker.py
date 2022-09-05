@@ -1,3 +1,16 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Docker functions for CLI
+"""
 import json
 import pathlib
 import sys
@@ -21,6 +34,17 @@ from metadata.utils.logger import cli_logger, ometa_logger
 logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
+
+
+DOCKER_URL_ROOT = (
+    "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/"
+)
+
+DEFAULT_COMPOSE_FILE = "docker-compose.yml"
+BACKEND_DATABASES = {
+    "mysql": DEFAULT_COMPOSE_FILE,
+    "postgres": "docker-compose-postgres.yml",
+}
 
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
@@ -99,18 +123,19 @@ def env_file_check(env_file_path):
             return pathlib.Path(env_file_path)
 
 
-def file_path_check(file_path):
+def file_path_check(file_path, database: str):
+
+    docker_compose_file_name = BACKEND_DATABASES.get(database) or DEFAULT_COMPOSE_FILE
+
     if file_path is None:
         docker_compose_file_path = (
-            pathlib.Path(tempfile.gettempdir()) / "docker-compose.yml"
+            pathlib.Path(tempfile.gettempdir()) / docker_compose_file_name
         )
         if not docker_compose_file_path.exists():
             logger.info(
-                "Downloading latest docker compose file from openmetadata repository..."
+                f"Downloading latest docker compose file {docker_compose_file_name} from openmetadata repository..."
             )
-            r = requests.get(
-                "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
-            )
+            r = requests.get(f"{DOCKER_URL_ROOT}{docker_compose_file_name}")
             with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
                 docker_compose_file_handle.write(r.content)
                 docker_compose_file_handle.close()
@@ -133,6 +158,7 @@ def run_docker(
     env_file_path: str,
     reset_db: bool,
     ingest_sample_data: bool,
+    database: str,
 ):
     try:
         from python_on_whales import DockerClient
@@ -155,7 +181,7 @@ def run_docker(
 
         # Check for -f <Path>
         start_time = time.time()
-        docker_compose_file_path = file_path_check(file_path)
+        docker_compose_file_path = file_path_check(file_path, database)
         env_file = env_file_check(env_file_path)
         # Set up Docker Client Config with docker compose file path
         docker = DockerClient(
@@ -191,14 +217,15 @@ def run_docker(
                 docker_compose_file_path.unlink()
 
     except MemoryError:
+        logger.debug(traceback.format_exc())
         click.secho(
             f"Please Allocate More memory to Docker.\nRecommended: 6GB\nCurrent: "
             f"{round(float(dict(docker_info).get('mem_total')) / calc_gb)}",
             fg="red",
         )
-    except Exception as err:
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        click.secho(str(err), fg="red")
+        click.secho(str(exc), fg="red")
 
 
 def reset_db_om(docker):
@@ -264,7 +291,8 @@ def run_sample_data() -> None:
             elif time.time() > timeout:
                 raise TimeoutError("Ingestion container timed out")
         except TimeoutError as err:
-            print(err)
+            logger.debug(traceback.format_exc())
+            sys.stdout.write(str(err))
             sys.exit(1)
         except Exception:
             sys.stdout.write(".")

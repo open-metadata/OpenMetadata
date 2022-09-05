@@ -16,6 +16,7 @@ package org.openmetadata.catalog.util;
 import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.TEST_CASE;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.difflib.text.DiffRow;
@@ -41,6 +42,9 @@ import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.slack.SlackAttachment;
 import org.openmetadata.catalog.slack.SlackMessage;
+import org.openmetadata.catalog.slack.TeamsMessage;
+import org.openmetadata.catalog.tests.TestCase;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
@@ -59,7 +63,7 @@ public final class ChangeEventParser {
 
   private ChangeEventParser() {}
 
-  private enum CHANGE_TYPE {
+  public enum CHANGE_TYPE {
     UPDATE,
     ADD,
     DELETE
@@ -67,19 +71,106 @@ public final class ChangeEventParser {
 
   public enum PUBLISH_TO {
     FEED,
-    SLACK
+    SLACK,
+    TEAMS
   }
 
-  public static String getEntityUrl(ChangeEvent event) {
+  public static String getBold(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return FEED_BOLD;
+      case SLACK:
+        return SLACK_BOLD;
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getLineBreak(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return FEED_LINE_BREAK;
+      case SLACK:
+        return SLACK_LINE_BREAK;
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getAddMarker(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_SPAN_ADD;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "**";
+      case SLACK:
+        return "*";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getAddMarkerClose(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_SPAN_CLOSE;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "** ";
+      case SLACK:
+        return "* ";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getRemoveMarker(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_SPAN_REMOVE;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "~~";
+      case SLACK:
+        return "~";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getRemoveMarkerClose(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_SPAN_CLOSE;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "~~ ";
+      case SLACK:
+        return "~ ";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getEntityUrl(PUBLISH_TO publishTo, ChangeEvent event) {
     EntityInterface entity = (EntityInterface) event.getEntity();
     URI urlInstance = entity.getHref();
     String fqn = event.getEntityFullyQualifiedName();
     if (Objects.nonNull(urlInstance)) {
       String scheme = urlInstance.getScheme();
       String host = urlInstance.getHost();
-      return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
+      if (publishTo == PUBLISH_TO.SLACK) {
+        return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
+      } else if (publishTo == PUBLISH_TO.TEAMS) {
+        return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, event.getEntityType(), fqn);
+      }
     }
-    return urlInstance.toString();
+    return "";
   }
 
   public static SlackMessage buildSlackMessage(ChangeEvent event) {
@@ -87,7 +178,7 @@ public final class ChangeEventParser {
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
       String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(event));
+      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(PUBLISH_TO.SLACK, event));
       slackMessage.setText(headerText);
     }
     Map<EntityLink, String> messages =
@@ -103,6 +194,28 @@ public final class ChangeEventParser {
     }
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
     return slackMessage;
+  }
+
+  public static TeamsMessage buildTeamsMessage(ChangeEvent event) {
+    TeamsMessage teamsMessage = new TeamsMessage();
+    teamsMessage.setSummary("Change Event From OMD");
+    TeamsMessage.Section teamsSections = new TeamsMessage.Section();
+    if (event.getEntity() != null) {
+      String headerTxt = "%s posted on " + event.getEntityType() + " %s";
+      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(PUBLISH_TO.TEAMS, event));
+      teamsSections.setActivityTitle(headerText);
+    }
+    Map<EntityLink, String> messages =
+        getFormattedMessages(PUBLISH_TO.TEAMS, event.getChangeDescription(), (EntityInterface) event.getEntity());
+    List<TeamsMessage.Section> attachmentList = new ArrayList<>();
+    for (var entry : messages.entrySet()) {
+      TeamsMessage.Section section = new TeamsMessage.Section();
+      section.setActivityTitle(teamsSections.getActivityTitle());
+      section.setActivityText(entry.getValue());
+      attachmentList.add(section);
+    }
+    teamsMessage.setSections(attachmentList);
+    return teamsMessage;
   }
 
   public static Map<EntityLink, String> getFormattedMessages(
@@ -133,7 +246,10 @@ public final class ChangeEventParser {
       String newFieldValue = getFieldValue(field.getNewValue());
       String oldFieldValue = getFieldValue(field.getOldValue());
       EntityLink link = getEntityLink(fieldName, entity);
-      if (!fieldName.equals("failureDetails")) {
+      if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
+        String message = handleTestCaseResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        messages.put(link, message);
+      } else if (!fieldName.equals("failureDetails")) {
         String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
         messages.put(link, message);
       }
@@ -141,7 +257,7 @@ public final class ChangeEventParser {
     return messages;
   }
 
-  private static String getFieldValue(Object fieldValue) {
+  public static String getFieldValue(Object fieldValue) {
     if (fieldValue == null || fieldValue.toString().isEmpty()) {
       return StringUtils.EMPTY;
     }
@@ -233,7 +349,7 @@ public final class ChangeEventParser {
     return messages;
   }
 
-  private static EntityLink getEntityLink(String fieldName, EntityInterface entity) {
+  public static EntityLink getEntityLink(String fieldName, EntityInterface entity) {
     EntityReference entityReference = entity.getEntityReference();
     String entityType = entityReference.getType();
     String entityFQN = entityReference.getFullyQualifiedName();
@@ -278,16 +394,9 @@ public final class ChangeEventParser {
         String fieldValue = getFieldValue(newFieldValue);
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
           message =
-              String.format(
-                  ("Followed " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + " `%s`"),
-                  link.getEntityType(),
-                  link.getEntityFQN());
+              String.format(("Followed " + getBold(publishTo) + " `%s`"), link.getEntityType(), link.getEntityFQN());
         } else if (fieldValue != null && !fieldValue.isEmpty()) {
-          message =
-              String.format(
-                  ("Added " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + ": `%s`"),
-                  updatedField,
-                  fieldValue);
+          message = String.format(("Added " + getBold(publishTo) + ": `%s`"), updatedField, fieldValue);
         }
         break;
       case UPDATE:
@@ -297,7 +406,7 @@ public final class ChangeEventParser {
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
           message = String.format("Unfollowed %s `%s`", link.getEntityType(), link.getEntityFQN());
         } else {
-          message = String.format(("Deleted " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD)), updatedField);
+          message = String.format(("Deleted " + getBold(publishTo)), updatedField);
         }
         break;
       default:
@@ -310,10 +419,12 @@ public final class ChangeEventParser {
       PUBLISH_TO publishTo, String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(publishTo, oldValue, newValue);
-    return nullOrEmpty(diff)
-        ? StringUtils.EMPTY
-        : String.format(
-            "Updated " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + ": %s", updatedField, diff);
+    if (nullOrEmpty(diff)) {
+      return StringUtils.EMPTY;
+    } else {
+      String field = String.format("Updated %s: %s", getBold(publishTo), diff);
+      return String.format(field, updatedField);
+    }
   }
 
   private static String getObjectUpdateMessage(
@@ -328,19 +439,13 @@ public final class ChangeEventParser {
                 "%s: %s", key, getPlaintextDiff(publishTo, oldJson.get(key).toString(), newJson.get(key).toString())));
       }
     }
-    String updates = String.join((publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK), labels);
+    String updates = String.join(getLineBreak(publishTo), labels);
     // Include name of the field if the json contains "name" key
     if (newJson.containsKey("name")) {
       updatedField = String.format("%s.%s", updatedField, newJson.getString("name"));
     }
-    return String.format(
-        "Updated "
-            + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD)
-            + ":"
-            + (publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK)
-            + "%s",
-        updatedField,
-        updates);
+    String format = String.format("Updated %s:%s%s", getBold(publishTo), getLineBreak(publishTo), updates);
+    return String.format(format, updatedField);
   }
 
   private static String getUpdateMessage(PUBLISH_TO publishTo, String updatedField, Object oldValue, Object newValue) {
@@ -350,9 +455,8 @@ public final class ChangeEventParser {
     }
 
     if (oldValue == null || oldValue.toString().isEmpty()) {
-      return String.format(
-          "Updated %s to %s",
-          publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD, updatedField, getFieldValue(newValue));
+      String format = String.format("Updated %s to %s", getBold(publishTo), getFieldValue(newValue));
+      return String.format(format, updatedField);
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
       return getPlainTextUpdateMessage(publishTo, updatedField, getFieldValue(oldValue), getFieldValue(newValue));
     }
@@ -394,6 +498,31 @@ public final class ChangeEventParser {
     return getPlainTextUpdateMessage(publishTo, updatedField, oldValue.toString(), newValue.toString());
   }
 
+  public static String handleTestCaseResult(
+      PUBLISH_TO publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+    String testCaseName = entity.getName();
+    TestCaseResult result = (TestCaseResult) newValue;
+    TestCase testCaseEntity = (TestCase) entity;
+    if (result != null) {
+      String format =
+          String.format(
+              "Test Case %s is %s in %s/%s",
+              getBold(publishTo),
+              getBold(publishTo),
+              EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+              testCaseEntity.getTestSuite().getName());
+      return String.format(format, testCaseName, result.getTestCaseStatus());
+    } else {
+      String format =
+          String.format(
+              "Test Case %s is updated in %s/%s",
+              getBold(publishTo),
+              EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+              testCaseEntity.getTestSuite().getName());
+      return String.format(format, testCaseName);
+    }
+  }
+
   public static String getPlaintextDiff(PUBLISH_TO publishTo, String oldValue, String newValue) {
     // create a configured DiffRowGenerator
     String addMarker = FEED_ADD_MARKER;
@@ -424,21 +553,10 @@ public final class ChangeEventParser {
     // Replace them with html tags to render nicely in the UI
     // Example: This is a test <!remove>sentence<!remove><!add>line<!add>
     // This is a test <span class="diff-removed">sentence</span><span class="diff-added">line</span>
-    String spanAdd;
-    String spanAddClose;
-    String spanRemove;
-    String spanRemoveClose;
-    if (publishTo == PUBLISH_TO.FEED) {
-      spanAdd = FEED_SPAN_ADD;
-      spanAddClose = FEED_SPAN_CLOSE;
-      spanRemove = FEED_SPAN_REMOVE;
-      spanRemoveClose = FEED_SPAN_CLOSE;
-    } else {
-      spanAdd = "*";
-      spanAddClose = "* ";
-      spanRemove = "~";
-      spanRemoveClose = "~ ";
-    }
+    String spanAdd = getAddMarker(publishTo);
+    String spanAddClose = getAddMarkerClose(publishTo);
+    String spanRemove = getRemoveMarker(publishTo);
+    String spanRemoveClose = getRemoveMarkerClose(publishTo);
     if (diff != null) {
       diff = replaceMarkers(diff, addMarker, spanAdd, spanAddClose);
       diff = replaceMarkers(diff, removeMarker, spanRemove, spanRemoveClose);

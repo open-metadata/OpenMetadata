@@ -224,10 +224,11 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             )
             parameters = {
                 "grant_type": "client_credentials",
-                "scope": " ".join(config["client"]["scopes"]),
                 "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
                 "client_assertion": jwt_token,
             }
+            if config["client"].get("scopes"):
+                parameters["scope"] = " ".join(config["client"]["scopes"])
             encoded_parameters = urlencode(parameters, quote_via=quote)
             url = f"{self.security_config.orgURL}?" + encoded_parameters
             token_request_object = await request_exec.create_request(
@@ -245,7 +246,13 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             )
             if err:
                 raise APIError(f"{err}")
-            response_dict = json.loads(res_json)
+
+            try:
+                response_dict = json.loads(res_json)
+            except ValueError:
+                raise AuthenticationException(
+                    "Could not fetch the access token please validate the orgURL & clientId in configuration"
+                )
 
             token = response_dict.get(ACCESS_TOKEN)
             if not token:
@@ -256,9 +263,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             self.generated_auth_token = token
             self.expiry = response_dict.get(EXPIRY)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(f"Unexpected error fetching Okta auth token: {exc}")
             sys.exit()
 
     def get_access_token(self):

@@ -16,13 +16,16 @@ import { Operation } from 'fast-json-patch';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import {
+  ColumnProfile,
   ColumnTestType,
   Table,
+  TableProfile,
   TableProfilerConfig,
 } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -209,6 +212,46 @@ export const putTableProfileConfig = async (
     TableProfilerConfig,
     AxiosResponse<Table>
   >(`/tables/${tableId}/tableProfilerConfig`, data, configOptions);
+
+  return response.data;
+};
+
+export const getTableProfilesList = async (
+  tableId: string,
+  params?: {
+    startTs?: number;
+    endTs?: number;
+    limit?: number;
+    before?: string;
+    after?: string;
+  }
+) => {
+  const url = `/tables/${tableId}/tableProfile`;
+
+  const response = await APIClient.get<{
+    data: TableProfile[];
+    paging: Paging;
+  }>(url, { params });
+
+  return response.data;
+};
+
+export const getColumnProfilerList = async (
+  columnFqn: string,
+  params?: {
+    startTs?: number;
+    endTs?: number;
+    limit?: number;
+    before?: string;
+    after?: string;
+  }
+) => {
+  const url = `/tables/${columnFqn}/columnProfile`;
+
+  const response = await APIClient.get<{
+    data: ColumnProfile[];
+    paging: Paging;
+  }>(url, { params });
 
   return response.data;
 };

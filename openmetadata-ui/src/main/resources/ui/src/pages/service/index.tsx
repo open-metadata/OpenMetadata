@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined, startCase } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
@@ -35,8 +34,8 @@ import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import Description from '../../components/common/description/Description';
-import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
@@ -45,9 +44,10 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
@@ -56,6 +56,8 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -69,7 +71,6 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
@@ -77,19 +78,20 @@ import {
   getEntityName,
   isEven,
 } from '../../utils/CommonUtils';
-import {
-  getEditConnectionPath,
-  getServicesWithTabPath,
-} from '../../utils/RouterUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
   getDeleteEntityMessage,
+  getResourceEntityFromServiceCategory,
   getServiceCategoryFromType,
+  getServiceRouteFromServiceType,
   servicePageTabs,
   serviceTypeLogo,
   setServiceSchemaCount,
   setServiceTableCount,
 } from '../../utils/ServiceUtils';
+import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -98,9 +100,8 @@ export type ServicePageData = Database | Topic | Dashboard;
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
+  const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const [serviceName, setServiceName] = useState<ServiceTypes>(
     (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
   );
@@ -129,6 +130,22 @@ const ServicePage: FunctionComponent = () => {
   const [schemaCount, setSchemaCount] = useState<number>(0);
   const [tableCount, setTableCount] = useState<number>(0);
 
+  const [deleteWidgetVisible, setDeleteWidgetVisible] = useState(false);
+  const [servicePermission, setServicePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchServicePermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        getResourceEntityFromServiceCategory(serviceType),
+        serviceDetails?.id as string
+      );
+      setServicePermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const getCountLabel = () => {
     switch (serviceName) {
       case ServiceCategory.DASHBOARD_SERVICES:
@@ -148,39 +165,22 @@ const ServicePage: FunctionComponent = () => {
   const tabs = [
     {
       name: getCountLabel(),
-      icon: {
-        alt: 'schema',
-        name: 'icon-database',
-        title: 'Database',
-        selectedName: 'icon-schemacolor',
-      },
       isProtected: false,
+
       position: 1,
       count: instanceCount,
     },
     {
       name: 'Ingestions',
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
-      },
       isProtected: false,
+
       position: 2,
       count: ingestions.length,
     },
     {
       name: 'Connection',
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
-      },
-
-      isProtected: !isAdminUser && !isAuthDisabled,
-      isHidden: !isAdminUser && !isAuthDisabled,
+      isProtected: !servicePermission.EditAll,
+      isHidden: !servicePermission.EditAll,
       position: 3,
     },
   ];
@@ -695,7 +695,10 @@ const ServicePage: FunctionComponent = () => {
           setSlashedTableName([
             {
               name: startCase(serviceName || ''),
-              url: getServicesWithTabPath(serviceName || ''),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(serviceName)
+              ),
             },
             {
               name: getEntityName(resService),
@@ -878,8 +881,18 @@ const ServicePage: FunctionComponent = () => {
     goToEditConnection();
   };
 
+  const handleDelete = () => {
+    setDeleteWidgetVisible(true);
+  };
+
+  useEffect(() => {
+    if (serviceDetails?.id) {
+      fetchServicePermission();
+    }
+  }, [serviceDetails]);
+
   return (
-    <>
+    <Row className="tw-my-4" gutter={[16, 16]}>
       {isLoading ? (
         <Loader />
       ) : isError ? (
@@ -887,7 +900,7 @@ const ServicePage: FunctionComponent = () => {
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <PageContainer>
+        <Col span={24}>
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="service-page">
@@ -896,7 +909,27 @@ const ServicePage: FunctionComponent = () => {
               className="tw-justify-between"
               style={{ width: '100%' }}>
               <TitleBreadcrumb titleLinks={slashedTableName} />
-              <ManageButton
+              <Tooltip
+                title={
+                  servicePermission.Delete ? 'Delete' : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  data-testid="service-delete"
+                  disabled={!servicePermission.Delete}
+                  size="small"
+                  theme="primary"
+                  variant="outlined"
+                  onClick={handleDelete}>
+                  <IcDeleteColored
+                    className="tw-mr-1.5"
+                    height={14}
+                    viewBox="0 0 24 24"
+                    width={14}
+                  />
+                  Delete
+                </Button>
+              </Tooltip>
+              <DeleteWidgetModal
                 isRecursiveDelete
                 allowSoftDelete={false}
                 deleteMessage={getDeleteEntityMessage(
@@ -905,19 +938,24 @@ const ServicePage: FunctionComponent = () => {
                   schemaCount,
                   tableCount
                 )}
-                entityFQN={serviceFQN}
                 entityId={serviceDetails?.id}
                 entityName={serviceDetails?.name || ''}
                 entityType={serviceName?.slice(0, -1)}
+                visible={deleteWidgetVisible}
+                onCancel={() => setDeleteWidgetVisible(false)}
               />
             </Space>
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
                     data={info}
-                    updateOwner={handleUpdateOwner}
+                    updateOwner={
+                      servicePermission.EditAll || servicePermission.EditOwner
+                        ? handleUpdateOwner
+                        : undefined
+                    }
                   />
 
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
@@ -930,15 +968,16 @@ const ServicePage: FunctionComponent = () => {
             </div>
 
             <div
-              className="tw-my-2 tw-ml-2"
+              className="tw-my-2 tw--ml-5"
               data-testid="description-container">
               <Description
-                blurWithBodyBG
                 description={description || ''}
                 entityFqn={serviceFQN}
                 entityName={serviceFQN}
                 entityType={serviceCategory.slice(0, -1)}
-                hasEditAccess={isAdminUser || isAuthDisabled}
+                hasEditAccess={
+                  servicePermission.EditAll || servicePermission.EditDescription
+                }
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
@@ -957,10 +996,10 @@ const ServicePage: FunctionComponent = () => {
                 {activeTab === 1 && (
                   <Fragment>
                     <div
-                      className="tw-mt-4 tw-px-1"
+                      className="tw-my-4 tw-table-container"
                       data-testid="table-container">
                       <table
-                        className="tw-bg-white tw-w-full tw-mb-4"
+                        className="tw-bg-white tw-w-full"
                         data-testid="database-tables">
                         <thead>
                           <tr className="tableHead-row">{getTableHeaders()}</tr>
@@ -1028,23 +1067,28 @@ const ServicePage: FunctionComponent = () => {
 
                 {activeTab === 2 && getIngestionTab()}
 
-                {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
+                {activeTab === 3 && (
                   <>
                     <div className="tw-my-4 tw-flex tw-justify-end">
-                      <Button
-                        className={classNames(
-                          'tw-h-8 tw-rounded tw-px-4 tw-py-1',
-                          {
-                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                          }
-                        )}
-                        data-testid="add-new-service-button"
-                        size="small"
-                        theme="primary"
-                        variant="outlined"
-                        onClick={handleEditConnection}>
-                        Edit Connection
-                      </Button>
+                      <Tooltip
+                        title={
+                          servicePermission.EditAll
+                            ? 'Edit Connection'
+                            : NO_PERMISSION_FOR_ACTION
+                        }>
+                        <Button
+                          className={classNames(
+                            'tw-h-8 tw-rounded tw-px-4 tw-py-1'
+                          )}
+                          data-testid="add-new-service-button"
+                          disabled={!servicePermission.EditAll}
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
+                          onClick={handleEditConnection}>
+                          Edit Connection
+                        </Button>
+                      </Tooltip>
                     </div>
                     <ServiceConnectionDetails
                       connectionDetails={connectionDetails || {}}
@@ -1056,9 +1100,9 @@ const ServicePage: FunctionComponent = () => {
               </div>
             </div>
           </div>
-        </PageContainer>
+        </Col>
       )}
-    </>
+    </Row>
   );
 };
 

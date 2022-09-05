@@ -12,11 +12,9 @@
 import csv
 import json
 import os
-import sys
 import traceback
 from collections import namedtuple
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
@@ -31,6 +29,9 @@ from metadata.generated.schema.api.data.createLocation import CreateLocationRequ
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -73,7 +74,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
@@ -147,11 +148,10 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-@dataclass
 class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
 
     def scanned(self, entity_type: str, entity_name: str) -> None:
         self.success.append(entity_name)
@@ -622,7 +622,8 @@ class SampleDataSource(Source[Entity]):
                 self.status.scanned("chart", chart_ev.name)
                 yield chart_ev
             except ValidationError as err:
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
     def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
         for dashboard in self.dashboards["dashboards"]:
@@ -753,9 +754,9 @@ class SampleDataSource(Source[Entity]):
                     ),
                 )
                 yield model_ev
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         try:
@@ -790,10 +791,9 @@ class SampleDataSource(Source[Entity]):
                 )
 
                 yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
-        except Exception as err:
-            logger.error(err)
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(sys.exc_info()[2])
+            logger.error(f"Error ingesting users: {exc}")
 
     def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
         """
@@ -825,8 +825,9 @@ class SampleDataSource(Source[Entity]):
                     yield OMetaTableTest(
                         table_name=table_name, column_test=create_column_test
                     )
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error ingesting table tests: {exc}")
 
     def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
         """Iterate over all the profile data and ingest them"""
@@ -836,14 +837,24 @@ class SampleDataSource(Source[Entity]):
                 fqn=table_profile["fqn"],
             )
             for i, profile in enumerate(table_profile["profile"]):
+
                 yield OMetaTableProfileSampleData(
                     table=table,
-                    profile=TableProfile(
-                        columnCount=profile["columnCount"],
-                        rowCount=profile["rowCount"],
-                        timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
+                    profile=CreateTableProfileRequest(
+                        tableProfile=TableProfile(
+                            columnCount=profile["columnCount"],
+                            rowCount=profile["rowCount"],
+                            timestamp=(
+                                datetime.now(tz=timezone.utc) - timedelta(days=i)
+                            ).timestamp(),
+                        ),
                         columnProfile=[
-                            ColumnProfile(**col_profile)
+                            ColumnProfile(
+                                timestamp=(
+                                    datetime.now(tz=timezone.utc) - timedelta(days=i)
+                                ).timestamp(),
+                                **col_profile,
+                            )
                             for col_profile in profile["columnProfile"]
                         ],
                     ),
@@ -856,7 +867,6 @@ class SampleDataSource(Source[Entity]):
                 test_suite=CreateTestSuiteRequest(
                     name=test_suite["testSuiteName"],
                     description=test_suite["testSuiteDescription"],
-                    scheduleInterval=test_suite["scheduleInterval"],
                 )
             )
 
@@ -877,13 +887,7 @@ class SampleDataSource(Source[Entity]):
                             ).id.__root__,
                             type="testDefinition",
                         ),
-                        entity=EntityReference(
-                            id=self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=test_case["entityFqn"],
-                            ).id.__root__,
-                            type="table",
-                        ),
+                        entityLink=test_case["entityLink"],
                         testSuite=EntityReference(
                             id=suite.id.__root__,
                             type="testSuite",
@@ -901,6 +905,7 @@ class SampleDataSource(Source[Entity]):
             case = self.metadata.get_by_name(
                 TestCase,
                 f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
+                fields=["testSuite", "testDefinition"],
             )
             for i, result in enumerate(test_case_results["results"]):
                 yield OMetaTestCaseResultsSample(
@@ -908,8 +913,12 @@ class SampleDataSource(Source[Entity]):
                         timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
                         testCaseStatus=result["testCaseStatus"],
                         result=result["result"],
+                        testResultValue=[
+                            TestResultValue.parse_obj(res_value)
+                            for res_value in result["testResultValues"]
+                        ],
                     ),
-                    test_case_uuid=case.id.__root__,
+                    test_case_name=case.fullyQualifiedName.__root__,
                 )
 
     def close(self):

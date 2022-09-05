@@ -140,7 +140,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
     'be.visible'
   );
-  cy.contains(`"${serviceName}_metadata"`).should('be.visible');
+  cy.contains(`${serviceName}_metadata`).should('be.visible');
   cy.contains('has been created and deployed successfully').should(
     'be.visible'
   );
@@ -187,15 +187,11 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
   cy.wait(1000);
 
-  cy.get('[data-testid="manage-button"]')
+  cy.get('[data-testid="service-delete"]')
     .should('exist')
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="delete-button"] > .tw-font-medium')
-    .should('exist')
-    .should('be.visible')
-    .click();
 
   //Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
@@ -356,9 +352,7 @@ export const addNewTagToEntity = (entity, term) => {
   searchEntity(entity);
   cy.wait(500);
   cy.get('[data-testid="table-link"]').first().contains(entity).click();
-  cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > div > :nth-child(1) > [data-testid="tags"] > .tw-no-underline'
-  )
+  cy.get('[data-testid="tags"] > [data-testid="add-tag"]').eq(0)
     .should('be.visible')
     .scrollIntoView()
     .click();
@@ -375,7 +369,7 @@ export const addNewTagToEntity = (entity, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
     .contains('Tags')
     .should('be.visible')
     .click();
@@ -390,8 +384,304 @@ export const addNewTagToEntity = (entity, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
     .scrollIntoView()
     .contains(term)
     .should('exist');
+};
+
+export const addUser = (username, email) => {
+  cy.get('[data-testid="email"]')
+    .scrollIntoView()
+    .should('exist')
+    .should('be.visible')
+    .type(email);
+  cy.get('[data-testid="displayName"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .should('exist')
+    .should('be.visible')
+    .type('Adding user');
+  cy.get('[data-testid="save-user"]').scrollIntoView().click();
+};
+
+export const softDeleteUser = (username) => {
+  //Search the created user
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+
+  cy.wait(1000);
+
+  //Click on delete button
+  cy.get('.ant-table-row .ant-table-cell button')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Soft deleting the user
+  cy.get('[data-testid="soft-delete"]').click();
+  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  cy.get('[data-testid="confirm-button"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+
+  cy.get('.Toastify__toast-body > :nth-child(2)').should(
+    'have.text',
+    'User deleted successfully!'
+  );
+
+  //Closing the toast message
+  cy.get('.Toastify__close-button > svg')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Verifying the deleted user
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .clear()
+    .type(username);
+
+  cy.wait(1000);
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    username
+  );
+};
+
+export const restoreUser = (username) => {
+  //Click on deleted user toggle
+  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
+  cy.wait(1000);
+
+  cy.get('button [alt="Restore"]').should('exist').should('be.visible').click();
+  cy.get('.ant-modal-body > p').should(
+    'contain',
+    `Are you sure you want to restore ${username}?`
+  );
+  cy.get('.ant-modal-footer > .ant-btn-primary')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.wait(1000);
+  cy.get('.Toastify__toast-body > :nth-child(2)').should(
+    'contain',
+    'User restored successfully!'
+  );
+
+  //Closing toast message
+  cy.get('.Toastify__close-button > svg')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Verifying the restored user
+  cy.get('.ant-switch').should('exist').should('be.visible').click();
+
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+
+  cy.wait(1000);
+  cy.get('.ant-table-row > :nth-child(1)').should('contain', username);
+};
+
+export const deleteSoftDeletedUser = (username) => {
+  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
+
+  cy.wait(1000);
+
+  cy.get('button [alt="Delete"]').should('exist').should('be.visible').click();
+  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  cy.get('[data-testid="confirm-button"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+
+  cy.get('.Toastify__toast-body > :nth-child(2)').should(
+    'have.text',
+    'User deleted successfully!'
+  );
+
+  //Closing toast message
+  cy.get('.Toastify__close-button > svg')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    username
+  );
+
+  cy.get('.ant-table-placeholder > .ant-table-cell')
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+
+  cy.wait(1000);
+
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    username
+  );
+};
+
+export const toastNotification = (msg) => {
+  cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
+  cy.wait(1000);
+  cy.get('.Toastify__close-button').should('be.visible').click();
+};
+
+export const addCustomPropertiesForEntity = (entityType, customType, value) => {
+  const propertyName = `entity${entityType.name}test${uuid()}`;
+
+  //Add Custom property for selected entity
+  cy.get('[data-testid="add-field-button"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="name"]').should('be.visible').type(propertyName);
+  cy.get('select').select(customType);
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .should('be.visible')
+    .type(entityType.description);
+  cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
+
+  //Check if the property got added
+  cy.get('[data-testid="data-row"]').should('contain', propertyName);
+
+  //Navigating to home page
+  cy.clickOnLogo();
+
+  //Checking the added property in Entity
+  //cy.contains(entityType.name).scrollIntoView().should('be.visible').click();
+
+  cy.get(`[data-testid*="${entityType.name}"] > .ant-btn > span`)
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+  cy.get('[data-testid="table-link"]')
+    .first()
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="Custom Properties"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="table-body"]').should('contain', propertyName);
+
+  //Adding value for the custom property
+
+  //Navigating through the created custom property for adding value
+  cy.get('[data-testid="data-row"]')
+    .contains(propertyName)
+    .scrollIntoView()
+    .next('td')
+    .contains('No data')
+    .next('[data-testid="edit-icon"]')
+    .as('editbutton');
+
+  cy.wait(1000);
+
+  cy.get('@editbutton').should('exist').should('be.visible').click();
+
+  //Checking for value text box or markdown box
+  cy.get('body').then(($body) => {
+    if ($body.find('[data-testid="value-input"]').length > 0) {
+      cy.get('[data-testid="value-input"]').should('be.visible').type(value);
+      cy.get('[data-testid="save-value"]').click();
+    } else if (
+      $body.find(
+        '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
+      )
+    ) {
+      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .should('be.visible')
+        .type(value);
+      cy.get('[data-testid="save"]').click();
+    }
+  });
+
+  //Checking the added value to the property
+  cy.get('[data-testid="data-row"]')
+    .contains(propertyName)
+    .scrollIntoView()
+    .next('td')
+    .as('value');
+
+  cy.get('@value').should('contain', value);
+
+  //returning the property name since it needs to be deleted and updated
+  return propertyName;
+};
+
+export const editCreatedProperty = (propertyName) => {
+  //Fetching for edit button
+  cy.get('[data-testid="table-body"]')
+    .children()
+    .contains(propertyName)
+    .scrollIntoView()
+    .nextUntil('button')
+    .find('[data-testid="edit-button"]')
+    .as('editbutton');
+
+  cy.get('@editbutton').click();
+
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .should('be.visible')
+    .clear()
+    .type('This is new description');
+
+  cy.get('[data-testid="save"]').should('be.visible').click();
+
+  cy.wait(1000);
+
+  //Fetching for updated descriptions for the created custom property
+  cy.get('[data-testid="table-body"]')
+    .children()
+    .contains(propertyName)
+    .nextUntil('div')
+    .find('[data-testid="viewer-container"]')
+    .should('contain', 'This is new description');
+};
+
+export const deleteCreatedProperty = (propertyName) => {
+  //Fetching for delete button
+
+  cy.get('[data-testid="table-body"]')
+    .children()
+    .contains(propertyName)
+    .nextUntil('button')
+    .find('[data-testid="delete-button"]')
+    .as('deletebutton');
+
+  cy.get('@deletebutton').click();
+
+  //Checking property name is present on the delete pop-up
+  cy.get('[data-testid="body-text"] > p').should('contain', propertyName);
+
+  cy.get('[data-testid="save-button"]').should('be.visible').click();
+
+  //Checking if property got deleted successfully
+  cy.get('[data-testid="table-body"]').should('not.contain', propertyName);
 };

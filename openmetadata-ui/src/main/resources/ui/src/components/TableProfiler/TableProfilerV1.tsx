@@ -11,28 +11,65 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import {
+  Button,
+  Col,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Tooltip,
+} from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
+import { getListTestCase } from '../../axiosAPIs/testAPI';
+import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
+import { ProfilerDashboardType } from '../../enums/table.enum';
+import { TestCase } from '../../generated/tests/testCase';
 import {
   formatNumberWithComma,
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
-import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
+import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { generateEntityLink } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import {
   OverallTableSummeryType,
   TableProfilerProps,
+  TableTestsType,
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
-  const { tableProfile, columns } = table;
+const TableProfilerV1: FC<TableProfilerProps> = ({
+  table,
+  onAddTestClick,
+  hasEditAccess,
+}) => {
+  const { profile, columns } = table;
+  const history = useHistory();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
+  const [columnTests, setColumnTests] = useState<TestCase[]>([]);
+  const [tableTests, setTableTests] = useState<TableTestsType>({
+    tests: [],
+    results: INITIAL_TEST_RESULT_SUMMARY,
+  });
+  const [activeTab] = useState<ProfilerDashboardTab>(
+    ProfilerDashboardTab.SUMMARY
+  );
 
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
@@ -41,78 +78,157 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
     return [
       {
         title: 'Row Count',
-        value: formatNumberWithComma(tableProfile?.rowCount ?? 0),
+        value: formatNumberWithComma(profile?.rowCount ?? 0),
       },
       {
         title: 'Column Count',
-        value: tableProfile?.columnCount ?? 0,
+        value: profile?.columnCount ?? 0,
       },
       {
         title: 'Table Sample %',
-        value: `${tableProfile?.profileSample ?? 0}%`,
+        value: `${profile?.profileSample ?? 100}%`,
       },
       {
         title: 'Success',
-        value: formTwoDigitNmber(0),
+        value: formTwoDigitNmber(tableTests.results.success),
         className: 'success',
       },
       {
         title: 'Aborted',
-        value: formTwoDigitNmber(0),
+        value: formTwoDigitNmber(tableTests.results.aborted),
         className: 'aborted',
       },
       {
         title: 'Failed',
-        value: formTwoDigitNmber(0),
+        value: formTwoDigitNmber(tableTests.results.failed),
         className: 'failed',
       },
     ];
-  }, [tableProfile]);
+  }, [profile, tableTests]);
 
-  if (isUndefined(tableProfile)) {
-    return (
-      <div
-        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-        data-testid="no-profiler-placeholder-container">
-        <span>
-          Data Profiler is an optional configuration in Ingestion. Please enable
-          the data profiler by following the documentation
-        </span>
-        <Link
-          className="tw-ml-1"
-          target="_blank"
-          to={{
-            pathname: 'https://docs.open-metadata.org/connectors',
-          }}>
-          here.
-        </Link>
-      </div>
+  const tabOptions = useMemo(() => {
+    return Object.values(ProfilerDashboardTab).filter(
+      (value) => value !== ProfilerDashboardTab.PROFILER
     );
-  }
+  }, []);
+
+  const handleTabChange = (e: RadioChangeEvent) => {
+    const value = e.target.value as ProfilerDashboardTab;
+    if (ProfilerDashboardTab.DATA_QUALITY === value) {
+      history.push(
+        getProfilerDashboardWithFqnPath(
+          ProfilerDashboardType.TABLE,
+          table.fullyQualifiedName || ''
+        )
+      );
+    }
+  };
+
+  const fetchAllTests = async () => {
+    try {
+      const { data } = await getListTestCase({
+        fields: 'testCaseResult',
+        entityLink: generateEntityLink(table.fullyQualifiedName || ''),
+        includeAllTests: true,
+        limit: API_RES_MAX_SIZE,
+      });
+      const columnTestsCase: TestCase[] = [];
+      const tableTests: TableTestsType = {
+        tests: [],
+        results: { ...INITIAL_TEST_RESULT_SUMMARY },
+      };
+      data.forEach((test) => {
+        if (test.entityFQN === table.fullyQualifiedName) {
+          tableTests.tests.push(test);
+
+          updateTestResults(
+            tableTests.results,
+            test.testCaseResult?.testCaseStatus || ''
+          );
+
+          return;
+        }
+        columnTestsCase.push(test);
+      });
+      setTableTests(tableTests);
+      setColumnTests(columnTestsCase);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    if (isEmpty(table)) return;
+    fetchAllTests();
+  }, [table]);
 
   return (
     <div
       className="table-profiler-container"
       data-testid="table-profiler-container">
-      <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
-        <Button
-          className="tw-rounded"
-          data-testid="profiler-add-table-test-btn"
-          type="primary"
-          onClick={() =>
-            onAddTestClick(getCurrentDatasetTab('data-quality'), 'table')
-          }>
-          Add Test
-        </Button>
-        <Button
-          className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
-          data-testid="profiler-setting-btn"
-          icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
-          type="default"
-          onClick={() => handleSettingModal(true)}>
-          Settings
-        </Button>
-      </div>
+      <Row className="tw-mb-4" justify="space-between">
+        <Radio.Group
+          buttonStyle="solid"
+          optionType="button"
+          options={tabOptions}
+          value={activeTab}
+          onChange={handleTabChange}
+        />
+
+        <Space>
+          <Tooltip
+            title={hasEditAccess ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+            <Link
+              to={
+                hasEditAccess
+                  ? getAddDataQualityTableTestPath(
+                      ProfilerDashboardType.TABLE,
+                      `${table.fullyQualifiedName}`
+                    )
+                  : '#'
+              }>
+              <Button
+                className="tw-rounded"
+                data-testid="profiler-add-table-test-btn"
+                disabled={!hasEditAccess}
+                type="primary">
+                Add Test
+              </Button>
+            </Link>
+          </Tooltip>
+          <Tooltip
+            title={hasEditAccess ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+              data-testid="profiler-setting-btn"
+              disabled={!hasEditAccess}
+              icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+              type="default"
+              onClick={() => handleSettingModal(true)}>
+              Settings
+            </Button>
+          </Tooltip>
+        </Space>
+      </Row>
+
+      {isUndefined(profile) && (
+        <div className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4">
+          <NoDataIcon />
+          <p className="tw-mb-0 tw-ml-2">
+            Data Profiler is an optional configuration in Ingestion. Please
+            enable the data profiler by following the documentation
+            <Link
+              className="tw-ml-1"
+              target="_blank"
+              to={{
+                pathname:
+                  'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+              }}>
+              here.
+            </Link>
+          </p>
+        </div>
+      )}
 
       <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
         {overallSummery.map((summery) => (
@@ -136,16 +252,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
       </Row>
 
       <ColumnProfileTable
-        columnProfile={(tableProfile?.columnProfile || []).map((col) => ({
+        columnTests={columnTests}
+        columns={columns.map((col) => ({
           ...col,
           key: col.name,
         }))}
-        columns={columns}
+        hasEditAccess={hasEditAccess}
         onAddTestClick={onAddTestClick}
       />
 
       <ProfilerSettingsModal
-        columnProfile={tableProfile.columnProfile || []}
+        columns={columns}
         tableId={table.id}
         visible={settingModalVisible}
         onVisibilityChange={handleSettingModal}

@@ -167,9 +167,9 @@ class MetabaseSource(DashboardServiceSource):
                     ),
                 )
                 self.status.scanned(chart_details["name"])
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(repr(err))
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
+                logger.warning(f"Error creating chart [{chart}]: {exc}")
                 continue
 
     def yield_dashboard_lineage_details(
@@ -215,7 +215,7 @@ class MetabaseSource(DashboardServiceSource):
                         )
                         from_entities = search_table_entities(
                             metadata=self.metadata,
-                            database=database["details"]["dbname"],
+                            database=database["details"]["db"],
                             service_name=db_service_name,
                             database_schema=database_schema_name,
                             table=table,
@@ -257,7 +257,7 @@ class MetabaseSource(DashboardServiceSource):
                             self.metadata,
                             entity_type=Table,
                             service_name=db_service_name,
-                            database_name=table["db"]["details"]["dbname"],
+                            database_name=table["db"]["details"]["db"],
                             schema_name=table.get("schema"),
                             table_name=table.get("display_name"),
                         )
@@ -287,9 +287,9 @@ class MetabaseSource(DashboardServiceSource):
                                 )
                             )
                             yield lineage
-            except Exception as err:  # pylint: disable=broad-except,unused-variable
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.error(f"Error creating chart [{chart}]: {exc}")
 
     def req_get(self, path):
         """Send get request method

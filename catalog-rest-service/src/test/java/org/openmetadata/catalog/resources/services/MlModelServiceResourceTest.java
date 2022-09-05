@@ -16,6 +16,8 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
@@ -33,7 +35,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.mlmodel.MlModelServiceResource.MlModelServiceList;
 import org.openmetadata.catalog.services.connections.mlModel.MlflowConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlModelConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -112,10 +113,8 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
         createRequest(test).withDescription("description1").withConnection(MlModelConnection1);
 
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("connection").withOldValue(MlModelConnection).withNewValue(MlModelConnection1));
+    fieldAdded(change, "description", "description1");
+    fieldUpdated(change, "connection", MlModelConnection, MlModelConnection1);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 

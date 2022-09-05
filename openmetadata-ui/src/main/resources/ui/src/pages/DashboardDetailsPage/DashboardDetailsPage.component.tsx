@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
@@ -78,16 +78,12 @@ import {
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import {
-  deletePost,
-  getUpdatedThread,
-  updateThreadData,
-} from '../../utils/FeedUtils';
+import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-type ChartType = {
+export type ChartType = {
   displayName: string;
 } & Chart;
 
@@ -176,7 +172,9 @@ const DashboardDetailsPage = () => {
       getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
       after,
       threadType,
-      feedFilter
+      feedFilter,
+      undefined,
+      USERId
     )
       .then((res) => {
         const { data, paging: pagingObj } = res;
@@ -206,17 +204,16 @@ const DashboardDetailsPage = () => {
 
   const fetchCharts = async (charts: Dashboard['charts']) => {
     let chartsData: ChartType[] = [];
-    let promiseArr: Array<AxiosPromise> = [];
+    let promiseArr: Array<Promise<ChartType>> = [];
     if (charts?.length) {
       promiseArr = charts.map((chart) => getChartById(chart.id, ['tags']));
       await Promise.allSettled(promiseArr)
-        .then((res: PromiseSettledResult<AxiosResponse>[]) => {
+        .then((res) => {
           if (res.length) {
             chartsData = res
               .filter((chart) => chart.status === 'fulfilled')
               .map(
-                (chart) =>
-                  (chart as PromiseFulfilledResult<AxiosResponse>).value.data
+                (chart) => (chart as PromiseFulfilledResult<ChartType>).value
               );
           }
         })
@@ -695,44 +692,12 @@ const DashboardDetailsPage = () => {
       });
   };
 
-  const deletePostHandler = (threadId: string, postId: string) => {
-    deletePost(threadId, postId)
-      .then(() => {
-        getUpdatedThread(threadId)
-          .then((data) => {
-            if (data) {
-              setEntityThread((pre) => {
-                return pre.map((thread) => {
-                  if (thread.id === data.id) {
-                    return {
-                      ...thread,
-                      posts: data.posts && data.posts.slice(-3),
-                      postsCount: data.postsCount,
-                    };
-                  } else {
-                    return thread;
-                  }
-                });
-              });
-            } else {
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
-            }
-          })
-          .catch((error: AxiosError) => {
-            showErrorToast(
-              error,
-              jsonData['api-error-messages']['fetch-updated-conversation-error']
-            );
-          });
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['delete-message-error']
-        );
-      });
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread, setEntityThread);
   };
 
   const updateThreadHandler = (

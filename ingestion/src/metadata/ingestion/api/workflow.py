@@ -10,6 +10,8 @@
 #  limitations under the License.
 
 import importlib
+import time
+import traceback
 from typing import Type, TypeVar
 
 import click
@@ -19,6 +21,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseMetadataConfigType,
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -33,6 +39,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 
 logger = ingestion_logger()
@@ -80,6 +87,8 @@ class Workflow:
         )
 
         self._retrieve_service_connection_if_needed(metadata_config, service_type)
+
+        self._retrieve_dbt_config_source_if_needed(metadata_config, service_type)
 
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
@@ -229,6 +238,19 @@ class Workflow:
             click.echo(self.bulk_sink.get_status().as_string())
             click.echo()
 
+        if self.source.get_status().source_start_time:
+            click.secho(
+                f"Workflow finished in time {pretty_print_time_duration(time.time()-self.source.get_status().source_start_time)} ",
+                fg="bright_cyan",
+                bold=True,
+            )
+
+            click.secho(
+                f"Success % : {self.source.get_status().calculate_success()}",
+                fg="bright_cyan",
+                bold=True,
+            )
+
         if self.source.get_status().failures or (
             hasattr(self, "sink") and self.sink.get_status().failures
         ):
@@ -248,31 +270,71 @@ class Workflow:
     ) -> None:
         """
         We override the current `serviceConnection` source config object if source workflow service already exists
-        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
-        from the service object itself through the default `SecretsManager`.
+        in OM. When secrets' manager is configured, we retrieve the service connection from the secrets' manager.
+        Otherwise, we get the service connection from the service object itself through the default `SecretsManager`.
 
         :param metadata_config: OpenMetadata connection config
         :param service_type: source workflow service type
         :return:
         """
-        # We override the current serviceConnection source object if source workflow service already exists in OM.
-        # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
-        # from the service object itself.
         if service_type is not ServiceType.Metadata and not self._is_sample_source(
             self.config.source.type
         ):
+            service_name = self.config.source.serviceName
             metadata = OpenMetadata(config=metadata_config)
-            service = metadata.get_by_name(
-                get_service_class_from_service_type(service_type),
-                self.config.source.serviceName,
-            )
-            if service:
-                self.config.source.serviceConnection = (
-                    metadata.secrets_manager_client.retrieve_service_connection(
-                        service, service_type.name.lower()
+            try:
+                service = metadata.get_by_name(
+                    get_service_class_from_service_type(service_type),
+                    service_name,
+                )
+                if service:
+                    self.config.source.serviceConnection = (
+                        metadata.secrets_manager_client.retrieve_service_connection(
+                            service, service_type.name.lower()
+                        )
                     )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting dbtConfigSource for service name [{service_name}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
+                )
+
+    def _retrieve_dbt_config_source_if_needed(
+        self, metadata_config: OpenMetadataConnection, service_type: ServiceType
+    ) -> None:
+        """
+        We override the current `config` source config object if it is a metadata ingestion type. When secrets' manager
+        is configured, we retrieve the config from the secrets' manager. Otherwise, we get the config from the source
+        config object itself through the default `SecretsManager`.
+
+        :return:
+        """
+        config = self.config.source.sourceConfig.config
+        if (
+            service_type is ServiceType.Database
+            and config
+            and config.type == DatabaseMetadataConfigType.DatabaseMetadata
+        ):
+            metadata = OpenMetadata(config=metadata_config)
+            try:
+                dbt_config_source: object = (
+                    metadata.secrets_manager_client.retrieve_dbt_source_config(
+                        self.config.source.sourceConfig,
+                        self.config.source.serviceName,
+                    )
+                )
+                if dbt_config_source:
+                    config_dict = config.dict()
+                    config_dict["dbtConfigSource"] = dbt_config_source
+                    self.config.source.sourceConfig.config = (
+                        DatabaseServiceMetadataPipeline.parse_obj(config_dict)
+                    )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting dbtConfigSource for config [{config}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     @staticmethod
-    def _is_sample_source(service_type):
+    def _is_sample_source(service_type: str) -> bool:
         return service_type in SAMPLE_SOURCE

@@ -147,7 +147,7 @@ def _(connection):
 
 @get_connection_url.register
 def _(connection: MssqlConnection):
-    if connection.scheme.value == connection.scheme.mssql_pyodbc:
+    if connection.scheme.value == connection.scheme.mssql_pyodbc.value:
         return f"{connection.scheme.value}://{connection.uriString}"
     return get_connection_url_common(connection)
 
@@ -317,15 +317,17 @@ def _(connection: SnowflakeConnection):
 @get_connection_url.register
 def _(connection: HiveConnection):
     url = f"{connection.scheme.value}://"
-    if connection.connectionArguments:
-        if connection.connectionArguments.auth in ("LDAP", "CUSTOM"):
-            if connection.username:
-                url += f"{connection.username}"
-                if not connection.password:
-                    connection.password = SecretStr("")
-                url += f":{quote_plus(connection.password.get_secret_value())}"
-
-                url += "@"
+    if (
+        connection.username
+        and connection.connectionArguments
+        and hasattr(connection.connectionArguments, "auth")
+        and connection.connectionArguments.auth in ("LDAP", "CUSTOM")
+    ):
+        url += f"{connection.username}"
+        if not connection.password:
+            connection.password = SecretStr("")
+        url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
 
     url += connection.hostPort
     url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
@@ -335,6 +337,7 @@ def _(connection: HiveConnection):
         if connection.connectionOptions
         else connection.connectionOptions
     )
+
     if options:
         if not connection.databaseSchema:
             url += "/"
@@ -403,6 +406,9 @@ def _(connection: AthenaConnection):
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
     if connection.workgroup:
         url += f"&work_group={connection.workgroup}"
+    if connection.awsConfig.awsSessionToken:
+        url += f"&aws_session_token={quote_plus(connection.awsConfig.awsSessionToken)}"
+
     return url
 
 

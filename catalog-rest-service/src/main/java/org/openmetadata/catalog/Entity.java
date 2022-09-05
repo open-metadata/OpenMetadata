@@ -106,6 +106,7 @@ public final class Entity {
   // Policy entity
   //
   public static final String POLICY = "policy";
+  public static final String POLICIES = "policies";
 
   //
   // Service
@@ -129,6 +130,7 @@ public final class Entity {
   // Reserved names in OpenMetadata
   //
   public static final String ORGANIZATION_NAME = "Organization";
+  public static final String DATACONSUMER_ROLE = "DataConsumer";
 
   //
   // List of entities whose changes should not be published to the Activity Feed

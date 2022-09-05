@@ -13,6 +13,7 @@
 Test Profiler behavior
 """
 import os
+from datetime import datetime, timezone
 from unittest import TestCase
 from uuid import uuid4
 
@@ -33,7 +34,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
@@ -63,7 +64,7 @@ class ProfilerTest(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+
     table_entity = Table(
         id=uuid4(),
         name="user",
@@ -73,6 +74,9 @@ class ProfilerTest(TestCase):
                 dataType=DataType.INT,
             )
         ],
+    )
+    sqa_profiler_interface = SQAInterface(
+        sqlite_conn, table=User, table_entity=table_entity
     )
 
     @classmethod
@@ -89,25 +93,19 @@ class ProfilerTest(TestCase):
         cls.sqa_profiler_interface.session.add_all(data)
         cls.sqa_profiler_interface.session.commit()
 
-    def setUp(self) -> None:
-        self.sqa_profiler_interface.create_sampler(User)
-        self.sqa_profiler_interface.create_runner(User)
-
     def test_default_profiler(self):
         """
         Check our pre-cooked profiler
         """
         simple = DefaultProfiler(
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            table_entity=self.table_entity,
         )
-        simple.execute()
+        simple.compute_metrics()
 
         profile = simple.get_profile()
 
-        assert profile.rowCount == 2
-        assert profile.columnCount == 5
+        assert profile.tableProfile.rowCount == 2
+        assert profile.tableProfile.columnCount == 5
 
         age_profile = next(
             (
@@ -139,6 +137,7 @@ class ProfilerTest(TestCase):
             distinctCount=2.0,
             distinctProportion=1.0,
             median=30.5,
+            timestamp=datetime.now(tz=timezone.utc).timestamp()
             # histogram=Histogram(
             #     boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
             # ),
@@ -160,9 +159,6 @@ class ProfilerTest(TestCase):
             count,
             like_ratio,
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            use_cols=[User.age],
-            table_entity=self.table_entity,
         )
 
         with pytest.raises(MissingMetricException):
@@ -171,9 +167,6 @@ class ProfilerTest(TestCase):
                 like,
                 like_ratio,
                 profiler_interface=self.sqa_profiler_interface,
-                table=User,
-                use_cols=[User.age],
-                table_entity=self.table_entity,
             )
 
     def test_skipped_types(self):
@@ -194,15 +187,6 @@ class ProfilerTest(TestCase):
         profiler = Profiler(
             Metrics.COUNT.value,
             profiler_interface=self.sqa_profiler_interface,
-            table=NotCompute,
-            use_cols=[
-                NotCompute.null_col,
-                NotCompute.array_col,
-                NotCompute.json_col,
-                NotCompute.map_col,
-                NotCompute.struct_col,
-            ],
-            table_entity=self.table_entity,
         )
 
         assert not profiler.column_results
