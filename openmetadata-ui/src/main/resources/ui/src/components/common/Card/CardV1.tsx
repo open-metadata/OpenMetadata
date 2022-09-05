@@ -13,19 +13,22 @@
 
 import { Card } from 'antd';
 import { lowerCase } from 'lodash';
-import React from 'react';
-
-interface CardProps {
-  description: string;
+import React, { HTMLAttributes } from 'react';
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   id: string;
   heading?: string;
+  classes?: string;
 }
 
-const CardV1 = ({ description, id, heading }: CardProps) => {
+const CardV1 = ({ children, id, heading, classes, style }: CardProps) => {
   return (
-    <Card data-testid={`${lowerCase(id)}-summary-container`} size="small">
+    <Card
+      className={`${classes} tw-h-full`}
+      data-testid={`${lowerCase(id)}-summary-container`}
+      size="small"
+      style={style}>
       {heading ? <h6 className="tw-heading tw-text-base">{heading}</h6> : ''}
-      <div style={{ margin: '8px', textAlign: 'justify' }}>{description}</div>
+      <div style={{ textAlign: 'justify' }}>{children}</div>
     </Card>
   );
 };

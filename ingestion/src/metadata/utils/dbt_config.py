@@ -32,6 +32,7 @@ logger = ometa_logger()
 
 DBT_CATALOG_FILE_NAME = "catalog.json"
 DBT_MANIFEST_FILE_NAME = "manifest.json"
+DBT_RUN_RESULTS_FILE_NAME = "run_results.json"
 
 
 @singledispatch
@@ -45,6 +46,7 @@ def get_dbt_details(config):
 @get_dbt_details.register
 def _(config: DbtLocalConfig):
     try:
+        dbt_run_results = None
         if config.dbtCatalogFilePath is not None:
             logger.debug(
                 f"Reading [dbtCatalogFilePath] from: {config.dbtCatalogFilePath}"
@@ -57,7 +59,22 @@ def _(config: DbtLocalConfig):
             )
             with open(config.dbtManifestFilePath, "r", encoding="utf-8") as manifest:
                 dbt_manifest = manifest.read()
-        return json.loads(dbt_catalog), json.loads(dbt_manifest)
+        if (
+            config.dbtRunResultsFilePath is not None
+            and config.dbtRunResultsFilePath is not ""
+        ):
+            logger.debug(
+                f"Reading [dbtRunResultsFilePath] from: {config.dbtRunResultsFilePath}"
+            )
+            with open(
+                config.dbtRunResultsFilePath, "r", encoding="utf-8"
+            ) as run_results:
+                dbt_run_results = run_results.read()
+        return (
+            json.loads(dbt_catalog),
+            json.loads(dbt_manifest),
+            json.loads(dbt_run_results) if dbt_run_results else None,
+        )
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Error fetching dbt files from local: {exc}")
@@ -71,7 +88,20 @@ def _(config: DbtHttpConfig):
         dbt_catalog = requests.get(config.dbtCatalogHttpPath)
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
         dbt_manifest = requests.get(config.dbtManifestHttpPath)
-        return json.loads(dbt_catalog.text), json.loads(dbt_manifest.text)
+        dbt_run_results = None
+        if (
+            config.dbtRunResultsHttpPath is not None
+            and config.dbtRunResultsHttpPath is not ""
+        ):
+            logger.debug(
+                f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
+            )
+            dbt_run_results = requests.get(config.dbtRunResultsHttpPath)
+        return (
+            json.loads(dbt_catalog.text),
+            json.loads(dbt_manifest.text),
+            json.loads(dbt_run_results.text) if dbt_run_results else None,
+        )
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Error fetching dbt files from file server: {exc}")
@@ -82,6 +112,7 @@ def _(config: DbtHttpConfig):
 def _(config: DbtCloudConfig):
     dbt_catalog = None
     dbt_manifest = None
+    dbt_run_results = None
     try:
         from metadata.ingestion.ometa.client import REST, ClientConfig
 
@@ -96,7 +127,9 @@ def _(config: DbtCloudConfig):
         )
         client = REST(client_config)
         account_id = config.dbtCloudAccountId
-        logger.debug("Requesting [dbt_catalog] and [dbt_manifest] data")
+        logger.debug(
+            "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
+        )
         response = client.get(
             f"/accounts/{account_id}/runs/?order_by=-finished_at&limit=1"
         )
@@ -111,16 +144,21 @@ def _(config: DbtCloudConfig):
             dbt_manifest = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}"
             )
+            logger.debug(f"Requesting [dbt_run_results]")
+            dbt_run_results = client.get(
+                f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
+            )
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Error fetching dbt files from DBT Cloud: {exc}")
-    return dbt_catalog, dbt_manifest
+    return dbt_catalog, dbt_manifest, dbt_run_results
 
 
 @get_dbt_details.register
 def _(config: DbtS3Config):
     dbt_catalog = None
     dbt_manifest = None
+    dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         from metadata.clients.aws_client import AWSClient
@@ -143,7 +181,14 @@ def _(config: DbtS3Config):
                 if DBT_CATALOG_FILE_NAME in bucket_object.key:
                     logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
                     dbt_catalog = bucket_object.get()["Body"].read().decode()
-        return json.loads(dbt_catalog), json.loads(dbt_manifest)
+                if DBT_RUN_RESULTS_FILE_NAME in bucket_object.key:
+                    logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
+                    dbt_run_results = bucket_object.get()["Body"].read().decode()
+        return (
+            json.loads(dbt_catalog),
+            json.loads(dbt_manifest),
+            json.loads(dbt_run_results) if dbt_run_results else None,
+        )
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Error fetching dbt files from s3: {exc}")
@@ -154,6 +199,7 @@ def _(config: DbtS3Config):
 def _(config: DbtGCSConfig):
     dbt_catalog = None
     dbt_manifest = None
+    dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         from google.cloud import storage
@@ -176,7 +222,14 @@ def _(config: DbtGCSConfig):
                 if DBT_CATALOG_FILE_NAME in blob.name:
                     logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
                     dbt_catalog = blob.download_as_string().decode()
-        return json.loads(dbt_catalog), json.loads(dbt_manifest)
+                if DBT_RUN_RESULTS_FILE_NAME in blob.name:
+                    logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
+                    dbt_run_results = blob.download_as_string().decode()
+        return (
+            json.loads(dbt_catalog),
+            json.loads(dbt_manifest),
+            json.loads(dbt_run_results) if dbt_run_results else None,
+        )
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Error fetching dbt files from gcs: {exc}")

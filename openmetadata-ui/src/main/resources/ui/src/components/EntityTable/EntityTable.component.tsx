@@ -222,7 +222,7 @@ const EntityTable = ({
     });
   };
 
-  const handleEditColumnChange = (columnDescription: string): void => {
+  const handleEditColumnChange = async (columnDescription: string) => {
     if (editColumn) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnDescription(
@@ -230,7 +230,7 @@ const EntityTable = ({
         editColumn.column.name,
         columnDescription
       );
-      onUpdate?.(tableCols);
+      await onUpdate?.(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);

@@ -24,7 +24,9 @@ const PageContainerV1 = ({
   className = '',
 }: PageContainerV1Props) => {
   return (
-    <div className={classNames('page-container-v1 tw-bg-body-main', className)}>
+    <div
+      className={classNames('page-container-v1 tw-bg-body-main', className)}
+      data-testid="container">
       {children}
     </div>
   );

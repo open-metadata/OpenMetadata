@@ -237,7 +237,7 @@ const PipelineDetails = ({
     },
   ];
 
-  const onTaskUpdate = (taskDescription: string) => {
+  const onTaskUpdate = async (taskDescription: string) => {
     if (editTask) {
       const updatedTasks = [...(pipelineDetails.tasks || [])];
 
@@ -249,7 +249,7 @@ const PipelineDetails = ({
 
       const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
       const jsonPatch = compare(pipelineDetails, updatedPipeline);
-      taskUpdateHandler(jsonPatch);
+      await taskUpdateHandler(jsonPatch);
       setEditTask(undefined);
     } else {
       setEditTask(undefined);
@@ -307,13 +307,13 @@ const PipelineDetails = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedPipelineDetails = {
         ...pipelineDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedPipelineDetails);
+      await descriptionUpdateHandler(updatedPipelineDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);

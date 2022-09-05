@@ -12,8 +12,9 @@
  */
 
 import { Popover } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isFunction, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -27,6 +28,7 @@ import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
 } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import { DescriptionProps } from './Description.interface';
@@ -68,6 +70,18 @@ const Description: FC<DescriptionProps> = ({
 
   const handleUpdate = () => {
     onDescriptionEdit && onDescriptionEdit();
+  };
+
+  const handleSave = async (updatedDescription: string) => {
+    if (onDescriptionUpdate && isFunction(onDescriptionUpdate)) {
+      try {
+        await onDescriptionUpdate(updatedDescription);
+
+        onCancel && onCancel();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
   };
 
   const RequestDescriptionEl = () => {
@@ -205,7 +219,7 @@ const Description: FC<DescriptionProps> = ({
               placeholder="Enter Description"
               value={description}
               onCancel={onCancel}
-              onSave={onDescriptionUpdate}
+              onSave={handleSave}
             />
           )}
         </div>
