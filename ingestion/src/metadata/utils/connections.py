@@ -362,13 +362,10 @@ def _(connection, verbose: bool = False) -> KafkaClient:
             consumer_config["group.id"] = "openmetadata-consumer"
         if "auto.offset.reset" not in consumer_config:
             consumer_config["auto.offset.reset"] = "earliest"
-
-        for key in connection.schemaRegistryConfig:
-            consumer_config["schema.registry." + key] = connection.schemaRegistryConfig[
-                key
-            ]
         logger.debug(f"Using Kafka consumer config: {consumer_config}")
-        consumer_client = AvroConsumer(consumer_config)
+        consumer_client = AvroConsumer(
+            consumer_config, schema_registry=schema_registry_client
+        )
 
     return KafkaClient(
         admin_client=admin_client,
