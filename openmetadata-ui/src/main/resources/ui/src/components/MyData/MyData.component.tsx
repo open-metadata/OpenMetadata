@@ -33,7 +33,8 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
@@ -67,13 +68,13 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getLeftPanel = () => {
     return (
-      <div className="tw-mt-4">
+      <>
         <MyAssetStats entityCounts={entityCounts} />
         <div className="tw-mb-5" />
         <RecentlyViewed />
         <div className="tw-mb-5" />
         <RecentSearchedTermsAntd />
-      </div>
+      </>
     );
   };
 
@@ -81,7 +82,7 @@ const MyData: React.FC<MyDataProps> = ({
     const currentUserDetails = AppState.getCurrentUserDetails();
 
     return (
-      <div className="tw-mt-4">
+      <>
         {/* Pending task count card */}
         {pendingTaskCount ? (
           <div className="tw-mb-5" data-testid="my-tasks-container ">
@@ -170,7 +171,7 @@ const MyData: React.FC<MyDataProps> = ({
           />
         </div>
         <div className="tw-mt-5" />
-      </div>
+      </>
     );
   }, [ownedData, followedData, pendingTaskCount]);
 
@@ -219,7 +220,7 @@ const MyData: React.FC<MyDataProps> = ({
   );
 
   return (
-    <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
+    <PageLayoutV1 leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
@@ -228,7 +229,6 @@ const MyData: React.FC<MyDataProps> = ({
             <>
               <ActivityFeedList
                 withSidePanel
-                className="tw-mt-3"
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
                 postFeedHandler={postFeedHandler}
@@ -252,7 +252,7 @@ const MyData: React.FC<MyDataProps> = ({
           <div className="tw-p-4" />
         </Fragment>
       )}
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 

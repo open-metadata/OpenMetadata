@@ -276,7 +276,7 @@ const UserPage = () => {
   }, [AppState.nonSecureUserDetails, AppState.userDetails]);
 
   return (
-    <PageContainerV1 className="tw-pt-4">
+    <PageContainerV1>
       {isLoading ? <Loader /> : getUserComponent()}
     </PageContainerV1>
   );

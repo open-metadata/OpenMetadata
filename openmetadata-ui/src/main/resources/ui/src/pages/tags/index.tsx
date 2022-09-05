@@ -33,7 +33,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
@@ -509,8 +509,8 @@ const TagsPage = () => {
   };
 
   return (
-    <PageContainerV1 className="tw-py-4">
-      <PageLayout leftPanel={fetchLeftPanel()}>
+    <PageContainerV1>
+      <PageLayoutV1 leftPanel={fetchLeftPanel()}>
         {isLoading ? (
           <Loader />
         ) : error ? (
@@ -788,7 +788,7 @@ const TagsPage = () => {
             )}
           </div>
         )}
-      </PageLayout>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

@@ -13,6 +13,9 @@
 
 // common css utils file
 
+@primary: #7147e8;
+@primary-light: rgb(244, 240, 253);
+
 .flex-center {
   display: flex;
   align-items: center;
@@ -34,4 +37,21 @@
 
 .h-full {
   width: 100%;
+}
+
+.border-l-2 {
+  border-left: 2px;
+}
+
+.border-primary {
+  border-color: @primary;
+}
+
+.bg-primary-lite {
+  background: @primary-light;
+}
+
+.activeCategory {
+  border-left: 2px solid @primary;
+  background: @primary-light;
 }
