@@ -57,11 +57,11 @@ export const SEARCH_ENTITY_PIPELINE = {
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_2: {
-    term: 'Hive ETL',
+    term: 'Hive',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_3: {
-    term: 'Trino ETL',
+    term: 'Trino',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
 };
