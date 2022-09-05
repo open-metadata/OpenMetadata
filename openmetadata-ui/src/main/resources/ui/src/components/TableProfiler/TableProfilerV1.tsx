@@ -22,9 +22,10 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { getListTestCase } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -175,7 +176,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         />
 
         <Space>
-          <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip
+            title={hasEditAccess ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
             <Link
               to={
                 hasEditAccess
@@ -194,16 +196,39 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               </Button>
             </Link>
           </Tooltip>
-          <Button
-            className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
-            data-testid="profiler-setting-btn"
-            icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
-            type="default"
-            onClick={() => handleSettingModal(true)}>
-            Settings
-          </Button>
+          <Tooltip
+            title={hasEditAccess ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+              data-testid="profiler-setting-btn"
+              disabled={!hasEditAccess}
+              icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+              type="default"
+              onClick={() => handleSettingModal(true)}>
+              Settings
+            </Button>
+          </Tooltip>
         </Space>
       </Row>
+
+      {isUndefined(profile) && (
+        <div className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4">
+          <NoDataIcon />
+          <p className="tw-mb-0 tw-ml-2">
+            Data Profiler is an optional configuration in Ingestion. Please
+            enable the data profiler by following the documentation
+            <Link
+              className="tw-ml-1"
+              target="_blank"
+              to={{
+                pathname:
+                  'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+              }}>
+              here.
+            </Link>
+          </p>
+        </div>
+      )}
 
       <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
         {overallSummery.map((summery) => (
@@ -232,6 +257,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           ...col,
           key: col.name,
         }))}
+        hasEditAccess={hasEditAccess}
         onAddTestClick={onAddTestClick}
       />
 

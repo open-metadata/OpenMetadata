@@ -94,7 +94,9 @@ const DataQualityTable = ({
   };
 
   return (
-    <div className="tw-table-responsive" data-testid="table-container">
+    <div
+      className="tw-table-responsive tw-table-container"
+      data-testid="table-container">
       <table className="tw-w-full">
         <thead>
           <tr className="tableHead-row" data-testid="table-header">

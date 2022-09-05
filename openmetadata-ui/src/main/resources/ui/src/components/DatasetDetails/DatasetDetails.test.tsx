@@ -52,6 +52,9 @@ jest.mock('antd', () => ({
   Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -210,6 +213,12 @@ jest.mock('../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
+jest.mock('../SampleDataTable/SampleDataTable.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="sample-data">Sample Data</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
@@ -272,7 +281,7 @@ describe('Test MyDataDetailsPage page', () => {
     const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
     const sampleDataTab = await findByTestId(tabs, 'Sample Data');
     const queriesTab = await findByTestId(tabs, 'Queries');
-    const profilerTab = await findByTestId(tabs, 'Profiler');
+    const profilerTab = await findByTestId(tabs, 'Profiler & Data Quality');
     const lineageTab = await findByTestId(tabs, 'Lineage');
     const dbtTab = queryByTestId(tabs, 'DBT');
 

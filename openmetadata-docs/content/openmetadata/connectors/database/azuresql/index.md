@@ -10,7 +10,7 @@ In this section, we provide guides and references to use the AzureSQL connector.
 Configure and schedule AzureSQL metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -135,7 +135,7 @@ the changes.
 - **Password**: Password to connect to AzureSQL.
 - **Host and Port**: Enter the fully qualified hostname and port number for your AzureSQL deployment in the Host and Port field.
 - **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
-- **Driver (Optional)**: SQLAlchemy driver for AzureSQL. `ODBC Driver 17 for SQL Server` by default.
+- **Driver (Optional)**: SQLAlchemy driver for AzureSQL. `ODBC Driver 18 for SQL Server` by default.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to AzureSQL during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to AzureSQL during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
@@ -218,7 +218,7 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 <Tile
 icon="schema"

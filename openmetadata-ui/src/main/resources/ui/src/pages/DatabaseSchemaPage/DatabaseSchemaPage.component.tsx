@@ -514,9 +514,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTableList = () => {
     return (
-      <Fragment>
+      <div className="tw-table-container tw-mb-4">
         <table
-          className="tw-bg-white tw-w-full tw-mb-4"
+          className="tw-bg-white tw-w-full"
           data-testid="databaseSchema-tables">
           <thead data-testid="table-header">
             <tr className="tableHead-row">
@@ -565,7 +565,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             )}
           </tbody>
         </table>
-      </Fragment>
+      </div>
     );
   };
 
@@ -639,7 +639,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <EntitySummaryDetails
                     data={info}
                     updateOwner={
-                      databaseSchemaPermission.EditOwner
+                      databaseSchemaPermission.EditOwner ||
+                      databaseSchemaPermission.EditAll
                         ? handleUpdateOwner
                         : undefined
                     }
@@ -664,7 +665,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 entityFqn={databaseSchemaFQN}
                 entityName={databaseSchemaName}
                 entityType={EntityType.DATABASE_SCHEMA}
-                hasEditAccess={databaseSchemaPermission.EditDescription}
+                hasEditAccess={
+                  databaseSchemaPermission.EditDescription ||
+                  databaseSchemaPermission.EditAll
+                }
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}

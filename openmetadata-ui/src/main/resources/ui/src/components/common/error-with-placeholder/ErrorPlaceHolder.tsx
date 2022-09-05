@@ -11,31 +11,88 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import React from 'react';
-import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.png';
+import {
+  default as AddPlaceHolder,
+  default as NoDataFoundPlaceHolder,
+} from '../../../assets/img/no-data-placeholder.svg';
+import { Button } from '../../buttons/Button/Button';
 
 type Props = {
   children?: React.ReactNode;
+  type?: string;
+  buttonLabel?: string;
+  buttonListener?: () => void;
+  heading?: string;
+  doc?: string;
+  buttons?: React.ReactNode;
+  buttonId?: string;
 };
 
-const ErrorPlaceHolder = ({ children }: Props) => (
-  <>
-    <div
-      className="tw-flex tw-flex-col tw-mt-24 tw-place-items-center"
-      data-testid="error">
-      {' '}
-      <img
-        data-testid="no-data-image"
-        src={NoDataFoundPlaceHolder}
-        width="200"
-      />
-    </div>
-    {children && (
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
-        {children}
+const ErrorPlaceHolder = ({
+  doc,
+  type,
+  children,
+  heading,
+  buttonLabel,
+  buttonListener,
+  buttons,
+  buttonId,
+}: Props) => {
+  const { Paragraph, Link } = Typography;
+
+  return type === 'ADD_DATA' ? (
+    <>
+      <div className="flex-center flex-col tw-mt-24 " data-testid="error">
+        {' '}
+        <img data-testid="no-data-image" src={AddPlaceHolder} width="100" />
       </div>
-    )}
-  </>
-);
+      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
+        <Paragraph style={{ marginBottom: '4px' }}>
+          {' '}
+          Adding a new {heading} is easy, just give it a spin!
+        </Paragraph>
+        <Paragraph>
+          {' '}
+          Still need help? Refer to our{' '}
+          <Link href={doc} target="_blank">
+            docs
+          </Link>{' '}
+          for more information.
+        </Paragraph>
+
+        <div className="tw-text-lg tw-text-center">
+          {buttons ? (
+            buttons
+          ) : (
+            <Button
+              data-testId={buttonId}
+              size="small"
+              theme="primary"
+              onClick={buttonListener}>
+              {buttonLabel}
+            </Button>
+          )}
+        </div>
+      </div>
+    </>
+  ) : (
+    <div className="flex-center flex-col tw-mt-24 w-full">
+      <div data-testid="error">
+        <img
+          data-testid="no-data-image"
+          src={NoDataFoundPlaceHolder}
+          width="100"
+        />
+      </div>
+      {children && (
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default ErrorPlaceHolder;

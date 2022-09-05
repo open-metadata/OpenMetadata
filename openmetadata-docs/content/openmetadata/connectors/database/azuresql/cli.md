@@ -10,7 +10,7 @@ In this section, we provide guides and references to use the AzureSQL connector.
 Configure and schedule AzureSQL metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 ## Requirements
@@ -58,7 +58,7 @@ source:
       database: database_name
       username: username
       password: password
-      # driver: ODBC Driver 17 for SQL Server (default)
+      # driver: ODBC Driver 18 for SQL Server (default)
   sourceConfig:
     config:
       markDeletedTables: true
@@ -140,7 +140,7 @@ workflowConfig:
 - **password**: Password to connect to AzureSQL.
 - **hostPort**: Enter the fully qualified hostname and port number for your AzureSQL deployment in the Host and Port field.
 - **database**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
-- **driver**: SQLAlchemy driver for AzureSQL. `ODBC Driver 17 for SQL Server` by default.
+- **driver**: SQLAlchemy driver for AzureSQL. `ODBC Driver 18 for SQL Server` by default.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to AzureSQL during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to AzureSQL during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
@@ -310,7 +310,7 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
 While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be
@@ -331,7 +331,7 @@ source:
       database: database_name
       username: username
       password: password
-      # driver: ODBC Driver 17 for SQL Server (default)
+      # driver: ODBC Driver 18 for SQL Server (default)
   sourceConfig:
     config:
       type: Profiler

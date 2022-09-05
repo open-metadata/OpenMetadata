@@ -340,49 +340,55 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     return (
       <div className="tw-flex tw-flex-col tw-mt-2">
         <h6 className="tw-font-medium tw-text-base">Hyper Parameters</h6>
-        <table
-          className="tw-w-full tw-mt-2"
-          data-testid="hyperparameters-table"
-          id="hyperparameters-table">
-          <thead>
-            <tr className="tableHead-row">
-              <th className="tableHead-cell">Name</th>
-              <th className="tableHead-cell">Value</th>
-            </tr>
-          </thead>
-          <tbody className="tableBody">
-            {mlModelDetail.mlHyperParameters &&
-            mlModelDetail.mlHyperParameters.length ? (
-              <Fragment>
-                {mlModelDetail.mlHyperParameters.map((param) => (
-                  <tr
-                    className={classNames('tableBody-row')}
-                    data-testid="tableBody-row"
-                    key={uniqueId()}>
-                    <td className="tableBody-cell" data-testid="tableBody-cell">
-                      {param.name}
-                    </td>
-                    <td className="tableBody-cell" data-testid="tableBody-cell">
-                      {param.value}
-                    </td>
-                  </tr>
-                ))}
-              </Fragment>
-            ) : (
-              <tr
-                className={classNames('tableBody-row')}
-                data-testid="tableBody-row"
-                key={uniqueId()}>
-                <td
-                  className="tableBody-cell tw-text-center"
-                  colSpan={2}
-                  data-testid="tableBody-cell">
-                  No Data
-                </td>
+        <div className="tw-table-container tw-mt-2">
+          <table
+            className="tw-w-full"
+            data-testid="hyperparameters-table"
+            id="hyperparameters-table">
+            <thead>
+              <tr className="tableHead-row">
+                <th className="tableHead-cell">Name</th>
+                <th className="tableHead-cell">Value</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="tableBody">
+              {mlModelDetail.mlHyperParameters &&
+              mlModelDetail.mlHyperParameters.length ? (
+                <Fragment>
+                  {mlModelDetail.mlHyperParameters.map((param) => (
+                    <tr
+                      className={classNames('tableBody-row')}
+                      data-testid="tableBody-row"
+                      key={uniqueId()}>
+                      <td
+                        className="tableBody-cell"
+                        data-testid="tableBody-cell">
+                        {param.name}
+                      </td>
+                      <td
+                        className="tableBody-cell"
+                        data-testid="tableBody-cell">
+                        {param.value}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ) : (
+                <tr
+                  className={classNames('tableBody-row')}
+                  data-testid="tableBody-row"
+                  key={uniqueId()}>
+                  <td
+                    className="tableBody-cell tw-text-center"
+                    colSpan={2}
+                    data-testid="tableBody-cell">
+                    No Data
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
@@ -392,47 +398,49 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <div className="tw-flex tw-flex-col tw-mt-2">
         <h6 className="tw-font-medium tw-text-base">Model Store</h6>
         {mlModelDetail.mlStore ? (
-          <table
-            className="tw-w-full tw-mt-2"
-            data-testid="model-store-table"
-            id="model-store-table">
-            <thead>
-              <tr className="tableHead-row">
-                {Object.keys(mlModelDetail.mlStore).map((key) => (
-                  <th className="tableHead-cell" key={uniqueId()}>
-                    {startCase(key)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="tableBody">
-              <tr
-                className={classNames('tableBody-row')}
-                data-testid="tableBody-row"
-                key={uniqueId()}>
-                <td className="tableBody-cell" data-testid="tableBody-cell">
-                  <span>
-                    <a
-                      href={mlModelDetail.mlStore.storage}
-                      rel="noreferrer"
-                      target="_blank">
-                      {mlModelDetail.mlStore.storage}
-                    </a>
-                  </span>
-                </td>
-                <td className="tableBody-cell" data-testid="tableBody-cell">
-                  <span>
-                    <a
-                      href={mlModelDetail.mlStore.imageRepository}
-                      rel="noreferrer"
-                      target="_blank">
-                      {mlModelDetail.mlStore.imageRepository}
-                    </a>
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="tw-mt-2 tw-table-container">
+            <table
+              className="tw-w-full"
+              data-testid="model-store-table"
+              id="model-store-table">
+              <thead>
+                <tr className="tableHead-row">
+                  {Object.keys(mlModelDetail.mlStore).map((key) => (
+                    <th className="tableHead-cell" key={uniqueId()}>
+                      {startCase(key)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="tableBody">
+                <tr
+                  className={classNames('tableBody-row')}
+                  data-testid="tableBody-row"
+                  key={uniqueId()}>
+                  <td className="tableBody-cell" data-testid="tableBody-cell">
+                    <span>
+                      <a
+                        href={mlModelDetail.mlStore.storage}
+                        rel="noreferrer"
+                        target="_blank">
+                        {mlModelDetail.mlStore.storage}
+                      </a>
+                    </span>
+                  </td>
+                  <td className="tableBody-cell" data-testid="tableBody-cell">
+                    <span>
+                      <a
+                        href={mlModelDetail.mlStore.imageRepository}
+                        rel="noreferrer"
+                        target="_blank">
+                        {mlModelDetail.mlStore.imageRepository}
+                      </a>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         ) : (
           <span className="tw-text-grey-muted tw-text-center">No Data</span>
         )}

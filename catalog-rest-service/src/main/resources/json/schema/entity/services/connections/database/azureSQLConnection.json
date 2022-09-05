@@ -57,7 +57,7 @@
       "title": "Driver",
       "description": "SQLAlchemy driver for AzureSQL.",
       "type": "string",
-      "default": "ODBC Driver 17 for SQL Server"
+      "default": "ODBC Driver 18 for SQL Server"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -78,10 +78,6 @@
     "supportsDatabase": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
-    },
-    "supportsQueryComment": {
-      "title": "Supports Query Comment",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

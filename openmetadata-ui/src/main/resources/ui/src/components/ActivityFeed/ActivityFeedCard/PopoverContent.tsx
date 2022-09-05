@@ -51,7 +51,6 @@ const PopoverContent: FC<Props> = ({
   onReactionSelect,
   onPopoverHide,
   onEdit,
-  isAnnouncement,
 }) => {
   // get current user details
   const currentUser = useMemo(
@@ -69,7 +68,16 @@ const PopoverContent: FC<Props> = ({
     setVisible(newVisible);
   };
 
-  const deleteButtonCheck = threadId && postId && onConfirmation && isAuthor;
+  const deleteButtonCheck = useMemo(() => {
+    const baseCheck = Boolean(threadId && postId && onConfirmation);
+
+    return Boolean(baseCheck && (isAuthor || currentUser?.isAdmin));
+  }, [threadId, postId, onConfirmation, isAuthor, currentUser]);
+
+  const editCheck = useMemo(
+    () => isAuthor || currentUser?.isAdmin,
+    [isAuthor, currentUser]
+  );
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -145,8 +153,6 @@ const PopoverContent: FC<Props> = ({
     e.stopPropagation();
     onEdit && onEdit();
   };
-
-  const editCheck = (isAnnouncement || !isThread) && isAuthor;
 
   return (
     <Space>
