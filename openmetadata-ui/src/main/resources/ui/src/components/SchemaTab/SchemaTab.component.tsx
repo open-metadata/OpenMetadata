@@ -37,7 +37,7 @@ type Props = {
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
-  onUpdate?: (columns: Table['columns']) => void;
+  onUpdate?: (columns: Table['columns']) => Promise<void>;
 };
 
 const SchemaTab: FunctionComponent<Props> = ({

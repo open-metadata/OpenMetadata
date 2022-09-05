@@ -31,7 +31,7 @@ export interface DescriptionProps {
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
-  onDescriptionUpdate?: (value: string) => void;
+  onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
 }

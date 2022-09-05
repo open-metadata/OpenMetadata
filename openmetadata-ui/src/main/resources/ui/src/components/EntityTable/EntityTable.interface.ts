@@ -28,7 +28,7 @@ export interface EntityTableProps {
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
-  onUpdate?: (columns: ModifiedTableColumn[]) => void;
+  onUpdate?: (columns: ModifiedTableColumn[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
 }

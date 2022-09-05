@@ -94,8 +94,8 @@ export interface DatasetDetailsProps {
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
   settingsUpdateHandler: (updatedTable: Table) => Promise<void>;
-  columnsUpdateHandler: (updatedTable: Table) => void;
-  descriptionUpdateHandler: (updatedTable: Table) => void;
+  columnsUpdateHandler: (updatedTable: Table) => Promise<void>;
+  descriptionUpdateHandler: (updatedTable: Table) => Promise<void>;
   tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
   handleSelectedColumn: (value: string | undefined) => void;
@@ -121,6 +121,6 @@ export interface DatasetDetailsProps {
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => void;
-  handleExtentionUpdate: (updatedTable: Table) => void;
+  handleExtentionUpdate: (updatedTable: Table) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunc;
 }

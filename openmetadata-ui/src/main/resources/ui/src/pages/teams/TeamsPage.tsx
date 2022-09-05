@@ -395,27 +395,22 @@ const TeamsPage = () => {
     }
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedTeam.description !== updatedHTML) {
       const updatedTeam = { ...selectedTeam, description: updatedHTML };
       const jsonPatch = compare(selectedTeam, updatedTeam);
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            fetchTeamByFqn(res.name);
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['update-team-error']
-          );
-        })
-        .finally(() => {
-          descriptionHandler(false);
-        });
+      try {
+        const response = await patchTeamDetail(selectedTeam.id, jsonPatch);
+        if (response) {
+          fetchTeamByFqn(response.name);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        descriptionHandler(false);
+      }
     } else {
       descriptionHandler(false);
     }

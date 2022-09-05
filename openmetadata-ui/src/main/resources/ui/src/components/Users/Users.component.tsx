@@ -61,7 +61,8 @@ import Ellipses from '../common/Ellipses/Ellipses';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
@@ -157,10 +158,9 @@ const Users = ({
     setIsDisplayNameEdit(false);
   };
 
-  const handleDescriptionChange = (description: string) => {
-    if (description !== userData.description) {
-      updateUserDetails({ description });
-    }
+  const handleDescriptionChange = async (description: string) => {
+    await updateUserDetails({ description });
+
     setIsDescriptionEdit(false);
   };
 
@@ -630,7 +630,6 @@ const Users = ({
           key="left-panel-card"
           style={{
             ...leftPanelAntCardStyle,
-            marginTop: '12px',
           }}>
           <div className="tw-flex tw-flex-col">
             {image ? (
@@ -818,7 +817,7 @@ const Users = ({
   );
 
   return (
-    <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
       <div className="tw-mb-10">
         <TabsPane
           activeTab={activeTab}
@@ -830,7 +829,7 @@ const Users = ({
       <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
       <div>{activeTab === 3 && getEntityData(userData.owns || [], 3)}</div>
       <div>{activeTab === 4 && getEntityData(userData.follows || [], 4)}</div>
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 
