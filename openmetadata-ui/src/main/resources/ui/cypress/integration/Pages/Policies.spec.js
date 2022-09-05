@@ -147,8 +147,7 @@ describe('Roles page should work properly', () => {
       .should('contain', description);
 
     //verify rule description
-    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
-      .eq(1)
+    cy.get('[data-testid="viewer-container"] > [data-testid="markdown-parser"]')
       .should('be.visible')
       .should('contain', ruledescription);
 
@@ -208,29 +207,25 @@ describe('Roles page should work properly', () => {
       .should('contain', ruleName);
 
     //Verify other details
-    cy.get('[data-testid="rule-name"]')
+    cy.get('[data-testid="rule-name"]').last().scrollIntoView()
       .contains(ruleName)
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="resources"]')
-      .scrollIntoView()
-      .should('be.visible')
+    cy.get('[data-testid="resources"]').last().scrollIntoView()
+      .should("exist")
       .should('contain', ruledetails.resources);
 
-    cy.get('[data-testid="operations"]')
-      .scrollIntoView()
-      .should('be.visible')
+    cy.get('[data-testid="operations"]').last().scrollIntoView()
+      .should("exist")
       .should('contain', ruledetails.operations);
 
-    cy.get('[data-testid="effect"]')
-      .scrollIntoView()
-      .should('be.visible')
+    cy.get('[data-testid="effect"]').last().scrollIntoView()
+      .should("exist")
       .should('contain', ruledetails.effect);
 
-    cy.get('[data-testid="condition"]')
-      .scrollIntoView()
-      .should('be.visible')
+    cy.get('[data-testid="condition"]').last().scrollIntoView()
+      .should("exist")
       .should('contain', ruledetails.condition);
   });
 
