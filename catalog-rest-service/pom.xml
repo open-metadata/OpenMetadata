@@ -19,6 +19,7 @@
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.17.3</org.testcontainers.version>
     <awssdk.version>2.17.256</awssdk.version>
+    <expiring.map.version>0.5.9</expiring.map.version>
   </properties>
 
   <dependencyManagement>
@@ -458,6 +459,11 @@
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>2.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>net.jodah</groupId>
+      <artifactId>expiringmap</artifactId>
+      <version>${expiring.map.version}</version>
     </dependency>
   </dependencies>
 

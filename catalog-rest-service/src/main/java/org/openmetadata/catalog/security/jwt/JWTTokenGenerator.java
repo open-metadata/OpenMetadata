@@ -3,6 +3,8 @@ package org.openmetadata.catalog.security.jwt;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
@@ -18,13 +20,14 @@ import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 @Slf4j
 public class JWTTokenGenerator {
   private static volatile JWTTokenGenerator instance;
-  private RSAPrivateKey privateKey;
+  @Getter private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
   private String issuer;
   private String kid;
@@ -147,5 +150,22 @@ public class JWTTokenGenerator {
     }
     jwksResponse.setJwsKeys(List.of(jwksKey));
     return jwksResponse;
+  }
+
+  public Date getTokenExpiryFromJWT(String token) {
+    DecodedJWT jwt;
+    try {
+      jwt = JWT.decode(token);
+    } catch (JWTDecodeException e) {
+      throw new AuthenticationException("Invalid token", e);
+    }
+
+    // Check if expired
+    // If expiresAt is set to null, treat it as never expiring token
+    if (jwt.getExpiresAt() == null) {
+      throw new AuthenticationException("Invalid Token, Expiry not present!");
+    }
+
+    return jwt.getExpiresAt();
   }
 }

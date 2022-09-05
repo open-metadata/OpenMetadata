@@ -7,6 +7,7 @@ import java.util.Map;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 public class SamlSettingsHolder {
@@ -55,7 +56,7 @@ public class SamlSettingsHolder {
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
     samlData.put(SettingsBuilder.SP_NAMEIDFORMAT_PROPERTY_KEY, "urn:oasis:names:tc:SAML:2.0:nameid-format:transient");
     samlData.put(SettingsBuilder.SP_X509CERT_PROPERTY_KEY, samlConfig.getSp().getSpX509Certificate());
-    samlData.put(SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, "");
+    samlData.put(SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, JWTTokenGenerator.getInstance().getPrivateKey());
     relayState = samlConfig.getSp().getCallback();
 
     // IDP Provider Settings
@@ -74,7 +75,7 @@ public class SamlSettingsHolder {
     samlData.put(SettingsBuilder.CERTFINGERPRINT_ALGORITHM_PROPERTY_KEY, null);
     // SAML Security Settings
     samlData.put(SettingsBuilder.SECURITY_NAMEID_ENCRYPTED, false);
-    samlData.put(SettingsBuilder.SECURITY_AUTHREQUEST_SIGNED, false);
+    samlData.put(SettingsBuilder.SECURITY_AUTHREQUEST_SIGNED, samlConfig.getIdp().getWantAuthRequestSigned());
     samlData.put(SettingsBuilder.SECURITY_LOGOUTREQUEST_SIGNED, false);
     samlData.put(SettingsBuilder.SECURITY_LOGOUTRESPONSE_SIGNED, false);
     samlData.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, false);

@@ -30,6 +30,11 @@
         "authorityUrl": {
           "description": "Authority URL to redirect the users on Sign In page",
           "type": "string"
+        },
+        "wantAuthRequestSigned": {
+          "description": "Authority URL to redirect the users on Sign In page",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": ["entityId", "ssoLoginUrl"],

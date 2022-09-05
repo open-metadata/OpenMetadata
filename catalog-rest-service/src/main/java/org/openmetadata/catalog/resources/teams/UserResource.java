@@ -346,6 +346,24 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @PUT
+  @Path("/logout")
+  @Operation(
+      operationId = "logoutUser",
+      summary = "Logout a User",
+      tags = "users",
+      description = "Logout a User",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response logoutUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    return Response.status(200).build();
+  }
+
+  @PUT
   @Operation(
       summary = "Update user",
       tags = "users",
