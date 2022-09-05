@@ -20,10 +20,7 @@ import { capitalize, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import {
-  PAGE_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import { Connection } from '../../generated/entity/services/databaseService';
 import {
   IngestionPipeline,
@@ -39,7 +36,6 @@ import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
@@ -449,24 +445,20 @@ const Ingestion: React.FC<IngestionProps> = ({
                     key={index}>
                     <td className="tableBody-cell">
                       {airflowEndpoint ? (
-                        <NonAdminAction
-                          position="bottom"
-                          title={TITLE_FOR_NON_ADMIN_ACTION}>
-                          <a
-                            className="link-text tw-mr-2"
-                            data-testid="airflow-tree-view"
-                            href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
-                            rel="noopener noreferrer"
-                            target="_blank">
-                            {ingestion.name}
-                            <SVGIcons
-                              alt="external-link"
-                              className="tw-align-middle tw-ml-1"
-                              icon={Icons.EXTERNAL_LINK}
-                              width="16px"
-                            />
-                          </a>
-                        </NonAdminAction>
+                        <a
+                          className="link-text tw-mr-2"
+                          data-testid="airflow-tree-view"
+                          href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
+                          rel="noopener noreferrer"
+                          target="_blank">
+                          {ingestion.name}
+                          <SVGIcons
+                            alt="external-link"
+                            className="tw-align-middle tw-ml-1"
+                            icon={Icons.EXTERNAL_LINK}
+                            width="16px"
+                          />
+                        </a>
                       ) : (
                         ingestion.name
                       )}
@@ -501,89 +493,83 @@ const Ingestion: React.FC<IngestionProps> = ({
                       <div className="tw-flex">{getStatuses(ingestion)}</div>
                     </td>
                     <td className="tableBody-cell">
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <div className="tw-flex">
-                          {ingestion.enabled ? (
-                            <Fragment>
-                              {getTriggerDeployButton(ingestion)}
-                              {separator}
-                              <Button
-                                data-testid="pause"
-                                disabled={!isRequiredDetailsAvailable}
-                                type="link"
-                                onClick={() =>
-                                  handleEnableDisableIngestion(
-                                    ingestion.id || ''
-                                  )
-                                }>
-                                Pause
-                              </Button>
-                            </Fragment>
-                          ) : (
+                      <div className="tw-flex">
+                        {ingestion.enabled ? (
+                          <Fragment>
+                            {getTriggerDeployButton(ingestion)}
+                            {separator}
                             <Button
-                              data-testid="unpause"
+                              data-testid="pause"
                               disabled={!isRequiredDetailsAvailable}
                               type="link"
                               onClick={() =>
                                 handleEnableDisableIngestion(ingestion.id || '')
                               }>
-                              Unpause
+                              Pause
                             </Button>
-                          )}
-                          {separator}
+                          </Fragment>
+                        ) : (
                           <Button
-                            data-testid="edit"
+                            data-testid="unpause"
                             disabled={!isRequiredDetailsAvailable}
-                            type="link"
-                            onClick={() => handleUpdate(ingestion)}>
-                            Edit
-                          </Button>
-                          {separator}
-                          <Button
-                            data-testid="delete"
                             type="link"
                             onClick={() =>
-                              ConfirmDelete(
-                                ingestion.id as string,
-                                ingestion.name
-                              )
+                              handleEnableDisableIngestion(ingestion.id || '')
                             }>
-                            {deleteSelection.id === ingestion.id ? (
-                              deleteSelection.state === 'success' ? (
-                                <FontAwesomeIcon icon="check" />
-                              ) : (
-                                <Loader size="small" type="default" />
-                              )
+                            Unpause
+                          </Button>
+                        )}
+                        {separator}
+                        <Button
+                          data-testid="edit"
+                          disabled={!isRequiredDetailsAvailable}
+                          type="link"
+                          onClick={() => handleUpdate(ingestion)}>
+                          Edit
+                        </Button>
+                        {separator}
+                        <Button
+                          data-testid="delete"
+                          type="link"
+                          onClick={() =>
+                            ConfirmDelete(
+                              ingestion.id as string,
+                              ingestion.name
+                            )
+                          }>
+                          {deleteSelection.id === ingestion.id ? (
+                            deleteSelection.state === 'success' ? (
+                              <FontAwesomeIcon icon="check" />
                             ) : (
-                              'Delete'
-                            )}
-                          </Button>
-                          {separator}
-                          <Button
-                            data-testid="kill"
-                            disabled={!isRequiredDetailsAvailable}
-                            type="link"
-                            onClick={() => {
-                              setIsKillModalOpen(true);
-                              setSelectedPipeline(ingestion);
-                            }}>
-                            Kill
-                          </Button>
-                          {separator}
-                          <Button
-                            data-testid="logs"
-                            disabled={!isRequiredDetailsAvailable}
-                            type="link"
-                            onClick={() => {
-                              setIsLogsModalOpen(true);
-                              setSelectedPipeline(ingestion);
-                            }}>
-                            Logs
-                          </Button>
-                        </div>
-                      </NonAdminAction>
+                              <Loader size="small" type="default" />
+                            )
+                          ) : (
+                            'Delete'
+                          )}
+                        </Button>
+                        {separator}
+                        <Button
+                          data-testid="kill"
+                          disabled={!isRequiredDetailsAvailable}
+                          type="link"
+                          onClick={() => {
+                            setIsKillModalOpen(true);
+                            setSelectedPipeline(ingestion);
+                          }}>
+                          Kill
+                        </Button>
+                        {separator}
+                        <Button
+                          data-testid="logs"
+                          disabled={!isRequiredDetailsAvailable}
+                          type="link"
+                          onClick={() => {
+                            setIsLogsModalOpen(true);
+                            setSelectedPipeline(ingestion);
+                          }}>
+                          Logs
+                        </Button>
+                      </div>
                       {isLogsModalOpen &&
                         selectedPipeline &&
                         ingestion.id === selectedPipeline?.id && (

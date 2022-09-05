@@ -108,12 +108,10 @@ const GlossaryTermsV1 = ({
   const tabs = [
     {
       name: 'Summary',
-      isProtected: false,
       position: 1,
     },
     {
       name: 'Assets',
-      isProtected: false,
       position: 2,
     },
   ];

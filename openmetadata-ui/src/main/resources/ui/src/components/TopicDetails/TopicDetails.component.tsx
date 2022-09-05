@@ -196,7 +196,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         title: 'Schema',
         selectedName: 'icon-schemacolor',
       },
-      isProtected: false,
       position: 1,
     },
     {
@@ -207,7 +206,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         title: 'Activity Feed',
         selectedName: 'activity-feed-color',
       },
-      isProtected: false,
       position: 2,
       count: feedCount,
     },
@@ -219,7 +217,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         title: 'Sample Data',
         selectedName: 'sample-data-color',
       },
-      isProtected: false,
       position: 3,
     },
     {
@@ -230,7 +227,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         title: 'Config',
         selectedName: 'icon-configcolor',
       },
-      isProtected: false,
       position: 4,
     },
     {
@@ -241,12 +237,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         title: 'Lineage',
         selectedName: 'icon-lineagecolor',
       },
-      isProtected: false,
       position: 5,
     },
     {
       name: 'Custom Properties',
-      isProtected: false,
       position: 6,
     },
   ];

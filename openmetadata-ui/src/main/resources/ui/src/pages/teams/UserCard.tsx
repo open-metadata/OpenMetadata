@@ -18,7 +18,6 @@ import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import { AssetsType, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -228,31 +227,25 @@ const UserCard = ({
           />
         ) : (
           <div className="tw-flex-none">
-            <NonAdminAction
-              html={<>You do not have permission to update the team.</>}
-              isOwner={isOwner}
-              permission={Operation.EditUsers}
-              position="bottom">
-              <span
-                className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                  'tw-opacity-40':
-                    !isAdminUser &&
-                    !isAuthDisabled &&
-                    !isOwner &&
-                    !hasPermission(
-                      Operation.EditUsers,
-                      EntityType.TEAM,
-                      userPermissions
-                    ),
-                })}
-                data-testid="remove"
-                onClick={() => onRemove?.(item.id as string)}>
-                <FontAwesomeIcon
-                  className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
-                  icon="remove"
-                />
-              </span>
-            </NonAdminAction>
+            <span
+              className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                'tw-opacity-40':
+                  !isAdminUser &&
+                  !isAuthDisabled &&
+                  !isOwner &&
+                  !hasPermission(
+                    Operation.EditUsers,
+                    EntityType.TEAM,
+                    userPermissions
+                  ),
+              })}
+              data-testid="remove"
+              onClick={() => onRemove?.(item.id as string)}>
+              <FontAwesomeIcon
+                className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
+                icon="remove"
+              />
+            </span>
           </div>
         ))}
     </div>

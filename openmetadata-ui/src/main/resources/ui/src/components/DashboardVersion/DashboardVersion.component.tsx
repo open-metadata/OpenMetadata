@@ -66,7 +66,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         title: 'Details',
         selectedName: 'icon-schemacolor',
       },
-      isProtected: false,
       position: 1,
     },
   ];

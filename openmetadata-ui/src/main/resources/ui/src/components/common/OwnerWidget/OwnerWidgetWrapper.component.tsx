@@ -1,4 +1,5 @@
 import { debounce, isEqual } from 'lodash';
+import { Status } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import appState from '../../../AppState';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -11,7 +12,6 @@ import {
   suggestFormattedUsersAndTeams,
 } from '../../../utils/UserDataUtils';
 import DropDownList from '../../dropdown/DropDownList';
-import { Status } from '../../ManageTab/ManageTab.interface';
 import './OwnerWidgetWrapper.style.less';
 
 interface OwnerWidgetWrapperProps {

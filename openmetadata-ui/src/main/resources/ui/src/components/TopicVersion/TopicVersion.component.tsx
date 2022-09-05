@@ -61,7 +61,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
         title: 'Schema',
         selectedName: 'icon-schemacolor',
       },
-      isProtected: false,
       position: 1,
     },
   ];

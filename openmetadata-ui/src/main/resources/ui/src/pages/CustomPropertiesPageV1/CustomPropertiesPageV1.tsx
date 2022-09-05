@@ -108,13 +108,11 @@ const CustomEntityDetailV1 = () => {
     return [
       {
         name: 'Custom Properties',
-        isProtected: false,
         position: 1,
         count: (customProperties || []).length,
       },
       {
         name: 'Schema',
-        isProtected: false,
         position: 2,
       },
     ];

@@ -176,7 +176,6 @@ const DatabaseDetails: FunctionComponent = () => {
         selectedName: 'schemas',
       },
       count: databaseSchemaInstanceCount,
-      isProtected: false,
       position: 1,
     },
     {
@@ -187,7 +186,6 @@ const DatabaseDetails: FunctionComponent = () => {
         title: 'Activity Feed',
         selectedName: 'activity-feed-color',
       },
-      isProtected: false,
       position: 2,
       count: feedCount,
     },
@@ -552,12 +550,6 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [appState.inPageSearchText]);
 
   useEffect(() => {
-    const currentTab = getCurrentDatabaseDetailsTab(tab);
-    const currentTabIndex = currentTab - 1;
-
-    if (tabs[currentTabIndex].isProtected) {
-      activeTabHandler(1);
-    }
     getDetailsByFQN();
   }, []);
 

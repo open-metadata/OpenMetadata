@@ -185,7 +185,6 @@ const DashboardDetails = ({
         title: 'Details',
         selectedName: 'icon-schemacolor',
       },
-      isProtected: false,
       position: 1,
     },
     {
@@ -196,7 +195,6 @@ const DashboardDetails = ({
         title: 'Activity Feed',
         selectedName: 'activity-feed-color',
       },
-      isProtected: false,
       position: 2,
       count: feedCount,
     },
@@ -208,12 +206,10 @@ const DashboardDetails = ({
         title: 'Lineage',
         selectedName: 'icon-lineagecolor',
       },
-      isProtected: false,
       position: 3,
     },
     {
       name: 'Custom Properties',
-      isProtected: false,
       position: 4,
     },
   ];

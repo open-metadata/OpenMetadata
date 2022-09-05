@@ -16,11 +16,7 @@ import { isEmpty } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import {
-  getServiceDetailsPath,
-  PAGE_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { getServiceDetailsPath, PAGE_SIZE } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
@@ -44,7 +40,6 @@ import {
 } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -207,18 +202,14 @@ const Services = ({
             </Paragraph>
 
             <div className="tw-text-lg tw-text-center">
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <Button
-                  data-testid="add-service-button"
-                  size="small"
-                  theme="primary"
-                  variant="outlined"
-                  onClick={handleAddServiceClick}>
-                  Add new {servicesDisplayName[serviceName]}
-                </Button>
-              </NonAdminAction>{' '}
+              <Button
+                data-testid="add-service-button"
+                size="small"
+                theme="primary"
+                variant="outlined"
+                onClick={handleAddServiceClick}>
+                Add new {servicesDisplayName[serviceName]}
+              </Button>
             </div>
           </div>
         </div>

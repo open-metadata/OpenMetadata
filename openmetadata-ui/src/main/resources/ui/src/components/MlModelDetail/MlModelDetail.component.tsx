@@ -224,7 +224,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         title: 'Features',
         selectedName: 'icon-featurescolor',
       },
-      isProtected: false,
       position: 1,
     },
     {
@@ -235,17 +234,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         title: 'Summary',
         selectedName: 'icon-detailscolor',
       },
-      isProtected: false,
       position: 2,
     },
     {
       name: 'Lineage',
-      isProtected: false,
       position: 3,
     },
     {
       name: 'Custom Properties',
-      isProtected: false,
       position: 4,
     },
   ];
@@ -521,9 +517,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                   <MlModelFeaturesList
                     handleFeaturesUpdate={onFeaturesUpdate}
-                    hasEditAccess={mlModelPermissions.ViewAll}
                     mlFeatures={mlModelDetail.mlFeatures}
-                    owner={mlModelDetail.owner}
+                    permissions={mlModelPermissions}
                   />
                 </Fragment>
               )}

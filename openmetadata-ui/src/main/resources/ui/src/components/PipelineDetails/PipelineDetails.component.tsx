@@ -179,7 +179,6 @@ const PipelineDetails = ({
         title: 'Details',
         selectedName: 'icon-schemacolor',
       },
-      isProtected: false,
       position: 1,
     },
     {
@@ -190,7 +189,6 @@ const PipelineDetails = ({
         title: 'Activity Feed',
         selectedName: 'activity-feed-color',
       },
-      isProtected: false,
       position: 2,
       count: feedCount,
     },
@@ -202,12 +200,10 @@ const PipelineDetails = ({
         title: 'Lineage',
         selectedName: 'icon-lineagecolor',
       },
-      isProtected: false,
       position: 3,
     },
     {
       name: 'Custom Properties',
-      isProtected: false,
       position: 4,
     },
   ];

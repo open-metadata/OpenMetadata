@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { Status } from 'Models';
 import { HTMLAttributes } from 'react';
-import { Status } from '../../ManageTab/ManageTab.interface';
 
 export type CardWithListItems = {
   id: string;

@@ -229,7 +229,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'Schema',
         selectedName: 'icon-schemacolor',
       },
-      isProtected: false,
       position: 1,
     },
     {
@@ -240,7 +239,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'Activity Feed',
         selectedName: 'activity-feed-color',
       },
-      isProtected: false,
       position: 2,
       count: feedCount,
     },
@@ -252,7 +250,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'Sample Data',
         selectedName: 'sample-data-color',
       },
-      isProtected: false,
       isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewSampleData),
       position: 3,
     },
@@ -264,7 +261,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'Table Queries',
         selectedName: '',
       },
-      isProtected: false,
       isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewQueries),
       position: 4,
     },
@@ -276,7 +272,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'Profiler',
         selectedName: 'icon-profilercolor',
       },
-      isProtected: false,
       isHidden: !(
         tablePermissions.ViewAll ||
         tablePermissions.ViewDataProfile ||
@@ -292,7 +287,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'Lineage',
         selectedName: 'icon-lineagecolor',
       },
-      isProtected: false,
       position: 7,
     },
     {
@@ -303,13 +297,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'DBT',
         selectedName: 'dbtmodel-primery',
       },
-      isProtected: false,
       isHidden: !dataModel?.sql,
       position: 8,
     },
     {
       name: 'Custom Properties',
-      isProtected: false,
       position: 9,
     },
   ];

@@ -66,7 +66,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: 'Details',
         selectedName: 'icon-schemacolor',
       },
-      isProtected: false,
       position: 1,
     },
   ];

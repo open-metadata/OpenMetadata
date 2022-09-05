@@ -15,7 +15,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useState } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
 import { ColumnTestType } from '../../../generated/entity/data/table';
 import {
   TableTestType,
@@ -27,7 +26,6 @@ import {
   TestCaseConfigType,
 } from '../../../interface/dataQuality.interface';
 import { isEven } from '../../../utils/CommonUtils';
-import NonAdminAction from '../../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
@@ -168,45 +166,35 @@ const DataQualityTable = ({
                 </td>
                 <td className="tableBody-cell tw-w-1/12">
                   <div className="tw-flex tw-items-center">
-                    <NonAdminAction
-                      position="left"
-                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <button
-                        className={classNames('link-text tw-mr-2', {
-                          'tw-opacity-50 tw-cursor-not-allowed': isTableDeleted,
-                        })}
-                        data-testid="edit"
-                        disabled={isTableDeleted}
-                        onClick={() =>
-                          handleEditTest(
-                            isTableTest ? 'table' : 'column',
-                            column
-                          )
-                        }>
-                        Edit
-                      </button>
-                    </NonAdminAction>
-                    <NonAdminAction
-                      position="left"
-                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <button
-                        className={classNames('link-text tw-mr-2', {
-                          'tw-opacity-50 tw-cursor-not-allowed': isTableDeleted,
-                        })}
-                        data-testid="delete"
-                        disabled={isTableDeleted}
-                        onClick={() => confirmDelete(column)}>
-                        {deleteSelection.data?.id === column.id ? (
-                          deleteSelection.state === 'success' ? (
-                            <FontAwesomeIcon icon="check" />
-                          ) : (
-                            <Loader size="small" type="default" />
-                          )
+                    <button
+                      className={classNames('link-text tw-mr-2', {
+                        'tw-opacity-50 tw-cursor-not-allowed': isTableDeleted,
+                      })}
+                      data-testid="edit"
+                      disabled={isTableDeleted}
+                      onClick={() =>
+                        handleEditTest(isTableTest ? 'table' : 'column', column)
+                      }>
+                      Edit
+                    </button>
+
+                    <button
+                      className={classNames('link-text tw-mr-2', {
+                        'tw-opacity-50 tw-cursor-not-allowed': isTableDeleted,
+                      })}
+                      data-testid="delete"
+                      disabled={isTableDeleted}
+                      onClick={() => confirmDelete(column)}>
+                      {deleteSelection.data?.id === column.id ? (
+                        deleteSelection.state === 'success' ? (
+                          <FontAwesomeIcon icon="check" />
                         ) : (
-                          'Delete'
-                        )}
-                      </button>
-                    </NonAdminAction>
+                          <Loader size="small" type="default" />
+                        )
+                      ) : (
+                        'Delete'
+                      )}
+                    </button>
                   </div>
                 </td>
               </tr>

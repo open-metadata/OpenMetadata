@@ -165,21 +165,16 @@ const ServicePage: FunctionComponent = () => {
   const tabs = [
     {
       name: getCountLabel(),
-      isProtected: false,
-
       position: 1,
       count: instanceCount,
     },
     {
       name: 'Ingestions',
-      isProtected: false,
-
       position: 2,
       count: ingestions.length,
     },
     {
       name: 'Connection',
-      isProtected: !servicePermission.EditAll,
       isHidden: !servicePermission.EditAll,
       position: 3,
     },
@@ -726,13 +721,6 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceFQN, serviceName]);
 
   useEffect(() => {
-    const currentTab = getCurrentServiceTab(tab);
-    const currentTabIndex = currentTab - 1;
-
-    if (tabs[currentTabIndex].isProtected) {
-      activeTabHandler(1);
-    }
-
     getAirflowStatus()
       .then(() => {
         setIsAirflowRunning(true);

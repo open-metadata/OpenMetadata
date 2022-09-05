@@ -23,13 +23,11 @@ export const getTabs = (
   const commonTabs = [
     {
       name: 'Roles',
-      isProtected: false,
       position: 4,
       count: currentTeam?.defaultRoles?.length,
     },
     {
       name: 'Policies',
-      isProtected: false,
       position: 5,
       count: currentTeam?.policies?.length,
     },
@@ -39,7 +37,6 @@ export const getTabs = (
     return [
       {
         name: 'Teams',
-        isProtected: false,
         position: 1,
         count: currentTeam.children?.length || 0,
       },
@@ -50,19 +47,16 @@ export const getTabs = (
   return [
     {
       name: 'Teams',
-      isProtected: false,
       position: 1,
       count: currentTeam.children?.length || 0,
     },
     {
       name: 'Users',
-      isProtected: false,
       position: 2,
       count: teamUserPagin?.total,
     },
     {
       name: 'Assets',
-      isProtected: false,
       position: 3,
       count: filterEntityAssets(currentTeam?.owns || []).length,
     },

@@ -79,12 +79,10 @@ const TestSuiteDetailsPage = () => {
   const tabs = [
     {
       name: 'Test Cases',
-      isProtected: false,
       position: 1,
     },
     {
       name: 'Pipeline',
-      isProtected: false,
       position: 2,
     },
   ];

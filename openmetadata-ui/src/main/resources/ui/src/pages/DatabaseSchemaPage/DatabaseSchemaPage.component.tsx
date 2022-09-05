@@ -169,7 +169,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         selectedName: 'table',
       },
       count: tableInstanceCount,
-      isProtected: false,
       position: 1,
     },
     {
@@ -180,7 +179,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         title: 'Activity Feed',
         selectedName: 'activity-feed-color',
       },
-      isProtected: false,
       position: 2,
       count: feedCount,
     },
@@ -582,12 +580,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
-    const currentTab = getCurrentDatabaseSchemaDetailsTab(tab);
-    const currentTabIndex = currentTab - 1;
-
-    if (tabs[currentTabIndex].isProtected) {
-      activeTabHandler(1);
-    }
     getDetailsByFQN();
     getEntityFeedCount();
   }, []);

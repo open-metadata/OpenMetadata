@@ -15,7 +15,6 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
 export type Item = {
@@ -72,26 +71,22 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
       </div>
       {!isNil(onDelete) && (
         <div className="tw-flex-none">
-          <NonAdminAction
-            position="bottom"
-            title="You do not have permission to delete user.">
-            <span
-              className="tw-h-8 tw-rounded tw-mb-3"
-              data-testid="remove"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete?.(item.id as string, item.displayName);
-              }}>
-              <SVGIcons
-                alt="delete"
-                className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
-                icon={Icons.DELETE}
-                title="Delete"
-                width="16px"
-              />
-            </span>
-          </NonAdminAction>
+          <span
+            className="tw-h-8 tw-rounded tw-mb-3"
+            data-testid="remove"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete?.(item.id as string, item.displayName);
+            }}>
+            <SVGIcons
+              alt="delete"
+              className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
+              icon={Icons.DELETE}
+              title="Delete"
+              width="16px"
+            />
+          </span>
         </div>
       )}
     </div>
