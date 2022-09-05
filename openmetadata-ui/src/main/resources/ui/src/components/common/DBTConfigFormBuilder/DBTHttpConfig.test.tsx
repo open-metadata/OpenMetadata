@@ -19,16 +19,19 @@ const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
 const mockCatalogChange = jest.fn();
 const mockManifestChange = jest.fn();
+const mockRunResultsFilePathChange = jest.fn();
 
 const mockProps = {
   dbtCatalogHttpPath: '',
   dbtManifestHttpPath: '',
+  dbtRunResultsFilePath: '',
   okText: 'Next',
   cancelText: 'Back',
   onCancel: mockCancel,
   onSubmit: mockSubmit,
   handleCatalogHttpPathChange: mockCatalogChange,
   handleManifestHttpPathChange: mockManifestChange,
+  handleRunResultsFilePathChange: mockRunResultsFilePathChange,
 };
 
 describe('Test DBT Http Config Form', () => {
