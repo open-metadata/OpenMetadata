@@ -17,6 +17,7 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
+import { postSamlLogout } from '../../axiosAPIs/miscAPI';
 import { SamlSSOClientConfig } from '../../generated/security/client/samlSSOClientConfig';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
@@ -41,11 +42,7 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = async () => {
-      if (config.idp.ssoLogoutUrl) {
-        // window.location.href = config.idp.ssoLogoutUrl;
-      } else {
-        showErrorToast('SAML IDP SSO Logout URL is not configured.');
-      }
+      await postSamlLogout();
       setIsAuthenticated(false);
       try {
         onLogoutSuccess();

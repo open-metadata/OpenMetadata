@@ -105,6 +105,12 @@ export const getVersion = async () => {
   return response.data;
 };
 
+export const postSamlLogout = async () => {
+  const response = await APIClient.post(`/users/logout`);
+
+  return response.data;
+};
+
 export const addLineage: Function = (data: Edge): Promise<AxiosResponse> => {
   return APIClient.put(`/lineage`, data);
 };
