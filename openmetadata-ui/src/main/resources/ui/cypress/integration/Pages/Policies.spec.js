@@ -207,24 +207,24 @@ describe('Roles page should work properly', () => {
       .should('contain', ruleName);
 
     //Verify other details
-    cy.get('[data-testid="rule-name"]')
+    cy.get('[data-testid="rule-name"]').last().scrollIntoView()
       .contains(ruleName)
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="resources"]')
+    cy.get('[data-testid="resources"]').last().scrollIntoView()
       .should("exist")
       .should('contain', ruledetails.resources);
 
-    cy.get('[data-testid="operations"]')
+    cy.get('[data-testid="operations"]').last().scrollIntoView()
       .should("exist")
       .should('contain', ruledetails.operations);
 
-    cy.get('[data-testid="effect"]')
+    cy.get('[data-testid="effect"]').last().scrollIntoView()
       .should("exist")
       .should('contain', ruledetails.effect);
 
-    cy.get('[data-testid="condition"]')
+    cy.get('[data-testid="condition"]').last().scrollIntoView()
       .should("exist")
       .should('contain', ruledetails.condition);
   });
