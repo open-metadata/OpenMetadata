@@ -120,6 +120,9 @@ public class JWTTokenGenerator {
   public Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {
     LocalDateTime expiryDate;
     switch (jwtTokenExpiry) {
+      case One:
+        expiryDate = LocalDateTime.now().plusDays(1);
+        break;
       case Seven:
         expiryDate = LocalDateTime.now().plusDays(7);
         break;

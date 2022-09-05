@@ -161,7 +161,7 @@ authenticationConfiguration:
       logoutUrl: ${SAML_SP_SSO_LOGOUT_URL:-""}
       spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
       callback: ${SAML_SP_CALLBACK:-""}
-      tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"7"}
+      tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"1"}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
