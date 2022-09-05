@@ -140,14 +140,6 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="admin-action">{children}</p>
-    ));
-});
-
 jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest
     .fn()

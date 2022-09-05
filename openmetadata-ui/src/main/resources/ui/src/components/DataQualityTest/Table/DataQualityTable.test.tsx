@@ -7,14 +7,6 @@ import DataQualityTable from './DataQualityTable';
 
 const mockFunction = jest.fn();
 
-jest.mock('../../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
-
 jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest
     .fn()

@@ -56,14 +56,6 @@ const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
 
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
-
 jest.mock('../containers/PageContainer', () => {
   return jest
     .fn()

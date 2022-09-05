@@ -63,17 +63,6 @@ jest.mock('../../utils/SvgUtils', () => {
   };
 });
 
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest.fn().mockImplementation(({ children }) => {
-    return (
-      <div>
-        NonAdminAction
-        {children}
-      </div>
-    );
-  });
-});
-
 describe('Test UserDataCard component', () => {
   it('Component should render', async () => {
     const { findByTestId, findByText } = render(

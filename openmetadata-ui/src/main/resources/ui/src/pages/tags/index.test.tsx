@@ -279,14 +279,6 @@ jest.mock(
       <div data-testid="PageContainerV1">{children}</div>
 );
 
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
-
 jest.mock(
   '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
@@ -320,14 +312,6 @@ jest.mock('../../components/Modals/FormModal', () => {
 
 jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
-});
-
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div>{children}</div>
-    ));
 });
 
 describe('Test TagsPage page', () => {
