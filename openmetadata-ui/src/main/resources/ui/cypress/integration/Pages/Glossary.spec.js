@@ -111,7 +111,7 @@ describe('Glossary page should work properly', () => {
 
   it('Create new glossary flow should work properly', () => {
     // check for no data placeholder
-    cy.contains('glossaries').should('be.visible');
+    cy.contains('Add New Glossary').should('be.visible');
 
     // Redirecting to add glossary page
     cy.get('[data-testid="add-webhook-button"]').should('be.visible').click();

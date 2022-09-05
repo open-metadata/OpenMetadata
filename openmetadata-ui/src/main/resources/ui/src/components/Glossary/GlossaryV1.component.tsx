@@ -571,6 +571,7 @@ const GlossaryV1 = ({
           </ButtonAntd>
         }
         doc={GLOSSARIES_DOCS}
+        heading="Glossary"
         type="ADD_DATA"
       />
     </PageLayout>
