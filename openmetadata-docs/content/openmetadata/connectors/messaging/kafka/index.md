@@ -140,7 +140,7 @@ In this step we will configure the metadata ingestion pipeline,
 Please follow the instructions below
 
 <Image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-messaging.png"
+src="/images/openmetadata/connectors/kafka/configure-metadata-ingestion-messaging.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page"
 />

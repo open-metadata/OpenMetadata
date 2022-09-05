@@ -11,7 +11,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 ## Requirements
@@ -463,7 +463,7 @@ pip3 install --upgrade 'openmetadata-ingestion[snowflake-usage]'
 For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the YAML configuration will be enough.
 
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
 While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be

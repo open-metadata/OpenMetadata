@@ -364,6 +364,12 @@ site_menu:
     url: /openmetadata/connectors/messaging/kafka/airflow
   - category: OpenMetadata / Connectors / Messaging / Kafka / CLI
     url: /openmetadata/connectors/messaging/kafka/cli
+  - category: OpenMetadata / Connectors / Messaging / Redpanda
+    url: /openmetadata/connectors/messaging/redpanda
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / Airflow
+    url: /openmetadata/connectors/messaging/redpanda/airflow
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / CLI
+    url: /openmetadata/connectors/messaging/redpanda/cli
   
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
@@ -441,6 +447,10 @@ site_menu:
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
     url: /openmetadata/ingestion/workflows/profiler/metrics
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality 
+    url: /openmetadata/ingestion/workflows/data-quality
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality / Tests
+    url: /openmetadata/ingestion/workflows/data-quality/tests
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
   - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually
