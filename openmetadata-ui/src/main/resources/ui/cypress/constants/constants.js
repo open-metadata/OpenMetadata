@@ -74,11 +74,7 @@ export const DELETE_ENTITY = {
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
-  },
-  pipeline: {
-    term: 'Presto ETL',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
-  },
+  }
 };
 
 export const RECENT_SEARCH_TITLE = 'Recent Search Terms';

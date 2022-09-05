@@ -169,6 +169,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       <Row className="tw-mb-4" justify="space-between">
         <Radio.Group
           buttonStyle="solid"
+          className="profiler-switch"
           optionType="button"
           options={tabOptions}
           value={activeTab}
