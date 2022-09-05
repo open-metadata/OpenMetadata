@@ -68,9 +68,9 @@ export interface PipeLineDetailsProp {
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
-  descriptionUpdateHandler: (updatedPipeline: Pipeline) => void;
+  descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   tagUpdateHandler: (updatedPipeline: Pipeline) => void;
-  taskUpdateHandler: (patch: Array<Operation>) => void;
+  taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   versionHandler: () => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
@@ -83,5 +83,5 @@ export interface PipeLineDetailsProp {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
-  onExtensionUpdate: (updatedPipeline: Pipeline) => void;
+  onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
 }

@@ -261,11 +261,11 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock(
-  '../../components/containers/PageLayout',
+  '../../components/containers/PageLayoutV1',
   () =>
     ({ children, leftPanel }: { children: ReactNode; leftPanel: ReactNode }) =>
       (
-        <div data-testid="PageLayout">
+        <div data-testid="PageLayoutV1">
           <div data-testid="left-panel-content">{leftPanel}</div>
           {children}
         </div>

@@ -54,7 +54,7 @@ import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botsData: User;
-  updateBotsDetails: (data: UserDetails) => void;
+  updateBotsDetails: (data: UserDetails) => Promise<void>;
   revokeTokenHandler: () => void;
 }
 
@@ -192,10 +192,9 @@ const BotDetails: FC<BotsDetailProp> = ({
     setIsDisplayNameEdit(false);
   };
 
-  const handleDescriptionChange = (description: string) => {
-    if (description !== botsData.description) {
-      updateBotsDetails({ description });
-    }
+  const handleDescriptionChange = async (description: string) => {
+    await updateBotsDetails({ description });
+
     setIsDescriptionEdit(false);
   };
 
