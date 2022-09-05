@@ -15,5 +15,5 @@ export interface TestSuiteDetailsProps {
   handleUpdateOwner: (updatedOwner: TestSuite['owner']) => void;
   testSuiteDescription: string | undefined;
   descriptionHandler: (value: boolean) => void;
-  handleDescriptionUpdate: (updatedHTML: string) => void;
+  handleDescriptionUpdate: (updatedHTML: string) => Promise<void>;
 }

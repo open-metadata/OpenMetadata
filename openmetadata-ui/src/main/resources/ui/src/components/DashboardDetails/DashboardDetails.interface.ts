@@ -72,12 +72,12 @@ export interface DashboardDetailsProps {
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
   settingsUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
-  descriptionUpdateHandler: (updatedDashboard: Dashboard) => void;
+  descriptionUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
   chartDescriptionUpdateHandler: (
     index: number,
     chartId: string,
     patch: Array<Operation>
-  ) => void;
+  ) => Promise<void>;
   chartTagUpdateHandler: (
     index: number,
     chartId: string,
@@ -96,5 +96,5 @@ export interface DashboardDetailsProps {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
-  onExtensionUpdate: (updatedDashboard: Dashboard) => void;
+  onExtensionUpdate: (updatedDashboard: Dashboard) => Promise<void>;
 }

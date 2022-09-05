@@ -12,6 +12,7 @@
  */
 
 import { Tooltip } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -252,14 +253,19 @@ const DashboardDetails = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedDashboardDetails = {
         ...dashboardDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedDashboardDetails);
-      setIsEdit(false);
+      try {
+        await descriptionUpdateHandler(updatedDashboardDetails);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
     } else {
       setIsEdit(false);
     }
@@ -324,19 +330,25 @@ const DashboardDetails = ({
   const closeEditChartModal = (): void => {
     setEditChart(undefined);
   };
-  const onChartUpdate = (chartDescription: string) => {
+  const onChartUpdate = async (chartDescription: string) => {
     if (editChart) {
       const updatedChart = {
         ...editChart.chart,
         description: chartDescription,
       };
       const jsonPatch = compare(charts[editChart.index], updatedChart);
-      chartDescriptionUpdateHandler(
-        editChart.index,
-        editChart.chart.id,
-        jsonPatch
-      );
-      setEditChart(undefined);
+
+      try {
+        await chartDescriptionUpdateHandler(
+          editChart.index,
+          editChart.chart.id,
+          jsonPatch
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setEditChart(undefined);
+      }
     } else {
       setEditChart(undefined);
     }

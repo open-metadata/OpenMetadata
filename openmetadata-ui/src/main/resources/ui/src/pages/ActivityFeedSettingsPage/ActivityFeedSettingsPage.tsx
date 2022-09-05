@@ -1,5 +1,15 @@
 /* eslint-disable @typescript-eslint/camelcase */
-import { Button, Card, Col, Divider, Row, Space, Tree, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Space,
+  Tooltip,
+  Tree,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { cloneDeep, isUndefined, map, startCase } from 'lodash';
 import React, { Key, useEffect, useState } from 'react';
@@ -11,13 +21,18 @@ import {
 } from '../../axiosAPIs/eventFiltersAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { TERM_ALL } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { Operation } from '../../generated/entity/policies/policy';
 import {
   EventFilter,
   Filters,
   SettingType,
 } from '../../generated/settings/settings';
 import jsonData from '../../jsons/en';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './ActivityFeedSettingsPage.style.less';
 import { getEventFilterFromTree } from './ActivityFeedSettingsPage.utils';
@@ -69,7 +84,9 @@ const ActivityFeedSettingsPage: React.FC = () => {
     return [
       {
         key: entityType,
-        title: <strong>{startCase(entityType)}</strong>,
+        title: (
+          <Typography.Text strong>{startCase(entityType)}</Typography.Text>
+        ),
         data: true,
         children:
           data?.map(({ eventType, include, exclude }) => {
@@ -164,6 +181,19 @@ const ActivityFeedSettingsPage: React.FC = () => {
     setCheckedKeys(checkKeys);
   }, [eventFilters, updatedTree, selectedKey]);
 
+  const { permissions } = usePermissionProvider();
+
+  const editPermission = checkPermission(
+    Operation.EditAll,
+    ResourceEntity.FEED,
+    permissions
+  );
+  const createPermission = checkPermission(
+    Operation.Create,
+    ResourceEntity.FEED,
+    permissions
+  );
+
   const handleResetClick = async () => {
     try {
       setLoading(true);
@@ -193,21 +223,25 @@ const ActivityFeedSettingsPage: React.FC = () => {
         <>
           <Row gutter={[16, 16]}>
             <Col span={24}>
-              <Typography.Title level={5} type="secondary">
+              <Typography.Title
+                level={5}
+                style={{ margin: 0 }}
+                type="secondary">
                 Activity Feed
               </Typography.Title>
             </Col>
             <Col span={24}>
-              <Card size="small">
+              <Card className="settings-page-card-container" size="small">
                 {eventFilters &&
                   map(eventFilters, ({ entityType, filters }, index) => (
                     <>
                       {entityType !== TERM_ALL ? (
-                        <div className="tw-rounded-border" key={entityType}>
+                        <div
+                          className="activity-feed-settings-tree"
+                          key={entityType}>
                           <Tree
                             checkable
                             defaultExpandAll
-                            className="activity-feed-settings-tree"
                             defaultCheckedKeys={checkedKeys}
                             icon={null}
                             key={entityType}
@@ -225,12 +259,28 @@ const ActivityFeedSettingsPage: React.FC = () => {
             </Col>
             <Col>
               <Space direction="horizontal" size={16}>
-                <Button type="primary" onClick={onSave}>
-                  Save
-                </Button>
-                <Button type="text" onClick={handleResetClick}>
-                  Reset all
-                </Button>
+                <Tooltip
+                  title={
+                    editPermission || createPermission
+                      ? ''
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    disabled={!(editPermission || createPermission)}
+                    type="primary"
+                    onClick={onSave}>
+                    Save
+                  </Button>
+                </Tooltip>
+                <Tooltip
+                  title={createPermission ? '' : NO_PERMISSION_FOR_ACTION}>
+                  <Button
+                    disabled={!createPermission}
+                    type="text"
+                    onClick={handleResetClick}>
+                    Reset all
+                  </Button>
+                </Tooltip>
               </Space>
             </Col>
             <Col span={24} />

@@ -41,10 +41,13 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
 
   const extension = entityDetails.extension;
 
-  const onExtensionUpdate = (
+  const onExtensionUpdate = async (
     updatedExtension: CustomPropertyProps['entityDetails']['extension']
   ) => {
-    handleExtentionUpdate({ ...entityDetails, extension: updatedExtension });
+    await handleExtentionUpdate({
+      ...entityDetails,
+      extension: updatedExtension,
+    });
   };
 
   useEffect(() => {
