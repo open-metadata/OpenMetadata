@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
@@ -31,7 +30,6 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { ColumnTestType, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
-import { TeamType } from '../generated/entity/teams/team';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -452,22 +450,4 @@ export const getResourceEntityFromEntityType = (entityType: string) => {
   }
 
   return ResourceEntity.ALL;
-};
-
-export const getTeamTypeMenuItems = (updateType?: (type: TeamType) => void) => {
-  const teamTypesArray = Object.values(TeamType).filter(
-    (key) => key !== TeamType.Organization
-  );
-
-  return teamTypesArray.map(
-    (teamType) =>
-      ({
-        label: (
-          <span onClick={() => updateType && updateType(teamType)}>
-            {teamType}
-          </span>
-        ),
-        key: teamType,
-      } as ItemType)
-  );
 };

@@ -19,57 +19,54 @@ import { filterEntityAssets } from '../../utils/EntityUtils';
 export const getTabs = (
   currentTeam: Team,
   teamUserPagin: Paging,
+  isGroupType: boolean,
   isOrganization: boolean,
   teamsCount?: number
 ) => {
-  const commonTabs = [
-    {
-      name: 'Roles',
-      isProtected: false,
-      position: 4,
-      count: currentTeam?.defaultRoles?.length,
-    },
-    {
-      name: 'Policies',
-      isProtected: false,
-      position: 5,
-      count: currentTeam?.policies?.length,
-    },
-  ];
-
-  if (isOrganization) {
-    return [
-      {
-        name: 'Teams',
-        isProtected: false,
-        position: 1,
-        count: isUndefined(teamsCount) ? currentTeam.childrenCount : teamsCount,
-      },
-      ...commonTabs,
-    ];
-  }
-
-  return [
-    {
+  const tabs = {
+    teams: {
       name: 'Teams',
       isProtected: false,
       position: 1,
       count: isUndefined(teamsCount) ? currentTeam.childrenCount : teamsCount,
     },
-    {
+    users: {
       name: 'Users',
       isProtected: false,
       position: 2,
       count: teamUserPagin?.total,
     },
-    {
+    assets: {
       name: 'Assets',
       isProtected: false,
       position: 3,
       count: filterEntityAssets(currentTeam?.owns || []).length,
     },
-    ...commonTabs,
-  ];
+    roles: {
+      name: 'Roles',
+      isProtected: false,
+      position: 4,
+      count: currentTeam?.defaultRoles?.length,
+    },
+    policies: {
+      name: 'Policies',
+      isProtected: false,
+      position: 5,
+      count: currentTeam?.policies?.length,
+    },
+  };
+
+  const commonTabs = [tabs.roles, tabs.policies];
+
+  if (isOrganization) {
+    return [tabs.teams, ...commonTabs];
+  }
+
+  if (isGroupType) {
+    return [tabs.users, tabs.assets, ...commonTabs];
+  }
+
+  return [tabs.teams, tabs.users, ...commonTabs];
 };
 
 export const searchTeam = (teams: Team[], value: string): Team[] => {

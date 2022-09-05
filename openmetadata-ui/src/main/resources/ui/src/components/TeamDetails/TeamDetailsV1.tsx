@@ -39,10 +39,6 @@ import {
   PAGE_SIZE,
 } from '../../constants/constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
-import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
 } from '../../constants/HelperTextUtil';
@@ -69,7 +65,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
@@ -124,6 +120,7 @@ const TeamDetailsV1 = ({
   afterDeleteAction,
 }: TeamDetailsProp) => {
   const isOrganization = currentTeam.name === TeamType.Organization;
+  const isGroupType = currentTeam.teamType === TeamType.Group;
   const DELETE_USER_INITIAL_STATE = {
     user: undefined,
     state: false,
@@ -153,6 +150,18 @@ const TeamDetailsV1 = ({
   }>();
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const tabs = useMemo(
+    () =>
+      getTabs(
+        currentTeam,
+        teamUserPagin,
+        isGroupType,
+        isOrganization,
+        searchTerm ? table.length : undefined
+      ),
+    [currentTeam, teamUserPagin, searchTerm]
+  );
 
   const createTeamPermission = useMemo(
     () =>
@@ -203,6 +212,7 @@ const TeamDetailsV1 = ({
                 entityPermissions.EditAll ? 'Remove' : NO_PERMISSION_FOR_ACTION
               }>
               <ButtonAntd
+                data-testid="remove-user-btn"
                 disabled={!entityPermissions.EditAll}
                 icon={
                   <SVGIcons
@@ -445,13 +455,6 @@ const TeamDetailsV1 = ({
             }))
           : [];
       const breadcrumb = [
-        {
-          name: 'Team',
-          url: getSettingPath(
-            GlobalSettingsMenuCategory.MEMBERS,
-            GlobalSettingOptions.TEAMS
-          ),
-        },
         ...perents,
         {
           name: getEntityName(currentTeam),
@@ -470,6 +473,10 @@ const TeamDetailsV1 = ({
   useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
   }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
+
+  useEffect(() => {
+    setCurrentTab(tabs[0].position);
+  }, [tabs]);
 
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
@@ -784,7 +791,9 @@ const TeamDetailsV1 = ({
       data-testid="team-details-container">
       {!isEmpty(currentTeam) ? (
         <Fragment>
-          <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+          {!isOrganization && (
+            <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+          )}
           <div
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
@@ -818,6 +827,8 @@ const TeamDetailsV1 = ({
               <>
                 <EntitySummaryDetails
                   data={info}
+                  isGroupType={isGroupType}
+                  teamType={currentTeam.teamType}
                   updateOwner={
                     entityPermissions.EditAll || entityPermissions.EditOwner
                       ? updateOwner
@@ -855,12 +866,7 @@ const TeamDetailsV1 = ({
             <TabsPane
               activeTab={currentTab}
               setActiveTab={(tab) => setCurrentTab(tab)}
-              tabs={getTabs(
-                currentTeam,
-                teamUserPagin,
-                isOrganization,
-                searchTerm ? table.length : undefined
-              )}
+              tabs={tabs}
             />
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">

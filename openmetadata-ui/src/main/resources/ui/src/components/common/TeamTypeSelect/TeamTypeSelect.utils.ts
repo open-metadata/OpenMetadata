@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-.entity-summary-details {
-  .ant-space-item {
-    position: relative;
-  }
-  .ant-btn {
-    border: none;
-    background-color: inherit;
-    height: 16px;
-    padding: 0px;
-  }
-}
+import { TeamType } from '../../../generated/entity/teams/team';
+
+export const getTeamTypeOptions = () => {
+  const teamTypesArray = Object.values(TeamType).filter(
+    (key) => key !== TeamType.Organization
+  );
+
+  return teamTypesArray.map((teamType) => ({
+    label: teamType,
+    value: teamType,
+  }));
+};
