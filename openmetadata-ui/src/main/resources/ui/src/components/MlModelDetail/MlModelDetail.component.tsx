@@ -68,10 +68,10 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   activeTab: number;
   followMlModelHandler: () => void;
   unfollowMlModelHandler: () => void;
-  descriptionUpdateHandler: (updatedMlModel: Mlmodel) => void;
+  descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   setActiveTabHandler: (value: number) => void;
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
-  updateMlModelFeatures: (updatedMlModel: Mlmodel) => void;
+  updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   lineageTabData: {
     loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
@@ -83,7 +83,7 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
     lineageLeafNodes: LeafNodes;
     isNodeLoading: LoadingNodeState;
   };
-  onExtensionUpdate: (updatedMlModel: Mlmodel) => void;
+  onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
 }
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
@@ -273,13 +273,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const onCancel = () => setIsEdit(false);
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (mlModelDetail.description !== updatedHTML) {
       const updatedMlModelDetails = {
         ...mlModelDetail,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedMlModelDetails);
+      await descriptionUpdateHandler(updatedMlModelDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);
@@ -332,8 +332,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const onFeaturesUpdate = (features: Mlmodel['mlFeatures']) => {
-    updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
+  const onFeaturesUpdate = async (features: Mlmodel['mlFeatures']) => {
+    await updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
   };
 
   const getMlHyperParameters = () => {

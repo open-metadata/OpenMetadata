@@ -334,31 +334,31 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     return patchDatabaseSchemaDetails(databaseSchemaId, jsonPatch);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML && databaseSchema) {
       const updatedDatabaseSchemaDetails = {
         ...databaseSchema,
         description: updatedHTML,
       };
-      saveUpdatedDatabaseSchemaData(updatedDatabaseSchemaDetails)
-        .then((res) => {
-          if (res) {
-            setDatabaseSchema(updatedDatabaseSchemaDetails);
-            setDescription(updatedHTML);
-            getEntityFeedCount();
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-databaseSchema-error']
-          );
-        })
-        .finally(() => {
-          setIsEdit(false);
-        });
+
+      try {
+        const response = await saveUpdatedDatabaseSchemaData(
+          updatedDatabaseSchemaDetails
+        );
+        if (response) {
+          setDatabaseSchema(updatedDatabaseSchemaDetails);
+          setDescription(updatedHTML);
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
+    } else {
+      setIsEdit(false);
     }
   };
 

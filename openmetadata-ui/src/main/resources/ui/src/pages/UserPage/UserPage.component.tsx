@@ -189,20 +189,16 @@ const UserPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const updateUserDetails = (data: UserDetails) => {
+  const updateUserDetails = async (data: UserDetails) => {
     const updatedDetails = { ...userData, ...data };
     const jsonPatch = compare(userData, updatedDetails);
-    updateUserDetail(userData.id, jsonPatch)
-      .then((res) => {
-        if (res) {
-          setUserData((prevData) => ({ ...prevData, ...data }));
-        } else {
-          throw jsonData['api-error-messages']['unexpected-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+
+    try {
+      const response = await updateUserDetail(userData.id, jsonPatch);
+      setUserData((prevData) => ({ ...prevData, ...response }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const isLoggedinUser = (userName: string) => {

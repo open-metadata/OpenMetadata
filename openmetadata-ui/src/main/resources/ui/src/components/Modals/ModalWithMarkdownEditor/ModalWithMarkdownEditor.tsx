@@ -16,11 +16,14 @@ import {
   faWindowMinimize,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { AxiosError } from 'axios';
 import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import Loader from '../../Loader/Loader';
 
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -31,7 +34,7 @@ type Props = {
   header: string;
   value: string;
   placeholder: string;
-  onSave?: (text: string) => void;
+  onSave?: (text: string) => Promise<void>;
   onSuggest?: (text: string) => void;
   onCancel?: () => void;
 };
@@ -46,6 +49,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
   onCancel,
 }: Props) => {
   const [expanded, setExpanded] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const markdownRef = useRef<EditorContentRef>();
 
@@ -56,9 +60,16 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
     );
   };
 
-  const handleSaveData = () => {
+  const handleSaveData = async () => {
     if (markdownRef.current) {
-      onSave?.(markdownRef.current?.getEditorContent() ?? '');
+      setIsLoading(true);
+      try {
+        await onSave?.(markdownRef.current?.getEditorContent() ?? '');
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -104,6 +115,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
         <div className="tw-modal-footer">
           <Button
             data-testid="cancel"
+            disabled={isLoading}
             size="regular"
             theme="primary"
             variant="link"
@@ -116,7 +128,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
             theme="primary"
             variant="contained"
             onClick={() => handleSaveData()}>
-            Save
+            {isLoading ? <Loader size="small" type="white" /> : 'Save'}
           </Button>
         </div>
       </div>
