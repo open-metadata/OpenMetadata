@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Select, Space } from 'antd';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
 import './TeamTypeSelect.style.less';
@@ -38,11 +38,13 @@ function TeamTypeSelect({
     updateTeamType && updateTeamType(value);
   };
 
+  const options = useMemo(() => getTeamTypeOptions(), []);
+
   return (
     <Space align="center" className="team-type-select" size={4}>
       <Select
         defaultActiveFirstOption
-        options={getTeamTypeOptions()}
+        options={options}
         value={value}
         onSelect={handleSelect}
       />
