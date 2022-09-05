@@ -30,20 +30,20 @@ import {
 interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleCatalogHttpPathChange: (value: string) => void;
   handleManifestHttpPathChange: (value: string) => void;
-  handleRunResultsFilePathChange: (value: string) => void;
+  handleRunResultsHttpPathChange: (value: string) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
   dbtCatalogHttpPath = '',
   dbtManifestHttpPath = '',
-  dbtRunResultsFilePath = '',
+  dbtRunResultsHttpPath = '',
   okText,
   cancelText,
   onCancel,
   onSubmit,
   handleCatalogHttpPathChange,
   handleManifestHttpPathChange,
-  handleRunResultsFilePathChange,
+  handleRunResultsHttpPathChange,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
 
@@ -58,7 +58,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
     const submitData = {
       dbtCatalogHttpPath,
       dbtManifestHttpPath,
-      dbtRunResultsFilePath,
+      dbtRunResultsHttpPath,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -120,11 +120,11 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           id="run-result-file"
           name="run-result-file"
           type="text"
-          value={dbtRunResultsFilePath}
-          onChange={(e) => handleRunResultsFilePathChange(e.target.value)}
+          value={dbtRunResultsHttpPath}
+          onChange={(e) => handleRunResultsHttpPathChange(e.target.value)}
         />
-        {errors?.dbtRunResultsFilePath &&
-          errorMsg(errors.dbtRunResultsFilePath)}
+        {errors?.dbtRunResultsHttpPath &&
+          errorMsg(errors.dbtRunResultsHttpPath)}
       </Field>
       {getSeparator('')}
 

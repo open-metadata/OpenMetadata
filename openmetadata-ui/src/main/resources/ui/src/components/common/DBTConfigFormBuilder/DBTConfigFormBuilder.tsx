@@ -99,14 +99,14 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtCatalogHttpPath={dbtConfig.dbtCatalogHttpPath}
         dbtManifestHttpPath={dbtConfig.dbtManifestHttpPath}
-        dbtRunResultsFilePath={dbtConfig.dbtRunResultsFilePath}
+        dbtRunResultsHttpPath={dbtConfig.dbtRunResultsHttpPath}
         handleCatalogHttpPathChange={(val) => {
           updateDbtConfig('dbtCatalogHttpPath', val);
         }}
         handleManifestHttpPathChange={(val) => {
           updateDbtConfig('dbtManifestHttpPath', val);
         }}
-        handleRunResultsFilePathChange={(val) => {
+        handleRunResultsHttpPathChange={(val) => {
           updateDbtConfig('dbtRunResultsFilePath', val);
         }}
         okText={okText}
