@@ -69,7 +69,7 @@ public class KafkaEventPublisher extends AbstractEventPublisher {
     String topic = kafkaEventConfiguration.getTopics();
     for (ChangeEvent event : events.getData()) {
       String eventJson = JsonUtils.pojoToJson(event);
-      record = new ProducerRecord<>(topic,eventJson);
+      record = new ProducerRecord<>(topic, eventJson);
       producer.send(record, new KafkaCallback());
     }
   }
@@ -77,10 +77,8 @@ public class KafkaEventPublisher extends AbstractEventPublisher {
   public static class KafkaCallback implements Callback {
     @Override
     public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-      if(e==null)
-        LOG.info("Message successfully published on topic: {}", recordMetadata.topic());
-      else
-        LOG.error("Couldn't publish message on topic: {} due to {}", recordMetadata.topic(), e.getMessage());
+      if (e == null) LOG.info("Message successfully published on topic: {}", recordMetadata.topic());
+      else LOG.error("Couldn't publish message on topic: {} due to {}", recordMetadata.topic(), e.getMessage());
     }
   }
 }
