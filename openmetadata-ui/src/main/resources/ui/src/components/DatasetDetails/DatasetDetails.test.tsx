@@ -229,6 +229,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getEntityId: jest.fn().mockReturnValue('id-entity-test'),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 const mockObserve = jest.fn();
