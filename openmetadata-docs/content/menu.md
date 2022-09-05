@@ -364,6 +364,12 @@ site_menu:
     url: /openmetadata/connectors/messaging/kafka/airflow
   - category: OpenMetadata / Connectors / Messaging / Kafka / CLI
     url: /openmetadata/connectors/messaging/kafka/cli
+  - category: OpenMetadata / Connectors / Messaging / Redpanda
+    url: /openmetadata/connectors/messaging/redpanda
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / Airflow
+    url: /openmetadata/connectors/messaging/redpanda/airflow
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / CLI
+    url: /openmetadata/connectors/messaging/redpanda/cli
   
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline

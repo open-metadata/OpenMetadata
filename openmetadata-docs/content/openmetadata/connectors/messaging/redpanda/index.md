@@ -1,13 +1,13 @@
 ---
-title: Kafka
-slug: /openmetadata/connectors/messaging/kafka
+title: Redpanda
+slug: /openmetadata/connectors/messaging/redpanda
 ---
 
-# Kafka
+# Redpanda
 
-In this section, we provide guides and references to use the Kafka connector.
+In this section, we provide guides and references to use the Redpanda connector.
 
-Configure and schedule Kafka metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Redpanda metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/messaging/kafka/airflow"
+    link="/openmetadata/connectors/messaging/redpanda/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/messaging/kafka/cli"
+    link="/openmetadata/connectors/messaging/redpanda/cli"
     size="half"
   />
 </TileContainer>
@@ -69,11 +69,11 @@ caption="Add a new Service from the Services page"
 
 ### 3. Select the Service Type
 
-Select Kafka as the service type and click Next.
+Select Redpanda as the service type and click Next.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/kafka/select-service.png"
+  src="/images/openmetadata/connectors/redpanda/select-service.png"
   alt="Select Service"
   caption="Select your service from the list"
 />
@@ -93,7 +93,7 @@ from.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/kafka/add-new-service.png"
+  src="/images/openmetadata/connectors/redpanda/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service"
 />
@@ -104,12 +104,12 @@ from.
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your kafka service as
+you've configured the connector to read from your Redpanda service as
 desired.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/kafka/service-connection.png"
+  src="/images/openmetadata/connectors/redpanda/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />
@@ -129,10 +129,10 @@ the changes.
 
 #### Connection Options
 
-- **Bootstrap Servers**: Kafka bootstrap servers. Add them in comma separated values ex: host1:9092,host2:9092.
-- **Schema Registry URL**: Confluent Kafka Schema Registry URL. URI format.
-- **Consumer Config**: Confluent Kafka Consumer Config.
-- **Schema Registry Config**:Confluent Kafka Schema Registry Config.
+- **Bootstrap Servers**: Redpanda bootstrap servers. Add them in comma separated values e.g.: host1:9092,host2:9092.
+- **Schema Registry URL**: Redpanda Schema Registry URL. URI format.
+- **Consumer Config**: Redpanda Consumer Config.
+- **Schema Registry Config**: Redpanda Schema Registry Config.
 
 ### 6. Configure Metadata Ingestion
 
@@ -140,7 +140,7 @@ In this step we will configure the metadata ingestion pipeline,
 Please follow the instructions below
 
 <Image
-src="/images/openmetadata/connectors/kafka/configure-metadata-ingestion-messaging.png"
+src="/images/openmetadata/connectors/redpanda/configure-metadata-ingestion-messaging.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page"
 />
@@ -152,7 +152,7 @@ caption="Configure Metadata Ingestion Page"
     - **Include**: Explicitly include topics by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all topics with names matching one or more of the supplied regular expressions. All other topics will be excluded.
     - **Exclude**: Explicitly exclude topics by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all topics with names matching one or more of the supplied regular expressions. All other topics will be included.
 - **Ingest Sample Data (toggle)**: To ingest sample data from the topics.
-- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Enable Debug Log (toggle)**: Set the 'Enable Debug Log' toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 
 ### 7. Schedule the Ingestion and Deploy
 
