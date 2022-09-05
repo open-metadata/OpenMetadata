@@ -38,6 +38,7 @@ import {
   getTeamAndUserDetailsPath,
   PAGE_SIZE,
 } from '../../constants/constants';
+import { TEAMS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -951,7 +952,9 @@ const TeamDetailsV1 = ({
               </Button>
             </div>
           }
+          doc={TEAMS_DOCS}
           heading="Teams"
+          type="ADD_DATA"
         />
       )}
 

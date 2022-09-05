@@ -559,11 +559,18 @@ const GlossaryV1 = ({
   ) : (
     <PageLayout>
       <ErrorPlaceHolder
-        buttonId="add-webhook-button"
-        buttonLabel="Add New Glossary"
-        buttonListener={handleAddGlossaryClick}
+        buttons={
+          <ButtonAntd
+            ghost
+            className="tw-h-8 tw-rounded tw-my-3"
+            data-testid="add-webhook-button"
+            disabled={!createGlossaryPermission}
+            type="primary"
+            onClick={handleAddGlossaryClick}>
+            Add New Glossary
+          </ButtonAntd>
+        }
         doc={GLOSSARIES_DOCS}
-        heading="glossaries"
         type="ADD_DATA"
       />
     </PageLayout>
