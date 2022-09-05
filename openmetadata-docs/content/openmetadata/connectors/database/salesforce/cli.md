@@ -10,7 +10,7 @@ In this section, we provide guides and references to use the Salesforce connecto
 Configure and schedule Salesforce metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 ## Requirements
@@ -309,7 +309,7 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
 While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be

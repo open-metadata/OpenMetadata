@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import React, {
   createContext,
@@ -32,7 +31,6 @@ import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -83,7 +81,8 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // eslint-disable-next-line no-console
+      console.error(error);
     }
   };
 

@@ -35,10 +35,6 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -49,7 +45,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 import AddUsersModalV1 from './AddUsersModalV1';
@@ -97,8 +93,6 @@ const TeamsPage = () => {
         break;
       } else if (team.children && team.children.length > 0) {
         updateTeamsHierarchy(team.children as Team[], parentTeam, data);
-
-        break;
       }
     }
   };
@@ -114,6 +108,7 @@ const TeamsPage = () => {
         ['defaultRoles', 'userCount', 'childrenCount'],
         {
           parentTeam: parentTeam ?? 'organization',
+          include: 'all',
         }
       );
 
@@ -174,7 +169,7 @@ const TeamsPage = () => {
     paging = {} as { [key: string]: string }
   ) => {
     setIsDataLoading(true);
-    getUsers('teams', PAGE_SIZE, { team, ...paging })
+    getUsers('teams,roles', PAGE_SIZE, { team, ...paging })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -191,15 +186,11 @@ const TeamsPage = () => {
   const fetchTeamByFqn = async (name: string) => {
     setIsPageLoading(true);
     try {
-      const data = await getTeamByName(name, [
-        'users',
-        'owns',
-        'defaultRoles',
-        'policies',
-        'owner',
-        'parents',
-        'children',
-      ]);
+      const data = await getTeamByName(
+        name,
+        ['users', 'owns', 'defaultRoles', 'policies', 'owner', 'parents'],
+        'all'
+      );
 
       if (data) {
         getCurrentTeamUsers(data.name);
@@ -431,12 +422,7 @@ const TeamsPage = () => {
   };
 
   const afterDeleteAction = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.MEMBERS,
-        GlobalSettingOptions.TEAMS
-      )
-    );
+    history.push(getSettingPath(getTeamsWithFqnPath(TeamType.Organization)));
   };
 
   const handleShowDeletedTeam = (checked: boolean) => {

@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
@@ -30,11 +30,10 @@ import {
 import Description from '../../components/common/description/Description';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout, {
-  leftPanelAntCardStyle,
-} from '../../components/containers/PageLayout';
+import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
@@ -70,7 +69,7 @@ import {
   getTagPath,
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
@@ -447,44 +446,38 @@ const TagsPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        className="left-panel-container"
-        data-testid="data-summary-container"
-        size="small"
-        style={leftPanelAntCardStyle}
-        title={
-          <div className="tw-flex tw-justify-between tw-items-center">
-            <span
-              className="tw-heading tw-text-base tw-my-0"
-              style={{ fontSize: '14px' }}>
+      <LeftPanelCard id="tags">
+        <div className="tw-py-2" data-testid="data-summary-container">
+          <div className="tw-px-3">
+            <h6 className="tw-heading tw-text-sm tw-font-semibold">
               Tag Categories
-            </span>
-            <Tooltip
-              title={
-                createCategoryPermission
-                  ? 'Add Category'
-                  : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className="tw-px-2 "
-                data-testid="add-category"
-                disabled={!createCategoryPermission}
-                size="small"
-                type="primary"
-                onClick={() => {
-                  setIsAddingCategory((prevState) => !prevState);
-                  setErrorDataCategory(undefined);
-                }}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
-            </Tooltip>
+            </h6>
+            <div className="tw-mb-3">
+              <Tooltip
+                title={
+                  createCategoryPermission
+                    ? 'Add Category'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <button
+                  className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                  data-testid="add-category"
+                  disabled={!createCategoryPermission}
+                  onClick={() => {
+                    setIsAddingCategory((prevState) => !prevState);
+                    setErrorDataCategory(undefined);
+                  }}>
+                  <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                  <span>Add Tag</span>
+                </button>
+              </Tooltip>
+            </div>
           </div>
-        }>
-        <>
+
           {categories &&
             categories.map((category: TagCategory) => (
               <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
                   category.name,
                   currentCategory?.name
                 )}`}
@@ -510,8 +503,8 @@ const TagsPage = () => {
                 )}
               </div>
             ))}
-        </>
-      </Card>
+        </div>
+      </LeftPanelCard>
     );
   };
 
@@ -525,20 +518,17 @@ const TagsPage = () => {
             <p className="tw-text-center tw-m-auto">{error}</p>
           </ErrorPlaceHolder>
         ) : (
-          <div
-            className="full-height"
-            data-testid="tags-container"
-            style={{ padding: '14px' }}>
+          <div className="full-height" data-testid="tags-container">
             {currentCategory && (
               <div
                 className="tw-flex tw-justify-between tw-items-center"
                 data-testid="header">
                 <div
-                  className="tw-heading tw-text-link tw-text-base"
+                  className="tw-text-link tw-text-base tw-py-2"
                   data-testid="category-name">
                   {currentCategory.displayName ?? currentCategory.name}
                 </div>
-                <div>
+                <div className="flex-center">
                   <Tooltip
                     title={
                       createTagPermission || categoryPermissions.EditAll
@@ -546,7 +536,7 @@ const TagsPage = () => {
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <Button
-                      className="tw-h-8 tw-rounded tw-mb-3"
+                      className="tw-h-8 tw-rounded"
                       data-testid="add-new-tag-button"
                       disabled={
                         !(createTagPermission || categoryPermissions.EditAll)
@@ -562,7 +552,7 @@ const TagsPage = () => {
                   </Tooltip>
 
                   <Button
-                    className="tw-h-8 tw-rounded tw-mb-3 tw-ml-2"
+                    className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
                     disabled={!categoryPermissions.Delete}
                     size="small"

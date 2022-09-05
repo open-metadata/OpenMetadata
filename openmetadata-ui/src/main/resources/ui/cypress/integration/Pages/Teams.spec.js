@@ -230,7 +230,7 @@ describe('Teams flow should work properly', () => {
     );
   });
 
-  it('Asset tab should work properly', () => {
+  it.skip('Asset tab should work properly', () => {
     //Click on created team name
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
@@ -315,7 +315,7 @@ describe('Teams flow should work properly', () => {
       .click();
 
     cy.wait(1000);
-    cy.get('.ant-dropdown-menu-item')
+    cy.get('[data-testid="delete-button-title"]')
       .should('exist')
       .should('be.visible')
       .click();

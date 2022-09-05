@@ -14,6 +14,7 @@
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
+import { DATA_QUALITY_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { ColumnTestType } from '../../generated/entity/data/table';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
@@ -176,10 +177,12 @@ const DataQualityTest = ({
           </div>
         </div>
       ) : (
-        <ErrorPlaceHolder>
-          <p className="tw-mb-5">No test available.</p>
-          {addTestButton(false)}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          buttons={addTestButton(false)}
+          doc={DATA_QUALITY_DOCS}
+          heading="test"
+          type="ADD_DATA"
+        />
       )}
     </div>
   );
