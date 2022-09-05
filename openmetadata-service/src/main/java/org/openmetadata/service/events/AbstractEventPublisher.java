@@ -35,11 +35,11 @@ public abstract class AbstractEventPublisher implements EventPublisher {
 
   protected void updateFilter(List<EventFilter> filterList) {
     filterList.forEach(
-        (entityFilter) -> {
+        entityFilter -> {
           String entityType = entityFilter.getEntityType();
           Map<EventType, Filters> entityBasicFilterMap = new HashMap<>();
           if (entityFilter.getFilters() != null) {
-            entityFilter.getFilters().forEach((f) -> entityBasicFilterMap.put(f.getEventType(), f));
+            entityFilter.getFilters().forEach(f -> entityBasicFilterMap.put(f.getEventType(), f));
           }
           filter.put(entityType, entityBasicFilterMap);
         });
