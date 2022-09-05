@@ -7,9 +7,11 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.resources.events.EventResource;
@@ -21,6 +23,7 @@ public class KafkaEventPublisher extends AbstractEventPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
   protected final KafkaEventConfiguration kafkaEventConfiguration;
   private static KafkaProducer<String, String> producer;
+  ProducerRecord<String, String> record;
   Properties properties = new Properties();
   private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
 
@@ -66,7 +69,18 @@ public class KafkaEventPublisher extends AbstractEventPublisher {
     String topic = kafkaEventConfiguration.getTopics();
     for (ChangeEvent event : events.getData()) {
       String eventJson = JsonUtils.pojoToJson(event);
-      producer.send(new ProducerRecord<>(topic, eventJson));
+      record = new ProducerRecord<>(topic,eventJson);
+      producer.send(record, new KafkaCallback());
+    }
+  }
+
+  public static class KafkaCallback implements Callback {
+    @Override
+    public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+      if(e==null)
+        LOG.info("Message successfully published on topic: {}", recordMetadata.topic());
+      else
+        LOG.error("Couldn't publish message on topic: {} due to {}", recordMetadata.topic(), e.getMessage());
     }
   }
 }
