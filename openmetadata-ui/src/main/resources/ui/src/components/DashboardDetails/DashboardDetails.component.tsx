@@ -16,10 +16,19 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -217,18 +226,26 @@ const DashboardDetails = ({
     },
   ];
 
+  const ownerValue = useMemo(() => {
+    switch (owner?.type) {
+      case 'team':
+        return getTeamAndUserDetailsPath(owner?.name || '');
+      case 'user':
+        return getUserPath(owner?.fullyQualifiedName ?? '');
+      default:
+        return '';
+    }
+  }, [owner]);
+
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(owner?.name || '')
-          : getEntityName(owner),
+      value: ownerValue,
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
       ),
-      isLink: owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
