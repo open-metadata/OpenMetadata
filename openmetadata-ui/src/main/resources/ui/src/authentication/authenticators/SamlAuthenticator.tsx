@@ -41,16 +41,22 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const logout = async () => {
-      await postSamlLogout();
-      setIsAuthenticated(false);
-      try {
-        onLogoutSuccess();
-      } catch (err) {
-        // TODO: Handle error on logout failure
-        // eslint-disable-next-line no-console
-        console.log(err);
-      }
+    const logout = () => {
+      postSamlLogout()
+        .then(() => {
+          setIsAuthenticated(false);
+          try {
+            onLogoutSuccess();
+          } catch (err) {
+            // TODO: Handle error on logout failure
+            // eslint-disable-next-line no-console
+            console.log(err);
+          }
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.log('Error while logging out', err);
+        });
     };
 
     useImperativeHandle(ref, () => ({
