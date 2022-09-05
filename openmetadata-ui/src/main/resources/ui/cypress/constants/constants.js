@@ -53,15 +53,15 @@ export const SEARCH_ENTITY_DASHBOARD = {
 
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
-    term: 'Snowflake ETL',
+    term: 'Snowflake',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_2: {
-    term: 'Hive ETL',
+    term: 'Hive',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_3: {
-    term: 'Trino ETL',
+    term: 'Trino',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
 };
