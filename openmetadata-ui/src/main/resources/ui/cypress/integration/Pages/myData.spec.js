@@ -113,7 +113,7 @@ describe('MyData page should work', () => {
       .click();
     cy.wait(1000);
 
-    cy.get('[data-testid="owner-link"]')
+    cy.get(':nth-child(2) > [data-testid="owner-link"]')
       .scrollIntoView()
       .invoke('text')
       .then((text) => {
