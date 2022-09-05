@@ -68,7 +68,6 @@ import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.catalog.kafka.KafkaEventPublisher;
 import org.openmetadata.catalog.migration.Migration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.resources.CollectionRegistry;
@@ -143,8 +142,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
     registerEventPublisher(catalogConfig);
-    // Register Kafka Event publishers
-    registerKafkaPublisher(catalogConfig);
 
     // Check if migration is need from local secret manager to configured one and migrate
     new SecretsManagerMigrationService(secretsManager, catalogConfig.getClusterName())
@@ -267,15 +264,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       ElasticSearchEventPublisher elasticSearchEventPublisher =
           new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
-    }
-  }
-
-  public void registerKafkaPublisher(CatalogApplicationConfig catalogApplicationConfig) {
-    // register Kafka Event publisher
-    if (catalogApplicationConfig.getKafkaEventConfiguration() != null) {
-      KafkaEventPublisher kafkaEventPublisher =
-          new KafkaEventPublisher(catalogApplicationConfig.getKafkaEventConfiguration());
-      EventPubSub.addEventHandler(kafkaEventPublisher);
     }
   }
 

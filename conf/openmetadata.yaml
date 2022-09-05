@@ -166,24 +166,6 @@ elasticsearch:
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
 
-kafka:
-  topics: ${KAFKA_TOPICS:-[]}
-  bootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:-"http://localhost:9092"}
-  acks: ${KAFKA_ACKS:-"all"}
-  retries: ${KAFKA_RETRIES:-3}
-  batchSize: ${KAFKA_BATCH_SIZE:-16384}
-  lingerMS: ${KAFKA_LINGER_MS:-1}
-  bufferMemory: ${KAFKA_BUFFER_MEMORY:-33554432}
-  keySerializer: ${KAFKA_KEY_SERIALIZER:-"org.apache.kafka.common.serialization.StringSerializer"}
-  valueSerializer: ${KAFKA_VALUE_SERIALIZER:-"org.apache.kafka.common.serialization.StringSerializer"}
-  securityProtocol: ${KAFKA_SECURITY_PROTOCOL:-"PLAINTEXT"}
-  SSLProtocol: ${KAFKA_SSL_PROTOCOL:-"TLSv1.2"}
-  SSLTrustStoreLocation: ${KAFKA_TRUST_STORE_LOCATION:-""}
-  SSLTrustStorePassword: ${KAFKA_TRUST_STORE_PASSWORD:-""}
-  SSLKeystoreLocation: ${KAFKA_KEY_STORE_LOCATION:-""}
-  SSLKeystorePassword: ${KAFKA_KEY_STORE_PASSWORD:-""}
-  SSLKeyPassword: ${KAFKA_KEY_PASSWORD:-""}
-
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"

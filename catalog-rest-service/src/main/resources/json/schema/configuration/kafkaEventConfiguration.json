@@ -8,39 +8,11 @@
   "properties": {
     "topics": {
       "description": "Topics of Kafka Producer",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "type": "string"
     },
     "bootstrapServers": {
-      "default": "Bootstrap servers",
+      "description": "Kafka bootstrap servers",
       "type": "string"
-    },
-    "acks": {
-      "description": "Acknowledgment",
-      "default": "all",
-      "type": "string"
-    },
-    "retries": {
-      "description": "No. of retries",
-      "default": 3,
-      "type": "integer"
-    },
-    "batchSize": {
-      "description": "Batch size",
-      "default": 16384,
-      "type": "integer"
-    },
-    "lingerMS": {
-      "description": "Artificial Delay in milliseconds",
-      "default": 1,
-      "type": "integer"
-    },
-    "bufferMemory": {
-      "description": "Buffer Memory",
-      "default": 33554432,
-      "type": "integer"
     },
     "keySerializer": {
       "description": "Serializer class for key",
@@ -52,36 +24,16 @@
       "default": "org.apache.kafka.common.serialization.StringSerializer",
       "type": "string"
     },
-    "securityProtocol": {
-      "description": "Kafka security protocol config",
-      "type": "string",
-      "enum": ["PLAINTEXT", "SSL"],
-      "default": "PLAINTEXT"
+    "kafkaConfig": {
+      "title": "Producer Config",
+      "description": "Kafka Producer Config",
+      "existingJavaType": "java.util.Map<String,String>",
+      "type": "object"
     },
-    "SSLProtocol": {
-      "description": "Kafka SSL protocol config",
-      "default": "TLSv1.2",
-      "type": "string"
-    },
-    "SSLTrustStoreLocation": {
-      "description": "Kafka SSL truststore location",
-      "type": "string"
-    },
-    "SSLTrustStorePassword": {
-      "description": "Kafka SSL truststore password",
-      "type": "string"
-    },
-    "SSLKeystoreLocation": {
-      "description": "Kafka SSL keystore location",
-      "type": "string"
-    },
-    "SSLKeystorePassword": {
-      "description": "Kafka SSL keystore password",
-      "type": "string"
-    },
-    "SSLKeyPassword": {
-      "description": "Kafka SSL key password",
-      "type": "string"
+    "batchSize": {
+      "description": "Batch size",
+      "default": 16384,
+      "type": "integer"
     }
   },
   "required": ["topics", "bootstrapServers"],

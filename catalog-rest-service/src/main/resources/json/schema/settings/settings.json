@@ -22,7 +22,8 @@
         "activityFeedFilterSetting",
         "secretsManagerConfiguration",
         "sandboxModeEnabled",
-        "slackChat"
+        "slackChat",
+        "kafkaEventConfiguration"
       ]
     }
   },
@@ -59,6 +60,9 @@
         },
         {
           "$ref": "../configuration/slackEventPubConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/kafkaEventConfiguration.json"
         }
       ]
     }

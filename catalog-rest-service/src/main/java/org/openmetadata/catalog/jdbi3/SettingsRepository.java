@@ -14,14 +14,19 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
+import static org.openmetadata.catalog.settings.SettingsType.KAFKA_EVENT_CONFIGURATION;
 
+import com.lmax.disruptor.BatchEventProcessor;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.filter.Filters;
+import org.openmetadata.catalog.kafka.KafkaEventConfiguration;
+import org.openmetadata.catalog.kafka.KafkaEventPublisher;
 import org.openmetadata.catalog.resources.settings.SettingsCache;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.settings.SettingsType;
@@ -33,6 +38,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Slf4j
 public class SettingsRepository {
   private final CollectionDAO dao;
+  private static KafkaEventPublisher kafkaPublisher;
 
   public SettingsRepository(CollectionDAO dao) {
     this.dao = dao;
@@ -60,6 +66,34 @@ public class SettingsRepository {
       LOG.error("Error while trying fetch Settings " + ex.getMessage());
     }
     return settings;
+  }
+
+  public void addKafkaPublisher(Settings settings) {
+    KafkaEventPublisher kafkaEventPublisher;
+    KafkaEventConfiguration kafkaEventConfiguration =
+        JsonUtils.convertValue(settings.getConfigValue(), KafkaEventConfiguration.class);
+    kafkaEventPublisher = new KafkaEventPublisher(kafkaEventConfiguration);
+    BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(kafkaEventPublisher);
+    kafkaEventPublisher.setProcessor(processor);
+    kafkaPublisher = kafkaEventPublisher;
+  }
+
+  public void updateKafkaPublisher(Settings settings) throws InterruptedException {
+    if (kafkaPublisher != null) {
+      removeKafkaPublisher();
+    }
+    addKafkaPublisher(settings);
+  }
+
+  public void removeKafkaPublisher() throws InterruptedException {
+    if (kafkaPublisher != null) {
+      KafkaEventPublisher publisher = kafkaPublisher;
+      publisher.getProcessor().halt();
+      publisher.awaitShutdown();
+      EventPubSub.removeProcessor(publisher.getProcessor());
+    }
+    // Removing the previous value of kafkaPublisher. Setting it to null
+    kafkaPublisher = null;
   }
 
   public Response createOrUpdate(Settings setting) {
@@ -120,6 +154,9 @@ public class SettingsRepository {
       if (setting.getConfigType().equals(ACTIVITY_FEED_FILTER_SETTING)) {
         FilterRegistry.add(FilterUtil.getEventFilterFromSettings(setting));
         SettingsCache.getInstance().putSettings(setting);
+      }
+      if (setting.getConfigType().equals(KAFKA_EVENT_CONFIGURATION)) {
+        updateKafkaPublisher(setting);
       }
     } catch (Exception ex) {
       throw new RuntimeException(ex);

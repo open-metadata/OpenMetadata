@@ -66,12 +66,15 @@ import org.openmetadata.common.utils.CommonUtil;
 @Slf4j
 public class SettingsResource {
   private final SettingsRepository settingsRepository;
+  private CollectionDAO.SettingsDAO settingsDAO;
   private final Authorizer authorizer;
   private List<EventFilter> bootStrappedFilters;
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
     initSettings();
+    List<Settings> listKafkaConfigs = settingsDAO.getAllConfig();
+    listKafkaConfigs.forEach(settingsRepository::addKafkaPublisher);
   }
 
   private void initSettings() throws IOException {

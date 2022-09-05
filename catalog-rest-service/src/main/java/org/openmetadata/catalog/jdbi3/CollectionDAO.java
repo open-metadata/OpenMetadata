@@ -73,6 +73,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.catalog.kafka.KafkaEventConfiguration;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.tests.TestCase;
@@ -2904,6 +2905,9 @@ public interface CollectionDAO {
         switch (configType) {
           case ACTIVITY_FEED_FILTER_SETTING:
             value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+            break;
+          case KAFKA_EVENT_CONFIGURATION:
+            value = JsonUtils.readValue(json, KafkaEventConfiguration.class);
             break;
           default:
             throw new RuntimeException("Invalid Settings Type");
