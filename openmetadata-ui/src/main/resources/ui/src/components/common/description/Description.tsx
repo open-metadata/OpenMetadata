@@ -107,7 +107,7 @@ const Description: FC<DescriptionProps> = ({
   }) => {
     return !isUndefined(descriptionThread) ? (
       <button
-        className="tw-w-7 tw-h-7 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
         data-testid="description-thread"
         onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
         <span className="tw-flex">
@@ -122,7 +122,7 @@ const Description: FC<DescriptionProps> = ({
       <Fragment>
         {description?.trim() && onThreadLinkSelect ? (
           <button
-            className="tw-w-7 tw-h-7 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+            className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
             data-testid="start-description-thread"
             onClick={() =>
               onThreadLinkSelect?.(
@@ -159,7 +159,7 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-1')}>
+      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-0.5')}>
         {hasEditAccess && (
           <button
             className="tw-w-7 tw-h-7 tw-flex-none focus:tw-outline-none"

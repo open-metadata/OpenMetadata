@@ -560,7 +560,7 @@ const EntityTable = ({
                 <span className="tw-no-description">No description</span>
               )}
             </div>
-            <div className="tw-flex tw--mt-2">
+            <div className="tw-flex tw--mt-1.5">
               {!isReadOnly ? (
                 <Fragment>
                   {hasDescriptionEditAccess && (

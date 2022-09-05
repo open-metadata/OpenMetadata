@@ -351,7 +351,7 @@ const EntityPageInfo = ({
   const getTaskElement = useCallback(() => {
     return !isUndefined(tagTask) ? (
       <button
-        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
+        className="tw-w-8 tw-h-8 tw-mr-1 tw--mt-0.5 tw-flex-none link-text focus:tw-outline-none"
         data-testid="tag-task"
         onClick={() =>
           onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
