@@ -79,6 +79,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private final ElasticSearchIndexDefinition esIndexDefinition;
   private static final String SERVICE_NAME = "service.name";
   private static final String DATABASE_NAME = "database.name";
+  private static final String SEND_REQUEST_MESSAGE = "Sending request to ElasticSearch";
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig) {
     super(esConfig.getBatchSize(), new ArrayList<>());
@@ -637,7 +638,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     if (updateRequest != null) {
-      LOG.debug("Sending request to ElasticSearch");
+      LOG.debug(SEND_REQUEST_MESSAGE);
       LOG.debug(updateRequest.toString());
       client.update(updateRequest, RequestOptions.DEFAULT);
     }
@@ -645,7 +646,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch");
+      LOG.debug(SEND_REQUEST_MESSAGE);
       LOG.debug(deleteRequest.toString());
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
@@ -654,7 +655,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch");
+      LOG.debug(SEND_REQUEST_MESSAGE);
       LOG.debug(deleteRequest.toString());
       deleteRequest.setRefresh(true);
       client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
