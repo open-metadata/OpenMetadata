@@ -15,7 +15,13 @@ import { Col, Empty, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -388,15 +394,21 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const ownerValue = useMemo(() => {
+    switch (owner?.type) {
+      case 'team':
+        return getTeamAndUserDetailsPath(owner?.name || '');
+      case 'user':
+        return getUserPath(owner?.fullyQualifiedName ?? '');
+      default:
+        return '';
+    }
+  }, [owner]);
+
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(owner?.name || '')
-          : owner?.type === 'user'
-          ? getUserPath(owner?.fullyQualifiedName ?? '')
-          : '',
+      value: ownerValue,
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted

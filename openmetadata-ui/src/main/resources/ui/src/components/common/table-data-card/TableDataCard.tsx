@@ -22,7 +22,7 @@ import {
   uniqueId,
 } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -96,15 +96,21 @@ const TableDataCard: FunctionComponent<Props> = ({
     return '';
   };
 
+  const ownerValue = useMemo(() => {
+    switch (owner?.type) {
+      case 'team':
+        return getTeamAndUserDetailsPath(owner?.name || '');
+      case 'user':
+        return getUserPath(owner?.fullyQualifiedName ?? '');
+      default:
+        return '';
+    }
+  }, [owner]);
+
   const OtherDetails: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(owner?.name || '')
-          : owner?.type === 'user'
-          ? getUserPath(owner?.fullyQualifiedName ?? '')
-          : '',
+      value: ownerValue,
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
