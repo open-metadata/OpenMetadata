@@ -19,16 +19,19 @@ const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
 const mockCatalogChange = jest.fn();
 const mockManifestChange = jest.fn();
+const mockRunResultsFilePathChange = jest.fn();
 
 const mockProps = {
   dbtCatalogFilePath: '',
   dbtManifestFilePath: '',
+  dbtRunResultsFilePath: '',
   okText: 'Next',
   cancelText: 'Back',
   onCancel: mockCancel,
   onSubmit: mockSubmit,
   handleCatalogFilePathChange: mockCatalogChange,
   handleManifestFilePathChange: mockManifestChange,
+  handleRunResultsFilePathChange: mockRunResultsFilePathChange,
 };
 
 describe('Test DBT Local Config Form', () => {

@@ -16,8 +16,6 @@ import { FormValidationRules } from '../../../interface/genericForm.interface';
 import { DropDownListItem } from '../../dropdown/types';
 import {
   DbtConfigCloud,
-  DbtConfigHttp,
-  DbtConfigLocal,
   DbtGCSCreds,
   DbtS3Creds,
   DbtS3CredsReq,
@@ -67,12 +65,12 @@ export const reqDBTCloudFields: Record<keyof DbtConfigCloud, string> = {
   dbtCloudAuthToken: 'DBT Cloud Authentication Token',
 };
 
-export const reqDBTLocalFields: Record<keyof DbtConfigLocal, string> = {
+export const reqDBTLocalFields: Record<string, string> = {
   dbtCatalogFilePath: 'DBT Catalog File Path',
   dbtManifestFilePath: 'DBT Manifest File Path',
 };
 
-export const reqDBTHttpFields: Record<keyof DbtConfigHttp, string> = {
+export const reqDBTHttpFields: Record<string, string> = {
   dbtCatalogHttpPath: 'DBT Catalog Http Path',
   dbtManifestHttpPath: 'DBT Manifest Http Path',
 };
