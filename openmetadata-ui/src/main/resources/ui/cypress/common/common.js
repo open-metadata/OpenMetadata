@@ -24,7 +24,9 @@ export const interceptURL = (method, url, alias) => {
 };
 
 export const verifyResponseStatusCode = (alias, responseCode) => {
-  cy.wait(alias).its('response.statusCode').should('eq', responseCode);
+  cy.wait(alias, { timeout: 100000 })
+    .its('response.statusCode')
+    .should('eq', responseCode);
 };
 
 export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
@@ -218,7 +220,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
 
-  verifyResponseStatusCode('@home', 200, { timeout: 2000 });
+  verifyResponseStatusCode('@home', 200);
 
   cy.get('.Toastify__toast-body')
     .should('exist')
