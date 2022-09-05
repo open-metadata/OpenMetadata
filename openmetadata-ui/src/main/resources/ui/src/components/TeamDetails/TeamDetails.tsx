@@ -655,24 +655,25 @@ const TeamDetails = ({
           </div>
         </Fragment>
       ) : (
-        <ErrorPlaceHolder>
-          <p className="tw-text-lg tw-text-center">No Teams Added.</p>
-          <div className="tw-text-lg tw-text-center">
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <Button
-                disabled={!isActionAllowed()}
-                size="small"
-                theme="primary"
-                variant="outlined"
-                onClick={() => handleAddTeam(true)}>
-                Click here
-              </Button>
-            </NonAdminAction>
-            {' to add new Team'}
-          </div>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          buttons={
+            <div className="tw-text-lg tw-text-center">
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  disabled={!isActionAllowed()}
+                  size="small"
+                  theme="primary"
+                  variant="outlined"
+                  onClick={() => handleAddTeam(true)}>
+                  Add new Team
+                </Button>
+              </NonAdminAction>
+            </div>
+          }
+          heading="Teams"
+        />
       )}
 
       {deletingUser.state && (

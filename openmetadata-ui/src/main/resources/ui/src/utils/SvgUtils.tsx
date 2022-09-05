@@ -21,6 +21,7 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
+import IconAdmin from '../assets/svg/admin.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
@@ -63,6 +64,7 @@ import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
+import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
@@ -357,6 +359,8 @@ export const Icons = {
   ALL_ACTIVITY: 'all-activity',
   OPEN_LOCK: 'open-lock',
   CLOSED_LOCK: 'closed-lock',
+  FILTER_PRIMARY: 'filter-primary',
+  ADMIN: 'admin',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -1038,6 +1042,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAllActivity;
 
       break;
+    case Icons.FILTER_PRIMARY:
+      IconComponent = IconFilterPrimary;
+
+      break;
 
     case Icons.OPEN_LOCK:
       IconComponent = IconOpenLock;
@@ -1046,6 +1054,11 @@ const SVGIcons: FunctionComponent<Props> = ({
 
     case Icons.CLOSED_LOCK:
       IconComponent = IconClosedLock;
+
+      break;
+
+    case Icons.ADMIN:
+      IconComponent = IconAdmin;
 
       break;
 

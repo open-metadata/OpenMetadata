@@ -14,11 +14,13 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button,
-  Collapse,
+  Card,
+  Col,
   Dropdown,
   Empty,
   Menu,
   Modal,
+  Row,
   Space,
   Table,
   Tabs,
@@ -28,7 +30,7 @@ import {
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
@@ -68,8 +70,6 @@ import {
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
-
-const { Panel } = Collapse;
 
 const { TabPane } = Tabs;
 
@@ -474,89 +474,97 @@ const PoliciesDetailPage = () => {
                       Add Rule
                     </Button>
                   </Tooltip>
-                  <Space className="tw-w-full" direction="vertical" size={16}>
+
+                  <Space
+                    className="tw-w-full tw-pt-4"
+                    direction="vertical"
+                    size={20}>
                     {policy.rules.map((rule) => (
-                      <Collapse key={uniqueId()}>
-                        <Panel
-                          header={
-                            <Space
-                              className="tw-w-full"
-                              direction="vertical"
-                              size={4}>
-                              <Space
-                                align="baseline"
-                                className="tw-w-full tw-justify-between"
-                                size={4}>
-                                <Typography.Text
-                                  className="tw-font-medium tw-text-base tw-text-grey-body"
-                                  data-testid="rule-name">
-                                  {rule.name}
-                                </Typography.Text>
-                                {getRuleActionElement(rule)}
-                              </Space>
-                              <div
-                                className="tw--ml-5"
-                                data-testid="description">
+                      <Card key={rule.name || 'rule'}>
+                        <Space
+                          align="baseline"
+                          className="tw-w-full tw-justify-between tw-pb-5"
+                          direction="horizontal">
+                          <Typography.Text
+                            className="tw-font-medium tw-text-base tw-text-grey-body"
+                            data-testid="rule-name">
+                            {rule.name}
+                          </Typography.Text>
+                          {getRuleActionElement(rule)}
+                        </Space>
+
+                        <Space
+                          className="tw-w-full"
+                          direction="vertical"
+                          size={12}>
+                          {rule.description && (
+                            <Row data-testid="description">
+                              <Col span={2}>
                                 <Typography.Text className="tw-text-grey-muted">
-                                  Description:
+                                  Description :
                                 </Typography.Text>
+                              </Col>
+                              <Col span={22}>
                                 <RichTextEditorPreviewer
                                   markdown={rule.description || ''}
                                 />
-                              </div>
-                            </Space>
-                          }
-                          key={rule.name || 'rule'}>
-                          <Space direction="vertical" size={16}>
-                            <Space
-                              data-testid="resources"
-                              direction="vertical"
-                              size={4}>
+                              </Col>
+                            </Row>
+                          )}
+
+                          <Row data-testid="resources">
+                            <Col span={2}>
                               <Typography.Text className="tw-text-grey-muted tw-mb-0">
-                                Resources:
+                                Resources :
                               </Typography.Text>
+                            </Col>
+                            <Col span={22}>
                               <Typography.Text className="tw-text-grey-body">
                                 {rule.resources
                                   ?.map((resource) => startCase(resource))
                                   ?.join(', ')}
                               </Typography.Text>
-                            </Space>
+                            </Col>
+                          </Row>
 
-                            <Space
-                              data-testid="operations"
-                              direction="vertical"
-                              size={4}>
+                          <Row data-testid="operations">
+                            <Col span={2}>
                               <Typography.Text className="tw-text-grey-muted">
-                                Operations:
+                                Operations :
                               </Typography.Text>
+                            </Col>
+                            <Col span={22}>
                               <Typography.Text className="tw-text-grey-body">
                                 {rule.operations?.join(', ')}
                               </Typography.Text>
-                            </Space>
-                            <Space
-                              data-testid="effect"
-                              direction="vertical"
-                              size={4}>
+                            </Col>
+                          </Row>
+                          <Row data-testid="effect">
+                            <Col span={2}>
                               <Typography.Text className="tw-text-grey-muted">
-                                Effect:
+                                Effect :
                               </Typography.Text>
+                            </Col>
+                            <Col span={22}>
                               <Typography.Text className="tw-text-grey-body">
                                 {startCase(rule.effect)}
                               </Typography.Text>
-                            </Space>
-                            {rule.condition && (
-                              <Space direction="vertical" size={4}>
+                            </Col>
+                          </Row>
+                          {rule.condition && (
+                            <Row data-testid="condition">
+                              <Col span={2}>
                                 <Typography.Text className="tw-text-grey-muted">
-                                  Condition:
+                                  Condition :
                                 </Typography.Text>
-                                <code data-testid="condition">
-                                  {rule.condition}
-                                </code>
-                              </Space>
-                            )}
-                          </Space>
-                        </Panel>
-                      </Collapse>
+                              </Col>
+                              <Col span={22}>
+                                <code>{rule.condition}</code>
+                              </Col>
+                            </Row>
+                          )}
+                        </Space>
+                      </Card>
                     ))}
                   </Space>
                 </Space>

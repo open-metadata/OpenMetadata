@@ -11,7 +11,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 ## Requirements
@@ -419,7 +419,7 @@ After saving the YAML config, we will run the command the same way we did for th
 metadata ingest -c <path-to-yaml>
 ```
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
 While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be
