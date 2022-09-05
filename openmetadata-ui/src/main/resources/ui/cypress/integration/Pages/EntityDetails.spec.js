@@ -149,7 +149,7 @@ describe('Entity Details Page', () => {
       .click();
     cy.wait(1000);
 
-    cy.get('[data-testid="owner-dropdown"]')
+    cy.get('[data-testid="owner-link"]')
       .invoke('text')
       .then((text) => {
         expect(text).equal('Aaron Johnson');
