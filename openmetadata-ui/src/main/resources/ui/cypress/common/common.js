@@ -214,9 +214,12 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('be.visible')
     .type('DELETE');
 
-  interceptURL('GET', '/api/v1/config/sandbox', 'home');
+  interceptURL('GET', '/api/v1/config/*', 'home');
+
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-  verifyResponseStatusCode('@home', 200);
+
+  verifyResponseStatusCode('@home', 200, { timeout: 2000 });
+
   cy.get('.Toastify__toast-body')
     .should('exist')
     .should('be.visible')
