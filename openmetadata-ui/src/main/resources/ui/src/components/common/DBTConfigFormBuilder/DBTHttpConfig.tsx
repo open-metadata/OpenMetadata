@@ -55,7 +55,11 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtCatalogHttpPath, dbtManifestHttpPath };
+    const submitData = {
+      dbtCatalogHttpPath,
+      dbtManifestHttpPath,
+      dbtRunResultsFilePath,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }

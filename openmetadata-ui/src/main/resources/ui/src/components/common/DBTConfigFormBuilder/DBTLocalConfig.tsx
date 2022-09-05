@@ -55,7 +55,11 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtCatalogFilePath, dbtManifestFilePath };
+    const submitData = {
+      dbtCatalogFilePath,
+      dbtManifestFilePath,
+      dbtRunResultsFilePath,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
