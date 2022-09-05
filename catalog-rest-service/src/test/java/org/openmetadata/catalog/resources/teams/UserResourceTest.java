@@ -695,13 +695,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
 
-    fields = "profile,roles,teams,follows,owns,groups";
+    fields = "profile,roles,teams,follows,owns";
     user =
         byName
             ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(
-        user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns(), user.getGroups());
+    assertListNotNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
     validateAlphabeticalOrdering(user.getTeams(), EntityUtil.compareEntityReference);
     return user;
   }

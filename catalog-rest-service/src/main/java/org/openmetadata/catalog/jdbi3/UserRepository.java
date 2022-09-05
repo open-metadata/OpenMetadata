@@ -125,9 +125,14 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public User setFields(User user, Fields fields) throws IOException {
+    if (fields.contains("teams")) {
+      user.setTeams(getTeams(user));
+    } else if (fields.contains("groups")) {
+      user.setTeams(getGroupTeams(getTeams(user)));
+    } else {
+      user.setTeams(null);
+    }
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
-    user.setTeams(fields.contains("teams") ? getTeams(user) : null);
-    user.setGroups(fields.contains("groups") ? getGroupTeams(getTeams(user)) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
