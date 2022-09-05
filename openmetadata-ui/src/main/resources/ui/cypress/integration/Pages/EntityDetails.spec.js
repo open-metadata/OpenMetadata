@@ -150,6 +150,7 @@ describe('Entity Details Page', () => {
     cy.wait(1000);
 
     cy.get('[data-testid="owner-link"]')
+      .scrollIntoView()
       .invoke('text')
       .then((text) => {
         expect(text).equal('Aaron Johnson');
