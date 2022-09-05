@@ -120,7 +120,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Parameter(description = "Filter webhooks by status", schema = @Schema(type = "string", example = "active"))
           @QueryParam("status")
           String statusParam,
-      @Parameter(description = "Filter webhooks by type", schema = @Schema(type = "string", example = "generic, slack, msteams"))
+      @Parameter(
+              description = "Filter webhooks by type",
+              schema = @Schema(type = "string", example = "generic, slack, msteams"))
           @QueryParam("webhookType")
           String typeParam,
       @Parameter(description = "Limit the number webhooks returned. (1 to 1000000, default = " + "10) ")
