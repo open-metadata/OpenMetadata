@@ -67,7 +67,7 @@ type Props = {
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   currentPage: number;
-  handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
+  handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
   handleUserRedirection?: (name: string) => void;
@@ -203,13 +203,13 @@ const GlossaryTermsV1 = ({
     }
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (glossaryTerm.description !== updatedHTML) {
       const updatedGlossaryTermDetails = {
         ...glossaryTerm,
         description: updatedHTML,
       };
-      handleGlossaryTermUpdate(updatedGlossaryTermDetails);
+      await handleGlossaryTermUpdate(updatedGlossaryTermDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);

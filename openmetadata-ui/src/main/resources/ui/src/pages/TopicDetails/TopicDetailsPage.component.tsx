@@ -491,27 +491,21 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const descriptionUpdateHandler = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic)
-      .then((res) => {
-        if (res) {
-          const { description = '', version } = res;
-          setCurrentVersion(version + '');
-          setTopicDetails(res);
-          setDescription(description);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-description-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedTopic: Topic) => {
+    try {
+      const response = await saveUpdatedTopicData(updatedTopic);
+      if (response) {
+        const { description = '', version } = response;
+        setCurrentVersion(version + '');
+        setTopicDetails(response);
+        setDescription(description);
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['update-description-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const settingsUpdateHandler = (updatedTopic: Topic): Promise<void> => {

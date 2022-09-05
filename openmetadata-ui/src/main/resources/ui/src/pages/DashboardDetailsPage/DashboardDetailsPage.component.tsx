@@ -441,25 +441,21 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const descriptionUpdateHandler = (updatedDashboard: Dashboard) => {
-    saveUpdatedDashboardData(updatedDashboard)
-      .then((res) => {
-        if (res) {
-          const { description, version } = res;
-          setCurrentVersion(version + '');
-          setDashboardDetails(res);
-          setDescription(description + '');
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedDashboard: Dashboard) => {
+    try {
+      const response = await saveUpdatedDashboardData(updatedDashboard);
+      if (response) {
+        const { description, version } = response;
+        setCurrentVersion(version + '');
+        setDashboardDetails(response);
+        setDescription(description + '');
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const followDashboard = () => {
@@ -550,30 +546,26 @@ const DashboardDetailsPage = () => {
     });
   };
 
-  const onChartUpdate = (
+  const onChartUpdate = async (
     index: number,
     chartId: string,
     patch: Array<Operation>
   ) => {
-    updateChart(chartId, patch)
-      .then((res) => {
-        if (res) {
-          setCharts((prevCharts) => {
-            const charts = [...prevCharts];
-            charts[index] = res;
+    try {
+      const response = await updateChart(chartId, patch);
+      if (response) {
+        setCharts((prevCharts) => {
+          const charts = [...prevCharts];
+          charts[index] = response;
 
-            return charts;
-          });
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-chart-error']
-        );
-      });
+          return charts;
+        });
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const handleChartTagSelection = (

@@ -51,7 +51,7 @@ import Tags from '../tags/tags';
 type props = {
   permissions: OperationPermission;
   glossary: Glossary;
-  updateGlossary: (value: Glossary) => void;
+  updateGlossary: (value: Glossary) => Promise<void>;
   handleUserRedirection?: (name: string) => void;
 };
 
@@ -203,13 +203,13 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
       });
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (glossary.description !== updatedHTML) {
       const updatedTableDetails = {
         ...glossary,
         description: updatedHTML,
       };
-      updateGlossary(updatedTableDetails);
+      await updateGlossary(updatedTableDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);

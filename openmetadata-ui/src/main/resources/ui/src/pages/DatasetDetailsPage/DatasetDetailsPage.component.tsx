@@ -515,48 +515,38 @@ const DatasetDetailsPage: FunctionComponent = () => {
     return patchTableDetails(tableId, jsonPatch);
   };
 
-  const descriptionUpdateHandler = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          const { description, version } = res;
-          setCurrentVersion(version + '');
-          setTableDetails(res);
-          setDescription(description ?? '');
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-description-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedTable: Table) => {
+    try {
+      const response = await saveUpdatedTableData(updatedTable);
+      if (response) {
+        const { description, version } = response;
+        setCurrentVersion(version + '');
+        setTableDetails(response);
+        setDescription(description ?? '');
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['update-description-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
-  const columnsUpdateHandler = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          const { columns, version } = res;
-          setCurrentVersion(version + '');
-          setTableDetails(res);
-          setColumns(columns);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-entity-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-error']
-        );
-      });
+  const columnsUpdateHandler = async (updatedTable: Table) => {
+    try {
+      const response = await saveUpdatedTableData(updatedTable);
+      if (response) {
+        const { columns, version } = response;
+        setCurrentVersion(version + '');
+        setTableDetails(response);
+        setColumns(columns);
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const onTagUpdate = (updatedTable: Table) => {
@@ -937,25 +927,21 @@ const DatasetDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtentionUpdate = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          const { version, owner: ownerValue, tags } = res;
-          setCurrentVersion(version?.toString());
-          setTableDetails(res);
-          setOwner(ownerValue);
-          setTier(getTierTags(tags ?? []));
-        } else {
-          throw jsonData['api-error-messages']['update-entity-error'];
-        }
-      })
-      .catch((extensionErr: AxiosError) => {
-        showErrorToast(
-          extensionErr,
-          jsonData['api-error-messages']['update-entity-error']
-        );
-      });
+  const handleExtentionUpdate = async (updatedTable: Table) => {
+    try {
+      const response = await saveUpdatedTableData(updatedTable);
+      if (response) {
+        const { version, owner: ownerValue, tags } = response;
+        setCurrentVersion(version?.toString());
+        setTableDetails(response);
+        setOwner(ownerValue);
+        setTier(getTierTags(tags ?? []));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   useEffect(() => {

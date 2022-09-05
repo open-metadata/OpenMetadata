@@ -24,7 +24,7 @@ interface Props {
   propertyName: string;
   propertyType: EntityReference;
   extension: Table['extension'];
-  onExtensionUpdate: (updatedExtension: Table['extension']) => void;
+  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
 }
 
 const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
@@ -55,7 +55,7 @@ export const PropertyValue: FC<Props> = ({
   };
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const onInputSave = (updatedValue: any) => {
+  const onInputSave = async (updatedValue: any) => {
     const updatedExtension = {
       ...(extension || {}),
       [propertyName]:
@@ -63,7 +63,7 @@ export const PropertyValue: FC<Props> = ({
           ? toNumber(updatedValue || 0)
           : updatedValue,
     };
-    onExtensionUpdate(updatedExtension);
+    await onExtensionUpdate(updatedExtension);
   };
 
   const getPropertyInput = () => {

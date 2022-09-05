@@ -158,10 +158,9 @@ const Users = ({
     setIsDisplayNameEdit(false);
   };
 
-  const handleDescriptionChange = (description: string) => {
-    if (description !== userData.description) {
-      updateUserDetails({ description });
-    }
+  const handleDescriptionChange = async (description: string) => {
+    await updateUserDetails({ description });
+
     setIsDescriptionEdit(false);
   };
 

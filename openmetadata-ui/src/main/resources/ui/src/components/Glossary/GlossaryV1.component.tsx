@@ -82,8 +82,8 @@ type Props = {
   currentPage: number;
   handleAddGlossaryClick: () => void;
   handleAddGlossaryTermClick: () => void;
-  updateGlossary: (value: Glossary) => void;
-  handleGlossaryTermUpdate: (value: GlossaryTerm) => void;
+  updateGlossary: (value: Glossary) => Promise<void>;
+  handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   handleSelectedData: (key: string) => void;
   handleChildLoading: (status: boolean) => void;
   handleSearchText: (text: string) => void;
