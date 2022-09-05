@@ -73,6 +73,6 @@ describe('BigQuery Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName); 
   });
 });
