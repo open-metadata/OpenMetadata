@@ -41,7 +41,7 @@ export interface GetInfoElementsProps {
   updateTeamType?: (type: TeamType) => void;
 }
 
-const EditIcon = ({ iconClasses }: { iconClasses?: string }) => (
+const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
   <SVGIcons
     alt="edit"
     className={classNames('tw-cursor-pointer tw-align-text-top', iconClasses)}

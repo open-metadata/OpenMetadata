@@ -44,7 +44,7 @@ interface MlModelFeaturesListProp {
   mlFeatures: Mlmodel['mlFeatures'];
   owner: Mlmodel['owner'];
   hasEditAccess: boolean;
-  handleFeaturesUpdate: (features: Mlmodel['mlFeatures']) => void;
+  handleFeaturesUpdate: (features: Mlmodel['mlFeatures']) => Promise<void>;
 }
 
 const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
@@ -72,7 +72,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
     setSelectedFeature({});
   };
 
-  const handleDescriptionChange = (value: string) => {
+  const handleDescriptionChange = async (value: string) => {
     if (!isEmpty(selectedFeature) && editDescription) {
       const updatedFeatures = mlFeatures?.map((feature) => {
         if (feature.name === selectedFeature.name) {
@@ -84,9 +84,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           return feature;
         }
       });
-      handleFeaturesUpdate(updatedFeatures);
+      await handleFeaturesUpdate(updatedFeatures);
+      handleCancelEditDescription();
     }
-    handleCancelEditDescription();
   };
 
   const handleTagsChange = (selectedTags?: Array<EntityTags>) => {

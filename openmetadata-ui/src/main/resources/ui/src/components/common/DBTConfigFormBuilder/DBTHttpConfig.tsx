@@ -30,17 +30,20 @@ import {
 interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleCatalogHttpPathChange: (value: string) => void;
   handleManifestHttpPathChange: (value: string) => void;
+  handleRunResultsHttpPathChange: (value: string) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
   dbtCatalogHttpPath = '',
   dbtManifestHttpPath = '',
+  dbtRunResultsHttpPath = '',
   okText,
   cancelText,
   onCancel,
   onSubmit,
   handleCatalogHttpPathChange,
   handleManifestHttpPathChange,
+  handleRunResultsHttpPathChange,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
 
@@ -52,7 +55,11 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtCatalogHttpPath, dbtManifestHttpPath };
+    const submitData = {
+      dbtCatalogHttpPath,
+      dbtManifestHttpPath,
+      dbtRunResultsHttpPath,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -97,6 +104,27 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           value={dbtManifestHttpPath}
           onChange={(e) => handleManifestHttpPathChange(e.target.value)}
         />
+      </Field>
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="run-result-file">
+          DBT Run Results File Path
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          DBT run results file path to extract the test results information.
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="run-result-file"
+          id="run-result-file"
+          name="run-result-file"
+          type="text"
+          value={dbtRunResultsHttpPath}
+          onChange={(e) => handleRunResultsHttpPathChange(e.target.value)}
+        />
+        {errors?.dbtRunResultsHttpPath &&
+          errorMsg(errors.dbtRunResultsHttpPath)}
       </Field>
       {getSeparator('')}
 

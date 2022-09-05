@@ -22,6 +22,7 @@ export type CardWithListItems = {
 };
 
 export interface Props extends HTMLAttributes<HTMLDivElement> {
+  index: number;
   card: CardWithListItems;
   isActive: boolean;
   isSelected: boolean;

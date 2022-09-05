@@ -40,7 +40,7 @@ interface Props {
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
-  onDescriptionUpdate?: (value: string) => void;
+  onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
 }

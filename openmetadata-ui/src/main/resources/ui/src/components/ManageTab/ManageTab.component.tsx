@@ -260,6 +260,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
                   'tw-rounded-b-md ': i === tierData.length - 1,
                 }
               )}
+              index={i}
               isActive={activeTier === card.id}
               isSelected={card.id === currentTier}
               tierStatus={statusTier}

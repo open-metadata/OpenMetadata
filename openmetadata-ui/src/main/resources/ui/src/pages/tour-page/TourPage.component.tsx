@@ -66,7 +66,7 @@ const TourPage = () => {
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
   const [searchValue, setSearchValue] = useState('');
 
-  const handleCountChange = () => {
+  const handleCountChange = async () => {
     setExplorePageCounts(exploreCount);
   };
 

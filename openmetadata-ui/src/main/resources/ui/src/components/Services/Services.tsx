@@ -115,7 +115,9 @@ const Services = ({
             <Row data-testid="data-container" gutter={[16, 16]}>
               {serviceData.map((service, index) => (
                 <Col key={index} lg={8} xl={6}>
-                  <Card size="small" style={leftPanelAntCardStyle}>
+                  <Card
+                    size="small"
+                    style={{ ...leftPanelAntCardStyle, height: '100%' }}>
                     <div
                       className="tw-flex tw-justify-between tw-text-grey-muted"
                       data-testid="service-card">

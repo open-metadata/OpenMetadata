@@ -431,26 +431,26 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedTableDetails = {
         ...tableDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedTableDetails);
+      await descriptionUpdateHandler(updatedTableDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);
     }
   };
 
-  const onColumnsUpdate = (updateColumns: Table['columns']) => {
+  const onColumnsUpdate = async (updateColumns: Table['columns']) => {
     if (!isEqual(columns, updateColumns)) {
       const updatedTableDetails = {
         ...tableDetails,
         columns: updateColumns,
       };
-      columnsUpdateHandler(updatedTableDetails);
+      await columnsUpdateHandler(updatedTableDetails);
     }
   };
 

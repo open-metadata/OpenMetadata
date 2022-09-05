@@ -33,6 +33,7 @@ describe('Test CardWithListing Component', () => {
     const { getByTestId } = render(
       <CardListItem
         card={mockCard}
+        index={1}
         isActive={false}
         isSelected={false}
         tierStatus="initial"
@@ -52,6 +53,7 @@ describe('Test CardWithListing Component', () => {
     const { getByTestId } = render(
       <CardListItem
         card={mockCard}
+        index={1}
         isActive={false}
         isSelected={false}
         tierStatus="initial"
@@ -77,6 +79,7 @@ describe('Test CardWithListing Component', () => {
       <CardListItem
         isActive
         card={mockCard}
+        index={1}
         isSelected={false}
         tierStatus="initial"
         onCardSelect={mockSelectFunction}
@@ -105,6 +108,7 @@ describe('Test CardWithListing Component', () => {
       <CardListItem
         isActive
         card={mockCard}
+        index={1}
         isSelected={false}
         tierStatus="initial"
         onCardSelect={mockSelectFunction}
