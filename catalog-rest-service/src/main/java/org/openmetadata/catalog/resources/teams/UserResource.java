@@ -345,7 +345,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.created(user.getHref()).entity(user).build();
   }
 
-  @PUT
+  @POST
   @Path("/logout")
   @Operation(
       operationId = "logoutUser",
