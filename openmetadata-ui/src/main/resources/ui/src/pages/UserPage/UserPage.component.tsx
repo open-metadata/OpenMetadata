@@ -195,7 +195,11 @@ const UserPage = () => {
 
     try {
       const response = await updateUserDetail(userData.id, jsonPatch);
-      setUserData((prevData) => ({ ...prevData, ...response }));
+      if (response) {
+        setUserData((prevData) => ({ ...prevData, ...response }));
+      } else {
+        throw jsonData['api-error-messages']['unexpected-error'];
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

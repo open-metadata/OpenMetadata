@@ -61,10 +61,14 @@ const BotDetailsPage = () => {
 
     try {
       const response = await updateUserDetail(botsData.id, jsonPatch);
-      setBotsData((prevData) => ({
-        ...prevData,
-        ...response,
-      }));
+      if (response) {
+        setBotsData((prevData) => ({
+          ...prevData,
+          ...response,
+        }));
+      } else {
+        throw jsonData['api-error-messages']['unexpected-error'];
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
