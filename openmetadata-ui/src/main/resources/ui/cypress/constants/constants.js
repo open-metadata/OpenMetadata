@@ -76,7 +76,7 @@ export const DELETE_ENTITY = {
     entity: MYDATA_SUMMARY_OPTIONS.topics,
   },
   pipeline: {
-    term: 'Presto ETL',
+    term: 'Presto',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
 };

@@ -456,6 +456,6 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
     cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
     cy.wait(500);
-    cy.contains('glossaries').should('be.visible');
+     cy.contains('Add New Glossary').should('be.visible');
   });
 });
