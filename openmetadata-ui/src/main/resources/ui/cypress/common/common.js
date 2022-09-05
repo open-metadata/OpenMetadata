@@ -19,6 +19,14 @@ const AARON_JOHNSON = 'Aaron Johnson';
 
 const isDatabaseService = (type) => type === 'database';
 
+export const interceptURL = (method, url, alias) => {
+  cy.intercept({ method: method, url: url }).as(alias);
+};
+
+export const verifyResponseStatusCode = (alias, responseCode) => {
+  cy.wait(alias).its('response.statusCode').should('eq', responseCode);
+};
+
 export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
   // ingestions page
   const retryTimes = 25;
@@ -166,10 +174,14 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page
+  interceptURL('GET', '/api/v1/services/*', 'getServices');
+
   cy.get('.ant-menu-title-content')
     .contains(typeOfService)
     .should('be.visible')
     .click();
+
+  verifyResponseStatusCode('@getServices', 200);
 
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
@@ -185,13 +197,12 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
       expect(text).to.equal(service_Name);
     });
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@getServices', 200);
 
   cy.get('[data-testid="service-delete"]')
     .should('exist')
     .should('be.visible')
     .click();
-
 
   //Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
@@ -203,18 +214,15 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('be.visible')
     .type('DELETE');
 
+  interceptURL('GET', '/api/v1/config/sandbox', 'home');
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-  cy.wait(2000);
-  cy.get('[class="Toastify__toast-body"] >div')
-    .eq(1)
+  verifyResponseStatusCode('@home', 200);
+  cy.get('.Toastify__toast-body')
     .should('exist')
     .should('be.visible')
     .should('have.text', `${typeOfService} Service deleted successfully!`);
 
   //Checking if the service got deleted successfully
-  cy.clickOnLogo();
-
-  cy.wait(1000);
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -239,13 +247,21 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
     .should('be.visible')
     .click();
 
+  interceptURL(
+    'GET',
+    `/api/v1/services/*/name/${service_Name}*`,
+    'getSelectedService'
+  );
+
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
     .should('exist')
     .should('be.visible')
     .click();
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@getSelectedService', 200);
+
+  interceptURL('GET', '/api/v1/search/query*', 'waitForUsers');
 
   //Click on edit owner button
   cy.get('[data-testid="edit-Owner-icon"]')
@@ -253,7 +269,8 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
     .should('be.visible')
     .click();
 
-  cy.wait(500);
+  verifyResponseStatusCode('@waitForUsers', 200);
+
   //Clicking on users tab
   cy.get('[data-testid="dropdown-tab"]')
     .contains('Users')
@@ -266,7 +283,6 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
     .should('exist')
     .should('be.visible')
     .click();
-  cy.wait(1000);
 
   cy.get('[data-testid="owner-dropdown"]')
     .invoke('text')
@@ -352,7 +368,8 @@ export const addNewTagToEntity = (entity, term) => {
   searchEntity(entity);
   cy.wait(500);
   cy.get('[data-testid="table-link"]').first().contains(entity).click();
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]').eq(0)
+  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+    .eq(0)
     .should('be.visible')
     .scrollIntoView()
     .click();
