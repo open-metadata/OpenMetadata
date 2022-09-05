@@ -22,10 +22,10 @@ export interface GetInfoElementsProps {
   updateTier?: (value: string) => void;
 }
 
-const EditIcon = (): JSX.Element => (
+const EditIcon = ({ className }: { className?: string }): JSX.Element => (
   <SVGIcons
     alt="edit"
-    className="tw-cursor-pointer tw-align-text-top"
+    className={classNames('tw-cursor-pointer tw-align-text-top', className)}
     icon={Icons.EDIT}
     title="Edit"
     width="15px"
@@ -239,10 +239,9 @@ const EntitySummaryDetails = ({
                   {isTier ? (
                     <>
                       <Space
-                        className={classNames(
-                          'tw-mr-1  tw-truncate tw-align-middle',
-                          { 'tw-w-52': (displayVal as string).length > 32 }
-                        )}
+                        className={classNames('tw-mr-1  tw-truncate', {
+                          'tw-w-52': (displayVal as string).length > 32,
+                        })}
                         data-testid="tier-name"
                         direction="horizontal"
                         title={displayVal as string}>

@@ -23,7 +23,6 @@ export type OperationPermission = {
 
 export enum ResourceEntity {
   ALL = 'all',
-  ACTIVITY_FEED = 'activityFeed',
   BOT = 'bot',
   CHART = 'chart',
   DASHBOARD = 'dashboard',
