@@ -103,59 +103,61 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
         </button>
       ) : null}
 
-      <div
-        className="tw-table-responsive tw-overflow-x-auto tw-table-container"
-        ref={tableRef}>
+      <>
         {sampleData?.rows?.length && sampleData?.columns?.length ? (
-          <table
-            className="tw-min-w-max tw-w-full tw-table-auto"
-            data-testid="sample-data-table">
-            <thead>
-              <tr className="tableHead-row">
-                {sampleData.columns.map((column) => {
+          <div
+            className="tw-table-responsive tw-overflow-x-auto tw-table-container"
+            ref={tableRef}>
+            <table
+              className="tw-min-w-max tw-w-full tw-table-auto"
+              data-testid="sample-data-table">
+              <thead>
+                <tr className="tableHead-row">
+                  {sampleData.columns.map((column) => {
+                    return (
+                      <th
+                        className="tableHead-cell"
+                        data-testid="column-name"
+                        key={column.name}>
+                        <Space direction="vertical" size={0}>
+                          <span>{column.name}</span>
+                          <span className="tw-text-grey-muted">
+                            ({lowerCase(column.dataType)})
+                          </span>
+                        </Space>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody className="tw-text-gray-600 tw-text-sm">
+                {sampleData?.rows?.map((row, rowIndex) => {
                   return (
-                    <th
-                      className="tableHead-cell"
-                      data-testid="column-name"
-                      key={column.name}>
-                      <Space direction="vertical" size={0}>
-                        <span>{column.name}</span>
-                        <span className="tw-text-grey-muted">
-                          ({lowerCase(column.dataType)})
-                        </span>
-                      </Space>
-                    </th>
+                    <tr
+                      className={classNames(
+                        'tableBody-row',
+                        !isEven(rowIndex + 1) ? 'odd-row' : null
+                      )}
+                      data-testid="row"
+                      key={rowIndex}>
+                      {row.map((data, index) => {
+                        return (
+                          <td
+                            className="tableBody-cell"
+                            data-testid="cell"
+                            key={index}>
+                            <RowData data={data} />
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </tr>
-            </thead>
-            <tbody className="tw-text-gray-600 tw-text-sm">
-              {sampleData?.rows?.map((row, rowIndex) => {
-                return (
-                  <tr
-                    className={classNames(
-                      'tableBody-row',
-                      !isEven(rowIndex + 1) ? 'odd-row' : null
-                    )}
-                    data-testid="row"
-                    key={rowIndex}>
-                    {row.map((data, index) => {
-                      return (
-                        <td
-                          className="tableBody-cell"
-                          data-testid="cell"
-                          key={index}>
-                          <RowData data={data} />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <div className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8">
+          <div className="tw-w-full tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8">
             <div className="tw-mt-12">
               <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
             </div>
@@ -180,7 +182,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
             </div>
           </div>
         )}
-      </div>
+      </>
     </div>
   );
 };

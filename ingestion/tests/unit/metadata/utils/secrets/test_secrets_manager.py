@@ -61,6 +61,7 @@ AUTH_PROVIDER_CONFIG = {"secretKey": "/fake/path"}
 DBT_SOURCE_CONFIG = {
     "dbtCatalogHttpPath": "/fake/path",
     "dbtManifestHttpPath": "/fake/path",
+    "dbtRunResultsHttpPath": "/fake/path",
 }
 
 
