@@ -194,6 +194,12 @@ jest.mock('../../utils/TableUtils', () => {
   };
 });
 
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
+
 describe('Test MlModel entity detail component', () => {
   it('Should render detail component', async () => {
     const { container } = render(<MlModelDetailComponent {...mockProp} />, {
@@ -257,9 +263,9 @@ describe('Test MlModel entity detail component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const customProperties = await findByTestId(
+    const customProperties = await findByText(
       container,
-      'custom-properties-table'
+      'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();
