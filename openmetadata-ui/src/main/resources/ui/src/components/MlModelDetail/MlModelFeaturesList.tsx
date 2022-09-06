@@ -300,7 +300,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                             <Button
                               className="tw-p-0"
                               disabled={
-                                !(permissions.EditTags || permissions.EditAll)
+                                !(permissions.EditAll || permissions.EditTags)
                               }
                               type="text">
                               <Tags
