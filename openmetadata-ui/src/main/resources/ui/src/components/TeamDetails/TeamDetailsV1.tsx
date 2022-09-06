@@ -36,6 +36,7 @@ import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
+  getUserPath,
   PAGE_SIZE,
 } from '../../constants/constants';
 import { TEAMS_DOCS } from '../../constants/docs.constants';
@@ -232,18 +233,24 @@ const TeamDetailsV1 = ({
     ];
   }, [deleteUserHandler]);
 
+  const ownerValue = useMemo(() => {
+    switch (currentTeam.owner?.type) {
+      case 'team':
+        return getTeamAndUserDetailsPath(currentTeam.owner?.name || '');
+      case 'user':
+        return getUserPath(currentTeam.owner?.fullyQualifiedName ?? '');
+      default:
+        return '';
+    }
+  }, [currentTeam]);
+
   const extraInfo: ExtraInfo[] = [
     {
       key: 'Owner',
-      value:
-        currentTeam?.owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(
-              currentTeam?.owner?.displayName || currentTeam?.owner?.name || ''
-            )
-          : currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
+      value: ownerValue,
       placeholderText:
         currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-      isLink: currentTeam?.owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName:
         currentTeam?.owner?.type === OwnerType.USER

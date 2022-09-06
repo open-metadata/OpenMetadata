@@ -73,6 +73,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
+import './TagPage.style.less';
 
 type DeleteTagDetailsType = {
   id: string;
@@ -530,7 +531,7 @@ const TagsPage = () => {
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <Button
-                      className="tw-h-8 tw-rounded"
+                      className="add-new-tag-btn"
                       data-testid="add-new-tag-button"
                       disabled={
                         !(createTagPermission || categoryPermissions.EditAll)

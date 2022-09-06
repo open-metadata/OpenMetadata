@@ -47,6 +47,7 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
+import './GlossaryDetails.style.less';
 
 type props = {
   permissions: OperationPermission;
@@ -278,12 +279,18 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         placement="topRight"
         title={permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
         <ButtonAntd
-          className="tw-p-0"
+          className="tw-p-0 add-reviewer-btn"
           data-testid="add-new-reviewer"
           disabled={!permissions.EditAll}
           type="text"
           onClick={() => setShowRevieweModal(true)}>
-          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+          <SVGIcons
+            alt="edit"
+            className="tw--mt-1"
+            icon={Icons.EDIT}
+            title="Edit"
+            width="16px"
+          />
         </ButtonAntd>
       </Tooltip>
     );
@@ -306,7 +313,13 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             size="small"
             type="text"
             onClick={handleSelectOwnerDropdown}>
-            <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+            <SVGIcons
+              alt="edit"
+              className="tw--mt-1"
+              icon={Icons.EDIT}
+              title="Edit"
+              width="16px"
+            />
           </ButtonAntd>
         </Tooltip>
         {listVisible && (
