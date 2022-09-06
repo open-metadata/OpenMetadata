@@ -45,7 +45,7 @@ export const getFieldThreadElement = (
 
   return !isEmpty(threadValue) ? (
     <button
-      className="link-text tw-self-start tw-w-8 tw-h-8 tw-flex-none tw-mx-1 hover-cell-icon"
+      className="link-text tw-self-start tw-w-7 tw-h-7 tw-mr-1 tw-flex-none hover-cell-icon"
       data-testid="field-thread"
       onClick={(e) => {
         e.preventDefault();
@@ -58,8 +58,9 @@ export const getFieldThreadElement = (
       <span className="tw-flex">
         <SVGIcons
           alt="comments"
+          heigth="16px"
           icon={isTaskType ? Icons.TASK_ICON : Icons.COMMENT}
-          width={isTaskType ? '16px' : '20px'}
+          width="16px"
         />
         <span className="tw-ml-1" data-testid="field-thread-count">
           {threadValue.count}
@@ -70,7 +71,7 @@ export const getFieldThreadElement = (
     <Fragment>
       {entityType && entityFqn && entityField && flag && !isTaskType ? (
         <button
-          className="link-text tw-self-start tw-w-8 tw-h-8 tw-flex-none tw-mx-1 hover-cell-icon"
+          className="link-text tw-self-start tw-w-7 tw-h-7 tw-mr-1 tw-flex-none hover-cell-icon"
           data-testid="start-field-thread"
           onClick={(e) => {
             e.preventDefault();
@@ -79,7 +80,7 @@ export const getFieldThreadElement = (
               getEntityFeedLink(entityType, entityFqn, entityField)
             );
           }}>
-          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="16px" />
         </button>
       ) : null}
     </Fragment>

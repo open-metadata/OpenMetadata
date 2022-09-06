@@ -422,7 +422,6 @@ export const AuthProvider = ({
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
             storeRedirectPath();
-            showErrorToast(error);
             resetUserDetails(true);
           }
         }

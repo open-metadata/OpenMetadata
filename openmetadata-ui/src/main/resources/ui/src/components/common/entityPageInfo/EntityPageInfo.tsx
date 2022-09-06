@@ -300,11 +300,11 @@ const EntityPageInfo = ({
       return !isUndefined(tagThread) &&
         TASK_ENTITIES.includes(entityType as EntityType) ? (
         <button
-          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+          className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
           data-testid="tag-thread"
           onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
           <span className="tw-flex">
-            <SVGIcons alt="comments" icon={Icons.COMMENT} />
+            <SVGIcons alt="comments" icon={Icons.COMMENT} width="16px" />
             <span className="tw-ml-1" data-testid="tag-thread-count">
               {tagThread.count}
             </span>
@@ -312,14 +312,14 @@ const EntityPageInfo = ({
         </button>
       ) : (
         <button
-          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
+          className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top"
           data-testid="start-tag-thread"
           onClick={() =>
             onThreadLinkSelect?.(
               getEntityFeedLink(entityType, entityFqn, 'tags')
             )
           }>
-          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} />
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="16px" />
         </button>
       );
     } else {
@@ -333,7 +333,7 @@ const EntityPageInfo = ({
 
     return onThreadLinkSelect ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
+        className="tw-w-7 tw-h-7 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
         data-testid="request-description"
         onClick={hasTags ? handleUpdateTags : handleRequestTags}>
         <Popover
@@ -351,7 +351,7 @@ const EntityPageInfo = ({
   const getTaskElement = useCallback(() => {
     return !isUndefined(tagTask) ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+        className="tw-w-8 tw-h-8 tw-mr-1 tw--mt-0.5 tw-flex-none link-text focus:tw-outline-none"
         data-testid="tag-task"
         onClick={() =>
           onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
@@ -520,8 +520,10 @@ const EntityPageInfo = ({
           </Space>
           <Space
             wrap
+            align="start"
             className="tw-mt-1 tw-ml-7 tw-group"
-            data-testid="entity-tags">
+            data-testid="entity-tags"
+            size={2}>
             {(!isEditable || !isTagEditable || deleted) && (
               <>
                 {(tags.length > 0 || !isEmpty(tier)) && (
@@ -529,7 +531,7 @@ const EntityPageInfo = ({
                     alt="icon-tag"
                     className="tw-mx-1"
                     icon="icon-tag-grey"
-                    width="16"
+                    width="16px"
                   />
                 )}
                 {tier?.tagFQN && (
@@ -548,7 +550,7 @@ const EntityPageInfo = ({
             {isTagEditable && !deleted && (
               <Fragment>
                 <div
-                  className="tw-inline-block tw-mr-1"
+                  className="tw-inline-block"
                   data-testid="tags-wrapper"
                   onClick={() => {
                     // Fetch tags and terms only once
@@ -573,9 +575,15 @@ const EntityPageInfo = ({
                     }}>
                     {tags.length || tier ? (
                       <button
-                        className="tw-w-auto tw-h-auto tw-flex-none focus:tw-outline-none"
+                        className="tw-w-7 tw-h-7 tw-flex-none focus:tw-outline-none"
                         data-testid="edit-button">
-                        <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
+                        <SVGIcons
+                          alt="edit"
+                          className="tw--mt-3 "
+                          icon="icon-edit"
+                          title="Edit"
+                          width="16px"
+                        />
                       </button>
                     ) : (
                       <span>

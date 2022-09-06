@@ -10,23 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@border-color: #e5e7eb;
 
-import { Status } from 'Models';
-import { HTMLAttributes } from 'react';
-
-export type CardWithListItems = {
-  id: string;
-  description: string;
-  data: string;
-  title: string;
-};
-
-export interface Props extends HTMLAttributes<HTMLDivElement> {
-  index: number;
-  card: CardWithListItems;
-  isActive: boolean;
-  isSelected: boolean;
-  tierStatus: Status;
-  onSave: (updatedTier: string) => void;
-  onCardSelect: (cardId: string) => void;
+.no-data-placeholder {
+  width: 100%;
+  padding: 32px;
+  border: 1px solid @border-color;
+  border-radius: 4px;
 }

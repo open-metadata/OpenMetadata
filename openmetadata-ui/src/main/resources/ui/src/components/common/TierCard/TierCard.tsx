@@ -1,7 +1,7 @@
 import { Card, Popover, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { TableDetail } from 'Models';
+import { Status, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getCategory } from '../../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -12,7 +12,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
 import Loader from '../../Loader/Loader';
-import { Status } from '../../ManageTab/ManageTab.interface';
 import './tier-card.css';
 
 export interface TierCardProps {

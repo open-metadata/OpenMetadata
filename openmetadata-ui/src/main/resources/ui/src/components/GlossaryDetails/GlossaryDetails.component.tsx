@@ -47,6 +47,7 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
+import './GlossaryDetails.style.less';
 
 type props = {
   permissions: OperationPermission;
@@ -301,7 +302,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
               : NO_PERMISSION_FOR_ACTION
           }>
           <ButtonAntd
-            className="tw-p-0 "
+            className="tw-p-0 flex-center"
             data-testid="owner-dropdown"
             disabled={!(permissions.EditOwner || permissions.EditAll)}
             size="small"

@@ -244,6 +244,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   pluralize: jest.fn().mockReturnValue('2 charts'),
   isEven: jest.fn().mockReturnValue(true),
   getEntityDeleteMessage: jest.fn(),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 jest.mock('../../utils/GlossaryUtils', () => ({
