@@ -829,6 +829,7 @@ const TeamDetailsV1 = ({
                 <EntitySummaryDetails
                   data={info}
                   isGroupType={isGroupType}
+                  showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={
                     entityPermissions.EditAll || entityPermissions.EditOwner
