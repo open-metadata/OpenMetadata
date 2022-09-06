@@ -10,7 +10,7 @@ In this section, we provide guides and references to use the AzureSQL connector.
 Configure and schedule AzureSQL metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -218,7 +218,7 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 <Tile
 icon="schema"

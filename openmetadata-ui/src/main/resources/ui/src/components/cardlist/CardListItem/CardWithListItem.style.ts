@@ -13,7 +13,7 @@
 
 export const cardStyle = {
   base: 'tw-flex tw-flex-col tw-border tw-bg-white',
-  default: 'tw-border-main tw-border-b-0',
+  default: 'tw-border-main',
   active: 'tw-border-primary',
   selected: 'tw-border-primary',
   header: {

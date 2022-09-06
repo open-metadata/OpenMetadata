@@ -13,4 +13,6 @@
 
 export interface BotListV1Props {
   showDeleted: boolean;
+  handleAddBotClick: () => void;
+  handleShowDeleted: (checked: boolean) => void;
 }

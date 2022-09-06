@@ -316,11 +316,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
-        <CardV1
-          description={CONFIGURE_TEXT[webhookType]}
-          heading="Configure Webhooks"
-          id="webhook"
-        />
+        <CardV1 heading="Configure Webhooks" id="webhook">
+          {CONFIGURE_TEXT[webhookType]}
+        </CardV1>
       </div>
     );
   }, [webhookType]);

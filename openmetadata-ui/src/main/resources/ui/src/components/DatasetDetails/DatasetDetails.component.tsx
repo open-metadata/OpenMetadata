@@ -61,7 +61,6 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
-import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
@@ -125,19 +124,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
-  testMode,
   tableTestCase,
-  handleTestModeChange,
   createThread,
-  handleAddTableTestCase,
-  handleAddColumnTestCase,
-  showTestForm,
-  handleShowTestForm,
-  handleRemoveTableTest,
-  handleRemoveColumnTest,
   qualityTestFormHandler,
-  handleSelectedColumn,
-  selectedColumn,
   deletePostHandler,
   paging,
   fetchFeedHandler,
@@ -277,7 +266,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-profilercolor',
       },
       isProtected: false,
-      isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewDataProfile),
+      isHidden: !(
+        tablePermissions.ViewAll ||
+        tablePermissions.ViewDataProfile ||
+        tablePermissions.ViewTests
+      ),
       position: 5,
     },
     {
@@ -427,26 +420,26 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedTableDetails = {
         ...tableDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedTableDetails);
+      await descriptionUpdateHandler(updatedTableDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);
     }
   };
 
-  const onColumnsUpdate = (updateColumns: Table['columns']) => {
+  const onColumnsUpdate = async (updateColumns: Table['columns']) => {
     if (!isEqual(columns, updateColumns)) {
       const updatedTableDetails = {
         ...tableDetails,
         columns: updateColumns,
       };
-      columnsUpdateHandler(updatedTableDetails);
+      await columnsUpdateHandler(updatedTableDetails);
     }
   };
 
@@ -759,27 +752,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   }
                   table={tableDetails}
                   onAddTestClick={qualityTestFormHandler}
-                />
-              )}
-
-              {activeTab === 6 && (
-                <DataQualityTab
-                  columnOptions={columns}
-                  handleAddColumnTestCase={handleAddColumnTestCase}
-                  handleAddTableTestCase={handleAddTableTestCase}
-                  handleRemoveColumnTest={handleRemoveColumnTest}
-                  handleRemoveTableTest={handleRemoveTableTest}
-                  handleSelectedColumn={handleSelectedColumn}
-                  handleShowTestForm={handleShowTestForm}
-                  handleTestModeChange={handleTestModeChange}
-                  hasEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditTests
-                  }
-                  isTableDeleted={deleted}
-                  selectedColumn={selectedColumn}
-                  showTestForm={showTestForm}
-                  tableTestCase={tableTestCase}
-                  testMode={testMode}
                 />
               )}
 

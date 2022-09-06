@@ -170,7 +170,7 @@ public final class ChangeEventParser {
         return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, event.getEntityType(), fqn);
       }
     }
-    return urlInstance.toString();
+    return "";
   }
 
   public static SlackMessage buildSlackMessage(ChangeEvent event) {

@@ -36,6 +36,35 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
+jest.mock('antd', () => ({
+  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Divider: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: {
+    Title: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
+  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
+    <div>
+      {children}
+      {overlay}
+    </div>
+  )),
+  Menu: jest.fn().mockImplementation(({ items }) => (
+    <div>
+      {items.map((item: { key: string; label: JSX.Element }) => {
+        <div key={item.key}>{item.label}</div>;
+      })}
+    </div>
+  )),
+}));
+
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
@@ -213,8 +242,10 @@ describe('Test GlossaryComponent page', () => {
     fireEvent.click(handleChildLoading);
     fireEvent.click(handleExpandedKey);
     fireEvent.click(handleGlossaryDelete);
+
     fireEvent.click(handleGlossaryTermUpdate);
     fireEvent.click(handleGlossaryTermDelete);
+
     fireEvent.click(handleSearchText);
   });
 

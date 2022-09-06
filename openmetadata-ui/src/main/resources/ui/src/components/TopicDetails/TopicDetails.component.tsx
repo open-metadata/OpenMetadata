@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -278,14 +279,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedTopicDetails = {
         ...topicDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedTopicDetails);
-      setIsEdit(false);
+      try {
+        await descriptionUpdateHandler(updatedTopicDetails);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
     } else {
       setIsEdit(false);
     }

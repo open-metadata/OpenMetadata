@@ -418,25 +418,21 @@ const PipelineDetailsPage = () => {
       });
   };
 
-  const descriptionUpdateHandler = (updatedPipeline: Pipeline) => {
-    saveUpdatedPipelineData(updatedPipeline)
-      .then((res) => {
-        if (res) {
-          const { description = '', version } = res;
-          setCurrentVersion(version + '');
-          setPipelineDetails(res);
-          setDescription(description);
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
+    try {
+      const response = await saveUpdatedPipelineData(updatedPipeline);
+      if (response) {
+        const { description = '', version } = response;
+        setCurrentVersion(version + '');
+        setPipelineDetails(response);
+        setDescription(description);
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const settingsUpdateHandler = (updatedPipeline: Pipeline): Promise<void> => {
@@ -485,22 +481,19 @@ const PipelineDetailsPage = () => {
       });
   };
 
-  const onTaskUpdate = (jsonPatch: Array<Operation>) => {
-    patchPipelineDetails(pipelineId, jsonPatch)
-      .then((res) => {
-        if (res) {
-          setTasks(res.tasks || []);
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-task-error']
-        );
-      });
+  const onTaskUpdate = async (jsonPatch: Array<Operation>) => {
+    try {
+      const response = await patchPipelineDetails(pipelineId, jsonPatch);
+
+      if (response) {
+        setTasks(response.tasks || []);
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const setLeafNode = (val: EntityLineage, pos: LineagePos) => {

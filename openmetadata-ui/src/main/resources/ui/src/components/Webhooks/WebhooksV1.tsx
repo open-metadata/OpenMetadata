@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Select, Space, Tooltip } from 'antd';
+import { Button as ButtonAntd, Col, Row, Select, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { deleteWebhook } from '../../axiosAPIs/webhookAPI';
 import { PAGE_SIZE } from '../../constants/constants';
+import { WEBHOOK_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
@@ -75,27 +76,33 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   const fetchErrorPlaceHolder = useMemo(
     () => (message: string) => {
       return (
-        <ErrorPlaceHolder>
-          <p className="tw-text-center">{message}</p>
-          <p className="tw-text-center">
-            <Tooltip
-              placement="left"
-              title={
-                addWebhookPermission ? 'Add Webhook' : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className={classNames('tw-h-8 tw-rounded tw-my-3')}
-                data-testid="add-webhook-button"
-                disabled={!addWebhookPermission}
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={onAddWebhook}>
-                Add {WEBHOOKS_INTEGRATION[webhookType]}
-              </Button>
-            </Tooltip>
-          </p>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          buttons={
+            <p className="tw-text-center">
+              <Tooltip
+                placement="left"
+                title={
+                  addWebhookPermission
+                    ? 'Add Webhook'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <ButtonAntd
+                  ghost
+                  className={classNames('tw-h-8 tw-rounded tw-my-3')}
+                  data-testid="add-webhook-button"
+                  disabled={!addWebhookPermission}
+                  size="small"
+                  type="primary"
+                  onClick={onAddWebhook}>
+                  Add {WEBHOOKS_INTEGRATION[webhookType]}
+                </ButtonAntd>
+              </Tooltip>
+            </p>
+          }
+          doc={WEBHOOK_DOCS}
+          heading={message}
+          type="ADD_DATA"
+        />
       );
     },
     []
@@ -121,9 +128,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   }, [data, selectedStatus]);
 
   if (data.length === 0) {
-    return fetchErrorPlaceHolder(
-      `No ${WEBHOOKS_INTEGRATION[webhookType]} found`
-    );
+    return fetchErrorPlaceHolder(WEBHOOKS_INTEGRATION[webhookType]);
   }
 
   return (

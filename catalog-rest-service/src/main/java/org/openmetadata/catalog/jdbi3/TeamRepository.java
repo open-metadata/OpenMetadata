@@ -21,6 +21,7 @@ import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
@@ -50,8 +51,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
-  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
-  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
+  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
+  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
   private Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
@@ -238,14 +239,14 @@ public class TeamRepository extends EntityRepository<Team> {
         }
         break;
       case DEPARTMENT:
-        validateChildren(team, children, DEPARTMENT);
+        validateChildren(team, children, DEPARTMENT, GROUP);
         break;
       case DIVISION:
-        validateChildren(team, children, DEPARTMENT, DIVISION);
+        validateChildren(team, children, DEPARTMENT, DIVISION, GROUP);
         break;
       case BUSINESS_UNIT:
       case ORGANIZATION:
-        validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT);
+        validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT, GROUP);
         break;
     }
     populateTeamRefs(childrenRefs, children);
@@ -365,6 +366,7 @@ public class TeamRepository extends EntityRepository<Team> {
     public void entitySpecificUpdate() throws IOException {
       recordChange("profile", original.getProfile(), updated.getProfile());
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
+      recordChange("teamType", original.getTeamType(), updated.getTeamType());
       updateUsers(original, updated);
       updateDefaultRoles(original, updated);
       updateParents(original, updated);

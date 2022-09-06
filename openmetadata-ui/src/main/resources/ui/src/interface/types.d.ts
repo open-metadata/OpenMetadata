@@ -590,6 +590,8 @@ declare module 'Models' {
     paging: Paging;
   }
 
+  export type Status = 'initial' | 'waiting' | 'success';
+
   // ES interface end
 
   //   interface ESUserResponse {}

@@ -146,6 +146,8 @@ site_menu:
     url: /deployment/upgrade/versions/090-to-010
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
     url: /deployment/upgrade/versions/010-to-011
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
+    url: /deployment/upgrade/versions/011-to-012
 
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
@@ -364,6 +366,12 @@ site_menu:
     url: /openmetadata/connectors/messaging/kafka/airflow
   - category: OpenMetadata / Connectors / Messaging / Kafka / CLI
     url: /openmetadata/connectors/messaging/kafka/cli
+  - category: OpenMetadata / Connectors / Messaging / Redpanda
+    url: /openmetadata/connectors/messaging/redpanda
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / Airflow
+    url: /openmetadata/connectors/messaging/redpanda/airflow
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / CLI
+    url: /openmetadata/connectors/messaging/redpanda/cli
   
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
@@ -441,6 +449,10 @@ site_menu:
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
     url: /openmetadata/ingestion/workflows/profiler/metrics
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality 
+    url: /openmetadata/ingestion/workflows/data-quality
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality / Tests
+    url: /openmetadata/ingestion/workflows/data-quality/tests
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
   - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually

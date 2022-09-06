@@ -55,20 +55,23 @@ const BotDetailsPage = () => {
       .finally(() => setIsLoading(false));
   };
 
-  const updateBotsDetails = (data: UserDetails) => {
+  const updateBotsDetails = async (data: UserDetails) => {
     const updatedDetails = { ...botsData, ...data };
     const jsonPatch = compare(botsData, updatedDetails);
-    updateUserDetail(botsData.id, jsonPatch)
-      .then((res) => {
-        if (res) {
-          setBotsData((prevData) => ({ ...prevData, ...data }));
-        } else {
-          throw jsonData['api-error-messages']['unexpected-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+
+    try {
+      const response = await updateUserDetail(botsData.id, jsonPatch);
+      if (response) {
+        setBotsData((prevData) => ({
+          ...prevData,
+          ...response,
+        }));
+      } else {
+        throw jsonData['api-error-messages']['unexpected-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const revokeBotsToken = () => {
