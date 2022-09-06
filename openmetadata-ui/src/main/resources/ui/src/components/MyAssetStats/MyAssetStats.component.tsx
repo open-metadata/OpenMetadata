@@ -20,8 +20,9 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
+import { TeamType } from '../../generated/entity/teams/team';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { MyAssetStatsProps, Summary } from './MyAssetStats.interface';
@@ -103,10 +104,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
         count: entityCounts.teamCount,
-        link: getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.TEAMS
-        ),
+        link: getTeamsWithFqnPath(TeamType.Organization),
         dataTestId: 'terms',
       },
     };

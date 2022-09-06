@@ -110,6 +110,7 @@ const TierCard = ({ currentTier, hideTier, updateTier }: TierCardProps) => {
                 'tw-rounded-b-md ': i === tierData.length - 1,
               }
             )}
+            index={i}
             isActive={activeTier === card.id}
             isSelected={card.id === currentTier}
             key={uniqueId()}
