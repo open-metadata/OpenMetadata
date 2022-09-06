@@ -71,6 +71,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     ProfilerDashboardTab.SUMMARY
   );
 
+  const viewTest = permissions.ViewAll || permissions.ViewTests;
+  const viewProfiler = permissions.ViewAll || permissions.ViewDataProfile;
+  const editTest = permissions.EditAll || permissions.EditTests;
+
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
   };
@@ -110,12 +114,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     {
       label: ProfilerDashboardTab.SUMMARY,
       value: ProfilerDashboardTab.SUMMARY,
-      disabled: !(permissions.ViewAll || permissions.ViewDataProfile),
+      disabled: !viewProfiler,
     },
     {
       label: ProfilerDashboardTab.DATA_QUALITY,
       value: ProfilerDashboardTab.DATA_QUALITY,
-      disabled: !(permissions.ViewAll || permissions.ViewTests),
+      disabled: !viewTest,
     },
   ];
 
@@ -165,7 +169,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   useEffect(() => {
-    if (!isEmpty(table) && (permissions.ViewAll || permissions.ViewTests)) {
+    if (!isEmpty(table) && viewTest) {
       fetchAllTests();
     }
   }, [table]);
@@ -185,15 +189,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         />
 
         <Space>
-          <Tooltip
-            title={
-              permissions.EditAll || permissions.EditTests
-                ? 'Add Test'
-                : NO_PERMISSION_FOR_ACTION
-            }>
+          <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
             <Link
               to={
-                permissions.EditAll || permissions.EditTests
+                editTest
                   ? getAddDataQualityTableTestPath(
                       ProfilerDashboardType.TABLE,
                       `${table.fullyQualifiedName}`
@@ -203,22 +202,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               <Button
                 className="tw-rounded"
                 data-testid="profiler-add-table-test-btn"
-                disabled={!(permissions.EditAll || permissions.EditTests)}
+                disabled={!editTest}
                 type="primary">
                 Add Test
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip
-            title={
-              permissions.EditAll || permissions.EditTests
-                ? 'Settings'
-                : NO_PERMISSION_FOR_ACTION
-            }>
+          <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
             <Button
               className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
               data-testid="profiler-setting-btn"
-              disabled={!(permissions.EditAll || permissions.EditTests)}
+              disabled={!editTest}
               icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
               type="default"
               onClick={() => handleSettingModal(true)}>
@@ -274,7 +268,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           ...col,
           key: col.name,
         }))}
-        hasEditAccess={permissions.EditAll || permissions.EditTests}
+        hasEditAccess={editTest}
         onAddTestClick={onAddTestClick}
       />
 
