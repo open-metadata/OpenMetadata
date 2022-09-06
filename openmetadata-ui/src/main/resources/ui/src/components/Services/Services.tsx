@@ -16,11 +16,7 @@ import { isEmpty } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import {
-  getServiceDetailsPath,
-  PAGE_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { getServiceDetailsPath, PAGE_SIZE } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { servicesDisplayName } from '../../constants/services.const';
@@ -42,7 +38,6 @@ import {
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -186,18 +181,23 @@ const Services = ({
         <Col span={24}>
           <ErrorPlaceHolder
             buttons={
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Tooltip
+                placement="left"
+                title={
+                  addServicePermission
+                    ? 'Add Service'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
                 <ButtonAntd
                   ghost
                   data-testid="add-service-button"
+                  disabled={!addServicePermission}
                   size="small"
                   type="primary"
                   onClick={handleAddServiceClick}>
                   Add new {servicesDisplayName[serviceName]}
                 </ButtonAntd>
-              </NonAdminAction>
+              </Tooltip>
             }
             doc={CONNECTORS_DOCS}
             heading={servicesDisplayName[serviceName]}

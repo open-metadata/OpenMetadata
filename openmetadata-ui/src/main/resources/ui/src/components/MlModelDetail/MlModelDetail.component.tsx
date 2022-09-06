@@ -521,9 +521,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                   <MlModelFeaturesList
                     handleFeaturesUpdate={onFeaturesUpdate}
-                    hasEditAccess={mlModelPermissions.ViewAll}
                     mlFeatures={mlModelDetail.mlFeatures}
-                    owner={mlModelDetail.owner}
+                    permissions={mlModelPermissions}
                   />
                 </Fragment>
               )}
