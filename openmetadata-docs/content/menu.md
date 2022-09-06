@@ -469,11 +469,6 @@ site_menu:
   - category: OpenMetadata / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
 
-  - category: OpenMetadata / Data Quality
-    url: /openmetadata/data-quality
-  - category: OpenMetadata / Data Quality / Tests
-    url: /openmetadata/data-quality/tests
-
   - category: OpenMetadata / Teams & Users
     url: /openmetadata/users
 
