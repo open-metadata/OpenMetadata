@@ -28,7 +28,7 @@ const CardV1 = ({ children, id, heading, classes, style }: CardProps) => {
       size="small"
       style={style}>
       {heading ? <h6 className="tw-heading tw-text-base">{heading}</h6> : ''}
-      <div style={{ textAlign: 'justify' }}>{children}</div>
+      <div>{children}</div>
     </Card>
   );
 };
