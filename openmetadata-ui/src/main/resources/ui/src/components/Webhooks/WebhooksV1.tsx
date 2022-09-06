@@ -83,7 +83,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
                 placement="left"
                 title={
                   addWebhookPermission
-                    ? 'Add Webhook'
+                    ? `Add ${WEBHOOKS_INTEGRATION[webhookType]}`
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <ButtonAntd

@@ -45,7 +45,7 @@ export const getFieldThreadElement = (
 
   return !isEmpty(threadValue) ? (
     <button
-      className="link-text tw-self-start tw-w-7 tw-h-7 tw-mr-1 tw-flex-none hover-cell-icon"
+      className="link-text tw-self-start tw-w-7 tw-h-7 tw-mr-1 tw-flex tw-items-center hover-cell-icon"
       data-testid="field-thread"
       onClick={(e) => {
         e.preventDefault();
@@ -55,16 +55,15 @@ export const getFieldThreadElement = (
           isTaskType ? ThreadType.Task : ThreadType.Conversation
         );
       }}>
-      <span className="tw-flex">
-        <SVGIcons
-          alt="comments"
-          heigth="16px"
-          icon={isTaskType ? Icons.TASK_ICON : Icons.COMMENT}
-          width="16px"
-        />
-        <span className="tw-ml-1" data-testid="field-thread-count">
-          {threadValue.count}
-        </span>
+      <SVGIcons
+        alt="comments"
+        className="tw-mt-0.5"
+        heigth="16px"
+        icon={isTaskType ? Icons.TASK_ICON : Icons.COMMENT}
+        width="16px"
+      />
+      <span className="tw-ml-1" data-testid="field-thread-count">
+        {threadValue.count}
       </span>
     </button>
   ) : (
