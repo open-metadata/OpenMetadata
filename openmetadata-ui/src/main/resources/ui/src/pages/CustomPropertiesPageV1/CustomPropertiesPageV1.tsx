@@ -212,7 +212,7 @@ const CustomEntityDetailV1 = () => {
         {activeTab === 1 &&
           (isEmpty(selectedEntityTypeDetail.customProperties) ? (
             <div data-testid="entity-custom-fields">
-              fetchErrorPlaceHolder()
+              {fetchErrorPlaceHolder()}
             </div>
           ) : (
             <div data-testid="entity-custom-fields">
