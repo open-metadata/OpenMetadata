@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static java.lang.Boolean.FALSE;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
@@ -137,6 +138,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   public PolicyUpdater getUpdater(Policy original, Policy updated, Operation operation) {
     return new PolicyUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void preDelete(Policy entity) {
+    if (FALSE.equals(entity.getAllowDelete())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, entity.getName()));
+    }
   }
 
   public void validateRules(Policy policy) throws IOException {

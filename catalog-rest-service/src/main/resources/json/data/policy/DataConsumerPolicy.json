@@ -4,6 +4,7 @@
   "fullyQualifiedName": "DataConsumerPolicy",
   "description": "Policy for Data Consumer to perform operations on metadata entities",
   "enabled": true,
+  "allowDelete": false,
   "rules": [
     {
       "name": "DataConsumerPolicy-EditRule",

@@ -4,6 +4,7 @@
   "fullyQualifiedName": "OrganizationPolicy",
   "description": "Policy for all the users of an organization.",
   "enabled": true,
+  "allowDelete": false,
   "rules": [
     {
       "name": "OrganizationPolicy-Owner-Rule",
