@@ -50,8 +50,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
-  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
-  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
+  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
+  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
   private Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
@@ -365,6 +365,7 @@ public class TeamRepository extends EntityRepository<Team> {
     public void entitySpecificUpdate() throws IOException {
       recordChange("profile", original.getProfile(), updated.getProfile());
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
+      recordChange("teamType", original.getTeamType(), updated.getTeamType());
       updateUsers(original, updated);
       updateDefaultRoles(original, updated);
       updateParents(original, updated);
