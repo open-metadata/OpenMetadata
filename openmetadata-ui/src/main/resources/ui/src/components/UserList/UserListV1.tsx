@@ -200,7 +200,7 @@ const UserListV1: FC<UserListV1Props> = ({
     []
   );
 
-  if (isEmpty(data)) {
+  if (isEmpty(data) && !showDeletedUser && !isDataLoading) {
     return fetchErrorPlaceHolder();
   }
 
