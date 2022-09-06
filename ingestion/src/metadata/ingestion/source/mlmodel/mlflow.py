@@ -136,12 +136,12 @@ class MlflowSource(MlModelServiceSource):
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Validation error adding hyper parameters from RunData.params - {err}"
+                f"Validation error adding hyper parameters from RunData: {data} - {err}"
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Wild error adding hyper parameters from RunData.params - {err}"
+                f"Wild error adding hyper parameters from RunData: {data} - {err}"
             )
 
         return None
@@ -157,12 +157,12 @@ class MlflowSource(MlModelServiceSource):
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Validation error adding the MlModel store from ModelVersion.source - {err}"
+                f"Validation error adding the MlModel store from ModelVersion: {version} - {err}"
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Wild error adding the MlModel store from ModelVersion.source - {err}"
+                f"Wild error adding the MlModel store from ModelVersion: {version} - {err}"
             )
         return None
 
