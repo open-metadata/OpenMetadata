@@ -59,6 +59,7 @@ import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
@@ -67,6 +68,7 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
@@ -464,7 +466,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid TableJoins joins)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    // TODO add EDIT_JOINS operation
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     Table table = dao.addJoins(id, joins);
     return addHref(uriInfo, table);
   }
@@ -488,7 +492,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid TableData tableData)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     Table table = dao.addSampleData(id, tableData);
     return addHref(uriInfo, table);
   }
@@ -509,11 +514,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Table addDataProfilerConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid TableProfilerConfig tableProfilerConfig)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
-    Table table = dao.addTableProfilerConfig(UUID.fromString(id), tableProfilerConfig);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    Table table = dao.addTableProfilerConfig(id, tableProfilerConfig);
     return addHref(uriInfo, table);
   }
 
@@ -535,7 +541,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     return addHref(uriInfo, table.withTableProfilerConfig(dao.getTableProfilerConfig(table)));
   }
@@ -558,7 +565,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     Table table = dao.deleteTableProfilerConfig(id);
     return addHref(uriInfo, table);
   }
@@ -703,7 +711,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid CreateTableProfile createTableProfile)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     Table table = dao.addTableProfileData(id, createTableProfile);
     return addHref(uriInfo, table);
   }
@@ -733,7 +742,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn), true);
     dao.deleteTableProfile(fqn, entityType, timestamp);
     return Response.ok().build();
   }
@@ -830,7 +840,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid CreateCustomMetric createCustomMetric)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
     Table table = dao.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
@@ -858,7 +869,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("customMetricName")
           String customMetricName)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     Table table = dao.deleteCustomMetric(id, columnName, customMetricName);
     return addHref(uriInfo, table);
   }
