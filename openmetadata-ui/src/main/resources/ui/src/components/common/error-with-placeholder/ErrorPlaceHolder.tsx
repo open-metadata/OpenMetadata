@@ -62,9 +62,29 @@ const ErrorPlaceHolder = ({ doc, type, children, heading, buttons }: Props) => {
           width="100"
         />
       </div>
-      {children && (
+      {children ? (
         <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
           {children}
+        </div>
+      ) : (
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
+          <Typography.Text className="tw-text-sm">
+            No Data Available
+          </Typography.Text>
+          <Typography.Text className="tw-text-sm">
+            Go ahead and add a new {heading}!
+          </Typography.Text>
+          {doc ? (
+            <Typography.Text className="tw-text-sm">
+              Still need help? Refer to our{' '}
+              <Typography.Link href={doc} target="_blank">
+                docs
+              </Typography.Link>{' '}
+              for more information.
+            </Typography.Text>
+          ) : (
+            ''
+          )}
         </div>
       )}
     </div>
