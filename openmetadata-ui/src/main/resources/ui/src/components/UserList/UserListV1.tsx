@@ -14,7 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
@@ -33,6 +33,7 @@ import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
@@ -177,6 +178,31 @@ const UserListV1: FC<UserListV1Props> = ({
       },
     ];
   }, [showRestore]);
+
+  const fetchErrorPlaceHolder = useMemo(
+    () => () => {
+      return (
+        <ErrorPlaceHolder
+          buttons={
+            <Button
+              ghost
+              disabled={!createPermission}
+              type="primary"
+              onClick={handleAddNewUser}>
+              Add User
+            </Button>
+          }
+          heading="User"
+          type="ADD_DATA"
+        />
+      );
+    },
+    []
+  );
+
+  if (isEmpty(data)) {
+    return fetchErrorPlaceHolder();
+  }
 
   return (
     <Row className="user-listing" gutter={[16, 16]}>
