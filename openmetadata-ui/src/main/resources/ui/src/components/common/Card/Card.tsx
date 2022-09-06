@@ -30,11 +30,11 @@ const Card = ({ children, heading, action, className }: CardProps) => {
         className
       )}
       data-testid={`${lowerCase(heading)}-card-container`}>
-      <div className="tw-border-b tw-px-5 tw-py-3 tw-flex tw-justify-between">
-        <span className="tw-font-semibold">{heading}</span>
+      <div className="tw-border-b tw-px-3 tw-py-2 tw-flex tw-justify-between tw-items-center">
+        <span className="tw-font-medium">{heading}</span>
         {action}
       </div>
-      <div className="tw-px-5 tw-py-3">{children}</div>
+      <div className="tw-px-3 tw-py-2">{children}</div>
     </div>
   );
 };

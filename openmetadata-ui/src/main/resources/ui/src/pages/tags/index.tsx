@@ -136,13 +136,15 @@ const TagsPage = () => {
     }
   };
 
-  const fetchCategories = () => {
+  const fetchCategories = (setCurrent?: boolean) => {
     setIsLoading(true);
     getTagCategories('usageCount')
       .then((res) => {
         if (res.data) {
           setCategoreis(res.data);
-          setCurrentCategory(res.data[0]);
+          if (setCurrent) {
+            setCurrentCategory(res.data[0]);
+          }
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -424,7 +426,7 @@ const TagsPage = () => {
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchCategories(true);
   }, []);
 
   useEffect(() => {
