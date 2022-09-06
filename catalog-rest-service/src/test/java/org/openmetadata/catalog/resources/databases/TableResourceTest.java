@@ -117,7 +117,6 @@ import org.openmetadata.catalog.tests.table.TableColumnCountToEqual;
 import org.openmetadata.catalog.tests.table.TableRowCountToBeBetween;
 import org.openmetadata.catalog.tests.table.TableRowCountToEqual;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
-import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -1390,8 +1389,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
     verifyCustomMetrics(table, c1, List.of(createMetric2));
   }
-
-
 
   @Test
   void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
