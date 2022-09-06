@@ -453,21 +453,21 @@ const Ingestion: React.FC<IngestionProps> = ({
                               ? 'View Dag'
                               : NO_PERMISSION_TO_VIEW
                           }>
-                          <Button disabled={!permissions.ViewAll} type="link">
-                            <a
-                              className="link-text tw-mr-2"
-                              data-testid="airflow-tree-view"
-                              href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
-                              rel="noopener noreferrer"
-                              target="_blank">
-                              {ingestion.name}
-                              <SVGIcons
-                                alt="external-link"
-                                className="tw-align-middle tw-ml-1"
-                                icon={Icons.EXTERNAL_LINK}
-                                width="16px"
-                              />
-                            </a>
+                          <Button
+                            className="tw-mr-2"
+                            data-testid="airflow-tree-view"
+                            disabled={!permissions.ViewAll}
+                            href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
+                            rel="noopener noreferrer"
+                            target="_blank"
+                            type="link">
+                            {ingestion.name}
+                            <SVGIcons
+                              alt="external-link"
+                              className="tw-align-middle tw-ml-1"
+                              icon={Icons.EXTERNAL_LINK}
+                              width="16px"
+                            />
                           </Button>
                         </Tooltip>
                       ) : (
