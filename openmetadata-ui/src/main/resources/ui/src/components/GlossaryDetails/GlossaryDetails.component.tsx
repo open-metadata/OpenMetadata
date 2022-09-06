@@ -241,7 +241,10 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     const owner = listOwners.find((item) => item.value === value);
 
     if (owner) {
-      const newOwner = prepareOwner({ type: owner.type, id: owner.value });
+      const newOwner = prepareOwner({
+        type: owner.type,
+        id: owner.value || '',
+      });
       if (newOwner) {
         const updatedData = {
           ...glossary,
