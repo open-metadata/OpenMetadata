@@ -475,10 +475,7 @@ const PoliciesDetailPage = () => {
                     </Button>
                   </Tooltip>
 
-                  <Space
-                    className="tw-w-full tw-pt-4"
-                    direction="vertical"
-                    size={20}>
+                  <Space className="tw-w-full" direction="vertical" size={20}>
                     {policy.rules.map((rule) => (
                       <Card key={rule.name || 'rule'}>
                         <Space
