@@ -13,11 +13,8 @@
 
 import { Typography } from 'antd';
 import React from 'react';
-import {
-  default as AddPlaceHolder,
-  default as NoDataFoundPlaceHolder,
-} from '../../../assets/img/no-data-placeholder.svg';
-import { Button } from '../../buttons/Button/Button';
+import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
+import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
 
 type Props = {
   children?: React.ReactNode;
@@ -30,16 +27,7 @@ type Props = {
   buttonId?: string;
 };
 
-const ErrorPlaceHolder = ({
-  doc,
-  type,
-  children,
-  heading,
-  buttonLabel,
-  buttonListener,
-  buttons,
-  buttonId,
-}: Props) => {
+const ErrorPlaceHolder = ({ doc, type, children, heading, buttons }: Props) => {
   const { Paragraph, Link } = Typography;
 
   return type === 'ADD_DATA' ? (
@@ -48,7 +36,7 @@ const ErrorPlaceHolder = ({
         {' '}
         <img data-testid="no-data-image" src={AddPlaceHolder} width="100" />
       </div>
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
+      <div className="tw-flex tw-flex-col tw-items-center tw-mt-9 tw-text-base tw-font-medium">
         <Paragraph style={{ marginBottom: '4px' }}>
           {' '}
           Adding a new {heading} is easy, just give it a spin!
@@ -62,19 +50,7 @@ const ErrorPlaceHolder = ({
           for more information.
         </Paragraph>
 
-        <div className="tw-text-lg tw-text-center">
-          {buttons ? (
-            buttons
-          ) : (
-            <Button
-              data-testId={buttonId}
-              size="small"
-              theme="primary"
-              onClick={buttonListener}>
-              {buttonLabel}
-            </Button>
-          )}
-        </div>
+        <div className="tw-text-lg tw-text-center">{buttons}</div>
       </div>
     </>
   ) : (

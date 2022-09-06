@@ -26,6 +26,7 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
+import { TEAMS_DOCS } from '../../constants/docs.constants';
 import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -672,7 +673,9 @@ const TeamDetails = ({
               </NonAdminAction>
             </div>
           }
+          doc={TEAMS_DOCS}
           heading="Teams"
+          type="ADD_DATA"
         />
       )}
 
