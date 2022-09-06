@@ -50,6 +50,10 @@ jest.mock('./PropertyValue', () => ({
   PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
+jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
+});
+
 jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -91,19 +95,9 @@ describe('Test CustomProperty Table Component', () => {
     (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ customProperties: [] })
     );
-    const { findByTestId } = render(<CustomPropertyTable {...mockProp} />);
-    const table = await findByTestId('custom-properties-table');
+    const { findByText } = render(<CustomPropertyTable {...mockProp} />);
+    const noDataPlaceHolder = await findByText('ErrorPlaceHolder.component');
 
-    expect(table).toBeInTheDocument();
-
-    const propertyName = await findByTestId('property-name');
-    const propertyValue = await findByTestId('property-value');
-
-    expect(propertyName).toBeInTheDocument();
-    expect(propertyValue).toBeInTheDocument();
-
-    const noDataRow = await findByTestId('no-data-row');
-
-    expect(noDataRow).toBeInTheDocument();
+    expect(noDataPlaceHolder).toBeInTheDocument();
   });
 });
