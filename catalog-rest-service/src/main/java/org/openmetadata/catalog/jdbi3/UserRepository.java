@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
@@ -125,14 +126,8 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public User setFields(User user, Fields fields) throws IOException {
-    if (fields.contains("teams")) {
-      user.setTeams(getTeams(user));
-    } else if (fields.contains("groups")) {
-      user.setTeams(getGroupTeams(getTeams(user)));
-    } else {
-      user.setTeams(null);
-    }
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
+    user.setTeams(fields.contains("teams") ? getTeams(user) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
@@ -210,7 +205,13 @@ public class UserRepository extends EntityRepository<User> {
     return EntityUtil.populateEntityReferences(children, TEAM);
   }
 
-  public List<EntityReference> getGroupTeams(List<EntityReference> teams) throws IOException {
+  public List<EntityReference> getGroupTeams(UriInfo uriInfo, String userName) throws IOException {
+    User user = getByName(uriInfo, userName, Fields.EMPTY_FIELDS, Include.ALL);
+    List<EntityReference> teams = getTeams(user);
+    return getGroupTeams(teams);
+  }
+
+  private List<EntityReference> getGroupTeams(List<EntityReference> teams) throws IOException {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
       Team team = Entity.getEntity(t, Fields.EMPTY_FIELDS, Include.ALL);
