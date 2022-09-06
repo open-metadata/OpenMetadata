@@ -160,7 +160,9 @@ const OwnerWidgetWrapper = ({
   }, [visible]);
 
   useEffect(() => {
-    visible ? debounceOnSearch(searchText) : null;
+    if (visible) {
+      debounceOnSearch(searchText);
+    }
   }, [searchText]);
 
   const getOwnerGroup = () => {

@@ -49,7 +49,7 @@ export const getOwnerList = (
       ...(!excludeCurrentUser
         ? [
             {
-              name: getEntityName(userDetails as unknown as EntityReference),
+              name: getEntityName(userDetails),
               value: userDetails.id,
               group: 'Users',
               type: 'user',
@@ -62,7 +62,7 @@ export const getOwnerList = (
   } else {
     return [
       {
-        name: getEntityName(userDetails as unknown as EntityReference),
+        name: getEntityName(userDetails),
         value: userDetails?.id,
         group: 'Users',
         type: 'user',
