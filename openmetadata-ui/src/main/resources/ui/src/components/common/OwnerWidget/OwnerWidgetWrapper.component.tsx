@@ -7,7 +7,6 @@ import { useAuthContext } from '../../../authentication/auth-provider/AuthProvid
 import { getGroupTypeTeams } from '../../../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
-import { TeamType } from '../../../generated/entity/teams/team';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -16,7 +15,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
-  suggestFormattedUsersAndTeams,
 } from '../../../utils/UserDataUtils';
 import DropDownList from '../../dropdown/DropDownList';
 import './OwnerWidgetWrapper.style.less';
@@ -50,8 +48,8 @@ const OwnerWidgetWrapper = ({
       group: string;
       type: string;
     }[]
-  >(getOwnerList());
-  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
+  >([]);
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
   const [owner, setOwner] = useState(currentUser);
 
   const [searchText, setSearchText] = useState<string>('');
@@ -68,39 +66,22 @@ const OwnerWidgetWrapper = ({
     ];
   }, [appState.users, appState.userDetails]);
 
-  const getOwnerSuggestion = useCallback(
-    (qSearchText = '') => {
-      setIsUserLoading(true);
-      suggestFormattedUsersAndTeams(qSearchText)
-        .then((res) => {
-          const { users, teams } = res;
-          const filterTeam = teams.filter(
-            (team) => team.teamType === TeamType.Group
-          );
-          setListOwners(getOwnerList(users, filterTeam));
-        })
-        .catch(() => {
-          setListOwners([]);
-        })
-        .finally(() => {
-          setIsUserLoading(false);
-        });
-    },
-    [setListOwners, setIsUserLoading]
-  );
-
   const fetchGroupTypeTeams = async () => {
     try {
-      const data = await getGroupTypeTeams();
-      const updatedData = data.map((team) => ({
-        name: getEntityName(team),
-        value: team.id,
-        group: 'Teams',
-        type: 'team',
-      }));
-      setListOwners([...updatedData, ...userDetails]);
+      if (listOwners.length === 0) {
+        const data = await getGroupTypeTeams();
+        const updatedData = data.map((team) => ({
+          name: getEntityName(team),
+          value: team.id,
+          group: 'Teams',
+          type: 'team',
+        }));
+        setListOwners([...updatedData, ...userDetails]);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsUserLoading(false);
     }
   };
 
@@ -124,13 +105,9 @@ const OwnerWidgetWrapper = ({
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
-      if (text) {
-        getOwnerSuggestion(text);
-      } else {
-        getOwnerSearch();
-      }
+      getOwnerSearch(text || WILD_CARD_CHAR);
     },
-    [getOwnerSuggestion, getOwnerSearch]
+    [getOwnerSearch]
   );
 
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
