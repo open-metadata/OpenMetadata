@@ -812,81 +812,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @PUT
-  @Path("/{id}/tableTest")
-  @Operation(
-      operationId = "addTableTest",
-      summary = "Add table test cases",
-      tags = "tables",
-      description = "Add test cases to the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table addTableTest(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid CreateTableTest createTableTest)
-      throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
-    TableTest tableTest = getTableTest(securityContext, createTableTest);
-    Table table = dao.addTableTest(id, tableTest);
-    return addHref(uriInfo, table);
-  }
-
-  @DELETE
-  @Path("/{id}/tableTest/{tableTestType}")
-  @Operation(
-      operationId = "deleteTableTest",
-      summary = "delete table test case",
-      tags = "tables",
-      description = "Delete test case from the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table deleteTableTest(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Table Test Type", schema = @Schema(type = "string")) @PathParam("tableTestType")
-          String tableTestType)
-      throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
-    Table table = dao.deleteTableTest(id, tableTestType);
-    return addHref(uriInfo, table);
-  }
-
-  @PUT
-  @Path("/{id}/columnTest")
-  @Operation(
-      operationId = "addColumnTest",
-      summary = "Add column test cases",
-      tags = "tables",
-      description = "Add column test cases to the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table addColumnTest(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Valid CreateColumnTest createColumnTest)
-      throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
-    ColumnTest columnTest = getColumnTest(securityContext, createColumnTest);
-    Table table = dao.addColumnTest(UUID.fromString(id), columnTest);
-    return addHref(uriInfo, table);
-  }
-
-  @PUT
   @Path("/{id}/customMetric")
   @Operation(
       operationId = "addCustomMetric",
@@ -908,33 +833,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorizeAdmin(securityContext, true);
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
     Table table = dao.addCustomMetric(id, customMetric);
-    return addHref(uriInfo, table);
-  }
-
-  @DELETE
-  @Path("/{id}/columnTest/{columnName}/{columnTestType}")
-  @Operation(
-      operationId = "deleteColumnTest",
-      summary = "delete column test case",
-      tags = "tables",
-      description = "Delete column test case from the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table deleteColumnTest(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "column of the table", schema = @Schema(type = "string")) @PathParam("columnName")
-          String columnName,
-      @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("columnTestType")
-          String columnTestType)
-      throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
-    Table table = dao.deleteColumnTest(id, columnName, columnTestType);
     return addHref(uriInfo, table);
   }
 

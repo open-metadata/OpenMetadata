@@ -170,6 +170,10 @@ class PermissionsResourceTest extends CatalogApplicationTest {
     ResourcePermission actualPermission = getPermission(Entity.TABLE, table1.getId(), null, authHeaders);
     assertAllOperationsAllowed(actualPermission);
 
+    // get permissions by resource entity name
+    actualPermission = getPermissionByName(Entity.TABLE, table1.getFullyQualifiedName(), null, authHeaders);
+    assertAllOperationsAllowed(actualPermission);
+
     // Admin getting permissions for a specific resource on for Data consumer
     actualPermission = getPermission(Entity.TABLE, table1.getId(), DATA_CONSUMER_USER_NAME, ADMIN_AUTH_HEADERS);
     assertAllOperationsAllowed(actualPermission);
@@ -297,6 +301,13 @@ class PermissionsResourceTest extends CatalogApplicationTest {
   public ResourcePermission getPermission(String resource, UUID uuid, String user, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("permissions/" + resource + "/" + uuid);
+    target = user != null ? target.queryParam("user", user) : target;
+    return TestUtils.get(target, ResourcePermission.class, authHeaders);
+  }
+
+  public ResourcePermission getPermissionByName(
+      String resource, String name, String user, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("permissions/" + resource + "/name/" + name);
     target = user != null ? target.queryParam("user", user) : target;
     return TestUtils.get(target, ResourcePermission.class, authHeaders);
   }
