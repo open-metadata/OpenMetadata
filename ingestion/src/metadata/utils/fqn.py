@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -309,6 +310,36 @@ def _(
     if fetch_multiple_entities:
         return [str(user.fullyQualifiedName.__root__) for user in entity]
     return str(entity.fullyQualifiedName.__root__)
+
+
+@fqn_build_registry.add(TestCase)
+def _(
+    _: OpenMetadata,  # ES Search not enabled for TestCase
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    table_name: str,
+    column_name: str,
+    test_case_name: str,
+) -> str:
+    if column_name:
+        return _build(
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            column_name,
+            test_case_name,
+        )
+    else:
+        return _build(
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            test_case_name,
+        )
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:

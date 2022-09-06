@@ -445,6 +445,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           <Row justify="space-between">
             <Radio.Group
               buttonStyle="solid"
+              className="profiler-switch"
               optionType="button"
               options={tabOptions}
               value={activeTab}

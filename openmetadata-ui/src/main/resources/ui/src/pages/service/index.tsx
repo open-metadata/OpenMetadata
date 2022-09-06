@@ -747,7 +747,7 @@ const ServicePage: FunctionComponent = () => {
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
       const { id } = serviceDetails;
 
@@ -760,18 +760,19 @@ const ServicePage: FunctionComponent = () => {
         // TODO: Fix type issue below
       } as unknown as ServiceOption;
 
-      updateService(serviceName, id, updatedServiceDetails)
-        .then((res) => {
-          setDescription(updatedHTML);
-          setServiceDetails(res);
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['update-description-error']
-          );
-        })
-        .finally(() => setIsEdit(false));
+      try {
+        const response = await updateService(
+          serviceName,
+          id,
+          updatedServiceDetails
+        );
+        setDescription(updatedHTML);
+        setServiceDetails(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
     } else {
       setIsEdit(false);
     }

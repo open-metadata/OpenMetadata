@@ -30,17 +30,20 @@ import {
 interface Props extends DBTFormCommonProps, DbtConfigLocal {
   handleCatalogFilePathChange: (value: string) => void;
   handleManifestFilePathChange: (value: string) => void;
+  handleRunResultsFilePathChange: (value: string) => void;
 }
 
 export const DBTLocalConfig: FunctionComponent<Props> = ({
   dbtCatalogFilePath = '',
   dbtManifestFilePath = '',
+  dbtRunResultsFilePath = '',
   okText,
   cancelText,
   onCancel,
   onSubmit,
   handleCatalogFilePathChange,
   handleManifestFilePathChange,
+  handleRunResultsFilePathChange,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtLocal>();
 
@@ -52,7 +55,11 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtCatalogFilePath, dbtManifestFilePath };
+    const submitData = {
+      dbtCatalogFilePath,
+      dbtManifestFilePath,
+      dbtRunResultsFilePath,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -100,6 +107,27 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
           onChange={(e) => handleManifestFilePathChange(e.target.value)}
         />
         {errors?.dbtManifestFilePath && errorMsg(errors.dbtManifestFilePath)}
+      </Field>
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="run-result-file">
+          DBT Run Results File Path
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          DBT run results file path to extract the test results information.
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="run-result-file"
+          id="run-result-file"
+          name="run-result-file"
+          type="text"
+          value={dbtRunResultsFilePath}
+          onChange={(e) => handleRunResultsFilePathChange(e.target.value)}
+        />
+        {errors?.dbtRunResultsFilePath &&
+          errorMsg(errors.dbtRunResultsFilePath)}
       </Field>
       {getSeparator('')}
 

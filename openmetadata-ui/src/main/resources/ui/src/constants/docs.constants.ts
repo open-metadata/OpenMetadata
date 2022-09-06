@@ -12,3 +12,11 @@ export const CONNECTORS_DOCS =
 
 export const WORKFLOWS_METADATA_DOCS =
   'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata';
+
+export const BOTS_DOCS =
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
+
+export const TEAMS_DOCS = 'https://docs.open-metadata.org/openmetadata/users';
+
+export const WEBHOOK_DOCS =
+  'https://docs.open-metadata.org/developers/webhooks';

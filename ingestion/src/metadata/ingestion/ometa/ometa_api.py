@@ -449,6 +449,7 @@ class OpenMetadata(
             .replace("glossaryterm", "glossaryTerm")
             .replace("tagcategory", "tagCategory")
             .replace("testsuite", "testSuite")
+            .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
         )
 

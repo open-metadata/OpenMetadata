@@ -42,7 +42,7 @@ export interface Props {
   isAdminUser: boolean;
   isLoggedinUser: boolean;
   isAuthDisabled: boolean;
-  updateUserDetails: (data: UserDetails) => void;
+  updateUserDetails: (data: UserDetails) => Promise<void>;
   fetchFeedHandler: (
     threadType: ThreadType,
     after?: string,

@@ -176,8 +176,8 @@ export const getGlobalSettingsMenuWithPermission = (
         {
           label: 'Activity Feed',
           isProtected: checkPermission(
-            Operation.EditAll,
-            ResourceEntity.ACTIVITY_FEED,
+            Operation.ViewAll,
+            ResourceEntity.FEED,
             permissions
           ),
           icon: <AllActivityIcon className="side-panel-icons" />,
