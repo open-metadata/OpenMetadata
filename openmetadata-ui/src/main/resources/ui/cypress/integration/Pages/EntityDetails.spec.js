@@ -179,6 +179,15 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="entity-tags"]').should('contain', 'Tier1');
     cy.wait(1000);
 
+    // Test out the activity feed and task tab
+    cy.get('[data-testid="Activity Feeds & Tasks"]').should('be.visible').click()
+    // Check for tab count
+    cy.get('[data-testid=filter-count').should('be.visible').contains("2")
+
+    // Check for activity feeds - count should be 2 
+    // 1 for tier change and 1 for owner change
+    cy.get('[data-testid="message-container"]').its('length').should("eq",2)
+
     cy.clickOnLogo();
 
     // checks newly generated feed for follow and setting owner
