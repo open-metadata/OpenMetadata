@@ -54,7 +54,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
-public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebhook> {
+class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebhook> {
   public static final List<EventFilter> ALL_EVENTS_FILTER = new ArrayList<>();
 
   static {
