@@ -21,6 +21,7 @@ import { getTeamTypeOptions } from './TeamTypeSelect.utils';
 
 function TeamTypeSelect({
   handleShowTypeSelector,
+  showGroupOption,
   teamType,
   updateTeamType,
 }: TeamTypeSelectProps) {
@@ -38,7 +39,7 @@ function TeamTypeSelect({
     updateTeamType && updateTeamType(value);
   };
 
-  const options = useMemo(() => getTeamTypeOptions(), []);
+  const options = useMemo(() => getTeamTypeOptions(showGroupOption), []);
 
   return (
     <Space align="center" className="team-type-select" size={4}>

@@ -161,7 +161,7 @@ const TeamDetailsV1 = ({
         isOrganization,
         searchTerm ? table.length : undefined
       ),
-    [currentTeam, teamUserPagin, searchTerm]
+    [currentTeam, teamUserPagin, searchTerm, table]
   );
 
   const createTeamPermission = useMemo(
@@ -829,6 +829,7 @@ const TeamDetailsV1 = ({
                 <EntitySummaryDetails
                   data={info}
                   isGroupType={isGroupType}
+                  showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={
                     entityPermissions.EditAll || entityPermissions.EditOwner

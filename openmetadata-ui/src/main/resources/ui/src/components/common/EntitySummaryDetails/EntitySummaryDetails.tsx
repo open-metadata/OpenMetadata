@@ -36,6 +36,7 @@ export interface GetInfoElementsProps {
   tier?: TagLabel;
   currentTier?: string;
   teamType?: TeamType;
+  showGroupOption?: boolean;
   isGroupType?: boolean;
   updateTier?: (value: string) => void;
   updateTeamType?: (type: TeamType) => void;
@@ -47,7 +48,7 @@ const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
     className={classNames('tw-cursor-pointer tw-align-text-top', iconClasses)}
     icon={Icons.EDIT}
     title="Edit"
-    width="15px"
+    width="16px"
   />
 );
 
@@ -66,6 +67,7 @@ const EntitySummaryDetails = ({
   isGroupType,
   tier,
   teamType,
+  showGroupOption,
   updateOwner,
   updateTier,
   updateTeamType,
@@ -307,6 +309,7 @@ const EntitySummaryDetails = ({
             showTypeSelector ? (
               <TeamTypeSelect
                 handleShowTypeSelector={handleShowTypeSelector}
+                showGroupOption={showGroupOption ?? false}
                 teamType={teamType ?? TeamType.Department}
                 updateTeamType={updateTeamType}
               />
