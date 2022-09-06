@@ -224,14 +224,6 @@ jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
 
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="tag-action">{children}</p>
-    ));
-});
-
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
