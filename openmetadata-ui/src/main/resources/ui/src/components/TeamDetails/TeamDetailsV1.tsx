@@ -161,7 +161,7 @@ const TeamDetailsV1 = ({
         isOrganization,
         searchTerm ? table.length : undefined
       ),
-    [currentTeam, teamUserPagin, searchTerm]
+    [currentTeam, teamUserPagin, searchTerm, table]
   );
 
   const createTeamPermission = useMemo(
