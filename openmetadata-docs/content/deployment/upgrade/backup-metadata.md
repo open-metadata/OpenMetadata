@@ -16,7 +16,7 @@ now allows all users to perform backups regardless of the underlying infrastruct
 
 ## Requirements
 
-The backup CLI needs to be used with `openmetadata-ingestion` version 0.12 or higher.
+The backup CLI needs to be used with `openmetadata-ingestion` version 0.11.5 or higher.
 
 ## Installation
 
