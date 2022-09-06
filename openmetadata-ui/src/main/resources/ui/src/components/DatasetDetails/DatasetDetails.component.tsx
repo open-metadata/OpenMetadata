@@ -48,11 +48,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  getTableTestsValue,
-  getTagsWithoutTier,
-  getUsagePercentile,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -125,7 +121,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
-  tableTestCase,
   createThread,
   qualityTestFormHandler,
   deletePostHandler,
@@ -408,7 +403,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       key: 'Rows',
       value: prepareTableRowInfo(),
     },
-    { key: 'Tests', value: getTableTestsValue(tableTestCase) },
   ];
 
   const onDescriptionEdit = (): void => {
@@ -745,9 +739,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 5 && (
                 <TableProfilerV1
-                  hasEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditDataProfile
-                  }
+                  permissions={tablePermissions}
                   table={tableDetails}
                   onAddTestClick={qualityTestFormHandler}
                 />
