@@ -33,14 +33,14 @@ from .test_secrets_manager import TestSecretsManager
 
 
 class TestLocalSecretsManager(TestSecretsManager.External):
-    def test_local_manager_add_service_config_connection(self):
-        local_manager = get_secrets_manager_from_om_connection(
-            self.build_open_metadata_connection(SecretsManagerProvider.local), None
+    def test_noop_manager_add_service_config_connection(self):
+        noop_manager = get_secrets_manager_from_om_connection(
+            self.build_open_metadata_connection(SecretsManagerProvider.noop), None
         )
         expected_service_connection = self.service_connection
 
         actual_service_connection: ServiceConnection = (
-            local_manager.retrieve_service_connection(self.service, self.service_type)
+            noop_manager.retrieve_service_connection(self.service, self.service_type)
         )
 
         self.assertEqual(actual_service_connection, expected_service_connection)
@@ -48,41 +48,41 @@ class TestLocalSecretsManager(TestSecretsManager.External):
             expected_service_connection.__root__.config
         )
 
-    def test_local_manager_add_auth_provider_security_config(self):
-        local_manager = get_secrets_manager_from_om_connection(
-            self.build_open_metadata_connection(SecretsManagerProvider.local), None
+    def test_noop_manager_add_auth_provider_security_config(self):
+        noop_manager = get_secrets_manager_from_om_connection(
+            self.build_open_metadata_connection(SecretsManagerProvider.noop), None
         )
         actual_om_connection = deepcopy(self.om_connection)
         actual_om_connection.securityConfig = self.auth_provider_config
 
-        local_manager.add_auth_provider_security_config(actual_om_connection)
+        noop_manager.add_auth_provider_security_config(actual_om_connection)
 
         self.assertEqual(self.auth_provider_config, actual_om_connection.securityConfig)
         assert id(self.auth_provider_config) == id(actual_om_connection.securityConfig)
 
-    def test_local_manager_retrieve_dbt_source_config(self):
-        local_manager = get_secrets_manager_from_om_connection(
-            self.build_open_metadata_connection(SecretsManagerProvider.local), None
+    def test_noop_manager_retrieve_dbt_source_config(self):
+        noop_manager = get_secrets_manager_from_om_connection(
+            self.build_open_metadata_connection(SecretsManagerProvider.noop), None
         )
         source_config = SourceConfig()
         source_config.config = DatabaseServiceMetadataPipeline(
             dbtConfigSource=self.dbt_source_config
         )
 
-        actual_dbt_source_config = local_manager.retrieve_dbt_source_config(
+        actual_dbt_source_config = noop_manager.retrieve_dbt_source_config(
             source_config, "test-pipeline"
         )
 
         self.assertEqual(self.dbt_source_config.dict(), actual_dbt_source_config)
 
-    def test_local_manager_retrieve_temp_service_test_connection(self):
-        local_manager = get_secrets_manager_from_om_connection(
-            self.build_open_metadata_connection(SecretsManagerProvider.local), None
+    def test_noop_manager_retrieve_temp_service_test_connection(self):
+        noop_manager = get_secrets_manager_from_om_connection(
+            self.build_open_metadata_connection(SecretsManagerProvider.noop), None
         )
         expected_service_connection = self.service.connection
 
         actual_service_connection: DatabaseConnection = (
-            local_manager.retrieve_temp_service_test_connection(
+            noop_manager.retrieve_temp_service_test_connection(
                 self.service.connection, "Database"
             )
         )
