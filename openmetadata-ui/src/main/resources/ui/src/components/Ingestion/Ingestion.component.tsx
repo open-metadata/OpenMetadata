@@ -453,7 +453,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                               ? 'View Dag'
                               : NO_PERMISSION_TO_VIEW
                           }>
-                          <Button disabled={!permissions.ViewAll}>
+                          <Button disabled={!permissions.ViewAll} type="link">
                             <a
                               className="link-text tw-mr-2"
                               data-testid="airflow-tree-view"
