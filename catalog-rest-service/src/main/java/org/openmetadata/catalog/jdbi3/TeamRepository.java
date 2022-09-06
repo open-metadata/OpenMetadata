@@ -21,6 +21,7 @@ import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
@@ -238,14 +239,14 @@ public class TeamRepository extends EntityRepository<Team> {
         }
         break;
       case DEPARTMENT:
-        validateChildren(team, children, DEPARTMENT);
+        validateChildren(team, children, DEPARTMENT, GROUP);
         break;
       case DIVISION:
-        validateChildren(team, children, DEPARTMENT, DIVISION);
+        validateChildren(team, children, DEPARTMENT, DIVISION, GROUP);
         break;
       case BUSINESS_UNIT:
       case ORGANIZATION:
-        validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT);
+        validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT, GROUP);
         break;
     }
     populateTeamRefs(childrenRefs, children);
