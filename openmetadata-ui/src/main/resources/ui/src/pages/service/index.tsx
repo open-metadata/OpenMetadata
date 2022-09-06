@@ -856,6 +856,7 @@ const ServicePage: FunctionComponent = () => {
             ingestionList={ingestions}
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
+            permissions={servicePermission}
             serviceCategory={serviceName as ServiceCategory}
             serviceDetails={serviceDetails as ServicesType}
             serviceList={serviceList}

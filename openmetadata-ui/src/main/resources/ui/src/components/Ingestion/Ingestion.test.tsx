@@ -23,8 +23,32 @@ import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { ServiceCategory } from '../../enums/service.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import Ingestion from './Ingestion.component';
 import { mockIngestionWorkFlow, mockService } from './Ingestion.mock';
+
+const mockPermissions = {
+  Create: true,
+  Delete: true,
+  EditAll: true,
+  EditCustomFields: true,
+  EditDataProfile: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditLineage: true,
+  EditOwner: true,
+  EditQueries: true,
+  EditSampleData: true,
+  EditTags: true,
+  EditTests: true,
+  EditTier: true,
+  ViewAll: true,
+  ViewDataProfile: true,
+  ViewQueries: true,
+  ViewSampleData: true,
+  ViewTests: true,
+  ViewUsage: true,
+} as OperationPermission;
 
 const mockUpdateWorkflows = jest.fn();
 
@@ -55,14 +79,6 @@ const mockDeployIngestion = jest
 const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
-
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
 
 jest.mock('../containers/PageContainer', () => {
   return jest
@@ -110,6 +126,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -153,6 +170,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -214,6 +232,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -251,6 +270,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -290,6 +310,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -342,6 +363,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -373,6 +395,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -410,6 +433,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -453,6 +477,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
@@ -493,6 +518,7 @@ describe('Test Ingestion page', () => {
         }
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}

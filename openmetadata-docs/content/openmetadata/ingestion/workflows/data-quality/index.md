@@ -4,7 +4,9 @@ slug: /openmetadata/ingestion/workflows/data-quality
 ---
 
 # Data Quality
+
 Learn how you can use OpenMetadata to define Data Quality tests and measure your data reliability.
+
 ## Requirements
 
 ### OpenMetadata (version 0.12 or later)

@@ -287,23 +287,21 @@ const EntitySummaryDetails = ({
                 variant="text">
                 {displayVal}
               </Button>
-              <span>
-                <Dropdown
-                  overlay={
-                    <TierCard
-                      currentTier={tier?.tagFQN}
-                      updateTier={updateTier}
-                    />
-                  }
-                  placement="bottomRight"
-                  trigger={['click']}>
-                  <span
-                    className="tw-flex"
-                    data-testid={`edit-${data.key}-icon`}>
-                    {updateTier ? <EditIcon /> : null}
-                  </span>
-                </Dropdown>
-              </span>
+              <Dropdown
+                overlay={
+                  <TierCard
+                    currentTier={tier?.tagFQN}
+                    updateTier={updateTier}
+                  />
+                }
+                placement="bottomRight"
+                trigger={['click']}>
+                <span
+                  className="tw-flex tw--mt-1"
+                  data-testid={`edit-${data.key}-icon`}>
+                  {updateTier ? <EditIcon /> : null}
+                </span>
+              </Dropdown>
             </Space>
           ) : isTeamType ? (
             showTypeSelector ? (

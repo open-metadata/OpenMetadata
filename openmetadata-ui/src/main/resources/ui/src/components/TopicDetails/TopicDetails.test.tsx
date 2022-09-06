@@ -166,6 +166,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn(),
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 describe('Test TopicDetails component', () => {
