@@ -146,7 +146,7 @@ describe('Teams flow should work properly', () => {
     cy.get('.ant-table-row').should('contain', TEAM_DETAILS.ownername);
 
     //Removing the added user
-    cy.get('.ant-btn > [data-testid="image"]')
+    cy.get('[data-testid="remove-user-btn"] > [data-testid="image"]')
       .should('exist')
       .should('be.visible')
       .click();
