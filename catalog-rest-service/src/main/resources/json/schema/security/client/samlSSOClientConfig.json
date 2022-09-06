@@ -35,6 +35,11 @@
           "description": "Authority URL to redirect the users on Sign In page",
           "type": "boolean",
           "default": false
+        },
+        "nameId": {
+          "description": "Authority URL to redirect the users on Sign In page",
+          "type": "string",
+          "default": "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"
         }
       },
       "required": ["entityId", "ssoLoginUrl"],

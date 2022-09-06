@@ -9,21 +9,19 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @WebServlet("/api/v1/saml/acs")
+@Slf4j
 public class SamlResponseServlet extends HttpServlet {
-  private static final Logger logger = LoggerFactory.getLogger(SamlResponseServlet.class);
-
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
     try {
       handleResponse(req, resp);
     } catch (Exception e) {
-      logger.error("SamlResponseError :" + e.getMessage());
+      LOG.error("SamlResponseError :" + e.getMessage());
     }
   }
 
@@ -32,29 +30,27 @@ public class SamlResponseServlet extends HttpServlet {
     auth.processResponse();
 
     if (!auth.isAuthenticated()) {
-      logger.error("Not Authenticated");
+      LOG.error("Not Authenticated");
       resp.sendError(403, "Unauthorized");
     }
 
     List<String> errors = auth.getErrors();
 
     if (!errors.isEmpty()) {
-      if (auth.isDebugActive()) {
-        String errorReason = auth.getLastErrorReason();
-        if (errorReason != null && !errorReason.isEmpty()) {
-          logger.error(errorReason);
-          resp.sendError(500, errorReason);
-        }
+      String errorReason = auth.getLastErrorReason();
+      if (errorReason != null && !errorReason.isEmpty()) {
+        LOG.error(errorReason);
+        resp.sendError(500, errorReason);
       }
     } else {
       Map<String, List<String>> attributes = auth.getAttributes();
       String nameId = auth.getNameId();
-      String email = auth.getAttributes().get("Email").get(0);
+      String username = nameId.split("@")[0];
 
       JWTTokenGenerator.getInstance().init(SamlSettingsHolder.getInstance().getJwtTokenConfiguration());
       JWTAuthMechanism jwtAuthMechanism =
           JWTTokenGenerator.getInstance()
-              .generateJWTToken(nameId, email, SamlSettingsHolder.getInstance().getTokenValidity(), false);
+              .generateJWTToken(username, nameId, SamlSettingsHolder.getInstance().getTokenValidity(), false);
 
       String relayState = req.getParameter("RelayState");
 
@@ -66,20 +62,20 @@ public class SamlResponseServlet extends HttpServlet {
                 + "?id_token="
                 + jwtAuthMechanism.getJWTToken()
                 + "&email="
-                + email
+                + nameId
                 + "&name="
-                + nameId;
+                + username;
         resp.sendRedirect(url);
       } else {
         if (attributes.isEmpty()) {
-          logger.info("You don't have any attributes");
+          LOG.info("You don't have any attributes");
         } else {
           Collection<String> keys = attributes.keySet();
           for (String name : keys) {
-            logger.debug("Keys" + name);
+            LOG.debug("Keys" + name);
             List<String> values = attributes.get(name);
             for (String value : values) {
-              logger.debug("Value" + name);
+              LOG.debug("Value" + name);
             }
           }
         }

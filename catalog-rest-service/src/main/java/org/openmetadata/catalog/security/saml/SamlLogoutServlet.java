@@ -5,13 +5,11 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 @WebServlet("/api/v1/saml/logout")
+@Slf4j
 public class SamlLogoutServlet extends HttpServlet {
-  private static final Logger logger = LoggerFactory.getLogger(SamlRedirectServlet.class);
-
   @Override
   protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) {
     Auth auth;
@@ -19,7 +17,7 @@ public class SamlLogoutServlet extends HttpServlet {
       auth = new Auth(SamlSettingsHolder.getInstance().getSaml2Settings(), req, resp);
       auth.logout();
     } catch (Exception e) {
-      logger.error(e.getMessage());
+      LOG.error(e.getMessage());
     }
   }
 }

@@ -154,6 +154,7 @@ authenticationConfiguration:
       ssoLogoutUrl: ${SAML_IDP_SSO_LOGOUT_URL:-""}
       idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
       authorityUrl: ${SAML_AUTHORITY_URL:-""}
+      nameId: ${SAML_IDP_NAMEID:- "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
       wantAuthRequestSigned : ${SAML_AUTH_REQUEST_SIGNED:- false}
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-""}

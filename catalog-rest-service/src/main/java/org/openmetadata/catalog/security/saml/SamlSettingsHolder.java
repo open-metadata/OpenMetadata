@@ -54,7 +54,7 @@ public class SamlSettingsHolder {
     samlData.put(
         SettingsBuilder.SP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
-    samlData.put(SettingsBuilder.SP_NAMEIDFORMAT_PROPERTY_KEY, "urn:oasis:names:tc:SAML:2.0:nameid-format:transient");
+    samlData.put(SettingsBuilder.SP_NAMEIDFORMAT_PROPERTY_KEY, samlConfig.getIdp().getNameId());
     samlData.put(SettingsBuilder.SP_X509CERT_PROPERTY_KEY, samlConfig.getSp().getSpX509Certificate());
     samlData.put(SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, JWTTokenGenerator.getInstance().getPrivateKey());
     relayState = samlConfig.getSp().getCallback();
