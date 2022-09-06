@@ -309,8 +309,9 @@ const GlossaryV1 = ({
                     Delete
                   </p>
                   <p className="tw-text-grey-muted tw-text-xs">
-                    Deleting this Glossary will permanently remove its metadata
-                    from OpenMetadata.
+                    Deleting this{' '}
+                    {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'} will
+                    permanently remove its metadata from OpenMetadata.
                   </p>
                 </div>
               </Space>
@@ -387,10 +388,13 @@ const GlossaryV1 = ({
   useEffect(() => {
     setDisplayName(selectedData?.displayName);
     if (selectedData) {
-      fetchGlossaryPermission();
-      fetchGlossaryTermPermission();
+      if (isGlossaryActive) {
+        fetchGlossaryPermission();
+      } else {
+        fetchGlossaryTermPermission();
+      }
     }
-  }, [selectedData]);
+  }, [selectedData, isGlossaryActive]);
 
   return glossaryList.length ? (
     <PageLayoutV1 leftPanel={fetchLeftPanel()}>
@@ -439,14 +443,18 @@ const GlossaryV1 = ({
             onVisibleChange={setShowActions}>
             <Tooltip
               title={
-                glossaryPermission.Delete
-                  ? 'Manage Glossary'
+                glossaryPermission.Delete || glossaryTermPermission.Delete
+                  ? isGlossaryActive
+                    ? 'Manage Glossary'
+                    : 'Manage GlossaryTerm'
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
                 className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-flex"
                 data-testid="manage-button"
-                disabled={!glossaryPermission.Delete}
+                disabled={
+                  !(glossaryPermission.Delete || glossaryTermPermission.Delete)
+                }
                 size="small"
                 theme="primary"
                 variant="outlined"
