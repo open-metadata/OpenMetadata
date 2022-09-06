@@ -12,20 +12,24 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React, { Fragment } from 'react';
+import React, { Fragment, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
@@ -53,13 +57,15 @@ const UserCard = ({
   isIconVisible = false,
   isDataset = false,
   isCheckBoxes = false,
-  isOwner = false,
   onTitleClick,
   onSelect,
   onRemove,
 }: Props) => {
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+  const { permissions } = usePermissionProvider();
+
+  const editPermission = useMemo(() => {
+    return checkPermission(Operation.EditAll, ResourceEntity.USER, permissions);
+  }, [permissions]);
 
   /**
    * prepare asset displayName and return it
@@ -225,17 +231,20 @@ const UserCard = ({
           />
         ) : (
           <div className="tw-flex-none">
-            <span
-              className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled && !isOwner,
-              })}
-              data-testid="remove"
-              onClick={() => onRemove?.(item.id as string)}>
-              <FontAwesomeIcon
-                className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
-                icon="remove"
-              />
-            </span>
+            <Tooltip
+              title={editPermission ? 'Remove' : NO_PERMISSION_FOR_ACTION}>
+              <Button
+                className={classNames('tw-h-8 tw-rounded tw-mb-3')}
+                data-testid="remove"
+                disabled={!editPermission}
+                type="text"
+                onClick={() => onRemove?.(item.id as string)}>
+                <FontAwesomeIcon
+                  className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
+                  icon="remove"
+                />
+              </Button>
+            </Tooltip>
           </div>
         ))}
     </div>

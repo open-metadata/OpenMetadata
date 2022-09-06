@@ -191,6 +191,7 @@ const Services = ({
                 <ButtonAntd
                   ghost
                   data-testid="add-service-button"
+                  disabled={!addServicePermission}
                   size="small"
                   type="primary"
                   onClick={handleAddServiceClick}>
