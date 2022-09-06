@@ -3,6 +3,8 @@ title: Docker Volumes
 slug: /deployment/docker/volumes
 ---
 
+# Docker Volumes
+
 Named volumes can persist data after we restart or remove a container. Also, it’s accessible by other containers.
 
 For example:
