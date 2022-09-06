@@ -39,6 +39,7 @@ import {
   getUserPath,
   PAGE_SIZE,
 } from '../../constants/constants';
+import { TEAMS_DOCS } from '../../constants/docs.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -1000,7 +1001,9 @@ const TeamDetailsV1 = ({
               </Button>
             </div>
           }
+          doc={TEAMS_DOCS}
           heading="Teams"
+          type="ADD_DATA"
         />
       )}
 
