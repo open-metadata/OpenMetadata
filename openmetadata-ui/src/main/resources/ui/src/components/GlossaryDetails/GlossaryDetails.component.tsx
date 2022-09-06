@@ -279,18 +279,13 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         placement="topRight"
         title={permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
         <ButtonAntd
-          className="tw-p-0 add-reviewer-btn"
+          className="tw-p-0 flex-center"
           data-testid="add-new-reviewer"
           disabled={!permissions.EditAll}
+          size="small"
           type="text"
           onClick={() => setShowRevieweModal(true)}>
-          <SVGIcons
-            alt="edit"
-            className="tw--mt-1"
-            icon={Icons.EDIT}
-            title="Edit"
-            width="16px"
-          />
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
         </ButtonAntd>
       </Tooltip>
     );
@@ -307,19 +302,13 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
               : NO_PERMISSION_FOR_ACTION
           }>
           <ButtonAntd
-            className="tw-p-0"
+            className="tw-p-0 flex-center"
             data-testid="owner-dropdown"
             disabled={!(permissions.EditOwner || permissions.EditAll)}
             size="small"
             type="text"
             onClick={handleSelectOwnerDropdown}>
-            <SVGIcons
-              alt="edit"
-              className="tw--mt-1"
-              icon={Icons.EDIT}
-              title="Edit"
-              width="16px"
-            />
+            <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
           </ButtonAntd>
         </Tooltip>
         {listVisible && (

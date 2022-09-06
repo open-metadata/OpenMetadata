@@ -348,7 +348,7 @@ const GlossaryV1 = ({
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <button
-                      className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                      className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
