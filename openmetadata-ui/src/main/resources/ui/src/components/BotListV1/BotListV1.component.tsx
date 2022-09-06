@@ -176,13 +176,15 @@ const BotListV1 = ({
     <ErrorPlaceHolder
       buttons={
         <div className="tw-text-lg tw-text-center">
-          <Button
-            ghost
-            title="Add Team"
-            type="primary"
-            onClick={handleAddBotClick}>
-            Add Bot
-          </Button>
+          <Tooltip
+            title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              disabled={!createPermission}
+              type="primary"
+              onClick={handleAddBotClick}>
+              Add Bot
+            </Button>
+          </Tooltip>
         </div>
       }
       doc={BOTS_DOCS}
