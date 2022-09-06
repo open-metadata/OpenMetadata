@@ -248,8 +248,17 @@ link="/openmetadata/ingestion/workflows/usage"
 <Tile
 icon="schema"
 title="Profiler Workflow"
-text="Learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI."
+text="Learn more about how to configure the Data Profiler from the UI."
 link="/openmetadata/ingestion/workflows/profiler"
+/>
+
+## Data Quality
+
+<Tile
+icon="air"
+title="Data Quality Workflow"
+text="Learn more about how to configure the Data Quality tests from the UI."
+link="/openmetadata/ingestion/workflows/data-quality"
 />
 
 ## DBT Integration
