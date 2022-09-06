@@ -58,7 +58,7 @@ const OwnerWidgetWrapper = ({
 
     return [
       {
-        name: getEntityName(userData as unknown as EntityReference),
+        name: getEntityName(userData),
         value: userData?.id,
         group: 'Users',
         type: 'user',
