@@ -564,6 +564,8 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   //Check if the property got added
+  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as("customProperties");
+  cy.wait("@customProperties");
   cy.get('[data-testid="data-row"]').should('contain', propertyName);
 
   //Navigating to home page
@@ -683,5 +685,5 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
   //Checking if property got deleted successfully
-  cy.get('[data-testid="table-body"]').should('not.contain', propertyName);
+  cy.get('[data-testid="add-field-button"]').should('be.visible');
 };

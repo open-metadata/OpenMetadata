@@ -151,30 +151,6 @@ const CustomEntityDetailV1 = () => {
     }
   }, [selectedEntityTypeDetail]);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () => {
-      return (
-        <ErrorPlaceHolder
-          buttons={
-            <Tooltip title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
-              <ButtonAntd
-                ghost
-                data-testid="add-field-button"
-                disabled={!editPermission}
-                type="primary"
-                onClick={() => handleAddProperty()}>
-                Add Property
-              </ButtonAntd>
-            </Tooltip>
-          }
-          heading="Property"
-          type="ADD_DATA"
-        />
-      );
-    },
-    [editPermission]
-  );
-
   if (isLoading) {
     return <Loader />;
   }
@@ -212,7 +188,23 @@ const CustomEntityDetailV1 = () => {
         {activeTab === 1 &&
           (isEmpty(selectedEntityTypeDetail.customProperties) ? (
             <div data-testid="entity-custom-fields">
-              {fetchErrorPlaceHolder()}
+              <ErrorPlaceHolder
+                buttons={
+                  <Tooltip
+                    title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                    <ButtonAntd
+                      ghost
+                      data-testid="add-field-button"
+                      disabled={!editPermission}
+                      type="primary"
+                      onClick={() => handleAddProperty()}>
+                      Add Property
+                    </ButtonAntd>
+                  </Tooltip>
+                }
+                heading="Property"
+                type="ADD_DATA"
+              />
             </div>
           ) : (
             <div data-testid="entity-custom-fields">

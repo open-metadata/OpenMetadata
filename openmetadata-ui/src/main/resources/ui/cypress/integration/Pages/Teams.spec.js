@@ -119,7 +119,8 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="add-new-user"]')
+    cy.get('[data-testid="add-user"]')
+      .scrollIntoView()
       .should('exist')
       .should('be.visible')
       .click();
@@ -163,15 +164,19 @@ describe('Teams flow should work properly', () => {
     // TODO: Remove cy.wait and wait for API to be completed before querying for new element
     cy.wait(2000);
 
-    //
     //Verify if user is removed
+    cy.get('[data-testid="Users"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.ownername);
 
-    cy.get('.ant-table-cell')
+    cy.get('[data-testid="add-user"]')
       .should('be.visible')
-      .should('not.contain', TEAM_DETAILS.ownername);
+    //   .should('not.contain', TEAM_DETAILS.ownername);
   });
 
   it('Join team should work properly', () => {
