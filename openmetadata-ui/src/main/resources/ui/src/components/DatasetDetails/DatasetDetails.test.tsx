@@ -194,10 +194,6 @@ jest.mock('../SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTab</p>);
 });
 
-jest.mock('../DataQualityTab/DataQualityTab', () => {
-  return jest.fn().mockReturnValue(<p>DataQualityTab</p>);
-});
-
 jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
