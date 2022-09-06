@@ -74,7 +74,7 @@ export const DELETE_ENTITY = {
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
-  }
+  },
 };
 
 export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
@@ -187,5 +187,4 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
   },
-
 };

@@ -11,14 +11,10 @@
  *  limitations under the License.
  */
 
-.entity-summary-details {
-  .ant-space-item {
-    position: relative;
-  }
-  .ant-btn {
-    border: none;
-    background-color: inherit;
-    height: 16px;
-    padding: 0px;
-  }
+import { TeamType } from '../../../generated/entity/teams/team';
+
+export interface TeamTypeSelectProps {
+  handleShowTypeSelector: (value: boolean) => void;
+  teamType: TeamType;
+  updateTeamType?: (type: TeamType) => void;
 }

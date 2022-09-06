@@ -48,3 +48,6 @@ export const NO_PERMISSION_FOR_ACTION =
 
 export const NO_PERMISSION_TO_VIEW =
   'You do not have the necessary permissions to view this data.';
+
+export const GROUP_TEAM_TYPE_CHANGE_MSG =
+  "The team type 'Group' cannot be changed. Please create a new team with the preferred type.";
