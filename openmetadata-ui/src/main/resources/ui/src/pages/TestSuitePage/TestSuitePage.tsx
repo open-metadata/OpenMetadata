@@ -20,7 +20,7 @@ import Ellipses from '../../components/common/Ellipses/Ellipses';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -39,7 +39,7 @@ const TestSuitePage = () => {
       setIsLoading(true);
       const response = await getListTestSuites({
         fields: 'owner,tests',
-        limit: PAGE_SIZE,
+        limit: PAGE_SIZE_MEDIUM,
         before: param && param.before,
         after: param && param.after,
       });
@@ -116,11 +116,11 @@ const TestSuitePage = () => {
           size="small"
         />
       </Col>
-      {testSuites.length > PAGE_SIZE && (
+      {testSuites.length > PAGE_SIZE_MEDIUM && (
         <Col span={24}>
           <NextPrevious
             currentPage={testSuitePage}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={testSuitePaging}
             pagingHandler={testSuitePagingHandler}
             totalCount={testSuitePaging.total}

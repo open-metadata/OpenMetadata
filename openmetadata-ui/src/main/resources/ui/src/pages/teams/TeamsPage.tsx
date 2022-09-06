@@ -32,7 +32,7 @@ import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
 import Teams from '../../components/TeamDetails/Teams';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -169,7 +169,7 @@ const TeamsPage = () => {
     paging = {} as { [key: string]: string }
   ) => {
     setIsDataLoading(true);
-    getUsers('teams,roles', PAGE_SIZE, { team, ...paging })
+    getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -220,7 +220,7 @@ const TeamsPage = () => {
     searchData(
       text,
       currentPage,
-      PAGE_SIZE,
+      PAGE_SIZE_MEDIUM,
       `(teams.id:${selectedTeam?.id})`,
       '',
       '',
@@ -393,6 +393,10 @@ const TeamsPage = () => {
     });
   };
 
+  const handleCurrentUserPage = (value?: number) => {
+    setCurrentUserPage(value ?? INITIAL_PAGING_VALUE);
+  };
+
   const handleUsersSearchAction = (text: string) => {
     setUserSearchValue(text);
     setCurrentUserPage(INITIAL_PAGING_VALUE);
@@ -463,6 +467,7 @@ const TeamsPage = () => {
           descriptionHandler={descriptionHandler}
           handleAddTeam={handleAddTeam}
           handleAddUser={handleAddUsers}
+          handleCurrentUserPage={handleCurrentUserPage}
           handleJoinTeamClick={handleJoinTeamClick}
           handleLeaveTeamClick={handleLeaveTeamClick}
           handleTeamUsersSearchAction={handleUsersSearchAction}

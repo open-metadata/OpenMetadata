@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { deleteWebhook } from '../../axiosAPIs/webhookAPI';
-import { PAGE_SIZE } from '../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { WEBHOOK_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { WebhookType } from '../../generated/api/events/createWebhook';
@@ -175,7 +175,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
           {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
             <NextPrevious
               currentPage={currentPage}
-              pageSize={PAGE_SIZE}
+              pageSize={PAGE_SIZE_MEDIUM}
               paging={paging}
               pagingHandler={onPageChange}
               totalCount={paging.total}

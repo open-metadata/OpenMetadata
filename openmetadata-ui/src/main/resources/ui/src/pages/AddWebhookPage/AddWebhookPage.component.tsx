@@ -49,20 +49,37 @@ const AddWebhookPage: FunctionComponent = () => {
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToWebhooks = () => {
-    if (webhookType === WebhookType.Slack) {
-      history.push(
-        getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.SLACK
-        )
-      );
-    } else {
-      history.push(
-        getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.WEBHOOK
-        )
-      );
+    switch (webhookType) {
+      case WebhookType.Slack: {
+        history.push(
+          getSettingPath(
+            GlobalSettingsMenuCategory.INTEGRATIONS,
+            GlobalSettingOptions.SLACK
+          )
+        );
+
+        break;
+      }
+
+      case WebhookType.Msteams: {
+        history.push(
+          getSettingPath(
+            GlobalSettingsMenuCategory.INTEGRATIONS,
+            GlobalSettingOptions.MSTEAMS
+          )
+        );
+
+        break;
+      }
+
+      default: {
+        history.push(
+          getSettingPath(
+            GlobalSettingsMenuCategory.INTEGRATIONS,
+            GlobalSettingOptions.WEBHOOK
+          )
+        );
+      }
     }
   };
 

@@ -23,7 +23,7 @@ import { usePermissionProvider } from '../../../components/PermissionProvider/Pe
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
@@ -56,7 +56,8 @@ const PoliciesListPage = () => {
       const data = await getPolicies(
         'owner,location,roles,teams',
         paging?.after,
-        paging?.before
+        paging?.before,
+        PAGE_SIZE_MEDIUM
       );
 
       setPolicies(data.data || []);
@@ -106,10 +107,10 @@ const PoliciesListPage = () => {
         <PoliciesList fetchPolicies={fetchPolicies} policies={policies} />
       </Col>
       <Col span={24}>
-        {paging && paging.total > PAGE_SIZE && (
+        {paging && paging.total > PAGE_SIZE_MEDIUM && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={handlePaging}
             totalCount={paging.total}
