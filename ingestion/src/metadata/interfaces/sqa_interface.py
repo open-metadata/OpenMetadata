@@ -275,6 +275,8 @@ class SQAInterface(InterfaceProtocol):
         if column is not None:
             column = column.name
 
+        session.close()
+
         return row, column
 
     def get_all_metrics(
