@@ -1896,6 +1896,7 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       String parentTeam = filter.getQueryParam("parentTeam");
+      String isJoinable = filter.getQueryParam("isJoinable");
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
@@ -1913,13 +1914,21 @@ public interface CollectionDAO {
                   condition, team.getId(), Relationship.PARENT_OF.ordinal());
         }
       }
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+      if (isJoinable != null) {
+        mySqlCondition = String.format("%s AND JSON_EXTRACT(json, '$.isJoinable') = %s ", mySqlCondition, isJoinable);
+        postgresCondition =
+            String.format("%s AND ((json#>'{isJoinable}')::boolean)  = %s ", postgresCondition, isJoinable);
+      }
 
-      return listCount(getTableName(), getNameColumn(), condition);
+      return listCount(getTableName(), getNameColumn(), mySqlCondition, postgresCondition);
     }
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String parentTeam = filter.getQueryParam("parentTeam");
+      String isJoinable = filter.getQueryParam("isJoinable");
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
@@ -1937,15 +1946,23 @@ public interface CollectionDAO {
                   condition, team.getId(), Relationship.PARENT_OF.ordinal());
         }
       }
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+      if (isJoinable != null) {
+        mySqlCondition = String.format("%s AND JSON_EXTRACT(json, '$.isJoinable') = %s ", mySqlCondition, isJoinable);
+        postgresCondition =
+            String.format("%s AND ((json#>'{isJoinable}')::boolean)  = %s ", postgresCondition, isJoinable);
+      }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
       before = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(before) : before;
-      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
+      return listBefore(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, before);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String parentTeam = filter.getQueryParam("parentTeam");
+      String isJoinable = filter.getQueryParam("isJoinable");
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
@@ -1963,37 +1980,76 @@ public interface CollectionDAO {
                   condition, team.getId(), Relationship.PARENT_OF.ordinal());
         }
       }
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+      if (isJoinable != null) {
+        mySqlCondition = String.format("%s AND JSON_EXTRACT(json, '$.isJoinable') = %s ", mySqlCondition, isJoinable);
+        postgresCondition =
+            String.format("%s AND ((json#>'{isJoinable}')::boolean)  = %s ", postgresCondition, isJoinable);
+      }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
       after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
-      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
+      return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
     }
 
-    @SqlQuery("SELECT count(*) FROM <table> <cond>")
-    int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <postgresCond>", connectionType = POSTGRES)
+    int listCount(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("postgresCond") String postgresCond);
 
-    @SqlQuery(
-        "SELECT json FROM ("
-            + "SELECT <nameColumn>, json FROM <table> <cond> AND "
-            + "<nameColumn> < :before "
-            + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-            "ORDER BY <nameColumn> DESC "
-            + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-            "LIMIT :limit"
-            + ") last_rows_subquery ORDER BY <nameColumn>")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> < :before "
+                + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+                "ORDER BY <nameColumn> DESC "
+                + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+                "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <postgresCond> AND "
+                + "<nameColumn> < :before "
+                + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+                "ORDER BY <nameColumn> DESC "
+                + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+                "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("cond") String cond,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("postgresCond") String postgresCond,
         @Bind("limit") int limit,
         @Bind("before") String before);
 
-    @SqlQuery(
-        "SELECT json FROM <table> <cond> AND " + "<nameColumn> > :after " + "ORDER BY <nameColumn> " + "LIMIT :limit")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <postgresCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("cond") String cond,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("postgresCond") String postgresCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
 

@@ -23,7 +23,9 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 
 export const pageContainerStyles = {
   height: '100%',
-  padding: '1rem',
+  padding: '1rem 0.5rem',
+  margin: '0px',
+  overflow: 'hidden',
 };
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
@@ -35,24 +37,32 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Row className={className} gutter={[16, 16]} style={pageContainerStyles}>
       {leftPanel && (
-        <Col flex="312px">
-          <div className="page-layout-v1-left-panel page-layout-v1-vertical-scroll">
-            {leftPanel}
-          </div>
+        <Col
+          className="page-layout-v1-vertical-scroll"
+          flex="284px"
+          id="left-panelV1">
+          {leftPanel}
         </Col>
       )}
       <Col
         className="page-layout-v1-center page-layout-v1-vertical-scroll"
         flex={
           leftPanel && rightPanel
-            ? 'calc(100% - 624px)'
+            ? 'calc(100% - 568px)'
             : leftPanel || rightPanel
-            ? 'calc(100% - 312px)'
-            : '1080px'
+            ? 'calc(100% - 284px)'
+            : '100%'
         }>
         {children}
       </Col>
-      {rightPanel && <Col span={6}>{rightPanel}</Col>}
+      {rightPanel && (
+        <Col
+          className="page-layout-v1-vertical-scroll"
+          flex="284px"
+          id="right-panelV1">
+          {rightPanel}
+        </Col>
+      )}
     </Row>
   );
 };

@@ -33,7 +33,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
@@ -73,6 +73,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
+import './TagPage.style.less';
 
 type DeleteTagDetailsType = {
   id: string;
@@ -320,28 +321,23 @@ const TagsPage = () => {
     }
   };
 
-  const UpdateCategory = (updatedHTML: string) => {
-    updateTagCategory(currentCategory?.name ?? '', {
-      name: currentCategory?.name ?? '',
-      description: updatedHTML,
-      categoryType: currentCategory?.categoryType,
-    })
-      .then((res) => {
-        if (res) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tag-category-error']
-        );
-      })
-      .finally(() => {
-        setIsEditCategory(false);
+  const UpdateCategory = async (updatedHTML: string) => {
+    try {
+      const response = await updateTagCategory(currentCategory?.name ?? '', {
+        name: currentCategory?.name ?? '',
+        description: updatedHTML,
+        categoryType: currentCategory?.categoryType,
       });
+      if (response) {
+        await fetchCurrentCategory(currentCategory?.name as string, true);
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsEditCategory(false);
+    }
   };
 
   const onNewTagChange = (data: TagCategory, forceSet = false) => {
@@ -396,28 +392,27 @@ const TagsPage = () => {
     }
   };
 
-  const updatePrimaryTag = (updatedHTML: string) => {
-    updateTag(currentCategory?.name ?? '', editTag?.name ?? '', {
-      name: editTag?.name ?? '',
-      description: updatedHTML,
-    })
-      .then((res) => {
-        if (res.data) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+  const updatePrimaryTag = async (updatedHTML: string) => {
+    try {
+      const response = await updateTag(
+        currentCategory?.name ?? '',
+        editTag?.name ?? '',
+        {
+          name: editTag?.name ?? '',
+          description: updatedHTML,
         }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      })
-      .finally(() => {
-        setIsEditTag(false);
-        setEditTag(undefined);
-      });
+      );
+      if (response) {
+        await fetchCurrentCategory(currentCategory?.name as string, true);
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsEditTag(false);
+      setEditTag(undefined);
+    }
   };
 
   const getUsageCountLink = (tagFQN: string) => {
@@ -509,8 +504,8 @@ const TagsPage = () => {
   };
 
   return (
-    <PageContainerV1 className="tw-py-4">
-      <PageLayout leftPanel={fetchLeftPanel()}>
+    <PageContainerV1>
+      <PageLayoutV1 leftPanel={fetchLeftPanel()}>
         {isLoading ? (
           <Loader />
         ) : error ? (
@@ -536,7 +531,7 @@ const TagsPage = () => {
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <Button
-                      className="tw-h-8 tw-rounded"
+                      className="add-new-tag-btn"
                       data-testid="add-new-tag-button"
                       disabled={
                         !(createTagPermission || categoryPermissions.EditAll)
@@ -629,23 +624,23 @@ const TagsPage = () => {
                                   )}
                                 </div>
 
-                                {categoryPermissions.EditDescription ||
-                                  (categoryPermissions.EditAll && (
-                                    <button
-                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                      onClick={() => {
-                                        setIsEditTag(true);
-                                        setEditTag(tag);
-                                      }}>
-                                      <SVGIcons
-                                        alt="edit"
-                                        data-testid="editTagDescription"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="16px"
-                                      />
-                                    </button>
-                                  ))}
+                                {(categoryPermissions.EditDescription ||
+                                  categoryPermissions.EditAll) && (
+                                  <button
+                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                    onClick={() => {
+                                      setIsEditTag(true);
+                                      setEditTag(tag);
+                                    }}>
+                                    <SVGIcons
+                                      alt="edit"
+                                      data-testid="editTagDescription"
+                                      icon="icon-edit"
+                                      title="Edit"
+                                      width="16px"
+                                    />
+                                  </button>
+                                )}
                               </div>
                               <div className="tw-mt-1" data-testid="usage">
                                 <span className="tw-text-grey-muted tw-mr-1">
@@ -788,7 +783,7 @@ const TagsPage = () => {
             )}
           </div>
         )}
-      </PageLayout>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

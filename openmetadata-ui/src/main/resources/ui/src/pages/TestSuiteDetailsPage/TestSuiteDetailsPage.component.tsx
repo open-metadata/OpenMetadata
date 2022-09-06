@@ -205,26 +205,23 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (testSuite?.description !== updatedHTML) {
       const updatedTestSuite = { ...testSuite, description: updatedHTML };
-      saveAndUpdateTestSuiteData(updatedTestSuite as TestSuite)
-        .then((res) => {
-          if (res) {
-            setTestSuite(res);
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['update-test-suite-error']
-          );
-        })
-        .finally(() => {
-          descriptionHandler(false);
-        });
+      try {
+        const response = await saveAndUpdateTestSuiteData(
+          updatedTestSuite as TestSuite
+        );
+        if (response) {
+          setTestSuite(response);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        descriptionHandler(false);
+      }
     } else {
       descriptionHandler(false);
     }
@@ -232,10 +229,6 @@ const TestSuiteDetailsPage = () => {
 
   const onSetActiveValue = (tabValue: number) => {
     setActiveTab(tabValue);
-  };
-
-  const handleDescriptionUpdate = (updatedHTML: string) => {
-    onDescriptionUpdate(updatedHTML);
   };
 
   const handleDeleteWidgetVisible = (isVisible: boolean) => {
@@ -292,7 +285,7 @@ const TestSuiteDetailsPage = () => {
             descriptionHandler={descriptionHandler}
             extraInfo={extraInfo}
             handleDeleteWidgetVisible={handleDeleteWidgetVisible}
-            handleDescriptionUpdate={handleDescriptionUpdate}
+            handleDescriptionUpdate={onDescriptionUpdate}
             handleUpdateOwner={onUpdateOwner}
             isDeleteWidgetVisible={isDeleteWidgetVisible}
             isDescriptionEditable={isDescriptionEditable}

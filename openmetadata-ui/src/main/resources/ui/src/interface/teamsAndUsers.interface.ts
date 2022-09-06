@@ -99,7 +99,7 @@ export interface TeamDetailsProp {
   hasAccess: boolean;
   handleAddTeam: (value: boolean) => void;
   descriptionHandler: (value: boolean) => void;
-  onDescriptionUpdate: (value: string) => void;
+  onDescriptionUpdate: (value: string) => Promise<void>;
   handleTeamUsersSearchAction: (text: string) => void;
   updateTeamHandler: (data: Team) => Promise<void>;
   teamUserPaginHandler: (

@@ -146,6 +146,8 @@ site_menu:
     url: /deployment/upgrade/versions/090-to-010
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
     url: /deployment/upgrade/versions/010-to-011
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
+    url: /deployment/upgrade/versions/011-to-012
 
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
@@ -466,11 +468,6 @@ site_menu:
 
   - category: OpenMetadata / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
-
-  - category: OpenMetadata / Data Quality
-    url: /openmetadata/data-quality
-  - category: OpenMetadata / Data Quality / Tests
-    url: /openmetadata/data-quality/tests
 
   - category: OpenMetadata / Teams & Users
     url: /openmetadata/users

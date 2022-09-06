@@ -194,10 +194,6 @@ jest.mock('../SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTab</p>);
 });
 
-jest.mock('../DataQualityTab/DataQualityTab', () => {
-  return jest.fn().mockReturnValue(<p>DataQualityTab</p>);
-});
-
 jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
@@ -229,6 +225,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getEntityId: jest.fn().mockReturnValue('id-entity-test'),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 const mockObserve = jest.fn();

@@ -68,7 +68,7 @@ export interface TopicDetailsProps {
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;
   settingsUpdateHandler: (updatedTopic: Topic) => Promise<void>;
-  descriptionUpdateHandler: (updatedTopic: Topic) => void;
+  descriptionUpdateHandler: (updatedTopic: Topic) => Promise<void>;
   tagUpdateHandler: (updatedTopic: Topic) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
@@ -88,5 +88,5 @@ export interface TopicDetailsProps {
     lineageLeafNodes: LeafNodes;
     isNodeLoading: LoadingNodeState;
   };
-  onExtensionUpdate: (updatedTopic: Topic) => void;
+  onExtensionUpdate: (updatedTopic: Topic) => Promise<void>;
 }

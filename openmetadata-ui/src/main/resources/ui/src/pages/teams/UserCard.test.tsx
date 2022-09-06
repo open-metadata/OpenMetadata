@@ -25,17 +25,25 @@ const mockItem = {
 
 const mockRemove = jest.fn();
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    permissions: {
+      user: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
 
 jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
   return jest
