@@ -1,12 +1,18 @@
+import { AxiosError } from 'axios';
 import { debounce, isEqual } from 'lodash';
 import { Status } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
-import appState from '../../../AppState';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { default as AppState, default as appState } from '../../../AppState';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { getGroupTypeTeams } from '../../../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useAuth } from '../../../hooks/authHooks';
+import { getEntityName } from '../../../utils/CommonUtils';
 import { getOwnerList } from '../../../utils/ManageUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
@@ -33,13 +39,34 @@ const OwnerWidgetWrapper = ({
   currentUser,
   hideWidget,
 }: OwnerWidgetWrapperProps) => {
+  const { isAuthDisabled } = useAuthContext();
+  const { isAdminUser } = useAuth();
   const [statusOwner, setStatusOwner] = useState<Status>('initial');
 
-  const [listOwners, setListOwners] = useState(getOwnerList());
+  const [listOwners, setListOwners] = useState<
+    {
+      name: string;
+      value: string | undefined;
+      group: string;
+      type: string;
+    }[]
+  >(getOwnerList());
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
   const [owner, setOwner] = useState(currentUser);
 
   const [searchText, setSearchText] = useState<string>('');
+  const userDetails = useMemo(() => {
+    const userData = AppState.getCurrentUserDetails();
+
+    return [
+      {
+        name: getEntityName(userData as unknown as EntityReference),
+        value: userData?.id,
+        group: 'Users',
+        type: 'user',
+      },
+    ];
+  }, [appState.users, appState.userDetails]);
 
   const getOwnerSuggestion = useCallback(
     (qSearchText = '') => {
@@ -61,6 +88,21 @@ const OwnerWidgetWrapper = ({
     },
     [setListOwners, setIsUserLoading]
   );
+
+  const fetchGroupTypeTeams = async () => {
+    try {
+      const data = await getGroupTypeTeams();
+      const updatedData = data.map((team) => ({
+        name: getEntityName(team),
+        value: team.id,
+        group: 'Teams',
+        type: 'team',
+      }));
+      setListOwners([...updatedData, ...userDetails]);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const getOwnerSearch = useCallback(
     (searchQuery = WILD_CARD_CHAR, from = 1) => {
@@ -132,13 +174,17 @@ const OwnerWidgetWrapper = ({
 
   useEffect(() => {
     if (visible) {
-      handleOwnerSearch('');
+      if (isAuthDisabled || !isAdminUser) {
+        fetchGroupTypeTeams();
+      } else {
+        handleOwnerSearch('');
+      }
     }
   }, [visible]);
 
   useEffect(() => {
     visible ? debounceOnSearch(searchText) : null;
-  }, [appState.users, appState.userDetails, appState.userTeams]);
+  }, [searchText]);
 
   const getOwnerGroup = () => {
     return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
