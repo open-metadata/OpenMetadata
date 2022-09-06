@@ -45,7 +45,10 @@ const TabsPane = ({
   rightPosButton,
 }: Props) => {
   const getTabClasses = (tab: number, activeTab: number) => {
-    return 'tw-gh-tabs tw-px-4 tw-pt-2' + (activeTab === tab ? ' active' : '');
+    return (
+      'tw-gh-tabs tw-px-0 tw-pt-2 tw-mr-8' +
+      (activeTab === tab ? ' active' : '')
+    );
   };
 
   return (
