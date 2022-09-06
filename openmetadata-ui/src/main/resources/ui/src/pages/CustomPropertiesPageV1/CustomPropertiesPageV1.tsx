@@ -211,7 +211,9 @@ const CustomEntityDetailV1 = () => {
         )}
         {activeTab === 1 &&
           (isEmpty(selectedEntityTypeDetail.customProperties) ? (
-            fetchErrorPlaceHolder()
+            <div data-testid="entity-custom-fields">
+              fetchErrorPlaceHolder()
+            </div>
           ) : (
             <div data-testid="entity-custom-fields">
               <div className="tw-flex tw-justify-end">

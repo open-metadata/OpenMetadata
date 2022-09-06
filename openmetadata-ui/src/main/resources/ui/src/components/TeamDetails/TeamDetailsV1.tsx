@@ -105,6 +105,7 @@ interface PlaceholderProps {
   heading?: string;
   description?: React.ReactNode;
   button?: React.ReactNode;
+  datatestid?: string;
 }
 
 const TeamDetailsV1 = ({
@@ -214,6 +215,7 @@ const TeamDetailsV1 = ({
         heading,
         description,
         button,
+        datatestid,
       }: PlaceholderProps) => {
         return (
           <ErrorPlaceHolder
@@ -223,6 +225,7 @@ const TeamDetailsV1 = ({
               ) : (
                 <ButtonAntd
                   ghost
+                  data-testid={datatestid}
                   disabled={disabled}
                   size="small"
                   title={title}
@@ -647,6 +650,7 @@ const TeamDetailsV1 = ({
 
                 onClick: () => handleAddUser(true),
                 label: 'Add new user',
+                datatestid: 'add-user',
               })
             ) : (
               <Fragment>
@@ -981,6 +985,7 @@ const TeamDetailsV1 = ({
                       }),
                     disabled: !entityPermissions.EditAll,
                     heading: 'Role',
+                    datatestid: 'add-role',
                   })
                 ) : (
                   <Space
@@ -1020,6 +1025,7 @@ const TeamDetailsV1 = ({
                       ? 'Add Policy'
                       : NO_PERMISSION_FOR_ACTION,
                     label: 'Add Policy',
+                    datatestid: 'add-policy',
                     onClick: () =>
                       setAddAttribute({
                         type: EntityType.POLICY,
