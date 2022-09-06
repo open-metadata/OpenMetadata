@@ -14,7 +14,7 @@
 import { Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isNil, isUndefined, startCase } from 'lodash';
+import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -56,8 +56,10 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
+import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { servicesDisplayName } from '../../constants/services.const';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -995,20 +997,27 @@ const ServicePage: FunctionComponent = () => {
                 tabs={tabs}
               />
               <div className="tw-flex-grow">
-                {activeTab === 1 && (
-                  <Fragment>
-                    <div
-                      className="tw-my-4 tw-table-container"
-                      data-testid="table-container">
-                      <table
-                        className="tw-bg-white tw-w-full"
-                        data-testid="database-tables">
-                        <thead>
-                          <tr className="tableHead-row">{getTableHeaders()}</tr>
-                        </thead>
-                        <tbody className="tableBody">
-                          {data.length > 0 ? (
-                            data.map((dataObj, index) => (
+                {activeTab === 1 &&
+                  (isEmpty(data) ? (
+                    <ErrorPlaceHolder
+                      doc={CONNECTORS_DOCS}
+                      heading={servicesDisplayName[serviceName]}
+                    />
+                  ) : (
+                    <Fragment>
+                      <div
+                        className="tw-my-4 tw-table-container"
+                        data-testid="table-container">
+                        <table
+                          className="tw-bg-white tw-w-full"
+                          data-testid="database-tables">
+                          <thead>
+                            <tr className="tableHead-row">
+                              {getTableHeaders()}
+                            </tr>
+                          </thead>
+                          <tbody className="tableBody">
+                            {data.map((dataObj, index) => (
                               <tr
                                 className={classNames(
                                   'tableBody-row',
@@ -1042,30 +1051,23 @@ const ServicePage: FunctionComponent = () => {
                                 </td>
                                 {getOptionalTableCells(dataObj as Database)}
                               </tr>
-                            ))
-                          ) : (
-                            <tr className="tableBody-row">
-                              <td
-                                className="tableBody-cell tw-text-center"
-                                colSpan={4}>
-                                No records found.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-                      <NextPrevious
-                        currentPage={currentPage}
-                        pageSize={PAGE_SIZE}
-                        paging={paging}
-                        pagingHandler={pagingHandler}
-                        totalCount={paging.total}
-                      />
-                    )}
-                  </Fragment>
-                )}
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {Boolean(
+                        !isNil(paging.after) || !isNil(paging.before)
+                      ) && (
+                        <NextPrevious
+                          currentPage={currentPage}
+                          pageSize={PAGE_SIZE}
+                          paging={paging}
+                          pagingHandler={pagingHandler}
+                          totalCount={paging.total}
+                        />
+                      )}
+                    </Fragment>
+                  ))}
 
                 {activeTab === 2 && getIngestionTab()}
 
