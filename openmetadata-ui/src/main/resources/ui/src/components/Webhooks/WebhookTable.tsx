@@ -126,12 +126,12 @@ const WebhookTable: FC<Props> = ({ onEdit, webhookList, onDelete }) => {
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer
-            markdown={record?.description || ''}
-            maxLength={100}
-          />
-        ),
+        render: (value) =>
+          value ? (
+            <RichTextEditorPreviewer markdown={value || ''} maxLength={100} />
+          ) : (
+            '--'
+          ),
       },
       {
         title: 'Actions',

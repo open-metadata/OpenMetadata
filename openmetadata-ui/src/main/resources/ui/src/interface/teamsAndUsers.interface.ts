@@ -102,6 +102,7 @@ export interface TeamDetailsProp {
   onDescriptionUpdate: (value: string) => Promise<void>;
   handleTeamUsersSearchAction: (text: string) => void;
   updateTeamHandler: (data: Team) => Promise<void>;
+  handleCurrentUserPage: (value?: number) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,
     activePage?: number

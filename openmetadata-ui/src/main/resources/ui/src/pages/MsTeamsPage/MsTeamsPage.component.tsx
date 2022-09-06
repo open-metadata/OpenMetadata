@@ -21,6 +21,7 @@ import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
   getAddWebhookPath,
   getEditWebhookPath,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import {
@@ -42,13 +43,13 @@ const MsTeamsPage = () => {
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
-    getWebhooks(paging)
+    getWebhooks(paging, undefined, {
+      limit: PAGE_SIZE_MEDIUM,
+      webhookType: WebhookType.Msteams,
+    })
       .then((res) => {
         if (res.data) {
-          const genericWebhooks = res.data.filter(
-            (d) => d.webhookType === WebhookType.Msteams
-          );
-          setData(genericWebhooks);
+          setData(res.data);
           setPaging(res.paging);
         } else {
           setData([]);
