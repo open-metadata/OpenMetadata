@@ -401,6 +401,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(assignedToCount + 1, tasks.getPaging().getTotal());
     assertEquals(assignedToCount + 1, tasks.getData().size());
 
+    tasks = listTasks(null, USER.getId().toString(), null, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(assignedToCount + assignedByCount + 2, tasks.getPaging().getTotal());
+    assertEquals(assignedToCount + assignedByCount + 2, tasks.getData().size());
+
     ThreadCount count = listTasksCount(null, TaskStatus.Open, userAuthHeaders);
     int totalOpenTaskCount = count.getTotalCount();
     count = listTasksCount(null, TaskStatus.Closed, userAuthHeaders);
