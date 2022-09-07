@@ -165,7 +165,7 @@ export const getConstraintIcon = (constraint = '', className = '') => {
 
   return (
     <PopOver
-      className={classNames('tw-absolute tw-left-1', className)}
+      className={classNames(className)}
       position="bottom"
       size="small"
       title={title}

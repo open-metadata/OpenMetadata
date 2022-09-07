@@ -81,7 +81,7 @@
     @apply tw-leading-normal;
   }
   .tableHead-cell {
-    @apply tw-py-3 tw-px-6 tw-font-medium tw-text-left tw-whitespace-nowrap;
+    @apply tw-py-2 tw-px-4 tw-font-medium tw-text-left tw-whitespace-nowrap;
   }
   .tableBody {
     @apply tw-text-grey-body;
@@ -90,7 +90,7 @@
     @apply tw-border-t tw-border-main hover:tw-bg-body-hover;
   }
   .tableBody-cell {
-    @apply tw-py-2 tw-px-6 tw-text-left;
+    @apply tw-py-2 tw-px-4 tw-text-left;
   }
   /* Table css end */
 
