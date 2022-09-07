@@ -25,6 +25,7 @@ type Props = {
   doc?: string;
   buttons?: React.ReactNode;
   buttonId?: string;
+  description?: React.ReactNode;
   classes?: string;
 };
 
@@ -34,6 +35,7 @@ const ErrorPlaceHolder = ({
   children,
   heading,
   buttons,
+  description,
   classes,
 }: Props) => {
   const { Paragraph, Link } = Typography;
@@ -44,19 +46,25 @@ const ErrorPlaceHolder = ({
         {' '}
         <img data-testid="no-data-image" src={AddPlaceHolder} width="100" />
       </div>
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-9 tw-text-base tw-font-medium">
-        <Paragraph style={{ marginBottom: '4px' }}>
-          {' '}
-          Adding a new {heading} is easy, just give it a spin!
-        </Paragraph>
-        <Paragraph>
-          {' '}
-          Still need help? Refer to our{' '}
-          <Link href={doc} target="_blank">
-            docs
-          </Link>{' '}
-          for more information.
-        </Paragraph>
+      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
+        {description ? (
+          description
+        ) : (
+          <>
+            <Paragraph style={{ marginBottom: '4px' }}>
+              {' '}
+              Adding a new {heading} is easy, just give it a spin!
+            </Paragraph>
+            <Paragraph>
+              {' '}
+              Still need help? Refer to our{' '}
+              <Link href={doc} target="_blank">
+                docs
+              </Link>{' '}
+              for more information.
+            </Paragraph>
+          </>
+        )}
 
         <div className="tw-text-lg tw-text-center">{buttons}</div>
       </div>

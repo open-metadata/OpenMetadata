@@ -259,15 +259,25 @@ describe('Roles page should work properly', () => {
   });
 
   it('Check if last policy is not removed', () => {
+    cy.intercept({ method: 'GET', url: `/api/v1/roles/name/${roleName}*` }).as(
+      'getSelectedRole'
+    );
+
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
       .should('be.visible')
       .click();
+
     //Asserting navigation
     cy.get('[data-testid="inactive-link"]')
       .should('contain', roleName)
       .should('be.visible');
 
+    cy.wait('@getSelectedRole').its('response.statusCode').should('eq', 200);
+
+    cy.intercept({ method: 'PATCH', url: '/api/v1/roles/*' }).as(
+      'checkDeletedRole'
+    );
     //Removing second policy from the role
     removePolicyFromRole(policies.dataStewardPolicy);
 
@@ -276,6 +286,8 @@ describe('Roles page should work properly', () => {
       'not.contain',
       policies.dataStewardPolicy
     );
+
+    cy.wait('@checkDeletedRole').its('response.statusCode').should('eq', 200);
 
     //Removing the last policy and validating the error message
     removePolicyFromRole(policies.dataConsumerPolicy);

@@ -45,12 +45,18 @@ import {
   EdgeData,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
 import {
   getServiceDetailsPath,
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -71,6 +77,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -82,6 +89,7 @@ import {
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { topicFQN, tab } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
@@ -132,6 +140,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     state: false,
   });
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+
+  const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
 
   const getLineageData = () => {
     setIsLineageLoading(true);
@@ -350,6 +362,23 @@ const TopicDetailsPage: FunctionComponent = () => {
     const jsonPatch = compare(topicDetails, updatedData);
 
     return patchTopicDetails(topicId, jsonPatch);
+  };
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setLoading(true);
+    try {
+      const permissions = await getEntityPermissionByFqn(
+        ResourceEntity.TOPIC,
+        entityFqn
+      );
+      setTopicPermissions(permissions);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchTopicDetail = (topicFQN: string) => {
@@ -662,9 +691,15 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    fetchTopicDetail(topicFQN);
-    getEntityFeedCount();
+    fetchResourcePermission(topicFQN);
   }, [topicFQN]);
+
+  useEffect(() => {
+    if (topicPermissions.ViewAll) {
+      fetchTopicDetail(topicFQN);
+      getEntityFeedCount();
+    }
+  }, [topicPermissions, topicFQN]);
 
   return (
     <>
@@ -675,58 +710,64 @@ const TopicDetailsPage: FunctionComponent = () => {
           {getEntityMissingError('topic', topicFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <TopicDetails
-          activeTab={activeTab}
-          cleanupPolicies={cleanupPolicies}
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          deleted={deleted}
-          description={description}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldTaskCount={entityFieldTaskCount}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityName={name}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={handleFeedFetchFromFeedList}
-          followTopicHandler={followTopic}
-          followers={followers}
-          isSampleDataLoading={isSampleDataLoading}
-          isentityThreadLoading={isentityThreadLoading}
-          lineageTabData={{
-            loadNodeHandler,
-            addLineageHandler,
-            removeLineageHandler,
-            entityLineageHandler,
-            isLineageLoading,
-            entityLineage,
-            lineageLeafNodes: leafNodes,
-            isNodeLoading,
-          }}
-          maximumMessageSize={maximumMessageSize}
-          owner={owner as EntityReference}
-          paging={paging}
-          partitions={partitions}
-          postFeedHandler={postFeedHandler}
-          replicationFactor={replicationFactor}
-          retentionSize={retentionSize}
-          sampleData={sampleData}
-          schemaText={schemaText}
-          schemaType={schemaType}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          slashedTopicName={slashedTopicName}
-          tagUpdateHandler={onTagUpdate}
-          tier={tier as TagLabel}
-          topicDetails={topicDetails}
-          topicFQN={topicFQN}
-          topicTags={tags}
-          unfollowTopicHandler={unfollowTopic}
-          updateThreadHandler={updateThreadHandler}
-          version={currentVersion}
-          versionHandler={versionHandler}
-          onExtensionUpdate={handleExtentionUpdate}
-        />
+        <>
+          {topicPermissions.ViewAll ? (
+            <TopicDetails
+              activeTab={activeTab}
+              cleanupPolicies={cleanupPolicies}
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              deleted={deleted}
+              description={description}
+              descriptionUpdateHandler={descriptionUpdateHandler}
+              entityFieldTaskCount={entityFieldTaskCount}
+              entityFieldThreadCount={entityFieldThreadCount}
+              entityName={name}
+              entityThread={entityThread}
+              feedCount={feedCount}
+              fetchFeedHandler={handleFeedFetchFromFeedList}
+              followTopicHandler={followTopic}
+              followers={followers}
+              isSampleDataLoading={isSampleDataLoading}
+              isentityThreadLoading={isentityThreadLoading}
+              lineageTabData={{
+                loadNodeHandler,
+                addLineageHandler,
+                removeLineageHandler,
+                entityLineageHandler,
+                isLineageLoading,
+                entityLineage,
+                lineageLeafNodes: leafNodes,
+                isNodeLoading,
+              }}
+              maximumMessageSize={maximumMessageSize}
+              owner={owner as EntityReference}
+              paging={paging}
+              partitions={partitions}
+              postFeedHandler={postFeedHandler}
+              replicationFactor={replicationFactor}
+              retentionSize={retentionSize}
+              sampleData={sampleData}
+              schemaText={schemaText}
+              schemaType={schemaType}
+              setActiveTabHandler={activeTabHandler}
+              settingsUpdateHandler={settingsUpdateHandler}
+              slashedTopicName={slashedTopicName}
+              tagUpdateHandler={onTagUpdate}
+              tier={tier as TagLabel}
+              topicDetails={topicDetails}
+              topicFQN={topicFQN}
+              topicTags={tags}
+              unfollowTopicHandler={unfollowTopic}
+              updateThreadHandler={updateThreadHandler}
+              version={currentVersion}
+              versionHandler={versionHandler}
+              onExtensionUpdate={handleExtentionUpdate}
+            />
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </>
   );

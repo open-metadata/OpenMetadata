@@ -272,12 +272,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         onAddTestClick={onAddTestClick}
       />
 
-      <ProfilerSettingsModal
-        columns={columns}
-        tableId={table.id}
-        visible={settingModalVisible}
-        onVisibilityChange={handleSettingModal}
-      />
+      {settingModalVisible && (
+        <ProfilerSettingsModal
+          columns={columns}
+          tableId={table.id}
+          visible={settingModalVisible}
+          onVisibilityChange={handleSettingModal}
+        />
+      )}
     </div>
   );
 };
