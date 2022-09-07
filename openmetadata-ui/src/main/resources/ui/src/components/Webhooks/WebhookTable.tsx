@@ -142,7 +142,6 @@ const WebhookTable: FC<Props> = ({ onEdit, webhookList, onDelete }) => {
           return (
             <Space size={4}>
               <Tooltip
-                placement="left"
                 title={deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
                 <Button
                   data-testid={`delete-action-${getEntityName(record)}`}
@@ -155,7 +154,6 @@ const WebhookTable: FC<Props> = ({ onEdit, webhookList, onDelete }) => {
                 />
               </Tooltip>
               <Tooltip
-                placement="left"
                 title={
                   createPermission || editPermission
                     ? 'Edit'
