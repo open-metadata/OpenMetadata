@@ -177,7 +177,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   return (
     <div
       className="table-profiler-container"
-      data-testid="table-profiler-container">
+      data-testid="table-profiler-container"
+      id="profilerDetails">
       <Row className="tw-mb-4" justify="space-between">
         <Radio.Group
           buttonStyle="solid"
