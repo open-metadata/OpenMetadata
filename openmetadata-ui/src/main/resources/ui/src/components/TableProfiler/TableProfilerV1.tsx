@@ -172,7 +172,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     if (!isEmpty(table) && viewTest) {
       fetchAllTests();
     }
-  }, [table]);
+  }, [table, viewTest]);
 
   return (
     <div

@@ -81,6 +81,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'description',
       },
       {
+        title: 'Test Suite',
+        dataIndex: 'testSuite',
+        key: 'testSuite',
+        render: (_, record) => {
+          return (
+            <Link
+              to={getTestSuitePath(record?.testSuite?.fullyQualifiedName || '')}
+              onClick={(e) => e.stopPropagation()}>
+              {getEntityName(record?.testSuite)}
+            </Link>
+          );
+        },
+      },
+      {
         title: 'Table',
         dataIndex: 'table',
         key: 'table',
@@ -98,17 +112,25 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
-        title: 'Test Suite',
-        dataIndex: 'testSuite',
-        key: 'testSuite',
+        title: 'Column',
+        dataIndex: 'column',
+        key: 'column',
         render: (_, record) => {
-          return (
-            <Link
-              to={getTestSuitePath(record?.testSuite?.fullyQualifiedName || '')}
-              onClick={(e) => e.stopPropagation()}>
-              {getEntityName(record?.testSuite)}
-            </Link>
-          );
+          const isColumn = record.entityLink.includes('column');
+
+          if (isColumn) {
+            const name = getNameFromFQN(
+              getEntityFqnFromEntityLink(record.entityLink, isColumn)
+            );
+
+            return name;
+          }
+
+          return isColumn
+            ? getNameFromFQN(
+                getEntityFqnFromEntityLink(record.entityLink, isColumn)
+              )
+            : '--';
         },
       },
       {

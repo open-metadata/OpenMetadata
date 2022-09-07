@@ -326,10 +326,19 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
   }
 };
 
-export const getEntityFqnFromEntityLink = (entityLink: string) => {
+export const getEntityFqnFromEntityLink = (
+  entityLink: string,
+  includeColumn = false
+) => {
   const link = entityLink.split('>')[0];
+  const entityLinkData = link.split('::');
+  const tableFqn = entityLinkData[2];
 
-  return link.split('::')[2];
+  if (includeColumn) {
+    return `${tableFqn}.${entityLinkData[entityLinkData.length - 1]}`;
+  }
+
+  return tableFqn;
 };
 
 export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
