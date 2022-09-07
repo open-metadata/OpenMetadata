@@ -23,6 +23,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
@@ -86,7 +87,15 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               className="tw-h-full tw-w-full"
               justify="center">
               <Col>
-                <Empty description="No Data Available" />
+                <Empty
+                  description="No Data Available"
+                  image={
+                    <SVGIcons
+                      alt="no-data-placeholder"
+                      icon={Icons.NO_DATA_PLACEHOLDER}
+                    />
+                  }
+                />
               </Col>
             </Row>
           )}

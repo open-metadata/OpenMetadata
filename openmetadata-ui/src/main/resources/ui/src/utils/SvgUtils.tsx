@@ -18,6 +18,7 @@ import IconAzure from '../assets/img/icon-azure.png';
 import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
+import IconNoDataFoundPlaceHolder from '../assets/img/no-data-placeholder.svg';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
@@ -363,6 +364,7 @@ export const Icons = {
   CLOSED_LOCK: 'closed-lock',
   FILTER_PRIMARY: 'filter-primary',
   ADMIN: 'admin',
+  NO_DATA_PLACEHOLDER: 'no-data-placeholder',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -1065,6 +1067,11 @@ const SVGIcons: FunctionComponent<Props> = ({
 
     case Icons.ADMIN:
       IconComponent = IconAdmin;
+
+      break;
+
+    case Icons.NO_DATA_PLACEHOLDER:
+      IconComponent = IconNoDataFoundPlaceHolder;
 
       break;
 
