@@ -182,19 +182,34 @@ const UserListV1: FC<UserListV1Props> = ({
   const fetchErrorPlaceHolder = useMemo(
     () => (type: string) => {
       return (
-        <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              disabled={!createPermission}
-              type="primary"
-              onClick={handleAddNewUser}>
-              Add User
-            </Button>
-          }
-          heading="User"
-          type={type}
-        />
+        <Row>
+          <Col className="w-full tw-flex tw-justify-end">
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                size="small"
+                onClick={onShowDeletedUserChange}
+              />
+              <span className="tw-ml-2">Deleted Users</span>
+            </span>
+          </Col>
+          <Col span={24}>
+            <ErrorPlaceHolder
+              buttons={
+                <Button
+                  ghost
+                  // data-testid="add-user"
+                  disabled={!createPermission}
+                  type="primary"
+                  onClick={handleAddNewUser}>
+                  Add User
+                </Button>
+              }
+              heading="User"
+              type={type}
+            />
+          </Col>
+        </Row>
       );
     },
     []

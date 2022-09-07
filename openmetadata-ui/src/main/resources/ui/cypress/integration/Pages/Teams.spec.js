@@ -106,7 +106,7 @@ it('Add user to created team', () => {
 
     cy.wait(2000);
 
-    cy.get('[data-testid="searchbar"]').eq(1).type(TEAM_DETAILS.ownername);
+    cy.get('[data-testid="searchbar"]').type(TEAM_DETAILS.ownername);
 
     cy.wait(500);
 
@@ -149,12 +149,7 @@ it('Add user to created team', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="searchbar"]')
-      .should('be.visible')
-      .type(TEAM_DETAILS.ownername);
-
-    cy.get('[data-testid="add-user"]').should('be.visible');
-    //   .should('not.contain', TEAM_DETAILS.ownername);
+    cy.get('[data-testid="add-user"]').should('not.contain', TEAM_DETAILS.ownername);
   });
 
   it('Join team should work properly', () => {
@@ -198,7 +193,7 @@ it('Add user to created team', () => {
       .should('contain', TEAM_DETAILS.updatedname);
 
     //Click on edit description button
-    cy.get('[data-testid="edit-description"]').should('be.visible').click();
+    cy.get('[data-testid="edit-description"] > [data-testid="image"]').should('be.visible').click();
 
     //Entering updated description
     cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
