@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import moment from 'moment';
 import { searchEntity } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
 
@@ -205,11 +206,60 @@ describe('Entity Details Page', () => {
     cy.clickOnLogo();
   };
 
+  const addAnnouncement = (value) => {
+    const currentDate = Date.now()
+    const startDate = moment(currentDate, 'x').format('yyyy-MM-DDThh:mm');
+    const endDate=moment(currentDate, 'x').add(5, 'days').format('yyyy-MM-DDThh:mm');
+    searchEntity(value.term);
+    cy.get(`[data-testid="${value.entity}-tab"]`).should('be.visible').click();
+    cy.get(`[data-testid="${value.entity}-tab"]`)
+      .should('be.visible')
+      .should('have.class', 'active')
+      .click();
+
+    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+
+    cy.wait(500);
+
+    cy.get('[data-testid="manage-button"]').should('be.visible').click()
+    cy.get('[data-testid="announcement-button"]').should('be.visible').click()
+    cy.get('.ant-empty-description').should('be.visible').contains("No Announcements, Click on add announcement to add one.")
+    cy.get('[data-testid="add-announcement"]').should('be.visible').click()
+    cy.get('.ant-modal-header').should('be.visible').contains("Make an announcement")
+    cy.get('.ant-modal-body').should('be.visible')
+    cy.get('#title').should('be.visible').type("Announcement Title")
+    cy.get('#startDate').should('be.visible').type(startDate)
+    cy.get('#endtDate').should('be.visible').type(endDate)
+     cy.get(
+      '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
+     ).type("Description");
+    
+    cy.get('.ant-modal-footer > .ant-btn-primary').should('be.visible').contains("Submit").scrollIntoView().click();
+  
+    cy.wait(5000);
+
+    cy.get('.anticon > svg').should("be.visible").click()
+
+    // reload page to get the active announcement card
+    cy.reload()
+
+    // check for announcement card on entity page
+    cy.get('[data-testid="announcement-card"]').should("be.visible")
+    
+    cy.clickOnLogo();
+  };
+
   it('Add Owner and Tier for entity', () => {
     Object.values(DELETE_ENTITY).forEach((value) => {
       addOwnerAndTier(value);
     });
   });
+
+  it('Add and check active announcement for the entity', () => {
+    Object.values(DELETE_ENTITY).forEach((value) => {
+      addAnnouncement(value);
+    });
+  })
 
   it('Delete entity flow should work properly', () => {
     Object.values(DELETE_ENTITY).forEach((value) => {
