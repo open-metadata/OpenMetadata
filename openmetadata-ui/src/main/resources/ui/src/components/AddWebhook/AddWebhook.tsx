@@ -67,10 +67,13 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import { AddWebhookProps } from './AddWebhook.interface';
 import EventFilterTree from './EventFilterTree.component';
 
-const CONFIGURE_TEXT: { [key: string]: string } = {
-  msteams: CONFIGURE_MS_TEAMS_TEXT,
-  slack: CONFIGURE_SLACK_TEXT,
-  generic: CONFIGURE_WEBHOOK_TEXT,
+const CONFIGURE_TEXT: { [key: string]: { body: string; heading: string } } = {
+  msteams: {
+    body: CONFIGURE_MS_TEAMS_TEXT,
+    heading: 'Configure MS Team Webhooks',
+  },
+  slack: { body: CONFIGURE_SLACK_TEXT, heading: 'Configure Slack Webhooks' },
+  generic: { body: CONFIGURE_WEBHOOK_TEXT, heading: 'Configure Webhooks' },
 };
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -316,8 +319,8 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
-        <CardV1 heading="Configure Webhooks" id="webhook">
-          {CONFIGURE_TEXT[webhookType]}
+        <CardV1 heading={CONFIGURE_TEXT[webhookType].heading} id="webhook">
+          {CONFIGURE_TEXT[webhookType].body}
         </CardV1>
       </div>
     );

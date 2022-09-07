@@ -18,7 +18,7 @@ import { isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
-import { PAGE_SIZE, ROUTES } from '../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -225,11 +225,11 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={24}>
-        {paging.total > PAGE_SIZE && (
+        {paging.total > PAGE_SIZE_MEDIUM && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchTerm)}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={onPagingChange}
             totalCount={paging.total}

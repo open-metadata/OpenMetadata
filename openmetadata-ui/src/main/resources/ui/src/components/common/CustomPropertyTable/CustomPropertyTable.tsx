@@ -13,12 +13,13 @@
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
 import { Type } from '../../../generated/entity/type';
 import { isEven } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
 import { CustomPropertyProps } from './CustomPropertyTable.interface';
 import { PropertyValue } from './PropertyValue';
 
@@ -55,60 +56,53 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   }, []);
 
   return (
-    <div className="tw-table-container">
-      <table className="tw-w-full" data-testid="custom-properties-table">
-        <thead data-testid="table-header">
-          <tr className="tableHead-row">
-            <th className="tableHead-cell tw-w-2/4" data-testid="property-name">
-              Name
-            </th>
-            <th
-              className="tableHead-cell tw-w-2/4"
-              data-testid="property-value">
-              Value
-            </th>
-          </tr>
-        </thead>
-        <tbody data-testid="table-body">
-          {customProperties.length ? (
-            customProperties.map((property, index) => (
-              <tr
-                className={classNames(
-                  `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                  {
-                    'tw-border-b-0': index === customProperties.length - 1,
-                  }
-                )}
-                data-testid="data-row"
-                key={uniqueId()}>
-                <td className="tableBody-cell">{property.name}</td>
-
-                <td className="tableBody-cell">
-                  <PropertyValue
-                    extension={extension}
-                    propertyName={property.name}
-                    propertyType={property.propertyType}
-                    onExtensionUpdate={onExtensionUpdate}
-                  />
-                </td>
+    <>
+      {isEmpty(customProperties) ? (
+        <ErrorPlaceHolder heading="Custom Properties" />
+      ) : (
+        <div className="tw-table-container">
+          <table className="tw-w-full" data-testid="custom-properties-table">
+            <thead data-testid="table-header">
+              <tr className="tableHead-row">
+                <th
+                  className="tableHead-cell tw-w-2/4"
+                  data-testid="property-name">
+                  Name
+                </th>
+                <th
+                  className="tableHead-cell tw-w-2/4"
+                  data-testid="property-value">
+                  Value
+                </th>
               </tr>
-            ))
-          ) : (
-            <tr
-              className={classNames(
-                'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0'
-              )}
-              data-testid="no-data-row"
-              key={uniqueId()}>
-              <td className="tableBody-cell tw-text-center" colSpan={2}>
-                <span className="tw-text-grey-muted">
-                  No custom properties available
-                </span>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+            </thead>
+            <tbody data-testid="table-body">
+              {customProperties.map((property, index) => (
+                <tr
+                  className={classNames(
+                    `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
+                    {
+                      'tw-border-b-0': index === customProperties.length - 1,
+                    }
+                  )}
+                  data-testid="data-row"
+                  key={uniqueId()}>
+                  <td className="tableBody-cell">{property.name}</td>
+
+                  <td className="tableBody-cell">
+                    <PropertyValue
+                      extension={extension}
+                      propertyName={property.name}
+                      propertyType={property.propertyType}
+                      onExtensionUpdate={onExtensionUpdate}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 };

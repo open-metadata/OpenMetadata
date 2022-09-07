@@ -17,6 +17,7 @@ from typing import Iterable, List, Optional, Tuple, cast
 
 from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
+from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
@@ -92,6 +93,7 @@ class MlflowSource(MlModelServiceSource):
             yield model, latest_version
 
     def _get_algorithm(self) -> str:
+        logger.info("Setting algorithm with default value `mlmodel` for Mlflow")
         return "mlmodel"
 
     def yield_mlmodel(
@@ -125,11 +127,22 @@ class MlflowSource(MlModelServiceSource):
         Get the hyper parameters from the parameters
         logged in the run data object.
         """
-        if data.params:
-            return [
-                MlHyperParameter(name=param[0], value=param[1])
-                for param in data.params.items()
-            ]
+        try:
+            if data.params:
+                return [
+                    MlHyperParameter(name=param[0], value=param[1])
+                    for param in data.params.items()
+                ]
+        except ValidationError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Validation error adding hyper parameters from RunData: {data} - {err}"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Wild error adding hyper parameters from RunData: {data} - {err}"
+            )
 
         return None
 
@@ -138,8 +151,19 @@ class MlflowSource(MlModelServiceSource):
         """
         Get the Ml Store from the model version object
         """
-        if version.source:
-            return MlStore(storage=version.source)
+        try:
+            if version.source:
+                return MlStore(storage=version.source)
+        except ValidationError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Validation error adding the MlModel store from ModelVersion: {version} - {err}"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Wild error adding the MlModel store from ModelVersion: {version} - {err}"
+            )
         return None
 
     def _get_ml_features(
@@ -178,8 +202,7 @@ class MlflowSource(MlModelServiceSource):
                         for feature in features
                     ]
 
-            # pylint: disable=broad-except)
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 reason = f"Cannot extract properties from RunData: {exc}"
                 logger.warning(reason)

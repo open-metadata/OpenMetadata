@@ -448,6 +448,11 @@ const AddIngestion = ({
           type: ConfigType.PipelineMetadata,
         };
       }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        return {
+          type: ConfigType.MlModelMetadata,
+        };
+      }
       default: {
         return {};
       }

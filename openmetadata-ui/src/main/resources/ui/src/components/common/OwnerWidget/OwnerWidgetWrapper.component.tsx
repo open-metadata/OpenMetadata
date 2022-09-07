@@ -1,15 +1,20 @@
+import { AxiosError } from 'axios';
 import { debounce, isEqual } from 'lodash';
 import { Status } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
-import appState from '../../../AppState';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { default as AppState, default as appState } from '../../../AppState';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { getGroupTypeTeams } from '../../../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useAuth } from '../../../hooks/authHooks';
+import { getEntityName } from '../../../utils/CommonUtils';
 import { getOwnerList } from '../../../utils/ManageUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
-  suggestFormattedUsersAndTeams,
 } from '../../../utils/UserDataUtils';
 import DropDownList from '../../dropdown/DropDownList';
 import './OwnerWidgetWrapper.style.less';
@@ -32,31 +37,53 @@ const OwnerWidgetWrapper = ({
   currentUser,
   hideWidget,
 }: OwnerWidgetWrapperProps) => {
+  const { isAuthDisabled } = useAuthContext();
+  const { isAdminUser } = useAuth();
   const [statusOwner, setStatusOwner] = useState<Status>('initial');
 
-  const [listOwners, setListOwners] = useState(getOwnerList());
-  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
+  const [listOwners, setListOwners] = useState<
+    {
+      name: string;
+      value: string | undefined;
+      group: string;
+      type: string;
+    }[]
+  >([]);
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
   const [owner, setOwner] = useState(currentUser);
 
   const [searchText, setSearchText] = useState<string>('');
+  const userDetails = useMemo(() => {
+    const userData = AppState.getCurrentUserDetails();
 
-  const getOwnerSuggestion = useCallback(
-    (qSearchText = '') => {
-      setIsUserLoading(true);
-      suggestFormattedUsersAndTeams(qSearchText)
-        .then((res) => {
-          const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams));
-        })
-        .catch(() => {
-          setListOwners([]);
-        })
-        .finally(() => {
-          setIsUserLoading(false);
-        });
-    },
-    [setListOwners, setIsUserLoading]
-  );
+    return [
+      {
+        name: getEntityName(userData),
+        value: userData?.id,
+        group: 'Users',
+        type: 'user',
+      },
+    ];
+  }, [appState.users, appState.userDetails]);
+
+  const fetchGroupTypeTeams = async () => {
+    try {
+      if (listOwners.length === 0) {
+        const data = await getGroupTypeTeams();
+        const updatedData = data.map((team) => ({
+          name: getEntityName(team),
+          value: team.id,
+          group: 'Teams',
+          type: 'team',
+        }));
+        setListOwners([...updatedData, ...userDetails]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUserLoading(false);
+    }
+  };
 
   const getOwnerSearch = useCallback(
     (searchQuery = WILD_CARD_CHAR, from = 1) => {
@@ -78,13 +105,9 @@ const OwnerWidgetWrapper = ({
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
-      if (text) {
-        getOwnerSuggestion(text);
-      } else {
-        getOwnerSearch();
-      }
+      getOwnerSearch(text || WILD_CARD_CHAR);
     },
-    [getOwnerSuggestion, getOwnerSearch]
+    [getOwnerSearch]
   );
 
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
@@ -128,17 +151,19 @@ const OwnerWidgetWrapper = ({
 
   useEffect(() => {
     if (visible) {
-      handleOwnerSearch('');
+      if (isAuthDisabled || !isAdminUser) {
+        fetchGroupTypeTeams();
+      } else {
+        handleOwnerSearch('');
+      }
     }
   }, [visible]);
 
   useEffect(() => {
-    setOwner(currentUser);
-  }, [currentUser]);
-
-  useEffect(() => {
-    visible ? debounceOnSearch(searchText) : null;
-  }, [appState.users, appState.userDetails, appState.userTeams]);
+    if (visible) {
+      debounceOnSearch(searchText);
+    }
+  }, [searchText]);
 
   const getOwnerGroup = () => {
     return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
@@ -156,6 +181,7 @@ const OwnerWidgetWrapper = ({
         setInitialOwnerLoadingState();
       }, 300);
     }
+    setOwner(currentUser);
   }, [currentUser]);
 
   return visible ? (

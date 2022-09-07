@@ -278,15 +278,8 @@ const EntitySummaryDetails = ({
               })}
               data-testid="tier-name"
               direction="horizontal"
-              size={0.1}
               title={displayVal as string}>
-              <Button
-                data-testid="tier-dropdown"
-                size="custom"
-                theme="primary"
-                variant="text">
-                {displayVal}
-              </Button>
+              <span data-testid="tier-dropdown">{displayVal}</span>
               <Dropdown
                 overlay={
                   <TierCard
@@ -297,7 +290,7 @@ const EntitySummaryDetails = ({
                 placement="bottomRight"
                 trigger={['click']}>
                 <span
-                  className="tw-flex tw--mt-1"
+                  className="tw-flex tw--mt-0.5"
                   data-testid={`edit-${data.key}-icon`}>
                   {updateTier ? <EditIcon /> : null}
                 </span>

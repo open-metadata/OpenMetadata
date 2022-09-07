@@ -59,6 +59,7 @@ import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
@@ -230,6 +231,20 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Invalid text
     failsToEvaluate(policyName, "a");
     failsToEvaluate(policyName, "abc");
+  }
+
+  @Test
+  void delete_Disallowed() {
+    List<EntityReference> policies = new ArrayList<>(DATA_CONSUMER_ROLE.getPolicies());
+    policies.addAll(DATA_STEWARD_ROLE.getPolicies());
+    policies.add(TEAM_ONLY_POLICY.getEntityReference());
+
+    for (EntityReference policy : policies) {
+      assertResponse(
+          () -> deleteEntity(policy.getId(), ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, policy.getName()));
+    }
   }
 
   private void failsToParse(String policyName, String condition) {

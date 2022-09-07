@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
@@ -664,7 +664,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 setActiveTab={activeTabHandler}
                 tabs={tabs}
               />
-              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+              <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
                   <Fragment>
                     <div className="tw-table-container tw-mb-4">
@@ -768,24 +768,24 @@ const DatabaseDetails: FunctionComponent = () => {
                   </Fragment>
                 )}
                 {activeTab === 2 && (
-                  <div
-                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
+                  <Row
+                    className=" tw-pt-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
                     id="activityfeed">
-                    <div />
-                    <ActivityFeedList
-                      hideFeedFilter
-                      hideThreadFilter
-                      isEntityFeed
-                      withSidePanel
-                      className=""
-                      deletePostHandler={deletePostHandler}
-                      entityName={databaseName}
-                      feedList={entityThread}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                    />
-                    <div />
-                  </div>
+                    <Col offset={4} span={16}>
+                      <ActivityFeedList
+                        hideFeedFilter
+                        hideThreadFilter
+                        isEntityFeed
+                        withSidePanel
+                        className=""
+                        deletePostHandler={deletePostHandler}
+                        entityName={databaseName}
+                        feedList={entityThread}
+                        postFeedHandler={postFeedHandler}
+                        updateThreadHandler={updateThreadHandler}
+                      />
+                    </Col>
+                  </Row>
                 )}
                 <div
                   data-testid="observer-element"

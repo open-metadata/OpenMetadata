@@ -496,6 +496,6 @@
   }
 
   .tw-table-container {
-    @apply tw-bg-white tw-border tw-border-main tw-rounded tw-shadow;
+    @apply tw-bg-white tw-border tw-border-main tw-rounded;
   }
 }

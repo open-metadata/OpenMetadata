@@ -251,31 +251,31 @@ class SQAInterface(InterfaceProtocol):
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
         Session = self.session_factory
-        session = Session()
-        self.set_session_tag(session)
-        sampler = self._create_thread_safe_sampler(
-            session,
-            table,
-        )
-        sample = sampler.random_sample()
-        runner = self._create_thread_safe_runner(
-            session,
-            table,
-            sample,
-        )
+        with Session() as session:
+            self.set_session_tag(session)
+            sampler = self._create_thread_safe_sampler(
+                session,
+                table,
+            )
+            sample = sampler.random_sample()
+            runner = self._create_thread_safe_runner(
+                session,
+                table,
+                sample,
+            )
 
-        row = compute_metrics_registry.registry[metric_type.value](
-            metrics,
-            runner=runner,
-            session=session,
-            column=column,
-            sample=sample,
-        )
+            row = compute_metrics_registry.registry[metric_type.value](
+                metrics,
+                runner=runner,
+                session=session,
+                column=column,
+                sample=sample,
+            )
 
-        if column is not None:
-            column = column.name
+            if column is not None:
+                column = column.name
 
-        return row, column
+            return row, column
 
     def get_all_metrics(
         self,

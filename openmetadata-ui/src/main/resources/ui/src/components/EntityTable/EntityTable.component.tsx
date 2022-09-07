@@ -834,20 +834,6 @@ const EntityTable = ({
         },
       },
       {
-        title: 'Data Quality',
-        dataIndex: 'columnTests',
-        key: 'columnTests',
-        accessor: 'columnTests',
-        width: 200,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => {
-          return renderCell(TABLE_HEADERS_V1.columnTests, record, index);
-        },
-      },
-      {
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
@@ -915,7 +901,6 @@ const EntityTable = ({
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
-          // expandable={}
         />
       )}
     </>
