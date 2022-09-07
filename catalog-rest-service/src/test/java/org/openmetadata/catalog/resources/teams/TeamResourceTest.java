@@ -219,15 +219,29 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Test
   void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create table without any attributes
+    // Create team without any attributes
     Team team = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    // Patching as a non-admin should is disallowed
+    // Patching as a non-admin should be disallowed
     String originalJson = JsonUtils.pojoToJson(team);
     team.setDisplayName("newDisplayName");
     assertResponse(
         () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS),
         FORBIDDEN,
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
+  }
+
+  @Test
+  void patch_teamType_as_user_with_UpdateTeam_permission(TestInfo test) throws IOException {
+    Team team = createEntity(createRequest(test).withTeamType(BUSINESS_UNIT), ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(team);
+    team.setTeamType(DIVISION);
+
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    fieldUpdated(change, "teamType", BUSINESS_UNIT.toString(), DIVISION.toString());
+    patchEntityAndCheck(team, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    team = getEntity(team.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(DIVISION, team.getTeamType());
   }
 
   @Test
@@ -623,7 +637,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public CreateTeam createRequest(String name) {
-    return new CreateTeam().withName(name).withProfile(PROFILE);
+    return new CreateTeam().withName(name).withProfile(PROFILE).withTeamType(GROUP);
   }
 
   @Override

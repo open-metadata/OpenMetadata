@@ -18,6 +18,7 @@ import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -65,6 +66,7 @@ import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -290,6 +292,30 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(uriInfo, currentUserName, fields);
     return addHref(uriInfo, user);
+  }
+
+  @GET
+  @Valid
+  @Path("/loggedInUser/groupTeams")
+  @Operation(
+      operationId = "getCurrentLoggedInUserGroupTeams",
+      summary = "Get group type of teams for current logged in user",
+      tags = "users",
+      description = "Get the group type of teams of user who is authenticated and is currently logged in.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The teams of type 'Group' that a user belongs to",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = EntityReference.class)))),
+        @ApiResponse(responseCode = "404", description = "User not found")
+      })
+  public List<EntityReference> getCurrentLoggedInUser(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    String currentUserName = securityContext.getUserPrincipal().getName();
+    return dao.getGroupTeams(uriInfo, currentUserName);
   }
 
   @GET

@@ -223,14 +223,11 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
-
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
     .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="tag-action">{children}</p>
-    ));
-});
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
@@ -244,6 +241,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   pluralize: jest.fn().mockReturnValue('2 charts'),
   isEven: jest.fn().mockReturnValue(true),
   getEntityDeleteMessage: jest.fn(),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 jest.mock('../../utils/GlossaryUtils', () => ({
@@ -336,9 +334,9 @@ describe('Test DashboardDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const customProperties = await findByTestId(
+    const customProperties = await findByText(
       container,
-      'custom-properties-table'
+      'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();

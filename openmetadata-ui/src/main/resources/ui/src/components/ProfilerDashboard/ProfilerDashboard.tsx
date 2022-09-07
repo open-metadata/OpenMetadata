@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Radio, Row, Select, Space } from 'antd';
+import { Button, Col, Form, Radio, Row, Select, Space, Tooltip } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -25,6 +25,7 @@ import {
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -480,9 +481,19 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                   onChange={handleTimeRangeChange}
                 />
               )}
-              <Button type="primary" onClick={handleAddTestClick}>
-                Add Test
-              </Button>
+              <Tooltip
+                title={
+                  permission.EditAll || permission.EditTests
+                    ? 'Add Test'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  disabled={!(permission.EditAll || permission.EditTests)}
+                  type="primary"
+                  onClick={handleAddTestClick}>
+                  Add Test
+                </Button>
+              </Tooltip>
             </Space>
           </Row>
         </Col>

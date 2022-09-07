@@ -16,5 +16,6 @@ import { TeamType } from '../../../generated/entity/teams/team';
 export interface TeamTypeSelectProps {
   handleShowTypeSelector: (value: boolean) => void;
   teamType: TeamType;
+  showGroupOption: boolean;
   updateTeamType?: (type: TeamType) => void;
 }

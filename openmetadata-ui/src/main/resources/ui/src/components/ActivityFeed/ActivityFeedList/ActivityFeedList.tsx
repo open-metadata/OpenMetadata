@@ -200,6 +200,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             </Button>
             {showThreadTypeList && (
               <DropDownList
+                horzPosRight
                 dropDownList={threadFilterList}
                 value={threadType}
                 onSelect={handleThreadTypeDropDownChange}

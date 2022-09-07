@@ -14,6 +14,7 @@ import { findAllByTestId, findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
 const mockData = {
@@ -139,14 +140,6 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="admin-action">{children}</p>
-    ));
-});
-
 jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest
     .fn()
@@ -157,9 +150,8 @@ const handleFeaturesUpdate = jest.fn();
 
 const mockProp = {
   mlFeatures: mockData['mlFeatures'] as Mlmodel['mlFeatures'],
-  owner: undefined,
-  hasEditAccess: true,
   handleFeaturesUpdate,
+  permissions: DEFAULT_ENTITY_PERMISSION,
 };
 
 describe('Test MlModel feature list', () => {

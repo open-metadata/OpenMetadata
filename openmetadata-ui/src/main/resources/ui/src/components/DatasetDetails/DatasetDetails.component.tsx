@@ -17,7 +17,7 @@ import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -40,6 +40,7 @@ import {
   getEntityId,
   getEntityName,
   getEntityPlaceHolder,
+  getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
@@ -47,11 +48,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  getTableTestsValue,
-  getTagsWithoutTier,
-  getUsagePercentile,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -61,7 +58,6 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
-import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
@@ -125,19 +121,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
-  testMode,
-  tableTestCase,
-  handleTestModeChange,
   createThread,
-  handleAddTableTestCase,
-  handleAddColumnTestCase,
-  showTestForm,
-  handleShowTestForm,
-  handleRemoveTableTest,
-  handleRemoveColumnTest,
   qualityTestFormHandler,
-  handleSelectedColumn,
-  selectedColumn,
   deletePostHandler,
   paging,
   fetchFeedHandler,
@@ -387,17 +372,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(owner?.name || '')
-          : getEntityName(owner),
+      value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
       ),
       id: getEntityId(owner),
       isEntityDetails: true,
-      isLink: owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
@@ -421,7 +403,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       key: 'Rows',
       value: prepareTableRowInfo(),
     },
-    { key: 'Tests', value: getTableTestsValue(tableTestCase) },
   ];
 
   const onDescriptionEdit = (): void => {
@@ -758,32 +739,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 5 && (
                 <TableProfilerV1
-                  hasEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditDataProfile
-                  }
+                  permissions={tablePermissions}
                   table={tableDetails}
                   onAddTestClick={qualityTestFormHandler}
-                />
-              )}
-
-              {activeTab === 6 && (
-                <DataQualityTab
-                  columnOptions={columns}
-                  handleAddColumnTestCase={handleAddColumnTestCase}
-                  handleAddTableTestCase={handleAddTableTestCase}
-                  handleRemoveColumnTest={handleRemoveColumnTest}
-                  handleRemoveTableTest={handleRemoveTableTest}
-                  handleSelectedColumn={handleSelectedColumn}
-                  handleShowTestForm={handleShowTestForm}
-                  handleTestModeChange={handleTestModeChange}
-                  hasEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditTests
-                  }
-                  isTableDeleted={deleted}
-                  selectedColumn={selectedColumn}
-                  showTestForm={showTestForm}
-                  tableTestCase={tableTestCase}
-                  testMode={testMode}
                 />
               )}
 

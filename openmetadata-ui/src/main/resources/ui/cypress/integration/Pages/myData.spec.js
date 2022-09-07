@@ -87,7 +87,10 @@ describe('MyData page should work', () => {
 
     // click on the 1st result and go to entity details page and follow the entity
     cy.wait(500);
-    cy.get('[data-testid="table-link"]').first().contains(termObj.term, {matchCase: false}).click();
+    cy.get('[data-testid="table-link"]')
+      .first()
+      .contains(termObj.term, { matchCase: false })
+      .click();
     cy.wait(500);
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
@@ -110,7 +113,8 @@ describe('MyData page should work', () => {
       .click();
     cy.wait(1000);
 
-    cy.get('[data-testid="owner-dropdown"]')
+    cy.get(':nth-child(2) > [data-testid="owner-link"]')
+      .scrollIntoView()
       .invoke('text')
       .then((text) => {
         expect(text).equal('Aaron Johnson');

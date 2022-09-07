@@ -12,21 +12,18 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Empty } from 'antd';
+import { Button, Empty, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import {
-  getEntityName,
-  getHtmlForNonAdminAction,
-} from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
@@ -34,24 +31,22 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 
 interface MlModelFeaturesListProp {
   mlFeatures: Mlmodel['mlFeatures'];
-  owner: Mlmodel['owner'];
-  hasEditAccess: boolean;
+  permissions: OperationPermission;
   handleFeaturesUpdate: (features: Mlmodel['mlFeatures']) => Promise<void>;
 }
 
 const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   mlFeatures,
-  owner,
-  hasEditAccess,
   handleFeaturesUpdate,
+  permissions,
 }: MlModelFeaturesListProp) => {
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
     {} as MlFeature
@@ -260,29 +255,33 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       className="tw-ml-1 tw-self-center"
                       data-testid="feature-tags-wrapper"
                       onClick={() => handleTagContainerClick(feature)}>
-                      <NonAdminAction
-                        html={getHtmlForNonAdminAction(Boolean(owner))}
-                        isOwner={hasEditAccess}
-                        permission={Operation.EditTags}
-                        position="left"
-                        trigger="click">
-                        <TagsContainer
-                          editable={
-                            selectedFeature?.name === feature.name && editTag
-                          }
-                          isLoading={
-                            isTagLoading &&
-                            selectedFeature?.name === feature.name &&
-                            editTag
-                          }
-                          selectedTags={feature.tags || []}
-                          size="small"
-                          tagList={allTags}
-                          type="label"
-                          onCancel={handleCancelEditTags}
-                          onSelectionChange={handleTagsChange}>
-                          {feature.tags?.length ? (
-                            <button className="tw-ml-1 focus:tw-outline-none">
+                      <TagsContainer
+                        editable={
+                          selectedFeature?.name === feature.name && editTag
+                        }
+                        isLoading={
+                          isTagLoading &&
+                          selectedFeature?.name === feature.name &&
+                          editTag
+                        }
+                        selectedTags={feature.tags || []}
+                        size="small"
+                        tagList={allTags}
+                        type="label"
+                        onCancel={handleCancelEditTags}
+                        onSelectionChange={handleTagsChange}>
+                        {feature.tags?.length ? (
+                          <Tooltip
+                            title={
+                              permissions.EditAll || permissions.EditTags
+                                ? 'Edit Tags'
+                                : NO_PERMISSION_FOR_ACTION
+                            }>
+                            <button
+                              className="tw-ml-1 focus:tw-outline-none"
+                              disabled={
+                                !(permissions.EditAll || permissions.EditTags)
+                              }>
                               <SVGIcons
                                 alt="edit"
                                 icon="icon-edit"
@@ -290,17 +289,29 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                 width="16px"
                               />
                             </button>
-                          ) : (
-                            <span className="tw-text-grey-muted hover:tw-text-primary">
+                          </Tooltip>
+                        ) : (
+                          <Tooltip
+                            title={
+                              permissions.EditAll || permissions.EditTags
+                                ? 'Edit Tags'
+                                : NO_PERMISSION_FOR_ACTION
+                            }>
+                            <Button
+                              className="tw-p-0"
+                              disabled={
+                                !(permissions.EditAll || permissions.EditTags)
+                              }
+                              type="text">
                               <Tags
                                 startWith="+ "
                                 tag="Add tag"
                                 type="outlined"
                               />
-                            </span>
-                          )}
-                        </TagsContainer>
-                      </NonAdminAction>
+                            </Button>
+                          </Tooltip>
+                        )}
+                      </TagsContainer>
                     </div>
                   </div>
                 </div>
@@ -313,13 +324,17 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     ) : (
                       <span className="tw-no-description">No description </span>
                     )}
-                    <NonAdminAction
-                      html={getHtmlForNonAdminAction(Boolean(owner))}
-                      isOwner={hasEditAccess}
-                      permission={Operation.EditDescription}
-                      position="top">
+                    <Tooltip
+                      title={
+                        permissions.EditAll || permissions.EditDescription
+                          ? 'Edit'
+                          : NO_PERMISSION_FOR_ACTION
+                      }>
                       <button
                         className="tw-self-start tw-w-8 tw-h-auto focus:tw-outline-none"
+                        disabled={
+                          !(permissions.EditAll || permissions.EditDescription)
+                        }
                         onClick={() => {
                           setSelectedFeature(feature);
                           setEditDescription(true);
@@ -331,7 +346,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           width="16px"
                         />
                       </button>
-                    </NonAdminAction>
+                    </Tooltip>
                   </div>
                 </div>
                 <SourceList feature={feature} />

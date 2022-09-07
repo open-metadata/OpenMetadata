@@ -13,9 +13,9 @@
 
 import { TeamType } from '../../../generated/entity/teams/team';
 
-export const getTeamTypeOptions = () => {
-  const teamTypesArray = Object.values(TeamType).filter(
-    (key) => key !== TeamType.Organization
+export const getTeamTypeOptions = (showGroupOption: boolean) => {
+  const teamTypesArray = Object.values(TeamType).filter((key) =>
+    key === TeamType.Group ? showGroupOption : key !== TeamType.Organization
   );
 
   return teamTypesArray.map((teamType) => ({

@@ -4,6 +4,7 @@
   "fullyQualifiedName": "TeamOnlyPolicy",
   "description": "Policy when attached to a team allows only users with in the team hierarchy to access the resources.",
   "enabled": true,
+  "allowDelete": false,
   "rules": [
     {
       "name": "TeamOnlyPolicy-Rule",

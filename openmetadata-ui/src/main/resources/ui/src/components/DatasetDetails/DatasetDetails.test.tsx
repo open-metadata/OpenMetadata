@@ -194,10 +194,6 @@ jest.mock('../SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTab</p>);
 });
 
-jest.mock('../DataQualityTab/DataQualityTab', () => {
-  return jest.fn().mockReturnValue(<p>DataQualityTab</p>);
-});
-
 jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
@@ -212,6 +208,11 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel.tsx', () => {
 jest.mock('../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
 
 jest.mock('../SampleDataTable/SampleDataTable.component', () => {
   return jest
@@ -229,6 +230,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getEntityId: jest.fn().mockReturnValue('id-entity-test'),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 const mockObserve = jest.fn();
@@ -374,9 +376,9 @@ describe('Test MyDataDetailsPage page', () => {
         wrapper: MemoryRouter,
       }
     );
-    const customProperties = await findByTestId(
+    const customProperties = await findByText(
       container,
-      'custom-properties-table'
+      'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();

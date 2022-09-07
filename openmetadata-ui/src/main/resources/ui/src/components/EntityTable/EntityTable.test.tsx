@@ -206,14 +206,6 @@ jest.mock('@fortawesome/free-solid-svg-icons', () => ({
   faCaretRight: jest.fn().mockReturnValue(<i>faCaretRight</i>),
 }));
 
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="tag-action">{children}</p>
-    ));
-});
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });

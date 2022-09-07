@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Progress } from 'antd';
+import { Col, Progress, Row } from 'antd';
 import React from 'react';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 
@@ -22,21 +22,22 @@ const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
   const modifedValue = Math.round(value * 100);
 
   return (
-    <div
-      className="profiler-progress-bar-container"
-      data-testid="profiler-progress-bar-container">
-      <p className="percent-info" data-testid="percent-info">
-        {modifedValue}%
-      </p>
-      <div className="progress-bar" data-testid="progress-bar">
+    <Row data-testid="profiler-progress-bar-container">
+      <Col span={6}>
+        <p className="percent-info" data-testid="percent-info">
+          {modifedValue}%
+        </p>
+      </Col>
+      <Col span={16}>
         <Progress
+          data-testid="progress-bar"
           percent={modifedValue}
           showInfo={false}
           size="small"
           strokeColor={strokeColor}
         />
-      </div>
-    </div>
+      </Col>
+    </Row>
   );
 };
 

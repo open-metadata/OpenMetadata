@@ -21,7 +21,7 @@ import { getBots } from '../../axiosAPIs/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -76,7 +76,7 @@ const BotListV1 = ({
       setLoading(true);
       const { data, paging } = await getBots({
         after,
-        limit: PAGE_SIZE,
+        limit: PAGE_SIZE_MEDIUM,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       setPaging(paging);
@@ -176,13 +176,15 @@ const BotListV1 = ({
     <ErrorPlaceHolder
       buttons={
         <div className="tw-text-lg tw-text-center">
-          <Button
-            ghost
-            title="Add Team"
-            type="primary"
-            onClick={handleAddBotClick}>
-            Add Bot
-          </Button>
+          <Tooltip
+            title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              disabled={!createPermission}
+              type="primary"
+              onClick={handleAddBotClick}>
+              Add Bot
+            </Button>
+          </Tooltip>
         </div>
       }
       doc={BOTS_DOCS}
@@ -230,10 +232,10 @@ const BotListV1 = ({
             />
           </Col>
           <Col span={24}>
-            {paging.total > PAGE_SIZE && (
+            {paging.total > PAGE_SIZE_MEDIUM && (
               <NextPrevious
                 currentPage={currentPage}
-                pageSize={PAGE_SIZE}
+                pageSize={PAGE_SIZE_MEDIUM}
                 paging={paging}
                 pagingHandler={handlePageChange}
                 totalCount={paging.total}

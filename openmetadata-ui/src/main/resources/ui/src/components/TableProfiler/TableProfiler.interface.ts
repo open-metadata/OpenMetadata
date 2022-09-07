@@ -14,6 +14,7 @@
 import { Column, Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface TableProfilerProps {
   onAddTestClick: (
@@ -22,7 +23,7 @@ export interface TableProfilerProps {
     columnName?: string
   ) => void;
   table: Table;
-  hasEditAccess: boolean;
+  permissions: OperationPermission;
 }
 
 export type TableTestsType = {

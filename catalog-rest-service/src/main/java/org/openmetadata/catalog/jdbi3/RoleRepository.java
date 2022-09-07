@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static java.lang.Boolean.FALSE;
 import static org.openmetadata.catalog.Entity.POLICIES;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -108,6 +109,13 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   public RoleUpdater getUpdater(Role original, Role updated, Operation operation) {
     return new RoleUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void preDelete(Role entity) {
+    if (FALSE.equals(entity.getAllowDelete())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.ROLE, entity.getName()));
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */

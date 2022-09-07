@@ -103,7 +103,7 @@ describe('Teams flow should work properly', () => {
       .click();
 
     //Asserting the added name
-    cy.get('[data-testid="owner-name"]').should(
+    cy.get('[data-testid="owner-link"]').should(
       'contain',
       TEAM_DETAILS.ownername
     );

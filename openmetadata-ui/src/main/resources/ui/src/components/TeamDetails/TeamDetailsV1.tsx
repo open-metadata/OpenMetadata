@@ -36,7 +36,8 @@ import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
-  PAGE_SIZE,
+  getUserPath,
+  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { TEAMS_DOCS } from '../../constants/docs.constants';
 import {
@@ -124,6 +125,7 @@ const TeamDetailsV1 = ({
   onDescriptionUpdate,
   descriptionHandler,
   handleTeamUsersSearchAction,
+  handleCurrentUserPage,
   teamUserPaginHandler,
   handleJoinTeamClick,
   handleLeaveTeamClick,
@@ -172,7 +174,7 @@ const TeamDetailsV1 = ({
         isOrganization,
         searchTerm ? table.length : undefined
       ),
-    [currentTeam, teamUserPagin, searchTerm]
+    [currentTeam, teamUserPagin, searchTerm, table]
   );
 
   const createTeamPermission = useMemo(
@@ -282,18 +284,24 @@ const TeamDetailsV1 = ({
     ];
   }, [deleteUserHandler]);
 
+  const ownerValue = useMemo(() => {
+    switch (currentTeam.owner?.type) {
+      case 'team':
+        return getTeamAndUserDetailsPath(currentTeam.owner?.name || '');
+      case 'user':
+        return getUserPath(currentTeam.owner?.fullyQualifiedName ?? '');
+      default:
+        return '';
+    }
+  }, [currentTeam]);
+
   const extraInfo: ExtraInfo[] = [
     {
       key: 'Owner',
-      value:
-        currentTeam?.owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(
-              currentTeam?.owner?.displayName || currentTeam?.owner?.name || ''
-            )
-          : currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
+      value: ownerValue,
       placeholderText:
         currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-      isLink: currentTeam?.owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName:
         currentTeam?.owner?.type === OwnerType.USER
@@ -526,8 +534,12 @@ const TeamDetailsV1 = ({
   }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
 
   useEffect(() => {
-    setCurrentTab(tabs[0].position);
-  }, [tabs]);
+    isGroupType && setCurrentTab(2);
+  }, [isGroupType]);
+
+  useEffect(() => {
+    handleCurrentUserPage();
+  }, []);
 
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
@@ -661,11 +673,11 @@ const TeamDetailsV1 = ({
                   pagination={false}
                   size="small"
                 />
-                {teamUserPagin.total > PAGE_SIZE && (
+                {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
                   <NextPrevious
                     currentPage={currentTeamUserPage}
                     isNumberBased={Boolean(teamUsersSearchText)}
-                    pageSize={PAGE_SIZE}
+                    pageSize={PAGE_SIZE_MEDIUM}
                     paging={teamUserPagin}
                     pagingHandler={teamUserPaginHandler}
                     totalCount={teamUserPagin.total}
@@ -876,6 +888,7 @@ const TeamDetailsV1 = ({
                 <EntitySummaryDetails
                   data={info}
                   isGroupType={isGroupType}
+                  showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={
                     entityPermissions.EditAll || entityPermissions.EditOwner

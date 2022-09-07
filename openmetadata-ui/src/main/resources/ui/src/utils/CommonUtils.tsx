@@ -42,6 +42,7 @@ import { Button } from '../components/buttons/Button/Button';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getTeamAndUserDetailsPath,
   getUserPath,
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
@@ -999,3 +1000,14 @@ export const commonUserDetailColumns: ColumnsType<User> = [
     },
   },
 ];
+
+export const getOwnerValue = (owner: EntityReference) => {
+  switch (owner?.type) {
+    case 'team':
+      return getTeamAndUserDetailsPath(owner?.name || '');
+    case 'user':
+      return getUserPath(owner?.fullyQualifiedName ?? '');
+    default:
+      return '';
+  }
+};

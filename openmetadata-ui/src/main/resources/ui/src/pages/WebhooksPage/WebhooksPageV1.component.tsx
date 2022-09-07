@@ -19,6 +19,7 @@ import Loader from '../../components/Loader/Loader';
 import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
   getEditWebhookPath,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
@@ -41,7 +42,7 @@ const WebhooksPageV1 = () => {
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
-    getWebhooks(paging)
+    getWebhooks(paging, undefined, { limit: PAGE_SIZE_MEDIUM })
       .then((res) => {
         if (res.data) {
           const genericWebhooks = res.data.filter(
