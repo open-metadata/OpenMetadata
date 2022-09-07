@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.secrets;
 
-import static org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider.LOCAL;
+import static org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider.NOOP;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
@@ -27,14 +27,14 @@ import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 
-public class LocalSecretsManager extends SecretsManager {
+public class NoopSecretsManager extends SecretsManager {
 
-  private static LocalSecretsManager INSTANCE;
+  private static NoopSecretsManager INSTANCE;
 
   private Fernet fernet;
 
-  private LocalSecretsManager(String clusterPrefix) {
-    super(LOCAL, clusterPrefix);
+  private NoopSecretsManager(String clusterPrefix) {
+    super(NOOP, clusterPrefix);
     this.fernet = Fernet.getInstance();
   }
 
@@ -113,8 +113,8 @@ public class LocalSecretsManager extends SecretsManager {
     }
   }
 
-  public static LocalSecretsManager getInstance(String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new LocalSecretsManager(clusterPrefix);
+  public static NoopSecretsManager getInstance(String clusterPrefix) {
+    if (INSTANCE == null) INSTANCE = new NoopSecretsManager(clusterPrefix);
     return INSTANCE;
   }
 

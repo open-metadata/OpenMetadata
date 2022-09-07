@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.secretsManag
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
-from metadata.utils.secrets.local_secrets_manager import LocalSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
 
 
@@ -58,9 +58,9 @@ def get_secrets_manager(
     """
     if (
         secrets_manager_provider is None
-        or secrets_manager_provider == SecretsManagerProvider.local
+        or secrets_manager_provider == SecretsManagerProvider.noop
     ):
-        return LocalSecretsManager(cluster_name)
+        return NoopSecretsManager(cluster_name)
     elif secrets_manager_provider == SecretsManagerProvider.aws:
         return AWSSecretsManager(credentials, cluster_name)
     elif secrets_manager_provider == SecretsManagerProvider.aws_ssm:
