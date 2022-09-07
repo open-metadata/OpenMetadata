@@ -131,7 +131,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     if (mlModelDetail.id) {
       fetchResourcePermission();
     }
-  }, [mlModelDetail]);
+  }, [mlModelDetail.id]);
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),

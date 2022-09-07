@@ -142,7 +142,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     if (topicDetails.id) {
       fetchResourcePermission();
     }
-  }, [topicDetails]);
+  }, [topicDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);

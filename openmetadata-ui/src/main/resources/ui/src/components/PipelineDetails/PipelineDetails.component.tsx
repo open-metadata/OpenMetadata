@@ -157,7 +157,7 @@ const PipelineDetails = ({
     if (pipelineDetails.id) {
       fetchResourcePermission();
     }
-  }, [pipelineDetails]);
+  }, [pipelineDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);

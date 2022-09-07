@@ -161,7 +161,7 @@ const DashboardDetails = ({
     if (dashboardDetails.id) {
       fetchResourcePermission();
     }
-  }, [dashboardDetails]);
+  }, [dashboardDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);

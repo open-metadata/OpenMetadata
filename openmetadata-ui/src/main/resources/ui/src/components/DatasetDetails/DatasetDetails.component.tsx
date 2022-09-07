@@ -175,7 +175,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     if (tableDetails.id) {
       fetchResourcePermission();
     }
-  }, [tableDetails]);
+  }, [tableDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
