@@ -142,7 +142,7 @@ workflowConfig:
 - **hostPort**: Enter the fully qualified hostname and port number for your Oracle deployment in the Host and Port field.
 - **oracleConnectionType**:
   - **oracleServiceName**: The Oracle Service name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in tnsnames.
-  - **databaseSchema**: Enter the name of the database schema available in Oracle that you want to connect with, and make sure that the user has enough access to use resources available in this database.
+  - **databaseSchema**: The name of the database schema available in Oracle that you want to connect with.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
