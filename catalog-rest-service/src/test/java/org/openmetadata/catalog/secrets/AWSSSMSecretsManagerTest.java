@@ -85,7 +85,7 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
     verifySecretIdGetCalls(expectedSecretId, 1);
     assertEquals(expectedSecretId, createSecretCaptor.getValue().name());
     assertEquals(
-        "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true}",
+        "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true,\"supportsQueryComment\":true}",
         createSecretCaptor.getValue().value());
     assertNull(serviceConnection);
   }
