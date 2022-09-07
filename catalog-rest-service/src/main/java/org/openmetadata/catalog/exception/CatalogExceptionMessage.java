@@ -148,6 +148,14 @@ public final class CatalogExceptionMessage {
     return "Team of type Organization can't have a parent team";
   }
 
+  public static String invalidGroupTeamUpdate() {
+    return "Team of type Group cannot be updated";
+  }
+
+  public static String invalidGroupTeamChildrenUpdate() {
+    return "A team with children cannot be updated to type Group";
+  }
+
   public static String invalidParentCount(int validParentCount, TeamType teamType) {
     return String.format("Team of type %s can have only %s parents", teamType, validParentCount);
   }

@@ -24,6 +24,8 @@ import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidChild;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidGroupTeamChildrenUpdate;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidGroupTeamUpdate;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -364,6 +366,16 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      if (original.getTeamType() != updated.getTeamType()) {
+        // A team of type 'Group' cannot be updated
+        if (GROUP.equals(original.getTeamType())) {
+          throw new IllegalArgumentException(invalidGroupTeamUpdate());
+        }
+        // A team containing children cannot be updated to Group
+        if (original.getChildren().size() > 0 && GROUP.equals(updated.getTeamType())) {
+          throw new IllegalArgumentException(invalidGroupTeamChildrenUpdate());
+        }
+      }
       recordChange("profile", original.getProfile(), updated.getProfile());
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       recordChange("teamType", original.getTeamType(), updated.getTeamType());
