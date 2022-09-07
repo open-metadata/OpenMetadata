@@ -139,8 +139,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }, [topicDetails.id, getEntityPermission, setTopicPermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
-  }, [topicDetails.id]);
+    if (topicDetails.id) {
+      fetchResourcePermission();
+    }
+  }, [topicDetails]);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);

@@ -154,8 +154,10 @@ const PipelineDetails = ({
   }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
-  }, [pipelineDetails.id]);
+    if (pipelineDetails.id) {
+      fetchResourcePermission();
+    }
+  }, [pipelineDetails]);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
