@@ -20,18 +20,10 @@ Open the file `docker-compose.yml` downloaded from the Release page [Link](https
 version: "3.9"
 services:
   mysql:
-    container_name: openmetadata_mysql
-    image: openmetadata/db:0.11.5
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-    expose:
-      - 3306
+    ...
     volumes:
      - /opt/openmetadata/db:/var/lib/mysql
-    networks:
-      app_net:
-        ipv4_address: 172.16.240.10
+    ...
 ```
 ## Volumes for PostgreSQL container:
 Following are the changes we have to do while mounting the directory for postgresql in OpenMetadata.
@@ -46,22 +38,10 @@ Open the file `docker-compose.yml` downloaded from the Release page [Link](https
 version: "3.9"
 services:
  postgressql:
-    container_name: openmetadata_postgresql
-    image: openmetadata/postgresql:0.11.5
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-    expose:
-      - 5432
-    networks:
-      app_net:
-        ipv4_address: 172.16.240.10
+    ...
     volumes:
      - /opt/openmetadata/db:/var/lib/postgressql
-    networks:
-      app_net:
-        ipv4_address: 172.16.240.10
+    ...
 ```
 
 ## Volumes for ingestion container
@@ -72,6 +52,18 @@ mkdir -p /opt/openmetadata/dag_config /opt/openmetadata/dags /opt/openmetadata/s
 ```
 - Update or add the volume in the docker-compose.yml file.
 Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.11.5-release/docker-compose.yml) .
+
+```commandline
+version: "3.9"
+services:
+  ingestion:
+    ...
+    volumes:
+      - /opt/openmetadata/dag_config:/airflow/dag_generated_configs
+      - /opt/openmetadata/dags:/ingestion/examples/airflow/dags
+      - /opt/openmetadata/secrets:/tmp
+    ...
+```
 
 Once these changes are done in the docker-compose.yml file It should look simlarly in the below format
 
@@ -118,40 +110,3 @@ Once these changes are done, restart the container via:
 docker compose down && docker compose up -d
 ```
 
-## Advanced Section for Named Volumes
-We can also use the Named Volumes with the Openmetadata Services in the `docker-compose` file it self.
-Example: 
-
-Named Volume for MYSQL
-```commandline
-version: "3.9"
-volumes:
-  dbdata:
-services:
-  mysql:
-    container_name: openmetadata_mysql
-    image: openmetadata/db:0.11.5
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-    expose:
-      - 3306
-    volumes:
-      - dbdata:/var/lib/mysql
-    networks:
-      app_net:
-        ipv4_address: 172.16.240.10
-```
-
-The above configuration defined one data volume named “dbdata”, which is attached to MySQL container and mounted on /var/lib/mysql directory. This is the default directory used by MySQL to store all data files.
-
-
-## Verify the Named Volumes
-
-Running `docker volume ls` will list all the volumes which are available on the host machine.
-
-The default path where volumes get created in Linux is as follows:
-
-```commandline
-/var/lib/docker/volumes/
-```
