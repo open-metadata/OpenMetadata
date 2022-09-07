@@ -128,7 +128,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (mlModelDetail.id) {
+      fetchResourcePermission();
+    }
   }, [mlModelDetail.id]);
 
   const currentUser = useMemo(

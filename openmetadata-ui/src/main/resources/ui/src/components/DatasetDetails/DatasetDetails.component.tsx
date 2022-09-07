@@ -172,7 +172,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (tableDetails.id) {
+      fetchResourcePermission();
+    }
   }, [tableDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
