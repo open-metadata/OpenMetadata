@@ -470,7 +470,7 @@ const TeamsPage = () => {
       }
       fetchAllTeams(false, fqn);
     }
-  }, [entityPermissions]);
+  }, [entityPermissions, fqn]);
 
   useEffect(() => {
     fetchPermissions(fqn);

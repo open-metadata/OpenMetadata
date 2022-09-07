@@ -423,7 +423,7 @@ const PoliciesDetailPage = () => {
     if (policyPermission.ViewAll) {
       fetchPolicy();
     }
-  }, [policyPermission]);
+  }, [policyPermission, fqn]);
 
   if (isLoading) {
     return <Loader />;

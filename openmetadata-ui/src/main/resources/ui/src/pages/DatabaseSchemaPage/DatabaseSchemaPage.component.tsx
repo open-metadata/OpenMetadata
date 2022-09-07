@@ -596,7 +596,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       getDetailsByFQN();
       getEntityFeedCount();
     }
-  }, [databaseSchemaPermission]);
+  }, [databaseSchemaPermission, databaseSchemaFQN]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();

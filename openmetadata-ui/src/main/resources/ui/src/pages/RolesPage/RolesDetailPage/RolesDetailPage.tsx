@@ -345,7 +345,7 @@ const RolesDetailPage = () => {
     if (rolePermission.ViewAll) {
       fetchRole();
     }
-  }, [rolePermission]);
+  }, [rolePermission, fqn]);
 
   if (isLoading) {
     return <Loader />;

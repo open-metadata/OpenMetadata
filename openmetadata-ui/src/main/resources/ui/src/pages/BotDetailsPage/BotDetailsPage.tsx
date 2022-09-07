@@ -141,7 +141,7 @@ const BotDetailsPage = () => {
     if (botPermission.ViewAll) {
       fetchBotsData();
     }
-  }, [botPermission]);
+  }, [botPermission, botsName]);
 
   useEffect(() => {
     fetchBotPermission(botsName);

@@ -565,7 +565,7 @@ const DatabaseDetails: FunctionComponent = () => {
       }
       getDetailsByFQN();
     }
-  }, [databasePermission]);
+  }, [databasePermission, databaseFQN]);
 
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
