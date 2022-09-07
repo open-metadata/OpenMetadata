@@ -61,6 +61,10 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
+jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<p data-testid="error">ErrorPlaceHolder</p>);
+});
+
 const mockUserTeam = [
   {
     description: 'description',
