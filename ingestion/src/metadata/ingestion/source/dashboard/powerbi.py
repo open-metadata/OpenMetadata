@@ -85,7 +85,9 @@ class PowerbiSource(DashboardServiceSource):
         yield CreateDashboardRequest(
             name=dashboard_details["id"],
             # PBI has no hostPort property. All URL details are present in the webUrl property.
-            dashboardUrl=dashboard_details["webUrl"],
+            dashboardUrl=dashboard_details["webUrl"].replace(
+                "https://app.powerbi.com", ""
+            ),
             displayName=dashboard_details["displayName"],
             description="",
             charts=[
@@ -180,7 +182,7 @@ class PowerbiSource(DashboardServiceSource):
                     description="",
                     chartType=ChartType.Other.value,
                     # PBI has no hostPort property. All URL details are present in the webUrl property.
-                    chartUrl=chart["embedUrl"],
+                    chartUrl=chart["embedUrl"].replace("https://app.powerbi.com", ""),
                     service=EntityReference(
                         id=self.context.dashboard_service.id.__root__,
                         type="dashboardService",
