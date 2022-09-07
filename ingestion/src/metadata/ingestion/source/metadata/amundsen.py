@@ -190,7 +190,7 @@ class AmundsenSource(Source[Entity]):
 
     def add_owner_to_entity(self, user):
         """Add owner information to table entity
-        
+
         Args:
             user: Amundsen user (previously added to OM)
         """
