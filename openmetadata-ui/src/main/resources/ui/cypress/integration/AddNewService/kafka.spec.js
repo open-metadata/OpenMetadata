@@ -35,7 +35,7 @@ describe('Kafka Ingestion', () => {
 
     const addIngestionInput = () => {
         cy.get('[data-testid="topic-filter-pattern-checkbox"]').should("be.visible").check()
-        cy.get('[data-testid="filter-pattern-includes-topic"]').should("be.visible").type("docker-connect-status")
+        cy.get('[data-testid="filter-pattern-includes-topic"]').should("be.visible").type("__consumer_offsets")
     };
 
     testServiceCreationAndIngestion(
