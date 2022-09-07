@@ -26,6 +26,7 @@ type Props = {
   buttons?: React.ReactNode;
   buttonId?: string;
   description?: React.ReactNode;
+  classes?: string;
 };
 
 const ErrorPlaceHolder = ({
@@ -35,6 +36,7 @@ const ErrorPlaceHolder = ({
   heading,
   buttons,
   description,
+  classes,
 }: Props) => {
   const { Paragraph, Link } = Typography;
 
@@ -68,7 +70,7 @@ const ErrorPlaceHolder = ({
       </div>
     </>
   ) : (
-    <div className="flex-center flex-col tw-mt-24 w-full">
+    <div className={`${classes} flex-center flex-col mt-24 w-full`}>
       <div data-testid="error">
         <img
           data-testid="no-data-image"
@@ -77,7 +79,7 @@ const ErrorPlaceHolder = ({
         />
       </div>
       {children ? (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-5 tw-text-base tw-font-medium">
           {children}
         </div>
       ) : (

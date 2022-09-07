@@ -173,24 +173,41 @@ const BotListV1 = ({
   }, [showDeleted]);
 
   return handleErrorPlaceholder ? (
-    <ErrorPlaceHolder
-      buttons={
-        <div className="tw-text-lg tw-text-center">
-          <Tooltip
-            title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
-            <Button
-              disabled={!createPermission}
-              type="primary"
-              onClick={handleAddBotClick}>
-              Add Bot
-            </Button>
-          </Tooltip>
-        </div>
-      }
-      doc={BOTS_DOCS}
-      heading="Bot"
-      type="ADD_DATA"
-    />
+    <Row>
+      <Col className="w-full tw-flex tw-justify-end">
+        <Space align="end" size={5}>
+          <Switch
+            checked={showDeleted}
+            id="switch-deleted"
+            size="small"
+            onClick={handleShowDeleted}
+          />
+          <label htmlFor="switch-deleted">Show deleted</label>
+        </Space>
+      </Col>
+      <Col className="w-full">
+        <ErrorPlaceHolder
+          buttons={
+            <div className="tw-text-lg tw-text-center">
+              <Tooltip
+                placement="left"
+                title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
+                <Button
+                  ghost
+                  disabled={!createPermission}
+                  type="primary"
+                  onClick={handleAddBotClick}>
+                  Add Bot
+                </Button>
+              </Tooltip>
+            </div>
+          }
+          doc={BOTS_DOCS}
+          heading="Bot"
+          type="ADD_DATA"
+        />
+      </Col>
+    </Row>
   ) : (
     <Row gutter={[16, 16]}>
       <Col flex={1} />

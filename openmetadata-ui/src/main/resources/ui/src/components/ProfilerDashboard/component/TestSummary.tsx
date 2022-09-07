@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Empty, Row, Select, Space, Typography } from 'antd';
+import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import moment from 'moment';
@@ -40,6 +40,7 @@ import {
 } from '../../../generated/tests/tableTest';
 import { TestCaseParameterValue } from '../../../generated/tests/testCase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
@@ -234,7 +235,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             </ResponsiveContainer>
           </div>
         ) : (
-          <Empty description="No Result Available" />
+          <ErrorPlaceHolder classes="tw-mt-0">
+            <Typography.Text>No Result Available</Typography.Text>
+          </ErrorPlaceHolder>
         )}
       </Col>
       <Col span={10}>
