@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { toastNotification, uuid } from '../../common/common';
+import { toastNotification, updateOwner, uuid } from '../../common/common';
 
 const orgName = 'Organization';
 const updateddescription = 'This is updated description';
@@ -85,31 +85,10 @@ describe('Teams flow should work properly', () => {
   it('Add owner to created team', () => {
     //Clicking on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
-
-    //Clicking on edit owner button
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
-
-    cy.wait(1000);
-
-    //Clicking on users tab
-    cy.get('button[data-testid="dropdown-tab"]')
-      .should('exist')
-      .should('be.visible')
-      .contains('Users')
-      .click();
-
-    cy.get('[data-testid="list-item"]')
-      .should('contain', TEAM_DETAILS.ownername)
-      .click();
-
-    //Asserting the added name
-    cy.get('[data-testid="owner-link"]').should(
-      'contain',
-      TEAM_DETAILS.ownername
-    );
+    updateOwner()
   });
 
-  it('Add user to created team', () => {
+it('Add user to created team', () => {
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
@@ -174,8 +153,7 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .type(TEAM_DETAILS.ownername);
 
-    cy.get('[data-testid="add-user"]')
-      .should('be.visible')
+    cy.get('[data-testid="add-user"]').should('be.visible');
     //   .should('not.contain', TEAM_DETAILS.ownername);
   });
 

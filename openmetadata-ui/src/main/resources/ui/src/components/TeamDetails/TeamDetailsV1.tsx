@@ -605,87 +605,92 @@ const TeamDetailsV1 = ({
 
     return (
       <div>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3">
-          <div className="tw-w-4/12">
-            <Searchbar
-              removeMargin
-              placeholder="Search for user..."
-              searchValue={teamUsersSearchText}
-              typingInterval={500}
-              onSearch={handleTeamUsersSearchAction}
-            />
-          </div>
+        {isEmpty(currentTeamUsers) &&
+        !teamUsersSearchText &&
+        !isTeamMemberLoading ? (
+          fetchErrorPlaceHolder({
+            description: (
+              <div className="tw-mb-2">
+                <p>
+                  There are no users{' '}
+                  {teamUsersSearchText
+                    ? `as ${teamUsersSearchText}.`
+                    : `added yet.`}
+                </p>
+                <p>Would like to start adding some?</p>
+              </div>
+            ),
+            disabled: !entityPermissions.EditAll,
+            title: entityPermissions.EditAll
+              ? 'Add New User'
+              : NO_PERMISSION_FOR_ACTION,
 
-          {currentTeamUsers.length > 0 && isActionAllowed() && (
-            <div>
-              <Button
-                className="tw-h-8 tw-px-2"
-                data-testid="add-user"
-                disabled={!entityPermissions.EditAll}
-                size="small"
-                theme="primary"
-                title={
-                  entityPermissions.EditAll
-                    ? 'Add User'
-                    : NO_PERMISSION_FOR_ACTION
-                }
-                variant="contained"
-                onClick={() => {
-                  handleAddUser(true);
-                }}>
-                Add User
-              </Button>
-            </div>
-          )}
-        </div>
-        {isTeamMemberLoading ? (
-          <Loader />
+            onClick: () => handleAddUser(true),
+            label: 'Add new user',
+            datatestid: 'add-user',
+          })
         ) : (
-          <div>
-            {currentTeamUsers.length <= 0 ? (
-              fetchErrorPlaceHolder({
-                description: (
-                  <div className="tw-mb-2">
-                    <p>
-                      There are no users{' '}
-                      {teamUsersSearchText
-                        ? `as ${teamUsersSearchText}.`
-                        : `added yet.`}
-                    </p>
-                    <p>Would like to start adding some?</p>
-                  </div>
-                ),
-                disabled: !entityPermissions.EditAll,
-                title: entityPermissions.EditAll
-                  ? 'Add New User'
-                  : NO_PERMISSION_FOR_ACTION,
-
-                onClick: () => handleAddUser(true),
-                label: 'Add new user',
-                datatestid: 'add-user',
-              })
-            ) : (
-              <Fragment>
-                <Table
-                  className="teams-list-table"
-                  columns={columns}
-                  dataSource={sortedUser}
-                  pagination={false}
-                  size="small"
+          <>
+            <div className="tw-flex tw-justify-between tw-items-center tw-mb-3">
+              <div className="tw-w-4/12">
+                <Searchbar
+                  removeMargin
+                  placeholder="Search for user..."
+                  searchValue={teamUsersSearchText}
+                  typingInterval={500}
+                  onSearch={handleTeamUsersSearchAction}
                 />
-                {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
-                  <NextPrevious
-                    currentPage={currentTeamUserPage}
-                    isNumberBased={Boolean(teamUsersSearchText)}
-                    pageSize={PAGE_SIZE_MEDIUM}
-                    paging={teamUserPagin}
-                    pagingHandler={teamUserPaginHandler}
-                    totalCount={teamUserPagin.total}
+              </div>
+
+              {currentTeamUsers.length > 0 && isActionAllowed() && (
+                <div>
+                  <Button
+                    className="tw-h-8 tw-px-2"
+                    data-testid="add-user"
+                    disabled={!entityPermissions.EditAll}
+                    size="small"
+                    theme="primary"
+                    title={
+                      entityPermissions.EditAll
+                        ? 'Add User'
+                        : NO_PERMISSION_FOR_ACTION
+                    }
+                    variant="contained"
+                    onClick={() => {
+                      handleAddUser(true);
+                    }}>
+                    Add User
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {isTeamMemberLoading ? (
+              <Loader />
+            ) : (
+              <div>
+                <Fragment>
+                  <Table
+                    className="teams-list-table"
+                    columns={columns}
+                    dataSource={sortedUser}
+                    pagination={false}
+                    size="small"
                   />
-                )}
-              </Fragment>
+                  {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
+                    <NextPrevious
+                      currentPage={currentTeamUserPage}
+                      isNumberBased={Boolean(teamUsersSearchText)}
+                      pageSize={PAGE_SIZE_MEDIUM}
+                      paging={teamUserPagin}
+                      pagingHandler={teamUserPaginHandler}
+                      totalCount={teamUserPagin.total}
+                    />
+                  )}
+                </Fragment>
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
     );
@@ -932,7 +937,7 @@ const TeamDetailsV1 = ({
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
               {currentTab === 1 &&
-                (isEmpty(table) ? (
+                (isEmpty(table) && !searchTerm ? (
                   fetchErrorPlaceHolder({
                     title: createTeamPermission
                       ? 'Add Team'

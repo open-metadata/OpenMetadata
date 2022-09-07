@@ -180,7 +180,7 @@ const UserListV1: FC<UserListV1Props> = ({
   }, [showRestore]);
 
   const fetchErrorPlaceHolder = useMemo(
-    () => () => {
+    () => (type: string) => {
       return (
         <ErrorPlaceHolder
           buttons={
@@ -193,15 +193,15 @@ const UserListV1: FC<UserListV1Props> = ({
             </Button>
           }
           heading="User"
-          type="ADD_DATA"
+          type={type}
         />
       );
     },
     []
   );
 
-  if (isEmpty(data) && !showDeletedUser && !isDataLoading) {
-    return fetchErrorPlaceHolder();
+  if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
+    return fetchErrorPlaceHolder('ADD_DATA');
   }
 
   return (

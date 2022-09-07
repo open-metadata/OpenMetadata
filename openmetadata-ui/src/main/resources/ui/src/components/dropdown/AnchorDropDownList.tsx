@@ -27,6 +27,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
     <>
       <button
         className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0"
+        data-testid="hiden-layer"
         onClick={() => setIsOpen && setIsOpen(false)}
       />
       <div
