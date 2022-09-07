@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getRoles } from '../../../axiosAPIs/rolesAPIV1';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
@@ -85,8 +86,32 @@ const RolesListPage = () => {
     fetchRoles();
   }, []);
 
+  const fetchErrorPlaceHolder = useMemo(
+    () => () => {
+      return (
+        <ErrorPlaceHolder
+          buttons={
+            <Button
+              ghost
+              data-testid="add-role"
+              disabled={!addRolePermission}
+              type="primary"
+              onClick={handleAddRole}>
+              Add Role
+            </Button>
+          }
+          heading="Role"
+          type="ADD_DATA"
+        />
+      );
+    },
+    []
+  );
+
   return isLoading ? (
     <Loader />
+  ) : isEmpty(roles) ? (
+    fetchErrorPlaceHolder()
   ) : (
     <Row
       className="roles-list-container"

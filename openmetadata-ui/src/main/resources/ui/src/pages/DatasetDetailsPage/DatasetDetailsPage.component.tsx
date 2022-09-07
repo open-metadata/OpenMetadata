@@ -50,6 +50,11 @@ import {
   EdgeData,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -58,6 +63,7 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -100,12 +106,14 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [isSampleDataLoading, setIsSampleDataLoading] =
@@ -173,6 +181,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
 
   // Data Quality tab state
   const [testMode, setTestMode] = useState<DatasetTestModeType>('table');
@@ -287,6 +299,24 @@ const DatasetDetailsPage: FunctionComponent = () => {
   ) => {
     !after && setEntityThread([]);
     getFeedData(after, feedType, threadType);
+  };
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setIsLoading(true);
+    try {
+      const tablePermission = await getEntityPermissionByFqn(
+        ResourceEntity.TABLE,
+        entityFqn
+      );
+
+      setTablePermissions(tablePermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchTableDetail = () => {
@@ -945,9 +975,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    fetchTableDetail();
-    setActiveTab(getCurrentDatasetTab(tab));
-    getEntityFeedCount();
+    if (tablePermissions.ViewAll) {
+      fetchTableDetail();
+      setActiveTab(getCurrentDatasetTab(tab));
+      getEntityFeedCount();
+    }
+  }, [tablePermissions]);
+
+  useEffect(() => {
+    fetchResourcePermission(tableFQN);
   }, [tableFQN]);
 
   useEffect(() => {
@@ -970,70 +1006,76 @@ const DatasetDetailsPage: FunctionComponent = () => {
           {getEntityMissingError('table', tableFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <DatasetDetails
-          activeTab={activeTab}
-          addLineageHandler={addLineageHandler}
-          columns={columns}
-          columnsUpdateHandler={columnsUpdateHandler}
-          createThread={createThread}
-          dataModel={tableDetails.dataModel}
-          datasetFQN={tableFQN}
-          deletePostHandler={deletePostHandler}
-          deleted={deleted}
-          description={description}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldTaskCount={entityFieldTaskCount}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityLineage={entityLineage}
-          entityLineageHandler={entityLineageHandler}
-          entityName={name}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={handleFeedFetchFromFeedList}
-          followTableHandler={followTable}
-          followers={followers}
-          handleAddColumnTestCase={handleAddColumnTestCase}
-          handleAddTableTestCase={handleAddTableTestCase}
-          handleExtentionUpdate={handleExtentionUpdate}
-          handleRemoveColumnTest={handleRemoveColumnTest}
-          handleRemoveTableTest={handleRemoveTableTest}
-          handleSelectedColumn={handleSelectedColumn}
-          handleShowTestForm={handleShowTestForm}
-          handleTestModeChange={handleTestModeChange}
-          isLineageLoading={isLineageLoading}
-          isNodeLoading={isNodeLoading}
-          isQueriesLoading={isTableQueriesLoading}
-          isSampleDataLoading={isSampleDataLoading}
-          isentityThreadLoading={isentityThreadLoading}
-          joins={joins}
-          lineageLeafNodes={leafNodes}
-          loadNodeHandler={loadNodeHandler}
-          owner={owner as EntityReference}
-          paging={paging}
-          postFeedHandler={postFeedHandler}
-          qualityTestFormHandler={qualityTestFormHandler}
-          removeLineageHandler={removeLineageHandler}
-          sampleData={sampleData}
-          selectedColumn={selectedColumn as string}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          showTestForm={showTestForm}
-          slashedTableName={slashedTableName}
-          tableDetails={tableDetails}
-          tableProfile={tableProfile}
-          tableQueries={tableQueries}
-          tableTags={tableTags}
-          tableTestCase={tableTestCase}
-          tableType={tableType}
-          tagUpdateHandler={onTagUpdate}
-          testMode={testMode}
-          tier={tier as TagLabel}
-          unfollowTableHandler={unfollowTable}
-          updateThreadHandler={updateThreadHandler}
-          usageSummary={usageSummary}
-          version={currentVersion}
-          versionHandler={versionHandler}
-        />
+        <>
+          {tablePermissions.ViewAll ? (
+            <DatasetDetails
+              activeTab={activeTab}
+              addLineageHandler={addLineageHandler}
+              columns={columns}
+              columnsUpdateHandler={columnsUpdateHandler}
+              createThread={createThread}
+              dataModel={tableDetails.dataModel}
+              datasetFQN={tableFQN}
+              deletePostHandler={deletePostHandler}
+              deleted={deleted}
+              description={description}
+              descriptionUpdateHandler={descriptionUpdateHandler}
+              entityFieldTaskCount={entityFieldTaskCount}
+              entityFieldThreadCount={entityFieldThreadCount}
+              entityLineage={entityLineage}
+              entityLineageHandler={entityLineageHandler}
+              entityName={name}
+              entityThread={entityThread}
+              feedCount={feedCount}
+              fetchFeedHandler={handleFeedFetchFromFeedList}
+              followTableHandler={followTable}
+              followers={followers}
+              handleAddColumnTestCase={handleAddColumnTestCase}
+              handleAddTableTestCase={handleAddTableTestCase}
+              handleExtentionUpdate={handleExtentionUpdate}
+              handleRemoveColumnTest={handleRemoveColumnTest}
+              handleRemoveTableTest={handleRemoveTableTest}
+              handleSelectedColumn={handleSelectedColumn}
+              handleShowTestForm={handleShowTestForm}
+              handleTestModeChange={handleTestModeChange}
+              isLineageLoading={isLineageLoading}
+              isNodeLoading={isNodeLoading}
+              isQueriesLoading={isTableQueriesLoading}
+              isSampleDataLoading={isSampleDataLoading}
+              isentityThreadLoading={isentityThreadLoading}
+              joins={joins}
+              lineageLeafNodes={leafNodes}
+              loadNodeHandler={loadNodeHandler}
+              owner={owner as EntityReference}
+              paging={paging}
+              postFeedHandler={postFeedHandler}
+              qualityTestFormHandler={qualityTestFormHandler}
+              removeLineageHandler={removeLineageHandler}
+              sampleData={sampleData}
+              selectedColumn={selectedColumn as string}
+              setActiveTabHandler={activeTabHandler}
+              settingsUpdateHandler={settingsUpdateHandler}
+              showTestForm={showTestForm}
+              slashedTableName={slashedTableName}
+              tableDetails={tableDetails}
+              tableProfile={tableProfile}
+              tableQueries={tableQueries}
+              tableTags={tableTags}
+              tableTestCase={tableTestCase}
+              tableType={tableType}
+              tagUpdateHandler={onTagUpdate}
+              testMode={testMode}
+              tier={tier as TagLabel}
+              unfollowTableHandler={unfollowTable}
+              updateThreadHandler={updateThreadHandler}
+              usageSummary={usageSummary}
+              version={currentVersion}
+              versionHandler={versionHandler}
+            />
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </>
   );

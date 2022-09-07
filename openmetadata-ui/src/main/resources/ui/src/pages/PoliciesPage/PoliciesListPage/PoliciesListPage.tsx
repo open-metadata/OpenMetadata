@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
@@ -82,8 +83,32 @@ const PoliciesListPage = () => {
     fetchPolicies();
   }, []);
 
+  const fetchErrorPlaceHolder = useMemo(
+    () => () => {
+      return (
+        <ErrorPlaceHolder
+          buttons={
+            <Button
+              ghost
+              data-testid="add-policy"
+              disabled={!addPolicyPermission}
+              type="primary"
+              onClick={handleAddPolicy}>
+              Add Policy
+            </Button>
+          }
+          heading="Policy"
+          type="ADD_DATA"
+        />
+      );
+    },
+    []
+  );
+
   return isLoading ? (
     <Loader />
+  ) : isEmpty(policies) ? (
+    fetchErrorPlaceHolder()
   ) : (
     <Row className="policies-list-container" gutter={[16, 16]}>
       <Col span={24}>

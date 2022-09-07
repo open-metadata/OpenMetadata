@@ -23,6 +23,7 @@ import React, {
 } from 'react';
 import AppState from '../../AppState';
 import {
+  getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
@@ -105,6 +106,25 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   };
 
+  const fetchEntityPermissionByFqn = async (
+    resource: ResourceEntity,
+    entityFqn: string
+  ) => {
+    const entityPermission = entitiesPermission[entityFqn];
+    if (entityPermission) {
+      return entityPermission;
+    } else {
+      const response = await getEntityPermissionByFqn(resource, entityFqn);
+      const operationPermission = getOperationPermissions(response);
+      setEntitiesPermission((prev) => ({
+        ...prev,
+        [entityFqn]: operationPermission,
+      }));
+
+      return operationPermission;
+    }
+  };
+
   const fetchResourcePermission = async (resource: ResourceEntity) => {
     const resourcePermission = resourcesPermission[resource];
     if (resourcePermission) {
@@ -134,6 +154,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
         permissions,
         getEntityPermission: fetchEntityPermission,
         getResourcePermission: fetchResourcePermission,
+        getEntityPermissionByFqn: fetchEntityPermissionByFqn,
       }}>
       {children}
     </PermissionContext.Provider>
