@@ -19,6 +19,7 @@ import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/a
 import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/pipeline/glueConnection.json';
+import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
@@ -50,6 +51,14 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
 
       break;
     }
+    case PipelineServiceType.Nifi: {
+      schema = nifiConnection;
+
+      break;
+    }
+
+    default:
+      break;
   }
 
   return cloneDeep({ schema, uiSchema });

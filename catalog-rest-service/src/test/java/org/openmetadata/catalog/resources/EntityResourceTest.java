@@ -740,7 +740,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Only Team of type Group is allowed to own entities
     List<Team> teams =
-        new TeamResourceTest().getTeamOfTypes(test, TeamType.BUSINESS_UNIT, TeamType.DEPARTMENT, TeamType.DEPARTMENT);
+        new TeamResourceTest().getTeamOfTypes(test, TeamType.BUSINESS_UNIT, TeamType.DIVISION, TeamType.DEPARTMENT);
     teams.add(ORG_TEAM);
     for (Team team : teams) {
       K create1 = createRequest(getEntityName(test), "", "", team.getEntityReference());
@@ -898,6 +898,30 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     request = createRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
+  }
+
+  @Test
+  void patch_validEntityOwner_200(TestInfo test) throws IOException {
+    if (!supportsOwner || !supportsPatch) {
+      return; // Entity doesn't support ownership
+    }
+
+    // Create an entity without owner
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Only team of type `group` is allowed to own the entities
+    String json = JsonUtils.pojoToJson(entity);
+    List<Team> teams =
+        new TeamResourceTest().getTeamOfTypes(test, TeamType.BUSINESS_UNIT, TeamType.DIVISION, TeamType.DEPARTMENT);
+    teams.add(ORG_TEAM);
+    for (Team team : teams) {
+      entity.setOwner(team.getEntityReference());
+      assertResponseContains(
+          () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+    }
   }
 
   @Test
@@ -1358,10 +1382,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+  protected void delete_entity_as_owner_401(TestInfo test) throws IOException {
+    if (!supportsOwner) {
+      return;
+    }
+    K request = createRequest(getEntityName(test), "", "", USER1_REF);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Deleting as the owner user should succeed
+    deleteEntity(entity.getId(), true, true, authHeaders(USER1.getName()));
+    assertEntityDeleted(entity, true);
+  }
+
+  @Test
+  protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    // Deleting as non-owner and non-admin should fail
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertResponse(() -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+    assertResponse(
+        () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */

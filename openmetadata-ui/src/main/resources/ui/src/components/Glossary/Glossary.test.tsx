@@ -22,24 +22,83 @@ import React from 'react';
 import { mockedAssetData, mockedGlossaries } from '../../mocks/Glossary.mock';
 import GlossaryV1 from './GlossaryV1.component';
 
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+    permissions: {
+      glossaryTerm: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      glossary: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+  DEFAULT_ENTITY_PERMISSION: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  },
+}));
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),
 }));
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
+jest.mock('antd', () => ({
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: {
+    Title: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
+  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
+    <div>
+      {children}
+      {overlay}
+    </div>
+  )),
+  Menu: jest.fn().mockImplementation(({ items }) => (
+    <div>
+      {items.map((item: { key: string; label: JSX.Element }) => {
+        <div key={item.key}>{item.label}</div>;
+      })}
+    </div>
+  )),
+}));
 
 jest.mock('../../components/GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
@@ -77,6 +136,12 @@ jest.mock('antd', () => ({
       })}
     </div>
   )),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children }) => <button>{children}</button>),
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
 }));
 
 jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
@@ -109,6 +174,7 @@ const mockProps = {
   onGlossaryTermDelete: jest.fn(),
   onAssetPaginate: jest.fn(),
   onRelatedTermClick: jest.fn(),
+  handleUserRedirection: jest.fn(),
 };
 
 describe('Test Glossary component', () => {

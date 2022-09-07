@@ -17,7 +17,17 @@ import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 jest.mock('antd', () => ({
-  Progress: jest.fn().mockImplementation(() => <span>progress bar</span>),
+  Progress: jest
+    .fn()
+    .mockImplementation(() => (
+      <span data-testid="progress-bar">progress bar</span>
+    )),
+  Row: jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <div data-testid="profiler-progress-bar-container">{children}</div>
+    )),
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 const mockProps: ProfilerProgressWidgetProps = {

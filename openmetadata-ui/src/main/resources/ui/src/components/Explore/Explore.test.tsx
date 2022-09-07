@@ -52,7 +52,7 @@ jest.mock('../../components/searched-data/SearchedData', () => {
 });
 
 jest.mock(
-  '../containers/PageLayout',
+  '../containers/PageLayoutV1',
   () =>
     ({
       children,
@@ -64,7 +64,7 @@ jest.mock(
       leftPanel: React.ReactNode;
     }) =>
       (
-        <div data-testid="PageLayout">
+        <div data-testid="PageLayoutV1">
           <div data-testid="left-panel-content">{leftPanel}</div>
           <div data-testid="right-panel-content">{rightPanel}</div>
           {children}
@@ -95,6 +95,7 @@ describe('Test Explore component', () => {
         handleFilterChange={mockFunction}
         handlePathChange={mockFunction}
         handleSearchText={mockFunction}
+        handleTabCounts={mockFunction}
         searchQuery=""
         searchResult={mockSearchResult}
         searchText=""
@@ -106,22 +107,15 @@ describe('Test Explore component', () => {
           topic: 2,
           dashboard: 8,
           pipeline: 5,
-          dbtModel: 7,
-          mlModel: 2,
+          mlmodel: 2,
         }}
-        updateDashboardCount={mockFunction}
-        updateDbtModelCount={mockFunction}
-        updateMlModelCount={mockFunction}
-        updatePipelineCount={mockFunction}
-        updateTableCount={mockFunction}
-        updateTopicCount={mockFunction}
         onShowDeleted={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const pageContainer = await findByTestId(container, 'PageLayout');
+    const pageContainer = await findByTestId(container, 'PageLayoutV1');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
     const tabs = await findAllByTestId(container, /tab/i);

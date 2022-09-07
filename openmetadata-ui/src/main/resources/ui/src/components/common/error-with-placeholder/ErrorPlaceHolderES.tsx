@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
+import { NoDataFoundPlaceHolder } from '../../../constants/services.const';
 
 type Props = {
   type: 'error' | 'noData';
@@ -64,15 +67,51 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   };
   const noRecordForES = () => {
     return (
-      <p className="tw-text-center" data-testid="no-search-results">
-        No matching data assets found
-        {query ? (
-          <>
-            {' '}
-            for <span className="tw-text-primary tw-font-medium">{query}</span>
-          </>
-        ) : null}
-      </p>
+      <div className="tw-text-center" data-testid="no-search-results">
+        <div className="flex-center flex-col tw-mt-32 " data-testid="error">
+          {' '}
+          <img
+            data-testid="no-data-image"
+            src={NoDataFoundPlaceHolder}
+            width="100"
+          />
+        </div>
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-6 tw-text-base tw-font-medium">
+          {query ? (
+            <>
+              No matching data assets found
+              {query ? (
+                <>
+                  {' '}
+                  for{' '}
+                  <span className="tw-text-primary tw-font-medium">
+                    {query}
+                  </span>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {' '}
+              <Typography.Text className="tw-text-sm">
+                No Data Available
+              </Typography.Text>
+              <Typography.Text className="tw-text-sm">
+                Start by adding a service connection to ingest data into
+                OpenMetadata.
+              </Typography.Text>
+              <Typography.Text className="tw-text-sm">
+                Refer to our{' '}
+                <Typography.Link href={CONNECTORS_DOCS} target="_blank">
+                  docs
+                </Typography.Link>{' '}
+                for more information.
+              </Typography.Text>
+              <span />
+            </>
+          )}
+        </div>
+      </div>
     );
   };
 

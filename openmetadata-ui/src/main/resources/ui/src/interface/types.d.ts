@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// organize-imports-ignore
 
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
+  import { Paging } from './../generated/type/paging';
+
   export interface EntityReference {
     deleted?: boolean;
 
@@ -240,6 +243,7 @@ declare module 'Models' {
     displayName: string;
     type: string;
     id: string;
+    teamType: string;
   };
 
   export type FormattedGlossaryTermData = {
@@ -580,6 +584,13 @@ declare module 'Models' {
     left: boolean;
     right: boolean;
   }
+
+  export interface PagingResponse<T> {
+    data: T;
+    paging: Paging;
+  }
+
+  export type Status = 'initial' | 'waiting' | 'success';
 
   // ES interface end
 

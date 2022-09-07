@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
@@ -51,6 +51,11 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -88,6 +93,7 @@ import {
   getEntityFieldThreadCounts,
   updateThreadData,
 } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
@@ -101,6 +107,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+
+  const { getEntityPermission } = usePermissionProvider();
 
   const { databaseSchemaFQN, tab } = useParams<Record<string, string>>();
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +143,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const history = useHistory();
   const isMounting = useRef(true);
+
+  const [databaseSchemaPermission, setDatabaseSchemaPermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchDatabaseSchemaPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.DATABASE_SCHEMA,
+        databaseSchema?.id as string
+      );
+      setDatabaseSchemaPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const tabs = [
     {
@@ -311,31 +334,31 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     return patchDatabaseSchemaDetails(databaseSchemaId, jsonPatch);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML && databaseSchema) {
       const updatedDatabaseSchemaDetails = {
         ...databaseSchema,
         description: updatedHTML,
       };
-      saveUpdatedDatabaseSchemaData(updatedDatabaseSchemaDetails)
-        .then((res) => {
-          if (res) {
-            setDatabaseSchema(updatedDatabaseSchemaDetails);
-            setDescription(updatedHTML);
-            getEntityFeedCount();
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-databaseSchema-error']
-          );
-        })
-        .finally(() => {
-          setIsEdit(false);
-        });
+
+      try {
+        const response = await saveUpdatedDatabaseSchemaData(
+          updatedDatabaseSchemaDetails
+        );
+        if (response) {
+          setDatabaseSchema(updatedDatabaseSchemaDetails);
+          setDescription(updatedHTML);
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
+    } else {
+      setIsEdit(false);
     }
   };
 
@@ -491,9 +514,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTableList = () => {
     return (
-      <Fragment>
+      <div className="tw-table-container tw-mb-4">
         <table
-          className="tw-bg-white tw-w-full tw-mb-4"
+          className="tw-bg-white tw-w-full"
           data-testid="databaseSchema-tables">
           <thead data-testid="table-header">
             <tr className="tableHead-row">
@@ -542,7 +565,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             )}
           </tbody>
         </table>
-      </Fragment>
+      </div>
     );
   };
 
@@ -559,10 +582,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
-
-  useEffect(() => {
     const currentTab = getCurrentDatabaseSchemaDetailsTab(tab);
     const currentTabIndex = currentTab - 1;
 
@@ -570,7 +589,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       activeTabHandler(1);
     }
     getDetailsByFQN();
+    getEntityFeedCount();
   }, []);
+
+  useEffect(() => {
+    if (databaseSchema?.id) {
+      fetchDatabaseSchemaPermission();
+    }
+  }, [databaseSchema]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -599,6 +625,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <ManageButton
                 isRecursiveDelete
                 allowSoftDelete={false}
+                canDelete={databaseSchemaPermission.Delete}
                 entityFQN={databaseSchemaFQN}
                 entityId={databaseSchemaId}
                 entityName={databaseSchemaName}
@@ -611,7 +638,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
                     data={info}
-                    updateOwner={handleUpdateOwner}
+                    updateOwner={
+                      databaseSchemaPermission.EditOwner ||
+                      databaseSchemaPermission.EditAll
+                        ? handleUpdateOwner
+                        : undefined
+                    }
                   />
 
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
@@ -633,6 +665,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 entityFqn={databaseSchemaFQN}
                 entityName={databaseSchemaName}
                 entityType={EntityType.DATABASE_SCHEMA}
+                hasEditAccess={
+                  databaseSchemaPermission.EditDescription ||
+                  databaseSchemaPermission.EditAll
+                }
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
@@ -648,27 +684,27 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 setActiveTab={activeTabHandler}
                 tabs={tabs}
               />
-              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+              <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && <Fragment>{getSchemaTableList()}</Fragment>}
                 {activeTab === 2 && (
-                  <div
-                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
+                  <Row
+                    className="tw-py-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
                     id="activityfeed">
-                    <div />
-                    <ActivityFeedList
-                      hideFeedFilter
-                      hideThreadFilter
-                      isEntityFeed
-                      withSidePanel
-                      className=""
-                      deletePostHandler={deletePostHandler}
-                      entityName={databaseSchemaName}
-                      feedList={entityThread}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                    />
-                    <div />
-                  </div>
+                    <Col offset={4} span={16}>
+                      <ActivityFeedList
+                        hideFeedFilter
+                        hideThreadFilter
+                        isEntityFeed
+                        withSidePanel
+                        className=""
+                        deletePostHandler={deletePostHandler}
+                        entityName={databaseSchemaName}
+                        feedList={entityThread}
+                        postFeedHandler={postFeedHandler}
+                        updateThreadHandler={updateThreadHandler}
+                      />
+                    </Col>
+                  </Row>
                 )}
                 <div
                   data-testid="observer-element"

@@ -12,8 +12,9 @@
  */
 
 import { ServiceTypes, StepperStepType } from 'Models';
+import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
-import noDataFound from '../assets/img/no-data-placeholder.png';
+import noDataFound from '../assets/img/no-data-placeholder.svg';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
 import athena from '../assets/img/service-icon-athena.png';
@@ -70,6 +71,7 @@ import { MlModelServiceType } from '../generated/entity/services/mlmodelService'
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 
 export const NoDataFoundPlaceHolder = noDataFound;
+export const AddPlaceHolder = addPlaceHolder;
 export const MYSQL = mysql;
 export const SQLITE = sqlite;
 export const MSSQL = mssql;
@@ -166,6 +168,7 @@ export const DEF_UI_SCHEMA = {
   supportsLineageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
 };
 

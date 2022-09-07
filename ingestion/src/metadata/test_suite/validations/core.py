@@ -103,7 +103,7 @@ validation_enum_registry.add("TableColumnCountToBeBetween")(
 )
 validation_enum_registry.add("TableColumnToMatchSet")(table_column_to_match_set)
 validation_enum_registry.add("TableColumnNameToExist")(table_column_name_to_exist)
-validation_enum_registry.add("TableCustomSQLQuery")(table_custom_sql_query)
+validation_enum_registry.add("tableCustomSQLQuery")(table_custom_sql_query)
 
 # # Column Tests
 validation_enum_registry.add("columnValuesToBeBetween")(column_values_to_be_between)
@@ -133,11 +133,11 @@ validation_enum_registry.add("columnValueStdDevToBeBetween")(
 
 # # Column Session Tests
 validation_enum_registry.add("columnValuesToBeNotInSet")(column_values_not_in_set)
-validation_enum_registry.add("columnValuesToBeInSet")(column_values_in_set)
+validation_enum_registry.add("ColumnValuesToBeInSet")(column_values_in_set)
 validation_enum_registry.add("columnValuesToMatchRegex")(column_values_to_match_regex)
 validation_enum_registry.add("columnValuesToNotMatchRegex")(
     column_values_to_not_match_regex
 )
-validation_enum_registry.add("columnValuesMissingCountToBeEqual")(
+validation_enum_registry.add("columnValuesMissingCount")(
     column_values_missing_count_to_be_equal
 )

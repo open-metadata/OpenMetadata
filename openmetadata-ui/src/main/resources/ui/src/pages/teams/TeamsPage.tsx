@@ -32,13 +32,9 @@ import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
 import Teams from '../../components/TeamDetails/Teams';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -49,7 +45,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 import AddUsersModalV1 from './AddUsersModalV1';
@@ -97,8 +93,6 @@ const TeamsPage = () => {
         break;
       } else if (team.children && team.children.length > 0) {
         updateTeamsHierarchy(team.children as Team[], parentTeam, data);
-
-        break;
       }
     }
   };
@@ -114,6 +108,7 @@ const TeamsPage = () => {
         ['defaultRoles', 'userCount', 'childrenCount'],
         {
           parentTeam: parentTeam ?? 'organization',
+          include: 'all',
         }
       );
 
@@ -174,7 +169,7 @@ const TeamsPage = () => {
     paging = {} as { [key: string]: string }
   ) => {
     setIsDataLoading(true);
-    getUsers('teams', PAGE_SIZE, { team, ...paging })
+    getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -191,15 +186,19 @@ const TeamsPage = () => {
   const fetchTeamByFqn = async (name: string) => {
     setIsPageLoading(true);
     try {
-      const data = await getTeamByName(name, [
-        'users',
-        'owns',
-        'defaultRoles',
-        'policies',
-        'owner',
-        'parents',
-        'children',
-      ]);
+      const data = await getTeamByName(
+        name,
+        [
+          'users',
+          'owns',
+          'defaultRoles',
+          'policies',
+          'owner',
+          'parents',
+          'childrenCount',
+        ],
+        'all'
+      );
 
       if (data) {
         getCurrentTeamUsers(data.name);
@@ -221,7 +220,7 @@ const TeamsPage = () => {
     searchData(
       text,
       currentPage,
-      PAGE_SIZE,
+      PAGE_SIZE_MEDIUM,
       `(teams.id:${selectedTeam?.id})`,
       '',
       '',
@@ -394,6 +393,10 @@ const TeamsPage = () => {
     });
   };
 
+  const handleCurrentUserPage = (value?: number) => {
+    setCurrentUserPage(value ?? INITIAL_PAGING_VALUE);
+  };
+
   const handleUsersSearchAction = (text: string) => {
     setUserSearchValue(text);
     setCurrentUserPage(INITIAL_PAGING_VALUE);
@@ -404,39 +407,29 @@ const TeamsPage = () => {
     }
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedTeam.description !== updatedHTML) {
       const updatedTeam = { ...selectedTeam, description: updatedHTML };
       const jsonPatch = compare(selectedTeam, updatedTeam);
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            fetchTeamByFqn(res.name);
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['update-team-error']
-          );
-        })
-        .finally(() => {
-          descriptionHandler(false);
-        });
+      try {
+        const response = await patchTeamDetail(selectedTeam.id, jsonPatch);
+        if (response) {
+          fetchTeamByFqn(response.name);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        descriptionHandler(false);
+      }
     } else {
       descriptionHandler(false);
     }
   };
 
   const afterDeleteAction = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.MEMBERS,
-        GlobalSettingOptions.TEAMS
-      )
-    );
+    history.push(getSettingPath(getTeamsWithFqnPath(TeamType.Organization)));
   };
 
   const handleShowDeletedTeam = (checked: boolean) => {
@@ -474,6 +467,7 @@ const TeamsPage = () => {
           descriptionHandler={descriptionHandler}
           handleAddTeam={handleAddTeam}
           handleAddUser={handleAddUsers}
+          handleCurrentUserPage={handleCurrentUserPage}
           handleJoinTeamClick={handleJoinTeamClick}
           handleLeaveTeamClick={handleLeaveTeamClick}
           handleTeamUsersSearchAction={handleUsersSearchAction}

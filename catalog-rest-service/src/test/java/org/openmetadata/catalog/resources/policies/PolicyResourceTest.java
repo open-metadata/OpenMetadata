@@ -16,12 +16,15 @@ package org.openmetadata.catalog.resources.policies;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.ALLOW;
 import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.DENY;
+import static org.openmetadata.catalog.type.MetadataOperation.EDIT_ALL;
+import static org.openmetadata.catalog.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
 import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
+import static org.openmetadata.catalog.util.EntityUtil.getRuleField;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -33,10 +36,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +59,7 @@ import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
@@ -68,7 +72,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Function;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -94,7 +97,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     POLICY1 = createEntity(createRequest("policy1").withOwner(null), ADMIN_AUTH_HEADERS);
     POLICY2 = createEntity(createRequest("policy2").withOwner(null), ADMIN_AUTH_HEADERS);
     TEAM_ONLY_POLICY = getEntityByName("TeamOnlyPolicy", "", ADMIN_AUTH_HEADERS);
-    TEAM_ONLY_POLICY_RULES = EntityUtil.resolveRules(TEAM_ONLY_POLICY.getRules());
+    TEAM_ONLY_POLICY_RULES = TEAM_ONLY_POLICY.getRules();
   }
 
   @Override
@@ -107,11 +110,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Override
   @SneakyThrows
   public void validateCreatedEntity(Policy policy, CreatePolicy createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getPolicyType(), policy.getPolicyType());
     if (createRequest.getLocation() != null) {
       assertEquals(createRequest.getLocation(), policy.getLocation().getId());
     }
-    assertEquals(createRequest.getRules(), resolveRules(policy.getRules()));
+    if (createRequest.getRules().size() > 1) {
+      createRequest.getRules().sort(Comparator.comparing(Rule::getName));
+    }
+    policy.getRules().sort(Comparator.comparing(Rule::getName));
+    assertEquals(createRequest.getRules(), policy.getRules());
   }
 
   @Override
@@ -132,17 +138,17 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       assertEquals(expectedLocation.getId(), actualLocation.getId());
     } else if (fieldName.equals("rules")) {
       List<Rule> expectedRule = (List<Rule>) expected;
-      List<Rule> actualRule = resolveRules(JsonUtils.readObjects(actual.toString(), Object.class));
+      List<Rule> actualRule = JsonUtils.readObjects(actual.toString(), Rule.class);
       assertEquals(expectedRule, actualRule);
+    } else if (fieldName.startsWith("rules") && (fieldName.endsWith("effect"))) {
+      Effect expectedEffect = (Effect) expected;
+      Effect actualEffect = Effect.fromValue(actual.toString());
+      assertEquals(expectedEffect, actualEffect);
+    } else if (fieldName.startsWith("rules") && (fieldName.endsWith("operations"))) {
+      assertEquals(expected.toString(), actual.toString());
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
-  }
-
-  @Test
-  void post_PolicyWithoutPolicyType_400_badRequest(TestInfo test) {
-    CreatePolicy create = createRequest(test).withPolicyType(null);
-    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[policyType must not be null]");
   }
 
   @Test
@@ -227,6 +233,20 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     failsToEvaluate(policyName, "abc");
   }
 
+  @Test
+  void delete_Disallowed() {
+    List<EntityReference> policies = new ArrayList<>(DATA_CONSUMER_ROLE.getPolicies());
+    policies.addAll(DATA_STEWARD_ROLE.getPolicies());
+    policies.add(TEAM_ONLY_POLICY.getEntityReference());
+
+    for (EntityReference policy : policies) {
+      assertResponse(
+          () -> deleteEntity(policy.getId(), ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, policy.getName()));
+    }
+  }
+
   private void failsToParse(String policyName, String condition) {
     validateCondition(policyName, condition, "Failed to parse");
   }
@@ -265,16 +285,35 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
   @Test
   void patch_PolicyRules(TestInfo test) throws IOException {
-    Rule rule1 = accessControlRule("rule1", List.of("all"), List.of(MetadataOperation.VIEW_ALL), ALLOW);
+    Rule rule1 = accessControlRule("rule1", List.of("all"), List.of(VIEW_ALL), ALLOW);
     Policy policy = createAndCheckEntity(createRequest(test).withRules(List.of(rule1)), ADMIN_AUTH_HEADERS);
 
-    // Change an existing rule1
+    // Change existing rule1 fields
     String origJson = JsonUtils.pojoToJson(policy);
-    Rule updatedRule1 = accessControlRule("rule1", List.of("all"), List.of(MetadataOperation.ALL), ALLOW);
-    policy.setRules(List.of(updatedRule1));
     ChangeDescription change = getChangeDescription(policy.getVersion());
-    fieldDeleted(change, "rules", List.of(rule1));
-    fieldAdded(change, "rules", List.of(updatedRule1));
+    rule1
+        .withDescription("description")
+        .withEffect(DENY)
+        .withResources(List.of("table"))
+        .withOperations(List.of(EDIT_ALL))
+        .withCondition("isOwner()");
+    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "description");
+    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
+    fieldUpdated(change, getRuleField(rule1, "resources"), List.of("all"), List.of("table"));
+    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
+    fieldAdded(change, getRuleField(rule1, "condition"), "isOwner()");
+
+    policy.setRules(List.of(rule1));
+    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Change existing rule1 fields. Update description and condition
+    origJson = JsonUtils.pojoToJson(policy);
+    change = getChangeDescription(policy.getVersion());
+    rule1.withDescription("newDescription").withCondition("noOwner()");
+    fieldUpdated(change, getRuleField(rule1, FIELD_DESCRIPTION), "description", "newDescription");
+    fieldUpdated(change, getRuleField(rule1, "condition"), "isOwner()", "noOwner()");
+
+    policy.setRules(List.of(rule1));
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add a new rule
@@ -285,11 +324,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     fieldAdded(change, "rules", List.of(newRule));
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Delete newRule1 rule
+    // Delete rule1 rule
     origJson = JsonUtils.pojoToJson(policy);
     policy.setRules(List.of(newRule));
     change = getChangeDescription(policy.getVersion());
-    fieldDeleted(change, "rules", List.of(updatedRule1));
+    fieldDeleted(change, "rules", List.of(rule1));
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -373,12 +412,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   private CreatePolicy createAccessControlPolicyWithRules(String name, List<Rule> rules) {
-    return new CreatePolicy()
-        .withName(name)
-        .withDescription("description")
-        .withPolicyType(PolicyType.AccessControl)
-        .withRules(rules.stream().map(rule -> (Object) rule).collect(Collectors.toList()))
-        .withOwner(USER1_REF);
+    return new CreatePolicy().withName(name).withDescription("description").withRules(rules).withOwner(USER1_REF);
   }
 
   private void validateCondition(String expression) throws HttpResponseException {

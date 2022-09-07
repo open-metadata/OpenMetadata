@@ -22,6 +22,7 @@ import React, {
   Fragment,
   HTMLAttributes,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import Select, { SingleValue } from 'react-select';
@@ -30,11 +31,10 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -46,12 +46,15 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botsData: User;
-  updateBotsDetails: (data: UserDetails) => void;
+  updateBotsDetails: (data: UserDetails) => Promise<void>;
   revokeTokenHandler: () => void;
 }
 
@@ -65,7 +68,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   updateBotsDetails,
   revokeTokenHandler,
 }) => {
-  const { permissions } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
@@ -76,23 +79,35 @@ const BotDetails: FC<BotsDetailProp> = ({
     useState<boolean>(false);
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
-
-  const editAllPermission = checkPermission(
-    Operation.EditAll,
-    ResourceEntity.BOT,
-    permissions
-  );
-  const displayNamePermission = checkPermission(
-    Operation.EditDisplayName,
-    ResourceEntity.BOT,
-    permissions
+  const [botPermission, setBotPermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
   );
 
-  const descriptionPermission = checkPermission(
-    Operation.EditDescription,
-    ResourceEntity.BOT,
-    permissions
+  const editAllPermission = useMemo(
+    () => botPermission.EditAll,
+    [botPermission]
   );
+  const displayNamePermission = useMemo(
+    () => botPermission.EditDisplayName,
+    [botPermission]
+  );
+
+  const descriptionPermission = useMemo(
+    () => botPermission.EditDescription,
+    [botPermission]
+  );
+
+  const fetchBotPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.BOT,
+        botsData.id
+      );
+      setBotPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const getJWTTokenExpiryOptions = () => {
     return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -177,10 +192,9 @@ const BotDetails: FC<BotsDetailProp> = ({
     setIsDisplayNameEdit(false);
   };
 
-  const handleDescriptionChange = (description: string) => {
-    if (description !== botsData.description) {
-      updateBotsDetails({ description });
-    }
+  const handleDescriptionChange = async (description: string) => {
+    await updateBotsDetails({ description });
+
     setIsDescriptionEdit(false);
   };
 
@@ -471,6 +485,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   useEffect(() => {
     if (botsData.id) {
       fetchBotsToken();
+      fetchBotPermission();
     }
   }, [botsData]);
 

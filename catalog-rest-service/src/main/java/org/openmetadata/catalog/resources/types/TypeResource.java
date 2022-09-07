@@ -111,7 +111,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             }
             this.dao.createOrUpdate(null, type);
             this.dao.addToRegistry(type);
-          } catch (IOException e) {
+          } catch (Exception e) {
             LOG.error("Error loading type {}", type.getName(), e);
           }
         });

@@ -8,11 +8,11 @@
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "webhookType": {
-      "description": "Type of webhook slack, generic, kafka, etc.",
+      "description": "Type of webhook slack, generic, msteams, etc.",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.WebhookType",
       "default": "generic",
-      "enum": ["slack", "generic", "kafka"],
+      "enum": ["slack", "generic", "msteams"],
       "javaEnums": [
         {
           "name": "slack"
@@ -21,7 +21,7 @@
           "name": "generic"
         },
         {
-          "name": "kafka"
+          "name": "msteams"
         }
       ]
     }
@@ -44,7 +44,7 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack, generic, kafka, etc.",
+      "description": "Type of webhook slack, generic, msteams, etc.",
       "$ref": "#/definitions/webhookType"
     },
     "description": {
@@ -68,14 +68,15 @@
       "type": "integer",
       "default": 10
     },
-    "kafkaProperties": {
-      "description": "Properties of Kafka Producer",
-      "$ref": "../../configuration/kafkaEventConfiguration.json"
-    },
     "timeout": {
       "description": "Connection timeout in seconds. (Default 10s).",
       "type": "integer",
       "default": 10
+    },
+    "readTimeout": {
+      "description": "Read timeout in seconds. (Default 12s).",
+      "type": "integer",
+      "default": 12
     },
     "enabled": {
       "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`).",

@@ -52,6 +52,9 @@ jest.mock('antd', () => ({
   Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -205,6 +208,17 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel.tsx', () => {
 jest.mock('../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
+
+jest.mock('../SampleDataTable/SampleDataTable.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="sample-data">Sample Data</p>);
+});
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
@@ -216,6 +230,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getEntityId: jest.fn().mockReturnValue('id-entity-test'),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 const mockObserve = jest.fn();
@@ -224,6 +239,34 @@ const mockunObserve = jest.fn();
 window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: mockObserve,
   unobserve: mockunObserve,
+}));
+
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    permissions: {},
+    getEntityPermission: jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      EditAll: true,
+      EditCustomFields: true,
+      EditDataProfile: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditLineage: true,
+      EditOwner: true,
+      EditQueries: true,
+      EditSampleData: true,
+      EditTags: true,
+      EditTests: true,
+      EditTier: true,
+      ViewAll: true,
+      ViewDataProfile: true,
+      ViewQueries: true,
+      ViewSampleData: true,
+      ViewTests: true,
+      ViewUsage: true,
+    }),
+  })),
 }));
 
 describe('Test MyDataDetailsPage page', () => {
@@ -240,8 +283,7 @@ describe('Test MyDataDetailsPage page', () => {
     const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
     const sampleDataTab = await findByTestId(tabs, 'Sample Data');
     const queriesTab = await findByTestId(tabs, 'Queries');
-    const profilerTab = await findByTestId(tabs, 'Profiler');
-    const dataQualityTab = await findByTestId(tabs, 'Data Quality');
+    const profilerTab = await findByTestId(tabs, 'Profiler & Data Quality');
     const lineageTab = await findByTestId(tabs, 'Lineage');
     const dbtTab = queryByTestId(tabs, 'DBT');
 
@@ -254,7 +296,6 @@ describe('Test MyDataDetailsPage page', () => {
     expect(sampleDataTab).toBeInTheDocument();
     expect(queriesTab).toBeInTheDocument();
     expect(profilerTab).toBeInTheDocument();
-    expect(dataQualityTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
     expect(dbtTab).not.toBeInTheDocument();
   });
@@ -316,18 +357,6 @@ describe('Test MyDataDetailsPage page', () => {
     expect(tableProfiler).toBeInTheDocument();
   });
 
-  it('Check if active tab is data quality', async () => {
-    const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={6} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const dataQuality = await findByTestId(container, 'data-quality-tab');
-
-    expect(dataQuality).toBeInTheDocument();
-  });
-
   it('Check if active tab is lineage', async () => {
     const { container } = render(
       <DatasetDetails {...DatasetDetailsProps} activeTab={7} />,
@@ -347,9 +376,9 @@ describe('Test MyDataDetailsPage page', () => {
         wrapper: MemoryRouter,
       }
     );
-    const customProperties = await findByTestId(
+    const customProperties = await findByText(
       container,
-      'custom-properties-table'
+      'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();

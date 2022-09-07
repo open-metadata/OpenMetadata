@@ -39,7 +39,7 @@ class TestSecretsManagerFactory(TestCase):
         with self.assertRaises(NotImplementedError) as not_implemented_error:
             om_connection: OpenMetadataConnection = (
                 TestSecretsManager.External.build_open_metadata_connection(
-                    SecretsManagerProvider.local
+                    SecretsManagerProvider.noop
                 )
             )
             om_connection.secretsManagerProvider = "aws"
@@ -51,7 +51,7 @@ class TestSecretsManagerFactory(TestCase):
     def test_get_none_secret_manager(self):
         om_connection: OpenMetadataConnection = (
             TestSecretsManager.External.build_open_metadata_connection(
-                SecretsManagerProvider.local
+                SecretsManagerProvider.noop
             )
         )
         om_connection.secretsManagerProvider = None

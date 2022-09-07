@@ -18,6 +18,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { CreateUser } from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/entity/teams/authN/jwtAuth';
 import { User } from '../generated/entity/teams/user';
+import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -172,6 +173,14 @@ export const generateUserToken = async (id: string, expiry: string) => {
 export const revokeUserToken = async (id: string) => {
   const response = await APIClient.put<string, AxiosResponse<User>>(
     `/users/revokeToken/${id}`
+  );
+
+  return response.data;
+};
+
+export const getGroupTypeTeams = async () => {
+  const response = await APIClient.get<EntityReference[]>(
+    `/users/loggedInUser/groupTeams`
   );
 
   return response.data;

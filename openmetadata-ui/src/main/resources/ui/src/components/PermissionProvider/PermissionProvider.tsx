@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import React, {
   createContext,
@@ -23,25 +22,27 @@ import React, {
   useState,
 } from 'react';
 import AppState from '../../AppState';
-import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
-import { getEntityPermissionById } from '../../axiosAPIs/rolesAPIV1';
+import {
+  getEntityPermissionById,
+  getLoggedInUserPermissions,
+  getResourcePermission,
+} from '../../axiosAPIs/permissionAPI';
 import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import {
   EntityPermissionMap,
   PermissionContextType,
   ResourceEntity,
   UIPermission,
 } from './PermissionProvider.interface';
-
 /**
  * Permission Context
  * Returns ResourcePermission List for loggedIn User
  * @returns PermissionMap
  */
+
 export const PermissionContext = createContext<PermissionContextType>(
   {} as PermissionContextType
 );
@@ -63,6 +64,10 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [entitiesPermission, setEntitiesPermission] =
     useState<EntityPermissionMap>({} as EntityPermissionMap);
 
+  const [resourcesPermission, setResourcesPermission] = useState<UIPermission>(
+    {} as UIPermission
+  );
+
   // Update current user details of AppState change
   const currentUser = useMemo(() => {
     return AppState.getCurrentUserDetails();
@@ -76,7 +81,8 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // eslint-disable-next-line no-console
+      console.error(error);
     }
   };
 
@@ -84,32 +90,42 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     resource: ResourceEntity,
     entityId: string
   ) => {
-    try {
-      const entityPermission = entitiesPermission[entityId];
-      if (entityPermission) {
-        return entityPermission;
-      } else {
-        const response = await getEntityPermissionById(resource, entityId);
-        const operationPermission = getOperationPermissions(response);
-        setEntitiesPermission((prev) => ({
-          ...prev,
-          [entityId]: operationPermission,
-        }));
+    const entityPermission = entitiesPermission[entityId];
+    if (entityPermission) {
+      return entityPermission;
+    } else {
+      const response = await getEntityPermissionById(resource, entityId);
+      const operationPermission = getOperationPermissions(response);
+      setEntitiesPermission((prev) => ({
+        ...prev,
+        [entityId]: operationPermission,
+      }));
 
-        return operationPermission;
-      }
-    } catch (error) {
-      return error as AxiosError;
+      return operationPermission;
+    }
+  };
+
+  const fetchResourcePermission = async (resource: ResourceEntity) => {
+    const resourcePermission = resourcesPermission[resource];
+    if (resourcePermission) {
+      return resourcePermission;
+    } else {
+      const response = await getResourcePermission(resource);
+      const operationPermission = getOperationPermissions(response);
+      /**
+       * Store resource permission if it's not exits
+       */
+      setResourcesPermission((prev) => ({
+        ...prev,
+        [resource]: operationPermission,
+      }));
+
+      return operationPermission;
     }
   };
 
   useEffect(() => {
-    /**
-     * Only fetch permission if user is logged In
-     */
-    if (currentUser && currentUser.id) {
-      fetchLoggedInUserPermissions();
-    }
+    fetchLoggedInUserPermissions();
   }, [currentUser]);
 
   return (
@@ -117,6 +133,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       value={{
         permissions,
         getEntityPermission: fetchEntityPermission,
+        getResourcePermission: fetchResourcePermission,
       }}>
       {children}
     </PermissionContext.Provider>

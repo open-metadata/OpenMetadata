@@ -11,14 +11,24 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Empty, Row } from 'antd';
+import {
+  Button,
+  Col,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Tooltip,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { getListTestCase } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { TestCase } from '../../generated/tests/testCase';
@@ -34,6 +44,7 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import {
@@ -43,14 +54,26 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
-  const { profile, columns } = table;
+const TableProfilerV1: FC<TableProfilerProps> = ({
+  table,
+  onAddTestClick,
+  permissions,
+}) => {
+  const { profile, columns = [] } = table;
+  const history = useHistory();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+  const [activeTab] = useState<ProfilerDashboardTab>(
+    ProfilerDashboardTab.SUMMARY
+  );
+
+  const viewTest = permissions.ViewAll || permissions.ViewTests;
+  const viewProfiler = permissions.ViewAll || permissions.ViewDataProfile;
+  const editTest = permissions.EditAll || permissions.EditTests;
 
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
@@ -87,6 +110,31 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
     ];
   }, [profile, tableTests]);
 
+  const tabOptions = [
+    {
+      label: ProfilerDashboardTab.SUMMARY,
+      value: ProfilerDashboardTab.SUMMARY,
+      disabled: !viewProfiler,
+    },
+    {
+      label: ProfilerDashboardTab.DATA_QUALITY,
+      value: ProfilerDashboardTab.DATA_QUALITY,
+      disabled: !viewTest,
+    },
+  ];
+
+  const handleTabChange = (e: RadioChangeEvent) => {
+    const value = e.target.value as ProfilerDashboardTab;
+    if (ProfilerDashboardTab.DATA_QUALITY === value) {
+      history.push(
+        getProfilerDashboardWithFqnPath(
+          ProfilerDashboardType.TABLE,
+          table.fullyQualifiedName || ''
+        )
+      );
+    }
+  };
+
   const fetchAllTests = async () => {
     try {
       const { data } = await getListTestCase({
@@ -121,64 +169,77 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
   };
 
   useEffect(() => {
-    if (isEmpty(table)) return;
-    fetchAllTests();
+    if (!isEmpty(table) && viewTest) {
+      fetchAllTests();
+    }
   }, [table]);
-
-  if (isUndefined(profile)) {
-    return (
-      <div
-        className=" tw-m-2 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-        data-testid="no-profiler-placeholder-container">
-        <Empty
-          description={
-            <p>
-              <span>
-                Data Profiler is an optional configuration in Ingestion. Please
-                enable the data profiler by following the documentation
-              </span>
-              <Link
-                className="tw-ml-1"
-                target="_blank"
-                to={{
-                  pathname:
-                    'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
-                }}>
-                here.
-              </Link>
-            </p>
-          }
-        />
-      </div>
-    );
-  }
 
   return (
     <div
       className="table-profiler-container"
       data-testid="table-profiler-container">
-      <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
-        <Link
-          to={getAddDataQualityTableTestPath(
-            ProfilerDashboardType.TABLE,
-            table.fullyQualifiedName || ''
-          )}>
-          <Button
-            className="tw-rounded"
-            data-testid="profiler-add-table-test-btn"
-            type="primary">
-            Add Test
-          </Button>
-        </Link>
-        <Button
-          className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
-          data-testid="profiler-setting-btn"
-          icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
-          type="default"
-          onClick={() => handleSettingModal(true)}>
-          Settings
-        </Button>
-      </div>
+      <Row className="tw-mb-4" justify="space-between">
+        <Radio.Group
+          buttonStyle="solid"
+          className="profiler-switch"
+          optionType="button"
+          options={tabOptions}
+          value={activeTab}
+          onChange={handleTabChange}
+        />
+
+        <Space>
+          <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+            <Link
+              to={
+                editTest
+                  ? getAddDataQualityTableTestPath(
+                      ProfilerDashboardType.TABLE,
+                      `${table.fullyQualifiedName}`
+                    )
+                  : '#'
+              }>
+              <Button
+                className="tw-rounded"
+                data-testid="profiler-add-table-test-btn"
+                disabled={!editTest}
+                type="primary">
+                Add Test
+              </Button>
+            </Link>
+          </Tooltip>
+          <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+              data-testid="profiler-setting-btn"
+              disabled={!editTest}
+              icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+              type="default"
+              onClick={() => handleSettingModal(true)}>
+              Settings
+            </Button>
+          </Tooltip>
+        </Space>
+      </Row>
+
+      {isUndefined(profile) && (
+        <div className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4">
+          <NoDataIcon />
+          <p className="tw-mb-0 tw-ml-2">
+            Data Profiler is an optional configuration in Ingestion. Please
+            enable the data profiler by following the documentation
+            <Link
+              className="tw-ml-1"
+              target="_blank"
+              to={{
+                pathname:
+                  'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+              }}>
+              here.
+            </Link>
+          </p>
+        </div>
+      )}
 
       <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
         {overallSummery.map((summery) => (
@@ -199,15 +260,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
             </p>
           </Col>
         ))}
-        <Col className="tw-flex tw-justify-end" span={24}>
-          <Link
-            to={getProfilerDashboardWithFqnPath(
-              ProfilerDashboardType.TABLE,
-              table.fullyQualifiedName || ''
-            )}>
-            View more detail
-          </Link>
-        </Col>
       </Row>
 
       <ColumnProfileTable
@@ -216,6 +268,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
           ...col,
           key: col.name,
         }))}
+        hasEditAccess={editTest}
         onAddTestClick={onAddTestClick}
       />
 

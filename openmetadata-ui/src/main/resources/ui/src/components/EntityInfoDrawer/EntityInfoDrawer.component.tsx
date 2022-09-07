@@ -60,7 +60,7 @@ const EntityInfoDrawer = ({
           'owner',
           'columns',
           'usageSummary',
-          'tableProfile',
+          'profile',
         ])
           .then((res) => {
             setEntityDetail(res);

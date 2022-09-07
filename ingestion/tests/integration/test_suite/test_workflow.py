@@ -76,8 +76,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                     "testDefinitionName": "TableColumnCountToBeBetween",
                                     "entityLink": "<#E::table::my.fully.qualified.name>",
                                     "parameterValues": [
-                                        {"name": "minColvalue", "value": 1},
-                                        {"name": "maxColvalue", "value": 5},
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 5},
                                     ],
                                 }
                             ],
@@ -150,8 +150,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                     "testDefinitionName": "TableColumnCountToBeBetween",
                                     "entityLink": "<#E::table::my.fully.qualified.name>",
                                     "parameterValues": [
-                                        {"name": "minColvalue", "value": 1},
-                                        {"name": "maxColvalue", "value": 5},
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 5},
                                     ],
                                 },
                                 {
@@ -159,8 +159,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                     "testDefinitionName": "TableColumnCountToBeBetween",
                                     "entityLink": "<#E::table::my.fully.qualified.name>",
                                     "parameterValues": [
-                                        {"name": "minColvalue", "value": 1},
-                                        {"name": "maxColvalue", "value": 5},
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 5},
                                     ],
                                 },
                             ],
@@ -173,8 +173,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                     "testDefinitionName": "TableColumnCountToBeBetween",
                                     "entityLink": "<#E::table::my.fully.qualified.name>",
                                     "parameterValues": [
-                                        {"name": "minColvalue", "value": 1},
-                                        {"name": "maxColvalue", "value": 5},
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 5},
                                     ],
                                 },
                             ],
@@ -216,8 +216,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                     "testDefinitionName": "TableColumnCountToBeBetween",
                                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
                                     "parameterValues": [
-                                        {"name": "minColvalue", "value": 1},
-                                        {"name": "maxColvalue", "value": 5},
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 5},
                                     ],
                                 },
                                 {
@@ -290,7 +290,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
                                     "parameterValues": [
                                         {"name": "minColValue", "value": 1},
-                                        {"name": "maxColvalue", "value": 10},
+                                        {"name": "maxColValue", "value": 10},
                                     ],
                                 },
                             ],

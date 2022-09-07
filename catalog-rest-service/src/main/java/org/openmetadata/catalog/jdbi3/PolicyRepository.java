@@ -13,14 +13,17 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static java.lang.Boolean.FALSE;
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.POLICY;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
+import static org.openmetadata.catalog.util.EntityUtil.getRuleField;
 import static org.openmetadata.catalog.util.EntityUtil.ruleMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -38,7 +41,6 @@ import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.security.policyevaluator.CompiledRule;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -138,13 +140,16 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return new PolicyUpdater(original, updated, operation);
   }
 
-  public void validateRules(Policy policy) throws IOException {
-    if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
-      return;
+  @Override
+  protected void preDelete(Policy entity) {
+    if (FALSE.equals(entity.getAllowDelete())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, entity.getName()));
     }
+  }
 
+  public void validateRules(Policy policy) throws IOException {
     // Resolve JSON blobs into Rule object and perform schema based validation
-    List<Rule> rules = EntityUtil.resolveRules(policy.getRules());
+    List<Rule> rules = policy.getRules();
     if (listOrEmpty(rules).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_RULES_IN_POLICY);
     }
@@ -159,13 +164,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public List<Policy> getAccessControlPolicies() throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
+    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("rules", ENABLED));
     ListFilter filter = new ListFilter();
     List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
-      if (!policy.getPolicyType().equals(PolicyType.AccessControl) && !Boolean.TRUE.equals(policy.getEnabled())) {
+      if (!Boolean.TRUE.equals(policy.getEnabled())) {
         continue;
       }
       policies.add(policy);
@@ -188,10 +193,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      // Disallow changing policyType.
-      if (original.getPolicyType() != updated.getPolicyType()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(POLICY, "policyType"));
-      }
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       updateLocation(original, updated);
       updateRules(original.getRules(), updated.getRules());
@@ -215,12 +216,51 @@ public class PolicyRepository extends EntityRepository<Policy> {
       recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
     }
 
-    private void updateRules(List<Object> origRules, List<Object> updatedRules) throws IOException {
+    private void updateRules(List<Rule> origRules, List<Rule> updatedRules) throws IOException {
       // Record change description
       List<Rule> deletedRules = new ArrayList<>();
       List<Rule> addedRules = new ArrayList<>();
-      recordListChange(
-          "rules", resolveRules(origRules), resolveRules(updatedRules), addedRules, deletedRules, ruleMatch);
+
+      recordListChange("rules", origRules, updatedRules, addedRules, deletedRules, ruleMatch);
+
+      // Record changes based on updatedRule
+      for (Rule updated : updatedRules) {
+        Rule stored = origRules.stream().filter(c -> ruleMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New Rule added
+          continue;
+        }
+
+        updateRuleDescription(stored, updated);
+        updateRuleEffect(stored, updated);
+        updateRuleOperations(stored, updated);
+        updateRuleResources(stored, updated);
+        updateRuleCondition(stored, updated);
+      }
+    }
+
+    private void updateRuleDescription(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, FIELD_DESCRIPTION);
+      recordChange(ruleField, stored.getDescription(), updated.getDescription());
+    }
+
+    private void updateRuleEffect(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "effect");
+      recordChange(ruleField, stored.getEffect(), updated.getEffect());
+    }
+
+    private void updateRuleOperations(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "operations");
+      recordChange(ruleField, stored.getOperations(), updated.getOperations());
+    }
+
+    private void updateRuleResources(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "resources");
+      recordChange(ruleField, stored.getResources(), updated.getResources());
+    }
+
+    private void updateRuleCondition(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "condition");
+      recordChange(ruleField, stored.getCondition(), updated.getCondition());
     }
   }
 }

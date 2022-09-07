@@ -98,6 +98,8 @@ const DeleteWidgetModal = ({
       return `glossaries`;
     } else if (entityType === EntityType.POLICY) {
       return 'policies';
+    } else if (entityType === EntityType.TEST_SUITE) {
+      return entityType;
     } else {
       return `${entityType}s`;
     }

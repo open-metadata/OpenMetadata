@@ -43,6 +43,7 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TMetric,
 )
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
@@ -216,13 +217,21 @@ class Profiler(Generic[TMetric]):
             self.profiler_interface.table_entity.tableProfilerConfig
             and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
         ):
-            metric_names = (
-                metric_array
-                for col_name, metric_array in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
-                if col_name == column
+            metric_names = next(
+                (
+                    include_columns.metrics
+                    for include_columns in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+                    if include_columns.columnName == column.name
+                ),
+                None,
             )
+
             if metric_names:
-                metrics = [Metric.get(metric_name) for metric_name in metric_names]
+                metrics = [
+                    Metric.value
+                    for Metric in Metrics
+                    if Metric.value.name() in metric_names
+                ]
 
         return [metric for metric in metrics if metric.is_col_metric()]
 
@@ -290,11 +299,6 @@ class Profiler(Generic[TMetric]):
 
     def _prepare_column_metrics_for_thread_pool(self):
         """prepare column metrics for thread pool"""
-        window_metrics = [
-            metric
-            for metric in self.get_col_metrics(self.static_metrics)
-            if metric.is_window_metric()
-        ]
         columns = [
             column
             for column in self.columns
@@ -375,10 +379,16 @@ class Profiler(Generic[TMetric]):
         self.compute_metrics()
 
         if generate_sample_data:
-            logger.info(
-                f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
-            )
-            sample_data = self.profiler_interface.fetch_sample_data()
+            try:
+                logger.info(
+                    f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                )
+                sample_data = self.profiler_interface.fetch_sample_data()
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error fetching sample data: {err}")
+                sample_data = None
+
         else:
             sample_data = None
 

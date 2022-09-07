@@ -6,7 +6,7 @@ slug: /sdk/python/ingestion/dbt
 # Python SDK for DBT
 We are going to show the integration of DBT with the Python SDK.
 
-We will be going through a series of steps on how to configure DBT in OpenMetadata and how the python SDK parses the DBT `manifest.json` and `catalog.json` files.
+We will be going through a series of steps on how to configure DBT in OpenMetadata and how the python SDK parses the DBT `manifest.json`, `catalog.json` and `run_results.json` files.
 
 ## Adding DBT configuration in JSON Config
 Below is an example showing the yaml config of the Redshift connector. The below example shows how to fetch the DBT files from AWS s3 bucket.
@@ -54,18 +54,19 @@ The `get_dbt_details` method takes in the source config provided in the json and
 ```python
 from metadata.utils.dbt_config import get_dbt_details
 
-dbt_details = get_dbt_details(dbtConfigSource)
-dbt_catalog = dbt_details[0] if dbt_details else None
-dbt_manifest = dbt_details[1] if dbt_details else None
+dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
+self.dbt_catalog = dbt_details[0] if dbt_details else None
+self.dbt_manifest = dbt_details[1] if dbt_details else None
+self.dbt_run_results = dbt_details[2] if dbt_details else None
 ```
 
-After scanning the buckets or the path provided the `manifest` and `catalog` files fetched.
+After scanning the buckets or the path provided, the `manifest`,`catalog` and `run_results` files are fetched.
 
 ## Parsing the DBT Files
-The `_parse_data_model` method parses the manifest and catalog files that are fetched and converts the DBT data into `DataModel`.
+The `_parse_data_model` method parses the manifest, catalog and run_results files that are fetched and converts the DBT data into `DataModel`.
 
 ```python
-from metadata.ingestion.source.sql_source import _parse_data_model()
+from metadata.ingestion.source.database.dbt_source import _parse_data_model()
 
 _parse_data_model()
 ```

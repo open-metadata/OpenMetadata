@@ -15,7 +15,7 @@ import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
-import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -23,6 +23,7 @@ import {
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -141,26 +142,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Rows',
-          value: profile ? (
-            <TableProfilerGraph
-              className="tw--mt-5"
-              data={
-                [
-                  {
-                    date: new Date(profile?.timestamp || 0),
-                    value: profile.rowCount ?? 0,
-                  },
-                ] as Array<{
-                  date: Date;
-                  value: number;
-                }>
-              }
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-          ) : (
-            '--'
-          ),
+          value: profile && profile?.rowCount ? profile.rowCount : '--',
           isLink: false,
         },
       ];
@@ -442,4 +424,30 @@ export const filterEntityAssets = (data: EntityReference[]) => {
   const includedEntity = Object.values(AssetsType);
 
   return data.filter((d) => includedEntity.includes(d.type as AssetsType));
+};
+
+export const getResourceEntityFromEntityType = (entityType: string) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+    case SearchIndex.TABLE:
+      return ResourceEntity.TABLE;
+
+    case EntityType.TOPIC:
+    case SearchIndex.TOPIC:
+      return ResourceEntity.TOPIC;
+
+    case EntityType.DASHBOARD:
+    case SearchIndex.DASHBOARD:
+      return ResourceEntity.DASHBOARD;
+
+    case EntityType.PIPELINE:
+    case SearchIndex.PIPELINE:
+      return ResourceEntity.PIPELINE;
+
+    case EntityType.MLMODEL:
+    case SearchIndex.MLMODEL:
+      return ResourceEntity.ML_MODEL;
+  }
+
+  return ResourceEntity.ALL;
 };

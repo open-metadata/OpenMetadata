@@ -8,7 +8,6 @@ export const POLICY_DATA = {
   description:
     'Policy for Data Consumer to perform operations on metadata entities',
   href: 'http://localhost:8585/api/v1/policies/4b762714-8228-4a65-977c-86330c53ff5e',
-  policyType: 'AccessControl',
   enabled: true,
   version: 0.2,
   updatedAt: 1661494134803,

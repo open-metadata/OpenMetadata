@@ -221,7 +221,7 @@ const AddIngestion = ({
       '/tmp/query_log'
   );
   const [resultLimit, setResultLimit] = useState<number>(
-    (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
+    (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 1000
   );
   const usageIngestionType = useMemo(() => {
     return (
@@ -448,6 +448,11 @@ const AddIngestion = ({
           type: ConfigType.PipelineMetadata,
         };
       }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        return {
+          type: ConfigType.MlModelMetadata,
+        };
+      }
       default: {
         return {};
       }
@@ -550,7 +555,9 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: repeatFrequency,
+          scheduleInterval: isEmpty(repeatFrequency)
+            ? undefined
+            : repeatFrequency,
         },
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {

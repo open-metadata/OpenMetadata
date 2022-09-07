@@ -34,7 +34,13 @@ import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+const EDIT_HEADER_WEBHOOKS_TITLE: { [key: string]: string } = {
+  msteams: 'MS Teams',
+  slack: 'Edit Slack',
+  generic: 'Edit Webhook',
+};
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
@@ -63,11 +69,23 @@ const EditWebhookPage: FunctionComponent = () => {
   };
 
   const goToWebhooks = () => {
+    let type = GlobalSettingOptions.WEBHOOK;
+    switch (webhookData?.webhookType) {
+      case WebhookType.Msteams:
+        type = GlobalSettingOptions.MSTEAMS;
+
+        break;
+      case WebhookType.Slack:
+        type = GlobalSettingOptions.SLACK;
+
+        break;
+
+      default:
+        break;
+    }
+
     history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        GlobalSettingOptions.WEBHOOK
-      )
+      `${getSettingPath(GlobalSettingsMenuCategory.INTEGRATIONS, type)}`
     );
   };
 
@@ -86,6 +104,9 @@ const EditWebhookPage: FunctionComponent = () => {
             setStatus('initial');
             goToWebhooks();
           }, 500);
+          showSuccessToast(
+            jsonData['api-success-messages']['update-webhook-success']
+          );
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];
         }
@@ -126,9 +147,7 @@ const EditWebhookPage: FunctionComponent = () => {
             data={webhookData}
             deleteState={deleteStatus}
             header={
-              webhookData?.webhookType === WebhookType.Slack
-                ? 'Edit Slack'
-                : 'Edit Webhook'
+              EDIT_HEADER_WEBHOOKS_TITLE[webhookData?.webhookType || 'generic']
             }
             mode={FormSubmitType.EDIT}
             saveState={status}

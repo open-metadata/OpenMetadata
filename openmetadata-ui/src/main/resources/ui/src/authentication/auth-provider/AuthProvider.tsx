@@ -33,10 +33,7 @@ import React, {
 import { useHistory, useLocation } from 'react-router-dom';
 import appState from '../../AppState';
 import axiosClient from '../../axiosAPIs';
-import {
-  fetchAuthenticationConfig,
-  getLoggedInUserPermissions,
-} from '../../axiosAPIs/miscAPI';
+import { fetchAuthenticationConfig } from '../../axiosAPIs/miscAPI';
 import {
   getLoggedInUser,
   getUserByName,
@@ -166,32 +163,14 @@ export const AuthProvider = ({
     }
   };
 
-  const getUserPermissions = () => {
-    setLoading(true);
-    getLoggedInUserPermissions()
-      .then((res) => {
-        appState.updateUserPermissions(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-user-permission-error']
-        );
-      })
-      .finally(() => setLoading(false));
-  };
-
   const getLoggedInUserDetails = () => {
     setLoading(true);
     getLoggedInUser(userAPIQueryFields)
       .then((res) => {
         if (res) {
-          getUserPermissions();
           appState.updateUserDetails(res);
-          fetchAllUsers();
         } else {
           resetUserDetails();
-          setLoading(false);
         }
       })
       .catch((err: AxiosError) => {
@@ -204,6 +183,9 @@ export const AuthProvider = ({
             jsonData['api-error-messages']['fetch-logged-in-user-error']
           );
         }
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -282,21 +264,25 @@ export const AuthProvider = ({
    * It will try for max 3 times if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = () => {
-    // Try to renew token
-    silentSignInRetries < 3
-      ? renewIdToken()
-          .then(() => {
-            silentSignInRetries = 0;
-            // eslint-disable-next-line @typescript-eslint/no-use-before-define
-            startTokenExpiryTimer();
-          })
-          .catch((err) => {
-            // eslint-disable-next-line no-console
-            console.error('Error while attempting for silent signIn. ', err);
-            silentSignInRetries += 1;
-            trySilentSignIn();
-          })
-      : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
+    const pathName = location.pathname;
+    // Do not try silent sign in for SignIn or SignUp route
+    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
+      // Try to renew token
+      silentSignInRetries < 3
+        ? renewIdToken()
+            .then(() => {
+              silentSignInRetries = 0;
+              // eslint-disable-next-line @typescript-eslint/no-use-before-define
+              startTokenExpiryTimer();
+            })
+            .catch((err) => {
+              // eslint-disable-next-line no-console
+              console.error('Error while attempting for silent signIn. ', err);
+              silentSignInRetries += 1;
+              trySilentSignIn();
+            })
+        : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
+    }
   };
 
   /**
@@ -368,8 +354,6 @@ export const AuthProvider = ({
           } else {
             appState.updateUserDetails(res);
           }
-          getUserPermissions();
-          fetchAllUsers();
           handledVerifiedUser();
           // Start expiry timer on successful login
           startTokenExpiryTimer();
@@ -383,7 +367,8 @@ export const AuthProvider = ({
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
         } else {
-          showErrorToast(err);
+          // eslint-disable-next-line no-console
+          console.error(err);
           history.push(ROUTES.SIGNIN);
         }
       })
@@ -437,10 +422,7 @@ export const AuthProvider = ({
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
             storeRedirectPath();
-            showErrorToast(error);
             resetUserDetails(true);
-          } else if (status === ClientErrors.FORBIDDEN) {
-            showErrorToast(jsonData['api-error-messages']['forbidden-error']);
           }
         }
 

@@ -8,10 +8,11 @@ slug: /openmetadata/connectors/database/mssql
 In this section, we provide guides and references to use the MSSQL connector.
 
 Configure and schedule MSSQL metadata and profiler workflows from the OpenMetadata UI:
+- [Remote-Connection]() 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -42,6 +43,42 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+### For Remote Connection
+
+#### 1. SQL Server running
+
+Make sure the SQL server that you are trying to connect is in running state.
+
+#### 2. Allow remote connection on MSSMS(Microsoft SQL Server Management Studio)
+
+This step allow the sql server to accept remote connection request.
+
+<Image
+src="/images/openmetadata/connectors/mssql/remote-connection.png"
+alt="Remote Connection"
+caption="Rm"
+/>
+
+#### 3. Configure Windows Firewall 
+
+If you are using SQL server on windows, you must configure the firewall on the computer running SQL Server to allow access.
+
+- Step 1: On the Start menu, select Run, type WF.msc, and then select OK.
+
+Step 2: In the Windows Firewall with Advanced Security, in the left pane, right-click Inbound Rules, and then select New Rule in the action pane.
+
+Step 3: In the Rule Type dialog box, select Port, and then select Next.
+
+Step 4: In the Protocol and Ports dialog box, select TCP. Select Specific local ports, and then type the port number of the instance of the Database Engine, such as 1433 for the default instance. Select Next.
+
+Step 5: In the Action dialog box, select Allow the connection, and then select Next.
+
+Step 6: In the Profile dialog box, select any profiles that describe the computer connection environment when you want to connect to the Database Engine, and then select Next.
+
+Step 7: In the Name dialog box, type a name and description for this rule, and then select Finish.
+
+For details step please refer the this [link](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-windows-firewall-for-database-engine-access?view=sql-server-ver15).
 
 ## Metadata Ingestion
 
@@ -229,13 +266,22 @@ text="Learn more about how to configure the Usage Workflow to ingest Query and L
 link="/openmetadata/ingestion/workflows/usage"
 />
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 <Tile
 icon="schema"
 title="Profiler Workflow"
-text="Learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI."
+text="Learn more about how to configure the Data Profiler from the UI."
 link="/openmetadata/ingestion/workflows/profiler"
+/>
+
+## Data Quality
+
+<Tile
+icon="air"
+title="Data Quality Workflow"
+text="Learn more about how to configure the Data Quality tests from the UI."
+link="/openmetadata/ingestion/workflows/data-quality"
 />
 
 ## DBT Integration

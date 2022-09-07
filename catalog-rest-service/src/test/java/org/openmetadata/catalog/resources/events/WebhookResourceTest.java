@@ -22,7 +22,6 @@ import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
@@ -65,16 +64,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     allEntityFilter.setEntityType("all");
     allEntityFilter.setFilters(
         List.of(
-            new Filters().withEventType(EventType.ENTITY_CREATED).withFields(allFilter),
-            new Filters().withEventType(EventType.ENTITY_UPDATED).withFields(allFilter),
-            new Filters().withEventType(EventType.ENTITY_DELETED).withFields(allFilter),
-            new Filters().withEventType(EventType.ENTITY_SOFT_DELETED).withFields(allFilter)));
+            new Filters().withEventType(EventType.ENTITY_CREATED).withInclude(allFilter).withExclude(new HashSet<>()),
+            new Filters().withEventType(EventType.ENTITY_UPDATED).withInclude(allFilter).withExclude(new HashSet<>()),
+            new Filters().withEventType(EventType.ENTITY_DELETED).withInclude(allFilter).withExclude(new HashSet<>()),
+            new Filters()
+                .withEventType(EventType.ENTITY_SOFT_DELETED)
+                .withInclude(allFilter)
+                .withExclude(new HashSet<>())));
     ALL_EVENTS_FILTER.add(allEntityFilter);
-    try {
-      System.out.println(JsonUtils.pojoToJson(ALL_EVENTS_FILTER));
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   public WebhookResourceTest() {
@@ -189,9 +186,12 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     Set<String> allFilter = new HashSet<>();
     allFilter.add("all");
 
-    Filters createFilter = new Filters().withEventType(EventType.ENTITY_CREATED).withFields(allFilter);
-    Filters updateFilter = new Filters().withEventType(EventType.ENTITY_UPDATED).withFields(allFilter);
-    Filters deleteFilter = new Filters().withEventType(EventType.ENTITY_DELETED).withFields(allFilter);
+    Filters createFilter =
+        new Filters().withEventType(EventType.ENTITY_CREATED).withInclude(allFilter).withExclude(new HashSet<>());
+    Filters updateFilter =
+        new Filters().withEventType(EventType.ENTITY_UPDATED).withInclude(allFilter).withExclude(new HashSet<>());
+    Filters deleteFilter =
+        new Filters().withEventType(EventType.ENTITY_DELETED).withInclude(allFilter).withExclude(new HashSet<>());
 
     EventFilter f1 = new EventFilter().withEntityType("all").withFilters(List.of(createFilter));
     EventFilter f2 =
@@ -300,16 +300,18 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     String name = EventType.ENTITY_CREATED + ":" + entity;
     String uri = baseUri + "/" + EventType.ENTITY_CREATED + "/" + entity;
 
-    Set<String> allFiler = new HashSet<>();
-    allFiler.add("all");
-    Filters createFilter = new Filters().withEventType(EventType.ENTITY_CREATED).withFields(allFiler);
+    Set<String> allFilter = new HashSet<>();
+    allFilter.add("all");
+    Filters createFilter =
+        new Filters().withEventType(EventType.ENTITY_CREATED).withInclude(allFilter).withExclude(new HashSet<>());
     EventFilter f1 = new EventFilter().withEntityType(entity).withFilters(List.of(createFilter));
     createWebhook(name, uri, List.of(f1));
 
     // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive entityUpdated events
     name = EventType.ENTITY_UPDATED + ":" + entity;
     uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
-    Filters updateFilter = new Filters().withEventType(EventType.ENTITY_UPDATED).withFields(allFiler);
+    Filters updateFilter =
+        new Filters().withEventType(EventType.ENTITY_UPDATED).withInclude(allFilter).withExclude(new HashSet<>());
     EventFilter f2 = new EventFilter().withEntityType(entity).withFilters(List.of(updateFilter));
     createWebhook(name, uri, List.of(f2));
 

@@ -41,14 +41,17 @@ const SchemaEditor = ({
   },
   options,
   editorClass,
+  onChange,
 }: {
   value: string;
   className?: string;
   mode?: Mode;
+  readOnly?: boolean;
   options?: {
     [key: string]: string | boolean | Array<string>;
   };
   editorClass?: string;
+  onChange?: (value: string) => void;
 }) => {
   const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
@@ -75,6 +78,13 @@ const SchemaEditor = ({
   ): void => {
     setInternalValue(getSchemaEditorValue(value));
   };
+  const handleEditorInputChange = (
+    _editor: Editor,
+    _data: EditorChange,
+    value: string
+  ): void => {
+    onChange && onChange(getSchemaEditorValue(value));
+  };
 
   return (
     <div className={className}>
@@ -83,6 +93,7 @@ const SchemaEditor = ({
         options={defaultOptions}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
+        onChange={handleEditorInputChange}
       />
     </div>
   );

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Radio, Row, Select, Space } from 'antd';
+import { Button, Col, Form, Radio, Row, Select, Space, Tooltip } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -25,6 +25,7 @@ import {
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -35,6 +36,7 @@ import {
   Table,
   TestCaseStatus,
 } from '../../generated/entity/data/table';
+import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -44,8 +46,9 @@ import {
   getEntityPlaceHolder,
   getNameFromFQN,
   getPartialNameFromTableFQN,
-  hasEditAccess,
 } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   generateEntityLink,
@@ -55,7 +58,13 @@ import {
 } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayout from '../containers/PageLayout';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from './component/DataQualityTab';
 import ProfilerTab from './component/ProfilerTab';
 import {
@@ -69,9 +78,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   testCases,
   fetchProfilerData,
   fetchTestCases,
+  onTestCaseUpdate,
   profilerData,
   onTableChange,
 }) => {
+  const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
@@ -84,11 +95,28 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
+  const [selectedTestType, setSelectedTestType] = useState('');
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
   );
+
+  const [permission, setPermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchTestCasePermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.TABLE,
+        table.id as string
+      );
+      setPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const tabOptions = useMemo(() => {
     return Object.values(ProfilerDashboardTab).filter((value) => {
@@ -115,7 +143,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       value: value,
     }));
     testCaseStatus.unshift({
-      label: 'All Test',
+      label: 'All',
+      value: '',
+    });
+
+    return testCaseStatus;
+  }, []);
+
+  const testCaseTypeOption = useMemo(() => {
+    const testCaseStatus: Record<string, string>[] = Object.entries(
+      TestType
+    ).map(([key, value]) => ({
+      label: key,
+      value: value,
+    }));
+    testCaseStatus.unshift({
+      label: 'All',
       value: '',
     });
 
@@ -126,9 +169,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const breadcrumb = useMemo(() => {
     const serviceName = getEntityName(table.service);
     const fqn = table.fullyQualifiedName || '';
-    const columnName = getNameFromFQN(entityTypeFQN);
+    const columnName = getPartialNameFromTableFQN(entityTypeFQN, [
+      FqnPart.NestedColumn,
+    ]);
 
-    return [
+    const data: TitleBreadcrumbProps['titleLinks'] = [
       {
         name: getEntityName(table.service),
         url: serviceName
@@ -143,22 +188,31 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       },
       {
         name: getPartialNameFromTableFQN(fqn, [FqnPart.Database]),
-        url: getDatabaseDetailsPath(fqn),
+        url: getDatabaseDetailsPath(table.database?.fullyQualifiedName || ''),
       },
       {
         name: getPartialNameFromTableFQN(fqn, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(fqn),
+        url: getDatabaseSchemaDetailsPath(
+          table.databaseSchema?.fullyQualifiedName || ''
+        ),
       },
       {
         name: getEntityName(table),
-        url: getTableTabPath(table.fullyQualifiedName || ''),
+        url: isColumnView
+          ? getTableTabPath(table.fullyQualifiedName || '', 'profiler')
+          : '',
       },
-      {
+    ];
+
+    if (isColumnView) {
+      data.push({
         name: columnName,
         url: '',
         activeTitle: true,
-      },
-    ];
+      });
+    }
+
+    return data;
   }, [table]);
 
   const extraInfo: Array<ExtraInfo> = useMemo(() => {
@@ -298,7 +352,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   const handleAddTestClick = () => {
     history.push(
-      getTableTabPath(table.fullyQualifiedName || '', 'data-quality')
+      getAddDataQualityTableTestPath(
+        isColumnView
+          ? ProfilerDashboardType.COLUMN
+          : ProfilerDashboardType.TABLE,
+        entityTypeFQN || ''
+      )
     );
   };
 
@@ -317,12 +376,29 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
   };
 
+  const handleTestCaseTypeChange = (value: string) => {
+    if (value !== selectedTestType) {
+      setSelectedTestType(value);
+    }
+  };
+
   const getFilterTestCase = () => {
-    return testCases.filter(
+    const dataByStatus = testCases.filter(
       (data) =>
         selectedTestCaseStatus === '' ||
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
     );
+
+    return isColumnView
+      ? dataByStatus
+      : dataByStatus.filter(
+          (data) =>
+            selectedTestType === '' ||
+            (selectedTestType === TestType.Table &&
+              entityTypeFQN === data.entityFQN) ||
+            (selectedTestType === TestType.Column &&
+              entityTypeFQN !== data.entityFQN)
+        );
   };
 
   useEffect(() => {
@@ -338,6 +414,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       setIsFollowing(
         follower.some(({ id }: { id: string }) => id === getCurrentUserId())
       );
+      fetchTestCasePermission();
     }
   }, [table]);
 
@@ -356,10 +433,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followHandler={handleFollowClick}
             followers={follower.length}
             followersList={follower}
-            hasEditAccess={hasEditAccess(
-              table.owner?.type || '',
-              table.owner?.id || ''
-            )}
             isFollowing={isFollowing}
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}
@@ -373,6 +446,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           <Row justify="space-between">
             <Radio.Group
               buttonStyle="solid"
+              className="profiler-switch"
               optionType="button"
               options={tabOptions}
               value={activeTab}
@@ -380,13 +454,24 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             />
 
             <Space size={16}>
+              {activeTab === ProfilerDashboardTab.DATA_QUALITY &&
+                !isColumnView && (
+                  <Form.Item className="tw-mb-0 tw-w-40" label="Type">
+                    <Select
+                      options={testCaseTypeOption}
+                      value={selectedTestType}
+                      onChange={handleTestCaseTypeChange}
+                    />
+                  </Form.Item>
+                )}
               {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
-                <Select
-                  className="tw-w-32"
-                  options={testCaseStatusOption}
-                  value={selectedTestCaseStatus}
-                  onChange={handleTestCaseStatusChange}
-                />
+                <Form.Item className="tw-mb-0 tw-w-40" label="Status">
+                  <Select
+                    options={testCaseStatusOption}
+                    value={selectedTestCaseStatus}
+                    onChange={handleTestCaseStatusChange}
+                  />
+                </Form.Item>
               )}
               {activeTab === ProfilerDashboardTab.PROFILER && (
                 <Select
@@ -396,9 +481,19 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                   onChange={handleTimeRangeChange}
                 />
               )}
-              <Button type="primary" onClick={handleAddTestClick}>
-                Add Test
-              </Button>
+              <Tooltip
+                title={
+                  permission.EditAll || permission.EditTests
+                    ? 'Add Test'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  disabled={!(permission.EditAll || permission.EditTests)}
+                  type="primary"
+                  onClick={handleAddTestClick}>
+                  Add Test
+                </Button>
+              </Tooltip>
             </Space>
           </Row>
         </Col>
@@ -414,7 +509,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
-            <DataQualityTab testCases={getFilterTestCase()} />
+            <DataQualityTab
+              hasAccess={permission.EditAll}
+              testCases={getFilterTestCase()}
+              onTestUpdate={onTestCaseUpdate}
+            />
           </Col>
         )}
       </Row>

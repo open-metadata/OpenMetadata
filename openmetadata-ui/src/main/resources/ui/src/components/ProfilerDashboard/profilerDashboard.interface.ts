@@ -25,6 +25,7 @@ export interface ProfilerDashboardProps {
   profilerData: ColumnProfile[];
   fetchProfilerData: (tableId: string, days?: number) => void;
   fetchTestCases: (fqn: string) => void;
+  onTestCaseUpdate: () => void;
 }
 
 export type MetricChartType = {
@@ -79,6 +80,8 @@ export interface ProfilerSummaryCardProps {
 
 export interface DataQualityTabProps {
   testCases: TestCase[];
+  onTestUpdate?: () => void;
+  hasAccess: boolean;
 }
 
 export interface TestSummaryProps {

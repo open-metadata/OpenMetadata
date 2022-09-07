@@ -7,32 +7,11 @@
   "javaType": "org.openmetadata.catalog.entity.policies.Policy",
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
-    "policyType": {
-      "javaType": "org.openmetadata.catalog.type.PolicyType",
-      "description": "This schema defines the type used for describing different types of policies.",
-      "type": "string",
-      "enum": ["AccessControl", "Lifecycle"],
-      "javaEnums": [
-        {
-          "name": "AccessControl"
-        },
-        {
-          "name": "Lifecycle"
-        }
-      ]
-    },
     "rules": {
       "description": "A set of rules associated with the Policy.",
       "type": "array",
       "items": {
-        "anyOf": [
-          {
-            "$ref": "accessControl/rule.json"
-          },
-          {
-            "$ref": "lifecycle/rule.json"
-          }
-        ]
+        "$ref": "accessControl/rule.json"
       }
     }
   },
@@ -65,9 +44,6 @@
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
-    },
-    "policyType": {
-      "$ref": "#/definitions/policyType"
     },
     "enabled": {
       "description": "Is the policy enabled.",
@@ -107,12 +83,20 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
+    "allowDelete" : {
+      "description": "Some system policies can't be deleted",
+      "type" : "boolean"
+    },
+    "allowEdit" : {
+      "description": "Some system roles can't be edited",
+      "type" : "boolean"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
     }
   },
-  "required": ["id", "name", "policyType", "rules"],
+  "required": ["id", "name", "rules"],
   "additionalProperties": false
 }

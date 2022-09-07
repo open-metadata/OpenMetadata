@@ -37,6 +37,10 @@
     "teamCount": {
       "description": "Team Count",
       "type": "integer"
+    },
+    "testSuiteCount": {
+      "description": "Test Suite Count",
+      "type": "integer"
     }
   },
   "additionalProperties": false

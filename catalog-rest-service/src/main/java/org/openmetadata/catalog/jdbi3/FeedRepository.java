@@ -633,6 +633,21 @@ public class FeedRepository {
         } else {
           // Only data assets are added as about
           List<String> jsons;
+          String userName = null;
+          List<String> teamNames = new ArrayList<>();
+          if (userId != null) {
+            List<EntityReference> teams =
+                populateEntityReferences(
+                    dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM),
+                    Entity.TEAM);
+            teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+            User user = dao.userDAO().findEntityById(UUID.fromString(userId));
+            userName = user.getName();
+          }
+          if (teamNames.isEmpty()) {
+            teamNames = List.of(StringUtils.EMPTY);
+          }
+
           if (paginationType == PaginationType.BEFORE) {
             jsons =
                 dao.feedDAO()
@@ -645,7 +660,10 @@ public class FeedRepository {
                         taskStatus,
                         activeAnnouncement,
                         isResolved,
-                        IS_ABOUT.ordinal());
+                        IS_ABOUT.ordinal(),
+                        userName,
+                        teamNames,
+                        filterType);
           } else {
             jsons =
                 dao.feedDAO()
@@ -658,7 +676,10 @@ public class FeedRepository {
                         taskStatus,
                         activeAnnouncement,
                         isResolved,
-                        IS_ABOUT.ordinal());
+                        IS_ABOUT.ordinal(),
+                        userName,
+                        teamNames,
+                        filterType);
           }
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
@@ -670,7 +691,10 @@ public class FeedRepository {
                       taskStatus,
                       activeAnnouncement,
                       isResolved,
-                      IS_ABOUT.ordinal());
+                      IS_ABOUT.ordinal(),
+                      userName,
+                      teamNames,
+                      filterType);
         }
       } else {
         // userId filter present
@@ -679,9 +703,11 @@ public class FeedRepository {
           // Only two filter types are supported for tasks -> ASSIGNED_TO, ASSIGNED_BY
           if (filterType == FilterType.ASSIGNED_BY) {
             filteredThreads = getTasksAssignedBy(userId, limit + 1, time, taskStatus, paginationType);
-          } else {
-            // make ASSIGNED_TO a default filter
+          } else if (filterType == FilterType.ASSIGNED_TO) {
             filteredThreads = getTasksAssignedTo(userId, limit + 1, time, taskStatus, paginationType);
+          } else {
+            // Get all the tasks assigned to or created by the user
+            filteredThreads = getTasksOfUser(userId, limit + 1, time, taskStatus, paginationType);
           }
         } else {
           if (filterType == FilterType.FOLLOWS) {
@@ -973,6 +999,28 @@ public class FeedRepository {
       thread.getTask().setAssignees(assignees);
     }
     return thread;
+  }
+
+  /** Return the tasks created by or assigned to the user. */
+  private FilteredThreads getTasksOfUser(
+      String userId, int limit, long time, TaskStatus status, PaginationType paginationType) throws IOException {
+    User user = dao.userDAO().findEntityById(UUID.fromString(userId));
+    String username = user.getName();
+    List<String> teamIds = getTeamIds(userId);
+    List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+    String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
+    List<String> jsons;
+    if (paginationType == PaginationType.BEFORE) {
+      jsons =
+          dao.feedDAO().listTasksOfUserBefore(userTeamJsonPostgres, userTeamJsonMysql, username, limit, time, status);
+    } else {
+      jsons =
+          dao.feedDAO().listTasksOfUserAfter(userTeamJsonPostgres, userTeamJsonMysql, username, limit, time, status);
+    }
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+    int totalCount = dao.feedDAO().listCountTasksOfUser(userTeamJsonPostgres, userTeamJsonMysql, username, status);
+    sortPostsInThreads(threads);
+    return new FilteredThreads(threads, totalCount);
   }
 
   /** Return the tasks created by the user. */

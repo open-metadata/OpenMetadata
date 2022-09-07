@@ -23,7 +23,6 @@ import {
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -42,7 +41,6 @@ import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import {
@@ -66,8 +64,6 @@ export type ModifiedGlossaryData = Glossary & {
 const GlossaryPageV1 = () => {
   const { glossaryName } = useParams<Record<string, string>>();
 
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isChildLoading, setIsChildLoading] = useState(true);
@@ -491,45 +487,40 @@ const GlossaryPageV1 = () => {
    * To update glossary
    * @param updatedData glossary with new values
    */
-  const updateGlossary = (updatedData: Glossary) => {
-    saveUpdatedGlossaryData(updatedData)
-      .then((data) => {
-        if (data) {
-          setSelectedData(data);
-          setGlossaries((pre) => {
-            return pre.map((item) => {
-              if (item.name === data.name) {
-                const { children } = item;
+  const updateGlossary = async (updatedData: Glossary) => {
+    try {
+      const response = await saveUpdatedGlossaryData(updatedData);
 
-                return extend(cloneDeep(item), { ...data, children });
-              } else {
-                return item;
-              }
-            });
-          });
-          setGlossariesList((pre) => {
-            return pre.map((item) => {
-              if (item.name === data.name) {
-                const { children } = item;
+      if (response) {
+        setSelectedData(response);
+        setGlossaries((pre) => {
+          return pre.map((item) => {
+            if (item.name === response.name) {
+              const { children } = item;
 
-                return extend(cloneDeep(item), { ...data, children });
-              } else {
-                return item;
-              }
-            });
+              return extend(cloneDeep(item), { ...response, children });
+            } else {
+              return item;
+            }
           });
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-description-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+        });
+        setGlossariesList((pre) => {
+          return pre.map((item) => {
+            if (item.name === response.name) {
+              const { children } = item;
+
+              return extend(cloneDeep(item), { ...response, children });
+            } else {
+              return item;
+            }
+          });
+        });
+      } else {
+        throw jsonData['api-error-messages']['update-description-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   /**
@@ -549,21 +540,17 @@ const GlossaryPageV1 = () => {
    * To update glossary term
    * @param updatedData glossary term with new values
    */
-  const handleGlossaryTermUpdate = (updatedData: GlossaryTerm) => {
-    saveUpdatedGlossaryTermData(updatedData)
-      .then((res) => {
-        if (res) {
-          setSelectedData(res);
-        } else {
-          throw jsonData['api-error-messages']['update-glossary-term-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-glossary-term-error']
-        );
-      });
+  const handleGlossaryTermUpdate = async (updatedData: GlossaryTerm) => {
+    try {
+      const response = await saveUpdatedGlossaryTermData(updatedData);
+      if (response) {
+        setSelectedData(response);
+      } else {
+        throw jsonData['api-error-messages']['update-glossary-term-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const afterDeleteAction = () => {
@@ -704,7 +691,7 @@ const GlossaryPageV1 = () => {
   }, [glossaryName]);
 
   return (
-    <PageContainerV1 className="tw-pt-4">
+    <PageContainerV1>
       {isLoading ? (
         <Loader />
       ) : (
@@ -724,7 +711,6 @@ const GlossaryPageV1 = () => {
           handleUserRedirection={handleUserRedirection}
           isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
-          isHasAccess={!isAdminUser && !isAuthDisabled}
           isSearchResultEmpty={isSearchResultEmpty}
           loadingKey={loadingKey}
           searchText={searchText}

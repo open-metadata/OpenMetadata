@@ -24,20 +24,20 @@ import Searchbar from '../common/searchbar/Searchbar';
 import EntityTableV1 from '../EntityTable/EntityTable.component';
 
 type Props = {
-  owner?: Table['owner'];
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
   columnName: string;
   tableConstraints: Table['tableConstraints'];
   sampleData?: TableData;
-  hasEditAccess?: boolean;
+  hasDescriptionEditAccess?: boolean;
+  hasTagEditAccess?: boolean;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
-  onUpdate?: (columns: Table['columns']) => void;
+  onUpdate?: (columns: Table['columns']) => Promise<void>;
 };
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -45,8 +45,8 @@ const SchemaTab: FunctionComponent<Props> = ({
   joins,
   onUpdate,
   columnName,
-  hasEditAccess,
-  owner,
+  hasDescriptionEditAccess,
+  hasTagEditAccess,
   entityFieldThreads,
   onThreadLinkSelect,
   onEntityFieldSelect,
@@ -81,10 +81,10 @@ const SchemaTab: FunctionComponent<Props> = ({
               entityFieldTasks={entityFieldTasks}
               entityFieldThreads={entityFieldThreads}
               entityFqn={entityFqn}
-              hasEditAccess={Boolean(hasEditAccess)}
+              hasDescriptionEditAccess={hasDescriptionEditAccess}
+              hasTagEditAccess={hasTagEditAccess}
               isReadOnly={isReadOnly}
               joins={joins}
-              owner={owner}
               searchText={lowerCase(searchText)}
               tableColumns={columns}
               tableConstraints={tableConstraints}

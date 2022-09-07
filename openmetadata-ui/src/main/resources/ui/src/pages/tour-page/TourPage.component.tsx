@@ -48,7 +48,7 @@ const exploreCount = {
   dashboard: 0,
   pipeline: 0,
   dbtModel: 0,
-  mlModel: 0,
+  mlmodel: 0,
 };
 
 const TourPage = () => {
@@ -66,7 +66,7 @@ const TourPage = () => {
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
   const [searchValue, setSearchValue] = useState('');
 
-  const handleCountChange = () => {
+  const handleCountChange = async () => {
     setExplorePageCounts(exploreCount);
   };
 
@@ -164,6 +164,7 @@ const TourPage = () => {
             handleFilterChange={handleFilterChange}
             handlePathChange={handleCountChange}
             handleSearchText={() => setExploreSearchResult(exploreSearchData)}
+            handleTabCounts={handleCountChange}
             searchQuery=""
             searchResult={exploreSearchResult as unknown as ExploreSearchData}
             searchText=""
@@ -171,12 +172,6 @@ const TourPage = () => {
             sortValue=""
             tab=""
             tabCounts={explorePageCounts}
-            updateDashboardCount={handleCountChange}
-            updateDbtModelCount={handleCountChange}
-            updateMlModelCount={handleCountChange}
-            updatePipelineCount={handleCountChange}
-            updateTableCount={handleCountChange}
-            updateTopicCount={handleCountChange}
             onShowDeleted={() => {
               return;
             }}

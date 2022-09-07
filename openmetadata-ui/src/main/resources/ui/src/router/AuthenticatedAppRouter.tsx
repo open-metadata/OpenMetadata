@@ -12,13 +12,12 @@
  */
 
 import { isEmpty } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import { usePermissionProvider } from '../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
-import AddDataQualityTestPage from '../pages/AddDataQualityTestPage/AddDataQualityTestPage';
 import { Operation } from '../generated/entity/policies/policy';
 import { checkPermission } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -31,6 +30,24 @@ const GlobalSettingPage = withSuspenseFallback(
 const ProfilerDashboardPage = withSuspenseFallback(
   React.lazy(
     () => import('../pages/ProfilerDashboardPage/ProfilerDashboardPage')
+  )
+);
+
+const TestSuiteIngestionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
+  )
+);
+
+const TestSuiteDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
+  )
+);
+
+const AddDataQualityTestPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/AddDataQualityTestPage/AddDataQualityTestPage')
   )
 );
 
@@ -195,6 +212,32 @@ const EditRulePage = withSuspenseFallback(
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
+  const glossaryPermission = useMemo(
+    () =>
+      checkPermission(Operation.ViewAll, ResourceEntity.GLOSSARY, permissions),
+    [permissions]
+  );
+
+  const glossaryTermPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.GLOSSARY_TERM,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const tagCategoryPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.TAG_CATEGORY,
+        permissions
+      ),
+    [permissions]
+  );
+
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
@@ -234,17 +277,37 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
-      <Route exact component={TagsPage} path={ROUTES.TAGS} />
-      <Route exact component={TagsPage} path={ROUTES.TAG_DETAILS} />
+      <AdminProtectedRoute
+        exact
+        component={TagsPage}
+        hasPermission={tagCategoryPermission}
+        path={ROUTES.TAGS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TagsPage}
+        hasPermission={tagCategoryPermission}
+        path={ROUTES.TAG_DETAILS}
+      />
       <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
-      <Route
+      <AdminProtectedRoute
         exact
         component={DatabaseDetails}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.DATABASE,
+          permissions
+        )}
         path={ROUTES.DATABASE_DETAILS_WITH_TAB}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={DatabaseSchemaPageComponent}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.DATABASE_SCHEMA,
+          permissions
+        )}
         path={ROUTES.SCHEMA_DETAILS}
       />
       <Route
@@ -286,9 +349,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
-      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY} />
-      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
-      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_TERMS} />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPageV1}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY}
+      />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPageV1}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPageV1}
+        hasPermission={glossaryTermPermission}
+        path={ROUTES.GLOSSARY_TERMS}
+      />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
@@ -388,14 +466,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.BOTS_PROFILE}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddCustomProperty}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.TYPE,
-          permissions
-        )}
         path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
       <Route
@@ -466,7 +539,17 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlobalSettingPage}
         path={ROUTES.SETTINGS_WITH_TAB_FQN}
       />
-
+      <Route exact component={TestSuiteDetailsPage} path={ROUTES.TEST_SUITES} />
+      <Route
+        exact
+        component={TestSuiteIngestionPage}
+        path={ROUTES.TEST_SUITES_ADD_INGESTION}
+      />
+      <Route
+        exact
+        component={TestSuiteIngestionPage}
+        path={ROUTES.TEST_SUITES_EDIT_INGESTION}
+      />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

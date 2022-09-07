@@ -23,8 +23,8 @@ public class SecretsManagerFactory {
             ? config.getSecretsManager()
             : SecretsManagerConfiguration.DEFAULT_SECRET_MANAGER;
     switch (secretManager) {
-      case LOCAL:
-        return LocalSecretsManager.getInstance(clusterName);
+      case NOOP:
+        return NoopSecretsManager.getInstance(clusterName);
       case AWS:
         return AWSSecretsManager.getInstance(config, clusterName);
       case AWS_SSM:

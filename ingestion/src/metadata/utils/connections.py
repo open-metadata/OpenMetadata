@@ -103,6 +103,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
+    RedpandaConnection,
+)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
@@ -168,7 +171,9 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
         echo=verbose,
         max_overflow=-1,
     )
-    listen(engine, "before_cursor_execute", inject_query_header, retval=True)
+
+    if hasattr(connection, "supportsQueryComment"):
+        listen(engine, "before_cursor_execute", inject_query_header, retval=True)
 
     return engine
 
@@ -327,8 +332,9 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
     return deltalake_connection
 
 
-@get_connection.register
-def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
+@get_connection.register(KafkaConnection)
+@get_connection.register(RedpandaConnection)
+def _(connection, verbose: bool = False) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
@@ -356,13 +362,10 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
             consumer_config["group.id"] = "openmetadata-consumer"
         if "auto.offset.reset" not in consumer_config:
             consumer_config["auto.offset.reset"] = "earliest"
-
-        for key in connection.schemaRegistryConfig:
-            consumer_config["schema.registry." + key] = connection.schemaRegistryConfig[
-                key
-            ]
         logger.debug(f"Using Kafka consumer config: {consumer_config}")
-        consumer_client = AvroConsumer(consumer_config)
+        consumer_client = AvroConsumer(
+            consumer_config, schema_registry=schema_registry_client
+        )
 
     return KafkaClient(
         admin_client=admin_client,

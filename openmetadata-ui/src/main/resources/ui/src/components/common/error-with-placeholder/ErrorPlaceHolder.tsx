@@ -11,31 +11,84 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import React from 'react';
-import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.png';
+import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
+import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
 
 type Props = {
   children?: React.ReactNode;
+  type?: string;
+  buttonLabel?: string;
+  buttonListener?: () => void;
+  heading?: string;
+  doc?: string;
+  buttons?: React.ReactNode;
+  buttonId?: string;
 };
 
-const ErrorPlaceHolder = ({ children }: Props) => (
-  <>
-    <div
-      className="tw-flex tw-flex-col tw-mt-24 tw-place-items-center"
-      data-testid="error">
-      {' '}
-      <img
-        data-testid="no-data-image"
-        src={NoDataFoundPlaceHolder}
-        width="200"
-      />
-    </div>
-    {children && (
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
-        {children}
+const ErrorPlaceHolder = ({ doc, type, children, heading, buttons }: Props) => {
+  const { Paragraph, Link } = Typography;
+
+  return type === 'ADD_DATA' ? (
+    <>
+      <div className="flex-center flex-col tw-mt-24 " data-testid="error">
+        {' '}
+        <img data-testid="no-data-image" src={AddPlaceHolder} width="100" />
       </div>
-    )}
-  </>
-);
+      <div className="tw-flex tw-flex-col tw-items-center tw-mt-9 tw-text-base tw-font-medium">
+        <Paragraph style={{ marginBottom: '4px' }}>
+          {' '}
+          Adding a new {heading} is easy, just give it a spin!
+        </Paragraph>
+        <Paragraph>
+          {' '}
+          Still need help? Refer to our{' '}
+          <Link href={doc} target="_blank">
+            docs
+          </Link>{' '}
+          for more information.
+        </Paragraph>
+
+        <div className="tw-text-lg tw-text-center">{buttons}</div>
+      </div>
+    </>
+  ) : (
+    <div className="flex-center flex-col tw-mt-24 w-full">
+      <div data-testid="error">
+        <img
+          data-testid="no-data-image"
+          src={NoDataFoundPlaceHolder}
+          width="100"
+        />
+      </div>
+      {children ? (
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
+          {children}
+        </div>
+      ) : (
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
+          <Typography.Text className="tw-text-sm">
+            No Data Available
+          </Typography.Text>
+          <Typography.Text className="tw-text-sm">
+            Go ahead and add a new {heading}!
+          </Typography.Text>
+          {doc ? (
+            <Typography.Text className="tw-text-sm">
+              Still need help? Refer to our{' '}
+              <Typography.Link href={doc} target="_blank">
+                docs
+              </Typography.Link>{' '}
+              for more information.
+            </Typography.Text>
+          ) : (
+            ''
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default ErrorPlaceHolder;

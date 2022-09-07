@@ -271,6 +271,7 @@ NEO4J_AMUNDSEN_USER_QUERY = textwrap.dedent(
         user.employee_type as employee_type, manager.email as manager_email,
         user.slack_id as slack_id, user.is_active as is_active, user.role_name as role_name,
         REDUCE(sum_r = 0, r in COLLECT(DISTINCT read)| sum_r + r.read_count) AS total_read,
+        COLLECT(DISTINCT b) as entities_owned,
         count(distinct b) as total_own,
         count(distinct c) AS total_follow
         order by user.email
@@ -525,3 +526,19 @@ on
  where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
 """
 )
+
+SNOWFLAKE_GET_CLUSTER_KEY = """
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
+  from   information_schema.tables 
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
+"""
+
+
+REDSHIFT_PARTITION_DETAILS = """
+  select "schema", "table", diststyle
+  from SVV_TABLE_INFO
+  where diststyle not like 'AUTO%%'
+"""

@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static java.lang.Boolean.FALSE;
 import static org.openmetadata.catalog.Entity.POLICIES;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -21,8 +22,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -35,8 +34,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
@@ -109,28 +106,16 @@ public class RoleRepository extends EntityRepository<Role> {
     }
   }
 
-  public ResultList<Role> getDefaultRolesResultList(UriInfo uriInfo, Fields fields) throws IOException {
-    List<Role> roles = getDefaultRoles(uriInfo, fields);
-    return new ResultList<>(roles, null, null, roles.size());
-  }
-
-  private List<Role> getDefaultRoles(UriInfo uriInfo, Fields fields) throws IOException {
-    List<Role> roles = new ArrayList<>();
-    for (String roleJson : daoCollection.roleDAO().getDefaultRoles()) {
-      roles.add(withHref(uriInfo, setFields(JsonUtils.readValue(roleJson, Role.class), fields)));
-    }
-    if (roles.size() > 1) {
-      LOG.warn(
-          "{} roles {}, are registered as default. There SHOULD be only one role marked as default.",
-          roles.size(),
-          roles.stream().map(Role::getName).collect(Collectors.toList()));
-    }
-    return roles;
-  }
-
   @Override
   public RoleUpdater getUpdater(Role original, Role updated, Operation operation) {
     return new RoleUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void preDelete(Role entity) {
+    if (FALSE.equals(entity.getAllowDelete())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.ROLE, entity.getName()));
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */

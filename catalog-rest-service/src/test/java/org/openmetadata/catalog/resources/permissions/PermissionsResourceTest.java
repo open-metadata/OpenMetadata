@@ -68,7 +68,6 @@ import org.openmetadata.catalog.type.Permission;
 import org.openmetadata.catalog.type.Permission.Access;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.type.ResourcePermission;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -97,21 +96,21 @@ class PermissionsResourceTest extends CatalogApplicationTest {
 
     Policy ORG_POLICY =
         policyResourceTest.getEntityByName(ORG_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
-    ORG_RULES = EntityUtil.resolveRules(ORG_POLICY.getRules());
+    ORG_RULES = ORG_POLICY.getRules();
 
     Policy DATA_STEWARD_POLICY =
         policyResourceTest.getEntityByName(DATA_STEWARD_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_STEWARD_RULES = EntityUtil.resolveRules(DATA_STEWARD_POLICY.getRules());
+    DATA_STEWARD_RULES = DATA_STEWARD_POLICY.getRules();
 
     DATA_STEWARD_POLICY =
         policyResourceTest.getEntityByName(DATA_STEWARD_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_STEWARD_RULES = EntityUtil.resolveRules(DATA_STEWARD_POLICY.getRules());
+    DATA_STEWARD_RULES = DATA_STEWARD_POLICY.getRules();
 
     DATA_STEWARD_USER = EntityResourceTest.USER_WITH_DATA_STEWARD_ROLE;
 
     Policy DATA_CONSUMER_POLICY =
         policyResourceTest.getEntityByName(DATA_CONSUMER_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_RULES = EntityUtil.resolveRules(DATA_CONSUMER_POLICY.getRules());
+    DATA_CONSUMER_RULES = DATA_CONSUMER_POLICY.getRules();
 
     DATA_CONSUMER_USER = EntityResourceTest.USER_WITH_DATA_CONSUMER_ROLE;
   }
@@ -169,6 +168,10 @@ class PermissionsResourceTest extends CatalogApplicationTest {
 
     // Data consumer must have all operations allowed based on Organization policy as an owner
     ResourcePermission actualPermission = getPermission(Entity.TABLE, table1.getId(), null, authHeaders);
+    assertAllOperationsAllowed(actualPermission);
+
+    // get permissions by resource entity name
+    actualPermission = getPermissionByName(Entity.TABLE, table1.getFullyQualifiedName(), null, authHeaders);
     assertAllOperationsAllowed(actualPermission);
 
     // Admin getting permissions for a specific resource on for Data consumer
@@ -298,6 +301,13 @@ class PermissionsResourceTest extends CatalogApplicationTest {
   public ResourcePermission getPermission(String resource, UUID uuid, String user, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("permissions/" + resource + "/" + uuid);
+    target = user != null ? target.queryParam("user", user) : target;
+    return TestUtils.get(target, ResourcePermission.class, authHeaders);
+  }
+
+  public ResourcePermission getPermissionByName(
+      String resource, String name, String user, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("permissions/" + resource + "/name/" + name);
     target = user != null ? target.queryParam("user", user) : target;
     return TestUtils.get(target, ResourcePermission.class, authHeaders);
   }

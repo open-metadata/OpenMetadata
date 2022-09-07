@@ -12,8 +12,9 @@
  */
 
 import { Popover } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isFunction, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -27,11 +28,13 @@ import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
 } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import { DescriptionProps } from './Description.interface';
 
 const Description: FC<DescriptionProps> = ({
+  className,
   hasEditAccess,
   onDescriptionEdit,
   description = '',
@@ -69,12 +72,24 @@ const Description: FC<DescriptionProps> = ({
     onDescriptionEdit && onDescriptionEdit();
   };
 
+  const handleSave = async (updatedDescription: string) => {
+    if (onDescriptionUpdate && isFunction(onDescriptionUpdate)) {
+      try {
+        await onDescriptionUpdate(updatedDescription);
+
+        onCancel && onCancel();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
   const RequestDescriptionEl = () => {
     const hasDescription = Boolean(description.trim());
 
     return onEntityFieldSelect ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
         data-testid="request-description"
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
@@ -106,11 +121,11 @@ const Description: FC<DescriptionProps> = ({
   }) => {
     return !isUndefined(descriptionThread) ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
         data-testid="description-thread"
         onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
         <span className="tw-flex">
-          <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
+          <SVGIcons alt="comments" icon={Icons.COMMENT} width="16px" />{' '}
           <span className="tw-ml-1" data-testid="description-thread-count">
             {' '}
             {descriptionThread.count}
@@ -121,7 +136,7 @@ const Description: FC<DescriptionProps> = ({
       <Fragment>
         {description?.trim() && onThreadLinkSelect ? (
           <button
-            className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+            className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
             data-testid="start-description-thread"
             onClick={() =>
               onThreadLinkSelect?.(
@@ -132,7 +147,7 @@ const Description: FC<DescriptionProps> = ({
                 )
               )
             }>
-            <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+            <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="16px" />
           </button>
         ) : null}
       </Fragment>
@@ -142,7 +157,7 @@ const Description: FC<DescriptionProps> = ({
   const getDescriptionTaskElement = () => {
     return !isUndefined(tasks) ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+        className="tw-w-7 tw-h-7 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
         data-testid="description-task"
         onClick={() => onThreadLinkSelect?.(tasks.entityLink, ThreadType.Task)}>
         <span className="tw-flex">
@@ -158,10 +173,10 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-1')}>
+      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-0.5')}>
         {hasEditAccess && (
           <button
-            className="tw-w-7 tw-h-8 tw-flex-none focus:tw-outline-none"
+            className="tw-w-7 tw-h-7 tw-flex-none focus:tw-outline-none"
             data-testid="edit-description"
             onClick={handleUpdate}>
             <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
@@ -181,8 +196,8 @@ const Description: FC<DescriptionProps> = ({
   };
 
   return (
-    <div className="schema-description tw-relative">
-      <div className="tw-px-3 tw-py-1 tw-flex">
+    <div className={`schema-description tw-relative ${className}`}>
+      <div className="tw-px-3 tw-py-1 tw-flex description-inner-main-container">
         <div className="tw-relative">
           <div
             className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"
@@ -204,7 +219,7 @@ const Description: FC<DescriptionProps> = ({
               placeholder="Enter Description"
               value={description}
               onCancel={onCancel}
-              onSave={onDescriptionUpdate}
+              onSave={handleSave}
             />
           )}
         </div>

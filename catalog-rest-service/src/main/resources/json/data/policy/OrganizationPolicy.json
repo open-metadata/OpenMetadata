@@ -3,8 +3,8 @@
   "displayName": "Organization Policy",
   "fullyQualifiedName": "OrganizationPolicy",
   "description": "Policy for all the users of an organization.",
-  "policyType": "AccessControl",
   "enabled": true,
+  "allowDelete": false,
   "rules": [
     {
       "name": "OrganizationPolicy-Owner-Rule",

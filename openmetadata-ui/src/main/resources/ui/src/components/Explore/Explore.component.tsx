@@ -16,7 +16,6 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
@@ -26,13 +25,7 @@ import {
   FormattedTableData,
   SearchResponse,
 } from 'Models';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -68,7 +61,8 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import { AdvanceField, ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
@@ -89,12 +83,8 @@ const Explore: React.FC<ExploreProps> = ({
   fetchData,
   showDeleted,
   onShowDeleted,
-  updateTableCount,
-  updateTopicCount,
-  updateDashboardCount,
-  updatePipelineCount,
   isFilterSelected,
-  updateMlModelCount,
+  handleTabCounts,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
@@ -273,23 +263,23 @@ const Explore: React.FC<ExploreProps> = ({
   const setCount = (count = 0, index = searchIndex) => {
     switch (index) {
       case SearchIndex.TABLE:
-        updateTableCount(count);
+        handleTabCounts({ table: count });
 
         break;
       case SearchIndex.DASHBOARD:
-        updateDashboardCount(count);
+        handleTabCounts({ dashboard: count });
 
         break;
       case SearchIndex.TOPIC:
-        updateTopicCount(count);
+        handleTabCounts({ topic: count });
 
         break;
       case SearchIndex.PIPELINE:
-        updatePipelineCount(count);
+        handleTabCounts({ pipeline: count });
 
         break;
       case SearchIndex.MLMODEL:
-        updateMlModelCount(count);
+        handleTabCounts({ mlmodel: count });
 
         break;
       default:
@@ -441,7 +431,7 @@ const Explore: React.FC<ExploreProps> = ({
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
       case SearchIndex.MLMODEL:
-        return getCountBadge(tabCounts.mlModel, className, isActive);
+        return getCountBadge(tabCounts.mlmodel, className, isActive);
       default:
         return getCountBadge();
     }
@@ -469,18 +459,6 @@ const Explore: React.FC<ExploreProps> = ({
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
           )}>
           <div className="tw-flex">
-            {/* <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
-              <Button
-                className={classNames('tw-underline tw-mt-5', {
-                  'tw-invisible': !getFilterCount(filters),
-                })}
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => resetFilters(true)}>
-                Clear All
-              </Button>
-            </div> */}
             <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
@@ -669,11 +647,9 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        style={{ ...leftPanelAntCardStyle, marginTop: '16px', height: '98%' }}>
-        <Fragment>
-          <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+      <LeftPanelCard id="explorer">
+        <div className="tw-py-3" data-testid="data-summary-container">
+          <div className="tw-w-64 tw-px-3 tw-flex-shrink-0">
             <Button
               className={classNames('tw-underline tw-pb-4')}
               disabled={!getFilterCount(filters)}
@@ -697,8 +673,8 @@ const Explore: React.FC<ExploreProps> = ({
               onSelectHandler={handleSelectedFilter}
             />
           )}
-        </Fragment>
-      </Card>
+        </div>
+      </LeftPanelCard>
     );
   };
 
@@ -706,38 +682,38 @@ const Explore: React.FC<ExploreProps> = ({
     !connectionError && Boolean(selectedAdvancedFields.length);
 
   return (
-    <Fragment>
-      <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
-        {error ? (
-          <ErrorPlaceHolderES errorMessage={error} type="error" />
-        ) : (
-          <>
-            {!connectionError && getTabs()}
-            {advanceFieldCheck && (
-              <AdvancedFields
-                fields={selectedAdvancedFields}
-                index={searchIndex}
-                onClear={onAdvancedFieldClear}
-                onFieldRemove={onAdvancedFieldRemove}
-                onFieldValueSelect={onAdvancedFieldValueSelect}
-              />
-            )}
-            <SearchedData
-              showResultCount
-              currentPage={currentPage}
-              data={data}
-              isFilterSelected={isFilterSelected}
-              isLoading={
-                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-              }
-              paginate={paginate}
-              searchText={searchText}
-              totalValue={totalNumberOfValue}
+    <PageLayoutV1
+      className="tw-h-full tw-px-6"
+      leftPanel={Boolean(!error) && fetchLeftPanel()}>
+      {error ? (
+        <ErrorPlaceHolderES errorMessage={error} type="error" />
+      ) : (
+        <div>
+          {!connectionError && getTabs()}
+          {advanceFieldCheck && (
+            <AdvancedFields
+              fields={selectedAdvancedFields}
+              index={searchIndex}
+              onClear={onAdvancedFieldClear}
+              onFieldRemove={onAdvancedFieldRemove}
+              onFieldValueSelect={onAdvancedFieldValueSelect}
             />
-          </>
-        )}
-      </PageLayout>
-    </Fragment>
+          )}
+          <SearchedData
+            showResultCount
+            currentPage={currentPage}
+            data={data}
+            isFilterSelected={isFilterSelected}
+            isLoading={
+              !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+            }
+            paginate={paginate}
+            searchText={searchText}
+            totalValue={totalNumberOfValue}
+          />
+        </div>
+      )}
+    </PageLayoutV1>
   );
 };
 

@@ -219,25 +219,21 @@ const MlModelPage = () => {
     return patchMlModelDetails(mlModelDetail.id, jsonPatch);
   };
 
-  const descriptionUpdateHandler = (updatedMlModel: Mlmodel) => {
-    saveUpdatedMlModelData(updatedMlModel)
-      .then((res) => {
-        if (res) {
-          const { description } = res;
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            description: description,
-          }));
-        } else {
-          throw jsonData['api-error-messages']['update-description-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedMlModel: Mlmodel) => {
+    try {
+      const response = await saveUpdatedMlModelData(updatedMlModel);
+      if (response) {
+        const { description } = response;
+        setMlModelDetail((preVDetail) => ({
+          ...preVDetail,
+          description: description,
+        }));
+      } else {
+        throw jsonData['api-error-messages']['update-description-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const followMlModel = () => {
@@ -334,21 +330,21 @@ const MlModelPage = () => {
     });
   };
 
-  const updateMlModelFeatures = (updatedMlModel: Mlmodel) => {
-    saveUpdatedMlModelData(updatedMlModel)
-      .then((res) => {
-        if (res) {
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            mlFeatures: res.mlFeatures,
-          }));
-        } else {
-          throw jsonData['api-error-messages']['unexpected-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+  const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
+    try {
+      const response = await saveUpdatedMlModelData(updatedMlModel);
+
+      if (response) {
+        setMlModelDetail((preVDetail) => ({
+          ...preVDetail,
+          mlFeatures: response.mlFeatures,
+        }));
+      } else {
+        throw jsonData['api-error-messages']['unexpected-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const handleExtentionUpdate = async (updatedMlModel: Mlmodel) => {

@@ -17,18 +17,18 @@ import { ColumnJoins, Table } from '../../generated/entity/data/table';
 import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 
 export interface EntityTableProps {
-  owner: Table['owner'];
   tableColumns: ModifiedTableColumn[];
   joins: Array<ColumnJoins>;
   columnName: string;
-  hasEditAccess: boolean;
+  hasDescriptionEditAccess?: boolean;
+  hasTagEditAccess?: boolean;
   tableConstraints: Table['tableConstraints'];
   searchText?: string;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
-  onUpdate?: (columns: ModifiedTableColumn[]) => void;
+  onUpdate?: (columns: ModifiedTableColumn[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
 }

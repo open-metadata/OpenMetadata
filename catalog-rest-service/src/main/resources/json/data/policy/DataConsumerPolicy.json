@@ -3,8 +3,8 @@
   "displayName": "Data Consumer Policy",
   "fullyQualifiedName": "DataConsumerPolicy",
   "description": "Policy for Data Consumer to perform operations on metadata entities",
-  "policyType": "AccessControl",
   "enabled": true,
+  "allowDelete": false,
   "rules": [
     {
       "name": "DataConsumerPolicy-EditRule",

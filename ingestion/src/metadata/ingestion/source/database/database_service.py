@@ -70,7 +70,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt_source import DBTMixin
 from metadata.utils import fqn
 from metadata.utils.dbt_config import get_dbt_details
-from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -121,7 +120,12 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process=["create_dbt_lineage", "yield_view_lineage"],
+        post_process=[
+            "create_dbt_lineage",
+            "create_dbt_tests_suite_definition",
+            "create_dbt_test_cases",
+            "yield_view_lineage",
+        ],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -230,6 +234,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
         self.dbt_catalog = dbt_details[0] if dbt_details else None
         self.dbt_manifest = dbt_details[1] if dbt_details else None
+        self.dbt_run_results = dbt_details[2] if dbt_details else None
         self.data_models = {}
 
     def prepare(self):

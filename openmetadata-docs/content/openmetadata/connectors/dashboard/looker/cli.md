@@ -52,8 +52,8 @@ source:
   serviceConnection:
     config:
       type: Looker
-      username: username
-      password: password
+      clientId: username
+      clientSecret: password
       hostPort: http://hostPort
   sourceConfig:
     config:
@@ -79,6 +79,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
@@ -87,8 +88,8 @@ workflowConfig:
 #### Source Configuration - Service Connection
 
 - **hostPort**: URL to the Looker instance.
-- **username**: Specify the User to connect to Looker. It should have enough privileges to read all the metadata.
-- **password**: Password to connect to Looker.
+- **clientId**: Specify the Client ID to connect to Looker. It should have enough privileges to read all the metadata.
+- **clientSecret**: Client Secret to connect to Looker.
 - **env**: Looker Environment.
 
 #### Source Configuration - Source Config

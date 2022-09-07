@@ -11,7 +11,7 @@ In this page, you will learn how to use the `metadata` CLI to run a one-ingestio
 
 <PythonMod connector="Amundsen" module="amundsen" />
 
-Make sure you are running openmetadata-ingestion version 0.10.2 or above.
+Make sure you are running openmetadata-ingestion version 0.11.0 or above.
 
 
 ## Create Database Services
@@ -83,8 +83,8 @@ source:
       encrypted: <true or false>
       modelClass: <modelclass>
   sourceConfig:
-    config:
-      enableDataProfiler: false
+    config: {}
+
 sink:
   type: metadata-rest
   config: {}

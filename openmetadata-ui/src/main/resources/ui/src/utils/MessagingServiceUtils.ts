@@ -18,6 +18,7 @@ import {
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
 import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
+import redpandaConnection from '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
   let retVal: string | undefined;
@@ -33,8 +34,20 @@ export const getBrokers = (config: MessagingConnection['config']) => {
 export const getMessagingConfig = (type: MessagingServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  if (type === MessagingServiceType.Kafka) {
-    schema = kafkaConnection;
+
+  switch (type) {
+    case MessagingServiceType.Kafka:
+      schema = kafkaConnection;
+
+      break;
+
+    case MessagingServiceType.Redpanda:
+      schema = redpandaConnection;
+
+      break;
+
+    default:
+      break;
   }
 
   return cloneDeep({ schema, uiSchema });

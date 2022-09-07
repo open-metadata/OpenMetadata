@@ -21,6 +21,7 @@ import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
   getAddWebhookPath,
   getEditWebhookPath,
+  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
@@ -40,16 +41,13 @@ export const SlackSettingsPage = () => {
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
-    getWebhooks(paging)
+    getWebhooks(paging, undefined, {
+      limit: PAGE_SIZE_MEDIUM,
+      webhookType: WebhookType.Slack,
+    })
       .then((response) => {
         if (response.data) {
-          // TODO: We are expecting filter support from BE (backend)
-          // Once we got it remove below lines and provide filter API calls
-          const slackData = response.data.filter(
-            (res) => res.webhookType === 'slack'
-          );
-          setData(slackData);
-          setData(slackData);
+          setData(response.data);
           setPaging(response.paging);
         } else {
           setData([]);
@@ -92,25 +90,8 @@ export const SlackSettingsPage = () => {
     history.push(getAddWebhookPath(WebhookType.Slack));
   };
 
-  const fetchSlackData = async () => {
-    try {
-      const response = await getWebhooks();
-
-      if (response.data) {
-        const slackData = response.data.filter(
-          (res) => res.webhookType === 'slack'
-        );
-        setData(slackData);
-      }
-      setIsLoading(false);
-    } catch (error) {
-      setData([]);
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchSlackData();
+    fetchData();
   }, []);
 
   return (

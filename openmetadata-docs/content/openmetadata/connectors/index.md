@@ -47,6 +47,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 ## Messaging Services
 
 - [Kafka](/openmetadata/connectors/messaging/kafka)
+- [Redpanda](/openmetadata/connectors/messaging/redpanda)
 
 ## Pipeline Services
 
@@ -54,6 +55,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [Airflow](/openmetadata/connectors/pipeline/airflow)
 - [Glue](/openmetadata/connectors/pipeline/glue)
 - [Fivetran](/openmetadata/connectors/pipeline/fivetran)
+- [Dagster](/openmetadata/connectors/pipeline/dagster)
 
 ## ML Model Services
 

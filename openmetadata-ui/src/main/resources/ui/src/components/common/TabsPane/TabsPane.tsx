@@ -14,9 +14,7 @@
 import classNames from 'classnames';
 import { camelCase, isNil } from 'lodash';
 import React from 'react';
-import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
 
 export type Tab = {
   name: string;
@@ -47,7 +45,10 @@ const TabsPane = ({
   rightPosButton,
 }: Props) => {
   const getTabClasses = (tab: number, activeTab: number) => {
-    return 'tw-gh-tabs tw-px-4' + (activeTab === tab ? ' active' : '');
+    return (
+      'tw-gh-tabs tw-px-0 tw-pt-2 tw-mr-8' +
+      (activeTab === tab ? ' active' : '')
+    );
   };
 
   return (
@@ -59,32 +60,17 @@ const TabsPane = ({
         <div className="tw-flex tw-flex-grow">
           {tabs.map((tab) =>
             !tab.isHidden ? (
-              tab.isProtected ? (
-                <NonAdminAction
-                  isOwner={tab.protectedState}
-                  key={tab.position}
-                  title={TITLE_FOR_NON_OWNER_ACTION}>
-                  <button
-                    className={getTabClasses(tab.position, activeTab)}
-                    data-testid={tab.name}
-                    id={camelCase(tab.name)}
-                    onClick={() => setActiveTab?.(tab.position)}>
-                    {tab.name}
-                  </button>
-                </NonAdminAction>
-              ) : (
-                <button
-                  className={getTabClasses(tab.position, activeTab)}
-                  data-testid={tab.name}
-                  id={camelCase(tab.name)}
-                  key={tab.position}
-                  onClick={() => setActiveTab?.(tab.position)}>
-                  {tab.name}
-                  {!isNil(tab.count)
-                    ? getCountBadge(tab.count, '', tab.position === activeTab)
-                    : null}
-                </button>
-              )
+              <button
+                className={getTabClasses(tab.position, activeTab)}
+                data-testid={tab.name}
+                id={camelCase(tab.name)}
+                key={tab.position}
+                onClick={() => setActiveTab?.(tab.position)}>
+                {tab.name}
+                {!isNil(tab.count)
+                  ? getCountBadge(tab.count, '', tab.position === activeTab)
+                  : null}
+              </button>
             ) : null
           )}
         </div>

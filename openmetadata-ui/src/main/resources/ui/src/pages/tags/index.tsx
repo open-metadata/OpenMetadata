@@ -12,14 +12,12 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createTag,
   createTagCategory,
@@ -29,21 +27,23 @@ import {
   updateTag,
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
-import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
+import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout, {
-  leftPanelAntCardStyle,
-} from '../../components/containers/PageLayout';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
 import {
   CreateTagCategory,
@@ -52,7 +52,6 @@ import {
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityReference } from '../../generated/type/entityReference';
-import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
@@ -62,14 +61,19 @@ import {
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
+import {
   getExplorePathWithInitFilters,
   getTagPath,
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
+import './TagPage.style.less';
 
 type DeleteTagDetailsType = {
   id: string;
@@ -85,10 +89,9 @@ type DeleteTagsType = {
 };
 
 const TagsPage = () => {
+  const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { tagCategoryName } = useParams<Record<string, string>>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
   const [currentCategory, setCurrentCategory] = useState<TagCategory>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
@@ -104,13 +107,45 @@ const TagsPage = () => {
     data: undefined,
     state: false,
   });
+  const [categoryPermissions, setCategoryPermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const fetchCategories = () => {
+  const createCategoryPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.TAG_CATEGORY,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const createTagPermission = useMemo(
+    () => checkPermission(Operation.Create, ResourceEntity.TAG, permissions),
+    [permissions]
+  );
+
+  const fetchCurrentCategoryPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.TAG_CATEGORY,
+        currentCategory?.id as string
+      );
+      setCategoryPermissions(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchCategories = (setCurrent?: boolean) => {
     setIsLoading(true);
     getTagCategories('usageCount')
       .then((res) => {
         if (res.data) {
           setCategoreis(res.data);
+          if (setCurrent) {
+            setCurrentCategory(res.data[0]);
+          }
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -289,28 +324,23 @@ const TagsPage = () => {
     }
   };
 
-  const UpdateCategory = (updatedHTML: string) => {
-    updateTagCategory(currentCategory?.name ?? '', {
-      name: currentCategory?.name ?? '',
-      description: updatedHTML,
-      categoryType: currentCategory?.categoryType,
-    })
-      .then((res) => {
-        if (res) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tag-category-error']
-        );
-      })
-      .finally(() => {
-        setIsEditCategory(false);
+  const UpdateCategory = async (updatedHTML: string) => {
+    try {
+      const response = await updateTagCategory(currentCategory?.name ?? '', {
+        name: currentCategory?.name ?? '',
+        description: updatedHTML,
+        categoryType: currentCategory?.categoryType,
       });
+      if (response) {
+        await fetchCurrentCategory(currentCategory?.name as string, true);
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsEditCategory(false);
+    }
   };
 
   const onNewTagChange = (data: TagCategory, forceSet = false) => {
@@ -365,28 +395,27 @@ const TagsPage = () => {
     }
   };
 
-  const updatePrimaryTag = (updatedHTML: string) => {
-    updateTag(currentCategory?.name ?? '', editTag?.name ?? '', {
-      name: editTag?.name ?? '',
-      description: updatedHTML,
-    })
-      .then((res) => {
-        if (res.data) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+  const updatePrimaryTag = async (updatedHTML: string) => {
+    try {
+      const response = await updateTag(
+        currentCategory?.name ?? '',
+        editTag?.name ?? '',
+        {
+          name: editTag?.name ?? '',
+          description: updatedHTML,
         }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      })
-      .finally(() => {
-        setIsEditTag(false);
-        setEditTag(undefined);
-      });
+      );
+      if (response) {
+        await fetchCurrentCategory(currentCategory?.name as string, true);
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsEditTag(false);
+      setEditTag(undefined);
+    }
   };
 
   const getUsageCountLink = (tagFQN: string) => {
@@ -398,59 +427,57 @@ const TagsPage = () => {
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchCategories(true);
   }, []);
 
   useEffect(() => {
-    setCurrentCategory(categories[0]);
     if (currentCategory) {
-      setCurrentCategory(currentCategory);
+      fetchCurrentCategoryPermission();
     }
-  }, [categories, currentCategory]);
+  }, [currentCategory]);
 
   useEffect(() => {
-    fetchCurrentCategory(tagCategoryName);
+    if (tagCategoryName) {
+      fetchCurrentCategory(tagCategoryName);
+    } else {
+      setCurrentCategory(categories[0]);
+    }
   }, [tagCategoryName]);
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        className="left-panel-container"
-        data-testid="data-summary-container"
-        size="small"
-        style={leftPanelAntCardStyle}
-        title={
-          <div className="tw-flex tw-justify-between tw-items-center">
-            <span
-              className="tw-heading tw-text-base tw-my-0"
-              style={{ fontSize: '14px' }}>
+      <LeftPanelCard id="tags">
+        <div className="tw-py-2" data-testid="data-summary-container">
+          <div className="tw-px-3">
+            <h6 className="tw-heading tw-text-sm tw-font-semibold">
               Tag Categories
-            </span>
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <Button
-                className={classNames('tw-px-2 ', {
-                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                })}
-                data-testid="add-category"
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={() => {
-                  setIsAddingCategory((prevState) => !prevState);
-                  setErrorDataCategory(undefined);
-                }}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
-            </NonAdminAction>
+            </h6>
+            <div className="tw-mb-3">
+              <Tooltip
+                title={
+                  createCategoryPermission
+                    ? 'Add Category'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <button
+                  className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
+                  data-testid="add-category"
+                  disabled={!createCategoryPermission}
+                  onClick={() => {
+                    setIsAddingCategory((prevState) => !prevState);
+                    setErrorDataCategory(undefined);
+                  }}>
+                  <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                  <span>Add Tag</span>
+                </button>
+              </Tooltip>
+            </div>
           </div>
-        }>
-        <>
+
           {categories &&
             categories.map((category: TagCategory) => (
               <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
                   category.name,
                   currentCategory?.name
                 )}`}
@@ -476,14 +503,14 @@ const TagsPage = () => {
                 )}
               </div>
             ))}
-        </>
-      </Card>
+        </div>
+      </LeftPanelCard>
     );
   };
 
   return (
-    <PageContainerV1 className="tw-py-4">
-      <PageLayout leftPanel={fetchLeftPanel()}>
+    <PageContainerV1>
+      <PageLayoutV1 leftPanel={fetchLeftPanel()}>
         {isLoading ? (
           <Loader />
         ) : error ? (
@@ -491,58 +518,50 @@ const TagsPage = () => {
             <p className="tw-text-center tw-m-auto">{error}</p>
           </ErrorPlaceHolder>
         ) : (
-          <div
-            className="full-height"
-            data-testid="tags-container"
-            style={{ padding: '14px' }}>
+          <div className="full-height" data-testid="tags-container">
             {currentCategory && (
               <div
                 className="tw-flex tw-justify-between tw-items-center"
                 data-testid="header">
                 <div
-                  className="tw-heading tw-text-link tw-text-base"
+                  className="tw-text-link tw-text-base tw-py-2"
                   data-testid="category-name">
                   {currentCategory.displayName ?? currentCategory.name}
                 </div>
-                <div>
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <div className="flex-center">
+                  <Tooltip
+                    title={
+                      createTagPermission || categoryPermissions.EditAll
+                        ? 'Add Tag'
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
                     <Button
-                      className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                        'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                      })}
+                      className="add-new-tag-btn"
                       data-testid="add-new-tag-button"
+                      disabled={
+                        !(createTagPermission || categoryPermissions.EditAll)
+                      }
                       size="small"
-                      theme="primary"
-                      variant="contained"
+                      type="primary"
                       onClick={() => {
                         setIsAddingTag((prevState) => !prevState);
                         setErrorDataTag(undefined);
                       }}>
                       Add new tag
                     </Button>
-                  </NonAdminAction>
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <Button
-                      className={classNames(
-                        'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
-                        {
-                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                        }
-                      )}
-                      data-testid="delete-tag-category-button"
-                      size="small"
-                      theme="primary"
-                      variant="outlined"
-                      onClick={() => {
-                        deleteTagHandler();
-                      }}>
-                      Delete category
-                    </Button>
-                  </NonAdminAction>
+                  </Tooltip>
+
+                  <Button
+                    className="tw-h-8 tw-rounded tw-ml-2"
+                    data-testid="delete-tag-category-button"
+                    disabled={!categoryPermissions.Delete}
+                    size="small"
+                    type="primary"
+                    onClick={() => {
+                      deleteTagHandler();
+                    }}>
+                    Delete category
+                  </Button>
                 </div>
               </div>
             )}
@@ -554,13 +573,17 @@ const TagsPage = () => {
                 entityName={
                   currentCategory?.displayName ?? currentCategory?.name
                 }
+                hasEditAccess={
+                  categoryPermissions.EditDescription ||
+                  categoryPermissions.EditAll
+                }
                 isEdit={isEditCategory}
                 onCancel={() => setIsEditCategory(false)}
                 onDescriptionEdit={() => setIsEditCategory(true)}
                 onDescriptionUpdate={UpdateCategory}
               />
             </div>
-            <div className="tw-bg-white">
+            <div className="tw-table-container">
               <table className="tw-w-full" data-testid="table">
                 <thead>
                   <tr className="tableHead-row">
@@ -605,10 +628,9 @@ const TagsPage = () => {
                                     </span>
                                   )}
                                 </div>
-                                <NonAdminAction
-                                  permission={Operation.EditDescription}
-                                  position="left"
-                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+
+                                {(categoryPermissions.EditDescription ||
+                                  categoryPermissions.EditAll) && (
                                   <button
                                     className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
                                     onClick={() => {
@@ -623,7 +645,7 @@ const TagsPage = () => {
                                       width="16px"
                                     />
                                   </button>
-                                </NonAdminAction>
+                                )}
                               </div>
                               <div className="tw-mt-1" data-testid="usage">
                                 <span className="tw-text-grey-muted tw-mr-1">
@@ -649,40 +671,37 @@ const TagsPage = () => {
                             </td>
                             <td className="tableBody-cell">
                               <div className="tw-text-center">
-                                <NonAdminAction
-                                  position="bottom"
-                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                  <button
-                                    className="link-text"
-                                    data-testid="delete-tag"
-                                    onClick={() =>
-                                      setDeleteTags({
-                                        data: {
-                                          id: tag.id as string,
-                                          name: tag.name,
-                                          categoryName: currentCategory.name,
-                                          isCategory: false,
-                                          status: 'waiting',
-                                        },
-                                        state: true,
-                                      })
-                                    }>
-                                    {deleteTags.data?.id === tag.id ? (
-                                      deleteTags.data?.status === 'success' ? (
-                                        <FontAwesomeIcon icon="check" />
-                                      ) : (
-                                        <Loader size="small" type="default" />
-                                      )
+                                <button
+                                  className="link-text"
+                                  data-testid="delete-tag"
+                                  disabled={!categoryPermissions.EditAll}
+                                  onClick={() =>
+                                    setDeleteTags({
+                                      data: {
+                                        id: tag.id as string,
+                                        name: tag.name,
+                                        categoryName: currentCategory.name,
+                                        isCategory: false,
+                                        status: 'waiting',
+                                      },
+                                      state: true,
+                                    })
+                                  }>
+                                  {deleteTags.data?.id === tag.id ? (
+                                    deleteTags.data?.status === 'success' ? (
+                                      <FontAwesomeIcon icon="check" />
                                     ) : (
-                                      <SVGIcons
-                                        alt="delete"
-                                        icon="icon-delete"
-                                        title="Delete"
-                                        width="16px"
-                                      />
-                                    )}
-                                  </button>
-                                </NonAdminAction>
+                                      <Loader size="small" type="default" />
+                                    )
+                                  ) : (
+                                    <SVGIcons
+                                      alt="delete"
+                                      icon="icon-delete"
+                                      title="Delete"
+                                      width="16px"
+                                    />
+                                  )}
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -769,7 +788,7 @@ const TagsPage = () => {
             )}
           </div>
         )}
-      </PageLayout>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

@@ -22,7 +22,7 @@ import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
@@ -61,7 +61,7 @@ const UserListPageV1 = () => {
   const fetchUsersList = async (
     isAdmin: boolean | undefined = undefined,
     param = {} as Record<string, string>,
-    limit = PAGE_SIZE
+    limit = PAGE_SIZE_MEDIUM
   ) => {
     setIsDataLoading(true);
     try {
@@ -109,7 +109,7 @@ const UserListPageV1 = () => {
       searchData(
         text,
         currentPage,
-        PAGE_SIZE,
+        PAGE_SIZE_MEDIUM,
         filters,
         '',
         '',

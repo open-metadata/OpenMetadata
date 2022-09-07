@@ -5,7 +5,10 @@ slug: /deployment/docker/volumes
 ## Docker Volumes
 Advance section
 
+
 Volumes provide the ability to connect specific filesystem paths of the container back to the host machine. If a directory or a file in the container is mounted, changes in that directory  or file can also be seen on the host machine.we are going to use a mapping of a directory present on the host macine with the container path.
+
+# Docker Volumes
 
 ## Volumes for MYSQL container:
 Following are the changes we have to do while mounting the directory for mysql in OpenMetadata.

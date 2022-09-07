@@ -17,7 +17,46 @@ import {
   mockedAssetData,
   mockedGlossaryTerms,
 } from '../../mocks/Glossary.mock';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
+
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+    permissions: {
+      glossaryTerm: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      glossary: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
@@ -26,32 +65,12 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 jest.mock('../../components/tags-container/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
 
 jest.mock('../common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
-});
-
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
-    ));
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -99,10 +118,22 @@ jest.mock('antd', () => ({
     )),
 }));
 
+jest.mock('./SummaryDetail', () =>
+  jest.fn().mockReturnValue(<div>SummaryDetails</div>)
+);
+
 const mockProps = {
   assetData: mockedAssetData,
   currentPage: 1,
-  isHasAccess: true,
+  permissions: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  } as OperationPermission,
   glossaryTerm: mockedGlossaryTerms[0],
   handleGlossaryTermUpdate: jest.fn(),
   onAssetPaginate: jest.fn(),

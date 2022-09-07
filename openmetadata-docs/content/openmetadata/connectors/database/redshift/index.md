@@ -11,7 +11,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -169,6 +169,12 @@ caption="Configure Metadata Ingestion Page"
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
+<Note>
+
+ During the metadata ingestion for redshift, the tables in which the distribution style i.e `DISTSTYLE` is not `AUTO` will be marked as partitioned tables
+ 
+</Note>
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The
@@ -226,13 +232,22 @@ text="Learn more about how to configure the Usage Workflow to ingest Query and L
 link="/openmetadata/ingestion/workflows/usage"
 />
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 <Tile
 icon="schema"
 title="Profiler Workflow"
-text="Learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI."
+text="Learn more about how to configure the Data Profiler from the UI."
 link="/openmetadata/ingestion/workflows/profiler"
+/>
+
+## Data Quality
+
+<Tile
+icon="air"
+title="Data Quality Workflow"
+text="Learn more about how to configure the Data Quality tests from the UI."
+link="/openmetadata/ingestion/workflows/data-quality"
 />
 
 ## DBT Integration

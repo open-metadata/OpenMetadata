@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -19,9 +20,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -32,16 +31,20 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
+  getOwnerValue,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -53,6 +56,11 @@ import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
@@ -110,6 +118,30 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     ThreadType.Conversation
   );
 
+  const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermission } = usePermissionProvider();
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      const permissions = await getEntityPermission(
+        ResourceEntity.TOPIC,
+        topicDetails.id
+      );
+      setTopicPermissions(permissions);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    }
+  }, [topicDetails.id, getEntityPermission, setTopicPermissions]);
+
+  useEffect(() => {
+    fetchResourcePermission();
+  }, [topicDetails.id]);
+
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
   };
@@ -117,17 +149,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     setSelectedField('');
   };
 
-  const hasEditAccess = () => {
-    const loggedInUser = AppState.getCurrentUserDetails();
-    if (owner?.type === 'user') {
-      return owner.id === loggedInUser?.id;
-    } else {
-      return Boolean(
-        loggedInUser?.teams?.length &&
-          loggedInUser?.teams?.some((team) => team.id === owner?.id)
-      );
-    }
-  };
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -229,18 +250,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 6,
     },
   ];
+
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(owner?.name || '')
-          : getEntityName(owner),
+      value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
       ),
-      isLink: owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
@@ -258,14 +277,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedTopicDetails = {
         ...topicDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedTopicDetails);
-      setIsEdit(false);
+      try {
+        await descriptionUpdateHandler(updatedTopicDetails);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
     } else {
       setIsEdit(false);
     }
@@ -390,7 +414,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
-          isTagEditable
+          canDelete={topicPermissions.Delete}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -408,15 +432,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           followHandler={followTopic}
           followers={followersCount}
           followersList={followers}
-          hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
-          owner={owner}
+          isTagEditable={topicPermissions.EditAll || topicPermissions.EditTags}
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
           titleLinks={slashedTopicName}
-          updateOwner={onOwnerUpdate}
-          updateTier={onTierUpdate}
+          updateOwner={
+            topicPermissions.EditAll || topicPermissions.EditOwner
+              ? onOwnerUpdate
+              : undefined
+          }
+          updateTier={
+            topicPermissions.EditAll || topicPermissions.EditTier
+              ? onTierUpdate
+              : undefined
+          }
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
@@ -446,7 +477,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         entityFqn={topicFQN}
                         entityName={entityName}
                         entityType={EntityType.TOPIC}
-                        hasEditAccess={hasEditAccess()}
+                        hasEditAccess={
+                          topicPermissions.EditAll ||
+                          topicPermissions.EditDescription
+                        }
                         isEdit={isEdit}
                         isReadOnly={deleted}
                         owner={owner}
@@ -518,7 +552,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     entityType={EntityType.TOPIC}
                     isLoading={lineageTabData.isLineageLoading}
                     isNodeLoading={lineageTabData.isNodeLoading}
-                    isOwner={hasEditAccess()}
+                    isOwner={
+                      topicPermissions.EditAll || topicPermissions.EditLineage
+                    }
                     lineageLeafNodes={lineageTabData.lineageLeafNodes}
                     loadNodeHandler={lineageTabData.loadNodeHandler}
                     removeLineageHandler={lineageTabData.removeLineageHandler}
