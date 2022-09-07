@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
-import { ROUTES } from '../constants/constants';
 import jsonData from '../jsons/en';
 import { getErrorText } from './StringsUtils';
 
@@ -45,9 +44,6 @@ export const showErrorToast = (
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string>) => void
 ) => {
-  // we don't need any error notification for tour route
-  if (location.pathname.includes(ROUTES.TOUR)) return;
-
   let errorMessage;
   if (isString(error)) {
     errorMessage = error.toString();
