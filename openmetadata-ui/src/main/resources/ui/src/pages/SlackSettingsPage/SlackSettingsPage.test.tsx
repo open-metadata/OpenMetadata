@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
@@ -38,10 +38,8 @@ describe('Test SlackSettings page Component', () => {
     const { container } = render(<SlackSettingsPage />, {
       wrapper: MemoryRouter,
     });
-    const PageContainerV1 = await findByTestId(container, 'PageContainerV1');
     const webhookComponent = await findByText(container, /testWebhookV1/);
 
-    expect(PageContainerV1).toBeInTheDocument();
     expect(webhookComponent).toBeInTheDocument();
     expect(getWebhooks).toBeCalledTimes(1);
   });

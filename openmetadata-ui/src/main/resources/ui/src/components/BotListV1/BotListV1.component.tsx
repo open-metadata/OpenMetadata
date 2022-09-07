@@ -177,8 +177,10 @@ const BotListV1 = ({
       buttons={
         <div className="tw-text-lg tw-text-center">
           <Tooltip
+            placement="left"
             title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
             <Button
+              ghost
               disabled={!createPermission}
               type="primary"
               onClick={handleAddBotClick}>
