@@ -212,14 +212,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             <Button
               className={classNames(
                 'profiler-setting-btn tw-border tw-rounded tw-text-primary',
-                editTest ? 'tw-border-primary' : ''
+                { 'tw-border-primary': editTest }
               )}
               data-testid="profiler-setting-btn"
               disabled={!editTest}
               icon={
                 <SVGIcons
                   alt="setting"
-                  className={editTest ? '' : 'tw-mb-1 tw-mr-2'}
+                  className={classNames({ 'tw-mb-1 tw-mr-2': editTest })}
                   icon={editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY}
                 />
               }
