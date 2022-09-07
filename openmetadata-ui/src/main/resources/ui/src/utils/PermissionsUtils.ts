@@ -63,7 +63,7 @@ export const checkPermission = (
   let hasPermission = isAuthDisabled;
 
   /**
-   * If allresource is present then check for permission and return it
+   * If allResource is present then check for permission and return it
    */
   if (allResource && !hasPermission) {
     hasPermission = allResource.All || allResource[operation];
@@ -87,7 +87,16 @@ export const getOperationPermissions = (
     (acc: OperationPermission, curr: Permission) => {
       return {
         ...acc,
-        [curr.operation as Operation]: curr.access === Access.Allow,
+        [curr.operation as Operation]:
+          /**
+           * Check ConditionalAllow or Allow for Create Operation
+           * TODO: Remove this check once backend has fix for this
+           * https://github.com/open-metadata/OpenMetadata/issues/7004
+           */
+          curr.operation === Operation.Create
+            ? curr.access === Access.ConditionalAllow ||
+              curr.access === Access.Allow
+            : curr.access === Access.Allow,
       };
     },
     {} as OperationPermission

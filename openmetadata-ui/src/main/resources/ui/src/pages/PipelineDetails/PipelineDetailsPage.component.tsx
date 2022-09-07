@@ -46,12 +46,15 @@ import {
   EdgeData,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
 import {
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -73,6 +76,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   defaultFields,
   getCurrentPipelineTab,
@@ -136,6 +140,29 @@ const PipelineDetailsPage = () => {
   const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+
+  const [pipelinePermissions, setPipelinePermissions] = useState(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setLoading(true);
+    try {
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.PIPELINE,
+        entityFqn
+      );
+      setPipelinePermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -668,9 +695,15 @@ const PipelineDetailsPage = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    fetchPipelineDetail(pipelineFQN);
-    setEntityLineage({} as EntityLineage);
-    getEntityFeedCount();
+    if (pipelinePermissions.ViewAll) {
+      fetchPipelineDetail(pipelineFQN);
+      setEntityLineage({} as EntityLineage);
+      getEntityFeedCount();
+    }
+  }, [pipelinePermissions, pipelineFQN]);
+
+  useEffect(() => {
+    fetchResourcePermission(pipelineFQN);
   }, [pipelineFQN]);
 
   useEffect(() => {
@@ -689,52 +722,58 @@ const PipelineDetailsPage = () => {
           {getEntityMissingError('pipeline', pipelineFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <PipelineDetails
-          activeTab={activeTab}
-          addLineageHandler={addLineageHandler}
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          deleted={deleted}
-          description={description}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldTaskCount={entityFieldTaskCount}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityLineage={entityLineage}
-          entityLineageHandler={entityLineageHandler}
-          entityName={displayName}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={handleFeedFetchFromFeedList}
-          followPipelineHandler={followPipeline}
-          followers={followers}
-          isLineageLoading={isLineageLoading}
-          isNodeLoading={isNodeLoading}
-          isentityThreadLoading={isentityThreadLoading}
-          lineageLeafNodes={leafNodes}
-          loadNodeHandler={loadNodeHandler}
-          owner={owner as EntityReference}
-          paging={paging}
-          pipelineDetails={pipelineDetails}
-          pipelineFQN={pipelineFQN}
-          pipelineStatus={pipeLineStatus}
-          pipelineTags={tags}
-          pipelineUrl={pipelineUrl}
-          postFeedHandler={postFeedHandler}
-          removeLineageHandler={removeLineageHandler}
-          serviceType={serviceType}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          slashedPipelineName={slashedPipelineName}
-          tagUpdateHandler={onTagUpdate}
-          taskUpdateHandler={onTaskUpdate}
-          tasks={tasks}
-          tier={tier as TagLabel}
-          unfollowPipelineHandler={unfollowPipeline}
-          updateThreadHandler={updateThreadHandler}
-          version={currentVersion as string}
-          versionHandler={versionHandler}
-          onExtensionUpdate={handleExtentionUpdate}
-        />
+        <>
+          {pipelinePermissions.ViewAll ? (
+            <PipelineDetails
+              activeTab={activeTab}
+              addLineageHandler={addLineageHandler}
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              deleted={deleted}
+              description={description}
+              descriptionUpdateHandler={descriptionUpdateHandler}
+              entityFieldTaskCount={entityFieldTaskCount}
+              entityFieldThreadCount={entityFieldThreadCount}
+              entityLineage={entityLineage}
+              entityLineageHandler={entityLineageHandler}
+              entityName={displayName}
+              entityThread={entityThread}
+              feedCount={feedCount}
+              fetchFeedHandler={handleFeedFetchFromFeedList}
+              followPipelineHandler={followPipeline}
+              followers={followers}
+              isLineageLoading={isLineageLoading}
+              isNodeLoading={isNodeLoading}
+              isentityThreadLoading={isentityThreadLoading}
+              lineageLeafNodes={leafNodes}
+              loadNodeHandler={loadNodeHandler}
+              owner={owner as EntityReference}
+              paging={paging}
+              pipelineDetails={pipelineDetails}
+              pipelineFQN={pipelineFQN}
+              pipelineStatus={pipeLineStatus}
+              pipelineTags={tags}
+              pipelineUrl={pipelineUrl}
+              postFeedHandler={postFeedHandler}
+              removeLineageHandler={removeLineageHandler}
+              serviceType={serviceType}
+              setActiveTabHandler={activeTabHandler}
+              settingsUpdateHandler={settingsUpdateHandler}
+              slashedPipelineName={slashedPipelineName}
+              tagUpdateHandler={onTagUpdate}
+              taskUpdateHandler={onTaskUpdate}
+              tasks={tasks}
+              tier={tier as TagLabel}
+              unfollowPipelineHandler={unfollowPipeline}
+              updateThreadHandler={updateThreadHandler}
+              version={currentVersion as string}
+              versionHandler={versionHandler}
+              onExtensionUpdate={handleExtentionUpdate}
+            />
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </>
   );

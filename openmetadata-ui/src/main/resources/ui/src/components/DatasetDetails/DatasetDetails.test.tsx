@@ -269,6 +269,31 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+jest.mock('../../utils/PermissionsUtils', () => ({
+  DEFAULT_ENTITY_PERMISSION: {
+    Create: true,
+    Delete: true,
+    EditAll: true,
+    EditCustomFields: true,
+    EditDataProfile: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditLineage: true,
+    EditOwner: true,
+    EditQueries: true,
+    EditSampleData: true,
+    EditTags: true,
+    EditTests: true,
+    EditTier: true,
+    ViewAll: true,
+    ViewDataProfile: true,
+    ViewQueries: true,
+    ViewSampleData: true,
+    ViewTests: true,
+    ViewUsage: true,
+  },
+}));
+
 describe('Test MyDataDetailsPage page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
     const { container } = render(<DatasetDetails {...DatasetDetailsProps} />, {

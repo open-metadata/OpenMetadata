@@ -703,9 +703,11 @@ public class FeedRepository {
           // Only two filter types are supported for tasks -> ASSIGNED_TO, ASSIGNED_BY
           if (filterType == FilterType.ASSIGNED_BY) {
             filteredThreads = getTasksAssignedBy(userId, limit + 1, time, taskStatus, paginationType);
-          } else {
-            // make ASSIGNED_TO a default filter
+          } else if (filterType == FilterType.ASSIGNED_TO) {
             filteredThreads = getTasksAssignedTo(userId, limit + 1, time, taskStatus, paginationType);
+          } else {
+            // Get all the tasks assigned to or created by the user
+            filteredThreads = getTasksOfUser(userId, limit + 1, time, taskStatus, paginationType);
           }
         } else {
           if (filterType == FilterType.FOLLOWS) {
@@ -997,6 +999,28 @@ public class FeedRepository {
       thread.getTask().setAssignees(assignees);
     }
     return thread;
+  }
+
+  /** Return the tasks created by or assigned to the user. */
+  private FilteredThreads getTasksOfUser(
+      String userId, int limit, long time, TaskStatus status, PaginationType paginationType) throws IOException {
+    User user = dao.userDAO().findEntityById(UUID.fromString(userId));
+    String username = user.getName();
+    List<String> teamIds = getTeamIds(userId);
+    List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+    String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
+    List<String> jsons;
+    if (paginationType == PaginationType.BEFORE) {
+      jsons =
+          dao.feedDAO().listTasksOfUserBefore(userTeamJsonPostgres, userTeamJsonMysql, username, limit, time, status);
+    } else {
+      jsons =
+          dao.feedDAO().listTasksOfUserAfter(userTeamJsonPostgres, userTeamJsonMysql, username, limit, time, status);
+    }
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+    int totalCount = dao.feedDAO().listCountTasksOfUser(userTeamJsonPostgres, userTeamJsonMysql, username, status);
+    sortPostsInThreads(threads);
+    return new FilteredThreads(threads, totalCount);
   }
 
   /** Return the tasks created by the user. */

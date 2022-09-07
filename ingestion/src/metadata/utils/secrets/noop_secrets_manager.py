@@ -30,12 +30,12 @@ from metadata.utils.secrets.secrets_manager import (
 )
 
 
-class LocalSecretsManager(SecretsManager):
+class NoopSecretsManager(SecretsManager):
     """
     LocalSecretsManager is used when there is not a secrets' manager configured.
     """
 
-    provider: str = SecretsManagerProvider.local.name
+    provider: str = SecretsManagerProvider.noop.name
 
     def add_auth_provider_security_config(
         self, open_metadata_connection: OpenMetadataConnection

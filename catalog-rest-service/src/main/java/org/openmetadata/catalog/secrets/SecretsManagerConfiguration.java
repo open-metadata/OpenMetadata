@@ -22,7 +22,7 @@ import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProv
 @Setter
 public class SecretsManagerConfiguration {
 
-  public static final SecretsManagerProvider DEFAULT_SECRET_MANAGER = SecretsManagerProvider.LOCAL;
+  public static final SecretsManagerProvider DEFAULT_SECRET_MANAGER = SecretsManagerProvider.NOOP;
 
   private SecretsManagerProvider secretsManager;
 
