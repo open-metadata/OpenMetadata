@@ -297,7 +297,7 @@ export const AuthProvider = ({
     const { exp, isExpired, diff, timeoutExpiry } = extractDetailsFromToken();
 
     if (!isExpired && exp && diff && timeoutExpiry) {
-      // Have 50s buffer before start trying for silent signIn
+      // Have 2m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
       if (diff > 120000) {

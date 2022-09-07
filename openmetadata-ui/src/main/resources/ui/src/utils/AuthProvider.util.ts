@@ -202,8 +202,11 @@ export const getUrlPathnameExpiry = () => {
 };
 
 /**
- *
- * @returns {exp, isExpired}
+ * @exp expiry of token
+ * @isExpired wether token is already expired or not
+ * @diff Difference between token expiry & current time in ms
+ * @timeoutExpiry time in ms for try to silent sign-in
+ * @returns exp, isExpired, diff, timeoutExpiry
  */
 export const extractDetailsFromToken = () => {
   const token = localStorage.getItem(oidcTokenKey) || '';
