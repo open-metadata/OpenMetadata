@@ -200,6 +200,10 @@ const mockProp = {
   onSwitchChange: jest.fn(),
 };
 
+jest.mock('../../axiosAPIs/userAPI', () => ({
+  checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
+}));
+
 describe('Test User Component', () => {
   it('Should render user component', async () => {
     const { container } = render(

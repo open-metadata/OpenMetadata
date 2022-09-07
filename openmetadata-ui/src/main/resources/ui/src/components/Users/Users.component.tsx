@@ -28,6 +28,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
+import { checkValidImage } from '../../axiosAPIs/userAPI';
 import { getUserPath, TERM_ADMIN } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
@@ -101,6 +102,7 @@ const Users = ({
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(false);
 
   const location = useLocation();
 
@@ -632,7 +634,7 @@ const Users = ({
             ...leftPanelAntCardStyle,
           }}>
           <div className="tw-flex tw-flex-col">
-            {image ? (
+            {isImgUrlValid ? (
               <div>
                 <img
                   alt="profile"
@@ -764,6 +766,16 @@ const Users = ({
       fetchFeedHandler(threadType, pagingObj.after);
     }
   };
+
+  const validateImgUrl = useCallback(async (url: string) => {
+    const response = await checkValidImage(url);
+
+    SetIsImgUrlValid(response === 200);
+  }, []);
+
+  useEffect(() => {
+    image && validateImgUrl(image);
+  }, [image]);
 
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
