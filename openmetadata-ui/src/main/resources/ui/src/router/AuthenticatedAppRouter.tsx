@@ -290,24 +290,14 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.TAG_DETAILS}
       />
       <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
-      <AdminProtectedRoute
+      <Route
         exact
         component={DatabaseDetails}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.DATABASE,
-          permissions
-        )}
         path={ROUTES.DATABASE_DETAILS_WITH_TAB}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={DatabaseSchemaPageComponent}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.DATABASE_SCHEMA,
-          permissions
-        )}
         path={ROUTES.SCHEMA_DETAILS}
       />
       <Route
@@ -456,16 +446,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
-      <AdminProtectedRoute
-        exact
-        component={BotDetailsPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.BOT,
-          permissions
-        )}
-        path={ROUTES.BOTS_PROFILE}
-      />
+      <Route exact component={BotDetailsPage} path={ROUTES.BOTS_PROFILE} />
       <Route
         exact
         component={AddCustomProperty}
@@ -511,7 +492,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={AddRulePage}
         hasPermission={checkPermission(
-          Operation.Create,
+          Operation.EditAll,
           ResourceEntity.POLICY,
           permissions
         )}

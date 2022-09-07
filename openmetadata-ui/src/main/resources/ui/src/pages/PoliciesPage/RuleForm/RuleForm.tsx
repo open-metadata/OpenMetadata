@@ -162,12 +162,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         if (check) {
           setValidationError('');
           setIsvalidCondition(true);
-          setTimeout(() => setIsvalidCondition(false), 2000);
         } else {
           setValidationError(defaultErrorText);
         }
       } catch (error) {
         setValidationError(getErrorText(error as AxiosError, defaultErrorText));
+        setIsvalidCondition(false);
       } finally {
         setIsvalidating(false);
       }
