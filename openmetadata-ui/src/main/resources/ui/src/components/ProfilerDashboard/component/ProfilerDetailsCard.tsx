@@ -81,7 +81,14 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <Empty description="No Data Available" />
+            <Row
+              align="middle"
+              className="tw-h-full tw-w-full"
+              justify="center">
+              <Col>
+                <Empty description="No Data Available" />
+              </Col>
+            </Row>
           )}
         </Col>
       </Row>

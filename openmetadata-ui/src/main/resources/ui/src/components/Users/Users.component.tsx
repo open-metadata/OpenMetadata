@@ -701,7 +701,7 @@ const Users = ({
           </div>
           {isTaskType ? (
             <Space align="end" size={5}>
-              <Switch size="small" onChange={onSwitchChange} />
+              <Switch onChange={onSwitchChange} />
               <span className="tw-ml-1">Closed Tasks</span>
             </Space>
           ) : null}

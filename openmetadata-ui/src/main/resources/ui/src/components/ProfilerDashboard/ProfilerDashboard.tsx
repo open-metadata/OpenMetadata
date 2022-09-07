@@ -14,7 +14,7 @@ import { Button, Col, Form, Radio, Row, Select, Space, Tooltip } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -105,6 +105,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const [permission, setPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
 
   const fetchTestCasePermission = async () => {
     try {
@@ -117,6 +120,21 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       showErrorToast(error as AxiosError);
     }
   };
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      const tablePermission = await getEntityPermission(
+        ResourceEntity.TABLE,
+        table.id
+      );
+
+      setTablePermissions(tablePermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    }
+  }, [table.id, getEntityPermission, setTablePermissions]);
 
   const tabOptions = useMemo(() => {
     return Object.values(ProfilerDashboardTab).filter((value) => {
@@ -415,6 +433,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         follower.some(({ id }: { id: string }) => id === getCurrentUserId())
       );
       fetchTestCasePermission();
+      fetchResourcePermission();
     }
   }, [table]);
 
@@ -438,8 +457,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             tagsHandler={handleTagUpdate}
             tier={tier}
             titleLinks={breadcrumb}
-            updateOwner={handleOwnerUpdate}
-            updateTier={handleTierUpdate}
+            updateOwner={
+              tablePermissions.EditAll || tablePermissions.EditOwner
+                ? handleOwnerUpdate
+                : undefined
+            }
+            updateTier={
+              tablePermissions.EditAll || tablePermissions.EditTier
+                ? handleTierUpdate
+                : undefined
+            }
           />
         </Col>
         <Col span={24}>

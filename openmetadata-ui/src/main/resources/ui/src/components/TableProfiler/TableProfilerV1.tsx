@@ -210,10 +210,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           </Tooltip>
           <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
             <Button
-              className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+              className={classNames(
+                'profiler-setting-btn tw-border tw-rounded tw-text-primary',
+                editTest ? 'tw-border-primary' : ''
+              )}
               data-testid="profiler-setting-btn"
               disabled={!editTest}
-              icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+              icon={
+                <SVGIcons
+                  alt="setting"
+                  className={editTest ? '' : 'tw-mb-1 tw-mr-2'}
+                  icon={editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY}
+                />
+              }
               type="default"
               onClick={() => handleSettingModal(true)}>
               Settings
