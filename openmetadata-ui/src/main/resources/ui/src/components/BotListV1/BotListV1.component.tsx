@@ -200,7 +200,6 @@ const BotListV1 = ({
             <Switch
               checked={showDeleted}
               id="switch-deleted"
-              size="small"
               onClick={handleShowDeleted}
             />
             <label htmlFor="switch-deleted">Show deleted</label>

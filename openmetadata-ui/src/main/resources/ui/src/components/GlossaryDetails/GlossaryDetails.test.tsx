@@ -51,6 +51,13 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <p>{children}</p>
+    )),
+}));
 
 const mockProps = {
   glossary: mockedGlossaries[0],

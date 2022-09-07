@@ -17,10 +17,10 @@
 @switch-border-color: rgba(107, 114, 128, 1);
 
 .ant-switch {
-  padding: 1px;
+  box-sizing: content-box;
   background-image: none;
   background-color: @switch-bg-color-primary;
-  border: 2px solid @switch-border-color;
+  border: 1.5px solid @switch-border-color;
 }
 
 .ant-switch-handle::before {
@@ -33,9 +33,4 @@
   .ant-switch-handle::before {
     background-color: @primary-color;
   }
-}
-
-.ant-switch-small {
-  height: 20px;
-  width: 36px;
 }

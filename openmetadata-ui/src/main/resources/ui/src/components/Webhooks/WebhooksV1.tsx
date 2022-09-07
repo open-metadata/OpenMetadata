@@ -88,7 +88,9 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
                 }>
                 <ButtonAntd
                   ghost
-                  className={classNames('tw-h-8 tw-rounded tw-my-3')}
+                  className={classNames(
+                    'tw-h-8 tw-rounded tw-my-3 add-webhook-btn'
+                  )}
                   data-testid="add-webhook-button"
                   disabled={!addWebhookPermission}
                   size="small"

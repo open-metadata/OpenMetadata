@@ -286,9 +286,12 @@
   }
 
   .toggle-switch {
-    @apply tw-w-9 tw-border-2 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full
+    @apply tw-border tw-cursor-pointer tw-flex tw-items-center tw-rounded-full
     tw-mx-2 tw-px-0.5 tw-transition tw-duration-500 tw-ease-in-out
     tw-bg-grey-muted-lite tw-border-grey-muted;
+    width: 35px;
+    height: 19px;
+    border-width: 1.5px;
   }
   .toggle-switch.open {
     @apply tw-bg-primary-lite tw-border-primary;
