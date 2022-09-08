@@ -639,7 +639,7 @@ const Users = ({
                 className="tw-w-full"
                 height="150px"
                 referrerPolicy="no-referrer"
-                src={image}
+                src={image || ''}
                 onError={() => {
                   SetIsImgUrlValid(false);
                 }}
