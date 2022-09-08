@@ -37,10 +37,10 @@ public abstract class AwesomeSecretsManager extends ThirdPartySecretsManager {
     super(SecretsManagerProvider.AWESOME_SM, clusterPrefix);
   }
 
-  abstract void storeSecret(String secretName, String secretValue) {
+  void storeSecret(String secretName, String secretValue) {
     // your implementation
   }
-  abstract void updateSecret(String secretName, String secretValue) {
+  void updateSecret(String secretName, String secretValue) {
     // your implementation
   }
 

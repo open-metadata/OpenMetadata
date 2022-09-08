@@ -57,6 +57,14 @@ aws_secret_access_key = <aws secret access key>
 ...
 ```
 
+As an alternative to editing the `airflow.cfg` file, we can also set the following environment variables:
+
+```bash
+AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_REGION= <aws region>
+AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_ACCESS_KEY_ID= <aws access key id>
+AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_SECRET_ACCESS_KEY= <aws secret access key>
+```
+
 If no parameters are provided for the AWS account, or only `<aws region>`, it will use the default credentials. The default credential will look for credentials in:
 
 1. **Environment variables** - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
