@@ -637,7 +637,7 @@ const Users = ({
               <Image
                 alt="profile"
                 className="tw-w-full"
-                height="150px"
+                preview={false}
                 referrerPolicy="no-referrer"
                 src={image || ''}
                 onError={() => {

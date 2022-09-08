@@ -397,6 +397,7 @@ const NavBar = ({
                       <div className="profile-image square tw--mr-2">
                         <Image
                           alt="user"
+                          preview={false}
                           referrerPolicy="no-referrer"
                           src={profilePicture || ''}
                           onError={() => {
