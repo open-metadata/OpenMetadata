@@ -179,7 +179,7 @@ const Explore: React.FC<ExploreProps> = ({
         setSearchTag('');
       }
       const filter = filters[type];
-      const index = filter.indexOf(selectedFilter);
+      const index = filter.indexOf(selectedFilter.replace(/ /g, '+'));
       filter.splice(index, 1);
       const selectedFilterCount = getFilterCount(filters);
       setIsFilterSet(selectedFilterCount >= 1);
