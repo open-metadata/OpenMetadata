@@ -14,6 +14,7 @@ Filter information has been taken from the
 ES indexes definitions
 """
 import re
+from collections import namedtuple
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
@@ -356,3 +357,28 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
 
     database, database_schema, table = full_details
     return {"database": database, "database_schema": database_schema, "table": table}
+
+
+def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
+    """given a test case fqn split each element
+
+    Args:
+        test_case_fqn (str): test case fqn
+
+    Returns:
+        Dict[str, Optional[str]]:
+    """
+    SplitTestCaseFqn = namedtuple(
+        "SplitTestCaseFqn", "service database schema table column test_case"
+    )
+    details = split(test_case_fqn)
+    if len(details) < 5:
+        raise ValueError(
+            f"{test_case_fqn} does not appear to be a valid test_case fqn "
+        )
+    if len(details) != 6:
+        details.insert(4, None)
+
+    service, database, schema, table, column, test_case = details
+
+    return SplitTestCaseFqn(service, database, schema, table, column, test_case)
