@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Input, Space } from 'antd';
+import { Badge, Dropdown, Image, Input, Space } from 'antd';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
-import { checkValidImage } from '../../axiosAPIs/userAPI';
 import {
   NOTIFICATION_READ_TIMER,
   ROUTES,
@@ -73,7 +72,7 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(false);
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
 
   const profilePicture = useMemo(
     () => AppState?.userDetails?.profile?.images?.image512,
@@ -171,16 +170,6 @@ const NavBar = ({
       }
     };
   };
-
-  const validateImgUrl = useCallback(async (url: string) => {
-    const response = await checkValidImage(url);
-
-    SetIsImgUrlValid(response === 200);
-  }, []);
-
-  useEffect(() => {
-    profilePicture && validateImgUrl(profilePicture);
-  }, [profilePicture, validateImgUrl]);
 
   useEffect(() => {
     if (shouldRequestPermission()) {
@@ -400,24 +389,26 @@ const NavBar = ({
               <DropDown
                 dropDownList={profileDropdown}
                 icon={
-                  <>
-                    <PopOver
-                      position="bottom"
-                      title="Profile"
-                      trigger="mouseenter">
-                      {isImgUrlValid ? (
-                        <div className="profile-image square tw--mr-2">
-                          <img
-                            alt="user"
-                            referrerPolicy="no-referrer"
-                            src={profilePicture}
-                          />
-                        </div>
-                      ) : (
-                        <Avatar name={username} width="30" />
-                      )}
-                    </PopOver>
-                  </>
+                  <PopOver
+                    position="bottom"
+                    title="Profile"
+                    trigger="mouseenter">
+                    {isImgUrlValid ? (
+                      <div className="profile-image square tw--mr-2">
+                        <Image
+                          alt="user"
+                          preview={false}
+                          referrerPolicy="no-referrer"
+                          src={profilePicture || ''}
+                          onError={() => {
+                            SetIsImgUrlValid(false);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Avatar name={username} width="30" />
+                    )}
+                  </PopOver>
                 }
                 isDropDownIconVisible={false}
                 type="link"

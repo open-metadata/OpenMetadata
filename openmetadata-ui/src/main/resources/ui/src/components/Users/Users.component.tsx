@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Space, Switch } from 'antd';
+import { Card, Image, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -28,7 +28,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { checkValidImage } from '../../axiosAPIs/userAPI';
 import { getUserPath, TERM_ADMIN } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
@@ -102,7 +101,7 @@ const Users = ({
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
-  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(false);
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
 
   const location = useLocation();
 
@@ -635,15 +634,16 @@ const Users = ({
           }}>
           <div className="tw-flex tw-flex-col">
             {isImgUrlValid ? (
-              <div>
-                <img
-                  alt="profile"
-                  className="tw-w-full"
-                  height="150px"
-                  referrerPolicy="no-referrer"
-                  src={image}
-                />
-              </div>
+              <Image
+                alt="profile"
+                className="tw-w-full"
+                preview={false}
+                referrerPolicy="no-referrer"
+                src={image || ''}
+                onError={() => {
+                  SetIsImgUrlValid(false);
+                }}
+              />
             ) : (
               <div style={{ width: 'inherit' }}>
                 <ProfilePicture
@@ -766,16 +766,6 @@ const Users = ({
       fetchFeedHandler(threadType, pagingObj.after);
     }
   };
-
-  const validateImgUrl = useCallback(async (url: string) => {
-    const response = await checkValidImage(url);
-
-    SetIsImgUrlValid(response === 200);
-  }, []);
-
-  useEffect(() => {
-    image && validateImgUrl(image);
-  }, [image]);
 
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
