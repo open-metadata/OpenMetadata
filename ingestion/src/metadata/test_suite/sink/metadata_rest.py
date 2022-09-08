@@ -70,7 +70,7 @@ class MetadataRestSink(Sink[Entity]):
         try:
             self.metadata.add_test_case_results(
                 test_results=record.testCaseResult,
-                test_case_name=record.testCase.fullyQualifiedName.__root__,
+                test_case_fqn=record.testCase.fullyQualifiedName.__root__,
             )
             logger.info(
                 f"Successfully ingested test case results for test case {record.testCase.name.__root__}"
