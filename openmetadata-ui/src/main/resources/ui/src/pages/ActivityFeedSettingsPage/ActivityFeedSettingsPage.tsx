@@ -278,7 +278,7 @@ const ActivityFeedSettingsPage: React.FC = () => {
                     disabled={!createPermission}
                     type="text"
                     onClick={handleResetClick}>
-                    Reset all
+                    Reset to default
                   </Button>
                 </Tooltip>
               </Space>
