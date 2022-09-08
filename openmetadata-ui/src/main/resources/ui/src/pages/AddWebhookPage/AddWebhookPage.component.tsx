@@ -13,12 +13,13 @@
 
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addWebhook } from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -28,8 +29,9 @@ import {
   CreateWebhook,
   WebhookType,
 } from '../../generated/api/events/createWebhook';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -40,13 +42,18 @@ const HEADER_TEXT_WEBHOOK: { [key: string]: string } = {
 };
 
 const AddWebhookPage: FunctionComponent = () => {
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const params = useParams<{ webhookType?: WebhookType }>();
+  const { permissions } = usePermissionProvider();
 
   const webhookType: WebhookType = params.webhookType ?? WebhookType.Generic;
   const [status, setStatus] = useState<LoadingState>('initial');
+
+  const createPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
 
   const goToWebhooks = () => {
     switch (webhookType) {
@@ -111,7 +118,7 @@ const AddWebhookPage: FunctionComponent = () => {
     <PageContainerV1>
       <div className="tw-self-center">
         <AddWebhook
-          allowAccess={isAdminUser || isAuthDisabled}
+          allowAccess={createPermission}
           header={`Add ${HEADER_TEXT_WEBHOOK[webhookType]}`}
           mode={FormSubmitType.ADD}
           saveState={status}

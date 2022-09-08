@@ -1,29 +1,36 @@
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
+  const { permissions } = usePermissionProvider();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<LoadingState>('initial');
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+
+  const createPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
+    [permissions]
+  );
 
   const goToGlossary = (name = '') => {
     history.push(getGlossaryPath(name));
@@ -101,7 +108,7 @@ const AddGlossaryPage: FunctionComponent = () => {
     <PageContainerV1>
       <div className="tw-self-center">
         <AddGlossary
-          allowAccess={isAdminUser || isAuthDisabled}
+          allowAccess={createPermission}
           fetchTags={fetchTags}
           header="Add Glossary"
           isTagLoading={isTagLoading}

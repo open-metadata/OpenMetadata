@@ -19,7 +19,6 @@ import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { PAGE_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Connection } from '../../generated/entity/services/databaseService';
@@ -27,7 +26,6 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
@@ -64,8 +62,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   permissions,
 }: IngestionProps) => {
   const history = useHistory();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+
   const [searchText, setSearchText] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
@@ -419,7 +416,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           </div>
           <div className="tw-relative">
             {isRequiredDetailsAvailable &&
-              (isAdminUser || isAuthDisabled) &&
+              permissions.EditAll &&
               getAddIngestionElement()}
           </div>
         </div>
