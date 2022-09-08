@@ -185,9 +185,3 @@ export const getGroupTypeTeams = async () => {
 
   return response.data;
 };
-
-export const checkValidImage = async (url: string) => {
-  const response = await APIClient(url);
-
-  return response.status;
-};

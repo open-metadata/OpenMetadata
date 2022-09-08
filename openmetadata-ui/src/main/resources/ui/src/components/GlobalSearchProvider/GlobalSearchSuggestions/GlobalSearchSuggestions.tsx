@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Empty, Select } from 'antd';
+import { Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
@@ -27,6 +27,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CmdKIcon from '../../common/CmdKIcon/CmdKIcon.component';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import {
   DashboardSource,
@@ -319,7 +320,15 @@ const GlobalSearchSuggestions = ({
         listHeight={220}
         notFoundContent={
           <div className="tw-flex tw-flex-col tw-w-full tw-h-56 tw-items-center tw-justify-center tw-pb-9">
-            {isSuggestionsLoading ? <Loader size="small" /> : <Empty />}
+            {isSuggestionsLoading ? (
+              <Loader size="small" />
+            ) : (
+              <ErrorPlaceHolder classes="tw-mt-0 opacity-60">
+                <Typography.Text className="tw-text-sm tw-grey-body ">
+                  No Data Available
+                </Typography.Text>
+              </ErrorPlaceHolder>
+            )}
           </div>
         }
         open={!isEmpty(value)}

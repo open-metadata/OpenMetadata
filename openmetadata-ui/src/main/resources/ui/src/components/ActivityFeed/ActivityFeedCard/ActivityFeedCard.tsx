@@ -164,7 +164,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       <div
         className={classNames(
           className,
-          'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-1 tw-mb-1 tw-rounded',
+          'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-2 tw-mb-1 tw-rounded',
           {
             'tw-bg-gray-100': visible,
           }

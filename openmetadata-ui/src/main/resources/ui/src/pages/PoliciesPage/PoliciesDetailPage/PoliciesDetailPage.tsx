@@ -41,6 +41,7 @@ import {
 } from '../../../axiosAPIs/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
 import Description from '../../../components/common/description/Description';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
@@ -53,7 +54,10 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -164,7 +168,7 @@ const List = ({
 const PoliciesDetailPage = () => {
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -198,9 +202,9 @@ const PoliciesDetailPage = () => {
   const fetchPolicyPermission = async () => {
     setLoading(true);
     try {
-      const response = await getEntityPermission(
+      const response = await getEntityPermissionByFqn(
         ResourceEntity.POLICY,
-        policy.id
+        fqn
       );
       setPolicyPermission(response);
     } catch (error) {
@@ -412,14 +416,14 @@ const PoliciesDetailPage = () => {
   );
 
   useEffect(() => {
-    fetchPolicy();
+    fetchPolicyPermission();
   }, [fqn]);
 
   useEffect(() => {
-    if (policy.id) {
-      fetchPolicyPermission();
+    if (policyPermission.ViewAll) {
+      fetchPolicy();
     }
-  }, [policy]);
+  }, [policyPermission, fqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -428,163 +432,180 @@ const PoliciesDetailPage = () => {
   return (
     <div data-testid="policy-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {isEmpty(policy) ? (
-        <Empty description={`No policy found for ${fqn}`}>
-          <Button
-            size="small"
-            type="primary"
-            onClick={() => history.push(policiesPath)}>
-            Go Back
-          </Button>
-        </Empty>
+      {policyPermission.ViewAll ? (
+        <>
+          {isEmpty(policy) ? (
+            <Empty description={`No policy found for ${fqn}`}>
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => history.push(policiesPath)}>
+                Go Back
+              </Button>
+            </Empty>
+          ) : (
+            <div className="policies-detail" data-testid="policy-details">
+              <div className="tw--ml-5">
+                <Description
+                  description={policy.description || ''}
+                  entityFqn={policy.fullyQualifiedName}
+                  entityName={getEntityName(policy)}
+                  entityType={EntityType.POLICY}
+                  hasEditAccess={
+                    policyPermission.EditAll || policyPermission.EditDescription
+                  }
+                  isEdit={editDescription}
+                  onCancel={() => setEditDescription(false)}
+                  onDescriptionEdit={() => setEditDescription(true)}
+                  onDescriptionUpdate={handleDescriptionUpdate}
+                />
+              </div>
+              <Tabs defaultActiveKey="rules">
+                <TabPane key="rules" tab="Rules">
+                  {isEmpty(policy.rules) ? (
+                    <Empty description="No rules found" />
+                  ) : (
+                    <Space
+                      className="tw-w-full tabpane-space"
+                      direction="vertical">
+                      <Tooltip
+                        title={
+                          policyPermission.EditAll
+                            ? 'Add Rule'
+                            : NO_PERMISSION_FOR_ACTION
+                        }>
+                        <Button
+                          data-testid="add-rule"
+                          disabled={!policyPermission.EditAll}
+                          type="primary"
+                          onClick={() =>
+                            history.push(getAddPolicyRulePath(fqn))
+                          }>
+                          Add Rule
+                        </Button>
+                      </Tooltip>
+
+                      <Space
+                        className="tw-w-full"
+                        direction="vertical"
+                        size={20}>
+                        {policy.rules.map((rule) => (
+                          <Card key={rule.name || 'rule'}>
+                            <Space
+                              align="baseline"
+                              className="tw-w-full tw-justify-between tw-pb-5"
+                              direction="horizontal">
+                              <Typography.Text
+                                className="tw-font-medium tw-text-base tw-text-grey-body"
+                                data-testid="rule-name">
+                                {rule.name}
+                              </Typography.Text>
+                              {getRuleActionElement(rule)}
+                            </Space>
+
+                            <Space
+                              className="tw-w-full"
+                              direction="vertical"
+                              size={12}>
+                              {rule.description && (
+                                <Row data-testid="description">
+                                  <Col span={2}>
+                                    <Typography.Text className="tw-text-grey-muted">
+                                      Description :
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={22}>
+                                    <RichTextEditorPreviewer
+                                      markdown={rule.description || ''}
+                                    />
+                                  </Col>
+                                </Row>
+                              )}
+
+                              <Row data-testid="resources">
+                                <Col span={2}>
+                                  <Typography.Text className="tw-text-grey-muted tw-mb-0">
+                                    Resources :
+                                  </Typography.Text>
+                                </Col>
+                                <Col span={22}>
+                                  <Typography.Text className="tw-text-grey-body">
+                                    {rule.resources
+                                      ?.map((resource) => startCase(resource))
+                                      ?.join(', ')}
+                                  </Typography.Text>
+                                </Col>
+                              </Row>
+
+                              <Row data-testid="operations">
+                                <Col span={2}>
+                                  <Typography.Text className="tw-text-grey-muted">
+                                    Operations :
+                                  </Typography.Text>
+                                </Col>
+                                <Col span={22}>
+                                  <Typography.Text className="tw-text-grey-body">
+                                    {rule.operations?.join(', ')}
+                                  </Typography.Text>
+                                </Col>
+                              </Row>
+                              <Row data-testid="effect">
+                                <Col span={2}>
+                                  <Typography.Text className="tw-text-grey-muted">
+                                    Effect :
+                                  </Typography.Text>
+                                </Col>
+                                <Col span={22}>
+                                  <Typography.Text className="tw-text-grey-body">
+                                    {startCase(rule.effect)}
+                                  </Typography.Text>
+                                </Col>
+                              </Row>
+                              {rule.condition && (
+                                <Row data-testid="condition">
+                                  <Col span={2}>
+                                    <Typography.Text className="tw-text-grey-muted">
+                                      Condition :
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={22}>
+                                    <code>{rule.condition}</code>
+                                  </Col>
+                                </Row>
+                              )}
+                            </Space>
+                          </Card>
+                        ))}
+                      </Space>
+                    </Space>
+                  )}
+                </TabPane>
+                <TabPane key="roles" tab="Roles">
+                  <List
+                    hasAccess={policyPermission.EditAll}
+                    list={policy.roles ?? []}
+                    type="role"
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'roles' })
+                    }
+                  />
+                </TabPane>
+                <TabPane key="teams" tab="Teams">
+                  <List
+                    hasAccess={policyPermission.EditAll}
+                    list={policy.teams ?? []}
+                    type="team"
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'teams' })
+                    }
+                  />
+                </TabPane>
+              </Tabs>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="policies-detail" data-testid="policy-details">
-          <div className="tw--ml-5">
-            <Description
-              description={policy.description || ''}
-              entityFqn={policy.fullyQualifiedName}
-              entityName={getEntityName(policy)}
-              entityType={EntityType.POLICY}
-              hasEditAccess={
-                policyPermission.EditAll || policyPermission.EditDescription
-              }
-              isEdit={editDescription}
-              onCancel={() => setEditDescription(false)}
-              onDescriptionEdit={() => setEditDescription(true)}
-              onDescriptionUpdate={handleDescriptionUpdate}
-            />
-          </div>
-          <Tabs defaultActiveKey="rules">
-            <TabPane key="rules" tab="Rules">
-              {isEmpty(policy.rules) ? (
-                <Empty description="No rules found" />
-              ) : (
-                <Space className="tw-w-full tabpane-space" direction="vertical">
-                  <Tooltip
-                    title={
-                      policyPermission.EditAll
-                        ? 'Add Rule'
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      data-testid="add-rule"
-                      disabled={!policyPermission.EditAll}
-                      type="primary"
-                      onClick={() => history.push(getAddPolicyRulePath(fqn))}>
-                      Add Rule
-                    </Button>
-                  </Tooltip>
-
-                  <Space className="tw-w-full" direction="vertical" size={20}>
-                    {policy.rules.map((rule) => (
-                      <Card key={rule.name || 'rule'}>
-                        <Space
-                          align="baseline"
-                          className="tw-w-full tw-justify-between tw-pb-5"
-                          direction="horizontal">
-                          <Typography.Text
-                            className="tw-font-medium tw-text-base tw-text-grey-body"
-                            data-testid="rule-name">
-                            {rule.name}
-                          </Typography.Text>
-                          {getRuleActionElement(rule)}
-                        </Space>
-
-                        <Space
-                          className="tw-w-full"
-                          direction="vertical"
-                          size={12}>
-                          {rule.description && (
-                            <Row data-testid="description">
-                              <Col span={2}>
-                                <Typography.Text className="tw-text-grey-muted">
-                                  Description :
-                                </Typography.Text>
-                              </Col>
-                              <Col span={22}>
-                                <RichTextEditorPreviewer
-                                  markdown={rule.description || ''}
-                                />
-                              </Col>
-                            </Row>
-                          )}
-
-                          <Row data-testid="resources">
-                            <Col span={2}>
-                              <Typography.Text className="tw-text-grey-muted tw-mb-0">
-                                Resources :
-                              </Typography.Text>
-                            </Col>
-                            <Col span={22}>
-                              <Typography.Text className="tw-text-grey-body">
-                                {rule.resources
-                                  ?.map((resource) => startCase(resource))
-                                  ?.join(', ')}
-                              </Typography.Text>
-                            </Col>
-                          </Row>
-
-                          <Row data-testid="operations">
-                            <Col span={2}>
-                              <Typography.Text className="tw-text-grey-muted">
-                                Operations :
-                              </Typography.Text>
-                            </Col>
-                            <Col span={22}>
-                              <Typography.Text className="tw-text-grey-body">
-                                {rule.operations?.join(', ')}
-                              </Typography.Text>
-                            </Col>
-                          </Row>
-                          <Row data-testid="effect">
-                            <Col span={2}>
-                              <Typography.Text className="tw-text-grey-muted">
-                                Effect :
-                              </Typography.Text>
-                            </Col>
-                            <Col span={22}>
-                              <Typography.Text className="tw-text-grey-body">
-                                {startCase(rule.effect)}
-                              </Typography.Text>
-                            </Col>
-                          </Row>
-                          {rule.condition && (
-                            <Row data-testid="condition">
-                              <Col span={2}>
-                                <Typography.Text className="tw-text-grey-muted">
-                                  Condition :
-                                </Typography.Text>
-                              </Col>
-                              <Col span={22}>
-                                <code>{rule.condition}</code>
-                              </Col>
-                            </Row>
-                          )}
-                        </Space>
-                      </Card>
-                    ))}
-                  </Space>
-                </Space>
-              )}
-            </TabPane>
-            <TabPane key="roles" tab="Roles">
-              <List
-                hasAccess={policyPermission.EditAll}
-                list={policy.roles ?? []}
-                type="role"
-                onDelete={(record) => setEntity({ record, attribute: 'roles' })}
-              />
-            </TabPane>
-            <TabPane key="teams" tab="Teams">
-              <List
-                hasAccess={policyPermission.EditAll}
-                list={policy.teams ?? []}
-                type="team"
-                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
-              />
-            </TabPane>
-          </Tabs>
-        </div>
+        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
       )}
       {selectedEntity && (
         <Modal

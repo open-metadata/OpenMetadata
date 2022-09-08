@@ -24,6 +24,7 @@ import {
   ListTestCaseParams,
   updateTestSuiteById,
 } from '../../axiosAPIs/testAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
@@ -46,6 +47,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -58,7 +60,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
@@ -67,6 +69,7 @@ const TestSuiteDetailsPage = () => {
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [testCasesPaging, setTestCasesPaging] = useState<Paging>(pagingObject);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testSuitePermissions, setTestSuitePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
@@ -108,14 +111,17 @@ const TestSuiteDetailsPage = () => {
   };
 
   const fetchTestSuitePermission = async () => {
+    setIsLoading(true);
     try {
-      const response = await getEntityPermission(
+      const response = await getEntityPermissionByFqn(
         ResourceEntity.TEST_SUITE,
-        testSuite?.id as string
+        testSuiteFQN
       );
       setTestSuitePermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -268,60 +274,70 @@ const TestSuiteDetailsPage = () => {
   );
 
   useEffect(() => {
-    fetchTestSuiteByName();
-  }, []);
+    if (testSuitePermissions.ViewAll) {
+      fetchTestSuiteByName();
+    }
+  }, [testSuitePermissions, testSuiteFQN]);
 
   useEffect(() => {
-    if (testSuite?.id) {
-      fetchTestSuitePermission();
-    }
-  }, [testSuite]);
+    fetchTestSuitePermission();
+  }, [testSuiteFQN]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
-    <PageContainer>
-      <Row className="tw-px-6 tw-w-full">
-        <Col span={24}>
-          <TestSuiteDetails
-            descriptionHandler={descriptionHandler}
-            extraInfo={extraInfo}
-            handleDeleteWidgetVisible={handleDeleteWidgetVisible}
-            handleDescriptionUpdate={onDescriptionUpdate}
-            handleUpdateOwner={onUpdateOwner}
-            isDeleteWidgetVisible={isDeleteWidgetVisible}
-            isDescriptionEditable={isDescriptionEditable}
-            permissions={testSuitePermissions}
-            slashedBreadCrumb={slashedBreadCrumb}
-            testSuite={testSuite}
-            testSuiteDescription={testSuiteDescription}
-          />
-        </Col>
-        <Col className="tw-mt-8" span={24}>
-          <TabsPane
-            activeTab={activeTab}
-            setActiveTab={onSetActiveValue}
-            tabs={tabs}
-          />
-          <div className="tw-mb-4">
-            {activeTab === 1 && (
-              <>
-                {isTestCaseLoaded ? (
-                  <TestCasesTab
-                    currentPage={currentPage}
-                    testCasePageHandler={handleTestCasePaging}
-                    testCases={testCaseResult}
-                    testCasesPaging={testCasesPaging}
-                    onTestUpdate={afterSubmitAction}
-                  />
-                ) : (
-                  <Loader />
+    <>
+      {testSuitePermissions.ViewAll ? (
+        <PageContainer>
+          <Row className="tw-px-6 tw-w-full">
+            <Col span={24}>
+              <TestSuiteDetails
+                descriptionHandler={descriptionHandler}
+                extraInfo={extraInfo}
+                handleDeleteWidgetVisible={handleDeleteWidgetVisible}
+                handleDescriptionUpdate={onDescriptionUpdate}
+                handleUpdateOwner={onUpdateOwner}
+                isDeleteWidgetVisible={isDeleteWidgetVisible}
+                isDescriptionEditable={isDescriptionEditable}
+                permissions={testSuitePermissions}
+                slashedBreadCrumb={slashedBreadCrumb}
+                testSuite={testSuite}
+                testSuiteDescription={testSuiteDescription}
+              />
+            </Col>
+            <Col className="tw-mt-8" span={24}>
+              <TabsPane
+                activeTab={activeTab}
+                setActiveTab={onSetActiveValue}
+                tabs={tabs}
+              />
+              <div className="tw-mb-4">
+                {activeTab === 1 && (
+                  <>
+                    {isTestCaseLoaded ? (
+                      <TestCasesTab
+                        currentPage={currentPage}
+                        testCasePageHandler={handleTestCasePaging}
+                        testCases={testCaseResult}
+                        testCasesPaging={testCasesPaging}
+                        onTestUpdate={afterSubmitAction}
+                      />
+                    ) : (
+                      <Loader />
+                    )}
+                  </>
                 )}
-              </>
-            )}
-            {activeTab === 2 && <TestSuitePipelineTab />}
-          </div>
-        </Col>
-      </Row>
-    </PageContainer>
+                {activeTab === 2 && <TestSuitePipelineTab />}
+              </div>
+            </Col>
+          </Row>
+        </PageContainer>
+      ) : (
+        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+      )}
+    </>
   );
 };
 

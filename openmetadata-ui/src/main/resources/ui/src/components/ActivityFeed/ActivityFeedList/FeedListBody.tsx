@@ -136,7 +136,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               style={{
                 ...leftPanelAntCardStyle,
                 marginTop: '20px',
-                paddingTop: isTask ? '8px' : '',
+                paddingTop: isTask || isAnnouncement ? '8px' : '',
                 border: isTask
                   ? `1px solid ${TASK_BORDER}`
                   : isAnnouncement

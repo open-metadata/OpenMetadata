@@ -290,7 +290,12 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           size="small"
           type="text"
           onClick={() => setShowRevieweModal(true)}>
-          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+          <SVGIcons
+            alt="edit"
+            icon={Icons.IC_EDIT_PRIMARY}
+            title="Edit"
+            width="16px"
+          />
         </ButtonAntd>
       </Tooltip>
     );
@@ -313,7 +318,12 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             size="small"
             type="text"
             onClick={handleSelectOwnerDropdown}>
-            <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+            <SVGIcons
+              alt="edit"
+              icon={Icons.IC_EDIT_PRIMARY}
+              title="Edit"
+              width="16px"
+            />
           </ButtonAntd>
         </Tooltip>
         {listVisible && (
@@ -399,26 +409,24 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
-      <div className="tw-flex tw-flex-wrap tw-group tw-mb-5" data-testid="tags">
-        {!isTagEditable && (
+      <div
+        className="tw-flex tw-items-center tw-flex-wrap tw-group tw-mb-5"
+        data-testid="tags">
+        {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
           <>
-            {glossary?.tags && glossary.tags.length > 0 && (
-              <>
-                <SVGIcons
-                  alt="icon-tag"
-                  className="tw-mx-1"
-                  icon="icon-tag-grey"
-                  width="16"
-                />
-                <TagsViewer tags={glossary.tags} />
-              </>
-            )}
+            <SVGIcons
+              alt="icon-tag"
+              className="tw-mx-1"
+              icon="icon-tag-grey"
+              width="16"
+            />
+            <TagsViewer tags={glossary.tags} />
           </>
         )}
 
         <div className="tw-inline-block" onClick={handleTagContainerClick}>
           <TagsContainer
-            buttonContainerClass="tw--mt-0"
+            buttonContainerClass="tw-mt-0"
             containerClass="tw-flex tw-items-center tw-gap-2"
             dropDownHorzPosRight={false}
             editable={isTagEditable}
@@ -436,7 +444,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             }}>
             {glossary?.tags && glossary?.tags.length ? (
               <button
-                className=" tw-ml-1 focus:tw-outline-none"
+                className=" tw-ml-1 focus:tw-outline-none flex-center"
                 disabled={!(permissions.EditTags || permissions.EditAll)}>
                 <SVGIcons
                   alt="edit"
@@ -481,7 +489,10 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           </div>
         </div>
         <div className="tw-w-3/12 tw-px-2">
-          <Card action={ownerAction()} heading="Owner">
+          <Card
+            action={ownerAction()}
+            className="shadow-custom"
+            heading="Owner">
             <div className="tw-flex tw-items-center">
               {glossary.owner && getEntityName(glossary.owner) && (
                 <div className="tw-inline-block tw-mr-2">
@@ -505,7 +516,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           </Card>
           <Card
             action={AddReviewerButton()}
-            className="tw-mt-4"
+            className="tw-mt-4 shadow-custom"
             heading="Reviewer">
             <div>{getReviewerTabData()}</div>
           </Card>

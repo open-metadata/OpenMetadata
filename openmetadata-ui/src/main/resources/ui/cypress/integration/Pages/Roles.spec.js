@@ -84,7 +84,7 @@ describe('Roles page should work properly', () => {
   });
 
   it('Add new role', () => {
-    cy.get('button').contains('Add Role').should('be.visible').click();
+    cy.get('[data-testid="add-role"]').contains('Add Role').should('be.visible').click();
 
     //Asserting navigation
     cy.get('[data-testid="inactive-link"]')
