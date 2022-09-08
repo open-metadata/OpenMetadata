@@ -372,6 +372,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={ProfilerDashboardPage}
+        path={ROUTES.PROFILER_DASHBOARD_WITH_TAB}
+      />
+      <Route
+        exact
         component={MlModelPage}
         path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
       />

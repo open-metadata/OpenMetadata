@@ -251,7 +251,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         <ProfilerSummaryCard
           showIndicator
           data={testSummary}
-          title="Quality Tests Summary"
+          title="Table Tests Summary"
         />
       </Col>
       <Col span={24}>

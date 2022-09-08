@@ -16,7 +16,13 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { EditorContentRef } from 'Models';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   getTestDefinitionById,
   updateTestCaseById,
@@ -28,6 +34,8 @@ import {
   TestDefinition,
 } from '../../generated/tests/testDefinition';
 import jsonData from '../../jsons/en';
+import { getNameFromFQN } from '../../utils/CommonUtils';
+import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import Loader from '../Loader/Loader';
@@ -52,6 +60,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   );
   const [isLoading, setIsLoading] = useState(true);
   const markdownRef = useRef<EditorContentRef>();
+
+  const isColumn = useMemo(
+    () => testCase?.entityLink.includes('::columns::'),
+    [testCase]
+  );
 
   const GenerateParamsField = useCallback(() => {
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
@@ -167,6 +180,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         name: testCase?.name,
         testDefinition: testCase?.testDefinition?.name,
         params: getParamsValue(),
+        table: getNameFromFQN(getEntityFqnFromEntityLink(testCase?.entityLink)),
+        column: getNameFromFQN(
+          getEntityFqnFromEntityLink(testCase?.entityLink, isColumn)
+        ),
       });
       setSqlQuery(
         testCase?.parameterValues?.[0] ?? {
@@ -198,6 +215,14 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
+          <Form.Item required label="Table:" name="table">
+            <Input disabled />
+          </Form.Item>
+          {isColumn && (
+            <Form.Item required label="Column:" name="column">
+              <Input disabled />
+            </Form.Item>
+          )}
           <Form.Item required label="Name:" name="name">
             <Input disabled placeholder="Enter test case name" />
           </Form.Item>
