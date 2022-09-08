@@ -323,8 +323,8 @@ const GlobalSearchSuggestions = ({
             {isSuggestionsLoading ? (
               <Loader size="small" />
             ) : (
-              <ErrorPlaceHolder classes="tw-mt-0">
-                <Typography.Text className="tw-text-sm">
+              <ErrorPlaceHolder classes="tw-mt-0 opacity-60">
+                <Typography.Text className="tw-text-sm tw-grey-body ">
                   No Data Available
                 </Typography.Text>
               </ErrorPlaceHolder>
