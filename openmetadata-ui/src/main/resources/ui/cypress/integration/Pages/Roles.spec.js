@@ -92,7 +92,7 @@ describe('Roles page should work properly', () => {
       .should('be.visible');
     //Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering descrription
+    //Entering description
     cy.get(
       '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
     ).type(description);
@@ -139,7 +139,7 @@ describe('Roles page should work properly', () => {
   });
 
   it('Add new role without selecting data', () => {
-    cy.get('button').contains('Add Role').should('be.visible').click();
+    cy.get('[data-testid="add-role"]').contains('Add Role').should('be.visible').click();
 
     //Asserting navigation
     cy.get('[data-testid="inactive-link"]')
@@ -147,7 +147,7 @@ describe('Roles page should work properly', () => {
       .should('be.visible');
     //Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering descrription
+    //Entering description
     cy.get(
       '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
     ).type(description);
