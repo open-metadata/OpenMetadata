@@ -378,56 +378,54 @@ export const WHATS_NEW = [
       {
         title: 'Roles and policies',
         description:
-          'A quick overview of the completely re-architected Roles and Policies features available in OpenMetadata with the 12.0 release.',
+          'We now support a rich team management system with a world class Roles and Policies hierarchy based on fine-grained operations and rich SpEL based conditional rules to organize your metadata and users. We support Attribute and Rule based Policies as well as User and Resource based Policies.',
         isImage: false,
         path: 'https://www.youtube.com/embed/heN9h-XEK6g',
       },
       {
-        title: 'Data Profiler and Data Quality',
-        description:
-          'A quick overview of the complete overhaul in the Data Quality and profiler performance, capabilities and UI in OpenMetadata with the 12.0 release.',
+        title: 'Data Quality and Data Profiler',
+        description: `The 0.12 release offers an integrated catalog, Profiler and Data Quality solution designed with engineers and business users in mind. We've introduced Test Suites, brand new dashboards for Profiler, Data Quality Tests at the Table & Column levels, Custom Tests & lots more.`,
         isImage: false,
         path: 'https://www.youtube.com/embed/EmopVu6aux4',
       },
       {
-        title: 'Webhooks and slack improvements',
+        title: 'Webhooks and Slack Improvements',
         description:
-          'A quick overview of the improvements to the Webhooks and Slack integrations available in OpenMetadata with the 12.0 release.',
+          'Slack and Microsoft Teams webhook integrations have been supported to send event notifications in real time. Users can choose to receive notifications for only the required entities by using event filters based on when an entity is created, updated, or deleted.',
         isImage: false,
         path: 'https://www.youtube.com/embed/47hyjnuSY4Q',
       },
       {
         title: 'Announcements',
         description:
-          'A quick overview of the new Announcements feature in OpenMetadata with the 12.0 release.',
+          'With Announcements, you can now inform your entire team of all the upcoming events and changes. OpenMetadata supports these announcement banners for Entities or data assets like Tables, Topics, Pipelines, and Dashboards.',
         isImage: false,
         path: 'https://www.youtube.com/embed/xflbzDuEBvU',
       },
       {
-        title: 'Activity Feed',
+        title: 'Activity Feed Notifications',
         description:
-          'A quick overview of the changes in the Activity feed in OpenMetadata with the 12.0 release.',
+          'The Activity Feed Notifications has been improved to allow users to choose the events they want to be notified about. In the 0.12 release, we’ve also streamlined the Notifications menu with two separate tabs for Tasks and Mentions, that’ll display only the recent notifications.',
         isImage: false,
         path: 'https://www.youtube.com/embed/t3r-QIJcNPk',
       },
       {
-        title: 'Global settings',
+        title: 'Global Settings',
         description:
-          'A quick overview of the Global Settings page available in OpenMetadata with the 12.0 release.',
+          'The OpenMetadata Settings dropdown menu has been transformed into a single, centralized Settings page for added convenience in viewing all the available options. The Global Settings comprises setting options for Team Members, Access based on Roles and Policies, Services, Data Quality, Collaboration, Custom Attributes, and Integrations for webhooks and bots.',
         isImage: false,
         path: 'https://www.youtube.com/embed/OhlFOY48xB0',
       },
       {
-        title: 'Custom properties',
+        title: 'Custom Properties',
         description:
-          'A quick overview of the Custom properties feature available in OpenMetadata with the 12.0 release.',
+          'OpenMetadata now supports adding custom properties for all entities, so organizations can tweak the data as per their needs.',
         isImage: false,
         path: 'https://www.youtube.com/embed/49tWRQfR_PA',
       },
       {
-        title: 'New connectors',
-        description:
-          'A quick overview of the 3 latest connectors available in OpenMetadata with the 12.0 release: Redpanda, Dagster, Fivetran.',
+        title: 'New Connectors',
+        description: `Four new connectors have been introduced: **Redpanda**, **Dagster**, **Fivetran**, and **Apache NiFi**.`,
         isImage: false,
         path: 'https://www.youtube.com/embed/mSdHhXb3MMA',
       },
