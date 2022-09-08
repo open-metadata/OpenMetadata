@@ -62,7 +62,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const markdownRef = useRef<EditorContentRef>();
 
   const isColumn = useMemo(
-    () => testCase?.entityLink.includes('column'),
+    () => testCase?.entityLink.includes('::columns::'),
     [testCase]
   );
 

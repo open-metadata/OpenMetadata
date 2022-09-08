@@ -47,8 +47,11 @@ import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
-  const { entityTypeFQN, dashboardType, tab } =
-    useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType, tab } = useParams<{
+    entityTypeFQN: string;
+    dashboardType: ProfilerDashboardType;
+    tab: ProfilerDashboardTab;
+  }>();
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [table, setTable] = useState<Table>({} as Table);
   const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);

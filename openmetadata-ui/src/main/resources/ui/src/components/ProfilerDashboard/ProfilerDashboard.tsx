@@ -87,13 +87,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 }) => {
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
-  const { entityTypeFQN, dashboardType, tab } =
-    useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType, tab } = useParams<{
+    entityTypeFQN: string;
+    dashboardType: ProfilerDashboardType;
+    tab: ProfilerDashboardTab;
+  }>();
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
-    (tab as ProfilerDashboardTab) ?? ProfilerDashboardTab.PROFILER
+    tab ?? ProfilerDashboardTab.PROFILER
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
@@ -362,11 +365,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     setSelectedTestCaseStatus('');
     setActiveTab(value);
     history.push(
-      getProfilerDashboardWithFqnPath(
-        dashboardType as ProfilerDashboardType,
-        entityTypeFQN,
-        value
-      )
+      getProfilerDashboardWithFqnPath(dashboardType, entityTypeFQN, value)
     );
   };
 

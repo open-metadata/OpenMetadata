@@ -84,22 +84,22 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: 'Test Suite',
         dataIndex: 'testSuite',
         key: 'testSuite',
-        render: (_, record) => {
+        render: (value) => {
           return (
             <Link
-              to={getTestSuitePath(record?.testSuite?.fullyQualifiedName || '')}
+              to={getTestSuitePath(value?.fullyQualifiedName || '')}
               onClick={(e) => e.stopPropagation()}>
-              {getEntityName(record?.testSuite)}
+              {getEntityName(value)}
             </Link>
           );
         },
       },
       {
         title: 'Table',
-        dataIndex: 'table',
+        dataIndex: 'entityLink',
         key: 'table',
-        render: (_, record) => {
-          const tableFqn = getEntityFqnFromEntityLink(record.entityLink);
+        render: (entityLink) => {
+          const tableFqn = getEntityFqnFromEntityLink(entityLink);
           const name = getNameFromFQN(tableFqn);
 
           return (
@@ -113,23 +113,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       },
       {
         title: 'Column',
-        dataIndex: 'column',
+        dataIndex: 'entityLink',
         key: 'column',
-        render: (_, record) => {
-          const isColumn = record.entityLink.includes('column');
+        render: (entityLink) => {
+          const isColumn = entityLink.includes('::columns::');
 
           if (isColumn) {
             const name = getNameFromFQN(
-              getEntityFqnFromEntityLink(record.entityLink, isColumn)
+              getEntityFqnFromEntityLink(entityLink, isColumn)
             );
 
             return name;
           }
 
           return isColumn
-            ? getNameFromFQN(
-                getEntityFqnFromEntityLink(record.entityLink, isColumn)
-              )
+            ? getNameFromFQN(getEntityFqnFromEntityLink(entityLink, isColumn))
             : '--';
         },
       },
