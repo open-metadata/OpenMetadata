@@ -70,7 +70,7 @@ const ErrorPlaceHolder = ({
       </div>
     </>
   ) : (
-    <div className={`${classes} flex-center flex-col mt-24 w-full`}>
+    <div className={`${classes} flex-center flex-col w-full mt-24`}>
       <div data-testid="error">
         <img
           data-testid="no-data-image"
