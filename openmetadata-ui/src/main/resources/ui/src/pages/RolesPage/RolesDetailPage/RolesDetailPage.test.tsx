@@ -63,6 +63,20 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+
 describe('Test Roles Details Page', () => {
   it('Should render the detail component', async () => {
     render(<RolesDetailPage />);

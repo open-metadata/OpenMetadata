@@ -58,7 +58,10 @@ import {
 } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../constants/HelperTextUtil';
 import { servicesDisplayName } from '../../constants/services.const';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -102,7 +105,7 @@ export type ServicePageData = Database | Topic | Dashboard;
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const history = useHistory();
   const [serviceName, setServiceName] = useState<ServiceTypes>(
     (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
@@ -137,14 +140,17 @@ const ServicePage: FunctionComponent = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const fetchServicePermission = async () => {
+    setIsLoading(true);
     try {
-      const response = await getEntityPermission(
-        getResourceEntityFromServiceCategory(serviceType),
-        serviceDetails?.id as string
+      const response = await getEntityPermissionByFqn(
+        getResourceEntityFromServiceCategory(serviceCategory),
+        serviceFQN
       );
       setServicePermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -684,66 +690,72 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    setIsLoading(true);
-    getServiceByFQN(serviceName, serviceFQN, 'owner')
-      .then((resService) => {
-        if (resService) {
-          const { description, serviceType } = resService;
-          setServiceDetails(resService);
-          setConnectionDetails(
-            resService.connection?.config as DashboardConnection
-          );
-          setDescription(description ?? '');
-          setSlashedTableName([
-            {
-              name: startCase(serviceName || ''),
-              url: getSettingPath(
-                GlobalSettingsMenuCategory.SERVICES,
-                getServiceRouteFromServiceType(serviceName)
-              ),
-            },
-            {
-              name: getEntityName(resService),
-              url: '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              activeTitle: true,
-            },
-          ]);
-          getOtherDetails();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['fetch-service-error']
-          );
-        }
-      })
-      .finally(() => setIsLoading(false));
-  }, [serviceFQN, serviceName]);
+    if (servicePermission.ViewAll) {
+      setIsLoading(true);
+      getServiceByFQN(serviceName, serviceFQN, 'owner')
+        .then((resService) => {
+          if (resService) {
+            const { description, serviceType } = resService;
+            setServiceDetails(resService);
+            setConnectionDetails(
+              resService.connection?.config as DashboardConnection
+            );
+            setDescription(description ?? '');
+            setSlashedTableName([
+              {
+                name: startCase(serviceName || ''),
+                url: getSettingPath(
+                  GlobalSettingsMenuCategory.SERVICES,
+                  getServiceRouteFromServiceType(serviceName)
+                ),
+              },
+              {
+                name: getEntityName(resService),
+                url: '',
+                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+                activeTitle: true,
+              },
+            ]);
+            getOtherDetails();
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['fetch-service-error']
+            );
+          }
+        })
+        .catch((error: AxiosError) => {
+          if (error.response?.status === 404) {
+            setIsError(true);
+          } else {
+            showErrorToast(
+              error,
+              jsonData['api-error-messages']['fetch-service-error']
+            );
+          }
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [serviceFQN, serviceName, servicePermission, serviceType]);
 
   useEffect(() => {
-    const currentTab = getCurrentServiceTab(tab);
-    const currentTabIndex = currentTab - 1;
+    if (servicePermission.ViewAll) {
+      const currentTab = getCurrentServiceTab(tab);
+      const currentTabIndex = currentTab - 1;
 
-    if (tabs[currentTabIndex].isProtected) {
-      activeTabHandler(1);
+      if (tabs[currentTabIndex].isProtected) {
+        activeTabHandler(1);
+      }
+
+      getAirflowStatus()
+        .then(() => {
+          setIsAirflowRunning(true);
+          getAllIngestionWorkflows();
+        })
+        .catch(() => {
+          setIsAirflowRunning(false);
+        });
     }
-
-    getAirflowStatus()
-      .then(() => {
-        setIsAirflowRunning(true);
-        getAllIngestionWorkflows();
-      })
-      .catch(() => {
-        setIsAirflowRunning(false);
-      });
-  }, []);
+  }, [servicePermission]);
 
   const onCancel = () => {
     setIsEdit(false);
@@ -890,10 +902,8 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    if (serviceDetails?.id) {
-      fetchServicePermission();
-    }
-  }, [serviceDetails]);
+    fetchServicePermission();
+  }, [serviceFQN, serviceCategory]);
 
   return (
     <Row className="page-container" gutter={[16, 16]}>
@@ -904,207 +914,218 @@ const ServicePage: FunctionComponent = () => {
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <Col span={24}>
-          <div
-            className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
-            data-testid="service-page">
-            <Space
-              align="center"
-              className="tw-justify-between"
-              style={{ width: '100%' }}>
-              <TitleBreadcrumb titleLinks={slashedTableName} />
-              <Tooltip
-                title={
-                  servicePermission.Delete ? 'Delete' : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  data-testid="service-delete"
-                  disabled={!servicePermission.Delete}
-                  size="small"
-                  theme="primary"
-                  variant="outlined"
-                  onClick={handleDelete}>
-                  <IcDeleteColored
-                    className="tw-mr-1.5"
-                    height={14}
-                    viewBox="0 0 24 24"
-                    width={14}
+        <>
+          {servicePermission.ViewAll ? (
+            <Col span={24}>
+              <div
+                className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
+                data-testid="service-page">
+                <Space
+                  align="center"
+                  className="tw-justify-between"
+                  style={{ width: '100%' }}>
+                  <TitleBreadcrumb titleLinks={slashedTableName} />
+                  <Tooltip
+                    title={
+                      servicePermission.Delete
+                        ? 'Delete'
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
+                      data-testid="service-delete"
+                      disabled={!servicePermission.Delete}
+                      size="small"
+                      theme="primary"
+                      variant="outlined"
+                      onClick={handleDelete}>
+                      <IcDeleteColored
+                        className="tw-mr-1.5"
+                        height={14}
+                        viewBox="0 0 24 24"
+                        width={14}
+                      />
+                      Delete
+                    </Button>
+                  </Tooltip>
+                  <DeleteWidgetModal
+                    isRecursiveDelete
+                    allowSoftDelete={false}
+                    deleteMessage={getDeleteEntityMessage(
+                      serviceName || '',
+                      instanceCount,
+                      schemaCount,
+                      tableCount
+                    )}
+                    entityId={serviceDetails?.id}
+                    entityName={serviceDetails?.name || ''}
+                    entityType={serviceName?.slice(0, -1)}
+                    visible={deleteWidgetVisible}
+                    onCancel={() => setDeleteWidgetVisible(false)}
                   />
-                  Delete
-                </Button>
-              </Tooltip>
-              <DeleteWidgetModal
-                isRecursiveDelete
-                allowSoftDelete={false}
-                deleteMessage={getDeleteEntityMessage(
-                  serviceName || '',
-                  instanceCount,
-                  schemaCount,
-                  tableCount
-                )}
-                entityId={serviceDetails?.id}
-                entityName={serviceDetails?.name || ''}
-                entityType={serviceName?.slice(0, -1)}
-                visible={deleteWidgetVisible}
-                onCancel={() => setDeleteWidgetVisible(false)}
-              />
-            </Space>
+                </Space>
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
-              {extraInfo.map((info, index) => (
-                <span className="tw-flex" key={index}>
-                  <EntitySummaryDetails
-                    data={info}
-                    updateOwner={
-                      servicePermission.EditAll || servicePermission.EditOwner
-                        ? handleUpdateOwner
-                        : undefined
-                    }
-                  />
+                <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
+                  {extraInfo.map((info, index) => (
+                    <span className="tw-flex" key={index}>
+                      <EntitySummaryDetails
+                        data={info}
+                        updateOwner={
+                          servicePermission.EditAll ||
+                          servicePermission.EditOwner
+                            ? handleUpdateOwner
+                            : undefined
+                        }
+                      />
 
-                  {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                    <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                      |
+                      {extraInfo.length !== 1 &&
+                      index < extraInfo.length - 1 ? (
+                        <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                          |
+                        </span>
+                      ) : null}
                     </span>
-                  ) : null}
-                </span>
-              ))}
-            </div>
-
-            <div
-              className="tw-my-2 tw--ml-5"
-              data-testid="description-container">
-              <Description
-                description={description || ''}
-                entityFqn={serviceFQN}
-                entityName={serviceFQN}
-                entityType={serviceCategory.slice(0, -1)}
-                hasEditAccess={
-                  servicePermission.EditAll || servicePermission.EditDescription
-                }
-                isEdit={isEdit}
-                onCancel={onCancel}
-                onDescriptionEdit={onDescriptionEdit}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </div>
-
-            <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
-              <TabsPane
-                activeTab={activeTab}
-                className="tw-flex-initial"
-                setActiveTab={activeTabHandler}
-                tabs={tabs}
-              />
-              <div className="tw-flex-grow">
-                {activeTab === 1 &&
-                  (isEmpty(data) ? (
-                    <ErrorPlaceHolder
-                      doc={CONNECTORS_DOCS}
-                      heading={servicesDisplayName[serviceName]}
-                    />
-                  ) : (
-                    <Fragment>
-                      <div
-                        className="tw-my-4 tw-table-container"
-                        data-testid="table-container">
-                        <table
-                          className="tw-bg-white tw-w-full"
-                          data-testid="database-tables">
-                          <thead>
-                            <tr className="tableHead-row">
-                              {getTableHeaders()}
-                            </tr>
-                          </thead>
-                          <tbody className="tableBody">
-                            {data.map((dataObj, index) => (
-                              <tr
-                                className={classNames(
-                                  'tableBody-row',
-                                  !isEven(index + 1) ? 'odd-row' : null
-                                )}
-                                data-testid="column"
-                                key={index}>
-                                <td className="tableBody-cell">
-                                  <Link
-                                    to={getLinkForFqn(
-                                      dataObj.fullyQualifiedName || ''
-                                    )}>
-                                    {getEntityName(
-                                      dataObj as unknown as EntityReference
-                                    )}
-                                  </Link>
-                                </td>
-                                <td className="tableBody-cell">
-                                  {dataObj.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={dataObj.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="tableBody-cell">
-                                  <p>{dataObj?.owner?.name || '--'}</p>
-                                </td>
-                                {getOptionalTableCells(dataObj as Database)}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      {Boolean(
-                        !isNil(paging.after) || !isNil(paging.before)
-                      ) && (
-                        <NextPrevious
-                          currentPage={currentPage}
-                          pageSize={PAGE_SIZE}
-                          paging={paging}
-                          pagingHandler={pagingHandler}
-                          totalCount={paging.total}
-                        />
-                      )}
-                    </Fragment>
                   ))}
+                </div>
 
-                {activeTab === 2 && getIngestionTab()}
+                <div
+                  className="tw-my-2 tw--ml-5"
+                  data-testid="description-container">
+                  <Description
+                    description={description || ''}
+                    entityFqn={serviceFQN}
+                    entityName={serviceFQN}
+                    entityType={serviceCategory.slice(0, -1)}
+                    hasEditAccess={
+                      servicePermission.EditAll ||
+                      servicePermission.EditDescription
+                    }
+                    isEdit={isEdit}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                  />
+                </div>
 
-                {activeTab === 3 && (
-                  <>
-                    <div className="tw-my-4 tw-flex tw-justify-end">
-                      <Tooltip
-                        title={
-                          servicePermission.EditAll
-                            ? 'Edit Connection'
-                            : NO_PERMISSION_FOR_ACTION
-                        }>
-                        <Button
-                          className={classNames(
-                            'tw-h-8 tw-rounded tw-px-4 tw-py-1'
+                <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+                  <TabsPane
+                    activeTab={activeTab}
+                    className="tw-flex-initial"
+                    setActiveTab={activeTabHandler}
+                    tabs={tabs}
+                  />
+                  <div className="tw-flex-grow">
+                    {activeTab === 1 &&
+                      (isEmpty(data) ? (
+                        <ErrorPlaceHolder
+                          doc={CONNECTORS_DOCS}
+                          heading={servicesDisplayName[serviceName]}
+                        />
+                      ) : (
+                        <Fragment>
+                          <div
+                            className="tw-my-4 tw-table-container"
+                            data-testid="table-container">
+                            <table
+                              className="tw-bg-white tw-w-full"
+                              data-testid="database-tables">
+                              <thead>
+                                <tr className="tableHead-row">
+                                  {getTableHeaders()}
+                                </tr>
+                              </thead>
+                              <tbody className="tableBody">
+                                {data.map((dataObj, index) => (
+                                  <tr
+                                    className={classNames(
+                                      'tableBody-row',
+                                      !isEven(index + 1) ? 'odd-row' : null
+                                    )}
+                                    data-testid="column"
+                                    key={index}>
+                                    <td className="tableBody-cell">
+                                      <Link
+                                        to={getLinkForFqn(
+                                          dataObj.fullyQualifiedName || ''
+                                        )}>
+                                        {getEntityName(
+                                          dataObj as unknown as EntityReference
+                                        )}
+                                      </Link>
+                                    </td>
+                                    <td className="tableBody-cell">
+                                      {dataObj.description ? (
+                                        <RichTextEditorPreviewer
+                                          markdown={dataObj.description}
+                                        />
+                                      ) : (
+                                        <span className="tw-no-description">
+                                          No description
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="tableBody-cell">
+                                      <p>{dataObj?.owner?.name || '--'}</p>
+                                    </td>
+                                    {getOptionalTableCells(dataObj as Database)}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {Boolean(
+                            !isNil(paging.after) || !isNil(paging.before)
+                          ) && (
+                            <NextPrevious
+                              currentPage={currentPage}
+                              pageSize={PAGE_SIZE}
+                              paging={paging}
+                              pagingHandler={pagingHandler}
+                              totalCount={paging.total}
+                            />
                           )}
-                          data-testid="add-new-service-button"
-                          disabled={!servicePermission.EditAll}
-                          size="small"
-                          theme="primary"
-                          variant="outlined"
-                          onClick={handleEditConnection}>
-                          Edit Connection
-                        </Button>
-                      </Tooltip>
-                    </div>
-                    <ServiceConnectionDetails
-                      connectionDetails={connectionDetails || {}}
-                      serviceCategory={serviceCategory}
-                      serviceFQN={serviceDetails?.serviceType || ''}
-                    />
-                  </>
-                )}
+                        </Fragment>
+                      ))}
+
+                    {activeTab === 2 && getIngestionTab()}
+
+                    {activeTab === 3 && (
+                      <>
+                        <div className="tw-my-4 tw-flex tw-justify-end">
+                          <Tooltip
+                            title={
+                              servicePermission.EditAll
+                                ? 'Edit Connection'
+                                : NO_PERMISSION_FOR_ACTION
+                            }>
+                            <Button
+                              className={classNames(
+                                'tw-h-8 tw-rounded tw-px-4 tw-py-1'
+                              )}
+                              data-testid="add-new-service-button"
+                              disabled={!servicePermission.EditAll}
+                              size="small"
+                              theme="primary"
+                              variant="outlined"
+                              onClick={handleEditConnection}>
+                              Edit Connection
+                            </Button>
+                          </Tooltip>
+                        </div>
+                        <ServiceConnectionDetails
+                          connectionDetails={connectionDetails || {}}
+                          serviceCategory={serviceCategory}
+                          serviceFQN={serviceDetails?.serviceType || ''}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </Col>
+            </Col>
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </Row>
   );
