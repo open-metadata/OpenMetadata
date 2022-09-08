@@ -358,13 +358,13 @@ const EntityTable = ({
     columnConstraint?: string
   ) => {
     if (!isNil(columnConstraint)) {
-      return getConstraintIcon(columnConstraint);
+      return getConstraintIcon(columnConstraint, 'tw-mr-2');
     } else {
       const flag = tableConstraints?.find((constraint) =>
         constraint.columns?.includes(columnName)
       );
       if (!isUndefined(flag)) {
-        return getConstraintIcon(flag.constraintType);
+        return getConstraintIcon(flag.constraintType, 'tw-mr-2');
       } else {
         return null;
       }
@@ -793,7 +793,7 @@ const EntityTable = ({
               ) : (
                 <span>
                   {prepareConstraintIcon(record.name, record.constraint)}
-                  <span className="tw-ml-4">{record.name}</span>
+                  <span>{record.name}</span>
                 </span>
               )}
             </Fragment>

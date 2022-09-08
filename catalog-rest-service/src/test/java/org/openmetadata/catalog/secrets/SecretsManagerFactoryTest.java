@@ -33,18 +33,18 @@ public class SecretsManagerFactoryTest {
 
   @Test
   void testDefaultIsCreatedIfNullConfig() {
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof LocalSecretsManager);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
   }
 
   @Test
   void testDefaultIsCreatedIfMissingSecretManager() {
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof LocalSecretsManager);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
   }
 
   @Test
   void testIsCreatedIfLocalSecretsManager() {
-    config.setSecretsManager(SecretsManagerProvider.LOCAL);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof LocalSecretsManager);
+    config.setSecretsManager(SecretsManagerProvider.NOOP);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
   }
 
   @Test

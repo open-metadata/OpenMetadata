@@ -19,7 +19,7 @@
       "default": "oracle+cx_oracle"
     },
     "OracleDatabaseSchema": {
-      "title": "DatabaseSchema",
+      "title": "Database Schema",
       "properties": {
         "databaseSchema": {
           "title": "DatabaseSchema",
@@ -34,7 +34,7 @@
       "properties": {
         "oracleServiceName": {
           "title": "Oracle Service Name",
-          "description": "Oracle Service Name to be passed. Note: either Database or Oracle service name can be sent, not both.",
+          "description": "The Oracle Service name is the TNS alias that you give when you remotely connect to your database.",
           "type": "string"
         }
       },
@@ -76,10 +76,10 @@
       "description": "Connect with oracle by either passing service name or database schema name.",
       "oneOf": [
         {
-          "$ref": "#/definitions/OracleDatabaseSchema"
+          "$ref": "#/definitions/OracleServiceName"
         },
         {
-          "$ref": "#/definitions/OracleServiceName"
+          "$ref": "#/definitions/OracleDatabaseSchema"
         }
       ]
     },

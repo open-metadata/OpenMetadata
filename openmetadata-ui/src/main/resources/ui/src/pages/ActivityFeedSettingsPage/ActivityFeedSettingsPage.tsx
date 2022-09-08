@@ -47,12 +47,7 @@ const ActivityFeedSettingsPage: React.FC = () => {
   const fetchEventFilters = async () => {
     try {
       const data = await getActivityFeedEventFilters();
-
-      const filteredData = data?.filter(
-        ({ entityType }) => entityType !== TERM_ALL
-      );
-
-      setEventFilters(filteredData);
+      setEventFilters(data);
     } catch (error) {
       const err = error as AxiosError;
       showErrorToast(err, jsonData['api-error-messages']['fetch-settings']);

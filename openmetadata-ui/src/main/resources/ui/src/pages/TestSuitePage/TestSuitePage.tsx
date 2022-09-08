@@ -25,6 +25,7 @@ import {
 } from '../../constants/constants';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
+import { getEntityName, pluralize } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 const { Text } = Typography;
 
@@ -78,13 +79,17 @@ const TestSuitePage = () => {
         title: 'No. of Test',
         dataIndex: 'noOfTests',
         key: 'noOfTests',
-        render: (_, record) => <Text>{record?.tests?.length} Tests</Text>,
+        render: (_, record) => (
+          <Text>{pluralize(record?.tests?.length || 0, 'Test')}</Text>
+        ),
       },
       {
         title: 'Owner',
         dataIndex: 'owner',
         key: 'owner',
-        render: (_, record) => <span>{record?.owner?.displayName}</span>,
+        render: (_, record) => (
+          <span>{getEntityName(record.owner) || '--'}</span>
+        ),
       },
     ];
 

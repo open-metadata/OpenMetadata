@@ -64,7 +64,13 @@ const RelatedTermsModal = ({
           formatSearchGlossaryTermResponse(
             res?.data?.hits?.hits || []
           ) as FormattedGlossaryTermData[]
-        ).filter((item) => item.fullyQualifiedName !== glossaryTermFQN);
+        ).filter((item) => {
+          const isTermExist = relatedTerms?.some(
+            (term) => term.fullyQualifiedName === item.fullyQualifiedName
+          );
+
+          return !isTermExist && item.fullyQualifiedName !== glossaryTermFQN;
+        });
         const data = !searchText ? getSearchedTerms(termResult) : termResult;
         setOptions(data);
       })

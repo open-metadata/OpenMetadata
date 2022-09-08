@@ -13,10 +13,11 @@
 
 import { Badge, Dropdown, Input, Space } from 'antd';
 import { debounce, toString } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
+import { checkValidImage } from '../../axiosAPIs/userAPI';
 import {
   NOTIFICATION_READ_TIMER,
   ROUTES,
@@ -72,6 +73,12 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(false);
+
+  const profilePicture = useMemo(
+    () => AppState?.userDetails?.profile?.images?.image512,
+    [AppState]
+  );
 
   const { socket } = useWebSocketConnector();
 
@@ -165,6 +172,16 @@ const NavBar = ({
     };
   };
 
+  const validateImgUrl = useCallback(async (url: string) => {
+    const response = await checkValidImage(url);
+
+    SetIsImgUrlValid(response === 200);
+  }, []);
+
+  useEffect(() => {
+    profilePicture && validateImgUrl(profilePicture);
+  }, [profilePicture, validateImgUrl]);
+
   useEffect(() => {
     if (shouldRequestPermission()) {
       Notification.requestPermission();
@@ -209,7 +226,7 @@ const NavBar = ({
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6 centered-layout">
+        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="90" />
@@ -388,12 +405,12 @@ const NavBar = ({
                       position="bottom"
                       title="Profile"
                       trigger="mouseenter">
-                      {AppState?.userDetails?.profile?.images?.image512 ? (
+                      {isImgUrlValid ? (
                         <div className="profile-image square tw--mr-2">
                           <img
                             alt="user"
                             referrerPolicy="no-referrer"
-                            src={AppState.userDetails.profile.images.image512}
+                            src={profilePicture}
                           />
                         </div>
                       ) : (

@@ -32,6 +32,7 @@ import {
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
+import { ProfilerDashboardTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
@@ -46,7 +47,11 @@ import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType, tab } = useParams<{
+    entityTypeFQN: string;
+    dashboardType: ProfilerDashboardType;
+    tab: ProfilerDashboardTab;
+  }>();
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [table, setTable] = useState<Table>({} as Table);
   const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);
@@ -151,12 +156,15 @@ const ProfilerDashboardPage = () => {
   };
 
   const getProfilerDashboard = (permission: OperationPermission) => {
-    if (isColumnView && (permission.ViewAll || permission.ViewDataProfile)) {
+    if (
+      tab === ProfilerDashboardTab.DATA_QUALITY &&
+      (permission.ViewAll || permission.ViewTests)
+    ) {
+      fetchTestCases(generateEntityLink(entityTypeFQN));
+    } else if (permission.ViewAll || permission.ViewDataProfile) {
       fetchProfilerData(entityTypeFQN);
     } else {
-      if (permission.ViewAll || permission.ViewTests) {
-        fetchTestCases(generateEntityLink(entityTypeFQN));
-      }
+      setIsLoading(false);
     }
   };
 
