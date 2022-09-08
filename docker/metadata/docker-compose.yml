@@ -18,7 +18,7 @@ volumes:
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.11.5
+    image: openmetadata/db:0.12.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -49,7 +49,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.11.5
+    image: openmetadata/server:0.12.0
     environment:
       ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
@@ -127,7 +127,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.11.5
+    image: openmetadata/ingestion:0.12.0
     depends_on:
       elasticsearch:
         condition: service_started
