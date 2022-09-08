@@ -38,6 +38,16 @@ export const getEntityPermissionById = async (
 
   return response.data;
 };
+export const getEntityPermissionByFqn = async (
+  resource: ResourceEntity,
+  entityFqn: string
+) => {
+  const response = await APIClient.get<ResourcePermission>(
+    `/permissions/${resource}/name/${entityFqn}`
+  );
+
+  return response.data;
+};
 
 export const getResourcePermission = async (resource: ResourceEntity) => {
   const response = await APIClient.get<ResourcePermission>(

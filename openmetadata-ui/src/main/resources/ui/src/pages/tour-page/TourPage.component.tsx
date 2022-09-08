@@ -134,6 +134,7 @@ const TourPage = () => {
               servicesCount: 4,
               userCount: 100,
               teamCount: 7,
+              testSuiteCount: 2,
             }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}

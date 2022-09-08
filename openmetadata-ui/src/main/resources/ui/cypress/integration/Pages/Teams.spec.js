@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { toastNotification, uuid } from '../../common/common';
+import { toastNotification, updateOwner, uuid } from '../../common/common';
 
 const orgName = 'Organization';
 const updateddescription = 'This is updated description';
@@ -85,31 +85,10 @@ describe('Teams flow should work properly', () => {
   it('Add owner to created team', () => {
     //Clicking on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
-
-    //Clicking on edit owner button
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
-
-    cy.wait(1000);
-
-    //Clicking on users tab
-    cy.get('button[data-testid="dropdown-tab"]')
-      .should('exist')
-      .should('be.visible')
-      .contains('Users')
-      .click();
-
-    cy.get('[data-testid="list-item"]')
-      .should('contain', TEAM_DETAILS.ownername)
-      .click();
-
-    //Asserting the added name
-    cy.get('[data-testid="owner-link"]').should(
-      'contain',
-      TEAM_DETAILS.ownername
-    );
+    updateOwner()
   });
 
-  it('Add user to created team', () => {
+it('Add user to created team', () => {
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
@@ -119,14 +98,15 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="add-new-user"]')
+    cy.get('[data-testid="add-user"]')
+      .scrollIntoView()
       .should('exist')
       .should('be.visible')
       .click();
 
     cy.wait(2000);
 
-    cy.get('[data-testid="searchbar"]').eq(1).type(TEAM_DETAILS.ownername);
+    cy.get('[data-testid="searchbar"]').type(TEAM_DETAILS.ownername);
 
     cy.wait(500);
 
@@ -163,15 +143,13 @@ describe('Teams flow should work properly', () => {
     // TODO: Remove cy.wait and wait for API to be completed before querying for new element
     cy.wait(2000);
 
-    //
     //Verify if user is removed
-    cy.get('[data-testid="searchbar"]')
+    cy.get('[data-testid="Users"]')
+      .should('exist')
       .should('be.visible')
-      .type(TEAM_DETAILS.ownername);
+      .click();
 
-    cy.get('.ant-table-cell')
-      .should('be.visible')
-      .should('not.contain', TEAM_DETAILS.ownername);
+    cy.get('[data-testid="add-user"]').should('not.contain', TEAM_DETAILS.ownername);
   });
 
   it('Join team should work properly', () => {
@@ -215,7 +193,7 @@ describe('Teams flow should work properly', () => {
       .should('contain', TEAM_DETAILS.updatedname);
 
     //Click on edit description button
-    cy.get('[data-testid="edit-description"]').should('be.visible').click();
+    cy.get('[data-testid="edit-description"] > [data-testid="image"]').should('be.visible').click();
 
     //Entering updated description
     cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')

@@ -22,7 +22,7 @@ import {
   uniqueId,
 } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -153,6 +153,26 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
+  const RenderTitle = useMemo(() => {
+    const title = (
+      <button
+        className="tw-text-grey-body tw-font-semibold"
+        data-testid="table-link"
+        id={`${id}Title`}
+        onClick={handleLinkClick}>
+        {stringToHTML(name)}
+      </button>
+    );
+
+    if (location.pathname.includes(ROUTES.TOUR)) {
+      return title;
+    }
+
+    return (
+      <Link to={getEntityLink(indexType, fullyQualifiedName)}>{title}</Link>
+    );
+  }, []);
+
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
@@ -167,16 +187,7 @@ const TableDataCard: FunctionComponent<Props> = ({
             src={serviceTypeLogo(serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
-            <Link
-              to={getEntityLink(indexType, fullyQualifiedName)}
-              onClick={handleLinkClick}>
-              <button
-                className="tw-text-grey-body tw-font-semibold"
-                data-testid="table-link"
-                id={`${id}Title`}>
-                {stringToHTML(name)}
-              </button>
-            </Link>
+            {RenderTitle}
           </h6>
           {deleted && (
             <>

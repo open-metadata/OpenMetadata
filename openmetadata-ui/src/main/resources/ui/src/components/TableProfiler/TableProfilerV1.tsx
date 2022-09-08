@@ -177,7 +177,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   return (
     <div
       className="table-profiler-container"
-      data-testid="table-profiler-container">
+      data-testid="table-profiler-container"
+      id="profilerDetails">
       <Row className="tw-mb-4" justify="space-between">
         <Radio.Group
           buttonStyle="solid"
@@ -210,10 +211,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           </Tooltip>
           <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
             <Button
-              className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+              className={classNames(
+                'profiler-setting-btn tw-border tw-rounded tw-text-primary',
+                { 'tw-border-primary': editTest }
+              )}
               data-testid="profiler-setting-btn"
               disabled={!editTest}
-              icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+              icon={
+                <SVGIcons
+                  alt="setting"
+                  className={classNames({ 'tw-mb-1 tw-mr-2': editTest })}
+                  icon={editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY}
+                />
+              }
               type="default"
               onClick={() => handleSettingModal(true)}>
               Settings
@@ -272,12 +282,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         onAddTestClick={onAddTestClick}
       />
 
-      <ProfilerSettingsModal
-        columns={columns}
-        tableId={table.id}
-        visible={settingModalVisible}
-        onVisibilityChange={handleSettingModal}
-      />
+      {settingModalVisible && (
+        <ProfilerSettingsModal
+          columns={columns}
+          tableId={table.id}
+          visible={settingModalVisible}
+          onVisibilityChange={handleSettingModal}
+        />
+      )}
     </div>
   );
 };

@@ -18,7 +18,9 @@ import classNames from 'classnames';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import { getUserPath } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -493,7 +495,9 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
                 </div>
               )}
               {glossary.owner && getEntityName(glossary.owner) ? (
-                <span>{getEntityName(glossary.owner)}</span>
+                <Link to={getUserPath(glossary.owner.name ?? '')}>
+                  {getEntityName(glossary.owner)}
+                </Link>
               ) : (
                 <span className="tw-text-grey-muted">No owner</span>
               )}

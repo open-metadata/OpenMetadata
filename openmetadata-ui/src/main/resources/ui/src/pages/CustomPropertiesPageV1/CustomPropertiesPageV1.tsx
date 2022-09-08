@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Empty, Row, Tooltip } from 'antd';
+import { Button as ButtonAntd, Col, Empty, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
@@ -185,29 +185,52 @@ const CustomEntityDetailV1 = () => {
             />
           </div>
         )}
-        {activeTab === 1 && (
-          <div data-testid="entity-custom-fields">
-            <div className="tw-flex tw-justify-end">
-              <Tooltip
-                title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
-                <Button
-                  className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
-                  data-testid="add-field-button"
-                  disabled={!editPermission}
-                  size="custom"
-                  theme="primary"
-                  onClick={() => handleAddProperty()}>
-                  Add Property
-                </Button>
-              </Tooltip>
+        {activeTab === 1 &&
+          (isEmpty(selectedEntityTypeDetail.customProperties) ? (
+            <div data-testid="entity-custom-fields">
+              <ErrorPlaceHolder
+                buttons={
+                  <Tooltip
+                    title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                    <ButtonAntd
+                      ghost
+                      data-testid="add-field-button"
+                      disabled={!editPermission}
+                      type="primary"
+                      onClick={() => handleAddProperty()}>
+                      Add Property
+                    </ButtonAntd>
+                  </Tooltip>
+                }
+                heading="Property"
+                type="ADD_DATA"
+              />
             </div>
-            <CustomPropertyTable
-              customProperties={selectedEntityTypeDetail.customProperties || []}
-              hasAccess={editPermission}
-              updateEntityType={updateEntityType}
-            />
-          </div>
-        )}
+          ) : (
+            <div data-testid="entity-custom-fields">
+              <div className="tw-flex tw-justify-end">
+                <Tooltip
+                  title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                  <Button
+                    className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
+                    data-testid="add-field-button"
+                    disabled={!editPermission}
+                    size="custom"
+                    theme="primary"
+                    onClick={() => handleAddProperty()}>
+                    Add Property
+                  </Button>
+                </Tooltip>
+              </div>
+              <CustomPropertyTable
+                customProperties={
+                  selectedEntityTypeDetail.customProperties || []
+                }
+                hasAccess={editPermission}
+                updateEntityType={updateEntityType}
+              />
+            </div>
+          ))}
       </Col>
     </Row>
   ) : (

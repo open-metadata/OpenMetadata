@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
@@ -96,24 +95,20 @@ const MsTeamsPage = () => {
     fetchData();
   }, []);
 
-  return (
-    <PageContainerV1>
-      {!isLoading ? (
-        <WebhooksV1
-          currentPage={currentPage}
-          data={data}
-          paging={paging}
-          selectedStatus={selectedStatus}
-          webhookType={WebhookType.Msteams}
-          onAddWebhook={handleAddWebhook}
-          onClickWebhook={handleClickWebhook}
-          onPageChange={handlePageChange}
-          onStatusFilter={handleStatusFilter}
-        />
-      ) : (
-        <Loader />
-      )}
-    </PageContainerV1>
+  return !isLoading ? (
+    <WebhooksV1
+      currentPage={currentPage}
+      data={data}
+      paging={paging}
+      selectedStatus={selectedStatus}
+      webhookType={WebhookType.Msteams}
+      onAddWebhook={handleAddWebhook}
+      onClickWebhook={handleClickWebhook}
+      onPageChange={handlePageChange}
+      onStatusFilter={handleStatusFilter}
+    />
+  ) : (
+    <Loader />
   );
 };
 

@@ -180,7 +180,9 @@ const Appbar: React.FC = (): JSX.Element => {
 
     return (
       <div className="tw-max-w-xs" data-testid="greeting-text">
-        <Link to={getUserPath(currentUser?.name as string)}>
+        <Link
+          data-testid="user-name"
+          to={getUserPath(currentUser?.name as string)}>
           {' '}
           <Ellipses
             tooltip
