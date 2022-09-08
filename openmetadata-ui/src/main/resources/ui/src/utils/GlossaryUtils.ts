@@ -189,9 +189,11 @@ export const getSearchedGlossaryTermTree = (
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
-    const arrFQN = term.fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
-    const rootName = arrFQN[0];
-    termTree.push(createGlossaryTermNode(term.fullyQualifiedName, rootName));
+    if (term.fullyQualifiedName) {
+      const arrFQN = term.fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
+      const rootName = arrFQN[0];
+      termTree.push(createGlossaryTermNode(term.fullyQualifiedName, rootName));
+    }
   }
   optimiseGlossaryTermTree(termTree);
 
@@ -242,15 +244,19 @@ export const getActionsList = () => {
  * @returns list of fqns
  */
 export const getHierarchicalKeysByFQN = (fqn: string) => {
-  const keys = fqn.split(FQN_SEPARATOR_CHAR).reduce((prev, curr) => {
-    const currFqn = prev.length
-      ? `${prev[prev.length - 1]}${FQN_SEPARATOR_CHAR}${curr}`
-      : curr;
+  if (fqn) {
+    const keys = fqn.split(FQN_SEPARATOR_CHAR).reduce((prev, curr) => {
+      const currFqn = prev.length
+        ? `${prev[prev.length - 1]}${FQN_SEPARATOR_CHAR}${curr}`
+        : curr;
 
-    return [...prev, currFqn];
-  }, [] as string[]);
+      return [...prev, currFqn];
+    }, [] as string[]);
 
-  return keys;
+    return keys;
+  } else {
+    return [];
+  }
 };
 
 /**
