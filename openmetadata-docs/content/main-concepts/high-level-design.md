@@ -76,7 +76,7 @@ in a simple language (REST), without the learning curve of diving into specific 
 When we interact with most of our Entities, we follow the same endpoint structure. For example:
 
 - `GET <url>/api/v1/<collectionName>/<id>` to retrieve an Entity instance by ID, or
-- `GET <url>/api/v1/<collectionName>/name/<FQDN>` to query by its fully qualified domain name.
+- `GET <url>/api/v1/<collectionName>/name/<FQN>` to query by its fully qualified domain name.
 
 Similarly, we support other CRUD operations, each of them expecting a specific incoming data structure, and returning 
 the Entity's class. As the foundations of OpenMetadata are the Entities definitions, we have this data contract with 
@@ -102,7 +102,7 @@ As there are processes repeated across all Entities (e.g., listing entities in a
 version from an Entity), the Entity Repository extends an **Interface** that implements some basic functionalities and 
 abstracts Entity specific logic.
 
-Each Entity then needs to implement its **server-side processes** such as building the FQDN based on the Entity hierarchy, 
+Each Entity then needs to implement its **server-side processes** such as building the FQN based on the Entity hierarchy, 
 how the Entity stores and retrieves **Relationship** information with other Entities or how the Entity reacts to **Change Events**.
 
 ## Entity Storage Layer
@@ -218,7 +218,7 @@ The first steps are fairly similar:
 3. We validate the Entity and cook some attributes during the prepare step.
 
 After processing and validating the Entity request, we then check if the Entity instance has already been stored, 
-querying the backend database by its FQDN. If it has not, then we proceed with the same logic as the `POST` 
+querying the backend database by its FQN. If it has not, then we proceed with the same logic as the `POST` 
 operation -> simple creation. Otherwise, we need to validate the updated fields.
 
 #### Set Fields
