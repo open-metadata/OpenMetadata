@@ -145,6 +145,7 @@ services:
       AIRFLOW_DB_SCHEME: ${AIRFLOW_DB_SCHEME:-postgresql+psycopg2}
       DB_USER: ${DB_USER:-airflow_user}
       DB_PASSWORD: ${DB_PASSWORD:-airflow_pass}
+      DB_SCHEME: ${DB_SCHEME:-postgresql+psycopg2}
     expose:
       - 8080
     ports:
