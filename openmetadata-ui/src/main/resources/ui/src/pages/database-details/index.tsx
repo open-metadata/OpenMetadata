@@ -69,6 +69,7 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -110,7 +111,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { databaseFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
@@ -155,14 +156,17 @@ const DatabaseDetails: FunctionComponent = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const fetchDatabasePermission = async () => {
+    setIsLoading(true);
     try {
-      const response = await getEntityPermission(
+      const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE,
-        database?.id as string
+        databaseFQN
       );
       setDatabasePermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -552,14 +556,16 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [appState.inPageSearchText]);
 
   useEffect(() => {
-    const currentTab = getCurrentDatabaseDetailsTab(tab);
-    const currentTabIndex = currentTab - 1;
+    if (databasePermission.ViewAll) {
+      const currentTab = getCurrentDatabaseDetailsTab(tab);
+      const currentTabIndex = currentTab - 1;
 
-    if (tabs[currentTabIndex].isProtected) {
-      activeTabHandler(1);
+      if (tabs[currentTabIndex].isProtected) {
+        activeTabHandler(1);
+      }
+      getDetailsByFQN();
     }
-    getDetailsByFQN();
-  }, []);
+  }, [databasePermission, databaseFQN]);
 
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
@@ -574,10 +580,8 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
-    if (database?.id) {
-      fetchDatabasePermission();
-    }
-  }, [database]);
+    fetchDatabasePermission();
+  }, [databaseFQN]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -594,235 +598,245 @@ const DatabaseDetails: FunctionComponent = () => {
           <p data-testid="error-message">{error}</p>
         </ErrorPlaceHolder>
       ) : (
-        <PageContainer>
-          <div
-            className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
-            data-testid="page-container">
-            <Space
-              align="center"
-              className="tw-justify-between"
-              style={{ width: '100%' }}>
-              <TitleBreadcrumb titleLinks={slashedDatabaseName} />
-              <ManageButton
-                isRecursiveDelete
-                allowSoftDelete={false}
-                canDelete={databasePermission.Delete}
-                entityFQN={databaseFQN}
-                entityId={databaseId}
-                entityName={databaseName}
-                entityType={EntityType.DATABASE}
-              />
-            </Space>
-
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
-              {extraInfo.map((info, index) => (
-                <span className="tw-flex" key={index}>
-                  <EntitySummaryDetails
-                    data={info}
-                    updateOwner={
-                      databasePermission.EditOwner || databasePermission.EditAll
-                        ? handleUpdateOwner
-                        : undefined
-                    }
+        <>
+          {databasePermission.ViewAll ? (
+            <PageContainer>
+              <div
+                className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
+                data-testid="page-container">
+                <Space
+                  align="center"
+                  className="tw-justify-between"
+                  style={{ width: '100%' }}>
+                  <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+                  <ManageButton
+                    isRecursiveDelete
+                    allowSoftDelete={false}
+                    canDelete={databasePermission.Delete}
+                    entityFQN={databaseFQN}
+                    entityId={databaseId}
+                    entityName={databaseName}
+                    entityType={EntityType.DATABASE}
                   />
+                </Space>
 
-                  {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                    <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                      |
+                <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+                  {extraInfo.map((info, index) => (
+                    <span className="tw-flex" key={index}>
+                      <EntitySummaryDetails
+                        data={info}
+                        updateOwner={
+                          databasePermission.EditOwner ||
+                          databasePermission.EditAll
+                            ? handleUpdateOwner
+                            : undefined
+                        }
+                      />
+
+                      {extraInfo.length !== 1 &&
+                      index < extraInfo.length - 1 ? (
+                        <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                          |
+                        </span>
+                      ) : null}
                     </span>
-                  ) : null}
-                </span>
-              ))}
-            </div>
-
-            <div className="tw-pl-2" data-testid="description-container">
-              <Description
-                description={description}
-                entityFieldThreads={getEntityFieldThreadCounts(
-                  EntityField.DESCRIPTION,
-                  entityFieldThreadCount
-                )}
-                entityFqn={databaseFQN}
-                entityName={databaseName}
-                entityType={EntityType.DATABASE}
-                hasEditAccess={
-                  databasePermission.EditDescription ||
-                  databasePermission.EditAll
-                }
-                isEdit={isEdit}
-                onCancel={onCancel}
-                onDescriptionEdit={onDescriptionEdit}
-                onDescriptionUpdate={onDescriptionUpdate}
-                onEntityFieldSelect={onEntityFieldSelect}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
-            </div>
-            <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
-              <TabsPane
-                activeTab={activeTab}
-                className="tw-flex-initial"
-                setActiveTab={activeTabHandler}
-                tabs={tabs}
-              />
-              <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-                {activeTab === 1 && (
-                  <Fragment>
-                    <div className="tw-table-container tw-mb-4">
-                      <table
-                        className="tw-bg-white tw-w-full"
-                        data-testid="database-databaseSchemas">
-                        <thead data-testid="table-header">
-                          <tr className="tableHead-row">
-                            <th
-                              className="tableHead-cell"
-                              data-testid="header-name">
-                              Schema Name
-                            </th>
-                            <th
-                              className="tableHead-cell"
-                              data-testid="header-description">
-                              Description
-                            </th>
-                            <th
-                              className="tableHead-cell"
-                              data-testid="header-owner">
-                              Owner
-                            </th>
-                            <th
-                              className="tableHead-cell"
-                              data-testid="header-usage">
-                              Usage
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="tableBody">
-                          {schemaData.length > 0 ? (
-                            schemaData.map((schema, index) => (
-                              <tr
-                                className={classNames(
-                                  'tableBody-row',
-                                  !isEven(index + 1) ? 'odd-row' : null
-                                )}
-                                data-testid="table-column"
-                                key={index}>
-                                <td className="tableBody-cell">
-                                  <Link
-                                    to={
-                                      schema.fullyQualifiedName
-                                        ? getDatabaseSchemaDetailsPath(
-                                            schema.fullyQualifiedName
-                                          )
-                                        : ''
-                                    }>
-                                    {schema.name}
-                                  </Link>
-                                </td>
-                                <td className="tableBody-cell">
-                                  {schema.description?.trim() ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={schema.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="tableBody-cell">
-                                  <p>{getEntityName(schema?.owner) || '--'}</p>
-                                </td>
-                                <td className="tableBody-cell">
-                                  <p>
-                                    {getUsagePercentile(
-                                      schema.usageSummary?.weeklyStats
-                                        ?.percentileRank || 0
-                                    )}
-                                  </p>
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr className="tableBody-row">
-                              <td
-                                className="tableBody-cell tw-text-center"
-                                colSpan={5}>
-                                No records found.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    {Boolean(
-                      !isNil(databaseSchemaPaging.after) ||
-                        !isNil(databaseSchemaPaging.before)
-                    ) && (
-                      <NextPrevious
-                        currentPage={currentPage}
-                        pageSize={PAGE_SIZE}
-                        paging={databaseSchemaPaging}
-                        pagingHandler={databaseSchemaPagingHandler}
-                        totalCount={databaseSchemaPaging.total}
-                      />
-                    )}
-                  </Fragment>
-                )}
-                {activeTab === 2 && (
-                  <Row
-                    className=" tw-pt-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
-                    id="activityfeed">
-                    <Col offset={4} span={16}>
-                      <ActivityFeedList
-                        hideFeedFilter
-                        hideThreadFilter
-                        isEntityFeed
-                        withSidePanel
-                        className=""
-                        deletePostHandler={deletePostHandler}
-                        entityName={databaseName}
-                        feedList={entityThread}
-                        postFeedHandler={postFeedHandler}
-                        updateThreadHandler={updateThreadHandler}
-                      />
-                    </Col>
-                  </Row>
-                )}
-                <div
-                  data-testid="observer-element"
-                  id="observer-element"
-                  ref={elementRef as RefObject<HTMLDivElement>}>
-                  {getLoader()}
+                  ))}
                 </div>
+
+                <div className="tw-pl-2" data-testid="description-container">
+                  <Description
+                    description={description}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldThreadCount
+                    )}
+                    entityFqn={databaseFQN}
+                    entityName={databaseName}
+                    entityType={EntityType.DATABASE}
+                    hasEditAccess={
+                      databasePermission.EditDescription ||
+                      databasePermission.EditAll
+                    }
+                    isEdit={isEdit}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onEntityFieldSelect={onEntityFieldSelect}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                </div>
+                <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+                  <TabsPane
+                    activeTab={activeTab}
+                    className="tw-flex-initial"
+                    setActiveTab={activeTabHandler}
+                    tabs={tabs}
+                  />
+                  <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+                    {activeTab === 1 && (
+                      <Fragment>
+                        <div className="tw-table-container tw-mb-4">
+                          <table
+                            className="tw-bg-white tw-w-full"
+                            data-testid="database-databaseSchemas">
+                            <thead data-testid="table-header">
+                              <tr className="tableHead-row">
+                                <th
+                                  className="tableHead-cell"
+                                  data-testid="header-name">
+                                  Schema Name
+                                </th>
+                                <th
+                                  className="tableHead-cell"
+                                  data-testid="header-description">
+                                  Description
+                                </th>
+                                <th
+                                  className="tableHead-cell"
+                                  data-testid="header-owner">
+                                  Owner
+                                </th>
+                                <th
+                                  className="tableHead-cell"
+                                  data-testid="header-usage">
+                                  Usage
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="tableBody">
+                              {schemaData.length > 0 ? (
+                                schemaData.map((schema, index) => (
+                                  <tr
+                                    className={classNames(
+                                      'tableBody-row',
+                                      !isEven(index + 1) ? 'odd-row' : null
+                                    )}
+                                    data-testid="table-column"
+                                    key={index}>
+                                    <td className="tableBody-cell">
+                                      <Link
+                                        to={
+                                          schema.fullyQualifiedName
+                                            ? getDatabaseSchemaDetailsPath(
+                                                schema.fullyQualifiedName
+                                              )
+                                            : ''
+                                        }>
+                                        {schema.name}
+                                      </Link>
+                                    </td>
+                                    <td className="tableBody-cell">
+                                      {schema.description?.trim() ? (
+                                        <RichTextEditorPreviewer
+                                          markdown={schema.description}
+                                        />
+                                      ) : (
+                                        <span className="tw-no-description">
+                                          No description
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="tableBody-cell">
+                                      <p>
+                                        {getEntityName(schema?.owner) || '--'}
+                                      </p>
+                                    </td>
+                                    <td className="tableBody-cell">
+                                      <p>
+                                        {getUsagePercentile(
+                                          schema.usageSummary?.weeklyStats
+                                            ?.percentileRank || 0
+                                        )}
+                                      </p>
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr className="tableBody-row">
+                                  <td
+                                    className="tableBody-cell tw-text-center"
+                                    colSpan={5}>
+                                    No records found.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                        {Boolean(
+                          !isNil(databaseSchemaPaging.after) ||
+                            !isNil(databaseSchemaPaging.before)
+                        ) && (
+                          <NextPrevious
+                            currentPage={currentPage}
+                            pageSize={PAGE_SIZE}
+                            paging={databaseSchemaPaging}
+                            pagingHandler={databaseSchemaPagingHandler}
+                            totalCount={databaseSchemaPaging.total}
+                          />
+                        )}
+                      </Fragment>
+                    )}
+                    {activeTab === 2 && (
+                      <Row
+                        className=" tw-pt-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
+                        id="activityfeed">
+                        <Col offset={4} span={16}>
+                          <ActivityFeedList
+                            hideFeedFilter
+                            hideThreadFilter
+                            isEntityFeed
+                            withSidePanel
+                            className=""
+                            deletePostHandler={deletePostHandler}
+                            entityName={databaseName}
+                            feedList={entityThread}
+                            postFeedHandler={postFeedHandler}
+                            updateThreadHandler={updateThreadHandler}
+                          />
+                        </Col>
+                      </Row>
+                    )}
+                    <div
+                      data-testid="observer-element"
+                      id="observer-element"
+                      ref={elementRef as RefObject<HTMLDivElement>}>
+                      {getLoader()}
+                    </div>
+                  </div>
+                </div>
+                {threadLink ? (
+                  <ActivityThreadPanel
+                    createThread={createThread}
+                    deletePostHandler={deletePostHandler}
+                    open={Boolean(threadLink)}
+                    postFeedHandler={postFeedHandler}
+                    threadLink={threadLink}
+                    updateThreadHandler={updateThreadHandler}
+                    onCancel={onThreadPanelClose}
+                  />
+                ) : null}
+                {selectedField ? (
+                  <RequestDescriptionModal
+                    createThread={createThread}
+                    defaultValue={getDefaultValue(
+                      database?.owner as EntityReference
+                    )}
+                    header="Request description"
+                    threadLink={getEntityFeedLink(
+                      EntityType.DATABASE,
+                      databaseFQN,
+                      selectedField
+                    )}
+                    onCancel={closeRequestModal}
+                  />
+                ) : null}
               </div>
-            </div>
-            {threadLink ? (
-              <ActivityThreadPanel
-                createThread={createThread}
-                deletePostHandler={deletePostHandler}
-                open={Boolean(threadLink)}
-                postFeedHandler={postFeedHandler}
-                threadLink={threadLink}
-                updateThreadHandler={updateThreadHandler}
-                onCancel={onThreadPanelClose}
-              />
-            ) : null}
-            {selectedField ? (
-              <RequestDescriptionModal
-                createThread={createThread}
-                defaultValue={getDefaultValue(
-                  database?.owner as EntityReference
-                )}
-                header="Request description"
-                threadLink={getEntityFeedLink(
-                  EntityType.DATABASE,
-                  databaseFQN,
-                  selectedField
-                )}
-                onCancel={closeRequestModal}
-              />
-            ) : null}
-          </div>
-        </PageContainer>
+            </PageContainer>
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </>
   );

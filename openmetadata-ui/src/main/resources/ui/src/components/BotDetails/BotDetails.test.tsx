@@ -70,7 +70,7 @@ const mockProp = {
 
 jest.mock('../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
       Delete: true,
       ViewAll: true,

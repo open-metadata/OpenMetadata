@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
@@ -21,19 +22,45 @@ import {
   updateUserDetail,
 } from '../../axiosAPIs/userAPI';
 import BotDetails from '../../components/BotDetails/BotDetails.component';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../../components/Users/Users.interface';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotDetailsPage = () => {
   const { botsName } = useParams<{ [key: string]: string }>();
-
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botsData, setBotsData] = useState<User>({} as User);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [botPermission, setBotPermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchBotPermission = async (entityFqn: string) => {
+    setIsLoading(true);
+    try {
+      const response = await getEntityPermissionByFqn(
+        ResourceEntity.BOT,
+        entityFqn
+      );
+      setBotPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchBotsData = () => {
     setIsLoading(true);
@@ -85,24 +112,20 @@ const BotDetailsPage = () => {
       });
   };
 
-  const ErrorPlaceholder = () => {
-    return (
-      <div
-        className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
-        data-testid="error">
-        <p className="tw-text-base" data-testid="error-message">
-          No bots available with name{' '}
-          <span className="tw-font-medium" data-testid="username">
-            {botsName}
-          </span>{' '}
-        </p>
-      </div>
-    );
-  };
-
   const getBotsDetailComponent = () => {
     if (isError) {
-      return <ErrorPlaceholder />;
+      return (
+        <ErrorPlaceHolder>
+          <Typography.Paragraph
+            className="tw-text-base"
+            data-testid="error-message">
+            No bots available with name{' '}
+            <span className="tw-font-medium" data-testid="username">
+              {botsName}
+            </span>{' '}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      );
     } else {
       return (
         <BotDetails
@@ -113,13 +136,30 @@ const BotDetailsPage = () => {
       );
     }
   };
+
   useEffect(() => {
-    fetchBotsData();
+    if (botPermission.ViewAll) {
+      fetchBotsData();
+    }
+  }, [botPermission, botsName]);
+
+  useEffect(() => {
+    fetchBotPermission(botsName);
   }, [botsName]);
 
   return (
     <PageContainerV1 className="tw-py-4">
-      {isLoading ? <Loader /> : getBotsDetailComponent()}
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <>
+          {botPermission.ViewAll ? (
+            getBotsDetailComponent()
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
+      )}
     </PageContainerV1>
   );
 };

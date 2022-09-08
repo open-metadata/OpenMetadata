@@ -38,6 +38,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+POWERBI_APP_URL = "https://app.powerbi.com"
+
 
 class PowerbiSource(DashboardServiceSource):
     def __init__(
@@ -85,7 +87,7 @@ class PowerbiSource(DashboardServiceSource):
         yield CreateDashboardRequest(
             name=dashboard_details["id"],
             # PBI has no hostPort property. All URL details are present in the webUrl property.
-            dashboardUrl=dashboard_details["webUrl"],
+            dashboardUrl=dashboard_details["webUrl"].replace(POWERBI_APP_URL, ""),
             displayName=dashboard_details["displayName"],
             description="",
             charts=[
@@ -180,7 +182,7 @@ class PowerbiSource(DashboardServiceSource):
                     description="",
                     chartType=ChartType.Other.value,
                     # PBI has no hostPort property. All URL details are present in the webUrl property.
-                    chartUrl=chart["embedUrl"],
+                    chartUrl=chart["embedUrl"].replace(POWERBI_APP_URL, ""),
                     service=EntityReference(
                         id=self.context.dashboard_service.id.__root__,
                         type="dashboardService",
