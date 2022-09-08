@@ -48,7 +48,10 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   generateEntityLink,
@@ -84,14 +87,13 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 }) => {
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType, tab } =
+    useParams<Record<string, string>>();
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
-    isColumnView
-      ? ProfilerDashboardTab.PROFILER
-      : ProfilerDashboardTab.DATA_QUALITY
+    (tab as ProfilerDashboardTab) ?? ProfilerDashboardTab.PROFILER
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
@@ -361,11 +363,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     const value = e.target.value as ProfilerDashboardTab;
     if (ProfilerDashboardTab.SUMMARY === value) {
       history.push(getTableTabPath(table.fullyQualifiedName || '', 'profiler'));
+
+      return;
     } else if (ProfilerDashboardTab.DATA_QUALITY === value) {
       fetchTestCases(generateEntityLink(entityTypeFQN, true));
+    } else if (ProfilerDashboardTab.PROFILER === value) {
+      fetchProfilerData(entityTypeFQN);
     }
     setSelectedTestCaseStatus('');
     setActiveTab(value);
+    history.push(
+      getProfilerDashboardWithFqnPath(
+        dashboardType as ProfilerDashboardType,
+        entityTypeFQN,
+        value
+      )
+    );
   };
 
   const handleAddTestClick = () => {

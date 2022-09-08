@@ -129,7 +129,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       history.push(
         getProfilerDashboardWithFqnPath(
           ProfilerDashboardType.TABLE,
-          table.fullyQualifiedName || ''
+          table.fullyQualifiedName || '',
+          ProfilerDashboardTab.DATA_QUALITY
         )
       );
     }
