@@ -85,12 +85,19 @@ export const prepareQueryParams = (filters, initFilters = {}) => {
   const filterEntries = Object.entries(filters);
   const initFilterKeys = Object.keys(initFilters);
 
-  for (const [key, value] of filterEntries) {
-    if (value?.length) {
-      if (initFilterKeys.includes(key) && isEqual(initFilters[key], value)) {
-        initFilterSearchParams.set(key, value.join(','));
+  for (const [key, values] of filterEntries) {
+    if (values?.length) {
+      const matchQuotes = /".*"/g;
+      const searchValue = values.map((value) =>
+        matchQuotes.test(value) ? value : `"${value}"`
+      );
+      if (
+        initFilterKeys.includes(key) &&
+        isEqual(initFilters[key], searchValue)
+      ) {
+        initFilterSearchParams.set(key, searchValue.join(','));
       } else {
-        filterSearchParams.set(key, value.join(','));
+        filterSearchParams.set(key, searchValue.join(','));
       }
     }
   }
