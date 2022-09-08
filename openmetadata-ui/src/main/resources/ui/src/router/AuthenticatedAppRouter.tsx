@@ -375,56 +375,23 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={MlModelPage}
         path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
       />
-      <AdminProtectedRoute
-        exact
-        component={AddGlossaryPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.GLOSSARY,
-          permissions
-        )}
-        path={ROUTES.ADD_GLOSSARY}
-      />
-      <AdminProtectedRoute
+      <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
+      <Route
         exact
         component={AddGlossaryTermPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.GLOSSARY_TERM,
-          permissions
-        )}
         path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddGlossaryTermPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.GLOSSARY_TERM,
-          permissions
-        )}
         path={ROUTES.ADD_GLOSSARY_TERMS}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddWebhookPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.WEBHOOK,
-          permissions
-        )}
         path={ROUTES.ADD_WEBHOOK_WITH_TYPE}
       />
-      <AdminProtectedRoute
-        exact
-        component={AddWebhookPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.WEBHOOK,
-          permissions
-        )}
-        path={ROUTES.ADD_WEBHOOK}
-      />
+      <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
 
       <AdminProtectedRoute
         exact
@@ -488,26 +455,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.ADD_POLICY}
       />
-      <AdminProtectedRoute
-        exact
-        component={AddRulePage}
-        hasPermission={checkPermission(
-          Operation.EditAll,
-          ResourceEntity.POLICY,
-          permissions
-        )}
-        path={ROUTES.ADD_POLICY_RULE}
-      />
-      <AdminProtectedRoute
-        exact
-        component={EditRulePage}
-        hasPermission={checkPermission(
-          Operation.EditAll,
-          ResourceEntity.POLICY,
-          permissions
-        )}
-        path={ROUTES.EDIT_POLICY_RULE}
-      />
+      <Route exact component={AddRulePage} path={ROUTES.ADD_POLICY_RULE} />
+      <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 
       <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
       <Route
