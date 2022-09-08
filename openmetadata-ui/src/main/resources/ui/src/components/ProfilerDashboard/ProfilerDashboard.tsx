@@ -14,7 +14,7 @@ import { Button, Col, Form, Radio, Row, Select, Space, Tooltip } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -104,26 +104,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     {} as Column
   );
 
-  const [permission, setPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const fetchTestCasePermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.TABLE,
-        table.id as string
-      );
-      setPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const fetchResourcePermission = useCallback(async () => {
+  const fetchResourcePermission = async () => {
     try {
       const tablePermission = await getEntityPermission(
         ResourceEntity.TABLE,
@@ -132,11 +117,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
       setTablePermissions(tablePermission);
     } catch (error) {
-      showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
-      );
+      showErrorToast(error as AxiosError);
     }
-  }, [table.id, getEntityPermission, setTablePermissions]);
+  };
 
   const tabOptions = useMemo(() => {
     return Object.values(ProfilerDashboardTab).filter((value) => {
@@ -365,9 +348,15 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       history.push(getTableTabPath(table.fullyQualifiedName || '', 'profiler'));
 
       return;
-    } else if (ProfilerDashboardTab.DATA_QUALITY === value) {
+    } else if (
+      ProfilerDashboardTab.DATA_QUALITY === value &&
+      (tablePermissions.ViewAll || tablePermissions.ViewTests)
+    ) {
       fetchTestCases(generateEntityLink(entityTypeFQN, true));
-    } else if (ProfilerDashboardTab.PROFILER === value) {
+    } else if (
+      ProfilerDashboardTab.PROFILER === value &&
+      (tablePermissions.ViewAll || tablePermissions.ViewDataProfile)
+    ) {
       fetchProfilerData(entityTypeFQN);
     }
     setSelectedTestCaseStatus('');
@@ -445,7 +434,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       setIsFollowing(
         follower.some(({ id }: { id: string }) => id === getCurrentUserId())
       );
-      fetchTestCasePermission();
+
       fetchResourcePermission();
     }
   }, [table]);
@@ -523,12 +512,14 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
               )}
               <Tooltip
                 title={
-                  permission.EditAll || permission.EditTests
+                  tablePermissions.EditAll || tablePermissions.EditTests
                     ? 'Add Test'
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
-                  disabled={!(permission.EditAll || permission.EditTests)}
+                  disabled={
+                    !(tablePermissions.EditAll || tablePermissions.EditTests)
+                  }
                   type="primary"
                   onClick={handleAddTestClick}>
                   Add Test
@@ -550,7 +541,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
-              hasAccess={permission.EditAll}
+              hasAccess={tablePermissions.EditAll}
               testCases={getFilterTestCase()}
               onTestUpdate={onTestCaseUpdate}
             />

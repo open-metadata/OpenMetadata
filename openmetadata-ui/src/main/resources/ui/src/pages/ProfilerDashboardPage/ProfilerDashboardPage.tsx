@@ -160,6 +160,8 @@ const ProfilerDashboardPage = () => {
       fetchTestCases(generateEntityLink(entityTypeFQN));
     } else if (permission.ViewAll || permission.ViewDataProfile) {
       fetchProfilerData(entityTypeFQN);
+    } else {
+      setIsLoading(false);
     }
   };
 
