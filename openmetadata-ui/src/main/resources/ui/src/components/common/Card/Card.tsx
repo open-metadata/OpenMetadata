@@ -27,7 +27,7 @@ const Card = ({ children, heading, action, className }: CardProps) => {
   return (
     <div
       className={classNames(
-        'tw-bg-white tw-border tw-border-border-gray tw-rounded-md tw-shadow-box tw-w-full',
+        'tw-bg-white tw-border tw-border-border-gray tw-rounded-md tw-w-full',
         className
       )}
       data-testid={`${lowerCase(heading)}-card-container`}>
