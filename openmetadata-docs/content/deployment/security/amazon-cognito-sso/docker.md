@@ -37,5 +37,5 @@ from [Enabling JWT Tokens](/deployment/security/enable-jwt-tokens).
 ## 2. Start Docker
 
 ```commandline
-docker compose --env-file ~/openmetadata.env up -d
+docker compose --env-file ~/openmetadata_cognito.env up -d
 ```
