@@ -13,9 +13,8 @@
 
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   deleteWebhook,
   getWebhookByName,
@@ -24,6 +23,8 @@ import {
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -31,8 +32,9 @@ import {
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -44,13 +46,24 @@ const EDIT_HEADER_WEBHOOKS_TITLE: { [key: string]: string } = {
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
+  const { permissions } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [webhookData, setWebhookData] = useState<Webhook>();
   const [status, setStatus] = useState<LoadingState>('initial');
   const [deleteStatus, setDeleteStatus] = useState<LoadingState>('initial');
+
+  const createPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const editPermission = useMemo(
+    () =>
+      checkPermission(Operation.EditAll, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
 
   const fetchWebhook = () => {
     setIsLoading(true);
@@ -143,7 +156,7 @@ const EditWebhookPage: FunctionComponent = () => {
       <div className="tw-self-center">
         {!isLoading ? (
           <AddWebhook
-            allowAccess={isAdminUser || isAuthDisabled}
+            allowAccess={createPermission || editPermission}
             data={webhookData}
             deleteState={deleteStatus}
             header={

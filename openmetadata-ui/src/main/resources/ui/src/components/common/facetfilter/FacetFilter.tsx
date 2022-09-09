@@ -137,7 +137,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
               count={bucket.doc_count}
               isSelected={filters[
                 toLower(aggregation.title) as keyof FilterObject
-              ].includes(bucket.key)}
+              ].includes(bucket.key.replace(/ /g, '+'))}
               key={index}
               name={bucket.key}
               type={toLower(aggregation.title) as keyof FilterObject}

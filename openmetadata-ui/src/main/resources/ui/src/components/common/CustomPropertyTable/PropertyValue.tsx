@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { toNumber } from 'lodash';
+import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -107,14 +107,27 @@ export const PropertyValue: FC<Props> = ({
     }
   };
 
-  const getValueElement = () =>
-    value ? (
-      getPropertyValue()
-    ) : (
-      <span className="tw-text-grey-muted" data-testid="no-data">
-        No data
-      </span>
-    );
+  const getValueElement = () => {
+    const propertyValue = getPropertyValue();
+    const isInteger = propertyType.name === 'integer';
+    if (isInteger) {
+      return !isUndefined(value) ? (
+        propertyValue
+      ) : (
+        <span className="tw-text-grey-muted" data-testid="no-data">
+          No data
+        </span>
+      );
+    } else {
+      return value ? (
+        propertyValue
+      ) : (
+        <span className="tw-text-grey-muted" data-testid="no-data">
+          No data
+        </span>
+      );
+    }
+  };
 
   return (
     <div>

@@ -567,7 +567,7 @@ const DashboardDetails = ({
                       />
                     </div>
                   </div>
-                  <div className="tw-table-responsive tw-my-6 tw-table-container">
+                  <div className="tw-table-responsive tw-table-container">
                     <table className="tw-w-full" data-testid="charts-table">
                       <thead>
                         <tr className="tableHead-row">

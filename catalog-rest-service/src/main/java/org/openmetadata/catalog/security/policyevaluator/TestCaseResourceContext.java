@@ -97,6 +97,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   }
 
   private static EntityInterface resolveEntityByName(String fqn) throws IOException {
+    if (fqn == null) return null;
     EntityRepository<TestCase> dao = Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));

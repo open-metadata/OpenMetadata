@@ -14,9 +14,8 @@
 import { AxiosError } from 'axios';
 import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   addGlossaryTerm,
   getGlossariesByName,
@@ -26,11 +25,14 @@ import AddGlossaryTerm from '../../components/AddGlossaryTerm/AddGlossaryTerm.co
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -38,8 +40,7 @@ const AddGlossaryTermPage = () => {
   const { glossaryName, glossaryTermsFQN } =
     useParams<{ [key: string]: string }>();
   const history = useHistory();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+  const { permissions } = usePermissionProvider();
   const [status, setStatus] = useState<LoadingState>('initial');
   const [isLoading, setIsLoading] = useState(true);
   const [glossaryData, setGlossaryData] = useState<Glossary>();
@@ -48,6 +49,16 @@ const AddGlossaryTermPage = () => {
   >([]);
 
   const [parentGlossaryData, setParentGlossaryData] = useState<GlossaryTerm>();
+
+  const createPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.GLOSSARY_TERM,
+        permissions
+      ),
+    [permissions]
+  );
 
   const goToGlossaryPath = (path: string) => {
     history.push(path);
@@ -198,7 +209,7 @@ const AddGlossaryTermPage = () => {
       ) : (
         <div className="tw-self-center">
           <AddGlossaryTerm
-            allowAccess={isAdminUser || isAuthDisabled}
+            allowAccess={createPermission}
             glossaryData={glossaryData as Glossary}
             parentGlossaryData={parentGlossaryData}
             saveState={status}

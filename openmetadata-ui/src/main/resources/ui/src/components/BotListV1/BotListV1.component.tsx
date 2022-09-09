@@ -21,7 +21,7 @@ import { getBots } from '../../axiosAPIs/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -76,7 +76,7 @@ const BotListV1 = ({
       setLoading(true);
       const { data, paging } = await getBots({
         after,
-        limit: PAGE_SIZE,
+        limit: PAGE_SIZE_MEDIUM,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       setPaging(paging);
@@ -173,22 +173,41 @@ const BotListV1 = ({
   }, [showDeleted]);
 
   return handleErrorPlaceholder ? (
-    <ErrorPlaceHolder
-      buttons={
-        <div className="tw-text-lg tw-text-center">
-          <Button
-            ghost
-            title="Add Team"
-            type="primary"
-            onClick={handleAddBotClick}>
-            Add Bot
-          </Button>
-        </div>
-      }
-      doc={BOTS_DOCS}
-      heading="Bot"
-      type="ADD_DATA"
-    />
+    <Row>
+      <Col className="w-full tw-flex tw-justify-end">
+        <Space align="end" size={5}>
+          <Switch
+            checked={showDeleted}
+            id="switch-deleted"
+            size="small"
+            onClick={handleShowDeleted}
+          />
+          <label htmlFor="switch-deleted">Show deleted</label>
+        </Space>
+      </Col>
+      <Col className="w-full">
+        <ErrorPlaceHolder
+          buttons={
+            <div className="tw-text-lg tw-text-center">
+              <Tooltip
+                placement="left"
+                title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
+                <Button
+                  ghost
+                  disabled={!createPermission}
+                  type="primary"
+                  onClick={handleAddBotClick}>
+                  Add Bot
+                </Button>
+              </Tooltip>
+            </div>
+          }
+          doc={BOTS_DOCS}
+          heading="Bot"
+          type="ADD_DATA"
+        />
+      </Col>
+    </Row>
   ) : (
     <Row gutter={[16, 16]}>
       <Col flex={1} />
@@ -198,7 +217,6 @@ const BotListV1 = ({
             <Switch
               checked={showDeleted}
               id="switch-deleted"
-              size="small"
               onClick={handleShowDeleted}
             />
             <label htmlFor="switch-deleted">Show deleted</label>
@@ -230,10 +248,10 @@ const BotListV1 = ({
             />
           </Col>
           <Col span={24}>
-            {paging.total > PAGE_SIZE && (
+            {paging.total > PAGE_SIZE_MEDIUM && (
               <NextPrevious
                 currentPage={currentPage}
-                pageSize={PAGE_SIZE}
+                pageSize={PAGE_SIZE_MEDIUM}
                 paging={paging}
                 pagingHandler={handlePageChange}
                 totalCount={paging.total}

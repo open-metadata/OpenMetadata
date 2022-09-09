@@ -137,12 +137,15 @@ const TagsPage = () => {
     }
   };
 
-  const fetchCategories = () => {
+  const fetchCategories = (setCurrent?: boolean) => {
     setIsLoading(true);
     getTagCategories('usageCount')
       .then((res) => {
         if (res.data) {
           setCategoreis(res.data);
+          if (setCurrent) {
+            setCurrentCategory(res.data[0]);
+          }
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -424,19 +427,21 @@ const TagsPage = () => {
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchCategories(true);
   }, []);
 
   useEffect(() => {
-    setCurrentCategory(categories[0]);
     if (currentCategory) {
-      setCurrentCategory(currentCategory);
       fetchCurrentCategoryPermission();
     }
-  }, [categories, currentCategory]);
+  }, [currentCategory]);
 
   useEffect(() => {
-    fetchCurrentCategory(tagCategoryName);
+    if (tagCategoryName) {
+      fetchCurrentCategory(tagCategoryName);
+    } else {
+      setCurrentCategory(categories[0]);
+    }
   }, [tagCategoryName]);
 
   const fetchLeftPanel = () => {
@@ -455,7 +460,7 @@ const TagsPage = () => {
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <button
-                  className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                  className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
                   data-testid="add-category"
                   disabled={!createCategoryPermission}
                   onClick={() => {

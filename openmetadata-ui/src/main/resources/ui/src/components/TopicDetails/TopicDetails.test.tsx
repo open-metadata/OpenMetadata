@@ -149,6 +149,12 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
+
 jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
 });
@@ -254,9 +260,9 @@ describe('Test TopicDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const customProperties = await findByTestId(
+    const customProperties = await findByText(
       container,
-      'custom-properties-table'
+      'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();

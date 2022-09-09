@@ -17,13 +17,14 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getRoles } from '../../../axiosAPIs/rolesAPIV1';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
@@ -58,7 +59,9 @@ const RolesListPage = () => {
       const data = await getRoles(
         'policies,teams,users',
         paging?.after,
-        paging?.before
+        paging?.before,
+        undefined,
+        PAGE_SIZE_MEDIUM
       );
 
       setRoles(data.data || []);
@@ -83,8 +86,32 @@ const RolesListPage = () => {
     fetchRoles();
   }, []);
 
+  const fetchErrorPlaceHolder = useMemo(
+    () => () => {
+      return (
+        <ErrorPlaceHolder
+          buttons={
+            <Button
+              ghost
+              data-testid="add-role"
+              disabled={!addRolePermission}
+              type="primary"
+              onClick={handleAddRole}>
+              Add Role
+            </Button>
+          }
+          heading="Role"
+          type="ADD_DATA"
+        />
+      );
+    },
+    []
+  );
+
   return isLoading ? (
     <Loader />
+  ) : isEmpty(roles) ? (
+    fetchErrorPlaceHolder()
   ) : (
     <Row
       className="roles-list-container"
@@ -109,10 +136,10 @@ const RolesListPage = () => {
         <RolesList fetchRoles={fetchRoles} roles={roles} />
       </Col>
       <Col span={24}>
-        {paging && paging.total > PAGE_SIZE && (
+        {paging && paging.total > PAGE_SIZE_MEDIUM && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={handlePaging}
             totalCount={paging.total}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Empty, Row } from 'antd';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
@@ -48,11 +48,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  getTableTestsValue,
-  getTagsWithoutTier,
-  getUsagePercentile,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -60,6 +56,7 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
@@ -125,7 +122,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
-  tableTestCase,
   createThread,
   qualityTestFormHandler,
   deletePostHandler,
@@ -177,7 +173,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (tableDetails.id) {
+      fetchResourcePermission();
+    }
   }, [tableDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
@@ -408,7 +406,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       key: 'Rows',
       value: prepareTableRowInfo(),
     },
-    { key: 'Tests', value: getTableTestsValue(tableTestCase) },
   ];
 
   const onDescriptionEdit = (): void => {
@@ -734,10 +731,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     </Col>
                   ) : (
                     <Col
-                      className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-p-8 tw-col-span-3"
                       span={24}>
                       <div data-testid="no-queries">
-                        <Empty description={<p>No queries data available</p>} />
+                        <ErrorPlaceHolder heading="queries" />
                       </div>
                     </Col>
                   )}
@@ -745,9 +742,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 5 && (
                 <TableProfilerV1
-                  hasEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditDataProfile
-                  }
+                  permissions={tablePermissions}
                   table={tableDetails}
                   onAddTestClick={qualityTestFormHandler}
                 />

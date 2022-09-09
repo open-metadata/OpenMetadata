@@ -62,17 +62,17 @@ import org.openmetadata.catalog.services.connections.mlModel.SklearnConnection;
 import org.openmetadata.catalog.type.EntityReference;
 
 @ExtendWith(MockitoExtension.class)
-public class LocalSecretsManagerTest {
+public class NoopSecretsManagerTest {
 
   private static final boolean ENCRYPT = true;
   private static final boolean DECRYPT = false;
   private static final String ENCRYPTED_VALUE = "fernet:abcdef";
   private static final String DECRYPTED_VALUE = "123456";
-  private static LocalSecretsManager secretsManager;
+  private static NoopSecretsManager secretsManager;
 
   @BeforeAll
   static void setUp() {
-    secretsManager = LocalSecretsManager.getInstance("openmetadata");
+    secretsManager = NoopSecretsManager.getInstance("openmetadata");
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
@@ -146,7 +146,7 @@ public class LocalSecretsManagerTest {
 
   @Test
   void testReturnsExpectedSecretManagerProvider() {
-    assertEquals(SecretsManagerProvider.LOCAL, secretsManager.getSecretsManagerProvider());
+    assertEquals(SecretsManagerProvider.NOOP, secretsManager.getSecretsManagerProvider());
   }
 
   @ParameterizedTest

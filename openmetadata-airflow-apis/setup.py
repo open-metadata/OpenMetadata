@@ -49,7 +49,6 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion[airflow-container]~=0.11",
     "pendulum~=2.1.2",
     "apache-airflow>=2.2.2",
     "Flask>=1.1.4",
@@ -70,7 +69,7 @@ setup(
     packages=find_packages(include=[f"{PLUGIN_NAME}.*", PLUGIN_NAME]),
     include_package_data=True,
     package_data={PLUGIN_NAME: get_package_data()},
-    version="0.12.0.dev0",
+    version="0.13.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

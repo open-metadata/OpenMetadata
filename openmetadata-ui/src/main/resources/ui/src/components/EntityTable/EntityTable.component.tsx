@@ -358,13 +358,13 @@ const EntityTable = ({
     columnConstraint?: string
   ) => {
     if (!isNil(columnConstraint)) {
-      return getConstraintIcon(columnConstraint);
+      return getConstraintIcon(columnConstraint, 'tw-mr-2');
     } else {
       const flag = tableConstraints?.find((constraint) =>
         constraint.columns?.includes(columnName)
       );
       if (!isUndefined(flag)) {
-        return getConstraintIcon(flag.constraintType);
+        return getConstraintIcon(flag.constraintType, 'tw-mr-2');
       } else {
         return null;
       }
@@ -793,7 +793,7 @@ const EntityTable = ({
               ) : (
                 <span>
                   {prepareConstraintIcon(record.name, record.constraint)}
-                  <span className="tw-ml-4">{record.name}</span>
+                  <span>{record.name}</span>
                 </span>
               )}
             </Fragment>
@@ -831,20 +831,6 @@ const EntityTable = ({
           index: number
         ) => {
           return renderCell(TABLE_HEADERS_V1.dataTypeDisplay, record, index);
-        },
-      },
-      {
-        title: 'Data Quality',
-        dataIndex: 'columnTests',
-        key: 'columnTests',
-        accessor: 'columnTests',
-        width: 200,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => {
-          return renderCell(TABLE_HEADERS_V1.columnTests, record, index);
         },
       },
       {
@@ -915,7 +901,6 @@ const EntityTable = ({
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
-          // expandable={}
         />
       )}
     </>

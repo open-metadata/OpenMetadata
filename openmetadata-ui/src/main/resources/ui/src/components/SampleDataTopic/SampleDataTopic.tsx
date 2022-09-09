@@ -17,9 +17,9 @@ import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
-import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { TopicSampleData } from '../../generated/entity/data/topic';
 import { withLoader } from '../../hoc/withLoader';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 
 interface SampleDataTopicProp extends HTMLAttributes<HTMLDivElement> {
@@ -84,30 +84,30 @@ const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
   } else {
     return (
       <div
-        className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8"
+        className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center"
         data-testid="no-data">
-        <div className="tw-mt-12">
-          <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
-        </div>
-        <div className="tw-mt-8 tw-max-w-x tw-text-center">
-          <Typography.Paragraph style={{ marginBottom: '4px' }}>
-            {' '}
-            No sample data available
-          </Typography.Paragraph>
-          <Typography.Paragraph>
-            {' '}
-            To view Sample Data, run the MetaData Ingestion. Please refer to
-            this doc to schedule the{' '}
-            <Link
-              className="tw-ml-1"
-              target="_blank"
-              to={{
-                pathname: WORKFLOWS_METADATA_DOCS,
-              }}>
-              MetaData Ingestion
-            </Link>
-          </Typography.Paragraph>
-        </div>
+        <ErrorPlaceHolder>
+          {' '}
+          <div className="tw-max-w-x tw-text-center">
+            <Typography.Paragraph style={{ marginBottom: '4px' }}>
+              {' '}
+              No sample data available
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              {' '}
+              To view Sample Data, run the MetaData Ingestion. Please refer to
+              this doc to schedule the{' '}
+              <Link
+                className="tw-ml-1"
+                target="_blank"
+                to={{
+                  pathname: WORKFLOWS_METADATA_DOCS,
+                }}>
+                MetaData Ingestion
+              </Link>
+            </Typography.Paragraph>
+          </div>
+        </ErrorPlaceHolder>
       </div>
     );
   }

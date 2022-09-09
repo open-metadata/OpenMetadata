@@ -83,6 +83,14 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
+    "allowDelete" : {
+      "description": "Some system policies can't be deleted",
+      "type" : "boolean"
+    },
+    "allowEdit" : {
+      "description": "Some system roles can't be edited",
+      "type" : "boolean"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",

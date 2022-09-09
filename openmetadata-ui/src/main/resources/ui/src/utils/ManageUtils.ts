@@ -29,14 +29,6 @@ export const getOwnerList = (
 ) => {
   const userDetails = AppState.getCurrentUserDetails();
 
-  const userTeams =
-    userDetails?.teams?.map((userTeam) => ({
-      name: getEntityName(userTeam),
-      value: userTeam.id,
-      group: 'Teams',
-      type: 'team',
-    })) ?? [];
-
   if (userDetails?.isAdmin) {
     const users = (listUsers || [])
       .map((user) => ({
@@ -57,7 +49,7 @@ export const getOwnerList = (
       ...(!excludeCurrentUser
         ? [
             {
-              name: getEntityName(userDetails as unknown as EntityReference),
+              name: getEntityName(userDetails),
               value: userDetails.id,
               group: 'Users',
               type: 'user',
@@ -68,16 +60,13 @@ export const getOwnerList = (
       ...teams,
     ];
   } else {
-    return userDetails && !excludeCurrentUser
-      ? [
-          {
-            name: getEntityName(userDetails as unknown as EntityReference),
-            value: userDetails.id,
-            group: 'Users',
-            type: 'user',
-          },
-          ...userTeams,
-        ]
-      : userTeams;
+    return [
+      {
+        name: getEntityName(userDetails),
+        value: userDetails?.id,
+        group: 'Users',
+        type: 'user',
+      },
+    ];
   }
 };

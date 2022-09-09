@@ -215,7 +215,7 @@ const AddService = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const value = event.target.value.trim();
+    const value = event.target.value;
     setServiceName(value);
     if (value) {
       setShowErrorMessage({

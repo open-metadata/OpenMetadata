@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Space, Switch } from 'antd';
+import { Card, Image, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -101,6 +101,7 @@ const Users = ({
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
 
   const location = useLocation();
 
@@ -632,16 +633,17 @@ const Users = ({
             ...leftPanelAntCardStyle,
           }}>
           <div className="tw-flex tw-flex-col">
-            {image ? (
-              <div>
-                <img
-                  alt="profile"
-                  className="tw-w-full"
-                  height="150px"
-                  referrerPolicy="no-referrer"
-                  src={image}
-                />
-              </div>
+            {isImgUrlValid ? (
+              <Image
+                alt="profile"
+                className="tw-w-full"
+                preview={false}
+                referrerPolicy="no-referrer"
+                src={image || ''}
+                onError={() => {
+                  SetIsImgUrlValid(false);
+                }}
+              />
             ) : (
               <div style={{ width: 'inherit' }}>
                 <ProfilePicture
@@ -701,7 +703,7 @@ const Users = ({
           </div>
           {isTaskType ? (
             <Space align="end" size={5}>
-              <Switch size="small" onChange={onSwitchChange} />
+              <Switch onChange={onSwitchChange} />
               <span className="tw-ml-1">Closed Tasks</span>
             </Space>
           ) : null}

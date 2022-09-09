@@ -245,7 +245,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         )}
         {isTaskType && (
           <div className="tw-flex tw-justify-end tw-mr-2 tw-mt-2">
-            <Switch onChange={onSwitchChange} />
+            <Switch size="small" onChange={onSwitchChange} />
             <span className="tw-ml-1">Closed Tasks</span>
           </div>
         )}

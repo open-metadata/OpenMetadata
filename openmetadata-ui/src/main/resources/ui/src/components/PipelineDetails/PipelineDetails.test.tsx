@@ -181,6 +181,12 @@ jest.mock('../TasksDAGView/TasksDAGView', () => {
   return jest.fn().mockReturnValue(<p data-testid="tasks-dag">Tasks DAG</p>);
 });
 
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
@@ -275,9 +281,9 @@ describe('Test PipelineDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const customProperties = await findByTestId(
+    const customProperties = await findByText(
       container,
-      'custom-properties-table'
+      'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();

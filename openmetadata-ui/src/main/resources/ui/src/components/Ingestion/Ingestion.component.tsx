@@ -13,21 +13,20 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Empty, Tooltip } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
+import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Connection } from '../../generated/entity/services/databaseService';
 import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
@@ -36,6 +35,7 @@ import {
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
@@ -64,8 +64,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   permissions,
 }: IngestionProps) => {
   const history = useHistory();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+
   const [searchText, setSearchText] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
@@ -419,7 +418,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           </div>
           <div className="tw-relative">
             {isRequiredDetailsAvailable &&
-              (isAdminUser || isAuthDisabled) &&
+              permissions.EditAll &&
               getAddIngestionElement()}
           </div>
         </div>
@@ -629,28 +628,17 @@ const Ingestion: React.FC<IngestionProps> = ({
         ) : (
           isRequiredDetailsAvailable &&
           ingestionList.length === 0 && (
-            <div className="tw-border tw-border-main tw-rounded-md tw-mt-2 tw-p-8 tw-w-full tw-bg-white">
-              <Empty
-                description={
-                  <>
-                    <p>No ingestion data available</p>
-                    <p className="tw-mt-2">
-                      To view Ingestion Data, run the MetaData Ingestion. Please
-                      refer to this doc to schedule the{' '}
-                      <Link
-                        className="tw-ml-1"
-                        target="_blank"
-                        to={{
-                          pathname:
-                            'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata',
-                        }}>
-                        Metadata Ingestion
-                      </Link>
-                    </p>
-                  </>
-                }
-              />
-            </div>
+            <ErrorPlaceHolder>
+              <Typography.Text>No ingestion data available</Typography.Text>
+              <Typography.Text>
+                To view Ingestion Data, run the MetaData Ingestion. Please refer
+                to this doc to schedule the{' '}
+              </Typography.Text>
+              <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
+                {' '}
+                Metadata Ingestion
+              </Typography.Link>
+            </ErrorPlaceHolder>
           )
         )}
       </div>

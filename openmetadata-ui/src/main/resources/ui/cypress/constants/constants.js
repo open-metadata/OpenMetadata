@@ -68,7 +68,7 @@ export const SEARCH_ENTITY_PIPELINE = {
 
 export const DELETE_ENTITY = {
   table: {
-    term: 'fact_line_item',
+    term: 'fact_sale',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
   },
   topic: {

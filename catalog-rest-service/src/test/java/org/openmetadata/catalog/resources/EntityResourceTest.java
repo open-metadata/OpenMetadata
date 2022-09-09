@@ -1382,10 +1382,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
+  protected void delete_entity_as_owner_401(TestInfo test) throws IOException {
+    if (!supportsOwner) {
+      return;
+    }
+    K request = createRequest(getEntityName(test), "", "", USER1_REF);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Deleting as the owner user should succeed
+    deleteEntity(entity.getId(), true, true, authHeaders(USER1.getName()));
+    assertEntityDeleted(entity, true);
+  }
+
+  @Test
   protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    // Deleting as non-owner and non-admin should fail
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertResponse(() -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+    assertResponse(
+        () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */

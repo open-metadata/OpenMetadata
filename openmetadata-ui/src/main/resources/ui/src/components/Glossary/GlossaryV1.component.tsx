@@ -200,19 +200,21 @@ const GlossaryV1 = ({
    * @param fqn fqn of glossary or glossary term
    */
   const handleBreadcrumb = (fqn: string) => {
-    const arr = fqn.split(FQN_SEPARATOR_CHAR);
-    const dataFQN: Array<string> = [];
-    const newData = arr.map((d, i) => {
-      dataFQN.push(d);
-      const isLink = i < arr.length - 1;
+    if (fqn) {
+      const arr = fqn.split(FQN_SEPARATOR_CHAR);
+      const dataFQN: Array<string> = [];
+      const newData = arr.map((d, i) => {
+        dataFQN.push(d);
+        const isLink = i < arr.length - 1;
 
-      return {
-        name: d,
-        url: isLink ? getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)) : '',
-        activeTitle: isLink,
-      };
-    });
-    setBreadcrumb(newData);
+        return {
+          name: d,
+          url: isLink ? getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)) : '',
+          activeTitle: isLink,
+        };
+      });
+      setBreadcrumb(newData);
+    }
   };
 
   const handleDelete = () => {
@@ -348,7 +350,7 @@ const GlossaryV1 = ({
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <button
-                      className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                      className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}

@@ -57,9 +57,9 @@ import './tableProfiler.less';
 const TableProfilerV1: FC<TableProfilerProps> = ({
   table,
   onAddTestClick,
-  hasEditAccess,
+  permissions,
 }) => {
-  const { profile, columns } = table;
+  const { profile, columns = [] } = table;
   const history = useHistory();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
@@ -70,6 +70,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [activeTab] = useState<ProfilerDashboardTab>(
     ProfilerDashboardTab.SUMMARY
   );
+
+  const viewTest = permissions.ViewAll || permissions.ViewTests;
+  const viewProfiler = permissions.ViewAll || permissions.ViewDataProfile;
+  const editTest = permissions.EditAll || permissions.EditTests;
 
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
@@ -106,11 +110,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     ];
   }, [profile, tableTests]);
 
-  const tabOptions = useMemo(() => {
-    return Object.values(ProfilerDashboardTab).filter(
-      (value) => value !== ProfilerDashboardTab.PROFILER
-    );
-  }, []);
+  const tabOptions = [
+    {
+      label: ProfilerDashboardTab.SUMMARY,
+      value: ProfilerDashboardTab.SUMMARY,
+      disabled: !viewProfiler,
+    },
+    {
+      label: ProfilerDashboardTab.DATA_QUALITY,
+      value: ProfilerDashboardTab.DATA_QUALITY,
+      disabled: !viewTest,
+    },
+  ];
 
   const handleTabChange = (e: RadioChangeEvent) => {
     const value = e.target.value as ProfilerDashboardTab;
@@ -118,7 +129,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       history.push(
         getProfilerDashboardWithFqnPath(
           ProfilerDashboardType.TABLE,
-          table.fullyQualifiedName || ''
+          table.fullyQualifiedName || '',
+          ProfilerDashboardTab.DATA_QUALITY
         )
       );
     }
@@ -158,14 +170,16 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   useEffect(() => {
-    if (isEmpty(table)) return;
-    fetchAllTests();
-  }, [table]);
+    if (!isEmpty(table) && viewTest) {
+      fetchAllTests();
+    }
+  }, [table, viewTest]);
 
   return (
     <div
       className="table-profiler-container"
-      data-testid="table-profiler-container">
+      data-testid="table-profiler-container"
+      id="profilerDetails">
       <Row className="tw-mb-4" justify="space-between">
         <Radio.Group
           buttonStyle="solid"
@@ -177,11 +191,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         />
 
         <Space>
-          <Tooltip
-            title={hasEditAccess ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
             <Link
               to={
-                hasEditAccess
+                editTest
                   ? getAddDataQualityTableTestPath(
                       ProfilerDashboardType.TABLE,
                       `${table.fullyQualifiedName}`
@@ -191,19 +204,27 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               <Button
                 className="tw-rounded"
                 data-testid="profiler-add-table-test-btn"
-                disabled={!hasEditAccess}
+                disabled={!editTest}
                 type="primary">
                 Add Test
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip
-            title={hasEditAccess ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
             <Button
-              className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+              className={classNames(
+                'profiler-setting-btn tw-border tw-rounded tw-text-primary',
+                { 'tw-border-primary': editTest }
+              )}
               data-testid="profiler-setting-btn"
-              disabled={!hasEditAccess}
-              icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+              disabled={!editTest}
+              icon={
+                <SVGIcons
+                  alt="setting"
+                  className={classNames({ 'tw-mb-1 tw-mr-2': editTest })}
+                  icon={editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY}
+                />
+              }
               type="default"
               onClick={() => handleSettingModal(true)}>
               Settings
@@ -258,16 +279,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           ...col,
           key: col.name,
         }))}
-        hasEditAccess={hasEditAccess}
+        hasEditAccess={editTest}
         onAddTestClick={onAddTestClick}
       />
 
-      <ProfilerSettingsModal
-        columns={columns}
-        tableId={table.id}
-        visible={settingModalVisible}
-        onVisibilityChange={handleSettingModal}
-      />
+      {settingModalVisible && (
+        <ProfilerSettingsModal
+          columns={columns}
+          tableId={table.id}
+          visible={settingModalVisible}
+          onVisibilityChange={handleSettingModal}
+        />
+      )}
     </div>
   );
 };

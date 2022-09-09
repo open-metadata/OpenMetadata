@@ -80,10 +80,6 @@
     },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
-    },
-    "supportsQueryComment": {
-      "title": "Supports Query Comment",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false
