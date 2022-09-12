@@ -34,5 +34,5 @@ OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH=/path/to/secret.json
 ## 2. Start Docker
 
 ```commandline
-docker compose --env-file ~/openmetadata.env up -d
+docker compose --env-file ~/openmetadata_google.env up -d
 ```

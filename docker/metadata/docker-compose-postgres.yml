@@ -18,13 +18,15 @@ volumes:
 services:
   postgresql:
     container_name: openmetadata_postgresql
-    image: openmetadata/postgresql:0.11.4
+    image: openmetadata/postgresql:0.12.0
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     expose:
       - 5432
+    ports:
+      - "5432:5432"
     networks:
       app_net:
         ipv4_address: 172.16.240.10
@@ -143,6 +145,7 @@ services:
       AIRFLOW_DB_SCHEME: ${AIRFLOW_DB_SCHEME:-postgresql+psycopg2}
       DB_USER: ${DB_USER:-airflow_user}
       DB_PASSWORD: ${DB_PASSWORD:-airflow_pass}
+      DB_SCHEME: ${DB_SCHEME:-postgresql+psycopg2}
     expose:
       - 8080
     ports:

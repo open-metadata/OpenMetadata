@@ -39,5 +39,5 @@ OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL={endpoint}
 ## 2. Start Docker
 
 ```commandline
-docker compose --env-file ~/openmetadata_azure.env up -d
+docker compose --env-file ~/openmetadata_oidc.env up -d
 ```

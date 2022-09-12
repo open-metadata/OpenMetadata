@@ -18,9 +18,9 @@ In this section we will guide you through adding SSL to your OpenMetadata deploy
   </InlineCallout>
   <InlineCallout
     color="violet-70"
-    bold="Azure SSO"
+    bold="Use the OpenMetadata Server"
     icon="add_moderator"
-    href="/deployment/security/enable-ssl/jwt"
+    href="/deployment/security/enable-ssl/openmetadata-server"
   >
     Set SSL directly at the OpenMetadata server.
   </InlineCallout>
