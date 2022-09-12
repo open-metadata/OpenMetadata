@@ -287,6 +287,8 @@ site_menu:
     url: /openmetadata/connectors/database/hive/airflow
   - category: OpenMetadata / Connectors / Database / Hive / CLI
     url: /openmetadata/connectors/database/hive/cli
+  - category: OpenMetadata / Connectors / Database / Hive / Troubleshooting
+    url: /openmetadata/connectors/database/hive/troubleshooting
   - category: OpenMetadata / Connectors / Database / Presto
     url: /openmetadata/connectors/database/presto
   - category: OpenMetadata / Connectors / Database / Presto / Airflow
