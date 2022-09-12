@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { addNewTagToEntity } from '../../common/common';
+import { addNewTagToEntity, interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { NEW_TAG, NEW_TAG_CATEGORY, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 describe('Tags page should work', () => {
@@ -84,7 +84,13 @@ describe('Tags page should work', () => {
     cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
       .should('be.visible')
       .type(NEW_TAG.description);
+
+    interceptURL('GET', '/api/v1/tags/*', 'createTag');
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@createTag', 200);
+
+    cy.get('[data-testid="table-body"]').should('contain', NEW_TAG.name);
   });
 
   it('Use newly created tag to any entity should work', () => {
@@ -143,8 +149,10 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="body-text"]')
       .contains(`Are you sure you want to delete the tag "${NEW_TAG.name}"?`)
       .should('be.visible');
+
+    interceptURL('DELETE', `api/v1/tags/${NEW_TAG.name}/*`, 'deleteTag');
     cy.get('[data-testid="save-button"]').should('be.visible').click();
-    cy.wait(100);
+    verifyResponseStatusCode('@deleteTag', 200);
     cy.get('.tw-modal-container').should('not.exist');
     cy.get('.tableBody-cell').contains(NEW_TAG.name).should('not.exist');
   });

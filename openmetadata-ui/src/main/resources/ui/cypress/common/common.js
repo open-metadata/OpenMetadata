@@ -721,11 +721,11 @@ export const updateOwner = () => {
     .invoke('text')
     .then((text) => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
-
+      interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'getUser');
       //Clicking on edit owner button
       cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-      cy.wait(1000);
+      verifyResponseStatusCode('@getUser', 200);
 
       //Clicking on users tab
       cy.get('button[data-testid="dropdown-tab"]')
