@@ -83,7 +83,7 @@ During table usage ingestion, the tables retrieved successfully will be cached, 
 Usage queries have been optimized.
 A result limit has been added to Usage queries.
 
-## Gloabl Settings
+## Global Settings
 The OpenMetadata Settings dropdown menu has been transformed into a single, centralized Settings page for added convenience in viewing all the available options. The Global Settings comprises setting options for Team Members, Access based on Roles and Policies, Services, Data Quality, Collaboration, Custom Attributes, and Integrations for webhooks and bots. Admins can view or update settings for various services like Slack, MS Teams, Webhooks, etc from the Global Settings page.
 
 
