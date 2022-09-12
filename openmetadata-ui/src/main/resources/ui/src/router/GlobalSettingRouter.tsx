@@ -21,9 +21,14 @@ import {
 } from '../constants/globalSettings.constants';
 import { Operation } from '../generated/entity/policies/policy';
 import { TeamType } from '../generated/entity/teams/team';
+import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { checkPermission } from '../utils/PermissionsUtils';
-import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
+import {
+  getSettingCategoryPath,
+  getSettingPath,
+  getTeamsWithFqnPath,
+} from '../utils/RouterUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -80,12 +85,7 @@ const GlobalSettingRouter = () => {
   return (
     <Switch>
       <Route exact path={getSettingPath()}>
-        <Redirect
-          to={`${getSettingPath(
-            GlobalSettingsMenuCategory.MEMBERS,
-            GlobalSettingOptions.TEAMS
-          )}/${TeamType.Organization}`}
-        />
+        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
       <Route
         exact
@@ -104,9 +104,14 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={TestSuitePage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.DATA_QUALITY,
           GlobalSettingOptions.TEST_SUITE
@@ -129,14 +134,9 @@ const GlobalSettingRouter = () => {
         )}
       />
 
-      <AdminProtectedRoute
+      <Route
         exact
         component={RolesDetailPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.ROLE,
-          permissions
-        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES,
@@ -160,14 +160,9 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.POLICIES
         )}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={PoliciesDetailPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.POLICY,
-          permissions
-        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
@@ -225,7 +220,21 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.SLACK
         )}
       />
-
+      <AdminProtectedRoute
+        exact
+        // Currently we don't have any permission related to ActivityFeed settings page
+        // update below once we have it
+        component={ActivityFeedSettingsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.FEED,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingOptions.ACTIVITY_FEED
+        )}
+      />
       <AdminProtectedRoute
         exact
         component={MsTeamsPage}
@@ -251,7 +260,7 @@ const GlobalSettingRouter = () => {
         component={CustomPropertiesPageV1}
         hasPermission={checkPermission(
           Operation.ViewAll,
-          ResourceEntity.ALL,
+          ResourceEntity.TYPE,
           permissions
         )}
         path={getSettingCategoryPath(

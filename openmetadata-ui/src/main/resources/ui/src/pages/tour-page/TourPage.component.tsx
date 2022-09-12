@@ -66,7 +66,7 @@ const TourPage = () => {
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
   const [searchValue, setSearchValue] = useState('');
 
-  const handleCountChange = () => {
+  const handleCountChange = async () => {
     setExplorePageCounts(exploreCount);
   };
 
@@ -134,6 +134,7 @@ const TourPage = () => {
               servicesCount: 4,
               userCount: 100,
               teamCount: 7,
+              testSuiteCount: 2,
             }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}

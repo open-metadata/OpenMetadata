@@ -25,6 +25,9 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 jest.mock('../../../constants/constants', () => ({
+  ROUTES: {
+    TOUR: `tour`,
+  },
   getDatasetDetailsPath: jest
     .fn()
     .mockImplementation((path) => `/dataset/${path}`),

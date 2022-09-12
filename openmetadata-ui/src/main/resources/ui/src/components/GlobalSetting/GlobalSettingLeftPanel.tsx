@@ -24,6 +24,7 @@ import {
   MenuList,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 const GlobalSettingLeftPanel = () => {
@@ -66,13 +67,15 @@ const GlobalSettingLeftPanel = () => {
   };
 
   return menuItems.length ? (
-    <Menu
-      className="global-setting-left-panel"
-      items={menuItems}
-      mode="inline"
-      selectedKeys={[`${settingCategory}.${tab}`]}
-      onClick={onClick}
-    />
+    <LeftPanelCard id="settings">
+      <Menu
+        className="global-setting-left-panel"
+        items={menuItems}
+        mode="inline"
+        selectedKeys={[`${settingCategory}.${tab}`]}
+        onClick={onClick}
+      />
+    </LeftPanelCard>
   ) : (
     <Empty className="tw-mt-8" />
   );

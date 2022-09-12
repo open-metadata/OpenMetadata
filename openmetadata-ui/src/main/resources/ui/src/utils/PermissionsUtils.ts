@@ -29,7 +29,7 @@ import { Operation } from '../generated/entity/policies/policy';
  * @deprecated
  * TODO: Remove this method once we have new permission structure everywhere
  */
-export const hasPemission = (
+export const hasPermission = (
   operation: Operation,
   entityType: EntityType,
   permissions: ResourcePermission[]
@@ -60,18 +60,19 @@ export const checkPermission = (
   const isAuthDisabled = AppState.authDisabled;
   const allResource = permissions?.all;
   const entityResource = permissions?.[resourceType];
-  let hasPemission = isAuthDisabled;
+  let hasPermission = isAuthDisabled;
 
   /**
-   * If allresource is present then check for permission and return it
+   * If allResource is present then check for permission and return it
    */
-  if (allResource && !hasPemission) {
-    hasPemission = allResource.All || allResource[operation];
+  if (allResource && !hasPermission) {
+    hasPermission = allResource.All || allResource[operation];
   }
 
-  hasPemission = hasPemission || (entityResource && entityResource[operation]);
+  hasPermission =
+    hasPermission || (entityResource && entityResource[operation]);
 
-  return hasPemission;
+  return hasPermission;
 };
 
 /**
@@ -86,7 +87,16 @@ export const getOperationPermissions = (
     (acc: OperationPermission, curr: Permission) => {
       return {
         ...acc,
-        [curr.operation as Operation]: curr.access === Access.Allow,
+        [curr.operation as Operation]:
+          /**
+           * Check ConditionalAllow or Allow for Create Operation
+           * TODO: Remove this check once backend has fix for this
+           * https://github.com/open-metadata/OpenMetadata/issues/7004
+           */
+          curr.operation === Operation.Create
+            ? curr.access === Access.ConditionalAllow ||
+              curr.access === Access.Allow
+            : curr.access === Access.Allow,
       };
     },
     {} as OperationPermission

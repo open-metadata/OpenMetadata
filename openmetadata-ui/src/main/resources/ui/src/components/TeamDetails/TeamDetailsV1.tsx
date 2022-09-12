@@ -24,6 +24,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -36,12 +37,9 @@ import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+import { TEAMS_DOCS } from '../../constants/docs.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -60,13 +58,16 @@ import jsonData from '../../jsons/en';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import UserCard from '../../pages/teams/UserCard';
 import {
+  commonUserDetailColumns,
   getEntityName,
-  getTeamsText,
   hasEditAccess,
 } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
+import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
@@ -88,12 +89,24 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import ListEntities from './RolesAndPoliciesList';
-import { getTabs } from './TeamDetailsV1.utils';
+import { getTabs, searchTeam } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+
 interface AddAttribute {
   type: EntityType;
   selectedData: EntityReference[];
+}
+
+interface PlaceholderProps {
+  title?: string;
+  disabled?: boolean;
+  label?: string;
+  onClick?: () => void;
+  heading?: string;
+  description?: React.ReactNode;
+  button?: React.ReactNode;
+  datatestid?: string;
 }
 
 const TeamDetailsV1 = ({
@@ -112,6 +125,7 @@ const TeamDetailsV1 = ({
   onDescriptionUpdate,
   descriptionHandler,
   handleTeamUsersSearchAction,
+  handleCurrentUserPage,
   teamUserPaginHandler,
   handleJoinTeamClick,
   handleLeaveTeamClick,
@@ -120,6 +134,7 @@ const TeamDetailsV1 = ({
   afterDeleteAction,
 }: TeamDetailsProp) => {
   const isOrganization = currentTeam.name === TeamType.Organization;
+  const isGroupType = currentTeam.teamType === TeamType.Group;
   const DELETE_USER_INITIAL_STATE = {
     user: undefined,
     state: false,
@@ -148,7 +163,19 @@ const TeamDetailsV1 = ({
     record: EntityReference;
   }>();
   const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>({} as OperationPermission);
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const tabs = useMemo(
+    () =>
+      getTabs(
+        currentTeam,
+        teamUserPagin,
+        isGroupType,
+        isOrganization,
+        searchTerm ? table.length : undefined
+      ),
+    [currentTeam, teamUserPagin, searchTerm, table]
+  );
 
   const createTeamPermission = useMemo(
     () =>
@@ -180,31 +207,48 @@ const TeamDetailsV1 = ({
     setDeletingUser({ user, state: true, leave });
   };
 
+  const fetchErrorPlaceHolder = useMemo(
+    () =>
+      ({
+        title,
+        disabled,
+        label,
+        onClick,
+        heading,
+        description,
+        button,
+        datatestid,
+      }: PlaceholderProps) => {
+        return (
+          <ErrorPlaceHolder
+            buttons={
+              button ? (
+                button
+              ) : (
+                <ButtonAntd
+                  ghost
+                  data-testid={datatestid}
+                  disabled={disabled}
+                  size="small"
+                  title={title}
+                  type="primary"
+                  onClick={onClick}>
+                  {label}
+                </ButtonAntd>
+              )
+            }
+            description={description}
+            heading={heading}
+            type="ADD_DATA"
+          />
+        );
+      },
+    []
+  );
+
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      {
-        title: 'Username',
-        dataIndex: 'username',
-        key: 'username',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getUserPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: 'Email',
-        dataIndex: 'email',
-        key: 'email',
-      },
-      {
-        title: 'Teams',
-        dataIndex: 'teams',
-        key: 'teams',
-        render: (teams: EntityReference[]) => getTeamsText(teams),
-      },
+      ...commonUserDetailColumns,
       {
         title: 'Actions',
         dataIndex: 'actions',
@@ -218,10 +262,11 @@ const TeamDetailsV1 = ({
             <Tooltip
               placement="bottomRight"
               title={
-                entityPermissions?.EditAll ? 'Remove' : NO_PERMISSION_FOR_ACTION
+                entityPermissions.EditAll ? 'Remove' : NO_PERMISSION_FOR_ACTION
               }>
               <ButtonAntd
-                disabled={!entityPermissions?.EditAll}
+                data-testid="remove-user-btn"
+                disabled={!entityPermissions.EditAll}
                 icon={
                   <SVGIcons
                     alt="Remove"
@@ -239,33 +284,49 @@ const TeamDetailsV1 = ({
     ];
   }, [deleteUserHandler]);
 
-  const extraInfo: ExtraInfo = {
-    key: 'Owner',
-    value:
-      currentTeam?.owner?.type === 'team'
-        ? getTeamAndUserDetailsPath(
-            currentTeam?.owner?.displayName || currentTeam?.owner?.name || ''
-          )
-        : currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-    placeholderText:
-      currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-    isLink: currentTeam?.owner?.type === 'team',
-    openInNewTab: false,
-    profileName:
-      currentTeam?.owner?.type === OwnerType.USER
-        ? currentTeam?.owner?.name
-        : undefined,
-  };
+  const ownerValue = useMemo(() => {
+    switch (currentTeam.owner?.type) {
+      case 'team':
+        return getTeamAndUserDetailsPath(currentTeam.owner?.name || '');
+      case 'user':
+        return getUserPath(currentTeam.owner?.fullyQualifiedName ?? '');
+      default:
+        return '';
+    }
+  }, [currentTeam]);
+
+  const extraInfo: ExtraInfo[] = [
+    {
+      key: 'Owner',
+      value: ownerValue,
+      placeholderText:
+        currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
+      isLink: true,
+      openInNewTab: false,
+      profileName:
+        currentTeam?.owner?.type === OwnerType.USER
+          ? currentTeam?.owner?.name
+          : undefined,
+    },
+    ...(isOrganization
+      ? []
+      : [
+          {
+            key: 'TeamType',
+            value: currentTeam.teamType || '',
+          },
+        ]),
+  ];
 
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
   };
 
-  const handleOpenToJoinToggle = (value: boolean) => {
+  const handleOpenToJoinToggle = () => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
-        isJoinable: value,
+        isJoinable: !currentTeam.isJoinable,
       };
       updateTeamHandler(updatedData);
     }
@@ -354,16 +415,23 @@ const TeamDetailsV1 = ({
     return Promise.reject();
   };
 
+  const updateTeamType = (type: TeamType) => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        teamType: type,
+      };
+
+      return updateTeamHandler(updatedData);
+    }
+
+    return;
+  };
+
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(
-        childTeams?.filter(
-          (team) =>
-            team?.name?.toLowerCase().includes(value.toLowerCase()) ||
-            team?.displayName?.toLowerCase().includes(value.toLowerCase())
-        ) || []
-      );
+      setTable(searchTeam(childTeams, value));
     } else {
       setTable(childTeams ?? []);
     }
@@ -446,13 +514,6 @@ const TeamDetailsV1 = ({
             }))
           : [];
       const breadcrumb = [
-        {
-          name: 'Team',
-          url: getSettingPath(
-            GlobalSettingsMenuCategory.MEMBERS,
-            GlobalSettingOptions.TEAMS
-          ),
-        },
         ...perents,
         {
           name: getEntityName(currentTeam),
@@ -472,6 +533,14 @@ const TeamDetailsV1 = ({
     setCurrentUser(AppState.getCurrentUserDetails());
   }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
 
+  useEffect(() => {
+    isGroupType && setCurrentTab(2);
+  }, [isGroupType]);
+
+  useEffect(() => {
+    handleCurrentUserPage();
+  }, []);
+
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
       ? `leave the team ${currentTeam?.displayName ?? currentTeam?.name}?`
@@ -479,6 +548,53 @@ const TeamDetailsV1 = ({
 
     return `Are you sure you want to ${text}`;
   };
+
+  const openGroupIcon = useMemo(
+    () => (
+      <SVGIcons
+        alt="Delete"
+        icon={currentTeam.isJoinable ? Icons.OPEN_LOCK : Icons.CLOSED_LOCK}
+      />
+    ),
+    [currentTeam.isJoinable]
+  );
+
+  const extraDropdownContent: ItemType[] = useMemo(
+    () => [
+      {
+        label: (
+          <Space
+            className="tw-cursor-pointer manage-button"
+            size={8}
+            onClick={handleOpenToJoinToggle}>
+            {openGroupIcon}
+            <div className="tw-text-left open-group" data-testid="open-group">
+              <Row className="tw-mb-1" justify="space-between">
+                <Col>
+                  <p className="tw-font-medium" data-testid="open-group-label">
+                    Open Group
+                  </p>
+                </Col>
+                <Col>
+                  <Switch
+                    checked={currentTeam.isJoinable}
+                    className="tw-mr-2"
+                    size="small"
+                  />
+                </Col>
+              </Row>
+              <p className="tw-text-grey-muted tw-text-xs">
+                Allow open access for anyone to join the team, view data, and
+                collaborate
+              </p>
+            </div>
+          </Space>
+        ),
+        key: 'open-group-dropdown',
+      },
+    ],
+    [entityPermissions, currentTeam]
+  );
 
   /**
    * Check for current team users and return the user cards
@@ -489,45 +605,12 @@ const TeamDetailsV1 = ({
 
     return (
       <div>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3">
-          <div className="tw-w-4/12">
-            <Searchbar
-              removeMargin
-              placeholder="Search for user..."
-              searchValue={teamUsersSearchText}
-              typingInterval={500}
-              onSearch={handleTeamUsersSearchAction}
-            />
-          </div>
-
-          {currentTeamUsers.length > 0 && isActionAllowed() && (
-            <div>
-              <Button
-                className="tw-h-8 tw-px-2"
-                data-testid="add-user"
-                disabled={!entityPermissions?.EditAll}
-                size="small"
-                theme="primary"
-                title={
-                  entityPermissions?.EditAll
-                    ? 'Add User'
-                    : NO_PERMISSION_FOR_ACTION
-                }
-                variant="contained"
-                onClick={() => {
-                  handleAddUser(true);
-                }}>
-                Add User
-              </Button>
-            </div>
-          )}
-        </div>
-        {isTeamMemberLoading ? (
-          <Loader />
-        ) : (
-          <div>
-            {currentTeamUsers.length <= 0 ? (
-              <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+        {isEmpty(currentTeamUsers) &&
+        !teamUsersSearchText &&
+        !isTeamMemberLoading ? (
+          fetchErrorPlaceHolder({
+            description: (
+              <div className="tw-mb-2">
                 <p>
                   There are no users{' '}
                   {teamUsersSearchText
@@ -535,44 +618,79 @@ const TeamDetailsV1 = ({
                     : `added yet.`}
                 </p>
                 <p>Would like to start adding some?</p>
-                <Button
-                  className="tw-h-8 tw-rounded tw-my-2"
-                  data-testid="add-new-user"
-                  disabled={!entityPermissions?.EditAll}
-                  size="small"
-                  theme="primary"
-                  title={
-                    entityPermissions?.EditAll
-                      ? 'Add New User'
-                      : NO_PERMISSION_FOR_ACTION
-                  }
-                  variant="contained"
-                  onClick={() => handleAddUser(true)}>
-                  Add new user
-                </Button>
               </div>
-            ) : (
-              <Fragment>
-                <Table
-                  className="teams-list-table"
-                  columns={columns}
-                  dataSource={sortedUser}
-                  pagination={false}
-                  size="small"
+            ),
+            disabled: !entityPermissions.EditAll,
+            title: entityPermissions.EditAll
+              ? 'Add New User'
+              : NO_PERMISSION_FOR_ACTION,
+
+            onClick: () => handleAddUser(true),
+            label: 'Add new user',
+            datatestid: 'add-user',
+          })
+        ) : (
+          <>
+            <div className="tw-flex tw-justify-between tw-items-center tw-mb-3">
+              <div className="tw-w-4/12">
+                <Searchbar
+                  removeMargin
+                  placeholder="Search for user..."
+                  searchValue={teamUsersSearchText}
+                  typingInterval={500}
+                  onSearch={handleTeamUsersSearchAction}
                 />
-                {teamUserPagin.total > PAGE_SIZE && (
-                  <NextPrevious
-                    currentPage={currentTeamUserPage}
-                    isNumberBased={Boolean(teamUsersSearchText)}
-                    pageSize={PAGE_SIZE}
-                    paging={teamUserPagin}
-                    pagingHandler={teamUserPaginHandler}
-                    totalCount={teamUserPagin.total}
+              </div>
+
+              {currentTeamUsers.length > 0 && isActionAllowed() && (
+                <div>
+                  <Button
+                    className="tw-h-8 tw-px-2"
+                    data-testid="add-user"
+                    disabled={!entityPermissions.EditAll}
+                    size="small"
+                    theme="primary"
+                    title={
+                      entityPermissions.EditAll
+                        ? 'Add User'
+                        : NO_PERMISSION_FOR_ACTION
+                    }
+                    variant="contained"
+                    onClick={() => {
+                      handleAddUser(true);
+                    }}>
+                    Add User
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {isTeamMemberLoading ? (
+              <Loader />
+            ) : (
+              <div>
+                <Fragment>
+                  <Table
+                    className="teams-list-table"
+                    columns={columns}
+                    dataSource={sortedUser}
+                    pagination={false}
+                    size="small"
                   />
-                )}
-              </Fragment>
+                  {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
+                    <NextPrevious
+                      currentPage={currentTeamUserPage}
+                      isNumberBased={Boolean(teamUsersSearchText)}
+                      pageSize={PAGE_SIZE_MEDIUM}
+                      paging={teamUserPagin}
+                      pagingHandler={teamUserPaginHandler}
+                      totalCount={teamUserPagin.total}
+                    />
+                  )}
+                </Fragment>
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
     );
@@ -586,21 +704,21 @@ const TeamDetailsV1 = ({
     const ownData = filterEntityAssets(currentTeam?.owns || []);
 
     if (ownData.length <= 0) {
-      return (
-        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>Your team does not have any assets</p>
-          <p>Would like to start adding some?</p>
+      return fetchErrorPlaceHolder({
+        description: (
+          <div className="tw-mb-4">
+            <p>Your team does not have any assets</p>
+            <p>Would like to start adding some?</p>
+          </div>
+        ),
+        button: (
           <Link to="/explore">
-            <Button
-              className="tw-h-8 tw-rounded tw-mb-2 tw-text-white"
-              size="small"
-              theme="primary"
-              variant="contained">
+            <ButtonAntd ghost size="small" type="primary">
               Explore
-            </Button>
+            </ButtonAntd>
           </Link>
-        </div>
-      );
+        ),
+      });
     }
 
     return (
@@ -699,14 +817,20 @@ const TeamDetailsV1 = ({
                 <Tooltip
                   placement="bottomLeft"
                   title={
-                    entityPermissions?.EditDisplayName
+                    entityPermissions.EditAll ||
+                    entityPermissions.EditDisplayName
                       ? 'Edit Display Name'
                       : NO_PERMISSION_FOR_ACTION
                   }>
                   <button
                     className="tw-ml-2 focus:tw-outline-none"
                     data-testid="edit-synonyms"
-                    disabled={!entityPermissions?.EditDisplayName}
+                    disabled={
+                      !(
+                        entityPermissions.EditDisplayName ||
+                        entityPermissions.EditAll
+                      )
+                    }
                     onClick={() => setIsHeadingEditing(true)}>
                     <SVGIcons
                       alt="edit"
@@ -724,8 +848,7 @@ const TeamDetailsV1 = ({
     );
   };
 
-  const viewPermission =
-    !isEmpty(entityPermissions) && entityPermissions.ViewAll;
+  const viewPermission = entityPermissions.ViewAll;
 
   return viewPermission ? (
     <div
@@ -733,7 +856,9 @@ const TeamDetailsV1 = ({
       data-testid="team-details-container">
       {!isEmpty(currentTeam) ? (
         <Fragment>
-          <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+          {!isOrganization && (
+            <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+          )}
           <div
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
@@ -745,44 +870,57 @@ const TeamDetailsV1 = ({
                     !isAlreadyJoinedTeam(currentTeam.id),
                     currentTeam.isJoinable || false
                   )}
-                <ManageButton
-                  afterDeleteAction={afterDeleteAction}
-                  buttonClassName="tw-p-4"
-                  disabled={!entityPermissions.EditAll}
-                  entityId={currentTeam.id}
-                  entityName={
-                    currentTeam.fullyQualifiedName || currentTeam.name
-                  }
-                  entityType="team"
-                  title={
-                    entityPermissions.EditAll
-                      ? 'Manage'
-                      : NO_PERMISSION_FOR_ACTION
-                  }
-                />
+                {entityPermissions.EditAll && (
+                  <ManageButton
+                    afterDeleteAction={afterDeleteAction}
+                    allowSoftDelete={!currentTeam.deleted}
+                    buttonClassName="tw-p-4"
+                    canDelete={entityPermissions.EditAll}
+                    entityId={currentTeam.id}
+                    entityName={
+                      currentTeam.fullyQualifiedName || currentTeam.name
+                    }
+                    entityType="team"
+                    extraDropdownContent={extraDropdownContent}
+                  />
+                )}
               </Space>
             )}
           </div>
-          {!isOrganization && (
-            <div className="tw-mb-3">
-              <Switch
-                checked={currentTeam.isJoinable}
-                className="tw-mr-2"
-                size="small"
-                title="Open Group"
-                onChange={handleOpenToJoinToggle}
-              />
-              <span>Open Group</span>
-            </div>
-          )}
-          <EntitySummaryDetails data={extraInfo} updateOwner={updateOwner} />
+          <Space size={0}>
+            {extraInfo.map((info, index) => (
+              <>
+                <EntitySummaryDetails
+                  data={info}
+                  isGroupType={isGroupType}
+                  showGroupOption={!childTeams.length}
+                  teamType={currentTeam.teamType}
+                  updateOwner={
+                    entityPermissions.EditAll || entityPermissions.EditOwner
+                      ? updateOwner
+                      : undefined
+                  }
+                  updateTeamType={
+                    entityPermissions.EditAll ? updateTeamType : undefined
+                  }
+                />
+                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
+                  <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                    |
+                  </span>
+                ) : null}
+              </>
+            ))}
+          </Space>
           <div
             className="tw-mb-3 tw--ml-5 tw-mt-2"
             data-testid="description-container">
             <Description
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
-              hasEditAccess={entityPermissions.EditDescription}
+              hasEditAccess={
+                entityPermissions.EditDescription || entityPermissions.EditAll
+              }
               isEdit={isDescriptionEditable}
               onCancel={() => descriptionHandler(false)}
               onDescriptionEdit={() => descriptionHandler(true)}
@@ -794,132 +932,181 @@ const TeamDetailsV1 = ({
             <TabsPane
               activeTab={currentTab}
               setActiveTab={(tab) => setCurrentTab(tab)}
-              tabs={getTabs(currentTeam, teamUserPagin, isOrganization)}
+              tabs={tabs}
             />
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
-              {currentTab === 1 && (
-                <Row className="team-list-container" gutter={[16, 16]}>
-                  <Col span={8}>
-                    <Searchbar
-                      removeMargin
-                      placeholder="Search for team..."
-                      searchValue={searchTerm}
-                      typingInterval={500}
-                      onSearch={handleTeamSearch}
-                    />
-                  </Col>
-                  <Col span={16}>
-                    <Space
-                      align="end"
-                      className="tw-w-full"
-                      direction="vertical">
-                      <ButtonAntd
-                        disabled={!createTeamPermission}
-                        title={
-                          createTeamPermission
-                            ? 'Add Team'
-                            : NO_PERMISSION_FOR_ACTION
-                        }
-                        type="primary"
-                        onClick={() => handleAddTeam(true)}>
-                        Add Team
-                      </ButtonAntd>
-                    </Space>
-                  </Col>
-                  <Col span={24}>
-                    <TeamHierarchy
-                      data={table as Team[]}
-                      onTeamExpand={onTeamExpand}
-                    />
-                  </Col>
-                </Row>
-              )}
+              {currentTab === 1 &&
+                (isEmpty(table) && !searchTerm ? (
+                  fetchErrorPlaceHolder({
+                    title: createTeamPermission
+                      ? 'Add Team'
+                      : NO_PERMISSION_FOR_ACTION,
+                    label: 'Add Team',
+                    onClick: () => handleAddTeam(true),
+                    disabled: !createTeamPermission,
+                    heading: 'Team',
+                  })
+                ) : (
+                  <Row className="team-list-container" gutter={[16, 16]}>
+                    <Col span={8}>
+                      <Searchbar
+                        removeMargin
+                        placeholder="Search for team..."
+                        searchValue={searchTerm}
+                        typingInterval={500}
+                        onSearch={handleTeamSearch}
+                      />
+                    </Col>
+                    <Col span={16}>
+                      <Space
+                        align="end"
+                        className="tw-w-full"
+                        direction="vertical">
+                        <ButtonAntd
+                          disabled={!createTeamPermission}
+                          title={
+                            createTeamPermission
+                              ? 'Add Team'
+                              : NO_PERMISSION_FOR_ACTION
+                          }
+                          type="primary"
+                          onClick={() => handleAddTeam(true)}>
+                          Add Team
+                        </ButtonAntd>
+                      </Space>
+                    </Col>
+                    <Col span={24}>
+                      <TeamHierarchy
+                        data={table as Team[]}
+                        onTeamExpand={onTeamExpand}
+                      />
+                    </Col>
+                  </Row>
+                ))}
+
               {currentTab === 2 && getUserCards()}
 
               {currentTab === 3 && getDatasetCards()}
 
-              {currentTab === 4 && (
-                <Space
-                  className="tw-w-full roles-and-policy"
-                  direction="vertical">
-                  <ButtonAntd
-                    data-testid="add-role"
-                    disabled={!entityPermissions.EditAll}
-                    title={
-                      entityPermissions.EditAll
-                        ? 'Add Role'
-                        : NO_PERMISSION_FOR_ACTION
-                    }
-                    type="primary"
-                    onClick={() =>
+              {currentTab === 4 &&
+                (isEmpty(currentTeam.defaultRoles || []) ? (
+                  fetchErrorPlaceHolder({
+                    title: entityPermissions.EditAll
+                      ? 'Add Role'
+                      : NO_PERMISSION_FOR_ACTION,
+                    label: 'Add Role',
+                    onClick: () =>
                       setAddAttribute({
                         type: EntityType.ROLE,
                         selectedData: currentTeam.defaultRoles || [],
-                      })
-                    }>
-                    Add Role
-                  </ButtonAntd>
-                  <ListEntities
-                    list={currentTeam.defaultRoles || []}
-                    type={EntityType.ROLE}
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'defaultRoles' })
-                    }
-                  />
-                </Space>
-              )}
-              {currentTab === 5 && (
-                <Space
-                  className="tw-w-full roles-and-policy"
-                  direction="vertical">
-                  <ButtonAntd
-                    data-testid="add-policy"
-                    disabled={!entityPermissions.EditAll}
-                    title={
-                      entityPermissions.EditAll
-                        ? 'Add Policy'
-                        : NO_PERMISSION_FOR_ACTION
-                    }
-                    type="primary"
-                    onClick={() =>
+                      }),
+                    disabled: !entityPermissions.EditAll,
+                    heading: 'Role',
+                    datatestid: 'add-role',
+                  })
+                ) : (
+                  <Space
+                    className="tw-w-full roles-and-policy"
+                    direction="vertical">
+                    <ButtonAntd
+                      data-testid="add-role"
+                      disabled={!entityPermissions.EditAll}
+                      title={
+                        entityPermissions.EditAll
+                          ? 'Add Role'
+                          : NO_PERMISSION_FOR_ACTION
+                      }
+                      type="primary"
+                      onClick={() =>
+                        setAddAttribute({
+                          type: EntityType.ROLE,
+                          selectedData: currentTeam.defaultRoles || [],
+                        })
+                      }>
+                      Add Role
+                    </ButtonAntd>
+                    <ListEntities
+                      hasAccess={entityPermissions.EditAll}
+                      list={currentTeam.defaultRoles || []}
+                      type={EntityType.ROLE}
+                      onDelete={(record) =>
+                        setEntity({ record, attribute: 'defaultRoles' })
+                      }
+                    />
+                  </Space>
+                ))}
+              {currentTab === 5 &&
+                (isEmpty(currentTeam.policies) ? (
+                  fetchErrorPlaceHolder({
+                    title: entityPermissions.EditAll
+                      ? 'Add Policy'
+                      : NO_PERMISSION_FOR_ACTION,
+                    label: 'Add Policy',
+                    datatestid: 'add-policy',
+                    onClick: () =>
                       setAddAttribute({
                         type: EntityType.POLICY,
                         selectedData: currentTeam.policies || [],
-                      })
-                    }>
-                    Add Policy
-                  </ButtonAntd>
-                  <ListEntities
-                    list={currentTeam.policies || []}
-                    type={EntityType.POLICY}
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'policies' })
-                    }
-                  />
-                </Space>
-              )}
+                      }),
+                    disabled: !entityPermissions.EditAll,
+                    heading: 'Policies',
+                  })
+                ) : (
+                  <Space
+                    className="tw-w-full roles-and-policy"
+                    direction="vertical">
+                    <ButtonAntd
+                      data-testid="add-policy"
+                      disabled={!entityPermissions.EditAll}
+                      title={
+                        entityPermissions.EditAll
+                          ? 'Add Policy'
+                          : NO_PERMISSION_FOR_ACTION
+                      }
+                      type="primary"
+                      onClick={() =>
+                        setAddAttribute({
+                          type: EntityType.POLICY,
+                          selectedData: currentTeam.policies || [],
+                        })
+                      }>
+                      Add Policy
+                    </ButtonAntd>
+                    <ListEntities
+                      hasAccess={entityPermissions.EditAll}
+                      list={currentTeam.policies || []}
+                      type={EntityType.POLICY}
+                      onDelete={(record) =>
+                        setEntity({ record, attribute: 'policies' })
+                      }
+                    />
+                  </Space>
+                ))}
             </div>
           </div>
         </Fragment>
       ) : (
-        <ErrorPlaceHolder>
-          <p className="tw-text-lg tw-text-center">No Teams Added.</p>
-          <div className="tw-text-lg tw-text-center">
-            <Button
-              disabled={!createTeamPermission}
-              size="small"
-              theme="primary"
-              title={
-                createTeamPermission ? 'Add Team' : NO_PERMISSION_FOR_ACTION
-              }
-              variant="outlined"
-              onClick={() => handleAddTeam(true)}>
-              Click here
-            </Button>
-            {' to add new Team'}
-          </div>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          buttons={
+            <div className="tw-text-lg tw-text-center">
+              <Button
+                disabled={!createTeamPermission}
+                size="small"
+                theme="primary"
+                title={
+                  createTeamPermission ? 'Add Team' : NO_PERMISSION_FOR_ACTION
+                }
+                variant="outlined"
+                onClick={() => handleAddTeam(true)}>
+                Add new Team
+              </Button>
+            </div>
+          }
+          doc={TEAMS_DOCS}
+          heading="Teams"
+          type="ADD_DATA"
+        />
       )}
 
       {deletingUser.state && (

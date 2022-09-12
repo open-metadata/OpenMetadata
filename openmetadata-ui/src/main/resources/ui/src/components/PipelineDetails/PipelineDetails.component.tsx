@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -36,6 +35,7 @@ import {
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
+  getOwnerValue,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -154,7 +154,9 @@ const PipelineDetails = ({
   }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (pipelineDetails.id) {
+      fetchResourcePermission();
+    }
   }, [pipelineDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
@@ -215,15 +217,12 @@ const PipelineDetails = ({
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(owner?.name || '')
-          : getEntityName(owner),
+      value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
       ),
-      isLink: owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
@@ -240,7 +239,7 @@ const PipelineDetails = ({
     },
   ];
 
-  const onTaskUpdate = (taskDescription: string) => {
+  const onTaskUpdate = async (taskDescription: string) => {
     if (editTask) {
       const updatedTasks = [...(pipelineDetails.tasks || [])];
 
@@ -252,7 +251,7 @@ const PipelineDetails = ({
 
       const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
       const jsonPatch = compare(pipelineDetails, updatedPipeline);
-      taskUpdateHandler(jsonPatch);
+      await taskUpdateHandler(jsonPatch);
       setEditTask(undefined);
     } else {
       setEditTask(undefined);
@@ -310,13 +309,13 @@ const PipelineDetails = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedPipelineDetails = {
         ...pipelineDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedPipelineDetails);
+      await descriptionUpdateHandler(updatedPipelineDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);
@@ -478,8 +477,9 @@ const PipelineDetails = ({
                     )}
                   </div>
                   <hr className="tw-my-3" />
-                  <div>
+                  <div className="tw-px-6">
                     <PipelineStatusList
+                      pipelineFQN={pipelineFQN}
                       pipelineStatus={pipelineStatus}
                       selectedExec={selectedExecution}
                       onSelectExecution={(exec) => {

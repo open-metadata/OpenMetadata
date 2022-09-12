@@ -68,7 +68,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
         render: (description: string) => description || '--',
       },
     ];
-  }, []);
+  }, [data, onTeamExpand]);
 
   return (
     <Table

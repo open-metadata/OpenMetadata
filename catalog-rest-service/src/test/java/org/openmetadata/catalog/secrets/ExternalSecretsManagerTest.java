@@ -66,7 +66,7 @@ public abstract class ExternalSecretsManagerTest {
   static final String TEST_CONNECTION_SECRET_ID_PREFIX = "test-connection-temp";
   static final boolean DECRYPT = false;
   static final String EXPECTED_CONNECTION_JSON =
-      "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"password\":\"openmetadata-test\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true}";
+      "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"password\":\"openmetadata-test\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true,\"supportsQueryComment\":true}";
   static final String EXPECTED_SECRET_ID = "/openmetadata/service/database/mysql/test";
 
   AWSBasedSecretsManager secretsManager;

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Input, Space } from 'antd';
+import { Badge, Dropdown, Image, Input, Space } from 'antd';
 import { debounce, toString } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
@@ -72,6 +72,12 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
+
+  const profilePicture = useMemo(
+    () => AppState?.userDetails?.profile?.images?.image512,
+    [AppState]
+  );
 
   const { socket } = useWebSocketConnector();
 
@@ -209,7 +215,7 @@ const NavBar = ({
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6 centered-layout">
+        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="90" />
@@ -383,24 +389,26 @@ const NavBar = ({
               <DropDown
                 dropDownList={profileDropdown}
                 icon={
-                  <>
-                    <PopOver
-                      position="bottom"
-                      title="Profile"
-                      trigger="mouseenter">
-                      {AppState?.userDetails?.profile?.images?.image512 ? (
-                        <div className="profile-image square tw--mr-2">
-                          <img
-                            alt="user"
-                            referrerPolicy="no-referrer"
-                            src={AppState.userDetails.profile.images.image512}
-                          />
-                        </div>
-                      ) : (
-                        <Avatar name={username} width="30" />
-                      )}
-                    </PopOver>
-                  </>
+                  <PopOver
+                    position="bottom"
+                    title="Profile"
+                    trigger="mouseenter">
+                    {isImgUrlValid ? (
+                      <div className="profile-image square tw--mr-2">
+                        <Image
+                          alt="user"
+                          preview={false}
+                          referrerPolicy="no-referrer"
+                          src={profilePicture || ''}
+                          onError={() => {
+                            SetIsImgUrlValid(false);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Avatar name={username} width="30" />
+                    )}
+                  </PopOver>
                 }
                 isDropDownIconVisible={false}
                 type="link"

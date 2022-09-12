@@ -15,12 +15,12 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
   getAddWebhookPath,
   getEditWebhookPath,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import {
@@ -42,13 +42,13 @@ const MsTeamsPage = () => {
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
-    getWebhooks(paging)
+    getWebhooks(paging, undefined, {
+      limit: PAGE_SIZE_MEDIUM,
+      webhookType: WebhookType.Msteams,
+    })
       .then((res) => {
         if (res.data) {
-          const genericWebhooks = res.data.filter(
-            (d) => d.webhookType === WebhookType.Msteams
-          );
-          setData(genericWebhooks);
+          setData(res.data);
           setPaging(res.paging);
         } else {
           setData([]);
@@ -95,24 +95,20 @@ const MsTeamsPage = () => {
     fetchData();
   }, []);
 
-  return (
-    <PageContainerV1>
-      {!isLoading ? (
-        <WebhooksV1
-          currentPage={currentPage}
-          data={data}
-          paging={paging}
-          selectedStatus={selectedStatus}
-          webhookType={WebhookType.Msteams}
-          onAddWebhook={handleAddWebhook}
-          onClickWebhook={handleClickWebhook}
-          onPageChange={handlePageChange}
-          onStatusFilter={handleStatusFilter}
-        />
-      ) : (
-        <Loader />
-      )}
-    </PageContainerV1>
+  return !isLoading ? (
+    <WebhooksV1
+      currentPage={currentPage}
+      data={data}
+      paging={paging}
+      selectedStatus={selectedStatus}
+      webhookType={WebhookType.Msteams}
+      onAddWebhook={handleAddWebhook}
+      onClickWebhook={handleClickWebhook}
+      onPageChange={handlePageChange}
+      onStatusFilter={handleStatusFilter}
+    />
+  ) : (
+    <Loader />
   );
 };
 

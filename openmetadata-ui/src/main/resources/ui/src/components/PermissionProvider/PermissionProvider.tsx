@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import React, {
   createContext,
@@ -24,6 +23,7 @@ import React, {
 } from 'react';
 import AppState from '../../AppState';
 import {
+  getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
@@ -32,7 +32,6 @@ import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -83,7 +82,8 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // eslint-disable-next-line no-console
+      console.error(error);
     }
   };
 
@@ -100,6 +100,25 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       setEntitiesPermission((prev) => ({
         ...prev,
         [entityId]: operationPermission,
+      }));
+
+      return operationPermission;
+    }
+  };
+
+  const fetchEntityPermissionByFqn = async (
+    resource: ResourceEntity,
+    entityFqn: string
+  ) => {
+    const entityPermission = entitiesPermission[entityFqn];
+    if (entityPermission) {
+      return entityPermission;
+    } else {
+      const response = await getEntityPermissionByFqn(resource, entityFqn);
+      const operationPermission = getOperationPermissions(response);
+      setEntitiesPermission((prev) => ({
+        ...prev,
+        [entityFqn]: operationPermission,
       }));
 
       return operationPermission;
@@ -135,6 +154,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
         permissions,
         getEntityPermission: fetchEntityPermission,
         getResourcePermission: fetchResourcePermission,
+        getEntityPermissionByFqn: fetchEntityPermissionByFqn,
       }}>
       {children}
     </PermissionContext.Provider>

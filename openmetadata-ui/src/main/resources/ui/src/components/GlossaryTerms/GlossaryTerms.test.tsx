@@ -73,14 +73,6 @@ jest.mock('../common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
 });
 
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
-    ));
-});
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });

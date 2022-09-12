@@ -17,13 +17,14 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
@@ -56,7 +57,8 @@ const PoliciesListPage = () => {
       const data = await getPolicies(
         'owner,location,roles,teams',
         paging?.after,
-        paging?.before
+        paging?.before,
+        PAGE_SIZE_MEDIUM
       );
 
       setPolicies(data.data || []);
@@ -81,8 +83,32 @@ const PoliciesListPage = () => {
     fetchPolicies();
   }, []);
 
+  const fetchErrorPlaceHolder = useMemo(
+    () => () => {
+      return (
+        <ErrorPlaceHolder
+          buttons={
+            <Button
+              ghost
+              data-testid="add-policy"
+              disabled={!addPolicyPermission}
+              type="primary"
+              onClick={handleAddPolicy}>
+              Add Policy
+            </Button>
+          }
+          heading="Policy"
+          type="ADD_DATA"
+        />
+      );
+    },
+    []
+  );
+
   return isLoading ? (
     <Loader />
+  ) : isEmpty(policies) ? (
+    fetchErrorPlaceHolder()
   ) : (
     <Row className="policies-list-container" gutter={[16, 16]}>
       <Col span={24}>
@@ -106,10 +132,10 @@ const PoliciesListPage = () => {
         <PoliciesList fetchPolicies={fetchPolicies} policies={policies} />
       </Col>
       <Col span={24}>
-        {paging && paging.total > PAGE_SIZE && (
+        {paging && paging.total > PAGE_SIZE_MEDIUM && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={handlePaging}
             totalCount={paging.total}

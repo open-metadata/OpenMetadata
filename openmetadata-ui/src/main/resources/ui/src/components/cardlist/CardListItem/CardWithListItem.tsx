@@ -22,6 +22,7 @@ import { cardStyle } from './CardWithListItem.style';
 
 const CardListItem: FunctionComponent<Props> = ({
   card,
+  index,
   isActive,
   isSelected,
   onCardSelect,
@@ -101,7 +102,12 @@ const CardListItem: FunctionComponent<Props> = ({
       className={classNames(cardStyle.base, getCardBodyStyle(), className)}
       data-testid="card-list"
       onClick={handleCardSelect}>
-      <div className={classNames(cardStyle.header.base, getCardHeaderStyle())}>
+      <div
+        className={classNames(
+          cardStyle.header.base,
+          getCardHeaderStyle(),
+          index === 0 ? (isActive ? 'tw-rounded-t-md' : 'tw-rounded-t') : null
+        )}>
         <div className="tw-flex">
           <div className="tw-self-start tw-mr-2">
             <FontAwesomeIcon

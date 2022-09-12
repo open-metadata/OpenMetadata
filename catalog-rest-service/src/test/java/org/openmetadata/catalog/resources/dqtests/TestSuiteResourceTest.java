@@ -1,6 +1,7 @@
 package org.openmetadata.catalog.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -92,6 +93,16 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         verifyTestCases(testSuite.getTests(), testCases1);
       }
     }
+    deleteEntity(testSuite1.getId(), true, false, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getEntity(testSuite1.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        "testSuite instance for " + testSuite1.getId() + " not found");
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "all");
+    TestSuite deletedTestSuite = getEntity(testSuite1.getId(), queryParams, null, ADMIN_AUTH_HEADERS);
+    assertEquals(testSuite1.getId(), deletedTestSuite.getId());
+    assertEquals(deletedTestSuite.getDeleted(), true);
   }
 
   public static ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)

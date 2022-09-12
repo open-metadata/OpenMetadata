@@ -136,6 +136,16 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
         CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
   }
 
+  @Test
+  void delete_Disallowed() {
+    for (Role role : List.of(DATA_CONSUMER_ROLE, DATA_STEWARD_ROLE)) {
+      assertResponse(
+          () -> deleteEntity(role.getId(), ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          CatalogExceptionMessage.deletionNotAllowed(Entity.ROLE, role.getName()));
+    }
+  }
+
   private static void validateRole(
       Role role, String expectedDescription, String expectedDisplayName, String expectedUpdatedBy) {
     assertListNotNull(role.getId(), role.getHref());

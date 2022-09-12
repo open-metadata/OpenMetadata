@@ -30,6 +30,7 @@ import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -38,17 +39,21 @@ import { useAfterMount } from '../../hooks/useAfterMount';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { getEntityDeleteMessage, getEntityName } from '../../utils/CommonUtils';
 import { generateTreeData } from '../../utils/GlossaryUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import TreeView from '../common/TreeView/TreeView.component';
-import PageLayout from '../containers/PageLayout';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
@@ -77,8 +82,8 @@ type Props = {
   currentPage: number;
   handleAddGlossaryClick: () => void;
   handleAddGlossaryTermClick: () => void;
-  updateGlossary: (value: Glossary) => void;
-  handleGlossaryTermUpdate: (value: GlossaryTerm) => void;
+  updateGlossary: (value: Glossary) => Promise<void>;
+  handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   handleSelectedData: (key: string) => void;
   handleChildLoading: (status: boolean) => void;
   handleSearchText: (text: string) => void;
@@ -138,10 +143,10 @@ const GlossaryV1 = ({
   const [displayName, setDisplayName] = useState<string>();
 
   const [glossaryPermission, setGlossaryPermission] =
-    useState<OperationPermission>({} as OperationPermission);
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
-    useState<OperationPermission>({} as OperationPermission);
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const fetchGlossaryPermission = async () => {
     try {
@@ -185,8 +190,9 @@ const GlossaryV1 = ({
 
   const editDisplayNamePermission = useMemo(() => {
     return isGlossaryActive
-      ? glossaryPermission.EditDisplayName
-      : glossaryTermPermission.EditDisplayName;
+      ? glossaryPermission.EditAll || glossaryPermission.EditDisplayName
+      : glossaryTermPermission.EditAll ||
+          glossaryTermPermission.EditDisplayName;
   }, [glossaryPermission, glossaryTermPermission]);
 
   /**
@@ -194,19 +200,21 @@ const GlossaryV1 = ({
    * @param fqn fqn of glossary or glossary term
    */
   const handleBreadcrumb = (fqn: string) => {
-    const arr = fqn.split(FQN_SEPARATOR_CHAR);
-    const dataFQN: Array<string> = [];
-    const newData = arr.map((d, i) => {
-      dataFQN.push(d);
-      const isLink = i < arr.length - 1;
+    if (fqn) {
+      const arr = fqn.split(FQN_SEPARATOR_CHAR);
+      const dataFQN: Array<string> = [];
+      const newData = arr.map((d, i) => {
+        dataFQN.push(d);
+        const isLink = i < arr.length - 1;
 
-      return {
-        name: d,
-        url: isLink ? getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)) : '',
-        activeTitle: isLink,
-      };
-    });
-    setBreadcrumb(newData);
+        return {
+          name: d,
+          url: isLink ? getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)) : '',
+          activeTitle: isLink,
+        };
+      });
+      setBreadcrumb(newData);
+    }
   };
 
   const handleDelete = () => {
@@ -303,8 +311,9 @@ const GlossaryV1 = ({
                     Delete
                   </p>
                   <p className="tw-text-grey-muted tw-text-xs">
-                    Deleting this Glossary will permanently remove its metadata
-                    from OpenMetadata.
+                    Deleting this{' '}
+                    {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'} will
+                    permanently remove its metadata from OpenMetadata.
                   </p>
                 </div>
               </Space>
@@ -318,15 +327,15 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-h-full tw-px-1" id="glossary-left-panel">
-        <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
+      <LeftPanelCard id="glossary">
+        <div className="tw-h-full tw-py-2">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
-            <h6 className="tw-heading tw-text-base">Glossary</h6>
+            <h6 className="tw-heading tw-text-sm tw-font-semibold">Glossary</h6>
           </div>
           <div>
             {treeData.length ? (
               <Fragment>
-                <div className="tw-px-3 tw-mb-3">
+                <div className="tw-px-3 tw-mb-2">
                   <Searchbar
                     showLoadingStatus
                     placeholder="Search term..."
@@ -341,7 +350,7 @@ const GlossaryV1 = ({
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <button
-                      className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                      className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
@@ -374,20 +383,23 @@ const GlossaryV1 = ({
             )}
           </div>
         </div>
-      </div>
+      </LeftPanelCard>
     );
   };
 
   useEffect(() => {
     setDisplayName(selectedData?.displayName);
     if (selectedData) {
-      fetchGlossaryPermission();
-      fetchGlossaryTermPermission();
+      if (isGlossaryActive) {
+        fetchGlossaryPermission();
+      } else {
+        fetchGlossaryTermPermission();
+      }
     }
-  }, [selectedData]);
+  }, [selectedData, isGlossaryActive]);
 
   return glossaryList.length ? (
-    <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1 leftPanel={fetchLeftPanel()}>
       <div
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
@@ -399,7 +411,9 @@ const GlossaryV1 = ({
             }
           />
         </div>
-        <div className="tw-relative tw-mr-2 tw--mt-2" id="add-term-button">
+        <div
+          className="tw-relative tw-flex tw-justify-between tw-items-center"
+          id="add-term-button">
           <Tooltip
             title={
               createGlossaryTermPermission
@@ -407,7 +421,7 @@ const GlossaryV1 = ({
                 : NO_PERMISSION_FOR_ACTION
             }>
             <ButtonAntd
-              className="tw-h-8 tw-rounded tw-mb-1 tw-mr-2"
+              className="tw-h-8 tw-rounded tw-mr-2"
               data-testid="add-new-tag-button"
               disabled={!createGlossaryTermPermission}
               type="primary"
@@ -431,14 +445,18 @@ const GlossaryV1 = ({
             onVisibleChange={setShowActions}>
             <Tooltip
               title={
-                glossaryPermission.Delete
-                  ? 'Manage Glossary'
+                glossaryPermission.Delete || glossaryTermPermission.Delete
+                  ? isGlossaryActive
+                    ? 'Manage Glossary'
+                    : 'Manage GlossaryTerm'
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
-                className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-mb-1 tw-flex"
+                className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-flex"
                 data-testid="manage-button"
-                disabled={!glossaryPermission.Delete}
+                disabled={
+                  !(glossaryPermission.Delete || glossaryTermPermission.Delete)
+                }
                 size="small"
                 theme="primary"
                 variant="outlined"
@@ -550,25 +568,26 @@ const GlossaryV1 = ({
           onConfirm={handleDelete}
         />
       )}
-    </PageLayout>
+    </PageLayoutV1>
   ) : (
-    <PageLayout>
-      <ErrorPlaceHolder>
-        <p className="tw-text-center">No glossaries found</p>
-        <p className="tw-text-center">
-          <Button
+    <PageLayoutV1>
+      <ErrorPlaceHolder
+        buttons={
+          <ButtonAntd
+            ghost
             className="tw-h-8 tw-rounded tw-my-3"
             data-testid="add-webhook-button"
             disabled={!createGlossaryPermission}
-            size="small"
-            theme="primary"
-            variant="contained"
+            type="primary"
             onClick={handleAddGlossaryClick}>
             Add New Glossary
-          </Button>
-        </p>
-      </ErrorPlaceHolder>
-    </PageLayout>
+          </ButtonAntd>
+        }
+        doc={GLOSSARIES_DOCS}
+        heading="Glossary"
+        type="ADD_DATA"
+      />
+    </PageLayoutV1>
   );
 };
 

@@ -48,7 +48,7 @@
       "description": "Dashboard URL for PowerBI service.",
       "type": "string",
       "format": "uri",
-      "default": "https://analysis.windows.net/powerbi"
+      "default": "https://app.powerbi.com"
     },
     "scope": {
       "title": "Scope",

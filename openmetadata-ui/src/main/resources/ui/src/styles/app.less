@@ -13,6 +13,9 @@
 
 // common css utils file
 
+@primary: #7147e8;
+@primary-light: rgb(244, 240, 253);
+
 .flex-center {
   display: flex;
   align-items: center;
@@ -22,4 +25,49 @@
 .mx-auto {
   margin-right: auto;
   margin-left: auto;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  width: 100%;
+}
+
+.border-l-2 {
+  border-left: 2px;
+}
+
+.border-primary {
+  border-color: @primary;
+}
+
+.bg-primary-lite {
+  background: @primary-light;
+}
+
+.activeCategory {
+  border-left: 2px solid @primary;
+  background: @primary-light;
+}
+
+.mt-0 {
+  margin-top: 0;
+}
+
+.mt-24 {
+  margin-top: 6rem;
+}
+
+.shadow-custom {
+  box-shadow: 1px 1px 8px rgb(0 0 0 / 6%);
+}
+
+.opacity-60 {
+  opacity: 0.6;
 }

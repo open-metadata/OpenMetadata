@@ -14,11 +14,14 @@
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React, { ReactNode } from 'react';
+import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
+import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-activity.svg';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as TestSuite } from '../../src/assets/svg/icon-test-suite.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
+import { ReactComponent as MSTeamsIcon } from '../../src/assets/svg/ms-teams.svg';
 import { ReactComponent as PipelineIcon } from '../../src/assets/svg/pipeline-grey.svg';
 import { ReactComponent as PoliciesIcon } from '../../src/assets/svg/policies.svg';
 import { ReactComponent as SlackIcon } from '../../src/assets/svg/slack.svg';
@@ -76,7 +79,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.USER,
             permissions
           ),
-          icon: <UsersIcon className="side-panel-icons" />,
+          icon: <AdminIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -168,6 +171,20 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
+      category: 'Collaboration',
+      items: [
+        {
+          label: 'Activity Feed',
+          isProtected: checkPermission(
+            Operation.ViewAll,
+            ResourceEntity.FEED,
+            permissions
+          ),
+          icon: <AllActivityIcon className="side-panel-icons" />,
+        },
+      ],
+    },
+    {
       category: 'Custom Attributes',
       items: [
         {
@@ -237,6 +254,15 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <SlackIcon className="tw-w-4 side-panel-icons" />,
+        },
+        {
+          label: 'MS Teams',
+          isProtected: checkPermission(
+            Operation.ViewAll,
+            ResourceEntity.WEBHOOK,
+            permissions
+          ),
+          icon: <MSTeamsIcon className="tw-w-4 side-panel-icons" />,
         },
         {
           label: 'Bots',

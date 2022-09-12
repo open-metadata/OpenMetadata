@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table } from 'antd';
+import { Button, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -21,21 +21,23 @@ import {
   SECONDARY_COLOR,
   SUCCESS_COLOR,
 } from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import {
   getAddDataQualityTableTestPath,
   getProfilerDashboardWithFqnPath,
 } from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
+import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import {
   ColumnProfileTableProps,
   columnTestResultType,
@@ -44,6 +46,7 @@ import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnTests,
+  hasEditAccess,
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
@@ -123,15 +126,30 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Value Count',
         dataIndex: 'profile',
         key: 'valuesCount',
-        render: (profile: ColumnProfile) =>
-          formatNumberWithComma(profile?.valuesCount || 0),
+        render: (profile: ColumnProfile) => profile?.valuesCount || 0,
       },
       {
-        title: 'Test',
+        title: 'Tests',
+        dataIndex: 'Tests',
+        key: 'Tests',
+        render: (_, record) => (
+          <Link
+            to={getProfilerDashboardWithFqnPath(
+              ProfilerDashboardType.COLUMN,
+              record.fullyQualifiedName || '',
+              ProfilerDashboardTab.DATA_QUALITY
+            )}>
+            {columnTestSummary?.[record.fullyQualifiedName || '']?.count || 0}
+          </Link>
+        ),
+      },
+      {
+        title: 'Status',
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
         render: (_, record) => {
-          const summary = columnTestSummary?.[record.fullyQualifiedName || ''];
+          const summary =
+            columnTestSummary?.[record.fullyQualifiedName || '']?.results;
           const currentResult = summary
             ? Object.entries(summary).map(([key, value]) => ({
                 value,
@@ -153,17 +171,28 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
-          <Link
-            to={getAddDataQualityTableTestPath(
-              ProfilerDashboardType.COLUMN,
-              record.fullyQualifiedName || ''
-            )}>
-            <Button
-              className="tw-border tw-border-primary tw-rounded tw-text-primary"
-              size="small">
-              Add Test
-            </Button>
-          </Link>
+          <Tooltip
+            placement="bottom"
+            title={hasEditAccess ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+            <Link
+              to={getAddDataQualityTableTestPath(
+                ProfilerDashboardType.COLUMN,
+                record.fullyQualifiedName || ''
+              )}>
+              <Button
+                className="flex-center"
+                disabled={!hasEditAccess}
+                icon={
+                  <SVGIcons
+                    alt="add test"
+                    className="tw-h-4"
+                    icon={Icons.ADD_TEST}
+                  />
+                }
+                type="link"
+              />
+            </Link>
+          </Tooltip>
         ),
       },
     ];
@@ -187,9 +216,13 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
       const colResult = columnTests.reduce((acc, curr) => {
         const fqn = curr.entityFQN || '';
         if (isUndefined(acc[fqn])) {
-          acc[fqn] = { ...INITIAL_TEST_RESULT_SUMMARY };
+          acc[fqn] = { results: { ...INITIAL_TEST_RESULT_SUMMARY }, count: 0 };
         }
-        updateTestResults(acc[fqn], curr.testCaseResult?.testCaseStatus || '');
+        updateTestResults(
+          acc[fqn].results,
+          curr.testCaseResult?.testCaseStatus || ''
+        );
+        acc[fqn].count += 1;
 
         return acc;
       }, {} as columnTestResultType);

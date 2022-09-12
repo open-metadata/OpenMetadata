@@ -22,7 +22,7 @@ import React, {
   useMemo,
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Loader from '../../components/Loader/Loader';
 import { oidcTokenKey, ROUTES } from '../../constants/constants';
@@ -74,6 +74,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       setIsSigningIn,
       setLoadingIndicator,
     } = useAuthContext();
+    const history = useHistory();
     const { userDetails, newUser } = AppState;
     const userManager = useMemo(
       () => makeUserManager(userConfig),
@@ -148,6 +149,12 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               <>
                 <Callback
                   userManager={userManager}
+                  onError={(error) => {
+                    // eslint-disable-next-line no-console
+                    console.error(error);
+
+                    history.push(ROUTES.SIGNIN);
+                  }}
                   onSuccess={(user) => {
                     localStorage.setItem(oidcTokenKey, user.id_token);
                   }}

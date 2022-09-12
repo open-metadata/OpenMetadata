@@ -18,11 +18,15 @@ import IconAzure from '../assets/img/icon-azure.png';
 import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
+import IconNoDataFoundPlaceHolder from '../assets/img/no-data-placeholder.svg';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
+import IconAdmin from '../assets/svg/admin.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
+import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
+import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
@@ -31,6 +35,7 @@ import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
+import IconClosedLock from '../assets/svg/closed-lock.svg';
 import IconComments from '../assets/svg/comment.svg';
 import IconTaskClose from '../assets/svg/complete.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
@@ -60,6 +65,7 @@ import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
+import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
@@ -95,6 +101,7 @@ import IconReports from '../assets/svg/ic-reports.svg';
 import IconRestore from '../assets/svg/ic-restore.svg';
 import IconSchema from '../assets/svg/ic-schema.svg';
 import IconSearch from '../assets/svg/ic-search.svg';
+import IconSettingGray from '../assets/svg/ic-settings-gray.svg';
 import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
@@ -109,6 +116,7 @@ import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
+import IconAddTest from '../assets/svg/icon-add-test.svg';
 import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
@@ -133,6 +141,7 @@ import IconMinus from '../assets/svg/minus.svg';
 import IconMlModal from '../assets/svg/mlmodal.svg';
 import IconMSTeamsGrey from '../assets/svg/ms-teams-grey.svg';
 import IconMSTeams from '../assets/svg/ms-teams.svg';
+import IconOpenLock from '../assets/svg/open-lock.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
@@ -202,6 +211,7 @@ export const Icons = {
   REPORTS: 'icon-reports',
   SETTINGS: 'icon-settings',
   SETTINGS_PRIMERY: 'icon-settings-primery',
+  SETTINGS_GRAY: 'icon-settings-gray',
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
@@ -226,6 +236,7 @@ export const Icons = {
   LINEAGE: 'icon-lineage',
   MANAGE: 'icon-manage',
   HOME: 'icon-home',
+  ADD_TEST: 'icon-add-test',
   GROWTH_ARROW: 'icon-growth-arrow',
   LOSS_ARROW: 'icon-loss-arrow',
   CHECK_CIRCLE: 'icon-check-circle',
@@ -306,6 +317,7 @@ export const Icons = {
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
+  ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -347,6 +359,12 @@ export const Icons = {
   IC_EDIT_PRIMARY: 'ic-edit-primary',
   MSTEAMS: 'msteams',
   MSTEAMS_GREY: 'msteams-grey',
+  ALL_ACTIVITY: 'all-activity',
+  OPEN_LOCK: 'open-lock',
+  CLOSED_LOCK: 'closed-lock',
+  FILTER_PRIMARY: 'filter-primary',
+  ADMIN: 'admin',
+  NO_DATA_PLACEHOLDER: 'no-data-placeholder',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -405,6 +423,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconSettingPrimery;
 
       break;
+    case Icons.SETTINGS_GRAY:
+      IconComponent = IconSettingGray;
+
+      break;
     case Icons.LOGO:
       IconComponent = Logo;
 
@@ -415,6 +437,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO_SMALL:
       IconComponent = LogoMonogram;
+
+      break;
+    case Icons.ADD_TEST:
+      IconComponent = IconAddTest;
 
       break;
     case Icons.WELCOME_POPPER:
@@ -835,6 +861,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAnnouncements;
 
       break;
+    case Icons.ANNOUNCEMENT_PURPLE:
+      IconComponent = IconAnnouncementsPurple;
+
+      break;
     case Icons.ANNOUNCEMENT_BLACK:
       IconComponent = IconAnnouncementsBlack;
 
@@ -1015,6 +1045,36 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconTestSuite;
 
       break;
+
+    case Icons.ALL_ACTIVITY:
+      IconComponent = IconAllActivity;
+
+      break;
+    case Icons.FILTER_PRIMARY:
+      IconComponent = IconFilterPrimary;
+
+      break;
+
+    case Icons.OPEN_LOCK:
+      IconComponent = IconOpenLock;
+
+      break;
+
+    case Icons.CLOSED_LOCK:
+      IconComponent = IconClosedLock;
+
+      break;
+
+    case Icons.ADMIN:
+      IconComponent = IconAdmin;
+
+      break;
+
+    case Icons.NO_DATA_PLACEHOLDER:
+      IconComponent = IconNoDataFoundPlaceHolder;
+
+      break;
+
     default:
       IconComponent = null;
 

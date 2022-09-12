@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Empty, Row } from 'antd';
+import { Button as ButtonAntd, Col, Empty, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -24,15 +24,20 @@ import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getAddCustomPropertyPath } from '../../constants/constants';
 import { customAttributesPath } from '../../constants/globalSettings.constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { Operation } from '../../generated/entity/policies/policy';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../constants/HelperTextUtil';
 import { Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
-import { getResourceEntityFromCustomProperty } from '../../utils/CustomPropertyUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
 
@@ -49,18 +54,32 @@ const CustomEntityDetailV1 = () => {
   const tabAttributePath =
     customAttributesPath[tab as keyof typeof customAttributesPath];
 
-  const { permissions } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
 
-  const viewPermission = useMemo(() => {
-    return (
-      !isEmpty(permissions) &&
-      checkPermission(
-        Operation.ViewAll,
-        getResourceEntityFromCustomProperty(tab),
-        permissions
-      )
-    );
-  }, [permissions, tab]);
+  const [propertyPermission, setPropertyPermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.TYPE,
+        selectedEntityTypeDetail.id as string
+      );
+      setPropertyPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const viewPermission = useMemo(
+    () => propertyPermission.ViewAll,
+    [propertyPermission, tab]
+  );
+
+  const editPermission = useMemo(
+    () => propertyPermission.EditAll,
+    [propertyPermission, tab]
+  );
 
   const fetchTypeDetail = async (typeFQN: string) => {
     setIsLoading(true);
@@ -126,6 +145,12 @@ const CustomEntityDetailV1 = () => {
     }
   }, [tab]);
 
+  useEffect(() => {
+    if (selectedEntityTypeDetail?.id) {
+      fetchPermission();
+    }
+  }, [selectedEntityTypeDetail]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -160,24 +185,52 @@ const CustomEntityDetailV1 = () => {
             />
           </div>
         )}
-        {activeTab === 1 && (
-          <div data-testid="entity-custom-fields">
-            <div className="tw-flex tw-justify-end">
-              <Button
-                className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
-                data-testid="add-field-button"
-                size="custom"
-                theme="primary"
-                onClick={() => handleAddProperty()}>
-                Add Property
-              </Button>
+        {activeTab === 1 &&
+          (isEmpty(selectedEntityTypeDetail.customProperties) ? (
+            <div data-testid="entity-custom-fields">
+              <ErrorPlaceHolder
+                buttons={
+                  <Tooltip
+                    title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                    <ButtonAntd
+                      ghost
+                      data-testid="add-field-button"
+                      disabled={!editPermission}
+                      type="primary"
+                      onClick={() => handleAddProperty()}>
+                      Add Property
+                    </ButtonAntd>
+                  </Tooltip>
+                }
+                heading="Property"
+                type="ADD_DATA"
+              />
             </div>
-            <CustomPropertyTable
-              customProperties={selectedEntityTypeDetail.customProperties || []}
-              updateEntityType={updateEntityType}
-            />
-          </div>
-        )}
+          ) : (
+            <div data-testid="entity-custom-fields">
+              <div className="tw-flex tw-justify-end">
+                <Tooltip
+                  title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                  <Button
+                    className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
+                    data-testid="add-field-button"
+                    disabled={!editPermission}
+                    size="custom"
+                    theme="primary"
+                    onClick={() => handleAddProperty()}>
+                    Add Property
+                  </Button>
+                </Tooltip>
+              </div>
+              <CustomPropertyTable
+                customProperties={
+                  selectedEntityTypeDetail.customProperties || []
+                }
+                hasAccess={editPermission}
+                updateEntityType={updateEntityType}
+              />
+            </div>
+          ))}
       </Col>
     </Row>
   ) : (

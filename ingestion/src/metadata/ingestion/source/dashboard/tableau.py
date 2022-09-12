@@ -289,7 +289,7 @@ class TableauSource(DashboardServiceSource):
                 if filter_by_chart(
                     self.source_config.chartFilterPattern, chart["name"]
                 ):
-                    self.status.failure(chart["name"], "Chart Pattern not allowed")
+                    self.status.filter(chart["name"], "Chart Pattern not allowed")
                     continue
                 workbook_name = dashboard_details["name"].replace(" ", "")
                 site_url = (

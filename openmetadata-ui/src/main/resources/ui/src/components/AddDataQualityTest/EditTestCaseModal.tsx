@@ -16,22 +16,30 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { EditorContentRef } from 'Models';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../axiosAPIs/testAPI';
-import { codeMirrorOption } from '../../constants/profiler.constant';
+import { CSMode } from '../../enums/codemirror.enum';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
 import jsonData from '../../jsons/en';
+import { getNameFromFQN } from '../../utils/CommonUtils';
+import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import Loader from '../Loader/Loader';
+import SchemaEditor from '../schema-editor/SchemaEditor';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
 
@@ -53,6 +61,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const markdownRef = useRef<EditorContentRef>();
 
+  const isColumn = useMemo(
+    () => testCase?.entityLink.includes('::columns::'),
+    [testCase]
+  );
+
   const GenerateParamsField = useCallback(() => {
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
       const name = selectedDefinition.parameterDefinition[0].name;
@@ -63,16 +76,13 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               <Typography.Paragraph className="tw-mb-1.5">
                 Profile Sample Query
               </Typography.Paragraph>
-              <CodeMirror
-                data-testid="sql-editor"
-                options={codeMirrorOption}
+              <SchemaEditor
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  readOnly: false,
+                }}
                 value={sqlQuery.value || ''}
-                onBeforeChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
-                onChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
+                onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
               />
             </Col>
           </Row>
@@ -170,7 +180,17 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         name: testCase?.name,
         testDefinition: testCase?.testDefinition?.name,
         params: getParamsValue(),
+        table: getNameFromFQN(getEntityFqnFromEntityLink(testCase?.entityLink)),
+        column: getNameFromFQN(
+          getEntityFqnFromEntityLink(testCase?.entityLink, isColumn)
+        ),
       });
+      setSqlQuery(
+        testCase?.parameterValues?.[0] ?? {
+          name: 'sqlExpression',
+          value: '',
+        }
+      );
     }
   }, [testCase]);
 
@@ -190,10 +210,19 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         <Loader />
       ) : (
         <Form
+          className="tw-h-70vh tw-overflow-auto"
           form={form}
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
+          <Form.Item required label="Table:" name="table">
+            <Input disabled />
+          </Form.Item>
+          {isColumn && (
+            <Form.Item required label="Column:" name="column">
+              <Input disabled />
+            </Form.Item>
+          )}
           <Form.Item required label="Name:" name="name">
             <Input disabled placeholder="Enter test case name" />
           </Form.Item>

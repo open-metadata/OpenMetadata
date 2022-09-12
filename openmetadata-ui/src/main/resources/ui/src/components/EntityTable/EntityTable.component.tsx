@@ -222,7 +222,7 @@ const EntityTable = ({
     });
   };
 
-  const handleEditColumnChange = (columnDescription: string): void => {
+  const handleEditColumnChange = async (columnDescription: string) => {
     if (editColumn) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnDescription(
@@ -230,7 +230,7 @@ const EntityTable = ({
         editColumn.column.name,
         columnDescription
       );
-      onUpdate?.(tableCols);
+      await onUpdate?.(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
@@ -301,8 +301,7 @@ const EntityTable = ({
     return searchedValue;
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const getColumnName = (cell: any) => {
+  const getColumnName = (cell: ModifiedTableColumn) => {
     const fqn = cell?.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
     // wrap it in quotes if dot is present
@@ -312,8 +311,7 @@ const EntityTable = ({
       : columnName;
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onRequestDescriptionHandler = (cell: any) => {
+  const onRequestDescriptionHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -326,8 +324,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onUpdateDescriptionHandler = (cell: any) => {
+  const onUpdateDescriptionHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -340,8 +337,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onRequestTagsHandler = (cell: any) => {
+  const onRequestTagsHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -349,8 +345,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onUpdateTagsHandler = (cell: any) => {
+  const onUpdateTagsHandler = (cell: ModifiedTableColumn) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -363,13 +358,13 @@ const EntityTable = ({
     columnConstraint?: string
   ) => {
     if (!isNil(columnConstraint)) {
-      return getConstraintIcon(columnConstraint);
+      return getConstraintIcon(columnConstraint, 'tw-mr-2');
     } else {
       const flag = tableConstraints?.find((constraint) =>
         constraint.columns?.includes(columnName)
       );
       if (!isUndefined(flag)) {
-        return getConstraintIcon(flag.constraintType);
+        return getConstraintIcon(flag.constraintType, 'tw-mr-2');
       } else {
         return null;
       }
@@ -381,11 +376,11 @@ const EntityTable = ({
   };
 
   const getRequestDescriptionElement = (cell: ModifiedTableColumn) => {
-    const hasDescription = Boolean(cell.fullyQualifiedName);
+    const hasDescription = Boolean(cell?.description ?? '');
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -412,14 +407,13 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const getRequestTagsElement = (cell: any) => {
-    const hasTags = !isEmpty(cell.value || []);
+  const getRequestTagsElement = (cell: ModifiedTableColumn) => {
+    const hasTags = !isEmpty(cell?.tags || []);
     const text = hasTags ? 'Update request tags' : 'Request tags';
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
         data-testid="request-tags"
         onClick={() =>
           hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
@@ -566,19 +560,19 @@ const EntityTable = ({
                 <span className="tw-no-description">No description</span>
               )}
             </div>
-            <div className="tw-flex tw--mt-2">
+            <div className="tw-flex tw--mt-1.5">
               {!isReadOnly ? (
                 <Fragment>
                   {hasDescriptionEditAccess && (
                     <>
                       <button
-                        className="tw-self-start tw-w-8 tw-h-8 tw-ml-1 focus:tw-outline-none tw-flex-none hover-cell-icon"
+                        className="tw-self-start tw-w-7 tw-h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
                         onClick={() => handleUpdate(record, index)}>
                         <SVGIcons
                           alt="edit"
                           icon="icon-edit"
                           title="Edit"
-                          width="14px"
+                          width="16px"
                         />
                       </button>
                     </>
@@ -799,7 +793,7 @@ const EntityTable = ({
               ) : (
                 <span>
                   {prepareConstraintIcon(record.name, record.constraint)}
-                  <span className="tw-ml-4">{record.name}</span>
+                  <span>{record.name}</span>
                 </span>
               )}
             </Fragment>
@@ -837,20 +831,6 @@ const EntityTable = ({
           index: number
         ) => {
           return renderCell(TABLE_HEADERS_V1.dataTypeDisplay, record, index);
-        },
-      },
-      {
-        title: 'Data Quality',
-        dataIndex: 'columnTests',
-        key: 'columnTests',
-        accessor: 'columnTests',
-        width: 200,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => {
-          return renderCell(TABLE_HEADERS_V1.columnTests, record, index);
         },
       },
       {
@@ -921,7 +901,6 @@ const EntityTable = ({
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
-          // expandable={}
         />
       )}
     </>

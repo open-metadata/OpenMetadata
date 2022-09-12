@@ -221,7 +221,7 @@ const AddIngestion = ({
       '/tmp/query_log'
   );
   const [resultLimit, setResultLimit] = useState<number>(
-    (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
+    (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 1000
   );
   const usageIngestionType = useMemo(() => {
     return (
@@ -446,6 +446,11 @@ const AddIngestion = ({
             showPipelineFilter
           ),
           type: ConfigType.PipelineMetadata,
+        };
+      }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        return {
+          type: ConfigType.MlModelMetadata,
         };
       }
       default: {

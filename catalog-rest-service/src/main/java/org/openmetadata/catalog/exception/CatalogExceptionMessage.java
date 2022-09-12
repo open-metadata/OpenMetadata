@@ -183,4 +183,8 @@ public final class CatalogExceptionMessage {
   public static String failedToEvaluate(String message) {
     return String.format("Failed to evaluate - %s", message);
   }
+
+  public static String deletionNotAllowed(String entityType, String name) {
+    return String.format("Deletion of %s %s is not allowed", entityType, name);
+  }
 }

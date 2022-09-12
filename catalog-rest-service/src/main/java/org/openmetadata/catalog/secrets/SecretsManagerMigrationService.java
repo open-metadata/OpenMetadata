@@ -86,8 +86,8 @@ public class SecretsManagerMigrationService {
   private void migrateServices() {
     LOG.info(
         String.format(
-            "Checking if services migration is needed for secrets manager: [{}]",
-            newSecretManager.getSecretsManagerProvider()));
+            "Checking if services migration is needed for secrets manager: [%s]",
+            newSecretManager.getSecretsManagerProvider().value()));
     List<ServiceEntityInterface> notStoredServices = retrieveNotStoredServices();
     if (!notStoredServices.isEmpty()) {
       notStoredServices.forEach(this::migrateService);
@@ -95,16 +95,16 @@ public class SecretsManagerMigrationService {
     } else {
       LOG.info(
           String.format(
-              "All services are already safely stored in [{}] secrets manager",
-              newSecretManager.getSecretsManagerProvider()));
+              "All services are already safely stored in [%s] secrets manager",
+              newSecretManager.getSecretsManagerProvider().value()));
     }
   }
 
   private void migrateIngestionPipelines() {
     LOG.info(
         String.format(
-            "Checking if ingestion pipelines migration is needed for secrets manager: [{}]",
-            newSecretManager.getSecretsManagerProvider()));
+            "Checking if ingestion pipelines migration is needed for secrets manager: [%s]",
+            newSecretManager.getSecretsManagerProvider().value()));
     List<IngestionPipeline> notStoredIngestionPipelines = retrieveNotStoredIngestionPipelines();
     if (!notStoredIngestionPipelines.isEmpty()) {
       notStoredIngestionPipelines.forEach(this::migrateIngestionPipelines);
@@ -112,8 +112,8 @@ public class SecretsManagerMigrationService {
     } else {
       LOG.info(
           String.format(
-              "All ingestion pipelines are already safely stored in [{}] secrets manager",
-              newSecretManager.getSecretsManagerProvider()));
+              "All ingestion pipelines are already safely stored in [%s] secrets manager",
+              newSecretManager.getSecretsManagerProvider().value()));
     }
   }
 

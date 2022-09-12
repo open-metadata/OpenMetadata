@@ -43,6 +43,7 @@ public class ListFilter {
     condition = addCondition(condition, getParentCondition(tableName));
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
+    condition = addCondition(condition, getWebhookTypeCondition(tableName));
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -82,10 +83,21 @@ public class ListFilter {
     return webhookStatus == null ? "" : getStatusPrefixCondition(tableName, escape(webhookStatus));
   }
 
+  public String getWebhookTypeCondition(String tableName) {
+    String webhookType = queryParams.get("webhookType");
+    return webhookType == null ? "" : getWebhookTypePrefixCondition(tableName, escape(webhookType));
+  }
+
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
         ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
         : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
+  }
+
+  private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {
+    return tableName == null
+        ? String.format("webhookType LIKE '%s%%'", typePrefix)
+        : String.format("%s.webhookType LIKE '%s%%'", tableName, typePrefix);
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {

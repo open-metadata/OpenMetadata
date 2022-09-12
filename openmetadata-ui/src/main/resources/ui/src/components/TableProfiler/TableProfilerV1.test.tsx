@@ -21,39 +21,19 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
 import TableProfilerV1 from './TableProfilerV1';
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockImplementation(() => {
+    jest.fn();
+  }),
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
-}));
-
-jest.mock('antd', () => ({
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <button {...props}>{children}</button>
-    )),
-
-  Col: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Row: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Empty: jest
-    .fn()
-    .mockImplementation(({ description }) => <div>{description}</div>),
-  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
-  Tooltip: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
 }));
 
 // mock internal imports
@@ -81,7 +61,28 @@ jest.mock('../../axiosAPIs/testAPI', () => ({
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
-  hasEditAccess: true,
+  permissions: {
+    Create: true,
+    Delete: true,
+    EditAll: true,
+    EditCustomFields: true,
+    EditDataProfile: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditLineage: true,
+    EditOwner: true,
+    EditQueries: true,
+    EditSampleData: true,
+    EditTags: true,
+    EditTests: true,
+    EditTier: true,
+    ViewAll: true,
+    ViewDataProfile: true,
+    ViewQueries: true,
+    ViewSampleData: true,
+    ViewTests: true,
+    ViewUsage: true,
+  } as OperationPermission,
   onAddTestClick: jest.fn(),
 };
 
@@ -104,21 +105,6 @@ describe('Test TableProfiler component', () => {
     expect(profileContainer).toBeInTheDocument();
     expect(settingBtn).toBeInTheDocument();
     expect(addTableTest).toBeInTheDocument();
-  });
-
-  it('No data placeholder should be visible where there is no profiler', async () => {
-    render(
-      <TableProfilerV1
-        {...mockProps}
-        table={{ ...mockProps.table, profile: undefined }}
-      />
-    );
-
-    const noProfiler = await screen.findByTestId(
-      'no-profiler-placeholder-container'
-    );
-
-    expect(noProfiler).toBeInTheDocument();
   });
 
   it('CTA: Add table test should work properly', async () => {

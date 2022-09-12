@@ -26,10 +26,11 @@ const RichTextEditorPreviewer = ({
   className = '',
   enableSeeMoreVariant = true,
   textVariant = 'black',
+  maxLength = MAX_LENGTH,
 }: PreviewerProp) => {
   const [content, setContent] = useState<string>('');
   const [hideReadMoreText, setHideReadMoreText] = useState<boolean>(
-    markdown.length <= MAX_LENGTH
+    markdown.length <= maxLength
   );
 
   const displayMoreHandler = () => {
@@ -52,12 +53,12 @@ const RichTextEditorPreviewer = ({
           initialValue={
             hideReadMoreText || !enableSeeMoreVariant
               ? content
-              : `${content.slice(0, MAX_LENGTH)}...`
+              : `${content.slice(0, maxLength)}...`
           }
           key={uniqueId()}
         />
       </div>
-      {enableSeeMoreVariant && markdown.length > MAX_LENGTH && (
+      {enableSeeMoreVariant && markdown.length > maxLength && (
         <Button
           className="leading-0"
           data-testid="read-more-button"

@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { act } from 'react-test-renderer';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 import TaskStatus from './TaskStatus';
 
@@ -24,14 +25,16 @@ describe('Test Task Status Component', () => {
   it('Should render the component', async () => {
     render(<TaskStatus {...mockProps} />);
 
-    const taskStatus = await screen.findByTestId('task-status');
+    await act(async () => {
+      const taskStatus = await screen.findByTestId('task-status');
 
-    const taskStatusBadge = await screen.findByTestId('task-status-badge');
-    const taskStatusText = await screen.findByTestId('task-status-text');
+      const taskStatusBadge = await screen.findByTestId('task-status-badge');
+      const taskStatusText = await screen.findByTestId('task-status-text');
 
-    expect(taskStatus).toBeInTheDocument();
-    expect(taskStatusBadge).toBeInTheDocument();
-    expect(taskStatusText).toBeInTheDocument();
+      expect(taskStatus).toBeInTheDocument();
+      expect(taskStatusBadge).toBeInTheDocument();
+      expect(taskStatusText).toBeInTheDocument();
+    });
   });
 
   it('Should have relavent class name for open status', async () => {

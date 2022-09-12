@@ -16,7 +16,7 @@ import {
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Empty, Space } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, {
@@ -27,10 +27,13 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { RowData } from './RowData';
+import './SampleDataTable.style.less';
 
 export interface SampleColumns {
   name: string;
@@ -101,8 +104,10 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
         </button>
       ) : null}
 
-      <div className="tw-table-responsive tw-overflow-x-auto" ref={tableRef}>
-        {sampleData?.rows?.length && sampleData?.columns?.length ? (
+      {sampleData?.rows?.length && sampleData?.columns?.length ? (
+        <div
+          className="tw-table-responsive tw-overflow-x-auto tw-table-container"
+          ref={tableRef}>
           <table
             className="tw-min-w-max tw-w-full tw-table-auto"
             data-testid="sample-data-table">
@@ -150,31 +155,33 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
               })}
             </tbody>
           </table>
-        ) : (
-          <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-            <Empty
-              description={
-                <>
-                  <p>No sample data available</p>
-                  <p className="tw-mt-2">
-                    To view Sample Data, run the Profiler Ingestion. Please
-                    refer to this doc to schedule the{' '}
-                    <Link
-                      className="tw-ml-1"
-                      target="_blank"
-                      to={{
-                        pathname:
-                          'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
-                      }}>
-                      Profiler Ingestion
-                    </Link>
-                  </p>
-                </>
-              }
-            />
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <Space align="center" className="w-full" direction="vertical">
+          <ErrorPlaceHolder>
+            {' '}
+            <div className="tw-max-w-x tw-text-center">
+              <Typography.Paragraph style={{ marginBottom: '4px' }}>
+                {' '}
+                No sample data available
+              </Typography.Paragraph>
+              <Typography.Paragraph>
+                {' '}
+                To view Sample Data, run the Profiler Ingestion. Please refer to
+                this doc to schedule the{' '}
+                <Link
+                  className="tw-ml-1"
+                  target="_blank"
+                  to={{
+                    pathname: WORKFLOWS_PROFILER_DOCS,
+                  }}>
+                  Profiler Ingestion
+                </Link>
+              </Typography.Paragraph>
+            </div>
+          </ErrorPlaceHolder>
+        </Space>
+      )}
     </div>
   );
 };

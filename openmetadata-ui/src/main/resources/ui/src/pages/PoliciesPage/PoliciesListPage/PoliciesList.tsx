@@ -175,7 +175,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         columns={columns}
         dataSource={policies}
         pagination={false}
-        size="middle"
+        size="small"
       />
       {selectedPolicy && deletePolicyPermission && (
         <DeleteWidgetModal

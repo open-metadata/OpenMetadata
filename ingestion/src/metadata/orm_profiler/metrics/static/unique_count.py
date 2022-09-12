@@ -18,6 +18,7 @@ from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import QueryMetric
+from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 
 
 class UniqueCount(QueryMetric):
@@ -45,6 +46,9 @@ class UniqueCount(QueryMetric):
             raise AttributeError(
                 "We are missing the session attribute to compute the UniqueCount."
             )
+
+        if self.col.type.__class__ in NOT_COMPUTE:
+            return None
 
         # Run all queries on top of the sampled data
         col = column(self.col.name)

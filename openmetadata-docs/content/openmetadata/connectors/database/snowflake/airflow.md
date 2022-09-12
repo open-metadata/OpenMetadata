@@ -11,7 +11,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 ## Requirements
@@ -39,9 +39,13 @@ pip3 install "openmetadata-ingestion[snowflake-usage]"
 
 <Note>
 
-While running the usage workflow, OpenMetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
+- While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
+  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database).
+- If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.
+  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+- If during the ingestion you want to set the session tags, note that the user should have `ALTER SESSION` permissions.
 
-For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+You can find more information about the Account Usage [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
 
 </Note>
 
@@ -463,7 +467,7 @@ pip3 install --upgrade 'openmetadata-ingestion[snowflake-usage]'
 For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the YAML configuration will be enough.
 
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
 While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be

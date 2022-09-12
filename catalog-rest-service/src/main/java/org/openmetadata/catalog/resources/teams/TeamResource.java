@@ -145,6 +145,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("parentTeam")
           String parentTeam,
       @Parameter(
+              description = "Filter the results by whether the team can be joined by any user or not",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("isJoinable")
+          Boolean isJoinable,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
@@ -152,6 +157,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("parentTeam", parentTeam);
+    if (isJoinable != null) {
+      filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

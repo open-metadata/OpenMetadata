@@ -183,6 +183,7 @@ jest.mock('../../utils/CommonUtils', () => {
   return {
     getEntityName: jest.fn().mockReturnValue('entityName'),
     getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
+    getOwnerValue: jest.fn().mockReturnValue('Owner'),
   };
 });
 
@@ -192,6 +193,12 @@ jest.mock('../../utils/TableUtils', () => {
     getTierTags: jest.fn().mockReturnValue(undefined),
   };
 });
+
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
 
 describe('Test MlModel entity detail component', () => {
   it('Should render detail component', async () => {
@@ -256,9 +263,9 @@ describe('Test MlModel entity detail component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const customProperties = await findByTestId(
+    const customProperties = await findByText(
       container,
-      'custom-properties-table'
+      'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();

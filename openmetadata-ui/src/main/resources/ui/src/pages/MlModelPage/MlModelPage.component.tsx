@@ -33,7 +33,10 @@ import {
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getMlModelPath } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import {
@@ -51,6 +54,7 @@ import {
   getCurrentMlModelTab,
   mlModelTabs,
 } from '../../utils/MlModelDetailsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MlModelPage = () => {
@@ -70,6 +74,29 @@ const MlModelPage = () => {
     state: false,
   });
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+
+  const [mlModelPermissions, setPipelinePermissions] = useState(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setIsDetailLoading(true);
+    try {
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.ML_MODEL,
+        entityFqn
+      );
+      setPipelinePermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
 
   const getLineageData = () => {
     setIsLineageLoading(true);
@@ -219,25 +246,21 @@ const MlModelPage = () => {
     return patchMlModelDetails(mlModelDetail.id, jsonPatch);
   };
 
-  const descriptionUpdateHandler = (updatedMlModel: Mlmodel) => {
-    saveUpdatedMlModelData(updatedMlModel)
-      .then((res) => {
-        if (res) {
-          const { description } = res;
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            description: description,
-          }));
-        } else {
-          throw jsonData['api-error-messages']['update-description-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedMlModel: Mlmodel) => {
+    try {
+      const response = await saveUpdatedMlModelData(updatedMlModel);
+      if (response) {
+        const { description } = response;
+        setMlModelDetail((preVDetail) => ({
+          ...preVDetail,
+          description: description,
+        }));
+      } else {
+        throw jsonData['api-error-messages']['update-description-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const followMlModel = () => {
@@ -334,21 +357,21 @@ const MlModelPage = () => {
     });
   };
 
-  const updateMlModelFeatures = (updatedMlModel: Mlmodel) => {
-    saveUpdatedMlModelData(updatedMlModel)
-      .then((res) => {
-        if (res) {
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            mlFeatures: res.mlFeatures,
-          }));
-        } else {
-          throw jsonData['api-error-messages']['unexpected-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+  const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
+    try {
+      const response = await saveUpdatedMlModelData(updatedMlModel);
+
+      if (response) {
+        setMlModelDetail((preVDetail) => ({
+          ...preVDetail,
+          mlFeatures: response.mlFeatures,
+        }));
+      } else {
+        throw jsonData['api-error-messages']['unexpected-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const handleExtentionUpdate = async (updatedMlModel: Mlmodel) => {
@@ -408,11 +431,29 @@ const MlModelPage = () => {
   }, [activeTab, mlModelDetail]);
 
   useEffect(() => {
-    fetchMlModelDetails(mlModelFqn);
+    if (mlModelPermissions.ViewAll) {
+      fetchMlModelDetails(mlModelFqn);
+    }
+  }, [mlModelPermissions, mlModelFqn]);
+
+  useEffect(() => {
+    fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
 
   return (
-    <Fragment>{isDetailLoading ? <Loader /> : getMlModelDetail()}</Fragment>
+    <Fragment>
+      {isDetailLoading ? (
+        <Loader />
+      ) : (
+        <>
+          {mlModelPermissions.ViewAll ? (
+            getMlModelDetail()
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
+      )}
+    </Fragment>
   );
 };
 

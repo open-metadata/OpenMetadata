@@ -13,9 +13,8 @@
 
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   deleteWebhook,
   getWebhookByName,
@@ -24,17 +23,20 @@ import {
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
-import { Webhook } from '../../generated/entity/events/webhook';
-import { useAuth } from '../../hooks/authHooks';
+import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
+import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const EDIT_HEADER_WEBHOOKS_TITLE: { [key: string]: string } = {
   msteams: 'MS Teams',
@@ -44,13 +46,24 @@ const EDIT_HEADER_WEBHOOKS_TITLE: { [key: string]: string } = {
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
+  const { permissions } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [webhookData, setWebhookData] = useState<Webhook>();
   const [status, setStatus] = useState<LoadingState>('initial');
   const [deleteStatus, setDeleteStatus] = useState<LoadingState>('initial');
+
+  const createPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const editPermission = useMemo(
+    () =>
+      checkPermission(Operation.EditAll, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
 
   const fetchWebhook = () => {
     setIsLoading(true);
@@ -69,11 +82,23 @@ const EditWebhookPage: FunctionComponent = () => {
   };
 
   const goToWebhooks = () => {
+    let type = GlobalSettingOptions.WEBHOOK;
+    switch (webhookData?.webhookType) {
+      case WebhookType.Msteams:
+        type = GlobalSettingOptions.MSTEAMS;
+
+        break;
+      case WebhookType.Slack:
+        type = GlobalSettingOptions.SLACK;
+
+        break;
+
+      default:
+        break;
+    }
+
     history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        GlobalSettingOptions.WEBHOOK
-      )
+      `${getSettingPath(GlobalSettingsMenuCategory.INTEGRATIONS, type)}`
     );
   };
 
@@ -92,6 +117,9 @@ const EditWebhookPage: FunctionComponent = () => {
             setStatus('initial');
             goToWebhooks();
           }, 500);
+          showSuccessToast(
+            jsonData['api-success-messages']['update-webhook-success']
+          );
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];
         }
@@ -128,7 +156,7 @@ const EditWebhookPage: FunctionComponent = () => {
       <div className="tw-self-center">
         {!isLoading ? (
           <AddWebhook
-            allowAccess={isAdminUser || isAuthDisabled}
+            allowAccess={createPermission || editPermission}
             data={webhookData}
             deleteState={deleteStatus}
             header={
