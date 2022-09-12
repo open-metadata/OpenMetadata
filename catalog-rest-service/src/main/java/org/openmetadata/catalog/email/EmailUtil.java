@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
-
 import lombok.extern.slf4j.Slf4j;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -27,13 +26,14 @@ public class EmailUtil {
   private SmtpSettings defaultSmtpSettings = null;
   private Mailer mailer = null;
   private Configuration templateConfiguration = null;
+
   private EmailUtil(SmtpSettings smtpServerSettings) {
-    try{
+    try {
       this.defaultSmtpSettings = smtpServerSettings;
       this.mailer = this.createMailer(smtpServerSettings);
       this.templateConfiguration = new Configuration(VERSION_2_3_28);
-    }catch (Exception ex){
-      LOG.error("Error in instantialting [MAILER] : Reason {} " , ex.getMessage() );
+    } catch (Exception ex) {
+      LOG.error("Error in instantialting [MAILER] : Reason {} ", ex.getMessage());
     }
   }
 
