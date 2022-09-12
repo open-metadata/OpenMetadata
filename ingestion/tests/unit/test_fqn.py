@@ -13,6 +13,8 @@ Test FQN build behavior
 """
 from unittest import TestCase
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.utils import fqn
 
@@ -117,3 +119,26 @@ class TestFqn(TestCase):
             table_name="table",
         )
         self.assertEqual(table_fqn_space, "service.data base.schema.table")
+
+    def test_split_test_case_fqn(self):
+        """test for split test case"""
+        split_fqn = fqn.split_test_case_fqn(
+            "local_redshift.dev.dbt_jaffle.customers.customer_id.expect_column_max_to_be_between"
+        )
+
+        assert split_fqn.service == "local_redshift"
+        assert split_fqn.database == "dev"
+        assert split_fqn.schema == "dbt_jaffle"
+        assert split_fqn.table == "customers"
+        assert split_fqn.column == "customer_id"
+        assert split_fqn.test_case == "expect_column_max_to_be_between"
+
+        split_fqn = fqn.split_test_case_fqn(
+            "local_redshift.dev.dbt_jaffle.customers.expect_table_column_to_be_between"
+        )
+
+        assert not split_fqn.column
+        assert split_fqn.test_case == "expect_table_column_to_be_between"
+
+        with pytest.raises(ValueError):
+            fqn.split_test_case_fqn("local_redshift.dev.dbt_jaffle.customers")

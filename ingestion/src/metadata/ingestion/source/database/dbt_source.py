@@ -374,7 +374,7 @@ class DBTMixin:
                             )
                             self.metadata.add_test_case_results(
                                 test_results=test_case_result,
-                                test_case_name=test_case_fqn,
+                                test_case_fqn=test_case_fqn,
                             )
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(f"Failed capture tests results {err}")

@@ -378,7 +378,7 @@ class TestSuiteWorkflow:
                 logger.warning(
                     f"Couldn't create test case name {test_case_name_to_create}: {exc}"
                 )
-                logger.debug(traceback.format_exc(exc))
+                logger.debug(traceback.format_exc())
 
         return created_test_case
 
@@ -417,12 +417,12 @@ class TestSuiteWorkflow:
                         )
                         self.status.processed(test_case.fullyQualifiedName.__root__)
                     except Exception as exc:
-                        logger.debug(traceback.format_exc(exc))
+                        logger.debug(traceback.format_exc())
                         logger.warning(
                             f"Could not run test case {test_case.name}: {exc}"
                         )
             except TypeError as exc:
-                logger.debug(traceback.format_exc(exc))
+                logger.debug(traceback.format_exc())
                 logger.warning(f"Could not run test case {test_case.name}: {exc}")
                 self.status.failure(test_case.fullyQualifiedName.__root__)
 
