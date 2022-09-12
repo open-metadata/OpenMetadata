@@ -266,7 +266,7 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
 
   verifyResponseStatusCode('@getSelectedService', 200);
 
-  interceptURL('GET', '/api/v1/search/query*', 'waitForUsers');
+  interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'waitForUsers');
 
   //Click on edit owner button
   cy.get('[data-testid="edit-Owner-icon"]')
@@ -586,8 +586,10 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   //Check if the property got added
-  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as("customProperties");
-  cy.wait("@customProperties");
+  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
+    'customProperties'
+  );
+  cy.wait('@customProperties');
   cy.get('[data-testid="data-row"]').should('contain', propertyName);
 
   //Navigating to home page
@@ -676,9 +678,11 @@ export const editCreatedProperty = (propertyName) => {
     .clear()
     .type('This is new description');
 
+  interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
+
   cy.get('[data-testid="save"]').should('be.visible').click();
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@checkPatchForDescription', 200);
 
   //Fetching for updated descriptions for the created custom property
   cy.get('[data-testid="table-body"]')
@@ -730,14 +734,12 @@ export const updateOwner = () => {
         .contains('Users')
         .click();
 
-      cy.get('[data-testid="list-item"]').first()
+      cy.get('[data-testid="list-item"]')
+        .first()
         .should('contain', text.trim())
         .click();
 
       //Asserting the added name
-      cy.get('[data-testid="owner-link"]').should(
-        'contain',
-        text.trim()
-      );
+      cy.get('[data-testid="owner-link"]').should('contain', text.trim());
     });
-}
+};
