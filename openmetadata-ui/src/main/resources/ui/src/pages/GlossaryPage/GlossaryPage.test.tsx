@@ -213,40 +213,44 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 2', async () => {
-    render(<GlossaryPageV1 />);
+    await act(async () => {
+      render(<GlossaryPageV1 />);
 
-    const glossaryComponent = await screen.findByText(/Glossary.component/i);
-    const handleAddGlossaryClick = await screen.findByTestId(
-      'handleAddGlossaryClick'
-    );
-    const handleAddGlossaryTermClick = await screen.findByTestId(
-      'handleAddGlossaryTermClick'
-    );
-    const handleChildLoading = await screen.findByTestId('handleChildLoading');
-    const handleExpandedKey = await screen.findByTestId('handleExpandedKey');
-    const handleGlossaryDelete = await screen.findByTestId(
-      'handleGlossaryDelete'
-    );
-    const handleGlossaryTermUpdate = await screen.findByTestId(
-      'handleGlossaryTermUpdate'
-    );
-    const handleGlossaryTermDelete = await screen.findByTestId(
-      'handleGlossaryTermDelete'
-    );
-    const handleSearchText = await screen.findByTestId('handleSearchText');
+      const glossaryComponent = await screen.findByText(/Glossary.component/i);
+      const handleAddGlossaryClick = await screen.findByTestId(
+        'handleAddGlossaryClick'
+      );
+      const handleAddGlossaryTermClick = await screen.findByTestId(
+        'handleAddGlossaryTermClick'
+      );
+      const handleChildLoading = await screen.findByTestId(
+        'handleChildLoading'
+      );
+      const handleExpandedKey = await screen.findByTestId('handleExpandedKey');
+      const handleGlossaryDelete = await screen.findByTestId(
+        'handleGlossaryDelete'
+      );
+      const handleGlossaryTermUpdate = await screen.findByTestId(
+        'handleGlossaryTermUpdate'
+      );
+      const handleGlossaryTermDelete = await screen.findByTestId(
+        'handleGlossaryTermDelete'
+      );
+      const handleSearchText = await screen.findByTestId('handleSearchText');
 
-    expect(glossaryComponent).toBeInTheDocument();
+      expect(glossaryComponent).toBeInTheDocument();
 
-    fireEvent.click(handleAddGlossaryClick);
-    fireEvent.click(handleAddGlossaryTermClick);
-    fireEvent.click(handleChildLoading);
-    fireEvent.click(handleExpandedKey);
-    fireEvent.click(handleGlossaryDelete);
+      fireEvent.click(handleAddGlossaryClick);
+      fireEvent.click(handleAddGlossaryTermClick);
+      fireEvent.click(handleChildLoading);
+      fireEvent.click(handleExpandedKey);
+      fireEvent.click(handleGlossaryDelete);
 
-    fireEvent.click(handleGlossaryTermUpdate);
-    fireEvent.click(handleGlossaryTermDelete);
+      fireEvent.click(handleGlossaryTermUpdate);
+      fireEvent.click(handleGlossaryTermDelete);
 
-    fireEvent.click(handleSearchText);
+      fireEvent.click(handleSearchText);
+    });
   });
 
   describe('Render Sad Paths', () => {
@@ -261,7 +265,9 @@ describe('Test GlossaryComponent page', () => {
 
       expect(handleGlossaryTermDelete).toBeInTheDocument();
 
-      fireEvent.click(handleGlossaryTermDelete);
+      await act(async () => {
+        fireEvent.click(handleGlossaryTermDelete);
+      });
     });
 
     it('show error if deleteGlossary API fails', async () => {
@@ -275,7 +281,9 @@ describe('Test GlossaryComponent page', () => {
 
       expect(handleGlossaryDelete).toBeInTheDocument();
 
-      fireEvent.click(handleGlossaryDelete);
+      await act(async () => {
+        fireEvent.click(handleGlossaryDelete);
+      });
     });
 
     it('show error if patchGlossaryTerm API resolves without data', async () => {
@@ -289,7 +297,9 @@ describe('Test GlossaryComponent page', () => {
 
       expect(handleGlossaryTermUpdate).toBeInTheDocument();
 
-      fireEvent.click(handleGlossaryTermUpdate);
+      await act(async () => {
+        fireEvent.click(handleGlossaryTermUpdate);
+      });
     });
   });
 });

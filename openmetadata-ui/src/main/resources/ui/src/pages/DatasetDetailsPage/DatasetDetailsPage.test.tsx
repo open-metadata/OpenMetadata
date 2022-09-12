@@ -1104,71 +1104,76 @@ describe('Test DatasetDetails page', () => {
     });
 
     it('Show error message on resolve of CTA api without response data', async () => {
-      (patchTableDetails as jest.Mock).mockImplementation(() =>
-        Promise.resolve({ data: '' })
-      );
-      (addFollower as jest.Mock).mockImplementation(() =>
-        Promise.resolve({ data: '' })
-      );
-      (removeFollower as jest.Mock).mockImplementation(() =>
-        Promise.resolve({ data: '' })
-      );
-      (addLineage as jest.Mock).mockImplementation(() =>
-        Promise.resolve({ data: '' })
-      );
-      (deleteLineageEdge as jest.Mock).mockImplementation(() =>
-        Promise.resolve({ data: '' })
-      );
-      (postFeedById as jest.Mock).mockImplementation(() =>
-        Promise.resolve({ data: '' })
-      );
-      (postThread as jest.Mock).mockImplementation(() =>
-        Promise.resolve({ data: '' })
-      );
+      await act(async () => {
+        (patchTableDetails as jest.Mock).mockImplementation(() =>
+          Promise.resolve({ data: '' })
+        );
+        (addFollower as jest.Mock).mockImplementation(() =>
+          Promise.resolve({ data: '' })
+        );
+        (removeFollower as jest.Mock).mockImplementation(() =>
+          Promise.resolve({ data: '' })
+        );
+        (addLineage as jest.Mock).mockImplementation(() =>
+          Promise.resolve({ data: '' })
+        );
+        (deleteLineageEdge as jest.Mock).mockImplementation(() =>
+          Promise.resolve({ data: '' })
+        );
+        (postFeedById as jest.Mock).mockImplementation(() =>
+          Promise.resolve({ data: '' })
+        );
+        (postThread as jest.Mock).mockImplementation(() =>
+          Promise.resolve({ data: '' })
+        );
 
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
+        const { container } = render(<DatasetDetailsPage />, {
+          wrapper: MemoryRouter,
+        });
+        const ContainerText = await findByTestId(
+          container,
+          'datasetdetails-component'
+        );
+        const followButton = await findByTestId(container, 'follow-button');
+        const unfollowButton = await findByTestId(container, 'unfollow-button');
+        const tag = await findByTestId(container, 'tag');
+        const description = await findByTestId(container, 'description');
+        const columnUpdate = await findByTestId(container, 'columnUpdate');
+        const addLineageHandler = await findByTestId(
+          container,
+          'addLineageHandler'
+        );
+        const removeLineageHandler = await findByTestId(
+          container,
+          'removeLineageHandler'
+        );
+        const postFeedHandler = await findByTestId(
+          container,
+          'postFeedHandler'
+        );
+        const createThread = await findByTestId(container, 'createThread');
+
+        expect(ContainerText).toBeInTheDocument();
+        expect(addLineageHandler).toBeInTheDocument();
+        expect(removeLineageHandler).toBeInTheDocument();
+        expect(followButton).toBeInTheDocument();
+        expect(unfollowButton).toBeInTheDocument();
+        expect(description).toBeInTheDocument();
+        expect(tag).toBeInTheDocument();
+        expect(columnUpdate).toBeInTheDocument();
+        expect(postFeedHandler).toBeInTheDocument();
+        expect(createThread).toBeInTheDocument();
+
+        fireEvent.click(followButton);
+        fireEvent.click(unfollowButton);
+        fireEvent.click(tag);
+        fireEvent.click(columnUpdate);
+        fireEvent.click(description);
+        fireEvent.click(addLineageHandler);
+        fireEvent.click(removeLineageHandler);
+        fireEvent.click(postFeedHandler);
+        fireEvent.click(createThread);
       });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const followButton = await findByTestId(container, 'follow-button');
-      const unfollowButton = await findByTestId(container, 'unfollow-button');
-      const tag = await findByTestId(container, 'tag');
-      const description = await findByTestId(container, 'description');
-      const columnUpdate = await findByTestId(container, 'columnUpdate');
-      const addLineageHandler = await findByTestId(
-        container,
-        'addLineageHandler'
-      );
-      const removeLineageHandler = await findByTestId(
-        container,
-        'removeLineageHandler'
-      );
-      const postFeedHandler = await findByTestId(container, 'postFeedHandler');
-      const createThread = await findByTestId(container, 'createThread');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addLineageHandler).toBeInTheDocument();
-      expect(removeLineageHandler).toBeInTheDocument();
-      expect(followButton).toBeInTheDocument();
-      expect(unfollowButton).toBeInTheDocument();
-      expect(description).toBeInTheDocument();
-      expect(tag).toBeInTheDocument();
-      expect(columnUpdate).toBeInTheDocument();
-      expect(postFeedHandler).toBeInTheDocument();
-      expect(createThread).toBeInTheDocument();
-
-      fireEvent.click(followButton);
-      fireEvent.click(unfollowButton);
-      fireEvent.click(tag);
-      fireEvent.click(columnUpdate);
-      fireEvent.click(description);
-      fireEvent.click(addLineageHandler);
-      fireEvent.click(removeLineageHandler);
-      fireEvent.click(postFeedHandler);
-      fireEvent.click(createThread);
     });
 
     it('Show error message on resolve of getUpdatedThread api without response data', async () => {
