@@ -150,7 +150,11 @@ describe('Tags page should work', () => {
       .contains(`Are you sure you want to delete the tag "${NEW_TAG.name}"?`)
       .should('be.visible');
 
-    interceptURL('DELETE', `api/v1/tags/${NEW_TAG.name}/*`, 'deleteTag');
+    interceptURL(
+      'DELETE',
+      `/api/v1/tags/${NEW_TAG_CATEGORY.name}/*`,
+      'deleteTag'
+    );
     cy.get('[data-testid="save-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteTag', 200);
     cy.get('.tw-modal-container').should('not.exist');
