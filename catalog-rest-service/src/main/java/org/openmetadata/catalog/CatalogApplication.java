@@ -89,6 +89,7 @@ import org.openmetadata.catalog.security.saml.SamlSettingsHolder;
 import org.openmetadata.catalog.socket.FeedServlet;
 import org.openmetadata.catalog.socket.SocketAddressFilter;
 import org.openmetadata.catalog.socket.WebSocketManager;
+import org.openmetadata.catalog.teams.authn.SSOAuthMechanism;
 
 /** Main catalog application */
 @Slf4j
@@ -165,16 +166,22 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   }
 
   private void registerSamlHandlers(CatalogApplicationConfig catalogConfig, Environment environment) {
-    SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
-    ServletRegistration.Dynamic samlRedirectServlet =
-        environment.servlets().addServlet("SAML Login", new SamlRedirectServlet());
-    samlRedirectServlet.addMapping("/api/v1/saml/login");
-    ServletRegistration.Dynamic samlRecieverServlet =
-        environment.servlets().addServlet("SAML ACS", new SamlResponseServlet());
-    samlRecieverServlet.addMapping("/api/v1/saml/acs");
-    ServletRegistration.Dynamic samlLogoutServlet =
-        environment.servlets().addServlet("SAML Logout", new SamlLogoutServlet());
-    samlLogoutServlet.addMapping("/api/v1/saml/logout");
+    if (catalogConfig.getAuthenticationConfiguration() != null
+        && catalogConfig
+            .getAuthenticationConfiguration()
+            .getProvider()
+            .equals(SSOAuthMechanism.SsoServiceType.saml.toString())) {
+      SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+      ServletRegistration.Dynamic samlRedirectServlet =
+          environment.servlets().addServlet("SAML Login", new SamlRedirectServlet());
+      samlRedirectServlet.addMapping("/api/v1/saml/login");
+      ServletRegistration.Dynamic samlRecieverServlet =
+          environment.servlets().addServlet("SAML ACS", new SamlResponseServlet());
+      samlRecieverServlet.addMapping("/api/v1/saml/acs");
+      ServletRegistration.Dynamic samlLogoutServlet =
+          environment.servlets().addServlet("SAML Logout", new SamlLogoutServlet());
+      samlLogoutServlet.addMapping("/api/v1/saml/logout");
+    }
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
