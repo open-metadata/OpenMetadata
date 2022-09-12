@@ -171,7 +171,7 @@ class ColumnTypeParser:
         "XMLTYPE": "BINARY",
         "UUID": "UUID",
         "POINT": "POINT",
-        "POLYGON": "POLYGON"
+        "POLYGON": "POLYGON",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
