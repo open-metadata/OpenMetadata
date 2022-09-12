@@ -24,6 +24,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.catalog.email.SmtpSettings;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
@@ -89,6 +90,9 @@ public class CatalogApplicationConfig extends Configuration {
 
   @JsonProperty("clusterName")
   private String clusterName;
+
+  @JsonProperty("email")
+  private SmtpSettings smtpSettings;
 
   @Override
   public String toString() {

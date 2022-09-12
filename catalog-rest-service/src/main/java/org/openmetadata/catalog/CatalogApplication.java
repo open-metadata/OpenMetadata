@@ -61,6 +61,7 @@ import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
+import org.openmetadata.catalog.email.EmailUtil;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
@@ -84,6 +85,7 @@ import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.socket.FeedServlet;
 import org.openmetadata.catalog.socket.SocketAddressFilter;
 import org.openmetadata.catalog.socket.WebSocketManager;
+import org.openmetadata.catalog.util.ConfigurationHolder;
 
 /** Main catalog application */
 @Slf4j
@@ -94,6 +96,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
+    // This should be first only as this holder has some config
+    ConfigurationHolder.getInstance().init(catalogConfig);
+    // init email Util for handling
+    EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(

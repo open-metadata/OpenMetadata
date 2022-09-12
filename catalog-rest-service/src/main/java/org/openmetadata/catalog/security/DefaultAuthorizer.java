@@ -16,6 +16,7 @@ package org.openmetadata.catalog.security;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
@@ -36,9 +38,12 @@ import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.catalog.security.policyevaluator.RoleCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
+import org.openmetadata.catalog.teams.authn.BasicAuthMechanism;
+import org.openmetadata.catalog.teams.authn.SSOAuthMechanism;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Permission.Access;
 import org.openmetadata.catalog.type.ResourcePermission;
+import org.openmetadata.catalog.util.ConfigurationHolder;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
@@ -60,7 +65,15 @@ public class DefaultAuthorizer implements Authorizer {
     PolicyCache.initialize();
     RoleCache.initialize();
     LOG.debug("Admin users: {}", adminUsers);
-    initializeUsers();
+    // For a Basic Auth , an admin can during server startup decide who all can be admin by adding admin principal
+    // when a registration is done through registration api, then we add the user as admin or normal user
+    // checking whether that username was bootstrapped into server during startup as admin
+    if (!ConfigurationHolder.getInstance()
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getProvider()
+        .equals(SSOAuthMechanism.SsoServiceType.basic.toString())) {
+      initializeUsers();
+    }
   }
 
   private void initializeUsers() {
@@ -85,13 +98,21 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private User user(String name, String domain, String updatedBy) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(name)
-        .withFullyQualifiedName(name)
-        .withEmail(name + "@" + domain)
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis());
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName(name)
+            .withFullyQualifiedName(name)
+            .withEmail(name + "@" + domain)
+            .withUpdatedBy(updatedBy)
+            .withUpdatedAt(System.currentTimeMillis());
+    BasicAuthMechanism basicAuthMechanism = new BasicAuthMechanism();
+    basicAuthMechanism.setPassword(BCrypt.withDefaults().hashToString(12, "Mohit234".toCharArray()));
+    AuthenticationMechanism mechanism = new AuthenticationMechanism();
+    mechanism.setAuthType(AuthenticationMechanism.AuthType.BASIC);
+    mechanism.setConfig(basicAuthMechanism);
+    user.setAuthenticationMechanism(mechanism);
+    return user;
   }
 
   @Override

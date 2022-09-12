@@ -19,21 +19,32 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
     },
     "botPrincipals": {
       "description": "List of unique bot principals",
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
     },
     "testPrincipals": {
       "description": "List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT TO BE USED IN PRODUCTION SETUP**",
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
+    },
+    "allowedEmailRegistrationDomains": {
+      "description": "List of unique email domains that are allowed to signup on the platforms",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     },
     "principalDomain": {
       "description": "Principal Domain",
