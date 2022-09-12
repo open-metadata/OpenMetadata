@@ -9,11 +9,11 @@ Learn how to resolve the most common problems people encounter in the Redshift c
 
 ```
 connection to server at \"<host>:<port>\" (@IP),
-port 5439 failed: server certificate for \"\*<host>:<port>\"
+<port> failed: server certificate for \"\*<host>:<port>\"
 does not match host name \"<host>:<port>\"
 ```
 
-If you get this error that time plese pass `{'sslmode': 'verify-ca'}` on the connection arguments.
+If you get this error that time plese pass `{'sslmode': 'verify-ca'}` in the connection arguments.
 
 <div className="w-100 flex justify-center">
 <Image
