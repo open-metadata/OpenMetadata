@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { service } from '../../constants/constants';
-
-const updateOwner = () => {};
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
@@ -29,10 +28,11 @@ describe('Services page should work properly', () => {
   });
 
   it('Update service description', () => {
+    interceptURL('GET', '/api/v1/config/airflow', 'getService');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-    cy.wait(1000);
+    verifyResponseStatusCode('@getService', 200);
     //need wait here
     cy.get('[data-testid="edit-description"]')
       .should('exist')
@@ -50,32 +50,35 @@ describe('Services page should work properly', () => {
   });
 
   it.skip('Update owner and check description', () => {
+    interceptURL('GET', '/api/v1/config/airflow', 'getService');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
 
-    cy.wait(1000);
-
+    verifyResponseStatusCode('@getService', 200);
+    interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'editOwner');
     cy.get('[data-testid="edit-Owner-icon"]')
       .should('exist')
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@editOwner', 200);
 
     cy.get('[data-testid="dropdown-list"]')
-      .contains('Teams')
+      .contains('Users')
       .should('exist')
       .should('be.visible')
       .click();
-    cy.wait(1000);
+
     cy.get('[data-testid="list-item"]')
       .contains(service.Owner)
       .should('be.visible')
       .click();
+
     cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
     //Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     //need wait here
-    cy.wait(1000);
+
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
   });
 });
