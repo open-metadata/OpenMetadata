@@ -21,8 +21,6 @@
   },
   "additionalProperties": false,
   "required": [
-    "username",
-    "token",
-    "logoutTime"
+    "token"
   ]
 }

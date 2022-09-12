@@ -9,7 +9,7 @@
     "ssoServiceType": {
       "description": "Type of database service such as Amundsen, Atlas...",
       "type": "string",
-      "enum": ["Google", "Okta", "CustomOIDC", "Auth0", "Azure"],
+      "enum": ["Google", "Okta", "CustomOIDC", "Auth0", "Azure", "saml", "basic"],
       "javaEnums": [
         {
           "name": "Google"
@@ -25,6 +25,12 @@
         },
         {
           "name": "Azure"
+        },
+        {
+          "name": "saml"
+        },
+        {
+          "name": "basic"
         }
       ]
     }

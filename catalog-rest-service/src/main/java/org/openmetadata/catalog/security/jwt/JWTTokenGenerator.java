@@ -27,7 +27,10 @@ import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 @Slf4j
 public class JWTTokenGenerator {
   private static JWTTokenGenerator instance = new JWTTokenGenerator();
-  private RSAPrivateKey privateKey;
+  private final String subjectClaim = "sub";
+  private final String emailClaim = "email";
+  private final String isBotClaim = "isBot";
+  @Getter private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
   private String issuer;
   private String kid;
@@ -70,9 +73,9 @@ public class JWTTokenGenerator {
           JWT.create()
               .withIssuer(issuer)
               .withKeyId(kid)
-              .withClaim("sub", user.getName())
-              .withClaim("email", user.getEmail())
-              .withClaim("isBot", true)
+              .withClaim(subjectClaim, user.getName())
+              .withClaim(emailClaim, user.getEmail())
+              .withClaim(isBotClaim, true)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
@@ -93,9 +96,9 @@ public class JWTTokenGenerator {
           JWT.create()
               .withIssuer(issuer)
               .withKeyId(kid)
-              .withClaim("sub", userName)
-              .withClaim("email", email)
-              .withClaim("isBot", isBot)
+              .withClaim(subjectClaim, userName)
+              .withClaim(emailClaim, email)
+              .withClaim(isBotClaim, isBot)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);

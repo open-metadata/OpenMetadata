@@ -25,6 +25,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonObject;
@@ -52,6 +55,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateUser;
+import org.openmetadata.catalog.auth.LogoutRequest;
 import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -62,6 +66,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.saml.JwtTokenCacheManager;
 import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
@@ -375,18 +380,24 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/logout")
   @Operation(
       operationId = "logoutUser",
-      summary = "Logout a User",
+      summary = "Logout a User(Only called for saml and basic Auth)",
       tags = "users",
-      description = "Logout a User",
+      description = "Logout a User(Only called for saml and basic Auth)",
       responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+        @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response logoutUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
-    return Response.status(200).build();
+  public Response logoutUser(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LogoutRequest request)
+      throws IOException {
+    Date logoutTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
+    JwtTokenCacheManager.getInstance()
+        .markLogoutEventForToken(
+            new LogoutRequest()
+                .withUsername(securityContext.getUserPrincipal().getName())
+                .withToken(request.getToken())
+                .withLogoutTime(logoutTime));
+    return Response.status(200).entity("Logout Successful").build();
   }
 
   @PUT
