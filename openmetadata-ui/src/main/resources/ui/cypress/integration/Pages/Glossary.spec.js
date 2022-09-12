@@ -470,7 +470,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
       .type(DELETE_TERM);
-    interceptURL('GET', '/api/v1/glossaries/*', 'getGlossary');
+    interceptURL('DELETE', '/api/v1/glossaries/*', 'getGlossary');
     cy.get('[data-testid="confirm-button"]')
       .should('be.visible')
       .should('not.disabled')
@@ -482,7 +482,6 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
 
     cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
-    verifyResponseStatusCode('@getGlossary', 200);
     cy.contains('Add New Glossary').should('be.visible');
   });
 });
