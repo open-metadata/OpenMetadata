@@ -17,9 +17,10 @@ to an SQLAlchemy ORM class.
 from typing import Optional
 
 import sqlalchemy
+from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
-from metadata.generated.schema.entity.data.database import databaseService
+from metadata.generated.schema.entity.data.database import Database, databaseService
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -126,7 +127,9 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     )
 
 
-def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
+def ometa_to_orm(
+    table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
+) -> DeclarativeMeta:
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy DeclarativeMeta class
@@ -146,8 +149,11 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
         for idx, col in enumerate(table.columns)
     }
 
+    orm_database_name = get_orm_database(table, metadata)
     orm_schema_name = get_orm_schema(table, metadata)
-    orm_name = f"{orm_schema_name}_{table.name.__root__}".replace(".", "_")
+    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.__root__}".replace(
+        ".", "_"
+    )
 
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
@@ -163,6 +169,7 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
                 ),
             },
             **cols,
+            "metadata": sqa_metadata_obj or Base.metadata,
         },
     )
 
@@ -192,3 +199,21 @@ def get_orm_schema(table: Table, metadata: OpenMetadata) -> str:
     )
 
     return str(schema.name.__root__)
+
+
+def get_orm_database(table: Table, metadata: OpenMetadata) -> str:
+    """get database name from database service
+
+    Args:
+        table (Table): table entity
+        metadata (OpenMetadata): metadata connection to OM server instance
+
+    Returns:
+        str
+    """
+
+    database: Database = metadata.get_by_id(
+        entity=Database, entity_id=table.database.id
+    )
+
+    return str(database.name.__root__)
