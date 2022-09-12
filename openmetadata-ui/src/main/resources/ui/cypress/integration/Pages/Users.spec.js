@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { addUser, deleteSoftDeletedUser, restoreUser, softDeleteUser, uuid } from '../../common/common';
+import { addUser, deleteSoftDeletedUser, interceptURL, restoreUser, softDeleteUser, uuid, verifyResponseStatusCode } from '../../common/common';
 
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
@@ -21,8 +21,9 @@ const adminEmail = `${adminName}@gmail.com`;
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
+    interceptURL('GET', '/api/v1/config/sandbox', 'homePage');
     cy.goToHomePage();
-    cy.wait(1000);
+    verifyResponseStatusCode('@homePage', 200);
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')
@@ -41,17 +42,7 @@ describe('Users flow should work properly', () => {
     addUser(userName, userEmail);
 
     //Validate if user is added in the User tab
-    cy.clickOnLogo();
-    cy.wait(1000);
-    cy.get('[data-testid="appbar-item-settings"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-    cy.get('.ant-menu-title-content')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
+
     cy.get('[data-testid="searchbar"]')
       .should('exist')
       .should('be.visible')
@@ -75,8 +66,9 @@ describe('Users flow should work properly', () => {
 
 describe('Admin flow should work properly', () => {
   beforeEach(() => {
+    interceptURL('GET', '/api/v1/users/*', 'homePage');
     cy.goToHomePage();
-    cy.wait(1000);
+    verifyResponseStatusCode('@homePage', 200);
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')
@@ -102,17 +94,7 @@ describe('Admin flow should work properly', () => {
     addUser(adminName, adminEmail);
 
     //Validate if user is added in the User tab
-    cy.clickOnLogo();
-    cy.wait(1000);
-    cy.get('[data-testid="appbar-item-settings"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-    cy.get('.ant-menu-title-content')
-      .contains('Admins')
-      .should('exist')
-      .should('be.visible')
-      .click();
+
     cy.get('[data-testid="searchbar"]')
       .should('exist')
       .should('be.visible')

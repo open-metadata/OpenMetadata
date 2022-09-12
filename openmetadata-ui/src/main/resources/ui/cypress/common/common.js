@@ -431,12 +431,15 @@ export const addUser = (username, email) => {
 
 export const softDeleteUser = (username) => {
   //Search the created user
+  interceptURL('GET', 'api/v1/users*', 'getUsersPage');
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
   cy.get('[data-testid="searchbar"]')
     .should('exist')
     .should('be.visible')
     .type(username);
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@getUsersPage', 200);
+  verifyResponseStatusCode('@searchUser', 200);
 
   //Click on delete button
   cy.get('.ant-table-row .ant-table-cell button')
@@ -447,12 +450,15 @@ export const softDeleteUser = (username) => {
   //Soft deleting the user
   cy.get('[data-testid="soft-delete"]').click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+
+  interceptURL('DELETE', '/api/v1/users/*', 'softdeleteUser');
+  interceptURL('GET', '/api/v1/users*', 'userDeleted');
   cy.get('[data-testid="confirm-button"]')
     .should('exist')
     .should('be.visible')
     .click();
-
-  cy.wait(1000);
+  verifyResponseStatusCode('@softdeleteUser', 200);
+  verifyResponseStatusCode('@userDeleted', 200);
 
   cy.get('.Toastify__toast-body > :nth-child(2)').should(
     'have.text',
@@ -465,6 +471,8 @@ export const softDeleteUser = (username) => {
     .should('be.visible')
     .click();
 
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
+
   //Verifying the deleted user
   cy.get('[data-testid="searchbar"]')
     .should('exist')
@@ -472,7 +480,7 @@ export const softDeleteUser = (username) => {
     .clear()
     .type(username);
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@searchUser', 200);
   cy.get('.ant-table-placeholder > .ant-table-cell').should(
     'not.contain',
     username
@@ -481,19 +489,21 @@ export const softDeleteUser = (username) => {
 
 export const restoreUser = (username) => {
   //Click on deleted user toggle
+  interceptURL('GET', '/api/v1/users*', 'deletedUser');
   cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
-  cy.wait(1000);
+  verifyResponseStatusCode('@deletedUser', 200);
 
   cy.get('button [alt="Restore"]').should('exist').should('be.visible').click();
   cy.get('.ant-modal-body > p').should(
     'contain',
     `Are you sure you want to restore ${username}?`
   );
+  interceptURL('PUT', '/api/v1/users', 'restoreUser');
   cy.get('.ant-modal-footer > .ant-btn-primary')
     .should('exist')
     .should('be.visible')
     .click();
-  cy.wait(1000);
+  verifyResponseStatusCode('@restoreUser', 200);
   cy.get('.Toastify__toast-body > :nth-child(2)').should(
     'contain',
     'User restored successfully!'
@@ -508,12 +518,13 @@ export const restoreUser = (username) => {
   //Verifying the restored user
   cy.get('.ant-switch').should('exist').should('be.visible').click();
 
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
   cy.get('[data-testid="searchbar"]')
     .should('exist')
     .should('be.visible')
     .type(username);
+  verifyResponseStatusCode('@searchUser', 200);
 
-  cy.wait(1000);
   cy.get('.ant-table-row > :nth-child(1)').should('contain', username);
 };
 
