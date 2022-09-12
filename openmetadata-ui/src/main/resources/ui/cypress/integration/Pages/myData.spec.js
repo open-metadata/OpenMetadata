@@ -182,7 +182,7 @@ describe('MyData page should work', () => {
     checkRecentlySearchElement(SEARCH_ENTITY_PIPELINE.pipeline_1.term);
   });
 
-  it.only('My data, following & feed section should work properly for table entity', () => {
+  it('My data, following & feed section should work properly for table entity', () => {
     tables.forEach((table) => {
       followAndOwnTheEntity(table);
     });
@@ -194,13 +194,13 @@ describe('MyData page should work', () => {
     });
   });
 
-  it.only('My data, following & feed section should work properly for dashboard entity', () => {
+  it('My data, following & feed section should work properly for dashboard entity', () => {
     dashboards.forEach((dashboard) => {
       followAndOwnTheEntity(dashboard);
     });
   });
 
-  it.only('My data, following & feed section should work properly for pipeline entity', () => {
+  it('My data, following & feed section should work properly for pipeline entity', () => {
     pipelines.forEach((pipeline) => {
       followAndOwnTheEntity(pipeline);
     });
