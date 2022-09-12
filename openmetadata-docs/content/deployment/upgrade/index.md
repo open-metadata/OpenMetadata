@@ -62,10 +62,10 @@ You can find further information about specific version upgrades in the followin
  <InlineCallout
     color="violet-70"
     icon="10k"
-    bold="Upgrade 0.12"
+    bold="Upgrade 0.11 to 0.12"
     href="/deployment/upgrade/versions/011-to-012"
   >
-    Upgrade from 0.10 to 0.11 inplace.
+    Upgrade from 0.11 to 0.12 inplace.
   </InlineCallout>
   <InlineCallout
     color="violet-70"
