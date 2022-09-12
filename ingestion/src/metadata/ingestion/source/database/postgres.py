@@ -8,12 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from sqlalchemy.sql.sqltypes import String
 import traceback
 from collections import namedtuple
 from typing import Iterable, Tuple
 
 from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
@@ -48,6 +49,20 @@ INTERVAL_TYPE_MAP = {
     "range": IntervalType.TIME_UNIT.value,
 }
 
+class GEOMETRY(String):
+    """The SQL GEOMETRY type."""
+
+    __visit_name__ = "GEOMETRY"
+
+class POINT(String):
+    """The SQL POINT type."""
+
+    __visit_name__ = "POINT"
+
+class POLYGON(String):
+    """The SQL GEOMETRY type."""
+
+    __visit_name__ = "POLYGON"
 
 @reflection.cache
 def get_table_names(self, connection, schema=None, **kw):
@@ -60,9 +75,10 @@ def get_table_names(self, connection, schema=None, **kw):
     )
     return [name for name, in result]
 
+ischema_names.update({"geometry": GEOMETRY, "point": POINT, "polygon": POLYGON})
 
 PGDialect.get_table_names = get_table_names
-
+PGDialect.ischema_names = ischema_names
 
 class PostgresSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
