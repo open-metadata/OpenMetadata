@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.announcementInvalidStartTime;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.announcementOverlap;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
@@ -531,39 +531,39 @@ public class FeedResourceTest extends CatalogApplicationTest {
             .withAnnouncementDetails(announcementDetails);
 
     // create announcement with same start and end time
-    assertResponse(() -> createThread(create2, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+    assertResponse(() -> createThread(create2, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     // create announcement with start time > end time
     announcementDetails
         .withStartTime(now.plusDays(3L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(2L).toEpochSecond(ZoneOffset.UTC));
     CreateThread create3 = create2.withAnnouncementDetails(announcementDetails);
-    assertResponse(() -> createThread(create3, userAuthHeaders), BAD_REQUEST, announcementInvalidStartTime());
+    assertResponse(() -> createThread(create3, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_INVALID_START_TIME);
 
     // create announcement with overlaps
     announcementDetails
         .withStartTime(now.plusDays(2L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(6L).toEpochSecond(ZoneOffset.UTC));
     CreateThread create4 = create2.withAnnouncementDetails(announcementDetails);
-    assertResponse(() -> createThread(create4, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+    assertResponse(() -> createThread(create4, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
         .withStartTime(now.plusDays(3L).plusHours(2L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(4L).toEpochSecond(ZoneOffset.UTC));
     CreateThread create5 = create2.withAnnouncementDetails(announcementDetails);
-    assertResponse(() -> createThread(create5, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+    assertResponse(() -> createThread(create5, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
         .withStartTime(now.plusDays(2L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(4L).toEpochSecond(ZoneOffset.UTC));
     CreateThread create6 = create2.withAnnouncementDetails(announcementDetails);
-    assertResponse(() -> createThread(create6, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+    assertResponse(() -> createThread(create6, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
         .withStartTime(now.plusDays(4L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(6L).toEpochSecond(ZoneOffset.UTC));
     CreateThread create7 = create2.withAnnouncementDetails(announcementDetails);
-    assertResponse(() -> createThread(create7, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+    assertResponse(() -> createThread(create7, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
   }
 
   @Test
@@ -991,7 +991,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Thread updated = thread2.withAnnouncement(thread1.getAnnouncement());
 
     assertResponse(
-        () -> patchThread(thread2.getId(), originalJson, updated, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+        () -> patchThread(thread2.getId(), originalJson, updated, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     // create announcement with start time > end time
     announcementDetails
@@ -1001,7 +1001,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated2, userAuthHeaders),
         BAD_REQUEST,
-        announcementInvalidStartTime());
+        ANNOUNCEMENT_INVALID_START_TIME);
 
     // create announcement with overlaps
     announcementDetails
@@ -1009,36 +1009,28 @@ public class FeedResourceTest extends CatalogApplicationTest {
         .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
     Thread updated3 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
-        () -> patchThread(thread2.getId(), originalJson, updated3, userAuthHeaders),
-        BAD_REQUEST,
-        announcementOverlap());
+        () -> patchThread(thread2.getId(), originalJson, updated3, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
         .withStartTime(now.plusDays(53L).plusHours(2L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
     Thread updated4 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
-        () -> patchThread(thread2.getId(), originalJson, updated4, userAuthHeaders),
-        BAD_REQUEST,
-        announcementOverlap());
+        () -> patchThread(thread2.getId(), originalJson, updated4, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
         .withStartTime(now.plusDays(52L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
     Thread updated5 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
-        () -> patchThread(thread2.getId(), originalJson, updated5, userAuthHeaders),
-        BAD_REQUEST,
-        announcementOverlap());
+        () -> patchThread(thread2.getId(), originalJson, updated5, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
         .withStartTime(now.plusDays(54L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
     Thread updated6 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
-        () -> patchThread(thread2.getId(), originalJson, updated6, userAuthHeaders),
-        BAD_REQUEST,
-        announcementOverlap());
+        () -> patchThread(thread2.getId(), originalJson, updated6, userAuthHeaders), BAD_REQUEST, ANNOUNCEMENT_OVERLAP);
   }
 
   @Test
