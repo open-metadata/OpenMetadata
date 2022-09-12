@@ -212,7 +212,7 @@ def get_orm_database(table: Table, metadata: OpenMetadata) -> str:
         str
     """
 
-    database: databaseService.DatabaseService = metadata.get_by_id(
+    database: Database = metadata.get_by_id(
         entity=Database, entity_id=table.database.id
     )
 
