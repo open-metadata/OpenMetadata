@@ -49,10 +49,7 @@ export const getFilterString = (
     const filter = filters[key];
     filter.forEach((value) => {
       const modifiedKey = prepareModifiedKey(key, restrictKeyModification);
-      const modifiedValue = key === 'tags' ? `"${value}"` : value;
-      modifiedFilter.push(
-        `${modifiedKey.split(' ').join('_')}:${modifiedValue}`
-      );
+      modifiedFilter.push(`${modifiedKey.split(' ').join('_')}:${value}`);
     });
     modifiedFilters[key] = modifiedFilter;
   }
@@ -89,7 +86,7 @@ export const prepareQueryParams = (filters, initFilters = {}) => {
     if (values?.length) {
       const matchQuotes = /".*"/g;
       const searchValue = values.map((value) =>
-        matchQuotes.test(value) ? value : `"${value}"`
+        value.match(matchQuotes) ? value : `"${value}"`
       );
       if (
         initFilterKeys.includes(key) &&

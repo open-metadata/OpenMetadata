@@ -128,6 +128,10 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return [];
     }
   };
+
+  const checkSelected = (str: string[], val: string) =>
+    str.includes(val) || str.includes(`"${val}"`);
+
   const getFilterItems = (aggregation: AggregationType) => {
     return (
       <>
@@ -135,9 +139,10 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           (bucket: Bucket, index: number) => (
             <FilterContainer
               count={bucket.doc_count}
-              isSelected={filters[
-                toLower(aggregation.title) as keyof FilterObject
-              ].includes(`"${bucket.key.replace(/ /g, '+')}"`)}
+              isSelected={checkSelected(
+                filters[toLower(aggregation.title) as keyof FilterObject],
+                bucket.key.replace(/ /g, '+')
+              )}
               key={index}
               name={bucket.key}
               type={toLower(aggregation.title) as keyof FilterObject}
