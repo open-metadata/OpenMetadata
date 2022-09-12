@@ -431,14 +431,12 @@ export const addUser = (username, email) => {
 
 export const softDeleteUser = (username) => {
   //Search the created user
-  interceptURL('GET', 'api/v1/users*', 'getUsersPage');
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
   cy.get('[data-testid="searchbar"]')
     .should('exist')
     .should('be.visible')
     .type(username);
 
-  verifyResponseStatusCode('@getUsersPage', 200);
   verifyResponseStatusCode('@searchUser', 200);
 
   //Click on delete button
