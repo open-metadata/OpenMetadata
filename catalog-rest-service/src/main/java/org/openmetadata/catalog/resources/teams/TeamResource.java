@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
+
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -51,7 +54,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
@@ -370,10 +372,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   private Team getTeam(CreateTeam ct, String user) throws IOException {
     if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.createOrganization());
+      throw new IllegalArgumentException(CREATE_ORGANIZATION);
     }
     if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.createGroup());
+      throw new IllegalArgumentException(CREATE_GROUP);
     }
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())

@@ -25,14 +25,15 @@ const policies = {
   teamOnlyAccessPolicy: 'Team only access Policy',
 };
 
-const ruledetails = {
+const ruleDetails = {
   resources: 'All',
   operations: 'All',
   effect: 'Allow',
   condition: 'isOwner()',
+  inValidCondition:'isOwner('
 };
 
-const errormessageValidation = {
+const errorMessageValidation = {
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
   lastRuleCannotBeRemoved: 'At least one rule is required in a policy',
 };
@@ -41,7 +42,7 @@ const policyName = `Policy-test-${uuid()}`;
 const description = `This is ${policyName} description`;
 
 const ruleName = `Rule-test-${uuid()}`;
-const ruledescription = `This is ${ruleName} description`;
+const ruleDescription = `This is ${ruleName} description`;
 const updatedDescription = 'This is updated description';
 
 const newRuleName = `New-Rule-test-${uuid()}`;
@@ -49,13 +50,13 @@ const newRuledescription = `This is ${newRuleName} description`;
 
 const updatedRuleName = `New-Rule-test-${uuid()}-updated`;
 
-const addRule = (rulename, ruledescription, descriptionIndex) => {
+const addRule = (rulename, ruleDescription, descriptionIndex) => {
   cy.get('[data-testid="rule-name"]').should('be.visible').type(rulename);
   //Enter rule description
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
     .eq(descriptionIndex)
     .scrollIntoView()
-    .type(ruledescription);
+    .type(ruleDescription);
   //Select resource dropdown
   cy.get('[data-testid="resuorces"]')
     .scrollIntoView()
@@ -70,10 +71,15 @@ const addRule = (rulename, ruledescription, descriptionIndex) => {
 
   cy.get('.ant-select-tree-checkbox-inner').eq(1).should('be.visible').click();
   //Click on condition combobox
+
   cy.get('[id*=rc_select]').scrollIntoView().should('be.visible').click();
 
-  cy.get(`[title="${ruledetails.condition}"]`).should('be.visible').click();
+  cy.get(`[title="${ruleDetails.condition}"]`).should('be.visible').click();
+
   cy.get('.ant-card-body').should('be.visible').click();
+
+  cy.get('[data-testid="condition-success"]').contains('✅ Valid condition')
+
   cy.wait(500);
   //Submit
   cy.get('[data-testid="submit-btn"]')
@@ -82,7 +88,7 @@ const addRule = (rulename, ruledescription, descriptionIndex) => {
     .click();
 };
 
-describe('Roles page should work properly', () => {
+describe('Policy page should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
@@ -128,7 +134,7 @@ describe('Roles page should work properly', () => {
       .eq(0)
       .type(description);
     //Enter rule name
-    addRule(ruleName, ruledescription, 1);
+    addRule(ruleName, ruleDescription, 1);
 
     cy.wait(1000);
     //Validate the added policy
@@ -149,26 +155,26 @@ describe('Roles page should work properly', () => {
     //verify rule description
     cy.get('[data-testid="viewer-container"] > [data-testid="markdown-parser"]')
       .should('be.visible')
-      .should('contain', ruledescription);
+      .should('contain', ruleDescription);
 
     //Verify other details
     cy.get('[data-testid="rule-name"]').should('be.visible').click();
 
     cy.get('[data-testid="resources"]')
       .should('be.visible')
-      .should('contain', ruledetails.resources);
+      .should('contain', ruleDetails.resources);
 
     cy.get('[data-testid="operations"]')
       .should('be.visible')
-      .should('contain', ruledetails.operations);
+      .should('contain', ruleDetails.operations);
 
     cy.get('[data-testid="effect"]')
       .should('be.visible')
-      .should('contain', ruledetails.effect);
+      .should('contain', ruleDetails.effect);
 
     cy.get('[data-testid="condition"]')
       .should('be.visible')
-      .should('contain', ruledetails.condition);
+      .should('contain', ruleDetails.condition);
   });
 
   it('Edit policy description', () => {
@@ -214,19 +220,19 @@ describe('Roles page should work properly', () => {
 
     cy.get('[data-testid="resources"]').last().scrollIntoView()
       .should("exist")
-      .should('contain', ruledetails.resources);
+      .should('contain', ruleDetails.resources);
 
     cy.get('[data-testid="operations"]').last().scrollIntoView()
       .should("exist")
-      .should('contain', ruledetails.operations);
+      .should('contain', ruleDetails.operations);
 
     cy.get('[data-testid="effect"]').last().scrollIntoView()
       .should("exist")
-      .should('contain', ruledetails.effect);
+      .should('contain', ruleDetails.effect);
 
     cy.get('[data-testid="condition"]').last().scrollIntoView()
       .should("exist")
-      .should('contain', ruledetails.condition);
+      .should('contain', ruleDetails.condition);
   });
 
   it('Edit rule name for created Rule', () => {
@@ -296,7 +302,7 @@ describe('Roles page should work properly', () => {
 
     cy.get('.Toastify__toast-body')
       .should('be.visible')
-      .should('contain', errormessageValidation.lastRuleCannotBeRemoved);
+      .should('contain', errorMessageValidation.lastRuleCannotBeRemoved);
   });
 
   it('Delete created policy', () => {
