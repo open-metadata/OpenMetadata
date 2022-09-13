@@ -24,6 +24,9 @@
         },
         {
           "name": "Redpanda"
+        },
+        {
+          "name": "Custom"
         }
       ]
     },
@@ -54,6 +57,9 @@
             },
             {
               "$ref": "./connections/messaging/redpandaConnection.json"
+            },
+            {
+              "$ref": "connections/messaging/customMessagingConnection.json"
             }
           ]
         }

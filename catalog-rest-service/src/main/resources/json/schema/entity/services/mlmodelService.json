@@ -21,6 +21,9 @@
         },
         {
           "name": "Sklearn"
+        },
+        {
+          "name": "Custom"
         }
       ]
     },
@@ -40,6 +43,9 @@
             },
             {
               "$ref": "./connections/mlmodel/sklearnConnection.json"
+            },
+            {
+              "$ref": "./connections/mlmodel/customMlModelConnection.json"
             }
           ]
         }
