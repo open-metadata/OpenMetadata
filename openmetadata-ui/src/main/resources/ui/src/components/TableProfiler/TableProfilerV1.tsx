@@ -25,6 +25,7 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
+import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
@@ -78,7 +79,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
 
   const testCaseStatusOption = useMemo(() => {
-    const testCaseStatus: Record<string, string>[] = Object.values(
+    const testCaseStatus: SelectableOption[] = Object.values(
       TestCaseStatus
     ).map((value) => ({
       label: value,
@@ -93,12 +94,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   }, []);
 
   const testCaseTypeOption = useMemo(() => {
-    const testCaseStatus: Record<string, string>[] = Object.entries(
-      TestType
-    ).map(([key, value]) => ({
-      label: key,
-      value: value,
-    }));
+    const testCaseStatus: SelectableOption[] = Object.entries(TestType).map(
+      ([key, value]) => ({
+        label: key,
+        value: value,
+      })
+    );
     testCaseStatus.unshift({
       label: 'All',
       value: '',
@@ -210,16 +211,16 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   const getFilterTestCase = () => {
-    let test: TestCase[] = [];
+    let tests: TestCase[] = [];
     if (selectedTestType === TestType.Table) {
-      test = tableTests.tests;
+      tests = tableTests.tests;
     } else if (selectedTestType === TestType.Column) {
-      test = columnTests;
+      tests = columnTests;
     } else {
-      test = [...tableTests.tests, ...columnTests];
+      tests = [...tableTests.tests, ...columnTests];
     }
 
-    return test.filter(
+    return tests.filter(
       (data) =>
         selectedTestCaseStatus === '' ||
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
