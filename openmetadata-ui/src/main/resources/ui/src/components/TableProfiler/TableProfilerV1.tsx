@@ -249,23 +249,24 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
         <Space>
           {isDataQuality && (
-            <Form.Item className="mb-0 w-40" label="Type">
-              <Select
-                options={testCaseTypeOption}
-                value={selectedTestType}
-                onChange={handleTestCaseTypeChange}
-              />
-            </Form.Item>
+            <>
+              <Form.Item className="mb-0 w-40" label="Type">
+                <Select
+                  options={testCaseTypeOption}
+                  value={selectedTestType}
+                  onChange={handleTestCaseTypeChange}
+                />
+              </Form.Item>
+              <Form.Item className="mb-0 w-40" label="Status">
+                <Select
+                  options={testCaseStatusOption}
+                  value={selectedTestCaseStatus}
+                  onChange={handleTestCaseStatusChange}
+                />
+              </Form.Item>
+            </>
           )}
-          {isDataQuality && (
-            <Form.Item className="mb-0 w-40" label="Status">
-              <Select
-                options={testCaseStatusOption}
-                value={selectedTestCaseStatus}
-                onChange={handleTestCaseStatusChange}
-              />
-            </Form.Item>
-          )}
+
           <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
             <Link
               to={
