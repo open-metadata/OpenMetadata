@@ -24,7 +24,7 @@ const policies = {
   organizationPolicy: 'Organization Policy',
 };
 
-const errormessageValidation = {
+const errorMessageValidation = {
   ifPolicyNotSelected: 'At least one policy is required!',
   ifNameNotEntered: 'invalid name',
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
@@ -83,7 +83,7 @@ describe('Roles page should work properly', () => {
       .should('be.visible');
   });
 
-  it('Add new role', () => {
+  it('Add new role and check all tabs data', () => {
     cy.get('[data-testid="add-role"]').contains('Add Role').should('be.visible').click();
 
     //Asserting navigation
@@ -122,20 +122,43 @@ describe('Roles page should work properly', () => {
       `http://localhost:8585/settings/access/roles/${roleName}`
     );
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
+
+    //Verify added description
+    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
+      .should('be.visible')
+      .should('contain', description);
+
+    // click on the policies tab
+    cy.get('[role="tab"]').contains("Policies").should("be.visible").click()
+
     //Verifying the added policies
     cy.get('.ant-table-cell')
       .should('contain', policies.dataConsumerPolicy)
       .should('be.visible')
       .and('contain', policies.dataStewardPolicy)
       .should('be.visible');
-    //Verify added description
-    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
-      .should('be.visible')
-      .should('contain', description);
+    
+    // click on the teams tab
+    cy.get('[role="tab"]').contains("Teams").should("be.visible").click()
+
+    // check for empty table
+    cy.get("table").should("be.visible")
+    cy.get(".ant-empty").should("be.visible")
+
+    // click on the users tab
+    cy.get('[role="tab"]').contains("Users").should("be.visible").click()
+
+    // check for empty table
+    cy.get("table").should("be.visible")
+    cy.get(".ant-empty").should("be.visible")
 
     //Navigating to roles tab to verify the added role
     cy.get('[data-testid="breadcrumb-link"]').first().click();
     cy.get('table').should('be.visible').should('contain', roleName);
+    cy.get('[data-testid="plus-more-count"]').should("be.visible").contains("+1 more").click()
+
+    // second policy should be visible on tooltip
+    cy.get('[role="tooltip"]').should("be.visible").contains(policies.dataStewardPolicy)
   });
 
   it('Add new role without selecting data', () => {
@@ -158,31 +181,11 @@ describe('Roles page should work properly', () => {
     //Verify the error message that is displayed
     cy.get('[role="alert"]').should(
       'contain',
-      errormessageValidation.ifPolicyNotSelected
+      errorMessageValidation.ifPolicyNotSelected
     );
   });
 
-  it('Verify Teams and Users naviagtion', () => {
-    cy.get('[data-testid="role-name"]')
-      .contains(roleName)
-      .should('be.visible')
-      .click();
-    //Asserting navigation
-    cy.get('[data-testid="inactive-link"]')
-      .should('contain', roleName)
-      .should('be.visible');
-
-    //Click on Teams tab
-    cy.get('[role="tab"]').contains('Teams').should('be.visible').click();
-
-    cy.get('.ant-table-tbody').should('be.visible');
-    //Click on Users tab
-    cy.get('[role="tab"]').contains('Users').should('be.visible').click();
-
-    cy.get('.ant-table-tbody').should('be.visible');
-  });
-
-  it('Edit created rule', () => {
+  it('Edit created role', () => {
     //Edit description
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
@@ -200,11 +203,9 @@ describe('Roles page should work properly', () => {
     cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
       .should('be.visible')
       .should('contain', `${description}-updated`);
-
-    //Edit policies, teams and users later
   });
 
-  it('Add policy to created role', () => {
+  it('Add new policy to created role', () => {
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
       .should('be.visible')
@@ -294,7 +295,7 @@ describe('Roles page should work properly', () => {
 
     cy.get('.Toastify__toast-body')
       .should('be.visible')
-      .should('contain', errormessageValidation.lastPolicyCannotBeRemoved);
+      .should('contain', errorMessageValidation.lastPolicyCannotBeRemoved);
 
     cy.get('[data-testid="entity-name"]').should(
       'contain',
