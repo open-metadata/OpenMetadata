@@ -18,17 +18,7 @@ the arrow keys and <kbd>Return</kbd> button.
 
 <Image src="/images/openmetadata/discovery-collaboration/command-k-search.png" alt="command-k-search"/>
 
-The Search APIs are backed by Elastic Search and the following indexes:
-
- - [Table](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/table_index_mapping.json)
- - [Topic](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/topic_index_mapping.json)
- - [Dashboard](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/dashboard_index_mapping.json)
- - [Pipeline](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/pipeline_index_mapping.json)
- - [MlModel](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/mlmodel_index_mapping.json)
- - [Glossary](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/glossary_index_mapping.json)
- - [Tag](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/tag_index_mapping.json)
- - [User](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/user_index_mapping.json)
- - [Team](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/elasticsearch/team_index_mapping.json)
+The Search APIs are backed by Elastic Search.
 
 ## Conversation Threads
 As part of Data Collaboration feature of OpenMetadata, Conversation Threads were one
@@ -59,7 +49,7 @@ all the relevant conversations in a single place.
 Tasks are an extension to the Conversation Threads feature where users can now create tasks for
 requesting create or update description of a data asset and assigning the task to an appropriate user or team. 
 
-![Tasks Workflow](https://gifyu.com/image/Sw1RO)
+![Tasks Workflow](https://miro.medium.com/max/1400/1*bbck_VGxcp1S5dznMtTIxg.gif)
 
 Users can react and reply to Tasks similar to a Conversation thread.
 
