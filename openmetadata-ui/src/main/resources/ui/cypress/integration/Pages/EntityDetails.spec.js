@@ -39,7 +39,7 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-menu-id*="delete-button"]', { timeout: 3000 })
+    cy.get('[data-menu-id*="delete-button"]')
       .should('exist')
       .should('be.visible');
     // check for delete section and delete button is available or not
@@ -81,7 +81,7 @@ describe('Entity Details Page', () => {
     // open modal and type required text in input box to delete entity
 
     cy.get('@deleteBtn').click();
-    cy.get('[data-menu-id*="delete-button"]', { timeout: 3000 })
+    cy.get('[data-menu-id*="delete-button"]')
       .should('exist')
       .should('be.visible');
     cy.get('@permanentDelete').click();

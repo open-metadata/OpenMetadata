@@ -19,12 +19,14 @@ const AARON_JOHNSON = 'Aaron Johnson';
 
 const isDatabaseService = (type) => type === 'database';
 
+//intercepting URL with cy.intercept
 export const interceptURL = (method, url, alias) => {
   cy.intercept({ method: method, url: url }).as(alias);
 };
 
+//waiting for response and validating the response status code
 export const verifyResponseStatusCode = (alias, responseCode) => {
-  cy.wait(alias, { timeout: 100000 })
+  cy.wait(alias, { timeout: 5000 })
     .its('response.statusCode')
     .should('eq', responseCode);
 };
