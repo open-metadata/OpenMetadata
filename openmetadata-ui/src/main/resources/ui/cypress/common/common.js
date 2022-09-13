@@ -592,12 +592,12 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
     .should('be.visible')
     .type(entityType.description);
-  cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
-
   //Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
     'customProperties'
   );
+  cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
+
   cy.wait('@customProperties');
   cy.get('[data-testid="data-row"]').should('contain', propertyName);
 
