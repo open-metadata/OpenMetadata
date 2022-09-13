@@ -232,6 +232,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       />
 
       <DeleteWidgetModal
+        afterDeleteAction={onTestUpdate}
         entityId={selectedTestCase?.id || ''}
         entityName={selectedTestCase?.name || ''}
         entityType="testCase"
