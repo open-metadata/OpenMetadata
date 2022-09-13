@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { interceptURL, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
 
 const updateddescription = 'This is updated description';
 
@@ -62,7 +62,7 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .type(TEAM_DETAILS.displayName);
 
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    cy.get(descriptionBox)
       .should('exist')
       .should('be.visible')
       .type(TEAM_DETAILS.description);
@@ -220,9 +220,7 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
 
     //Entering updated description
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .clear()
-      .type(updateddescription);
+    cy.get(descriptionBox).clear().type(updateddescription);
 
     cy.get('[data-testid="save"]').should('be.visible').click();
     //Validating the updated description

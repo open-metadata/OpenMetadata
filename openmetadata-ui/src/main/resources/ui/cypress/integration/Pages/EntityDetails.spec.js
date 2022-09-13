@@ -12,7 +12,7 @@
  */
 
 import moment from 'moment';
-import { interceptURL, searchEntity, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, searchEntity, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -248,9 +248,7 @@ describe('Entity Details Page', () => {
     cy.get('#title').should('be.visible').type('Announcement Title');
     cy.get('#startDate').should('be.visible').type(startDate);
     cy.get('#endtDate').should('be.visible').type(endDate);
-    cy.get(
-      '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-    ).type('Description');
+    cy.get(descriptionBox).type('Description');
 
     cy.get('.ant-modal-footer > .ant-btn-primary')
       .should('be.visible')

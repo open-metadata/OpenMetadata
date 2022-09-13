@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { service } from '../../constants/constants';
 
 describe('Services page should work properly', () => {
@@ -38,9 +38,7 @@ describe('Services page should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click({ force: true });
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .clear()
-      .type(service.newDescription);
+    cy.get(descriptionBox).clear().type(service.newDescription);
     cy.get('[data-testid="save"]').click();
     cy.get(
       '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -94,10 +94,8 @@ describe('Roles page should work properly', () => {
       .should('be.visible');
     //Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering description
-    cy.get(
-      '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-    ).type(description);
+    //Entering descrription
+    cy.get(descriptionBox).type(description);
     //Select the policies
     cy.get('.ant-select').should('be.visible').click();
 
@@ -149,10 +147,8 @@ describe('Roles page should work properly', () => {
       .should('be.visible');
     //Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering description
-    cy.get(
-      '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-    ).type(description);
+    //Entering descrription
+    cy.get(descriptionBox).type(description);
     //Do not Select the policies
     //Save the role
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
@@ -192,9 +188,7 @@ describe('Roles page should work properly', () => {
       .click();
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
 
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .clear()
-      .type(`${description}-updated`);
+    cy.get(descriptionBox).clear().type(`${description}-updated`);
     cy.get('[data-testid="save"]').should('be.visible').click();
 
     cy.get('[data-testid="inactive-link"]').should('be.visible');

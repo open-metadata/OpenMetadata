@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -122,9 +122,7 @@ describe('Policies page should work properly', () => {
     cy.get('[data-testid="policy-name"]').should('be.visible').type(policyName);
 
     //Enter description
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .eq(0)
-      .type(description);
+    cy.get(descriptionBox).eq(0).type(description);
 
     //Enter rule name
     addRule(ruleName, ruledescription, 1);
@@ -180,7 +178,7 @@ describe('Policies page should work properly', () => {
     verifyResponseStatusCode('@getSelectedPolicy', 200);
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
     //Enter updated description
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    cy.get(descriptionBox)
       .should('be.visible')
       .clear()
       .type(`${updatedDescription}-${policyName}`);

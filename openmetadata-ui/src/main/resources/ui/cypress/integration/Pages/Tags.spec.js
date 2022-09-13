@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { addNewTagToEntity, interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { addNewTagToEntity, descriptionBox, interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { NEW_TAG, NEW_TAG_CATEGORY, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 describe('Tags page should work', () => {
@@ -51,7 +51,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="name"]')
       .should('be.visible')
       .type(NEW_TAG_CATEGORY.name);
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    cy.get(descriptionBox)
       .should('be.visible')
       .type(NEW_TAG_CATEGORY.description);
 
@@ -81,9 +81,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible').click();
     cy.get('.tw-modal-container').should('be.visible');
     cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .should('be.visible')
-      .type(NEW_TAG.description);
+    cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
     interceptURL('GET', '/api/v1/tags/*', 'createTag');
     cy.get('[data-testid="saveButton"]').should('be.visible').click();

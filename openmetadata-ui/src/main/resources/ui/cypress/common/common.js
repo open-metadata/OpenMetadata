@@ -12,7 +12,8 @@
  */
 
 /// <reference types="cypress" />
-
+export const descriptionBox =
+  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
 
 const AARON_JOHNSON = 'Aaron Johnson';
@@ -424,7 +425,7 @@ export const addUser = (username, email) => {
     .should('exist')
     .should('be.visible')
     .type(username);
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+  cy.get(descriptionBox)
     .should('exist')
     .should('be.visible')
     .type('Adding user');
@@ -684,7 +685,7 @@ export const editCreatedProperty = (propertyName) => {
 
   cy.get('@editbutton').click();
 
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+  cy.get(descriptionBox)
     .should('be.visible')
     .clear()
     .type('This is new description');

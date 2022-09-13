@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { addUser, deleteSoftDeletedUser, interceptURL, restoreUser, softDeleteUser, uuid, verifyResponseStatusCode } from '../../common/common';
+import { addUser, deleteSoftDeletedUser, restoreUser, softDeleteUser, uuid } from '../../common/common';
 
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
@@ -65,9 +65,8 @@ describe('Users flow should work properly', () => {
 
 describe('Admin flow should work properly', () => {
   beforeEach(() => {
-    interceptURL('GET', '/api/v1/users/*', 'homePage');
     cy.goToHomePage();
-    verifyResponseStatusCode('@homePage', 200);
+
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')

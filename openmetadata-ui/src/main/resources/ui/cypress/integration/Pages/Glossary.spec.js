@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { interceptURL, searchEntity, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, searchEntity, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_TERM, NEW_GLOSSARY, NEW_GLOSSARY_TERMS, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
@@ -26,7 +26,7 @@ const createGlossaryTerm = (term) => {
     .scrollIntoView()
     .should('be.visible')
     .type(term.name);
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+  cy.get(descriptionBox)
     .scrollIntoView()
     .should('be.visible')
     .type(term.description);
@@ -126,7 +126,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .type(NEW_GLOSSARY.name);
 
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    cy.get(descriptionBox)
       .scrollIntoView()
       .should('be.visible')
       .type(NEW_GLOSSARY.description);
@@ -197,9 +197,7 @@ describe('Glossary page should work properly', () => {
     // updating description
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
     cy.get('.tw-modal-container').should('be.visible');
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .should('be.visible')
-      .as('description');
+    cy.get(descriptionBox).should('be.visible').as('description');
 
     cy.get('@description').clear();
     cy.get('@description').type(newDescription);
