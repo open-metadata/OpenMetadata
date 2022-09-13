@@ -29,7 +29,8 @@ import { isDev } from './EnvironmentUtils';
 export let msalInstance: IPublicClientApplication;
 
 const DATE_NOW = Date.now();
-const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 100;
+
+export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
 
 export const getOidcExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 24 * 1000);
@@ -210,22 +211,23 @@ export const getUrlPathnameExpiry = () => {
  */
 export const extractDetailsFromToken = () => {
   const token = localStorage.getItem(oidcTokenKey) || '';
+  if (token) {
+    try {
+      const { exp } = jwtDecode<JwtPayload>(token);
 
-  try {
-    const { exp } = jwtDecode<JwtPayload>(token);
+      const diff = exp && exp * 1000 - DATE_NOW;
+      const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
 
-    const diff = exp && exp * 1000 - DATE_NOW;
-    const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
-
-    return {
-      exp,
-      isExpired: exp && DATE_NOW >= exp * 1000,
-      diff,
-      timeoutExpiry,
-    };
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Error parsing id token.', error);
+      return {
+        exp,
+        isExpired: exp && DATE_NOW >= exp * 1000,
+        diff,
+        timeoutExpiry,
+      };
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error parsing id token.', error);
+    }
   }
 
   return {
