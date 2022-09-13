@@ -420,7 +420,9 @@ def get_or_create_pipeline_service(
         )
         airflow_service_entity = metadata.create_or_update(pipeline_service)
         if airflow_service_entity:
-            operator.log.info(f"Created airflow service entity - {airflow_service_entity.fullyQualifiedName.__root__}")
+            operator.log.info(
+                f"Created airflow service entity - {airflow_service_entity.fullyQualifiedName.__root__}"
+            )
         else:
             operator.log.error("Failed to create airflow service entity")
 
