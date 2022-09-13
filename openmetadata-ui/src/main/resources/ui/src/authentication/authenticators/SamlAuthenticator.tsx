@@ -18,6 +18,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { postSamlLogout } from '../../axiosAPIs/miscAPI';
+import { oidcTokenKey } from '../../constants/constants';
 import { SamlSSOClientConfig } from '../../generated/security/client/samlSSOClientConfig';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
@@ -42,21 +43,24 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = () => {
-      postSamlLogout()
-        .then(() => {
-          setIsAuthenticated(false);
-          try {
-            onLogoutSuccess();
-          } catch (err) {
-            // TODO: Handle error on logout failure
+      const token = localStorage.getItem(oidcTokenKey);
+      if (token) {
+        postSamlLogout({ token })
+          .then(() => {
+            setIsAuthenticated(false);
+            try {
+              onLogoutSuccess();
+            } catch (err) {
+              // TODO: Handle error on logout failure
+              // eslint-disable-next-line no-console
+              console.log(err);
+            }
+          })
+          .catch((err) => {
             // eslint-disable-next-line no-console
-            console.log(err);
-          }
-        })
-        .catch((err) => {
-          // eslint-disable-next-line no-console
-          console.log('Error while logging out', err);
-        });
+            console.log('Error while logging out', err);
+          });
+      }
     };
 
     useImperativeHandle(ref, () => ({
