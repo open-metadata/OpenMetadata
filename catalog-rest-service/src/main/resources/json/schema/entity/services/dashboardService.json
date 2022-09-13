@@ -22,7 +22,7 @@
         "Metabase",
         "PowerBI",
         "Mode",
-        "Custom"
+        "CustomDashboard"
       ],
       "javaEnums": [
         {
@@ -47,7 +47,7 @@
           "name": "Mode"
         },
         {
-          "name": "Custom"
+          "name": "CustomDashboard"
         }
       ]
     },

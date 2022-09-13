@@ -42,7 +42,7 @@
         "SampleData",
         "PinotDB",
         "Datalake",
-        "Custom"
+        "CustomDatabase"
       ],
       "javaEnums": [
         {
@@ -127,7 +127,7 @@
           "name": "Datalake"
         },
         {
-          "name": "Custom"
+          "name": "CustomDatabase"
         }
       ]
     },

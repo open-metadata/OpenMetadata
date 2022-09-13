@@ -2,22 +2,30 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/customDatabaseConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CustomDatabaseConnection",
-  "description": "Custom Database Service connection to build a connector that is not supported by OpenMetadata yet.",
+  "description": "Custom Database Service connection to build a source that is not supported by OpenMetadata yet.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.CustomDatabaseConnection",
-  "properties": {
-    "connectorPythonClass": {
-      "title": "Connector Python Class Name",
-      "description": "Connector Python Class Name to instantiated by the ingestion workflow",
+  "definitions": {
+    "customDatabaseType": {
+      "title": "Service Type",
+      "description": "Custom database service type",
       "type": "string",
-      "default": "Custom"
-    },
+      "enum": ["CustomDatabase"],
+      "default": "CustomDatabase"
+    }
+  },
+  "properties": {
     "type": {
       "title": "Service Type",
-      "description": "Service Type",
+      "description": "Custom database service type",
+      "$ref": "#/definitions/customDatabaseType",
+      "default": "CustomDatabase"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
       "type": "string",
-      "enum": ["Custom"],
-      "default": "Custom"
+      "default": "CustomDatabase"
     },
     "config": {
       "description": "Additional connection options to build the URL that can be sent to service during the connection.",
@@ -28,5 +36,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["type", "connectorPythonClass"]
+  "required": ["type", "sourcePythonClass"]
 }

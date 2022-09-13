@@ -2,22 +2,30 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/customDashboardConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CustomDashboardConnection",
-  "description": "Custom Dashboard Service connection to build a connector that is not supported by OpenMetadata yet.",
+  "description": "Custom Dashboard Service connection to build a source that is not supported by OpenMetadata yet.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.CustomDashboardConnection",
-  "properties": {
-    "connectorPythonClass": {
-      "title": "Connector Python Class Name",
-      "description": "Connector Python Class Name to instantiated by the ingestion workflow",
+  "definitions": {
+    "customDashboardType": {
+      "title": "Service Type",
+      "description": "Custom dashboard service type",
       "type": "string",
-      "default": "Custom"
-    },
+      "enum": ["CustomDashboard"],
+      "default": "CustomDashboard"
+    }
+  },
+  "properties": {
     "type": {
       "title": "Service Type",
-      "description": "Service Type",
+      "description": "Custom dashboard service type",
+      "$ref": "#/definitions/customDashboardType",
+      "default": "CustomDashboard"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
       "type": "string",
-      "enum": ["Custom"],
-      "default": "Custom"
+      "default": "CustomDashboard"
     },
     "config": {
       "description": "Additional connection options to build the URL that can be sent to service during the connection.",
@@ -28,5 +36,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["connectorPythonClass", "type"]
+  "required": ["sourcePythonClass", "type"]
 }

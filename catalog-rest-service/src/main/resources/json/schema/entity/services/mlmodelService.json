@@ -14,7 +14,7 @@
       "description": "Type of MlModel service",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.catalog.EnumInterface"],
-      "enum": ["Mlflow", "Sklearn"],
+      "enum": ["Mlflow", "Sklearn", "CustomMlModel"],
       "javaEnums": [
         {
           "name": "Mlflow"
@@ -23,7 +23,7 @@
           "name": "Sklearn"
         },
         {
-          "name": "Custom"
+          "name": "CustomMlModel"
         }
       ]
     },

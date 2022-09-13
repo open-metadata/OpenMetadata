@@ -2,22 +2,30 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/customPipelineServiceConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CustomPipelineServiceConnection",
-  "description": "Custom Pipeline Service connection to build a connector that is not supported by OpenMetadata yet.",
+  "description": "Custom Pipeline Service connection to build a source that is not supported by OpenMetadata yet.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.messaging.CustomPipelineServiceConnection",
-  "properties": {
-    "connectorPythonClass": {
-      "title": "Connector Python Class Name",
-      "description": "Connector Python Class Name to instantiated by the ingestion workflow",
+  "definitions": {
+    "customPipelineType": {
+      "title": "Service Type",
+      "description": "Custom pipeline service type",
       "type": "string",
-      "default": "Custom"
-    },
+      "enum": ["CustomPipeline"],
+      "default": "CustomPipeline"
+    }
+  },
+  "properties": {
     "type": {
       "title": "Service Type",
-      "description": "Service Type",
+      "description": "Custom pipeline service type",
+      "$ref": "#/definitions/customPipelineType",
+      "default": "CustomPipeline"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
       "type": "string",
-      "enum": ["Custom"],
-      "default": "Custom"
+      "default": "CustomPipeline"
     },
     "config": {
       "description": "Additional connection options to build the URL that can be sent to service during the connection.",
@@ -28,5 +36,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["connectorPythonClass", "type"]
+  "required": ["sourcePythonClass", "type"]
 }
