@@ -50,7 +50,7 @@ public class TokenUtil {
     refreshToken.setTokenType(TokenType.REFRESH_TOKEN);
     refreshToken.setUserId(userId);
     refreshToken.setRefreshCount(0);
-    refreshToken.setMaxRefreshCount(10);
+    refreshToken.setMaxRefreshCount(3);
     refreshToken.setExpiryDate(Instant.now().plus(30, ChronoUnit.DAYS).toEpochMilli());
     return refreshToken;
   }

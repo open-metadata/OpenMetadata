@@ -169,11 +169,6 @@ public class UserRepository extends EntityRepository<User> {
     return daoCollection.userDAO().checkEmailExists(emailId) > 0;
   }
 
-  public User getByEmail(String emailId) throws IOException {
-    User user = JsonUtils.readValue(daoCollection.userDAO().findUserByEmail(emailId), User.class);
-    return user;
-  }
-
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityRelationshipRecord> ownedEntities =

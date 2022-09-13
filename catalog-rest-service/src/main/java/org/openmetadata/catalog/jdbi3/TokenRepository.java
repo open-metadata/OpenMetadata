@@ -34,7 +34,7 @@ public class TokenRepository {
     try {
       dao.getTokenDAO().delete(token);
     } catch (Exception ex) {
-      LOG.info("Token was not there for the user mayber");
+      LOG.info("Token not present for the user");
     }
   }
 }

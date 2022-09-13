@@ -82,6 +82,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.auth.RegistrationRequest;
+import org.openmetadata.catalog.security.auth.TokenRefreshRequest;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.teams.authn.BasicAuthMechanism;
@@ -684,8 +685,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid PasswordResetLinkRequest request)
       throws IOException {
-
-    User registeredUser = dao.getByEmail(request.getEmail());
+    String userName = request.getEmail().split("@")[0];
+    User registeredUser =
+        dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     // send a mail to the User with the Update
     try {
       sendPasswordResetLink(uriInfo, registeredUser);
@@ -731,6 +733,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     BasicAuthMechanism newAuthForUser = new BasicAuthMechanism().withPassword(newHashedPwd);
 
     storedUser.getAuthenticationMechanism().setConfig(newAuthForUser);
+
+    // delete the token as well , since already used
+    tokenRepository.deleteToken(passwordResetToken.getToken().toString());
+
     // Don't want to return the entity just a 201 or 200 should do
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, storedUser);
 
@@ -830,7 +836,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException {
-    User storedUser = dao.getByEmail(loginRequest.getEmail());
+    String userName = loginRequest.getEmail().split("@")[0];
+    User storedUser =
+        dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
       throw new IllegalArgumentException("User are only allowed to login");
     }
@@ -854,6 +862,39 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       return Response.status(403).entity("Not Authorized!").build();
     }
+  }
+
+  @POST
+  @Path("/refresh")
+  @Operation(
+      operationId = "refreshToken",
+      summary = "Provide access token to User with refresh token",
+      tags = "users",
+      description = "Provide access token to User with refresh token",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response refreshToken(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest)
+      throws IOException {
+    User storedUser = dao.getByName(uriInfo, securityContext.getUserPrincipal().getName(), getFields("*"));
+    if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
+      throw new IllegalArgumentException("User are only allowed to login");
+    }
+    RefreshToken refreshToken = validateAndReturnNewRefresh(storedUser.getId(), refreshRequest);
+    JWTAuthMechanism jwtAuthMechanism =
+        jwtTokenGenerator.generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+    JwtResponse response = new JwtResponse();
+    response.setTokenType("Bearer");
+    response.setAccessToken(jwtAuthMechanism.getJWTToken());
+    response.setRefreshToken(refreshToken.getToken().toString());
+    response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
+    return Response.status(Response.Status.OK).entity(response).build();
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) {
@@ -923,8 +964,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
               emailVerificationToken.getToken()));
     }
 
-    emailVerificationToken.setTokenStatus(EmailVerificationToken.TokenStatus.STATUS_CONFIRMED);
-    tokenRepository.updateToken(emailVerificationToken);
+    // deleting the entry for the token from the Database
+    tokenRepository.deleteToken(emailVerificationToken.getToken().toString());
+
+    // Update the user
     registeredUser.setIsEmailVerified(true);
     dao.createOrUpdate(uriInfo, registeredUser);
   }
@@ -938,8 +981,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     // Update token with new Expiry and Status
     emailVerificationToken.setTokenStatus(EmailVerificationToken.TokenStatus.STATUS_PENDING);
-    emailVerificationToken.setExpiryDate(Instant.now().plus(7, ChronoUnit.DAYS).toEpochMilli());
+    emailVerificationToken.setExpiryDate(Instant.now().plus(24, ChronoUnit.HOURS).toEpochMilli());
 
+    // Update the token details in Database
     tokenRepository.updateToken(emailVerificationToken);
     return registeredUser;
   }
@@ -1022,6 +1066,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (!token.getIsActive()) {
       throw new RuntimeException("Password Reset Token" + token.getToken() + "Token was marked inactive");
     }
+  }
+
+  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest)
+      throws JsonProcessingException {
+    String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
+    RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
+    if (storedRefreshToken == null) {
+      throw new RuntimeException("Invalid Refresh Token");
+    }
+    if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
+      throw new RuntimeException(
+          "Expired token. Please issue a new request : " + storedRefreshToken.getToken().toString());
+    }
+    // TODO: currently allow single login from a place, later multiple login can be added
+    tokenRepository.deleteToken(storedRefreshToken.getToken().toString());
+    // we use rotating refresh token , generate new token
+    RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
+    // save Refresh Token in Database
+    tokenRepository.insertToken(newRefreshToken);
+    return newRefreshToken;
   }
 
   private User getUserFromRegistrationRequest(RegistrationRequest create) {
