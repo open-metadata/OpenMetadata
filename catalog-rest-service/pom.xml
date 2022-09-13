@@ -19,7 +19,6 @@
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.17.3</org.testcontainers.version>
     <awssdk.version>2.17.256</awssdk.version>
-    <freemarker.version>2.3.28</freemarker.version>
   </properties>
 
   <dependencyManagement>
@@ -453,22 +452,22 @@
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-kafka</artifactId>
-      <version>1.8.0</version>
+      <version>${dropwizardkafka.version}</version>
     </dependency>
     <dependency>
       <groupId>at.favre.lib</groupId>
       <artifactId>bcrypt</artifactId>
-      <version>0.9.0</version>
+      <version>${bcrypt.version}</version>
     </dependency>
     <dependency>
       <groupId>org.simplejavamail</groupId>
       <artifactId>simple-java-mail</artifactId>
-      <version>7.5.0</version>
+      <version>${simplejavamail.version}</version>
     </dependency>
     <dependency>
       <groupId>org.passay</groupId>
       <artifactId>passay</artifactId>
-      <version>1.6.2</version>
+      <version>${passay.version}</version>
     </dependency>
     <!--Template engine-->
     <dependency>
