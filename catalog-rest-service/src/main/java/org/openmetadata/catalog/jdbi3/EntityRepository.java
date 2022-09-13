@@ -1026,12 +1026,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void storeOwner(T entity, EntityReference owner) {
-    if (supportsOwner) {
+    if (supportsOwner && owner != null) {
       // Add relationship owner --- owns ---> ownedEntity
-      if (owner != null) {
-        LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), entityType, entity.getId());
-        addRelationship(owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
-      }
+      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), entityType, entity.getId());
+      addRelationship(owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
     }
   }
 

@@ -18,6 +18,7 @@ import IconAzure from '../assets/img/icon-azure.png';
 import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
+import IconNoDataFoundPlaceHolder from '../assets/img/no-data-placeholder.svg';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
@@ -100,6 +101,7 @@ import IconReports from '../assets/svg/ic-reports.svg';
 import IconRestore from '../assets/svg/ic-restore.svg';
 import IconSchema from '../assets/svg/ic-schema.svg';
 import IconSearch from '../assets/svg/ic-search.svg';
+import IconSettingGray from '../assets/svg/ic-settings-gray.svg';
 import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
@@ -209,6 +211,7 @@ export const Icons = {
   REPORTS: 'icon-reports',
   SETTINGS: 'icon-settings',
   SETTINGS_PRIMERY: 'icon-settings-primery',
+  SETTINGS_GRAY: 'icon-settings-gray',
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
@@ -361,6 +364,7 @@ export const Icons = {
   CLOSED_LOCK: 'closed-lock',
   FILTER_PRIMARY: 'filter-primary',
   ADMIN: 'admin',
+  NO_DATA_PLACEHOLDER: 'no-data-placeholder',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -417,6 +421,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SETTINGS_PRIMERY:
       IconComponent = IconSettingPrimery;
+
+      break;
+    case Icons.SETTINGS_GRAY:
+      IconComponent = IconSettingGray;
 
       break;
     case Icons.LOGO:
@@ -1059,6 +1067,11 @@ const SVGIcons: FunctionComponent<Props> = ({
 
     case Icons.ADMIN:
       IconComponent = IconAdmin;
+
+      break;
+
+    case Icons.NO_DATA_PLACEHOLDER:
+      IconComponent = IconNoDataFoundPlaceHolder;
 
       break;
 

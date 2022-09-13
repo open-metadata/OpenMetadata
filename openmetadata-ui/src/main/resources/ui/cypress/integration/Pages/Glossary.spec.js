@@ -51,11 +51,11 @@ const createGlossaryTerm = (term) => {
     .should('be.visible')
     .click();
   cy.wait(200);
-  cy.get('#left-panel').contains(term.name).should('be.visible');
+  cy.get('#left-panelV1').contains(term.name).should('be.visible');
 };
 
 const deleteGlossary = ({ name }) => {
-  cy.get('#left-panel').contains(name).should('be.visible').click();
+  cy.get('#left-panelV1').contains(name).should('be.visible').click();
   cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
 
@@ -85,7 +85,7 @@ const deleteGlossary = ({ name }) => {
 };
 
 const goToAssetsTab = (term) => {
-  cy.get('#left-panel').should('be.visible').contains(term).click();
+  cy.get('#left-panelV1').should('be.visible').contains(term).click();
   cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
   cy.get('[data-testid="Assets"]').should('be.visible').click();
@@ -111,7 +111,7 @@ describe('Glossary page should work properly', () => {
 
   it('Create new glossary flow should work properly', () => {
     // check for no data placeholder
-    cy.contains('glossaries').should('be.visible');
+    cy.contains('Add New Glossary').should('be.visible');
 
     // Redirecting to add glossary page
     cy.get('[data-testid="add-webhook-button"]').should('be.visible').click();
@@ -212,7 +212,7 @@ describe('Glossary page should work properly', () => {
     const uSynonyms = 'pick up,take,obtain';
     const newRef = { name: 'take', url: 'https://take.com' };
     const newDescription = 'Updated description';
-    cy.get('#left-panel').should('be.visible').contains(term).click();
+    cy.get('#left-panelV1').should('be.visible').contains(term).click();
     cy.wait(500);
     cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
 
@@ -300,7 +300,7 @@ describe('Glossary page should work properly', () => {
   it.skip('Releted Terms should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
-    cy.get('#left-panel').should('be.visible').contains(term).click();
+    cy.get('#left-panelV1').should('be.visible').contains(term).click();
     cy.wait(500);
     cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
 
@@ -456,6 +456,6 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
     cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
     cy.wait(500);
-    cy.contains('glossaries').should('be.visible');
+     cy.contains('Add New Glossary').should('be.visible');
   });
 });

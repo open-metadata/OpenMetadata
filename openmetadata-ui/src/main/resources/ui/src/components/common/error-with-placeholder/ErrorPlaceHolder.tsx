@@ -13,11 +13,8 @@
 
 import { Typography } from 'antd';
 import React from 'react';
-import {
-  default as AddPlaceHolder,
-  default as NoDataFoundPlaceHolder,
-} from '../../../assets/img/no-data-placeholder.svg';
-import { Button } from '../../buttons/Button/Button';
+import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
+import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
 
 type Props = {
   children?: React.ReactNode;
@@ -28,6 +25,8 @@ type Props = {
   doc?: string;
   buttons?: React.ReactNode;
   buttonId?: string;
+  description?: React.ReactNode;
+  classes?: string;
 };
 
 const ErrorPlaceHolder = ({
@@ -35,10 +34,9 @@ const ErrorPlaceHolder = ({
   type,
   children,
   heading,
-  buttonLabel,
-  buttonListener,
   buttons,
-  buttonId,
+  description,
+  classes,
 }: Props) => {
   const { Paragraph, Link } = Typography;
 
@@ -49,36 +47,30 @@ const ErrorPlaceHolder = ({
         <img data-testid="no-data-image" src={AddPlaceHolder} width="100" />
       </div>
       <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
-        <Paragraph style={{ marginBottom: '4px' }}>
-          {' '}
-          Adding a new {heading} is easy, just give it a spin!
-        </Paragraph>
-        <Paragraph>
-          {' '}
-          Still need help? Refer to our{' '}
-          <Link href={doc} target="_blank">
-            docs
-          </Link>{' '}
-          for more information.
-        </Paragraph>
+        {description ? (
+          description
+        ) : (
+          <>
+            <Paragraph style={{ marginBottom: '4px' }}>
+              {' '}
+              Adding a new {heading} is easy, just give it a spin!
+            </Paragraph>
+            <Paragraph>
+              {' '}
+              Still need help? Refer to our{' '}
+              <Link href={doc} target="_blank">
+                docs
+              </Link>{' '}
+              for more information.
+            </Paragraph>
+          </>
+        )}
 
-        <div className="tw-text-lg tw-text-center">
-          {buttons ? (
-            buttons
-          ) : (
-            <Button
-              data-testId={buttonId}
-              size="small"
-              theme="primary"
-              onClick={buttonListener}>
-              {buttonLabel}
-            </Button>
-          )}
-        </div>
+        <div className="tw-text-lg tw-text-center">{buttons}</div>
       </div>
     </>
   ) : (
-    <div className="flex-center flex-col tw-mt-24 w-full">
+    <div className={`${classes} flex-center flex-col w-full mt-24`}>
       <div data-testid="error">
         <img
           data-testid="no-data-image"
@@ -86,9 +78,29 @@ const ErrorPlaceHolder = ({
           width="100"
         />
       </div>
-      {children && (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
+      {children ? (
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-5 tw-text-base tw-font-medium">
           {children}
+        </div>
+      ) : (
+        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
+          <Typography.Text className="tw-text-sm">
+            No Data Available
+          </Typography.Text>
+          <Typography.Text className="tw-text-sm">
+            Go ahead and add a new {heading}!
+          </Typography.Text>
+          {doc ? (
+            <Typography.Text className="tw-text-sm">
+              Still need help? Refer to our{' '}
+              <Typography.Link href={doc} target="_blank">
+                docs
+              </Typography.Link>{' '}
+              for more information.
+            </Typography.Text>
+          ) : (
+            ''
+          )}
         </div>
       )}
     </div>

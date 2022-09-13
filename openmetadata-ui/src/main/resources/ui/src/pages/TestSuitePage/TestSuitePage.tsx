@@ -20,11 +20,12 @@ import Ellipses from '../../components/common/Ellipses/Ellipses';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
+import { getEntityName, pluralize } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 const { Text } = Typography;
 
@@ -39,7 +40,7 @@ const TestSuitePage = () => {
       setIsLoading(true);
       const response = await getListTestSuites({
         fields: 'owner,tests',
-        limit: PAGE_SIZE,
+        limit: PAGE_SIZE_MEDIUM,
         before: param && param.before,
         after: param && param.after,
       });
@@ -78,13 +79,17 @@ const TestSuitePage = () => {
         title: 'No. of Test',
         dataIndex: 'noOfTests',
         key: 'noOfTests',
-        render: (_, record) => <Text>{record?.tests?.length} Tests</Text>,
+        render: (_, record) => (
+          <Text>{pluralize(record?.tests?.length || 0, 'Test')}</Text>
+        ),
       },
       {
         title: 'Owner',
         dataIndex: 'owner',
         key: 'owner',
-        render: (_, record) => <span>{record?.owner?.displayName}</span>,
+        render: (_, record) => (
+          <span>{getEntityName(record.owner) || '--'}</span>
+        ),
       },
     ];
 
@@ -116,11 +121,11 @@ const TestSuitePage = () => {
           size="small"
         />
       </Col>
-      {testSuites.length > PAGE_SIZE && (
+      {testSuites.length > PAGE_SIZE_MEDIUM && (
         <Col span={24}>
           <NextPrevious
             currentPage={testSuitePage}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={testSuitePaging}
             pagingHandler={testSuitePagingHandler}
             totalCount={testSuitePaging.total}

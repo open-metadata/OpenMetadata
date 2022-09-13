@@ -21,7 +21,13 @@ import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_CHILDREN_UPDATE;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_UPDATE;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.UNEXPECTED_PARENT;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
@@ -37,7 +43,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
@@ -50,8 +55,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
-  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
-  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
+  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
+  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
   private Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
@@ -153,7 +158,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   protected void preDelete(Team entity) {
     if (entity.getId().equals(organization.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.deleteOrganization());
+      throw new IllegalArgumentException(DELETE_ORGANIZATION);
     }
   }
 
@@ -234,18 +239,18 @@ public class TeamRepository extends EntityRepository<Team> {
     switch (team.getTeamType()) {
       case GROUP:
         if (!children.isEmpty()) {
-          throw new IllegalArgumentException(CatalogExceptionMessage.createGroup());
+          throw new IllegalArgumentException(CREATE_GROUP);
         }
         break;
       case DEPARTMENT:
-        validateChildren(team, children, DEPARTMENT);
+        validateChildren(team, children, DEPARTMENT, GROUP);
         break;
       case DIVISION:
-        validateChildren(team, children, DEPARTMENT, DIVISION);
+        validateChildren(team, children, DEPARTMENT, DIVISION, GROUP);
         break;
       case BUSINESS_UNIT:
       case ORGANIZATION:
-        validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT);
+        validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT, GROUP);
         break;
     }
     populateTeamRefs(childrenRefs, children);
@@ -277,7 +282,7 @@ public class TeamRepository extends EntityRepository<Team> {
         break;
       case ORGANIZATION:
         if (!parentRefs.isEmpty()) {
-          throw new IllegalArgumentException(CatalogExceptionMessage.unexpectedParent());
+          throw new IllegalArgumentException(UNEXPECTED_PARENT);
         }
     }
     populateTeamRefs(parentRefs, parents);
@@ -363,8 +368,19 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      if (original.getTeamType() != updated.getTeamType()) {
+        // A team of type 'Group' cannot be updated
+        if (GROUP.equals(original.getTeamType())) {
+          throw new IllegalArgumentException(INVALID_GROUP_TEAM_UPDATE);
+        }
+        // A team containing children cannot be updated to Group
+        if (original.getChildren().size() > 0 && GROUP.equals(updated.getTeamType())) {
+          throw new IllegalArgumentException(INVALID_GROUP_TEAM_CHILDREN_UPDATE);
+        }
+      }
       recordChange("profile", original.getProfile(), updated.getProfile());
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
+      recordChange("teamType", original.getTeamType(), updated.getTeamType());
       updateUsers(original, updated);
       updateDefaultRoles(original, updated);
       updateParents(original, updated);

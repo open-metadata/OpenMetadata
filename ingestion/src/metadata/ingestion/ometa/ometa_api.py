@@ -449,6 +449,7 @@ class OpenMetadata(
             .replace("glossaryterm", "glossaryTerm")
             .replace("tagcategory", "tagCategory")
             .replace("testsuite", "testSuite")
+            .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
         )
 
@@ -475,7 +476,6 @@ class OpenMetadata(
 
         We PUT to the endpoint and return the Entity generated result
         """
-
         entity = data.__class__
         is_create = "create" in data.__class__.__name__.lower()
 
@@ -486,7 +486,6 @@ class OpenMetadata(
             raise InvalidEntityException(
                 f"PUT operations need a CrateEntity, not {entity}"
             )
-
         resp = self.client.put(
             self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)
         )

@@ -243,6 +243,7 @@ declare module 'Models' {
     displayName: string;
     type: string;
     id: string;
+    teamType: string;
   };
 
   export type FormattedGlossaryTermData = {
@@ -588,6 +589,8 @@ declare module 'Models' {
     data: T;
     paging: Paging;
   }
+
+  export type Status = 'initial' | 'waiting' | 'success';
 
   // ES interface end
 

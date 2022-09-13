@@ -26,7 +26,9 @@ import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/Modal
 interface CustomPropertyTableProp {
   hasAccess: boolean;
   customProperties: CustomProperty[];
-  updateEntityType: (customProperties: Type['customProperties']) => void;
+  updateEntityType: (
+    customProperties: Type['customProperties']
+  ) => Promise<void>;
 }
 
 type Operation = 'delete' | 'update' | 'no-operation';
@@ -55,7 +57,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     resetSelectedProperty();
   };
 
-  const handlePropertyUpdate = (updatedDescription: string) => {
+  const handlePropertyUpdate = async (updatedDescription: string) => {
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
         return { ...property, description: updatedDescription };
@@ -63,7 +65,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         return property;
       }
     });
-    updateEntityType(updatedProperties);
+    await updateEntityType(updatedProperties);
     resetSelectedProperty();
   };
 

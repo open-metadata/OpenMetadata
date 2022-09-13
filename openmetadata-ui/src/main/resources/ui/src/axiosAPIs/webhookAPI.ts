@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
-import { CreateWebhook } from '../generated/api/events/createWebhook';
+import {
+  CreateWebhook,
+  WebhookType,
+} from '../generated/api/events/createWebhook';
 import { Webhook } from '../generated/entity/events/webhook';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getWebhooks = async (paging?: string, arrQueryFields?: string) => {
+export const getWebhooks = async (
+  paging?: string,
+  arrQueryFields?: string,
+  params?: { limit: number; webhookType?: WebhookType }
+) => {
   const url = getURLWithQueryFields(
     '/webhook',
     arrQueryFields,
@@ -25,7 +32,10 @@ export const getWebhooks = async (paging?: string, arrQueryFields?: string) => {
   );
 
   const response = await APIClient.get<{ data: Webhook[]; paging: Paging }>(
-    url
+    url,
+    {
+      params,
+    }
   );
 
   return response.data;

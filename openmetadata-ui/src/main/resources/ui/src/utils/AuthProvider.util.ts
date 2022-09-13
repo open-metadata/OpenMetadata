@@ -18,14 +18,18 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
+import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import { ROUTES } from '../constants/constants';
+import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
+
+const DATE_NOW = Date.now();
+const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 100;
 
 export const getOidcExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 24 * 1000);
@@ -184,7 +188,8 @@ export const isProtectedRoute = (pathname: string) => {
   return (
     pathname !== ROUTES.SIGNUP &&
     pathname !== ROUTES.SIGNIN &&
-    pathname !== ROUTES.CALLBACK
+    pathname !== ROUTES.CALLBACK &&
+    pathname !== ROUTES.SILENT_CALLBACK
   );
 };
 
@@ -194,4 +199,39 @@ export const isTourRoute = (pathname: string) => {
 
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
+};
+
+/**
+ * @exp expiry of token
+ * @isExpired wether token is already expired or not
+ * @diff Difference between token expiry & current time in ms
+ * @timeoutExpiry time in ms for try to silent sign-in
+ * @returns exp, isExpired, diff, timeoutExpiry
+ */
+export const extractDetailsFromToken = () => {
+  const token = localStorage.getItem(oidcTokenKey) || '';
+
+  try {
+    const { exp } = jwtDecode<JwtPayload>(token);
+
+    const diff = exp && exp * 1000 - DATE_NOW;
+    const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
+
+    return {
+      exp,
+      isExpired: exp && DATE_NOW >= exp * 1000,
+      diff,
+      timeoutExpiry,
+    };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error parsing id token.', error);
+  }
+
+  return {
+    exp: 0,
+    isExpired: true,
+    diff: 0,
+    timeoutExpiry: 0,
+  };
 };

@@ -43,6 +43,20 @@ jest.mock('../../axiosAPIs/userAPI', () => ({
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+
 describe('Test BotsPage Component', () => {
   it('Should render all child elements', async () => {
     (getUserByName as jest.Mock).mockImplementationOnce(() => {

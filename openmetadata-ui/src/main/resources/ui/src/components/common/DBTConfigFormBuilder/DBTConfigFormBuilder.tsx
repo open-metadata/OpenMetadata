@@ -76,11 +76,15 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtCatalogFilePath={dbtConfig.dbtCatalogFilePath}
         dbtManifestFilePath={dbtConfig.dbtManifestFilePath}
+        dbtRunResultsFilePath={dbtConfig.dbtRunResultsFilePath}
         handleCatalogFilePathChange={(val) => {
           updateDbtConfig('dbtCatalogFilePath', val);
         }}
         handleManifestFilePathChange={(val) => {
           updateDbtConfig('dbtManifestFilePath', val);
+        }}
+        handleRunResultsFilePathChange={(val) => {
+          updateDbtConfig('dbtRunResultsFilePath', val);
         }}
         okText={okText}
         onCancel={onCancel}
@@ -95,11 +99,15 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtCatalogHttpPath={dbtConfig.dbtCatalogHttpPath}
         dbtManifestHttpPath={dbtConfig.dbtManifestHttpPath}
+        dbtRunResultsHttpPath={dbtConfig.dbtRunResultsHttpPath}
         handleCatalogHttpPathChange={(val) => {
           updateDbtConfig('dbtCatalogHttpPath', val);
         }}
         handleManifestHttpPathChange={(val) => {
           updateDbtConfig('dbtManifestHttpPath', val);
+        }}
+        handleRunResultsHttpPathChange={(val) => {
+          updateDbtConfig('dbtRunResultsHttpPath', val);
         }}
         okText={okText}
         onCancel={onCancel}

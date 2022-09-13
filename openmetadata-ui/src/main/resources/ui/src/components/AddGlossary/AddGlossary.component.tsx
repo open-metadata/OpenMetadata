@@ -116,8 +116,8 @@ const AddGlossary = ({
   const handleSave = () => {
     if (validateForm()) {
       const data: CreateGlossary = {
-        name,
-        displayName: name,
+        name: name.trim(),
+        displayName: name.trim(),
         description: getDescription(),
         reviewers: reviewer.map((d) => ({ id: d.id, type: d.type })),
         owner: {

@@ -369,7 +369,7 @@ export const addNewTagToEntity = (entity, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
+  cy.get(':nth-child(1) > :nth-child(4) [data-testid="tag-container"]')
     .contains('Tags')
     .should('be.visible')
     .click();
@@ -384,7 +384,7 @@ export const addNewTagToEntity = (entity, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
+  cy.get(':nth-child(1) > :nth-child(4) [data-testid="tag-container"]')
     .scrollIntoView()
     .contains(term)
     .should('exist');
@@ -564,6 +564,8 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   //Check if the property got added
+  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as("customProperties");
+  cy.wait("@customProperties");
   cy.get('[data-testid="data-row"]').should('contain', propertyName);
 
   //Navigating to home page
@@ -683,5 +685,37 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
   //Checking if property got deleted successfully
-  cy.get('[data-testid="table-body"]').should('not.contain', propertyName);
+  cy.get('[data-testid="add-field-button"]').should('be.visible');
 };
+
+export const updateOwner = () => {
+  cy.get('[data-testid="avatar"]').should('be.visible').click();
+  cy.get('[data-testid="user-name"]')
+    .should('exist')
+    .invoke('text')
+    .then((text) => {
+      cy.get('[data-testid="hiden-layer"]').should('exist').click();
+
+      //Clicking on edit owner button
+      cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+
+      cy.wait(1000);
+
+      //Clicking on users tab
+      cy.get('button[data-testid="dropdown-tab"]')
+        .should('exist')
+        .should('be.visible')
+        .contains('Users')
+        .click();
+
+      cy.get('[data-testid="list-item"]').first()
+        .should('contain', text.trim())
+        .click();
+
+      //Asserting the added name
+      cy.get('[data-testid="owner-link"]').should(
+        'contain',
+        text.trim()
+      );
+    });
+}

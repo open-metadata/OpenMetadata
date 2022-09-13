@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
+
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -51,7 +54,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
@@ -145,6 +147,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("parentTeam")
           String parentTeam,
       @Parameter(
+              description = "Filter the results by whether the team can be joined by any user or not",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("isJoinable")
+          Boolean isJoinable,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
@@ -152,6 +159,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("parentTeam", parentTeam);
+    if (isJoinable != null) {
+      filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -362,10 +372,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   private Team getTeam(CreateTeam ct, String user) throws IOException {
     if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.createOrganization());
+      throw new IllegalArgumentException(CREATE_ORGANIZATION);
     }
     if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.createGroup());
+      throw new IllegalArgumentException(CREATE_GROUP);
     }
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())

@@ -27,14 +27,21 @@ import {
   patchTeamDetail,
 } from '../../axiosAPIs/teamsAPI';
 import { getUsers, updateUserDetail } from '../../axiosAPIs/userAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
 import Teams from '../../components/TeamDetails/Teams';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -45,6 +52,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
@@ -52,6 +60,7 @@ import AddUsersModalV1 from './AddUsersModalV1';
 
 const TeamsPage = () => {
   const history = useHistory();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const { fqn } = useParams<{ [key: string]: string }>();
@@ -68,6 +77,24 @@ const TeamsPage = () => {
   const [userSearchValue, setUserSearchValue] = useState<string>('');
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
+
+  const [entityPermissions, setEntityPermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchPermissions = async (entityFqn: string) => {
+    setIsPageLoading(true);
+    try {
+      const perms = await getEntityPermissionByFqn(
+        ResourceEntity.TEAM,
+        entityFqn
+      );
+      setEntityPermissions(perms);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsPageLoading(false);
+    }
+  };
 
   const descriptionHandler = (value: boolean) => {
     setIsDescriptionEditable(value);
@@ -169,7 +196,7 @@ const TeamsPage = () => {
     paging = {} as { [key: string]: string }
   ) => {
     setIsDataLoading(true);
-    getUsers('teams,roles', PAGE_SIZE, { team, ...paging })
+    getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -188,7 +215,15 @@ const TeamsPage = () => {
     try {
       const data = await getTeamByName(
         name,
-        ['users', 'owns', 'defaultRoles', 'policies', 'owner', 'parents'],
+        [
+          'users',
+          'owns',
+          'defaultRoles',
+          'policies',
+          'owner',
+          'parents',
+          'childrenCount',
+        ],
         'all'
       );
 
@@ -212,7 +247,7 @@ const TeamsPage = () => {
     searchData(
       text,
       currentPage,
-      PAGE_SIZE,
+      PAGE_SIZE_MEDIUM,
       `(teams.id:${selectedTeam?.id})`,
       '',
       '',
@@ -385,6 +420,10 @@ const TeamsPage = () => {
     });
   };
 
+  const handleCurrentUserPage = (value?: number) => {
+    setCurrentUserPage(value ?? INITIAL_PAGING_VALUE);
+  };
+
   const handleUsersSearchAction = (text: string) => {
     setUserSearchValue(text);
     setCurrentUserPage(INITIAL_PAGING_VALUE);
@@ -395,27 +434,22 @@ const TeamsPage = () => {
     }
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedTeam.description !== updatedHTML) {
       const updatedTeam = { ...selectedTeam, description: updatedHTML };
       const jsonPatch = compare(selectedTeam, updatedTeam);
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            fetchTeamByFqn(res.name);
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['update-team-error']
-          );
-        })
-        .finally(() => {
-          descriptionHandler(false);
-        });
+      try {
+        const response = await patchTeamDetail(selectedTeam.id, jsonPatch);
+        if (response) {
+          fetchTeamByFqn(response.name);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        descriptionHandler(false);
+      }
     } else {
       descriptionHandler(false);
     }
@@ -430,10 +464,16 @@ const TeamsPage = () => {
   };
 
   useEffect(() => {
-    if (fqn) {
-      fetchTeamByFqn(fqn);
+    if (entityPermissions.ViewAll) {
+      if (fqn) {
+        fetchTeamByFqn(fqn);
+      }
+      fetchAllTeams(false, fqn);
     }
-    fetchAllTeams(false, fqn);
+  }, [entityPermissions, fqn]);
+
+  useEffect(() => {
+    fetchPermissions(fqn);
   }, [fqn]);
 
   if (isPageLoading) {
@@ -442,54 +482,61 @@ const TeamsPage = () => {
 
   return (
     <>
-      {isUndefined(fqn) ? (
-        <Teams
-          data={allTeam}
-          showDeletedTeam={showDeletedTeam}
-          onAddTeamClick={handleAddTeam}
-          onShowDeletedTeamChange={handleShowDeletedTeam}
-          onTeamExpand={fetchAllTeams}
-        />
+      {entityPermissions.ViewAll ? (
+        <>
+          {isUndefined(fqn) ? (
+            <Teams
+              data={allTeam}
+              showDeletedTeam={showDeletedTeam}
+              onAddTeamClick={handleAddTeam}
+              onShowDeletedTeamChange={handleShowDeletedTeam}
+              onTeamExpand={fetchAllTeams}
+            />
+          ) : (
+            <TeamDetailsV1
+              afterDeleteAction={afterDeleteAction}
+              childTeams={allTeam}
+              currentTeam={selectedTeam}
+              currentTeamUserPage={currentUserPage}
+              currentTeamUsers={users}
+              descriptionHandler={descriptionHandler}
+              handleAddTeam={handleAddTeam}
+              handleAddUser={handleAddUsers}
+              handleCurrentUserPage={handleCurrentUserPage}
+              handleJoinTeamClick={handleJoinTeamClick}
+              handleLeaveTeamClick={handleLeaveTeamClick}
+              handleTeamUsersSearchAction={handleUsersSearchAction}
+              hasAccess={isAuthDisabled || isAdminUser}
+              isDescriptionEditable={isDescriptionEditable}
+              isTeamMemberLoading={isDataLoading}
+              removeUserFromTeam={removeUserFromTeam}
+              teamUserPagin={userPaging}
+              teamUserPaginHandler={userPagingHandler}
+              teamUsersSearchText={userSearchValue}
+              updateTeamHandler={updateTeamHandler}
+              onDescriptionUpdate={onDescriptionUpdate}
+              onTeamExpand={fetchAllTeams}
+            />
+          )}
+
+          {isAddingUsers && (
+            <AddUsersModalV1
+              header={`Adding new users to ${getEntityName(selectedTeam)}`}
+              list={selectedTeam.users || []}
+              onCancel={() => setIsAddingUsers(false)}
+              onSave={(data) => addUsersToTeam(data)}
+            />
+          )}
+
+          <AddTeamForm
+            visible={isAddingTeam}
+            onCancel={() => setIsAddingTeam(false)}
+            onSave={(data) => createNewTeam(data as Team)}
+          />
+        </>
       ) : (
-        <TeamDetailsV1
-          afterDeleteAction={afterDeleteAction}
-          childTeams={allTeam}
-          currentTeam={selectedTeam}
-          currentTeamUserPage={currentUserPage}
-          currentTeamUsers={users}
-          descriptionHandler={descriptionHandler}
-          handleAddTeam={handleAddTeam}
-          handleAddUser={handleAddUsers}
-          handleJoinTeamClick={handleJoinTeamClick}
-          handleLeaveTeamClick={handleLeaveTeamClick}
-          handleTeamUsersSearchAction={handleUsersSearchAction}
-          hasAccess={isAuthDisabled || isAdminUser}
-          isDescriptionEditable={isDescriptionEditable}
-          isTeamMemberLoading={isDataLoading}
-          removeUserFromTeam={removeUserFromTeam}
-          teamUserPagin={userPaging}
-          teamUserPaginHandler={userPagingHandler}
-          teamUsersSearchText={userSearchValue}
-          updateTeamHandler={updateTeamHandler}
-          onDescriptionUpdate={onDescriptionUpdate}
-          onTeamExpand={fetchAllTeams}
-        />
+        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
       )}
-
-      {isAddingUsers && (
-        <AddUsersModalV1
-          header={`Adding new users to ${getEntityName(selectedTeam)}`}
-          list={selectedTeam.users || []}
-          onCancel={() => setIsAddingUsers(false)}
-          onSave={(data) => addUsersToTeam(data)}
-        />
-      )}
-
-      <AddTeamForm
-        visible={isAddingTeam}
-        onCancel={() => setIsAddingTeam(false)}
-        onSave={(data) => createNewTeam(data as Team)}
-      />
     </>
   );
 };

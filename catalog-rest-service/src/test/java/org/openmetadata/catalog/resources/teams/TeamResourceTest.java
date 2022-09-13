@@ -26,6 +26,9 @@ import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -124,13 +127,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team org = getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
 
     // Organization can't be deleted
-    assertResponse(
-        () -> deleteEntity(org.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.deleteOrganization());
+    assertResponse(() -> deleteEntity(org.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, DELETE_ORGANIZATION);
 
     // Organization can't be created
     CreateTeam create = createRequest("org_test").withTeamType(ORGANIZATION);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.createOrganization());
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, CREATE_ORGANIZATION);
 
     // Organization by default has DataConsumer Role. Ensure Role lists organization as one of the teams
     RoleResourceTest roleResourceTest = new RoleResourceTest();
@@ -219,15 +220,29 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Test
   void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create table without any attributes
+    // Create team without any attributes
     Team team = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    // Patching as a non-admin should is disallowed
+    // Patching as a non-admin should be disallowed
     String originalJson = JsonUtils.pojoToJson(team);
     team.setDisplayName("newDisplayName");
     assertResponse(
         () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS),
         FORBIDDEN,
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
+  }
+
+  @Test
+  void patch_teamType_as_user_with_UpdateTeam_permission(TestInfo test) throws IOException {
+    Team team = createEntity(createRequest(test).withTeamType(BUSINESS_UNIT), ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(team);
+    team.setTeamType(DIVISION);
+
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    fieldUpdated(change, "teamType", BUSINESS_UNIT.toString(), DIVISION.toString());
+    patchEntityAndCheck(team, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    team = getEntity(team.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(DIVISION, team.getTeamType());
   }
 
   @Test
@@ -417,9 +432,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         CatalogExceptionMessage.invalidChild("invalidDivision", DIVISION, bu11));
     // Group can't have other teams as children. Only users are allowed under the team
     assertResponse(
-        () -> createWithChildren("invalidGroup", GROUP, bu11.getEntityReference()),
-        BAD_REQUEST,
-        CatalogExceptionMessage.createGroup());
+        () -> createWithChildren("invalidGroup", GROUP, bu11.getEntityReference()), BAD_REQUEST, CREATE_GROUP);
   }
 
   @Test
@@ -623,7 +636,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public CreateTeam createRequest(String name) {
-    return new CreateTeam().withName(name).withProfile(PROFILE);
+    return new CreateTeam().withName(name).withProfile(PROFILE).withTeamType(GROUP);
   }
 
   @Override

@@ -18,7 +18,9 @@ import classNames from 'classnames';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import { getUserPath } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -47,11 +49,12 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
+import './GlossaryDetails.style.less';
 
 type props = {
   permissions: OperationPermission;
   glossary: Glossary;
-  updateGlossary: (value: Glossary) => void;
+  updateGlossary: (value: Glossary) => Promise<void>;
   handleUserRedirection?: (name: string) => void;
 };
 
@@ -203,13 +206,13 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
       });
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (glossary.description !== updatedHTML) {
       const updatedTableDetails = {
         ...glossary,
         description: updatedHTML,
       };
-      updateGlossary(updatedTableDetails);
+      await updateGlossary(updatedTableDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -240,7 +243,10 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     const owner = listOwners.find((item) => item.value === value);
 
     if (owner) {
-      const newOwner = prepareOwner({ type: owner.type, id: owner.value });
+      const newOwner = prepareOwner({
+        type: owner.type,
+        id: owner.value || '',
+      });
       if (newOwner) {
         const updatedData = {
           ...glossary,
@@ -278,12 +284,18 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         placement="topRight"
         title={permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
         <ButtonAntd
-          className="tw-p-0"
+          className="tw-p-0 flex-center"
           data-testid="add-new-reviewer"
           disabled={!permissions.EditAll}
+          size="small"
           type="text"
           onClick={() => setShowRevieweModal(true)}>
-          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+          <SVGIcons
+            alt="edit"
+            icon={Icons.IC_EDIT_PRIMARY}
+            title="Edit"
+            width="16px"
+          />
         </ButtonAntd>
       </Tooltip>
     );
@@ -300,13 +312,18 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
               : NO_PERMISSION_FOR_ACTION
           }>
           <ButtonAntd
-            className="tw-p-0"
+            className="tw-p-0 flex-center"
             data-testid="owner-dropdown"
             disabled={!(permissions.EditOwner || permissions.EditAll)}
             size="small"
             type="text"
             onClick={handleSelectOwnerDropdown}>
-            <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+            <SVGIcons
+              alt="edit"
+              icon={Icons.IC_EDIT_PRIMARY}
+              title="Edit"
+              width="16px"
+            />
           </ButtonAntd>
         </Tooltip>
         {listVisible && (
@@ -392,26 +409,24 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
-      <div className="tw-flex tw-flex-wrap tw-group tw-mb-5" data-testid="tags">
-        {!isTagEditable && (
+      <div
+        className="tw-flex tw-items-center tw-flex-wrap tw-group tw-mb-5"
+        data-testid="tags">
+        {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
           <>
-            {glossary?.tags && glossary.tags.length > 0 && (
-              <>
-                <SVGIcons
-                  alt="icon-tag"
-                  className="tw-mx-1"
-                  icon="icon-tag-grey"
-                  width="16"
-                />
-                <TagsViewer tags={glossary.tags} />
-              </>
-            )}
+            <SVGIcons
+              alt="icon-tag"
+              className="tw-mx-1"
+              icon="icon-tag-grey"
+              width="16"
+            />
+            <TagsViewer tags={glossary.tags} />
           </>
         )}
 
         <div className="tw-inline-block" onClick={handleTagContainerClick}>
           <TagsContainer
-            buttonContainerClass="tw--mt-0"
+            buttonContainerClass="tw-mt-0"
             containerClass="tw-flex tw-items-center tw-gap-2"
             dropDownHorzPosRight={false}
             editable={isTagEditable}
@@ -429,7 +444,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             }}>
             {glossary?.tags && glossary?.tags.length ? (
               <button
-                className=" tw-ml-1 focus:tw-outline-none"
+                className=" tw-ml-1 focus:tw-outline-none flex-center"
                 disabled={!(permissions.EditTags || permissions.EditAll)}>
                 <SVGIcons
                   alt="edit"
@@ -474,7 +489,10 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           </div>
         </div>
         <div className="tw-w-3/12 tw-px-2">
-          <Card action={ownerAction()} heading="Owner">
+          <Card
+            action={ownerAction()}
+            className="shadow-custom"
+            heading="Owner">
             <div className="tw-flex tw-items-center">
               {glossary.owner && getEntityName(glossary.owner) && (
                 <div className="tw-inline-block tw-mr-2">
@@ -488,7 +506,9 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
                 </div>
               )}
               {glossary.owner && getEntityName(glossary.owner) ? (
-                <span>{getEntityName(glossary.owner)}</span>
+                <Link to={getUserPath(glossary.owner.name ?? '')}>
+                  {getEntityName(glossary.owner)}
+                </Link>
               ) : (
                 <span className="tw-text-grey-muted">No owner</span>
               )}
@@ -496,7 +516,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           </Card>
           <Card
             action={AddReviewerButton()}
-            className="tw-mt-4"
+            className="tw-mt-4 shadow-custom"
             heading="Reviewer">
             <div>{getReviewerTabData()}</div>
           </Card>

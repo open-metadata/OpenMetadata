@@ -98,6 +98,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             style={{
               ...leftPanelAntCardStyle,
               marginTop: '20px',
+              paddingTop: '8px',
               border: `1px solid ${ANNOUNCEMENT_BORDER}`,
               background: `${ANNOUNCEMENT_BG}`,
             }}>

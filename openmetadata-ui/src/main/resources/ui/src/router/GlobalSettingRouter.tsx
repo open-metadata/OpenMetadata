@@ -134,14 +134,9 @@ const GlobalSettingRouter = () => {
         )}
       />
 
-      <AdminProtectedRoute
+      <Route
         exact
         component={RolesDetailPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.ROLE,
-          permissions
-        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES,
@@ -165,14 +160,9 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.POLICIES
         )}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={PoliciesDetailPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.POLICY,
-          permissions
-        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
@@ -234,8 +224,12 @@ const GlobalSettingRouter = () => {
         exact
         // Currently we don't have any permission related to ActivityFeed settings page
         // update below once we have it
-        hasPermission
         component={ActivityFeedSettingsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.FEED,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.COLLABORATION,
           GlobalSettingOptions.ACTIVITY_FEED

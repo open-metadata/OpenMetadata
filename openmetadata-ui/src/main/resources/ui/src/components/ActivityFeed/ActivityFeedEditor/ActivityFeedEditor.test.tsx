@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, render } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedEditor from './ActivityFeedEditor';
 
@@ -28,16 +28,20 @@ jest.mock('../../../utils/FeedUtils', () => ({
 }));
 
 jest.mock('../../FeedEditor/FeedEditor', () => ({
-  FeedEditor: jest.fn().mockImplementation(({ onChangeHandler, onSave }) => {
-    return (
-      <div
-        data-testid="feed-editor"
-        onChange={onChangeHandler}
-        onClick={onSave}>
-        FeedEditor
-      </div>
-    );
-  }),
+  __esModule: true,
+  FeedEditor: forwardRef(
+    jest.fn().mockImplementation(({ onChangeHandler, onSave }, ref) => {
+      return (
+        <div
+          data-testid="feed-editor"
+          ref={ref}
+          onChange={onChangeHandler}
+          onClick={onSave}>
+          FeedEditor
+        </div>
+      );
+    })
+  ),
 }));
 
 jest.mock('./SendButton', () => ({

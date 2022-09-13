@@ -84,6 +84,9 @@ describe('Test MyDataHeader Component', () => {
     expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels/');
     expect(service).toHaveAttribute('href', '/settings/services/databases');
     expect(user).toHaveAttribute('href', '/settings/members/users');
-    expect(terms).toHaveAttribute('href', '/settings/members/teams');
+    expect(terms).toHaveAttribute(
+      'href',
+      '/settings/members/teams/Organization'
+    );
   });
 });

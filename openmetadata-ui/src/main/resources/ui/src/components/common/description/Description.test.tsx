@@ -85,12 +85,6 @@ jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
     );
 });
 
-jest.mock('../non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="edit-description">NonAdminAction</p>);
-});
-
 describe('Test Description Component', () => {
   it('Check if it has all child elements', async () => {
     const { container } = render(

@@ -52,6 +52,7 @@ const TestSuiteDetails = ({
         </Tooltip>
         <DeleteWidgetModal
           allowSoftDelete
+          isRecursiveDelete
           entityId={testSuite?.id}
           entityName={testSuite?.fullyQualifiedName as string}
           entityType="testSuite"

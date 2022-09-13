@@ -26,6 +26,7 @@ from metadata.orm_profiler.orm.converter import ometa_to_orm
 
 
 @patch("metadata.orm_profiler.orm.converter.get_orm_schema", return_value="schema")
+@patch("metadata.orm_profiler.orm.converter.get_orm_database", return_value="database")
 @mark.parametrize(
     "column_definition, table_name",
     [
@@ -51,7 +52,9 @@ from metadata.orm_profiler.orm.converter import ometa_to_orm
         ),
     ],
 )
-def test_snowflake_case_sensitive_orm(mock, column_definition, table_name):
+def test_snowflake_case_sensitive_orm(
+    mock_schema, mock_database, column_definition, table_name
+):
     """Test that snowflake case sensitive orm table
     are enforced correctly
     """
@@ -83,7 +86,8 @@ def test_snowflake_case_sensitive_orm(mock, column_definition, table_name):
 
 
 @patch("metadata.orm_profiler.orm.converter.get_orm_schema", return_value="schema")
-def test_metadata_column(mock):
+@patch("metadata.orm_profiler.orm.converter.get_orm_database", return_value="database")
+def test_metadata_column(mock_schema, mock_database):
     """Test that snowflake case sensitive orm table
     are enforced correctly
     """

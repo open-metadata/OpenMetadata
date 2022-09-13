@@ -21,7 +21,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta, Session
 
@@ -75,6 +75,7 @@ class SQAInterface(InterfaceProtocol):
     def __init__(
         self,
         service_connection_config,
+        sqa_metadata_obj: Optional[MetaData] = None,
         metadata_config: Optional[OpenMetadataConnection] = None,
         thread_count: Optional[int] = 5,
         table_entity: Optional[Table] = None,
@@ -89,7 +90,7 @@ class SQAInterface(InterfaceProtocol):
         self._create_ometa_obj(metadata_config)
 
         # Allows SQA Interface to be used without OM server config
-        self.table = table or self._convert_table_to_orm_object()
+        self.table = table or self._convert_table_to_orm_object(sqa_metadata_obj)
         self.service_connection_config = service_connection_config
 
         self.session_factory = self._session_factory(service_connection_config)
@@ -228,9 +229,17 @@ class SQAInterface(InterfaceProtocol):
             )
         return thread_local.runner
 
-    def _convert_table_to_orm_object(self) -> DeclarativeMeta:
-        """Given a table entity return a SQA ORM object"""
-        return ometa_to_orm(self.table_entity, self._metadata)
+    def _convert_table_to_orm_object(
+        self, sqa_metadata_obj: Optional[MetaData]
+    ) -> DeclarativeMeta:
+        """Given a table entity return a SQA ORM object
+
+        Args:
+            sqa_metadata_obj: sqa metadata registry
+        Returns:
+            DeclarativeMeta
+        """
+        return ometa_to_orm(self.table_entity, self._metadata, sqa_metadata_obj)
 
     def get_columns(self) -> Column:
         """get columns from an orm object"""
@@ -251,31 +260,31 @@ class SQAInterface(InterfaceProtocol):
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
         Session = self.session_factory
-        session = Session()
-        self.set_session_tag(session)
-        sampler = self._create_thread_safe_sampler(
-            session,
-            table,
-        )
-        sample = sampler.random_sample()
-        runner = self._create_thread_safe_runner(
-            session,
-            table,
-            sample,
-        )
+        with Session() as session:
+            self.set_session_tag(session)
+            sampler = self._create_thread_safe_sampler(
+                session,
+                table,
+            )
+            sample = sampler.random_sample()
+            runner = self._create_thread_safe_runner(
+                session,
+                table,
+                sample,
+            )
 
-        row = compute_metrics_registry.registry[metric_type.value](
-            metrics,
-            runner=runner,
-            session=session,
-            column=column,
-            sample=sample,
-        )
+            row = compute_metrics_registry.registry[metric_type.value](
+                metrics,
+                runner=runner,
+                session=session,
+                column=column,
+                sample=sample,
+            )
 
-        if column is not None:
-            column = column.name
+            if column is not None:
+                column = column.name
 
-        return row, column
+            return row, column
 
     def get_all_metrics(
         self,

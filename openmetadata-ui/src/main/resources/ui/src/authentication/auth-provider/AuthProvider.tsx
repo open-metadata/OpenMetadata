@@ -17,7 +17,6 @@ import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -51,6 +50,7 @@ import { AuthTypes } from '../../enums/signin.enum';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
+  extractDetailsFromToken,
   getAuthConfig,
   getNameFromEmail,
   getUrlPathnameExpiry,
@@ -109,10 +109,11 @@ export const AuthProvider = ({
     authenticatorRef.current?.invokeLogin();
   };
 
-  const onLogoutHandler = () => {
+  const onLogoutHandler = useCallback(() => {
+    clearTimeout(timeoutId);
     authenticatorRef.current?.invokeLogout();
     setLoading(false);
-  };
+  }, [timeoutId]);
 
   const onRenewIdTokenHandler = () => {
     return authenticatorRef.current?.renewIdToken();
@@ -264,21 +265,25 @@ export const AuthProvider = ({
    * It will try for max 3 times if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = () => {
-    // Try to renew token
-    silentSignInRetries < 3
-      ? renewIdToken()
-          .then(() => {
-            silentSignInRetries = 0;
-            // eslint-disable-next-line @typescript-eslint/no-use-before-define
-            startTokenExpiryTimer();
-          })
-          .catch((err) => {
-            // eslint-disable-next-line no-console
-            console.error('Error while attempting for silent signIn. ', err);
-            silentSignInRetries += 1;
-            trySilentSignIn();
-          })
-      : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
+    const pathName = location.pathname;
+    // Do not try silent sign in for SignIn or SignUp route
+    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
+      // Try to renew token
+      silentSignInRetries < 3
+        ? renewIdToken()
+            .then(() => {
+              silentSignInRetries = 0;
+              // eslint-disable-next-line @typescript-eslint/no-use-before-define
+              startTokenExpiryTimer();
+            })
+            .catch((err) => {
+              // eslint-disable-next-line no-console
+              console.error('Error while attempting for silent signIn. ', err);
+              silentSignInRetries += 1;
+              trySilentSignIn();
+            })
+        : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
+    }
   };
 
   /**
@@ -288,31 +293,21 @@ export const AuthProvider = ({
    * This method will be call upon successful signIn
    */
   const startTokenExpiryTimer = () => {
-    const token: string | void = localStorage.getItem(oidcTokenKey) || '';
-    // If token is not present do nothing
-    if (token) {
-      try {
-        // Extract expiry
-        const { exp } = jwtDecode<JwtPayload>(token);
-        if (exp && exp * 1000 > Date.now()) {
-          // Check if token isn't expired yet
-          const diff = exp * 1000 - Date.now(); /* Convert to MS */
+    // Extract expiry
+    const { exp, isExpired, diff, timeoutExpiry } = extractDetailsFromToken();
 
-          // Have 50s buffer before start trying for silent signIn
-          // If token is about to expire then start silentSignIn
-          // else just set timer to try for silentSignIn before token expires
-          if (diff > 50000) {
-            const timerId = setTimeout(() => {
-              trySilentSignIn();
-            }, diff);
-            setTimeoutId(Number(timerId));
-          } else {
-            trySilentSignIn();
-          }
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Error parsing id token.', error);
+    if (!isExpired && exp && diff && timeoutExpiry) {
+      // Have 2m buffer before start trying for silent signIn
+      // If token is about to expire then start silentSignIn
+      // else just set timer to try for silentSignIn before token expires
+      if (diff > 120000) {
+        clearTimeout(timeoutId);
+        const timerId = setTimeout(() => {
+          trySilentSignIn();
+        }, timeoutExpiry);
+        setTimeoutId(Number(timerId));
+      } else {
+        trySilentSignIn();
       }
     }
   };
@@ -418,7 +413,6 @@ export const AuthProvider = ({
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
             storeRedirectPath();
-            showErrorToast(error);
             resetUserDetails(true);
           }
         }

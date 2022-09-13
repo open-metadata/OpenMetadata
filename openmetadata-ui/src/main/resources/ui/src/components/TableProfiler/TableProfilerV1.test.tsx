@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
 import TableProfilerV1 from './TableProfilerV1';
@@ -60,7 +61,28 @@ jest.mock('../../axiosAPIs/testAPI', () => ({
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
-  hasEditAccess: true,
+  permissions: {
+    Create: true,
+    Delete: true,
+    EditAll: true,
+    EditCustomFields: true,
+    EditDataProfile: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditLineage: true,
+    EditOwner: true,
+    EditQueries: true,
+    EditSampleData: true,
+    EditTags: true,
+    EditTests: true,
+    EditTier: true,
+    ViewAll: true,
+    ViewDataProfile: true,
+    ViewQueries: true,
+    ViewSampleData: true,
+    ViewTests: true,
+    ViewUsage: true,
+  } as OperationPermission,
   onAddTestClick: jest.fn(),
 };
 

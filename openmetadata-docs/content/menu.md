@@ -130,6 +130,17 @@ site_menu:
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
 
+  - category: Deployment / Enable Secrets Manager
+    url: /deployment/secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations
+    url: /deployment/secrets-manager/supported-implementations
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS Secrets Manager
+    url: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS SSM Parameter Store
+    url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+  - category: Deployment / Enable Secrets Manager / How to add a new implementation
+    url: /deployment/secrets-manager/how-to-add-a-new-implementation
+
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
   - category: Deployment / Upgrade OpenMetadata / Backup Metadata
@@ -146,6 +157,8 @@ site_menu:
     url: /deployment/upgrade/versions/090-to-010
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
     url: /deployment/upgrade/versions/010-to-011
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
+    url: /deployment/upgrade/versions/011-to-012
 
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
@@ -186,6 +199,8 @@ site_menu:
     url: /openmetadata/connectors/database/redshift/airflow
   - category: OpenMetadata / Connectors / Database / Redshift / CLI
     url: /openmetadata/connectors/database/redshift/cli
+  - category: OpenMetadata / Connectors / Database / Redshift / Troubleshooting
+    url: /openmetadata/connectors/database/redshift/troubleshooting
   - category: OpenMetadata / Connectors / Database / Glue
     url: /openmetadata/connectors/database/glue
   - category: OpenMetadata / Connectors / Database / Glue / Airflow
@@ -370,7 +385,7 @@ site_menu:
     url: /openmetadata/connectors/messaging/redpanda/airflow
   - category: OpenMetadata / Connectors / Messaging / Redpanda / CLI
     url: /openmetadata/connectors/messaging/redpanda/cli
-  
+
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
   - category: OpenMetadata / Connectors / Pipeline / Airflow
@@ -447,7 +462,7 @@ site_menu:
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
     url: /openmetadata/ingestion/workflows/profiler/metrics
-  - category: OpenMetadata / Ingestion / Workflows / Data Quality 
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality
     url: /openmetadata/ingestion/workflows/data-quality
   - category: OpenMetadata / Ingestion / Workflows / Data Quality / Tests
     url: /openmetadata/ingestion/workflows/data-quality/tests
@@ -466,11 +481,6 @@ site_menu:
 
   - category: OpenMetadata / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
-
-  - category: OpenMetadata / Data Quality
-    url: /openmetadata/data-quality
-  - category: OpenMetadata / Data Quality / Tests
-    url: /openmetadata/data-quality/tests
 
   - category: OpenMetadata / Teams & Users
     url: /openmetadata/users

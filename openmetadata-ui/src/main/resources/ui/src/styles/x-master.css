@@ -16,6 +16,7 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #f8f9fa;
 }
 a {
   color: #2eaadc;
@@ -1072,11 +1073,11 @@ code {
 
 @media only screen and (max-width: 1440px) {
   #left-panel {
-    width: 256px;
+    width: 284px;
   }
 
   .page-layout-container.l3-col {
-    grid-template-columns: 256px auto 256px;
+    grid-template-columns: 284px auto 284px;
   }
 }
 

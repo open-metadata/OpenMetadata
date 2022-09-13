@@ -67,7 +67,7 @@ type Props = {
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   currentPage: number;
-  handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
+  handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
   handleUserRedirection?: (name: string) => void;
@@ -203,13 +203,13 @@ const GlossaryTermsV1 = ({
     }
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (glossaryTerm.description !== updatedHTML) {
       const updatedGlossaryTermDetails = {
         ...glossaryTerm,
         description: updatedHTML,
       };
-      handleGlossaryTermUpdate(updatedGlossaryTermDetails);
+      await handleGlossaryTermUpdate(updatedGlossaryTermDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -329,12 +329,17 @@ const GlossaryTermsV1 = ({
         placement="topRight"
         title={permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
         <Button
-          className="tw-p-0"
+          className="tw-p-0 flex-center"
           data-testid="add-new-reviewer"
           disabled={!permissions.EditAll}
           type="text"
           onClick={() => setShowRevieweModal(true)}>
-          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+          <SVGIcons
+            alt="edit"
+            icon={Icons.IC_EDIT_PRIMARY}
+            title="Edit"
+            width="16px"
+          />
         </Button>
       </Tooltip>
     );
@@ -534,13 +539,9 @@ const GlossaryTermsV1 = ({
         </Col>
         <Col className="tw-px-10" flex="25%">
           <Card
-            className="glossary-card right-card"
+            className="glossary-card right-card tw-border tw-border-border-gray"
             extra={addReviewerButton()}
-            title={
-              <Text strong className="p-bt-3">
-                Reviewer
-              </Text>
-            }>
+            title={<Text>Reviewer</Text>}>
             <div>{getReviewerTabData()}</div>
           </Card>
         </Col>

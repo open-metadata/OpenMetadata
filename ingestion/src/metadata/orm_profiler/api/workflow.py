@@ -22,6 +22,7 @@ from typing import Iterable, List, Optional
 
 import click
 from pydantic import ValidationError
+from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
@@ -239,10 +240,16 @@ class ProfilerWorkflow:
 
         return None
 
-    def create_profiler_interface(self, service_connection_config, table_entity: Table):
+    def create_profiler_interface(
+        self,
+        service_connection_config,
+        table_entity: Table,
+        sqa_metadata_obj: Optional[MetaData] = None,
+    ):
         """Creates a profiler interface object"""
         return SQAInterface(
             service_connection_config,
+            sqa_metadata_obj=sqa_metadata_obj,
             metadata_config=self.metadata_config,
             thread_count=self.source_config.threadCount,
             table_entity=table_entity,
@@ -408,11 +415,12 @@ class ProfilerWorkflow:
 
         for database in databases:
             copied_service_config = self.copy_service_config(database)
+            sqa_metadata_obj = MetaData()
             try:
                 for entity in self.get_table_entities(database=database):
                     try:
                         profiler_interface = self.create_profiler_interface(
-                            copied_service_config, entity
+                            copied_service_config, entity, sqa_metadata_obj
                         )
                         self.create_profiler_obj(entity, profiler_interface)
                         profile: TableProfile = self.profiler_obj.process(

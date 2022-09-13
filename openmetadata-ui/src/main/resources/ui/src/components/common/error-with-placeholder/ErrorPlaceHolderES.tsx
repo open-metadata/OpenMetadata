@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { NoDataFoundPlaceHolder } from '../../../constants/services.const';
 
 type Props = {
@@ -75,14 +77,39 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
           />
         </div>
         <div className="tw-flex tw-flex-col tw-items-center tw-mt-6 tw-text-base tw-font-medium">
-          No matching data assets found
           {query ? (
             <>
-              {' '}
-              for{' '}
-              <span className="tw-text-primary tw-font-medium">{query}</span>
+              No matching data assets found
+              {query ? (
+                <>
+                  {' '}
+                  for{' '}
+                  <span className="tw-text-primary tw-font-medium">
+                    {query}
+                  </span>
+                </>
+              ) : null}
             </>
-          ) : null}
+          ) : (
+            <>
+              {' '}
+              <Typography.Text className="tw-text-sm">
+                No Data Available
+              </Typography.Text>
+              <Typography.Text className="tw-text-sm">
+                Start by adding a service connection to ingest data into
+                OpenMetadata.
+              </Typography.Text>
+              <Typography.Text className="tw-text-sm">
+                Refer to our{' '}
+                <Typography.Link href={CONNECTORS_DOCS} target="_blank">
+                  docs
+                </Typography.Link>{' '}
+                for more information.
+              </Typography.Text>
+              <span />
+            </>
+          )}
         </div>
       </div>
     );

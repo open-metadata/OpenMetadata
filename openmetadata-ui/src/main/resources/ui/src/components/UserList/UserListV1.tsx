@@ -14,11 +14,11 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
-import { PAGE_SIZE, ROUTES } from '../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -33,6 +33,7 @@ import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
@@ -178,6 +179,46 @@ const UserListV1: FC<UserListV1Props> = ({
     ];
   }, [showRestore]);
 
+  const fetchErrorPlaceHolder = useMemo(
+    () => (type: string) => {
+      return (
+        <Row>
+          <Col className="w-full tw-flex tw-justify-end">
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                size="small"
+                onClick={onShowDeletedUserChange}
+              />
+              <span className="tw-ml-2">Deleted Users</span>
+            </span>
+          </Col>
+          <Col span={24}>
+            <ErrorPlaceHolder
+              buttons={
+                <Button
+                  ghost
+                  // data-testid="add-user"
+                  disabled={!createPermission}
+                  type="primary"
+                  onClick={handleAddNewUser}>
+                  Add User
+                </Button>
+              }
+              heading="User"
+              type={type}
+            />
+          </Col>
+        </Row>
+      );
+    },
+    []
+  );
+
+  if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
+    return fetchErrorPlaceHolder('ADD_DATA');
+  }
+
   return (
     <Row className="user-listing" gutter={[16, 16]}>
       <Col span={8}>
@@ -194,7 +235,6 @@ const UserListV1: FC<UserListV1Props> = ({
           <span>
             <Switch
               checked={showDeletedUser}
-              size="small"
               onClick={onShowDeletedUserChange}
             />
             <span className="tw-ml-2">Deleted Users</span>
@@ -225,11 +265,11 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={24}>
-        {paging.total > PAGE_SIZE && (
+        {paging.total > PAGE_SIZE_MEDIUM && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchTerm)}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={onPagingChange}
             totalCount={paging.total}

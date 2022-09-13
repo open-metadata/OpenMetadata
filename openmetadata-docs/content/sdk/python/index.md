@@ -274,10 +274,10 @@ Repeating the exercise and reviewing the required fields to instantiate an `Enti
 
 The `id` we actually saw it by printing the `service_entity` JSON. However, let's imagine that it did not happen, and the only information we have from the `DatabaseService` is its name.
 
-To retrieve the `id`, we should then ask the `metadata` to find our Entity by its FQDN:
+To retrieve the `id`, we should then ask the `metadata` to find our Entity by its FQN:
 
 ```json
-service_query = metadata.get_by_name(entity=DatabaseService, fqdn="test-service-table")
+service_query = metadata.get_by_name(entity=DatabaseService, fqn="test-service-table")
 ```
 
 We have just used the `get_by_name` method. This method is the same that we will use for any Entity. This is why as an argument, we need to provide the `entity` field. Again, instead of relying on error-prone handwritten parameters, we can just pass the `pydantic` model we expect to get back. In our case, a `DatabaseService`.
@@ -370,10 +370,10 @@ print(updated_table_entity.owner)
 # EntityReference(id=Uuid(__root__=UUID('48793f0c-5308-45c1-9bf4-06a82c8d7bf9')), type='user', name='random-user', description=None, displayName=None, href=Href(__root__=AnyUrl('http://localhost:8585/api/v1/users/48793f0c-5308-45c1-9bf4-06a82c8d7bf9', scheme='http', host='localhost', host_type='int_domain', port='8585', path='/api/v1/users/48793f0c-5308-45c1-9bf4-06a82c8d7bf9')))
 ```
 
-If we did not save the `updated_table_entity` variable and we should need to query it to review the `owner` field, we can run the `get_by_name` using the proper FQDN definition for `Table`s:
+If we did not save the `updated_table_entity` variable and we should need to query it to review the `owner` field, we can run the `get_by_name` using the proper FQN definition for `Table`s:
 
 ```python
-my_table = metadata.get_by_name(entity=Table, fqdn="test-service-table.test-db.test-schema.test")7. Delete the Table
+my_table = metadata.get_by_name(entity=Table, fqn="test-service-table.test-db.test-schema.test")7. Delete the Table
 ```
 
 <Note>
@@ -394,7 +394,7 @@ We could directly clean up the service itself with a Hard and Recursive delete. 
 
 ```python
 service_id = metadata.get_by_name(
-    entity=DatabaseService, fqdn="test-service-table"
+    entity=DatabaseService, fqn="test-service-table"
 ).id
 
 metadata.delete(
