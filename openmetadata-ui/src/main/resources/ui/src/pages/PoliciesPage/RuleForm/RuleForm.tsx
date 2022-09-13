@@ -296,7 +296,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             onSearch={handleConditionSearch}
           />
           {validationError && (
-            <div className="tw-mt-1" role="alert">
+            <div className="tw-mt-1" data-testid="condition-error" role="alert">
               {`❌ Invalid condition : ${validationError}`}
             </div>
           )}
@@ -306,7 +306,10 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             </div>
           )}
           {isValidCondition && !isValidatingCondition && !validationError && (
-            <div className="tw-mt-1" role="alert">
+            <div
+              className="tw-mt-1"
+              data-testid="condition-success"
+              role="alert">
               ✅ Valid condition
             </div>
           )}
