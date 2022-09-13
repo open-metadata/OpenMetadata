@@ -23,29 +23,19 @@ import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 @Slf4j
 public class JWTTokenGenerator {
-  private static volatile JWTTokenGenerator instance;
+  private static JWTTokenGenerator instance = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
   private String issuer;
   private String kid;
 
-  private JWTTokenGenerator() {
-    if (instance != null) {
-      throw new RuntimeException("Use getInstance() method to get the single instance of this class");
-    }
-  }
+  private JWTTokenGenerator() {}
 
   public static JWTTokenGenerator getInstance() {
-    if (instance == null) {
-      synchronized (JWTTokenGenerator.class) {
-        if (instance == null) {
-          instance = new JWTTokenGenerator();
-        }
-      }
-    }
     return instance;
   }
 
+  /** Expected to be initialized only once during application start */
   public void init(JWTTokenConfiguration jwtTokenConfiguration) {
     try {
       if (jwtTokenConfiguration.getRsaprivateKeyFilePath() != null

@@ -199,6 +199,8 @@ site_menu:
     url: /openmetadata/connectors/database/redshift/airflow
   - category: OpenMetadata / Connectors / Database / Redshift / CLI
     url: /openmetadata/connectors/database/redshift/cli
+  - category: OpenMetadata / Connectors / Database / Redshift / Troubleshooting
+    url: /openmetadata/connectors/database/redshift/troubleshooting
   - category: OpenMetadata / Connectors / Database / Glue
     url: /openmetadata/connectors/database/glue
   - category: OpenMetadata / Connectors / Database / Glue / Airflow
@@ -383,7 +385,7 @@ site_menu:
     url: /openmetadata/connectors/messaging/redpanda/airflow
   - category: OpenMetadata / Connectors / Messaging / Redpanda / CLI
     url: /openmetadata/connectors/messaging/redpanda/cli
-  
+
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
   - category: OpenMetadata / Connectors / Pipeline / Airflow
@@ -460,7 +462,7 @@ site_menu:
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
     url: /openmetadata/ingestion/workflows/profiler/metrics
-  - category: OpenMetadata / Ingestion / Workflows / Data Quality 
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality
     url: /openmetadata/ingestion/workflows/data-quality
   - category: OpenMetadata / Ingestion / Workflows / Data Quality / Tests
     url: /openmetadata/ingestion/workflows/data-quality/tests

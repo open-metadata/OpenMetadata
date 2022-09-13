@@ -92,7 +92,7 @@ After clicking `Add Ingestion` you will be able to select an execution schedule 
 
 ## Adding Tests with the YAML Config
 When creating a JSON config for a test workflow the source configuration is very simple.
-```
+```yaml
 source:
   type: TestSuite
   serviceName: <your_service_name>
@@ -103,7 +103,7 @@ source:
 The only section you need to modify here is the `serviceName` key. Note that this name needs to be unique across OM platform Test Suite name.
 
 Once you have defined your source configuration you'll need to define te processor configuration. 
-```
+```yaml
 processor:
   type: "orm-test-runner"
   config:
@@ -127,7 +127,7 @@ The processor type should be set to ` "orm-test-runner"`. For accepted test defi
 
 ### Full  `yaml` config example
 
-```
+```yaml
 source:
   type: TestSuite
   serviceName: MyAwesomeTestSuite
@@ -162,10 +162,72 @@ workflowConfig:
 ```
 
 ### How to Run Tests
+
 To run the tests from the CLI execute the following command
 ```
 metadata test -c /path/to/my/config.yaml
 ```
+
+### Schedule Test Suite runs with Airflow
+
+As with the Ingestion or Profiler workflow, you can as well execute a Test Suite directly from Python. We are
+going to use Airflow as an example, but any orchestrator would achieve the same goal.
+
+Let's prepare the DAG as usual, but importing a different Workflow class:
+
+```python
+import pathlib
+import yaml
+from datetime import timedelta
+from airflow import DAG
+
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+from metadata.config.common import load_config_file
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from airflow.utils.dates import days_ago
+
+default_args = {
+    "owner": "user_name",
+    "email": ["username@org.com"],
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "execution_timeout": timedelta(minutes=60)
+}
+
+config = """
+<your YAML configuration>
+"""
+
+def metadata_ingestion_workflow():
+    workflow_config = yaml.safe_load(config)
+    workflow = TestSuiteWorkflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+with DAG(
+    "test_suite_workflow",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    schedule_interval='*/5 * * * *',
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="test_using_recipe",
+        python_callable=metadata_ingestion_workflow,
+    )
+```
+
+Note how we are using the `TestSuiteWorkflow` class to load and execute the tests based on the YAML
+configurations specified above.
 
 ## How to Visualize Test Results
 ### From the Test Suite View
@@ -213,7 +275,7 @@ While OpenMetadata provides out of the box tests, you may want to write your tes
 ### Creating a `TestDefinition`
 First, you'll need to create a Test Definition for your test. You can use the following endpoint `/api/v1/testDefinition` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
-```
+```json
 {
     "description": "<you test definition description>",
     "entityType": "<TABLE or COLUMN>",
@@ -232,7 +294,7 @@ First, you'll need to create a Test Definition for your test. You can use the fo
 
 Here is a complete CURL request
 
-```
+```bash
 curl --request POST 'http://localhost:8585/api/v1/testDefinition' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -251,7 +313,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 ### Creating a `TestSuite`
 You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuite` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
-```
+```json
 {
   "name": "<test_suite_name>",
   "description": "<test suite description>"
@@ -260,7 +322,7 @@ You'll also need to create a Test Suite for your Test Case -- note that you can 
 
 Here is a complete CURL request
 
-```
+```bash
 curl --request POST 'http://localhost:8585/api/v1/testSuite' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -275,7 +337,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 ### Creating a `TestCase`
 Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCase` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
 
-```
+```json
 {
     "entityLink": "<#E::table::fqn> or <#E::table::fqn::columns::column name>",
     "name": "<test_case_name>",
@@ -293,7 +355,7 @@ Once you have your Test Definition created you can create a Test Case -- which i
 
 Here is a complete CURL request
 
-```
+```bash
 curl --request POST 'http://localhost:8585/api/v1/testCase' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -322,7 +384,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 ### Writing `TestCaseResults`
 Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCase/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
 
-```
+```json
 {
     "result": "<result message>",
     "testCaseStatus": "<Success or Failed or Aborted>",
@@ -337,7 +399,7 @@ Once you have your Test Case created you can write your results to it. You can u
 
 Here is a complete CURL request
 
-```
+```bash
 curl --location --request PUT 'http://localhost:8585/api/v1/testCase/local_redshift.dev.dbt_jaffle.customers.custom_test_Case/testCaseResult' \
 --header 'Content-Type: application/json' \
 --data-raw '{

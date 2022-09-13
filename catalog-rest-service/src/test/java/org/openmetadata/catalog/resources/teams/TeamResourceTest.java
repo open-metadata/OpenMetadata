@@ -26,6 +26,9 @@ import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -124,13 +127,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team org = getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
 
     // Organization can't be deleted
-    assertResponse(
-        () -> deleteEntity(org.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.deleteOrganization());
+    assertResponse(() -> deleteEntity(org.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, DELETE_ORGANIZATION);
 
     // Organization can't be created
     CreateTeam create = createRequest("org_test").withTeamType(ORGANIZATION);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.createOrganization());
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, CREATE_ORGANIZATION);
 
     // Organization by default has DataConsumer Role. Ensure Role lists organization as one of the teams
     RoleResourceTest roleResourceTest = new RoleResourceTest();
@@ -431,9 +432,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         CatalogExceptionMessage.invalidChild("invalidDivision", DIVISION, bu11));
     // Group can't have other teams as children. Only users are allowed under the team
     assertResponse(
-        () -> createWithChildren("invalidGroup", GROUP, bu11.getEntityReference()),
-        BAD_REQUEST,
-        CatalogExceptionMessage.createGroup());
+        () -> createWithChildren("invalidGroup", GROUP, bu11.getEntityReference()), BAD_REQUEST, CREATE_GROUP);
   }
 
   @Test

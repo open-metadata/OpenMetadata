@@ -27,6 +27,19 @@ public final class CatalogExceptionMessage {
   public static final String INVALID_ENTITY_LINK = "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
   public static final String EMPTY_POLICIES_IN_ROLE = "At least one policy is required in a role";
   public static final String EMPTY_RULES_IN_POLICY = "At least one rule is required in a policy";
+  public static final String INVALID_GROUP_TEAM_UPDATE = "Team of type Group cannot be updated";
+  public static final String INVALID_GROUP_TEAM_CHILDREN_UPDATE =
+      "A team with children cannot be updated to type Group";
+  public static final String ANNOUNCEMENT_OVERLAP =
+      "There is already an announcement scheduled that overlaps with the given start time and end time";
+  public static final String ANNOUNCEMENT_INVALID_START_TIME =
+      "Announcement start time must be earlier than the end time";
+  public static final String UNEXPECTED_PARENT = "Team of type Organization can't have a parent team";
+  public static final String DELETE_ORGANIZATION = "Organization team type can't be deleted";
+  public static final String CREATE_ORGANIZATION =
+      "Only one Organization is allowed. New Organization type can't be created";
+  public static final String CREATE_GROUP =
+      "Team of type Group can't have children of type team. Only users are allowed as part of the team";
 
   private CatalogExceptionMessage() {}
 
@@ -144,36 +157,12 @@ public final class CatalogExceptionMessage {
         parent, parentType, child.getName(), child.getTeamType());
   }
 
-  public static String unexpectedParent() {
-    return "Team of type Organization can't have a parent team";
-  }
-
   public static String invalidParentCount(int validParentCount, TeamType teamType) {
     return String.format("Team of type %s can have only %s parents", teamType, validParentCount);
   }
 
-  public static String deleteOrganization() {
-    return "Organization team type can't be deleted";
-  }
-
-  public static String createOrganization() {
-    return "Only one Organization is allowed. New Organization type can't be created";
-  }
-
-  public static String createGroup() {
-    return "Team of type Group can't have children of type team. Only users are allowed as part of the team";
-  }
-
   public static String invalidTeamOwner(TeamType teamType) {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
-  }
-
-  public static String announcementOverlap() {
-    return "There is already an announcement scheduled that overlaps with the given start time and end time";
-  }
-
-  public static String announcementInvalidStartTime() {
-    return "Announcement start time must be earlier than the end time";
   }
 
   public static String failedToParse(String message) {
