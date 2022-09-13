@@ -37,6 +37,7 @@
     "core-js": "^3.10.1",
     "cronstrue": "^1.122.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
+    "cypress": "^10.7.0",
     "dagre": "^0.8.5",
     "diff": "^5.0.0",
     "fast-json-patch": "^3.0.0-1",
@@ -114,9 +115,9 @@
     "json2ts": "sh json2ts.sh",
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
     "js-antlr": "PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "cypress:run:record": "cypress run --record --parallel"
+    "cypress:open": "cypress open --e2e",
+    "cypress:run": "cypress run --config-file=cypress.config.ts",
+    "cypress:run:record": "cypress run --config-file=cypress.config.ts --record --parallel"
   },
   "browserslist": {
     "production": [
@@ -171,7 +172,6 @@
     "connect-api-mocker": "^1.10.0",
     "copy-webpack-plugin": "^7.0.0",
     "css-loader": "3.4.2",
-    "cypress": "^9.6.0",
     "dotenv": "^16.0.0",
     "eslint": "^6.6.0",
     "eslint-config-prettier": "^6.11.0",
