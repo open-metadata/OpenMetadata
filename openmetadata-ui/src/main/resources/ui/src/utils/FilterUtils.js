@@ -108,3 +108,6 @@ export const prepareQueryParams = (filters, initFilters = {}) => {
 
   return urlSearchParams.toString();
 };
+
+export const checkSelected = (str, val) =>
+  str.includes(val) || str.includes(`"${val}"`);

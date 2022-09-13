@@ -20,6 +20,7 @@ import {
   facetFilterPlaceholder,
   LIST_SIZE,
 } from '../../../constants/constants';
+import { checkSelected } from '../../../utils/FilterUtils';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
 
@@ -128,9 +129,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return [];
     }
   };
-
-  const checkSelected = (str: string[], val: string) =>
-    str.includes(val) || str.includes(`"${val}"`);
 
   const getFilterItems = (aggregation: AggregationType) => {
     return (
