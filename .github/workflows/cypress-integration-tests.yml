@@ -59,7 +59,7 @@ jobs:
         timeout-minutes: 30
 
       - name: Run Cypress Tests
-        uses: cypress-io/github-action@v2
+        uses: cypress-io/github-action@v4
         with:
           install: false
           record: true
