@@ -50,6 +50,7 @@ import { AuthTypes } from '../../enums/signin.enum';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
+  EXPIRY_THRESHOLD_MILLES,
   extractDetailsFromToken,
   getAuthConfig,
   getNameFromEmail,
@@ -300,7 +301,7 @@ export const AuthProvider = ({
       // Have 2m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
-      if (diff > 120000) {
+      if (diff > EXPIRY_THRESHOLD_MILLES) {
         clearTimeout(timeoutId);
         const timerId = setTimeout(() => {
           trySilentSignIn();
