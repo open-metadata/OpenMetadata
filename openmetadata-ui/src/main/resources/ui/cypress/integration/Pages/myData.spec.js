@@ -188,7 +188,7 @@ describe('MyData page should work', () => {
     });
   });
 
-  it.only('My data, following & feed section should work properly for topic entity', () => {
+  it('My data, following & feed section should work properly for topic entity', () => {
     topics.forEach((topic) => {
       followAndOwnTheEntity(topic);
     });
