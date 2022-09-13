@@ -146,7 +146,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     rows = conn.execute(
                         self.get_sql_statement(
                             start_time=self.start + timedelta(days=i),
-                            end_time=self.start + timedelta(days=i + 2),
+                            end_time=self.end + timedelta(days=i),
                         )
                     )
                     queries = []

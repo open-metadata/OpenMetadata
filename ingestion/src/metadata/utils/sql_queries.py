@@ -481,9 +481,9 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         JOIN pg_catalog.pg_stat_activity a ON d.datname = a.datname
       WHERE
         a.query_start >= '{start_time}' AND
-        a.state_change <  current_timestamp
-        AND s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        AND s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        a.query_start < '{end_time}' AND
+        s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%' AND
+        s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
         {filters}
       LIMIT {result_limit}
     """
