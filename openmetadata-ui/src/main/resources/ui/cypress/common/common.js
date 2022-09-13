@@ -27,7 +27,7 @@ export const interceptURL = (method, url, alias) => {
 
 //waiting for response and validating the response status code
 export const verifyResponseStatusCode = (alias, responseCode) => {
-  cy.wait(alias, { timeout: 5000 })
+  cy.wait(alias)
     .its('response.statusCode')
     .should('eq', responseCode);
 };
