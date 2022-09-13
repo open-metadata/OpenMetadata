@@ -115,9 +115,9 @@
     "json2ts": "sh json2ts.sh",
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
     "js-antlr": "PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "cypress:run:record": "cypress run --record --parallel"
+    "cypress:open": "cypress open --e2e",
+    "cypress:run": "cypress run --config-file=cypress.config.ts",
+    "cypress:run:record": "cypress run --config-file=cypress.config.ts --record --parallel"
   },
   "browserslist": {
     "production": [
