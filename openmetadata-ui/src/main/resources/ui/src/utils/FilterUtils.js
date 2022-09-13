@@ -49,7 +49,7 @@ export const getFilterString = (
     const filter = filters[key];
     filter.forEach((value) => {
       const modifiedKey = prepareModifiedKey(key, restrictKeyModification);
-      modifiedFilter.push(`${modifiedKey.split(' ').join('_')}:${value}`);
+      modifiedFilter.push(`${modifiedKey.replace(/ /g, '_')}:${value}`);
     });
     modifiedFilters[key] = modifiedFilter;
   }
