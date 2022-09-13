@@ -61,7 +61,7 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: mockShowErrorToast,
 }));
 
-describe('Test for Signup page', () => {
+describe('Signup page', () => {
   it('Component should render properly', async () => {
     AppState.default.newUser = {
       name: 'Sample Name',
