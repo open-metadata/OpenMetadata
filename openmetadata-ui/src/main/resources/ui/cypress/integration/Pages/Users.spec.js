@@ -21,9 +21,8 @@ const adminEmail = `${adminName}@gmail.com`;
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
-    interceptURL('GET', '/api/v1/config/sandbox', 'homePage');
     cy.goToHomePage();
-    verifyResponseStatusCode('@homePage', 200);
+
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')
