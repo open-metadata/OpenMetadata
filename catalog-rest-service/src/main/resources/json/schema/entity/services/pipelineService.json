@@ -77,7 +77,7 @@
               "$ref": "./connections/pipeline/nifiConnection.json"
             },
             {
-              "$ref": "connections/pipeline/customPipelineConnection.json"
+              "$ref": "./connections/pipeline/customPipelineConnection.json"
             }
           ]
         }

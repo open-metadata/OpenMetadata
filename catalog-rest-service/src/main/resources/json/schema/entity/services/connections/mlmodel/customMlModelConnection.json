@@ -7,6 +7,8 @@
   "javaType": "org.openmetadata.catalog.services.connections.mlmodel.CustomMlModelConnection",
   "definitions": {
     "customMlModelType": {
+      "title": "Service Type",
+      "description": "Custom Ml model service type",
       "type": "string",
       "enum": ["CustomMlModel"],
       "default": "CustomMlModel"
@@ -18,6 +20,12 @@
       "description": "Custom Ml model service type",
       "$ref": "#/definitions/customMlModelType",
       "default": "CustomMlModel"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
+      "type": "string",
+      "default": "CustomMessaging"
     },
     "config": {
       "description": "Additional connection options to build the URL that can be sent to service during the connection.",

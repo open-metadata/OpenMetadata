@@ -84,7 +84,7 @@
               "$ref": "./connections/dashboard/modeConnection.json"
             },
             {
-              "$ref": "connections/dashboard/customDashboardConnection.json"
+              "$ref": "./connections/dashboard/customDashboardConnection.json"
             }
           ]
         }
