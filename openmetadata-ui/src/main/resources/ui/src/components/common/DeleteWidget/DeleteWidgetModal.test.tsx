@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitForElement } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
@@ -52,20 +52,20 @@ describe('Test DeleteWidgetV1 Component', () => {
     const confirmButton = await screen.findByTestId('confirm-button');
     const hardDelete = await screen.findByTestId('hard-delete');
 
-    userEvent.click(hardDelete);
+    waitForElement(() => userEvent.click(hardDelete));
 
     userEvent.type(inputBox, 'DELETE');
 
     expect(confirmButton).not.toBeDisabled();
 
-    userEvent.click(confirmButton);
+    waitForElement(() => userEvent.click(confirmButton));
   });
 
   it('Discard click should work properly', async () => {
     render(<DeleteWidgetModal {...mockProps} />);
     const discardButton = await screen.findByTestId('discard-button');
 
-    userEvent.click(discardButton);
+    waitForElement(() => userEvent.click(discardButton));
 
     expect(mockProps.onCancel).toBeCalledTimes(1);
   });

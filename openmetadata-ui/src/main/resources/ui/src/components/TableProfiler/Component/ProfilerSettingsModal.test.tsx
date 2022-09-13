@@ -12,6 +12,7 @@
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
+import Form from 'antd/lib/form/Form';
 import React from 'react';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
@@ -51,7 +52,11 @@ describe('Test ProfilerSettingsModal component', () => {
   });
 
   it('should render without crashing', async () => {
-    render(<ProfilerSettingsModal {...mockProps} />);
+    render(
+      <Form>
+        <ProfilerSettingsModal {...mockProps} />
+      </Form>
+    );
 
     const modal = await screen.findByTestId('profiler-settings-modal');
     const sampleContainer = await screen.findByTestId(

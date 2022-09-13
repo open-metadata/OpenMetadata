@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   findByTestId,
   findByText,
   fireEvent,
@@ -427,29 +428,31 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Check that tags and glossary terms are not present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getByTestId, queryByText } = render(
-      <DashboardDetails {...DashboardDetailsProps} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    await act(async () => {
+      (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject()
+      );
+      (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject()
+      );
+      const { getByTestId, queryByText } = render(
+        <DashboardDetails {...DashboardDetailsProps} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
 
-    const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+      const tagWrapper = await getByTestId('tags-wrapper');
+      fireEvent.click(
+        tagWrapper,
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
 
-    const tag1 = queryByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryByText('Glossary.Tag1');
+      const tag1 = queryByText('TagCat1.Tag1');
+      const glossaryTerm1 = queryByText('Glossary.Tag1');
 
-    expect(tag1).not.toBeInTheDocument();
-    expect(glossaryTerm1).not.toBeInTheDocument();
+      expect(tag1).not.toBeInTheDocument();
+      expect(glossaryTerm1).not.toBeInTheDocument();
+    });
   });
 });

@@ -78,6 +78,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 });
 
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Card: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (

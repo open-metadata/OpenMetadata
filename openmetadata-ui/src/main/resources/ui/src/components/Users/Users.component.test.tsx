@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -268,16 +273,18 @@ describe('Test User Component', () => {
   });
 
   it('Should not render deleted teams', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    await act(async () => {
+      const { container } = render(
+        <Users userData={mockUserData} {...mockProp} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
 
-    const deletedTeam = queryByTestId(container, 'Customer_Support');
+      const deletedTeam = queryByTestId(container, 'Customer_Support');
 
-    expect(deletedTeam).not.toBeInTheDocument();
+      expect(deletedTeam).not.toBeInTheDocument();
+    });
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

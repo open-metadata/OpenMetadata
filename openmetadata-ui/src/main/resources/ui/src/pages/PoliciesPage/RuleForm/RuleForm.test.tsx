@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Form } from 'antd';
 import React from 'react';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import RuleForm from './RuleForm';
+
+interface RuleFormProps {
+  ruleData: Rule;
+  setRuleData: (value: React.SetStateAction<Rule>) => void;
+}
 
 jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   getPolicyFunctions: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -48,11 +54,17 @@ const setRuleData = jest.fn();
 const mockProps = {
   ruleData: mockRule,
   setRuleData,
-};
+} as RuleFormProps;
+
+const RenderWithForm = ({ formProps }: { formProps: RuleFormProps }) => (
+  <Form>
+    <RuleForm {...formProps} />
+  </Form>
+);
 
 describe('Test Rule Form Component', () => {
   it('Should render the rule form fields', async () => {
-    render(<RuleForm {...mockProps} />);
+    render(<RenderWithForm formProps={mockProps} />);
 
     const ruleName = await screen.findByTestId('rule-name');
 
@@ -71,14 +83,16 @@ describe('Test Rule Form Component', () => {
   });
 
   it('SetRuleData method should work', async () => {
-    render(<RuleForm {...mockProps} />);
+    await act(async () => {
+      render(<RenderWithForm formProps={mockProps} />);
 
-    const ruleName = await screen.findByTestId('rule-name');
+      const ruleName = await screen.findByTestId('rule-name');
 
-    expect(ruleName).toBeInTheDocument();
+      expect(ruleName).toBeInTheDocument();
 
-    fireEvent.change(ruleName, { target: { value: 'RuleName' } });
+      fireEvent.change(ruleName, { target: { value: 'RuleName' } });
 
-    expect(setRuleData).toBeCalled();
+      expect(setRuleData).toBeCalled();
+    });
   });
 });

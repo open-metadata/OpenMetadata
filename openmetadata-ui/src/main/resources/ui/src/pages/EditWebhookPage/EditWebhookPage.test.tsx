@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, getByText, render } from '@testing-library/react';
+import { act, findByText, getByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { deleteWebhook, getWebhookByName } from '../../axiosAPIs/webhookAPI';
@@ -106,14 +106,16 @@ describe('Test DatasetDetails page', () => {
     expect(addWebhookComponent).toBeInTheDocument();
   });
 
-  it('If loading is true, it should render loading component', () => {
-    const { container } = render(<EditWebhookPage />, {
-      wrapper: MemoryRouter,
+  it('If loading is true, it should render loading component', async () => {
+    await act(async () => {
+      const { container } = render(<EditWebhookPage />, {
+        wrapper: MemoryRouter,
+      });
+
+      const loader = getByText(container, /LoaderComponent/i);
+
+      expect(loader).toBeInTheDocument();
     });
-
-    const loader = getByText(container, /LoaderComponent/i);
-
-    expect(loader).toBeInTheDocument();
   });
 
   describe('Render Sad Paths', () => {

@@ -12,10 +12,13 @@
  */
 
 import {
+  act,
   findByTestId,
   fireEvent,
   queryByTestId,
   render,
+  screen,
+  waitForElement,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -189,21 +192,19 @@ describe('Test BotsDetail Component', () => {
   });
 
   it('Test Re-generate token flow', async () => {
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<BotDetails {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    const generateToken = await findByTestId(container, 'generate-token');
+    const generateToken = await screen.findByTestId('generate-token');
 
     expect(generateToken).toHaveTextContent('Re-generate token');
 
-    fireEvent.click(generateToken);
-
+    await waitForElement(() => fireEvent.click(generateToken));
     // should open confirmartion before re-generating token
-    const confirmationModal = await findByTestId(
-      container,
-      'confirmation-modal'
-    );
+    const confirmationModal = await screen.findByTestId('confirmation-modal');
 
     expect(confirmationModal).toBeInTheDocument();
 
@@ -211,10 +212,10 @@ describe('Test BotsDetail Component', () => {
 
     expect(confirmButton).toBeInTheDocument();
 
-    fireEvent.click(confirmButton);
+    await waitForElement(() => fireEvent.click(confirmButton));
 
     // render token form on confirmaton
-    const tokenForm = await findByTestId(container, 'generate-token-form');
+    const tokenForm = await screen.findByTestId('generate-token-form');
 
     expect(tokenForm).toBeInTheDocument();
 
@@ -224,7 +225,7 @@ describe('Test BotsDetail Component', () => {
     expect(generateButton).toBeInTheDocument();
     expect(discardButton).toBeInTheDocument();
 
-    fireEvent.click(generateButton);
+    await waitForElement(() => fireEvent.click(generateButton));
 
     expect(generateUserToken).toBeCalled();
   });
