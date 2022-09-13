@@ -10,7 +10,6 @@ import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.simplejavamail.api.email.Email;
@@ -22,6 +21,24 @@ import org.simplejavamail.mailer.MailerBuilder;
 
 @Slf4j
 public class EmailUtil {
+  public static final String USERNAME = "userName";
+  public static final String EMAILTEMPLATEBASEPATH = "/emailTemplates";
+  // Email Verification
+  public static final String EMAILVERIFICATIONSUBJECT = "OpenMetadata: Verify your Email Address (Action Required)";
+  public static final String EMAILVERIFICATIONLINKKEY = "userEmailTokenVerificationLink";
+  public static final String EMAILVERIFICATIONTEMPLATEPATH = "email-verification.ftl";
+  // Password Reset Link
+  public static final String PASSWORDRESETSUBJECT = "OpenMetadata: Reset your Password";
+  public static final String PASSWORDRESETLINKKEY = "userResetPasswordLink";
+  public static final String EXPIRATIONTIMEKEY = "expirationTime";
+  public static final String DEFAULTEXPIRATIONTIME = "60";
+  public static final String PASSWORDRESETTEMPLATEFILE = "reset-link.ftl";
+  // Account Change Status
+  public static final String ACCOUNTSTATUSSUBJECT = "OpenMetadata: Change in Account Status";
+  public static final String ACTIONKEY = "action";
+  public static final String ACTIONSTATUSKEY = "actionStatus";
+  public static final String ACCOUNTSTATUSTEMPLATEFILE = "account-activity-change.ftl";
+
   private static EmailUtil INSTANCE = null;
   private SmtpSettings defaultSmtpSettings = null;
   private Mailer mailer = null;
@@ -204,68 +221,20 @@ public class EmailUtil {
     return emailBuilder.buildEmail();
   }
 
-  public void sendEmailVerification(String emailVerificationUrl, String to) throws TemplateException, IOException {
-    EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
-    emailBuilder.withSubject("Email Verification[OpenMetadata]");
-    emailBuilder.to(to);
-    emailBuilder.from(defaultSmtpSettings.getUsername());
-
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put("userName", to);
-    templatePopulator.put("userEmailTokenVerificationLink", emailVerificationUrl);
-
-    templateConfiguration.setClassForTemplateLoading(getClass(), "/emailTemplates");
-    Template template = templateConfiguration.getTemplate("email-verification.ftl");
-
-    // write the freemarker output to a StringWriter
-    StringWriter stringWriter = new StringWriter();
-    template.process(templatePopulator, stringWriter);
-    String mailContent = stringWriter.toString();
-    emailBuilder.withHTMLText(mailContent);
-
-    sendMail(emailBuilder.buildEmail());
-  }
-
-  public void sendResetPasswordLink(String resetPasswordLink, String to) throws TemplateException, IOException {
-    EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
-    emailBuilder.withSubject("Password Reset Link[OpenMetadata]");
-    emailBuilder.to(to);
-    emailBuilder.from(defaultSmtpSettings.getUsername());
-
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put("userName", to);
-    templatePopulator.put("userResetPasswordLink", resetPasswordLink);
-    templatePopulator.put("expirationTime", "60");
-
-    templateConfiguration.setClassForTemplateLoading(getClass(), "/emailTemplates");
-    Template template = templateConfiguration.getTemplate("reset-link.ftl");
-
-    // write the freemarker output to a StringWriter
-    StringWriter stringWriter = new StringWriter();
-    template.process(templatePopulator, stringWriter);
-    String mailContent = stringWriter.toString();
-    emailBuilder.withHTMLText(mailContent);
-    sendMail(emailBuilder.buildEmail());
-  }
-
-  public void sendAccountChangeEmail(String action, String actionStatus, String to)
+  public void sendMail(
+      String subject, Map<String, String> model, String to, String baseTemplatePackage, String templatePath)
       throws IOException, TemplateException {
     EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
-    emailBuilder.withSubject("Account Status Change[OpenMetadata]");
+    emailBuilder.withSubject(subject);
     emailBuilder.to(to);
     emailBuilder.from(defaultSmtpSettings.getUsername());
 
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put("userName", to);
-    templatePopulator.put("action", action);
-    templatePopulator.put("actionStatus", actionStatus);
-
-    templateConfiguration.setClassForTemplateLoading(getClass(), "/emailTemplates");
-    Template template = templateConfiguration.getTemplate("account-activity-change.ftl");
+    templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+    Template template = templateConfiguration.getTemplate(templatePath);
 
     // write the freemarker output to a StringWriter
     StringWriter stringWriter = new StringWriter();
-    template.process(templatePopulator, stringWriter);
+    template.process(model, stringWriter);
     String mailContent = stringWriter.toString();
     emailBuilder.withHTMLText(mailContent);
     sendMail(emailBuilder.buildEmail());
@@ -273,7 +242,7 @@ public class EmailUtil {
 
   public void sendMail(Email email) {
     if (mailer != null) {
-      mailer.sendMail(email);
+      mailer.sendMail(email, true);
     }
   }
 

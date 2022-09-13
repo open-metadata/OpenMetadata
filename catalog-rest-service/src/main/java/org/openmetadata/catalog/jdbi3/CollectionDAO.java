@@ -2490,7 +2490,7 @@ public interface CollectionDAO {
         @Bind("team") String team,
         @Bind("relation") int relation);
 
-    @ConnectionAwareSqlQuery(value = "SELECT count(id) FROM user_entity WHERE email = :email", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
 

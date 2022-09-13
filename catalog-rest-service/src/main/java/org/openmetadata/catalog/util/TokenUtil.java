@@ -29,7 +29,7 @@ public class TokenUtil {
     emailVerificationToken.setTokenType(TokenType.EMAIL_VERIFICATION);
     emailVerificationToken.setTokenStatus(EmailVerificationToken.TokenStatus.STATUS_PENDING);
     emailVerificationToken.setUserId(userId);
-    emailVerificationToken.setExpiryDate(Instant.now().plus(7, ChronoUnit.DAYS).toEpochMilli());
+    emailVerificationToken.setExpiryDate(Instant.now().plus(24, ChronoUnit.HOURS).toEpochMilli());
     return emailVerificationToken;
   }
 

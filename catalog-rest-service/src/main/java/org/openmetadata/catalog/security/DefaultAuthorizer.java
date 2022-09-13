@@ -65,23 +65,23 @@ public class DefaultAuthorizer implements Authorizer {
     PolicyCache.initialize();
     RoleCache.initialize();
     LOG.debug("Admin users: {}", adminUsers);
-    // For a Basic Auth , an admin can during server startup decide who all can be admin by adding admin principal
-    // when a registration is done through registration api, then we add the user as admin or normal user
-    // checking whether that username was bootstrapped into server during startup as admin
-    if (!ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
-        .getProvider()
-        .equals(SSOAuthMechanism.SsoServiceType.basic.toString())) {
-      initializeUsers();
-    }
+    initializeUsers();
   }
 
   private void initializeUsers() {
     LOG.debug("Checking user entries for admin users");
+    // For a Basic Auth , an admin can during server startup decide who all can be admin by adding admin principal
+    // when a registration is done through registration api, then we add the user as admin or normal user
+    // checking whether that username was bootstrapped into server during startup as admin
     String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
-    for (String adminUser : adminUsers) {
-      User user = user(adminUser, domain, adminUser).withIsAdmin(true);
-      addOrUpdateUser(user);
+    if (!ConfigurationHolder.getInstance()
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getProvider()
+        .equals(SSOAuthMechanism.SsoServiceType.basic.toString())) {
+      for (String adminUser : adminUsers) {
+        User user = user(adminUser, domain, adminUser).withIsAdmin(true);
+        addOrUpdateUser(user);
+      }
     }
 
     LOG.debug("Checking user entries for bot users");
