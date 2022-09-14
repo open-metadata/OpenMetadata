@@ -76,7 +76,7 @@ const NavBar = ({
 
   const profilePicture = useMemo(
     () => AppState?.userDetails?.profile?.images?.image512,
-    [AppState]
+    [AppState?.userDetails?.profile?.images]
   );
 
   const { socket } = useWebSocketConnector();
@@ -211,6 +211,12 @@ const NavBar = ({
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (profilePicture) {
+      SetIsImgUrlValid(true);
+    }
+  }, [profilePicture]);
 
   return (
     <>
