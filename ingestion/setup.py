@@ -141,7 +141,7 @@ dev = {
     "twine",
 }
 test = {
-    "isort",
+    "isort==5.10.1",
     "pre-commit",
     "pylint",
     "pytest==7.0.0",
