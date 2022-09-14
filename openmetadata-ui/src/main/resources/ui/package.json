@@ -98,7 +98,6 @@
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
     "postinstall": "yarn run build-check",
     "mock-api": "node ./mock-api/app.js",
-    "pretest:coverage": "yarn run pretest",
     "pre-commit": "lint-staged --concurrent false",
     "test": "jest --passWithNoTests",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
