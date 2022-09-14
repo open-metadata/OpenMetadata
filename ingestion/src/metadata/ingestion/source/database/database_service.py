@@ -11,12 +11,17 @@
 """
 Base class for ingesting database services
 """
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel
-from sqlalchemy.engine import Inspector
+
+try:
+    from sqlalchemy.engine import Inspector
+except ImportError:
+    logging.warning("Cannot import Inspector. Used for typing only.")
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -188,7 +193,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     service_connection: DatabaseConnection.__fields__["config"].type_
 
     # When processing the database, the source will update the inspector if needed
-    inspector: Inspector
+    inspector: "Inspector"
 
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)

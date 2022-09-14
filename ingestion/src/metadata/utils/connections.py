@@ -805,5 +805,6 @@ def _(_: BackendConnection, verbose: bool = False):
     """
     from airflow import settings
 
-    with settings.Session() as session:
-        return session.get_bind()
+    # We don't use `with settings.Session() as` for not being supported in lower Airflow versions
+    session = settings.Session()
+    return session.get_bind()
