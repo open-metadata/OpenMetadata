@@ -547,7 +547,10 @@ const Explore: React.FC<ExploreProps> = ({
   }, [searchText, searchIndex, showDeleted]);
 
   useEffect(() => {
-    if (searchResult) {
+    const hits = searchResult && searchResult.resSearchResults.data.hits.hits;
+    const shouldUpdateResults =
+      hits && hits.length > 0 && hits[0]._index?.match(tab.slice(0, -1));
+    if (shouldUpdateResults) {
       updateSearchResults(searchResult.resSearchResults);
       setCount(searchResult.resSearchResults.data.hits.total.value);
       if (forceSetAgg.current) {
@@ -594,8 +597,8 @@ const Explore: React.FC<ExploreProps> = ({
           ...aggServiceName,
         ]);
       }
-      setIsEntityLoading(false);
     }
+    setIsEntityLoading(false);
   }, [searchResult]);
 
   useEffect(() => {
