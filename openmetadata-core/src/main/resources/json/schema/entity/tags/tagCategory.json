@@ -4,14 +4,14 @@
   "title": "Tag Category",
   "description": "This schema defines the Tag Category entity. A Tag Category contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.TagCategory",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.schema.type.TagCategory",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "tagName": {
       "description": "Name of the tag.",
       "type": "string",
       "minLength": 2,
-      "maxLength": 25
+      "maxLength": 64
     },
     "tagCategoryType": {
       "description": "Type of tag category.",
@@ -29,8 +29,8 @@
       ]
     },
     "tag": {
-      "javaType": "org.openmetadata.catalog.entity.tags.Tag",
-      "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+      "javaType": "org.openmetadata.schema.entity.tags.Tag",
+      "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
       "properties": {
         "id": {
           "description": "Unique identifier of this entity instance.",

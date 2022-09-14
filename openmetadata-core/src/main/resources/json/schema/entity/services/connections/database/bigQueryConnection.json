@@ -4,7 +4,7 @@
   "title": "BigQueryConnection",
   "description": "Google BigQuery Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.BigQueryConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.BigQueryConnection",
   "definitions": {
     "bigqueryType": {
       "description": "Service type.",
@@ -73,6 +73,12 @@
       "type": "string",
       "default": "us"
     },
+    "usageLocation": {
+      "title": "Usage Location",
+      "description": "Location used to query INFORMATION_SCHEMA.JOBS_BY_PROJECT to fetch usage data. You can pass multi-regions, such as `us` or `eu`, or you specific region. Australia and Asia multi-regions are not yet in GA.",
+      "type": "string",
+      "default": "us"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -88,9 +94,16 @@
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

@@ -2,7 +2,7 @@ package org.openmetadata.client.interceptors;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
+import org.openmetadata.service.security.client.Auth0SSOClientConfig;
 import org.openmetadata.client.model.AccessTokenResponse;
 
 public class Auth0AccessTokenRequestInterceptor implements RequestInterceptor {

@@ -15,7 +15,7 @@ package org.openmetadata.client.interceptors;
 
 import feign.RequestTemplate;
 import java.util.Base64;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.model.OktaSSOConfig;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 

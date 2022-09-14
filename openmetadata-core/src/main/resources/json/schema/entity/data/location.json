@@ -4,11 +4,11 @@
   "title": "Location",
   "description": "This schema defines the Location entity. A Location can contain the data of a table or group other subLocation together.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.Location",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.data.Location",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "locationType": {
-      "javaType": "org.openmetadata.catalog.type.LocationType",
+      "javaType": "org.openmetadata.schema.type.LocationType",
       "description": "This schema defines the type used for describing different types of Location.",
       "type": "string",
       "enum": ["Bucket", "Prefix", "Database", "Table", "Iceberg"],
@@ -50,7 +50,7 @@
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a location in the form `serviceName.locationName`.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of a location.",

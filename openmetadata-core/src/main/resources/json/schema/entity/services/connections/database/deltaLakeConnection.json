@@ -4,7 +4,7 @@
   "title": "DeltaLakeConnection",
   "description": "DeltaLake Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.DeltaLakeConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
   "definitions": {
     "deltaLakeType": {
       "description": "Service type.",
@@ -35,21 +35,14 @@
       "description": "pySpark App Name.",
       "type": "string"
     },
-    "connectionOptions": {
-      "title": "Connection Options",
-      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-    },
     "connectionArguments": {
       "title": "Connection Arguments",
+      "description": "Key-Value pairs that will be used to add configs to the SparkSession.",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
-    "supportsProfiler": {
-      "title": "Supports Profiler",
-      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false

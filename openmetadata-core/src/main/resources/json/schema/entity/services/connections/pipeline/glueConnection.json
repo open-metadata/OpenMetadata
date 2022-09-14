@@ -4,7 +4,7 @@
   "title": "GlueConnection",
   "description": "Glue Pipeline Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.pipeline.GlueConnection",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.GlueConnection",
   "definitions": {
     "glueType": {
       "description": "Service type.",

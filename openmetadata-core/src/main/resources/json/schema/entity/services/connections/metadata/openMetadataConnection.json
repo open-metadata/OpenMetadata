@@ -4,7 +4,7 @@
   "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection",
   "definitions": {
     "openmetadataType": {
       "description": "OpenMetadata service type",

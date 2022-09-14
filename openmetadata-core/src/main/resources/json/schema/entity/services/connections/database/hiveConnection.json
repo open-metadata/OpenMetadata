@@ -4,7 +4,7 @@
   "title": "HiveConnection",
   "description": "Hive SQL Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.HiveConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.HiveConnection",
   "definitions": {
     "hiveType": {
       "description": "Service type.",
@@ -15,7 +15,7 @@
     "hiveScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["hive"],
+      "enum": ["hive", "hive+http", "hive+https"],
       "default": "hive"
     }
   },

@@ -3,23 +3,15 @@
   "displayName": "Data Consumer Policy",
   "fullyQualifiedName": "DataConsumerPolicy",
   "description": "Policy for Data Consumer to perform operations on metadata entities",
-  "policyType": "AccessControl",
   "enabled": true,
+  "allowDelete": false,
   "rules": [
     {
-      "name": "DataConsumerPolicy-UpdateDescription",
-      "operation": "UpdateDescription",
-      "allow": true
-    },
-    {
-      "name": "DataConsumerPolicy-UpdateOwner",
-      "operation": "UpdateOwner",
-      "allow": true
-    },
-    {
-      "name": "DataConsumerPolicy-UpdateTags",
-      "operation": "UpdateTags",
-      "allow": true
+      "name": "DataConsumerPolicy-EditRule",
+      "description" : "Allow some of the edit operations on a resource for everyone.",
+      "resources" : ["all"],
+      "operations": ["ViewAll", "EditDescription", "EditTags"],
+      "effect": "allow"
     }
   ]
 }

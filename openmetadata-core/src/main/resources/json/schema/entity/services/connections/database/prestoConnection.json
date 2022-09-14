@@ -4,7 +4,7 @@
   "title": "PrestoConnection",
   "description": "Presto Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.PrestoConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.PrestoConnection",
   "definitions": {
     "prestoType": {
       "description": "Service type.",
@@ -77,6 +77,10 @@
     "supportsDatabase": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

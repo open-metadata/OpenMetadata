@@ -4,7 +4,7 @@
   "title": "SnowflakeConnection",
   "description": "Snowflake Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.SnowflakeConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.SnowflakeConnection",
   "definitions": {
     "snowflakeType": {
       "description": "Service type.",
@@ -65,9 +65,8 @@
     },
     "queryTag": {
       "title": "Query Tag",
-      "description": "Session query tag used to monitor usage on snoflake",
-      "type": "string",
-      "default": "OpenMetadata"
+      "description": "Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session.",
+      "type": "string"
     },
     "privateKey": {
       "title": "Private Key",
@@ -96,6 +95,9 @@
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
@@ -103,8 +105,12 @@
     "supportsDatabase": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account", "password", "warehouse"]
+  "required": ["username", "account", "warehouse"]
 }

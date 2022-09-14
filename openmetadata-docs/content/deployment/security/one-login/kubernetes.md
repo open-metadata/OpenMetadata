@@ -13,9 +13,9 @@ place the client id value and update the authorizer configurations in the `value
 ```yaml
 global:
   authorizer:
-    className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
     # JWT Filter
-    containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins: 
     - "suresh"
     botPrincipals: 

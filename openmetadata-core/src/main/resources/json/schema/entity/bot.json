@@ -4,8 +4,8 @@
   "title": "Bot",
   "description": "This schema defines a Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It performs this task as a special user in the system.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.Bot",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.Bot",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
 
   "properties": {
     "id": {

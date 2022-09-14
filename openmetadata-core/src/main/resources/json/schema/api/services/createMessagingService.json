@@ -4,8 +4,8 @@
   "title": "CreateMessagingServiceRequest",
   "description": "Create Messaging service entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.services.CreateMessagingService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.schema.api.services.CreateMessagingService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
     "name": {

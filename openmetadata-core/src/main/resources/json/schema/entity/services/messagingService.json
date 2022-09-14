@@ -4,22 +4,26 @@
   "title": "Messaging Service",
   "description": "This schema defines the Messaging Service entity, such as Kafka and Pulsar.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.services.MessagingService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface", "org.openmetadata.core.entity.interfaces.ServiceEntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.services.MessagingService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
   "definitions": {
     "messagingServiceType": {
       "description": "Type of messaging service - Kafka or Pulsar.",
       "type": "string",
-      "javaInterfaces": [
-        "org.openmetadata.core.entity.interfaces.EnumInterface"
-      ],
-      "enum": ["Kafka", "Pulsar"],
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "enum": ["Kafka", "Pulsar", "Redpanda"],
       "javaEnums": [
         {
           "name": "Kafka"
         },
         {
           "name": "Pulsar"
+        },
+        {
+          "name": "Redpanda"
         }
       ]
     },
@@ -33,9 +37,11 @@
     },
     "messagingConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MessagingConnection",
+      "javaType": "org.openmetadata.schema.type.MessagingConnection",
       "description": "Dashboard Connection.",
-      "javaInterfaces": ["org.openmetadata.core.entity.interfaces.ServiceConnectionEntityInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
       "properties": {
         "config": {
           "mask": true,
@@ -45,6 +51,9 @@
             },
             {
               "$ref": "./connections/messaging/pulsarConnection.json"
+            },
+            {
+              "$ref": "./connections/messaging/redpandaConnection.json"
             }
           ]
         }

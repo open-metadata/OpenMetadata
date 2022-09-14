@@ -4,8 +4,8 @@
   "title": "CreateIngestionPipelineRequest",
   "description": "Ingestion Pipeline Config is used to setup a Airflow DAG.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",

@@ -4,7 +4,7 @@
   "title": "VerticaConnection",
   "description": "Vertica Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.VerticaConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.VerticaConnection",
   "definitions": {
     "verticaType": {
       "description": "Service type.",
@@ -71,6 +71,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

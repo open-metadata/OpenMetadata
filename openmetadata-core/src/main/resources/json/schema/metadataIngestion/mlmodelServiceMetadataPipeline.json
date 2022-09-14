@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/mlmodelServiceMetadataPipeline.json",
+  "$id": "https://open-metadata.org/schema/metadataIngestion/mlmodelServiceMetadataPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MlModelServiceMetadataPipeline",
   "description": "MlModelService Metadata Pipeline Configuration.",
@@ -16,6 +16,10 @@
       "description": "Pipeline type",
       "$ref": "#/definitions/mlModelMetadataConfigType",
       "default": "MlModelMetadata"
+    },
+    "mlModelFilterPattern": {
+      "description": "Regex to only fetch MlModels with names matching the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     }
   },
   "additionalProperties": false

@@ -190,7 +190,7 @@
                 <version>${jsonschema2pojo.version}</version>
                 <configuration>
                     <sourceDirectory>${basedir}/src/main/resources/json/schema</sourceDirectory>
-                    <targetPackage>org.openmetadata.catalog</targetPackage>
+                    <targetPackage>org.openmetadata.schema</targetPackage>
                     <includeJsr303Annotations>true</includeJsr303Annotations>
                     <generateBuilders>true</generateBuilders>
                     <customAnnotator>org.openmetadata.annotations.OpenMetadataAnnotator</customAnnotator>

@@ -1,38 +1,17 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/policies/policy.json",
+  "$id": "https://open-metadata.org/schema/entity/policies/policy.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Policy",
   "description": "This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.policies.Policy",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.policies.Policy",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "policyType": {
-      "javaType": "org.openmetadata.catalog.type.PolicyType",
-      "description": "This schema defines the type used for describing different types of policies.",
-      "type": "string",
-      "enum": ["AccessControl", "Lifecycle"],
-      "javaEnums": [
-        {
-          "name": "AccessControl"
-        },
-        {
-          "name": "Lifecycle"
-        }
-      ]
-    },
     "rules": {
       "description": "A set of rules associated with the Policy.",
       "type": "array",
       "items": {
-        "anyOf": [
-          {
-            "$ref": "accessControl/rule.json"
-          },
-          {
-            "$ref": "lifecycle/rule.json"
-          }
-        ]
+        "$ref": "accessControl/rule.json"
       }
     }
   },
@@ -62,18 +41,9 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "policyUrl": {
-      "description": "Link to a well documented definition of this Policy.",
-      "type": "string",
-      "format": "uri",
-      "default": null
-    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
-    },
-    "policyType": {
-      "$ref": "#/definitions/policyType"
     },
     "enabled": {
       "description": "Is the policy enabled.",
@@ -97,13 +67,29 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
     "rules": {
-      "description": "Rules that the policy has.",
+      "description": "Set of rules that the policy contains.",
       "$ref": "#/definitions/rules"
+    },
+    "teams" : {
+      "description": "Teams that use this policy directly and not through roles.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "roles" : {
+      "description": "Roles that use this policy.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "location": {
       "description": "Location to which a policy is applied. This field is relevant only for `lifeCycle` policies.",
       "$ref": "../../type/entityReference.json",
       "default": null
+    },
+    "allowDelete" : {
+      "description": "Some system policies can't be deleted",
+      "type" : "boolean"
+    },
+    "allowEdit" : {
+      "description": "Some system roles can't be edited",
+      "type" : "boolean"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -111,6 +97,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "policyType"],
+  "required": ["id", "name", "rules"],
   "additionalProperties": false
 }

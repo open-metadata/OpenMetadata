@@ -4,7 +4,7 @@
   "title": "DatalakeConnection",
   "description": "Datalake Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.DatalakeConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.DatalakeConnection",
   "definitions": {
     "datalakeType": {
       "description": "Service type.",

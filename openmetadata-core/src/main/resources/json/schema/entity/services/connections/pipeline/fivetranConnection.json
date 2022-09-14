@@ -4,14 +4,12 @@
   "title": "FivetranConnection",
   "description": "Fivetran Metadata Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.pipeline.FivetranConnection",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.FivetranConnection",
   "definitions": {
     "FivetranType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "Fivetran"
-      ],
+      "enum": ["Fivetran"],
       "default": "Fivetran"
     }
   },
@@ -43,7 +41,7 @@
     },
     "limit": {
       "title": "Fivetran API Limit",
-      "description": "Fivetran API Limit For Pagitation.",
+      "description": "Fivetran API Limit For Pagination.",
       "type": "integer",
       "default": 1000
     },
@@ -53,7 +51,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "apiKey", "apiSecret"
-  ]
+  "required": ["apiKey", "apiSecret"]
 }

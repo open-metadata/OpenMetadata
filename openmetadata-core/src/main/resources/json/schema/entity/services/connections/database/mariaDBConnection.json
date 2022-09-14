@@ -4,7 +4,7 @@
   "title": "MariaDBConnection",
   "description": "MariaDB Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.MariaDBConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.MariaDBConnection",
   "definitions": {
     "mariaDBType": {
       "description": "Service type.",
@@ -68,6 +68,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

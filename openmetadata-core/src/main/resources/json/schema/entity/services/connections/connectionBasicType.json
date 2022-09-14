@@ -5,7 +5,7 @@
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {
     "connectionOptions": {
-      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
       "description": "Additional connection options to build the URL that can be sent to service during the connection.",
       "type": "object",
       "additionalProperties": {
@@ -13,7 +13,7 @@
       }
     },
     "connectionArguments": {
-      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
       "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
       "type": "object",
       "additionalProperties": {
@@ -30,6 +30,11 @@
       "type": "boolean",
       "default": true
     },
+    "supportsLineageExtraction": {
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsProfiler": {
       "description": "Supports Profiler",
       "type": "boolean",
@@ -37,6 +42,11 @@
     },
     "supportsDatabase": {
       "description": "The source service supports the database concept in its hierarchy",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsQueryComment": {
+      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
       "type": "boolean",
       "default": true
     }

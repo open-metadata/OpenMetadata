@@ -4,7 +4,7 @@
   "title": "AirflowConnection",
   "description": "Airflow Metadata Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.pipeline.AirflowConnection",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.AirflowConnection",
   "definitions": {
     "AirflowType": {
       "description": "Service type.",
@@ -22,7 +22,8 @@
     },
     "hostPort": {
       "expose": true,
-      "description": "Pipeline Service Management/UI URL.",
+      "title": "Host And Port",
+      "description": "Pipeline Service Management/UI URI.",
       "type": "string",
       "format": "uri"
     },

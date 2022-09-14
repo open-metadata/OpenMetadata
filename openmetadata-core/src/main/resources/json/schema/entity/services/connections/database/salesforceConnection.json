@@ -4,7 +4,7 @@
   "title": "SalesforceConnection",
   "description": "Salesforce Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.SalesforceConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.SalesforceConnection",
   "definitions": {
     "salesforceType": {
       "description": "Service type.",
@@ -74,6 +74,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

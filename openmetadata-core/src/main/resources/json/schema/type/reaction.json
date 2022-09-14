@@ -4,7 +4,7 @@
   "title": "Reaction",
   "description": "This schema defines the reaction to an entity or a conversation in the activity feeds.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.Reaction",
+  "javaType": "org.openmetadata.schema.type.Reaction",
   "definitions": {
     "reactionList": {
       "type": "array",
@@ -14,7 +14,7 @@
       "default": null
     },
     "reactionType": {
-      "javaType": "org.openmetadata.catalog.type.ReactionType",
+      "javaType": "org.openmetadata.schema.type.ReactionType",
       "description": "Type of reaction.",
       "type": "string",
       "enum": [

@@ -4,8 +4,8 @@
   "title": "CreateMlModelServiceRequest",
   "description": "Create MlModel service entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.services.CreateMlModelService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.schema.api.services.CreateMlModelService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
     "name": {

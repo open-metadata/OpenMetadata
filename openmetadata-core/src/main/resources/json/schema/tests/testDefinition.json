@@ -4,11 +4,11 @@
   "title": "TestDefinition",
   "description": "TestDefinition is a test definition to capture data quality tests against data entities.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.TestDefinition",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.schema.tests.TestDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "testPlatform": {
-      "javaType": "org.openmetadata.catalog.tests.TestPlatform",
+      "javaType": "org.openmetadata.schema.tests.TestPlatform",
       "description": "This schema defines the platform where tests are defined and ran.",
       "type": "string",
       "enum": [
@@ -20,8 +20,8 @@
         "Other"
       ]
     },
-    "dataType": {
-      "javaType": "org.openmetadata.catalog.type.TestCaseParameterDataType",
+    "testDataType": {
+      "javaType": "org.openmetadata.schema.type.TestCaseParameterDataType",
       "description": "This enum defines the type of data stored in a column.",
       "type": "string",
       "enum": [
@@ -36,12 +36,23 @@
         "DATETIME",
         "ARRAY",
         "MAP",
-        "SET"
+        "SET",
+        "STRING",
+        "BOOLEAN"
+      ]
+    },
+    "entityType": {
+      "javaType": "org.openmetadata.schema.type.TestDefinitionEntityType",
+      "description": "This enum defines the type for which this test definition applies to.",
+      "type": "string",
+      "enum": [
+        "TABLE",
+        "COLUMN"
       ]
     },
     "testCaseParameterDefinition": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.test.TestCaseParameter",
+      "javaType": "org.openmetadata.schema.tests.TestCaseParameter",
       "description": "This schema defines the parameters that can be passed for a Test Case.",
       "properties": {
         "name": {
@@ -54,7 +65,7 @@
         },
         "dataType": {
           "description": "Data type of the parameter (int, date etc.).",
-          "$ref": "#/definitions/dataType"
+          "$ref": "#/definitions/testDataType"
         },
         "description": {
           "description": "Description of the parameter.",
@@ -64,21 +75,6 @@
           "description": "Is this parameter required.",
           "type": "boolean",
           "default": false
-        }
-      }
-    },
-    "testCaseParameterValue": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.test.TestCaseParameterValue",
-      "description": "This schema defines the parameter values that can be passed for a Test Case.",
-      "properties": {
-        "name": {
-          "description": "name of the parameter. Must match the parameter names in testCaseParameterDefinition",
-          "type": "string"
-        },
-        "value": {
-          "description": "value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.",
-          "type": "string"
         }
       }
     }
@@ -104,6 +100,9 @@
       "description": "Description of the testcase.",
       "$ref": "../type/basic.json#/definitions/markdown"
     },
+    "entityType": {
+      "$ref": "#/definitions/entityType"
+    },
     "testPlatforms": {
       "type": "array",
       "items": {
@@ -114,12 +113,6 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/testCaseParameterDefinition"
-      }
-    },
-    "parameterValues": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/testCaseParameterValue"
       }
     },
     "owner": {
@@ -153,6 +146,6 @@
       "default": false
     }
   },
-  "required": ["name", "description", "testPlatform"],
+  "required": ["name", "description", "testPlatforms"],
   "additionalProperties": false
 }

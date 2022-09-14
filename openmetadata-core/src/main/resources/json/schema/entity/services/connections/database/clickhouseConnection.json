@@ -4,7 +4,7 @@
   "title": "ClickhouseConnection",
   "description": "Clickhouse Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.ClickhouseConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.ClickhouseConnection",
   "definitions": {
     "clickhouseType": {
       "description": "Service type.",
@@ -15,7 +15,7 @@
     "clickhouseScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["clickhouse+http"],
+      "enum": ["clickhouse+http", "clickhouse+native"],
       "default": "clickhouse+http"
     }
   },
@@ -73,11 +73,18 @@
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": ["hostPort"]
 }

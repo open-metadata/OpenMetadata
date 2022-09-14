@@ -13,7 +13,7 @@
 
 package org.openmetadata.client.security.factory;
 
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.Auth0AuthenticationProvider;
 import org.openmetadata.client.security.AzureAuthenticationProvider;
 import org.openmetadata.client.security.CustomOIDCAuthenticationProvider;

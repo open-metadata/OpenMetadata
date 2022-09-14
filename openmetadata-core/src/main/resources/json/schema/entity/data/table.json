@@ -5,11 +5,11 @@
   "$comment": "@om-entity-type",
   "description": "This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.Table",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.data.Table",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "tableType": {
-      "javaType": "org.openmetadata.catalog.type.TableType",
+      "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
       "type": "string",
       "enum": [
@@ -19,7 +19,8 @@
         "SecureView",
         "MaterializedView",
         "Iceberg",
-        "Local"
+        "Local",
+        "Partitioned"
       ],
       "javaEnums": [
         {
@@ -42,11 +43,14 @@
         },
         {
           "name": "Local"
+        },
+        {
+          "name": "Partitioned"
         }
       ]
     },
     "dataType": {
-      "javaType": "org.openmetadata.catalog.type.ColumnDataType",
+      "javaType": "org.openmetadata.schema.type.ColumnDataType",
       "description": "This enum defines the type of data stored in a column.",
       "type": "string",
       "enum": [
@@ -62,6 +66,7 @@
         "DECIMAL",
         "NUMERIC",
         "TIMESTAMP",
+        "TIMESTAMPZ",
         "TIME",
         "DATE",
         "DATETIME",
@@ -85,11 +90,12 @@
         "GEOGRAPHY",
         "ENUM",
         "JSON",
-        "UUID"
+        "UUID",
+        "VARIANT"
       ]
     },
     "constraint": {
-      "javaType": "org.openmetadata.catalog.type.ColumnConstraint",
+      "javaType": "org.openmetadata.schema.type.ColumnConstraint",
       "description": "This enum defines the type for column constraint.",
       "type": "string",
       "enum": ["NULL", "NOT_NULL", "UNIQUE", "PRIMARY_KEY"],
@@ -98,7 +104,7 @@
     },
     "tableConstraint": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.TableConstraint",
+      "javaType": "org.openmetadata.schema.type.TableConstraint",
       "title": "TableConstraint",
       "description": "This enum defines the type for table constraint.",
       "properties": {
@@ -124,7 +130,7 @@
     },
     "tablePartition": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.TablePartition",
+      "javaType": "org.openmetadata.schema.type.TablePartition",
       "description": "This schema defines the partition column of a table and format the partition is created.",
       "properties": {
         "columns": {
@@ -149,12 +155,11 @@
           "description": "partition interval , example hourly, daily, monthly."
         }
       },
-      "required": ["columns", "intervalType", "interval"],
       "additionalProperties": false
     },
     "column": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.Column",
+      "javaType": "org.openmetadata.schema.type.Column",
       "description": "This schema defines the type for a column in a table.",
       "properties": {
         "name": {
@@ -185,7 +190,7 @@
           "type": "integer"
         },
         "dataTypeDisplay": {
-          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
+          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
           "type": "string"
         },
         "description": {
@@ -223,20 +228,17 @@
           },
           "default": null
         },
-        "columnTests": {
-          "description": "List of column test cases that ran against a table column.",
-          "type": "array",
-          "items": {
-            "$ref": "../../tests/columnTest.json"
-          },
-          "default": null
-        },
         "customMetrics": {
           "description": "List of Custom Metrics registered for a column.",
           "type": "array",
           "items": {
             "$ref": "../../tests/customMetric.json"
           },
+          "default": null
+        },
+        "profile": {
+          "description": "Latest Data profile for a Column.",
+          "$ref": "#/definitions/columnProfile",
           "default": null
         }
       },
@@ -259,7 +261,7 @@
     },
     "columnJoins": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.ColumnJoin",
+      "javaType": "org.openmetadata.schema.type.ColumnJoin",
       "description": "This schema defines the type to capture how frequently a column is joined with columns in the other tables.",
       "properties": {
         "columnName": {
@@ -277,7 +279,7 @@
     },
     "tableJoins": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.TableJoins",
+      "javaType": "org.openmetadata.schema.type.TableJoins",
       "description": "This schema defines the type to capture information about how this table is joined with other tables and columns.",
       "properties": {
         "startDate": {
@@ -306,7 +308,7 @@
     },
     "tableData": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.TableData",
+      "javaType": "org.openmetadata.schema.type.TableData",
       "description": "This schema defines the type to capture rows of sample data for a table.",
       "properties": {
         "columns": {
@@ -329,7 +331,7 @@
     },
     "customMetricProfile": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.CustomMetricProfile",
+      "javaType": "org.openmetadata.schema.type.CustomMetricProfile",
       "description": "Profiling results of a Custom Metric.",
       "properties": {
         "name": {
@@ -345,12 +347,16 @@
     },
     "columnProfile": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.ColumnProfile",
+      "javaType": "org.openmetadata.schema.type.ColumnProfile",
       "description": "This schema defines the type to capture the table's column profile.",
       "properties": {
         "name": {
           "description": "Column Name.",
           "type": "string"
+        },
+        "timestamp": {
+          "description": "Timestamp on which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "valuesCount": {
           "description": "Total count of the values in this column.",
@@ -402,11 +408,21 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "type": ["number", "integer", "string"]
+          "oneOf": [
+            { "type": "number" },
+            { "type": "integer" },
+            { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/date" }
+          ]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "type": ["number", "integer", "string"]
+          "oneOf": [
+            { "type": "number" },
+            { "type": "integer" },
+            { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/date" }
+          ]
         },
         "minLength": {
           "description": "Minimum string length in a column.",
@@ -432,6 +448,10 @@
           "description": "Variance of a column.",
           "type": "number"
         },
+        "median": {
+          "description": "Median of a column.",
+          "type": "number"
+        },
         "histogram": {
           "description": "Histogram of a column.",
           "properties": {
@@ -455,26 +475,78 @@
           "default": null
         }
       },
+      "required": ["name", "timestamp"],
       "additionalProperties": false
     },
-    "tableProfile": {
+    "columnProfilerConfig": {
+      "description": "This schema defines the type for Table profile config include Columns.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.TableProfile",
-      "description": "This schema defines the type to capture the table's data profile.",
+      "javaType": "org.openmetadata.schema.type.ColumnProfilerConfig",
       "properties": {
-        "profileDate": {
-          "description": "Data one which profile is taken.",
-          "$ref": "../../type/basic.json#/definitions/date"
+        "columnName": {
+          "description": "Column Name of the table to be included.",
+          "type": "string"
         },
+        "metrics": {
+          "description": "Include only following metrics.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        }
+      }
+    },
+    "tableProfilerConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
+      "description": "This schema defines the type for Table profile config.",
+      "properties": {
         "profileSample": {
-          "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",
+          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
           "type": "number",
           "exclusiveMinimum": 0,
-          "maximum": 100
+          "maximum": 100,
+          "default": null
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
-          "type": "string"
+          "type": "string",
+          "default": null
+        },
+        "excludeColumns": {
+          "description": "column names to exclude from profiling.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "includeColumns": {
+          "description": "Only run profiler on included columns with specific metrics.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnProfilerConfig"
+          },
+          "default": null
+        }
+      }
+    },
+    "tableProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.TableProfile",
+      "description": "This schema defines the type to capture the table's data profile.",
+      "properties": {
+        "timestamp": {
+          "description": "Timestamp on which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "profileSample": {
+          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "default": null
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -483,24 +555,14 @@
         "rowCount": {
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
-        },
-        "columnNames": {
-          "description": "List of column names",
-          "type": "array"
-        },
-        "columnProfile": {
-          "description": "List of local column profiles of the table.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/columnProfile"
-          }
         }
       },
+      "required": ["timestamp"],
       "additionalProperties": false
     },
     "sqlQuery": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.SQLQuery",
+      "javaType": "org.openmetadata.schema.type.SQLQuery",
       "description": "This schema defines the type to capture the table's sql queries.",
       "properties": {
         "query": {
@@ -544,7 +606,7 @@
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.DataModel",
+      "javaType": "org.openmetadata.schema.type.DataModel",
       "properties": {
         "modelType": {
           "$ref": "#/definitions/modelType"
@@ -571,6 +633,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "owner": {
+          "description": "Owner of this Model.",
+          "$ref": "../../type/entityReference.json",
+          "default": null
         },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
@@ -704,20 +771,12 @@
       "$ref": "#/definitions/tableData",
       "default": null
     },
-    "profileSample": {
-      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 100,
-      "default": null
+    "tableProfilerConfig": {
+      "description": "Table Profiler Config to include or exclude columns from profiling.",
+      "$ref": "#/definitions/tableProfilerConfig"
     },
-    "profileQuery": {
-      "description": "Users' raw SQL query to fetch sample data and profile the table",
-      "type": "string",
-      "default": null
-    },
-    "latestTableProfile": {
-      "description": "Data profile for a table.",
+    "profile": {
+      "description": "Latest Data profile for a table.",
       "$ref": "#/definitions/tableProfile",
       "default": null
     },
@@ -726,14 +785,6 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/sqlQuery"
-      },
-      "default": null
-    },
-    "tableTests": {
-      "description": "List of test cases that ran against a table.",
-      "type": "array",
-      "items": {
-        "$ref": "../../tests/tableTest.json"
       },
       "default": null
     },

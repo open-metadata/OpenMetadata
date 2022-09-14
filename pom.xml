@@ -24,11 +24,11 @@
   <version>0.13.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
+    <module>openmetadata-core</module>
     <module>common</module>
     <module>catalog-rest-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
-    <module>openmetadata-core</module>
     <module>openmetadata-clients</module>
   </modules>
   <packaging>pom</packaging>
@@ -716,9 +716,9 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
-              <include>org.openmetadata.catalog.resources.**.*.java</include>
-              <include>org.openmetadata.catalog.util.*.java</include>
-              <include>org.openmetadata.catalog.EnumBackwardCompatibilityTest</include>
+              <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.util.*.java</include>
+              <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
           </configuration>
         </plugin>

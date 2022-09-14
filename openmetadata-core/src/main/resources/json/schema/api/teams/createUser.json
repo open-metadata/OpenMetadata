@@ -4,8 +4,8 @@
   "title": "CreateUserRequest",
   "description": "Request to create User entity",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.teams.CreateUser",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.schema.api.teams.CreateUser",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
     "name": {

@@ -4,8 +4,8 @@
   "title": "CreateDashboardServiceRequest",
   "description": "Create Dashboard service entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.services.CreateDashboardService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.schema.api.services.CreateDashboardService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
     "name": {

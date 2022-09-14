@@ -4,7 +4,7 @@
   "title": "RedshiftConnection",
   "description": "Redshift  Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.RedshiftConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.RedshiftConnection",
   "definitions": {
     "redshiftType": {
       "description": "Service type.",
@@ -74,6 +74,9 @@
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
@@ -81,6 +84,10 @@
     "supportsDatabase": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

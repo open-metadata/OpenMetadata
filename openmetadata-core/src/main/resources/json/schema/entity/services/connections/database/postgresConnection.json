@@ -4,7 +4,7 @@
   "title": "PostgresConnection",
   "description": "Postgres Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.PostgresConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.PostgresConnection",
   "definitions": {
     "postgresType": {
       "description": "Service type.",
@@ -72,6 +72,10 @@
     "supportsDatabase": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

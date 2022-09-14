@@ -43,6 +43,11 @@
     </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -499,7 +504,7 @@
         <artifactId>swagger-maven-plugin</artifactId>
         <configuration>
           <resourcePackages>
-            <resourcePackage>org.openmetadata.catalog.resources</resourcePackage>
+            <resourcePackage>org.openmetadata.service.resources</resourcePackage>
           </resourcePackages>
           <useResourcePackagesChildren>true</useResourcePackagesChildren>
           <outputDirectory>${basedir}/target/classes/assets/</outputDirectory>
@@ -542,32 +547,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
         <version>${maven-src-plugin.version}</version>
-      </plugin>
-      <plugin>
-        <groupId>org.jsonschema2pojo</groupId>
-        <artifactId>jsonschema2pojo-maven-plugin</artifactId>
-        <version>${jsonschema2pojo.version}</version>
-        <configuration>
-          <sourceDirectory>${basedir}/src/main/resources/json/schema</sourceDirectory>
-          <targetPackage>org.openmetadata.catalog</targetPackage>
-          <includeJsr303Annotations>true</includeJsr303Annotations>
-          <generateBuilders>true</generateBuilders>
-          <customAnnotator>org.openmetadata.annotations.OpenMetadataAnnotator</customAnnotator>
-        </configuration>
-        <dependencies>
-          <dependency>
-            <groupId>org.open-metadata</groupId>
-            <artifactId>common</artifactId>
-            <version>${project.version}</version>
-          </dependency>
-        </dependencies>
-        <executions>
-          <execution>
-            <goals>
-              <goal>generate</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

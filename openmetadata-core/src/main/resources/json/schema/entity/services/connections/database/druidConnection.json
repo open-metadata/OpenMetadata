@@ -4,7 +4,7 @@
   "title": "DruidConnection",
   "description": "Druid Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.DruidConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.DruidConnection",
   "definitions": {
     "druidType": {
       "description": "Service type.",
@@ -68,6 +68,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

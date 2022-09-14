@@ -4,7 +4,7 @@
   "title": "PinotDBConnection",
   "description": "PinotDB Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.PinotDBConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.PinotDBConnection",
   "definitions": {
     "pinotDBType": {
       "description": "Service type.",
@@ -73,6 +73,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false,

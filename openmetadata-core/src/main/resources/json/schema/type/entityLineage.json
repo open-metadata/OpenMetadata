@@ -4,7 +4,7 @@
   "title": "Entity Lineage",
   "description": "This schema defines the type used for lineage of an entity.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.EntityLineage",
+  "javaType": "org.openmetadata.schema.type.EntityLineage",
   "definitions": {
     "columnLineage": {
       "type" : "object",
@@ -51,7 +51,7 @@
     "edge": {
       "description": "Edge in the lineage graph from one entity to another by entity IDs.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.Edge",
+      "javaType": "org.openmetadata.schema.type.Edge",
       "properties": {
         "fromEntity": {
           "description": "From entity that is upstream of lineage edge.",
@@ -75,7 +75,7 @@
     "entitiesEdge": {
       "description": "Edge in the lineage graph from one entity to another using entity references.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.EntitiesEdge",
+      "javaType": "org.openmetadata.schema.type.EntitiesEdge",
       "properties": {
         "fromEntity": {
           "description": "From entity that is upstream of lineage edge.",

@@ -4,7 +4,7 @@
   "title": "Generate JWT Token Request",
   "description": "Generate JWT Token Request.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.teams.authn.GenerateTokenRequest",
+  "javaType": "org.openmetadata.schema.teams.authn.GenerateTokenRequest",
   "properties": {
     "JWTTokenExpiry": {
       "$ref": "./jwtAuth.json#/definitions/JWTTokenExpiry"

@@ -4,15 +4,16 @@
   "title": "Database Service",
   "description": "This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.services.DatabaseService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface", "org.openmetadata.core.entity.interfaces.ServiceEntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.services.DatabaseService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
   "definitions": {
     "databaseServiceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "javaInterfaces": [
-        "org.openmetadata.core.entity.interfaces.EnumInterface"
-      ],
       "enum": [
         "BigQuery",
         "Mysql",
@@ -129,7 +130,9 @@
     "databaseConnection": {
       "type": "object",
       "description": "Database Connection.",
-      "javaInterfaces": ["org.openmetadata.core.entity.interfaces.ServiceConnectionEntityInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
       "properties": {
         "config": {
           "mask": true,

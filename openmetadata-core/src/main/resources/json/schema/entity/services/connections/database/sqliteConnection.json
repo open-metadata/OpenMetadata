@@ -4,7 +4,7 @@
   "title": "SQLiteConnection",
   "description": "SQLite Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.SQLiteConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.SQLiteConnection",
   "definitions": {
     "SQLiteType": {
       "description": "Service type.",
@@ -74,6 +74,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
   "additionalProperties": false

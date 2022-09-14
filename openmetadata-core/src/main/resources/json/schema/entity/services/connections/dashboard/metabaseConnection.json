@@ -4,7 +4,7 @@
   "title": "MetabaseConnection",
   "description": "Metabase Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.dashboard.MetabaseConnection",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.MetabaseConnection",
   "definitions": {
     "metabaseType": {
       "description": "Metabase service type",

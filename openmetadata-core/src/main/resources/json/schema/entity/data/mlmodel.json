@@ -2,13 +2,14 @@
   "$id": "https://open-metadata.org/schema/entity/data/mlmodel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MlModel",
+  "$comment": "@om-entity-type",
   "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.MlModel",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.data.MlModel",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "featureType": {
-      "javaType": "org.openmetadata.catalog.type.MlFeatureDataType",
+      "javaType": "org.openmetadata.schema.type.MlFeatureDataType",
       "description": "This enum defines the type of data stored in a ML Feature.",
       "type": "string",
       "enum": ["numerical", "categorical"],
@@ -22,7 +23,7 @@
       ]
     },
     "featureSourceDataType": {
-      "javaType": "org.openmetadata.catalog.type.FeatureSourceDataType",
+      "javaType": "org.openmetadata.schema.type.FeatureSourceDataType",
       "description": "This enum defines the type of data of a ML Feature source.",
       "type": "string",
       "enum": [
@@ -38,7 +39,7 @@
     },
     "featureSource": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlFeatureSource",
+      "javaType": "org.openmetadata.schema.type.MlFeatureSource",
       "description": "This schema defines the sources of a ML Feature.",
       "additionalProperties": false,
       "properties": {
@@ -72,7 +73,7 @@
     },
     "mlFeature": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlFeature",
+      "javaType": "org.openmetadata.schema.type.MlFeature",
       "description": "This schema defines the type for an ML Feature used in an ML Model.",
       "additionalProperties": false,
       "properties": {
@@ -114,7 +115,7 @@
     },
     "mlHyperParameter": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlHyperParameter",
+      "javaType": "org.openmetadata.schema.type.MlHyperParameter",
       "description": "This schema defines the type for an ML HyperParameter used in an ML Model.",
       "additionalProperties": false,
       "properties": {
@@ -134,7 +135,7 @@
     },
     "mlStore": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlStore",
+      "javaType": "org.openmetadata.schema.type.MlStore",
       "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
       "additionalProperties": false,
       "properties": {

@@ -4,7 +4,7 @@
   "title": "AthenaConnection",
   "description": "AWS Athena Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.AthenaConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.AthenaConnection",
   "definitions": {
     "athenaType": {
       "description": "Service type.",
@@ -35,11 +35,6 @@
     "awsConfig": {
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
-    },
-    "hostPort": {
-      "title": "Host and Port",
-      "description": "Host and port of the Athena service.",
-      "type": "string"
     },
     "s3StagingDir": {
       "title": "S3 Staging Directory",

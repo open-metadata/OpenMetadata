@@ -6,7 +6,7 @@
   "type": "object",
   "definitions": {
     "createTaskDetails": {
-      "javaType": "org.openmetadata.catalog.type.CreateTaskDetails",
+      "javaType": "org.openmetadata.schema.api.CreateTaskDetails",
       "description": "Details about the task. This is only applicable if thread is of type task.",
       "type": "object",
       "properties": {
@@ -52,6 +52,9 @@
     },
     "taskDetails": {
       "$ref": "#/definitions/createTaskDetails"
+    },
+    "announcementDetails": {
+      "$ref": "../../entity/feed/thread.json#/definitions/announcementDetails"
     }
   },
   "required": ["message", "from", "about"],

@@ -4,10 +4,10 @@
   "title": "JWTAuthMechanism",
   "description": "User/Bot JWTAuthMechanism.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.teams.authn.JWTAuthMechanism",
+  "javaType": "org.openmetadata.schema.teams.authn.JWTAuthMechanism",
   "definitions": {
     "JWTTokenExpiry": {
-      "javaType": "org.openmetadata.catalog.teams.authn.JWTTokenExpiry",
+      "javaType": "org.openmetadata.schema.teams.authn.JWTTokenExpiry",
       "description": "JWT Auth Token expiration in days",
       "type": "string",
       "enum": ["7", "30", "60", "90", "Unlimited"],
