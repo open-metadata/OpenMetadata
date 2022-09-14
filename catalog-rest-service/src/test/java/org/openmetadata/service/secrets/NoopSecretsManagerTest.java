@@ -150,7 +150,7 @@ public class NoopSecretsManagerTest {
 
   @ParameterizedTest
   @MethodSource(
-      "org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
+      "org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
   public void testEncryptAndDecryptDbtConfigSource(
       Object config,
       EntityReference service,

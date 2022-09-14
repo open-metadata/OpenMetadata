@@ -147,7 +147,7 @@ public final class CollectionRegistry {
     Reflections reflections =
         new Reflections(
             new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage("org.openmetadata.catalog"))
+                .setUrls(ClasspathHelper.forPackage("org.openmetadata.service"))
                 .setScanners(new MethodAnnotationsScanner()));
 
     // Get classes marked with @Collection annotation
@@ -238,7 +238,7 @@ public final class CollectionRegistry {
 
   /** Compile a list of REST collection based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
-    Reflections reflections = new Reflections("org.openmetadata.catalog.resources");
+    Reflections reflections = new Reflections("org.openmetadata.service.resources");
 
     // Get classes marked with @Collection annotation
     Set<Class<?>> collectionClasses = reflections.getTypesAnnotatedWith(Collection.class);

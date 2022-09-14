@@ -35,7 +35,7 @@ else
   JAVA="${JAVA_HOME}/bin/java"
 fi
 
-TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
+TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.service.util.TablesInitializer
 LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
 if  [ ${debug} ] ; then
   echo $LIBS_DIR
