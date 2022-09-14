@@ -24,8 +24,8 @@ import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.openmetadata.service.security.client.AzureSSOClientConfig;
-import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.security.client.AzureSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class AzureAuthenticationProvider implements AuthenticationProvider {

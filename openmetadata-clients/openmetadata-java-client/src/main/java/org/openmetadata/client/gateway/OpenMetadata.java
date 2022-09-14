@@ -26,16 +26,16 @@ import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.api.CatalogApi;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
-import org.openmetadata.schema.util.VersionUtils;
-import org.openmetadata.service.api.CatalogVersion;
-import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.api.OpenMetadataServerVersion;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.utils.VersionUtils;
 
 @Slf4j
 public class OpenMetadata {
-  private static final CatalogVersion CATALOG_VERSION_CLIENT;
+  private static final OpenMetadataServerVersion OPENMETADATA_VERSION_CLIENT;
 
   static {
-    CATALOG_VERSION_CLIENT = VersionUtils.getCatalogVersion("/catalog/VERSION");
+    OPENMETADATA_VERSION_CLIENT = VersionUtils.getOpenMetadataServerVersion("/catalog/VERSION");
   }
 
   private ApiClient apiClient;
@@ -111,11 +111,11 @@ public class OpenMetadata {
 
   public String[] getServerVersion() {
     CatalogApi api = apiClient.buildClient(CatalogApi.class);
-    org.openmetadata.client.model.CatalogVersion serverVersion = api.getCatalogVersion();
+    org.openmetadata.client.model.OpenMetadataServerVersion serverVersion = api.getCatalogVersion();
     return VersionUtils.getVersionFromString(serverVersion.getVersion());
   }
 
   public String[] getClientVersion() {
-    return VersionUtils.getVersionFromString(CATALOG_VERSION_CLIENT.getVersion());
+    return VersionUtils.getVersionFromString(OPENMETADATA_VERSION_CLIENT.getVersion());
   }
 }

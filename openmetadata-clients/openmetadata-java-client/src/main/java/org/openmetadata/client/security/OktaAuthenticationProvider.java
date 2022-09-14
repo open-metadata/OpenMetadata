@@ -24,7 +24,7 @@ import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.model.OktaSSOConfig;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.client.security.interfaces.OktaAccessTokenApi;
-import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class OktaAuthenticationProvider implements AuthenticationProvider {

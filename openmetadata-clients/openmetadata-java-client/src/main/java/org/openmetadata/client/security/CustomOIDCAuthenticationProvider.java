@@ -23,8 +23,8 @@ import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.client.security.interfaces.CustomOIDCAccessTokenApi;
-import org.openmetadata.service.security.client.CustomOIDCSSOClientConfig;
-import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class CustomOIDCAuthenticationProvider implements AuthenticationProvider {

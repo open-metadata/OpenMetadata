@@ -23,8 +23,8 @@ import org.openmetadata.client.interceptors.Auth0AccessTokenRequestInterceptor;
 import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.Auth0AccessTokenApi;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.openmetadata.service.security.client.Auth0SSOClientConfig;
-import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class Auth0AuthenticationProvider implements AuthenticationProvider {
