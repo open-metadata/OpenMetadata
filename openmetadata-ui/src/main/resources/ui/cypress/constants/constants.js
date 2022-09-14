@@ -81,6 +81,7 @@ export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
+export const TEAM_ENTITY = 'team_entity';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';

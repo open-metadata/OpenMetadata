@@ -13,8 +13,8 @@
 
 /// <reference types="cypress" />
 
-import { goToAddNewServicePage, handleIngestionRetry, scheduleIngestion, testServiceCreationAndIngestion, uuid } from '../../common/common';
-import { SERVICE_TYPE } from '../../constants/constants';
+import { goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
+import { SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -44,8 +44,22 @@ describe('Data Quality and Profiler should work properly', () => {
     );
   });
 
-  it('Add Profiler ingestion', () => {
+  it.only('Add Profiler ingestion', () => {
     cy.goToHomePage();
+    searchEntity(TEAM_ENTITY);
+
+    // click on the 1st result and go to entity details page and follow the entity
+    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
+    cy.get('[data-testid="table-link"]')
+      .first()
+      .contains(TEAM_ENTITY, { matchCase: false })
+      .click();
+    verifyResponseStatusCode('@getEntityDetails', 200);
+
+    cy.get('[data-testid="Profiler & Data Quality"]')
+      .should('be.visible')
+      .click();
+
     cy.get('[data-testid="service-summary"] [data-testid="service"]')
       .should('be.visible')
       .click();
