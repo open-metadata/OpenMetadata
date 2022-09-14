@@ -17,6 +17,7 @@ import {
   findByText,
   fireEvent,
   render,
+  screen,
 } from '@testing-library/react';
 import { flatten } from 'lodash';
 import {
@@ -359,21 +360,18 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Check if tags and glossary-terms are present', async () => {
-    const { getByTestId, findByText } = render(
-      <DashboardDetails {...DashboardDetailsProps} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<DashboardDetails {...DashboardDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const tagWrapper = getByTestId('tags-wrapper');
+    const tagWrapper = screen.getByTestId('tags-wrapper');
     fireEvent.click(
       tagWrapper,
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    const tag1 = await findByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findByText('Glossary.Tag1');
+    const tag1 = await screen.findByText('TagCat1.Tag1');
+    const glossaryTerm1 = await screen.findByText('Glossary.Tag1');
 
     expect(tag1).toBeInTheDocument();
     expect(glossaryTerm1).toBeInTheDocument();

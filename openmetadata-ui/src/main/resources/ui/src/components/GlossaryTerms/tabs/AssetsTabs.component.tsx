@@ -1,12 +1,12 @@
-import classNames from 'classnames';
-import { GlossaryTermAssets } from 'Models';
-import React from 'react';
+import { Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { FormattedTableData, GlossaryTermAssets } from 'Models';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
-import { isEven } from '../../../utils/CommonUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import NextPrevious from '../../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
@@ -38,63 +38,52 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
     }
   };
 
+  const tableColumn: ColumnsType<FormattedTableData> = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+        render: (text, record) => (
+          <Link
+            to={getLinkForFqn(
+              record.fullyQualifiedName || '',
+              record.entityType as EntityType
+            )}>
+            {text}
+          </Link>
+        ),
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text) =>
+          text ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            <span className="tw-no-description">No description</span>
+          ),
+      },
+      {
+        title: 'Owner',
+        dataIndex: 'owner',
+        key: 'owner',
+        render: (text) => <p>{text?.displayName || text?.name || '--'}</p>,
+      },
+    ],
+    []
+  );
+
   return (
     <div>
-      <div className="tw-table-container" data-testid="table-container">
-        <table
-          className="tw-bg-white tw-w-full tw-mb-4"
-          data-testid="database-tables">
-          <thead>
-            <tr className="tableHead-row">
-              <th className="tableHead-cell">Name</th>
-              <th className="tableHead-cell">Description</th>
-              <th className="tableHead-cell">Owner</th>
-            </tr>
-          </thead>
-          <tbody className="tableBody">
-            {assetData.data.length > 0 ? (
-              assetData.data.map((dataObj, index) => (
-                <tr
-                  className={classNames(
-                    'tableBody-row',
-                    !isEven(index + 1) ? 'odd-row' : null
-                  )}
-                  data-testid="column"
-                  key={index}>
-                  <td className="tableBody-cell">
-                    <Link
-                      to={getLinkForFqn(
-                        dataObj.fullyQualifiedName || '',
-                        dataObj.entityType as EntityType
-                      )}>
-                      {dataObj.name}
-                    </Link>
-                  </td>
-                  <td className="tableBody-cell">
-                    {dataObj.description ? (
-                      <RichTextEditorPreviewer markdown={dataObj.description} />
-                    ) : (
-                      <span className="tw-no-description">No description</span>
-                    )}
-                  </td>
-                  <td className="tableBody-cell">
-                    <p>
-                      {dataObj.owner?.displayName ||
-                        dataObj.owner?.name ||
-                        '--'}
-                    </p>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr className="tableBody-row">
-                <td className="tableBody-cell tw-text-center" colSpan={4}>
-                  No assets available.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div data-testid="table-container">
+        <Table
+          columns={tableColumn}
+          data-testid="custom-properties-table"
+          dataSource={assetData.data}
+          size="small"
+        />
       </div>
       {assetData.total > PAGE_SIZE && assetData.data.length > 0 && (
         <NextPrevious

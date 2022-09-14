@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
@@ -73,22 +73,22 @@ const mockProp = {
 
 describe('Test CustomProperty Table Component', () => {
   it('Should render table component', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <CustomPropertyTable {...mockProp} />
-    );
-    const table = await findByTestId('custom-properties-table');
+    render(<CustomPropertyTable {...mockProp} />);
+    const table = await screen.findByTestId('custom-properties-table');
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await findByTestId('property-name');
-    const propertyValue = await findByTestId('property-value');
+    const propertyName = await screen.findByText('Name');
+    const propertyValue = await screen.findByText('Value');
+    const tbody = await screen.findAllByRole('row');
 
     expect(propertyName).toBeInTheDocument();
     expect(propertyValue).toBeInTheDocument();
+    expect(tbody).toHaveLength(mockCustomProperties.length + 1);
 
-    const dataRows = await findAllByTestId('data-row');
+    // const dataRows = await findAllByTestId('data-row');
 
-    expect(dataRows).toHaveLength(mockCustomProperties.length);
+    // expect(dataRows).toHaveLength(mockCustomProperties.length);
   });
 
   it('Should render no data placeholder if custom properties list is empty', async () => {

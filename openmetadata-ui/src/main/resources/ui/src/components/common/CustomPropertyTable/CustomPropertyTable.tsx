@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, uniqueId } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
-import { Type } from '../../../generated/entity/type';
-import { isEven } from '../../../utils/CommonUtils';
+import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
 import { CustomPropertyProps } from './CustomPropertyTable.interface';
@@ -55,53 +55,41 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
     fetchTypeDetail();
   }, []);
 
+  const tableColumn: ColumnsType<CustomProperty> = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+      },
+      {
+        title: 'Value',
+        dataIndex: 'value',
+        key: 'value',
+        render: (_, record) => (
+          <PropertyValue
+            extension={extension}
+            propertyName={record.name}
+            propertyType={record.propertyType}
+            onExtensionUpdate={onExtensionUpdate}
+          />
+        ),
+      },
+    ],
+    []
+  );
+
   return (
     <>
       {isEmpty(customProperties) ? (
         <ErrorPlaceHolder heading="Custom Properties" />
       ) : (
-        <div className="tw-table-container">
-          <table className="tw-w-full" data-testid="custom-properties-table">
-            <thead data-testid="table-header">
-              <tr className="tableHead-row">
-                <th
-                  className="tableHead-cell tw-w-2/4"
-                  data-testid="property-name">
-                  Name
-                </th>
-                <th
-                  className="tableHead-cell tw-w-2/4"
-                  data-testid="property-value">
-                  Value
-                </th>
-              </tr>
-            </thead>
-            <tbody data-testid="table-body">
-              {customProperties.map((property, index) => (
-                <tr
-                  className={classNames(
-                    `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                    {
-                      'tw-border-b-0': index === customProperties.length - 1,
-                    }
-                  )}
-                  data-testid="data-row"
-                  key={uniqueId()}>
-                  <td className="tableBody-cell">{property.name}</td>
-
-                  <td className="tableBody-cell">
-                    <PropertyValue
-                      extension={extension}
-                      propertyName={property.name}
-                      propertyType={property.propertyType}
-                      onExtensionUpdate={onExtensionUpdate}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={tableColumn}
+          data-testid="custom-properties-table"
+          dataSource={customProperties}
+          size="small"
+        />
       )}
     </>
   );
