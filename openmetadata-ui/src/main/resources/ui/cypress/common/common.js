@@ -217,11 +217,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('be.visible')
     .type('DELETE');
 
-  interceptURL(
-    'GET',
-    '/api/v1/users/name/anonymous?fields=profile',
-    'homePage'
-  );
+  interceptURL('GET', '/api/v1/*', 'homePage');
 
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
 
