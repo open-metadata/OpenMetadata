@@ -233,7 +233,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     def __init__(self):
         if hasattr(self.source_config.dbtConfigSource, "dbtSecurityConfig"):
             if self.source_config.dbtConfigSource.dbtSecurityConfig is None:
-                logger.warning("dbtConfigSource is not configured")
+                logger.info("dbtConfigSource is not configured")
                 self.dbt_catalog = None
                 self.dbt_manifest = None
                 self.dbt_run_results = None
