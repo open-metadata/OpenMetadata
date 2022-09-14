@@ -20,12 +20,12 @@
   <dependencies>
     <dependency>
       <groupId>org.open-metadata</groupId>
-      <artifactId>common</artifactId>
+      <artifactId>openmetadata-spec</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
-      <artifactId>catalog-rest-service</artifactId>
+      <artifactId>openmetadata-apis</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

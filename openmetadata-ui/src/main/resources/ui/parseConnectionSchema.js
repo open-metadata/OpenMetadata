@@ -7,7 +7,7 @@ const fse = require('fs-extra');
 const cwd = process.cwd();
 
 const schemaDir =
-  '../../../../../openmetadata-core/src/main/resources/json/schema';
+  '../../../../../openmetadata-spec/src/main/resources/json/schema';
 
 const rootDir = 'connTemp';
 const srcDir = 'schema/entity/services/connections';

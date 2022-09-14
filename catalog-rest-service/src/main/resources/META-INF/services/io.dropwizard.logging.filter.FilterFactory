@@ -1,2 +1,0 @@
-org.openmetadata.service.events.AuditExcludeFilterFactory
-org.openmetadata.service.events.AuditOnlyFilterFactory

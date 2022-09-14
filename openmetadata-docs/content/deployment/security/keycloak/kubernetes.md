@@ -20,8 +20,8 @@ The configuration below already uses the presets shown in the example of keycloa
 ```yaml
 global:
   authorizer:
-    className: "org.openmetadata.service.security.DefaultAuthorizer"
-    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+    className: "org.openmetadata.apis.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.apis.security.JwtFilter"
     initialAdmins:
       - "admin-user"
     botPrincipals:
