@@ -202,8 +202,6 @@ const TourPage = () => {
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             handleExtentionUpdate={handleCountChange}
-            handleSelectedColumn={handleCountChange}
-            handleShowTestForm={handleCountChange}
             isNodeLoading={{
               id: undefined,
               state: false,
@@ -217,10 +215,8 @@ const TourPage = () => {
             postFeedHandler={handleCountChange}
             removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
-            selectedColumn=""
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}
-            showTestForm={false}
             slashedTableName={mockDatasetData.slashedTableName}
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
@@ -228,7 +224,6 @@ const TourPage = () => {
             }
             tableQueries={[]}
             tableTags={mockDatasetData.tableTags}
-            tableTestCase={[]}
             tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}
             tier={'' as unknown as TagLabel}

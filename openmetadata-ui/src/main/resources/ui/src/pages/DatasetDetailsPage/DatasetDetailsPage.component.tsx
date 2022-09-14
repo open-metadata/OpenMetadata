@@ -73,7 +73,6 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { TableTest } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -175,20 +174,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  // Data Quality tab state
-  const [showTestForm, setShowTestForm] = useState(false);
-  const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
-  const [selectedColumn, setSelectedColumn] = useState<string>();
-
   const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const handleShowTestForm = (value: boolean) => {
-    setShowTestForm(value);
-  };
-
-  const handleSelectedColumn = (value: string | undefined) => {
-    setSelectedColumn(value);
-  };
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -202,7 +188,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           datasetTableTabs[currentTabIndex].path
         ),
       });
-      handleShowTestForm(false);
     }
   };
 
@@ -361,10 +346,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               activeTitle: true,
             },
           ]);
-
-          if (res.tableTests && res.tableTests.length > 0) {
-            setTableTestCase(res.tableTests);
-          }
 
           addToRecentViewed({
             displayName: getEntityName(res),
@@ -860,8 +841,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               followTableHandler={followTable}
               followers={followers}
               handleExtentionUpdate={handleExtentionUpdate}
-              handleSelectedColumn={handleSelectedColumn}
-              handleShowTestForm={handleShowTestForm}
               isLineageLoading={isLineageLoading}
               isNodeLoading={isNodeLoading}
               isQueriesLoading={isTableQueriesLoading}
@@ -875,16 +854,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
               postFeedHandler={postFeedHandler}
               removeLineageHandler={removeLineageHandler}
               sampleData={sampleData}
-              selectedColumn={selectedColumn as string}
               setActiveTabHandler={activeTabHandler}
               settingsUpdateHandler={settingsUpdateHandler}
-              showTestForm={showTestForm}
               slashedTableName={slashedTableName}
               tableDetails={tableDetails}
               tableProfile={tableProfile}
               tableQueries={tableQueries}
               tableTags={tableTags}
-              tableTestCase={tableTestCase}
               tableType={tableType}
               tagUpdateHandler={onTagUpdate}
               tier={tier as TagLabel}
