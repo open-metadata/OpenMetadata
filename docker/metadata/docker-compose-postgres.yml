@@ -153,8 +153,8 @@ services:
     networks:
       - app_net
     volumes:
-      - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
-      - ingestion-volume-dags:/ingestion/examples/airflow/dags
+      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
+      - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
 
 networks:

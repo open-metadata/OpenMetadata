@@ -121,7 +121,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:local
+    image: openmetadata/ingestion:0.12.0
     depends_on:
       elasticsearch:
         condition: service_started
