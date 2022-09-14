@@ -30,13 +30,8 @@ import { getTableDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import {
-  Column,
-  ColumnTest,
-  JoinedWith,
-} from '../../generated/entity/data/table';
+import { Column, JoinedWith } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
@@ -427,71 +422,6 @@ const EntityTable = ({
     );
   };
 
-  const getTestStats = (
-    record: Column | Column,
-    columnTestLength: number | undefined
-  ) => {
-    const columnTests =
-      columnTestLength && columnTestLength > 0
-        ? record.columnTests ?? []
-        : ([] as ColumnTest[]);
-
-    const failingTests = columnTests.filter((test) =>
-      test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Failed)
-    );
-    const passingTests = columnTests.filter((test) =>
-      test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Success)
-    );
-
-    return [failingTests, passingTests];
-  };
-
-  const getColumnTestsCell = (
-    columnTestLength: number | undefined,
-    failingTests: ColumnTest[],
-    passingTests: ColumnTest[]
-  ) => {
-    return (
-      <>
-        {columnTestLength ? (
-          <>
-            {failingTests.length ? (
-              <div className="tw-flex">
-                <p className="tw-mr-2">
-                  <FontAwesomeIcon
-                    className="tw-text-status-failed"
-                    icon="times"
-                  />
-                </p>
-                <p>
-                  {`${failingTests.length}/${columnTestLength} tests failing`}
-                </p>
-              </div>
-            ) : (
-              <>
-                {passingTests.length ? (
-                  <div className="tw-flex">
-                    <div className="tw-mr-2">
-                      <FontAwesomeIcon
-                        className="tw-text-status-success"
-                        icon="check-square"
-                      />
-                    </div>
-                    <p>{`${passingTests.length} tests`}</p>
-                  </div>
-                ) : (
-                  <p>{`${columnTestLength} tests`}</p>
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          '--'
-        )}
-      </>
-    );
-  };
-
   const getDataTypeDisplayCell = (record: Column | Column) => {
     return (
       <>
@@ -753,21 +683,7 @@ const EntityTable = ({
 
   const renderCell = useCallback(
     (key: string, record: Column | Column, index: number) => {
-      const columnTestLength = record?.columnTests?.length;
-
-      const [failingTests, passingTests] = getTestStats(
-        record,
-        columnTestLength
-      );
-
       switch (key) {
-        case TABLE_HEADERS_V1.columnTests:
-          return getColumnTestsCell(
-            columnTestLength,
-            failingTests,
-            passingTests
-          );
-
         case TABLE_HEADERS_V1.dataTypeDisplay:
           return getDataTypeDisplayCell(record);
 
