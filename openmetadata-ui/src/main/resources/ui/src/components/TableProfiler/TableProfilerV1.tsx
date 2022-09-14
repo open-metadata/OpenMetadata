@@ -14,36 +14,39 @@
 import {
   Button,
   Col,
+  Form,
   Radio,
   RadioChangeEvent,
   Row,
+  Select,
   Space,
   Tooltip,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
+import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { getListTestCase } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
+import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { TestCase } from '../../generated/tests/testCase';
+import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import {
   formatNumberWithComma,
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
-import {
-  getAddDataQualityTableTestPath,
-  getProfilerDashboardWithFqnPath,
-} from '../../utils/RouterUtils';
+import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
@@ -60,16 +63,50 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   permissions,
 }) => {
   const { profile, columns = [] } = table;
-  const history = useHistory();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
-  const [activeTab] = useState<ProfilerDashboardTab>(
+  const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
     ProfilerDashboardTab.SUMMARY
   );
+  const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
+    useState<string>('');
+  const [selectedTestType, setSelectedTestType] = useState('');
+  const isSummary = activeTab === ProfilerDashboardTab.SUMMARY;
+  const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
+
+  const testCaseStatusOption = useMemo(() => {
+    const testCaseStatus: SelectableOption[] = Object.values(
+      TestCaseStatus
+    ).map((value) => ({
+      label: value,
+      value: value,
+    }));
+    testCaseStatus.unshift({
+      label: 'All',
+      value: '',
+    });
+
+    return testCaseStatus;
+  }, []);
+
+  const testCaseTypeOption = useMemo(() => {
+    const testCaseStatus: SelectableOption[] = Object.entries(TestType).map(
+      ([key, value]) => ({
+        label: key,
+        value: value,
+      })
+    );
+    testCaseStatus.unshift({
+      label: 'All',
+      value: '',
+    });
+
+    return testCaseStatus;
+  }, []);
 
   const viewTest = permissions.ViewAll || permissions.ViewTests;
   const viewProfiler = permissions.ViewAll || permissions.ViewDataProfile;
@@ -125,21 +162,13 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   const handleTabChange = (e: RadioChangeEvent) => {
     const value = e.target.value as ProfilerDashboardTab;
-    if (ProfilerDashboardTab.DATA_QUALITY === value) {
-      history.push(
-        getProfilerDashboardWithFqnPath(
-          ProfilerDashboardType.TABLE,
-          table.fullyQualifiedName || '',
-          ProfilerDashboardTab.DATA_QUALITY
-        )
-      );
-    }
+    setActiveTab(value);
   };
 
   const fetchAllTests = async () => {
     try {
       const { data } = await getListTestCase({
-        fields: 'testCaseResult',
+        fields: 'testCaseResult,entityLink,testDefinition,testSuite',
         entityLink: generateEntityLink(table.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
@@ -169,6 +198,35 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
+  const handleTestCaseStatusChange = (value: string) => {
+    if (value !== selectedTestCaseStatus) {
+      setSelectedTestCaseStatus(value);
+    }
+  };
+
+  const handleTestCaseTypeChange = (value: string) => {
+    if (value !== selectedTestType) {
+      setSelectedTestType(value);
+    }
+  };
+
+  const getFilterTestCase = () => {
+    let tests: TestCase[] = [];
+    if (selectedTestType === TestType.Table) {
+      tests = tableTests.tests;
+    } else if (selectedTestType === TestType.Column) {
+      tests = columnTests;
+    } else {
+      tests = [...tableTests.tests, ...columnTests];
+    }
+
+    return tests.filter(
+      (data) =>
+        selectedTestCaseStatus === '' ||
+        data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
+    );
+  };
+
   useEffect(() => {
     if (!isEmpty(table) && viewTest) {
       fetchAllTests();
@@ -191,6 +249,25 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         />
 
         <Space>
+          {isDataQuality && (
+            <>
+              <Form.Item className="mb-0 w-40" label="Type">
+                <Select
+                  options={testCaseTypeOption}
+                  value={selectedTestType}
+                  onChange={handleTestCaseTypeChange}
+                />
+              </Form.Item>
+              <Form.Item className="mb-0 w-40" label="Status">
+                <Select
+                  options={testCaseStatusOption}
+                  value={selectedTestCaseStatus}
+                  onChange={handleTestCaseStatusChange}
+                />
+              </Form.Item>
+            </>
+          )}
+
           <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
             <Link
               to={
@@ -210,26 +287,27 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
-            <Button
-              className={classNames(
-                'profiler-setting-btn tw-border tw-rounded tw-text-primary',
-                { 'tw-border-primary': editTest }
-              )}
-              data-testid="profiler-setting-btn"
-              disabled={!editTest}
-              icon={
-                <SVGIcons
-                  alt="setting"
-                  className={classNames({ 'tw-mb-1 tw-mr-2': editTest })}
-                  icon={editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY}
-                />
-              }
-              type="default"
-              onClick={() => handleSettingModal(true)}>
-              Settings
-            </Button>
-          </Tooltip>
+          {isSummary && (
+            <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+              <Button
+                ghost
+                data-testid="profiler-setting-btn"
+                disabled={!editTest}
+                icon={
+                  <SVGIcons
+                    alt="setting"
+                    className="mr-2"
+                    icon={
+                      editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY
+                    }
+                  />
+                }
+                type="primary"
+                onClick={() => handleSettingModal(true)}>
+                Settings
+              </Button>
+            </Tooltip>
+          )}
         </Space>
       </Row>
 
@@ -273,15 +351,25 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         ))}
       </Row>
 
-      <ColumnProfileTable
-        columnTests={columnTests}
-        columns={columns.map((col) => ({
-          ...col,
-          key: col.name,
-        }))}
-        hasEditAccess={editTest}
-        onAddTestClick={onAddTestClick}
-      />
+      {isSummary && (
+        <ColumnProfileTable
+          columnTests={columnTests}
+          columns={columns.map((col) => ({
+            ...col,
+            key: col.name,
+          }))}
+          hasEditAccess={editTest}
+          onAddTestClick={onAddTestClick}
+        />
+      )}
+
+      {isDataQuality && (
+        <DataQualityTab
+          hasAccess={permissions.EditAll}
+          testCases={getFilterTestCase()}
+          onTestUpdate={fetchAllTests}
+        />
+      )}
 
       {settingModalVisible && (
         <ProfilerSettingsModal

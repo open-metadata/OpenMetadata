@@ -51,6 +51,10 @@ jest.mock('../../components/searched-data/SearchedData', () => {
     ));
 });
 
+jest.mock('../../components/common/facetfilter/FacetFilter', () =>
+  jest.fn().mockImplementation(() => <div>FacetFilter</div>)
+);
+
 jest.mock(
   '../containers/PageLayoutV1',
   () =>

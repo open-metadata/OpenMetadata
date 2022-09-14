@@ -7,7 +7,7 @@ slug: /deployment/security/auth0
 
 Follow the sections in this guide to set up Auth0 SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
 
 ### Step 1: Create the Account
 
@@ -47,9 +47,7 @@ Follow the sections in this guide to set up Auth0 SSO.
 
 <Image src="/images/deployment/security/auth0/credentials.png" alt="credentials"/>
 
-</Collapse>
-
-<Collapse title="Create Service Account">
+## Create Service Account
 
 This section will guide to create the Ingestion Bot service account.
 
@@ -108,8 +106,6 @@ This section will guide to create the Ingestion Bot service account.
 - Click on `Update`.
 
 <Image src="/images/deployment/security/auth0/authorize-api-6.png" alt="auth"/>
-
-</Collapse>
 
 After the applying these steps, you can update the configuration of your deployment:
 
