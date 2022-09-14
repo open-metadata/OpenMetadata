@@ -60,6 +60,21 @@ export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
   checkSuccessState();
 };
 
+export const scheduleIngestion = () => {
+  // Schedule & Deploy
+  cy.contains('Schedule for Ingestion').should('be.visible');
+  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
+  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+
+  // check success
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
+    'be.visible'
+  );
+  cy.contains('has been created and deployed successfully').should(
+    'be.visible'
+  );
+};
+
 //Storing the created service name and the type of service for later use
 
 export const testServiceCreationAndIngestion = (
@@ -131,19 +146,9 @@ export const testServiceCreationAndIngestion = (
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
   }
 
-  // Schedule & Deploy
-  cy.contains('Schedule for Ingestion').should('be.visible');
-  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
-  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+  scheduleIngestion();
 
-  // check success
-  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
-    'be.visible'
-  );
   cy.contains(`${serviceName}_metadata`).should('be.visible');
-  cy.contains('has been created and deployed successfully').should(
-    'be.visible'
-  );
   // On the Right panel
   cy.contains('Metadata Ingestion Added & Deployed Successfully').should(
     'be.visible'
@@ -191,7 +196,6 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('exist')
     .should('be.visible')
     .click();
-
 
   //Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
@@ -352,7 +356,8 @@ export const addNewTagToEntity = (entity, term) => {
   searchEntity(entity);
   cy.wait(500);
   cy.get('[data-testid="table-link"]').first().contains(entity).click();
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]').eq(0)
+  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+    .eq(0)
     .should('be.visible')
     .scrollIntoView()
     .click();
@@ -564,8 +569,10 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   //Check if the property got added
-  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as("customProperties");
-  cy.wait("@customProperties");
+  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
+    'customProperties'
+  );
+  cy.wait('@customProperties');
   cy.get('[data-testid="data-row"]').should('contain', propertyName);
 
   //Navigating to home page
@@ -708,14 +715,12 @@ export const updateOwner = () => {
         .contains('Users')
         .click();
 
-      cy.get('[data-testid="list-item"]').first()
+      cy.get('[data-testid="list-item"]')
+        .first()
         .should('contain', text.trim())
         .click();
 
       //Asserting the added name
-      cy.get('[data-testid="owner-link"]').should(
-        'contain',
-        text.trim()
-      );
+      cy.get('[data-testid="owner-link"]').should('contain', text.trim());
     });
-}
+};
