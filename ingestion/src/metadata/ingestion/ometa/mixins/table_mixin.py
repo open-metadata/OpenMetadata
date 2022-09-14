@@ -15,7 +15,7 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -194,7 +194,6 @@ class OMetaTableMixin:
             data=table_profiler_config.json(),
         )
         return Table(**resp)
-
 
     def create_or_update_table_profiler_config(
         self, fqn: str, table_profiler_config: TableProfilerConfig
