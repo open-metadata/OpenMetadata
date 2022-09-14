@@ -229,7 +229,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('exist')
     .should('be.visible')
     .should('have.text', `${typeOfService} Service deleted successfully!`);
-
+  cy.url().should('eq', 'http://localhost:8585/my-data');
   verifyResponseStatusCode('@homePage', 200);
   //Checking if the service got deleted successfully
   //Click on settings page
