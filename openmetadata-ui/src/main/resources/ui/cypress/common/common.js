@@ -30,7 +30,13 @@ export const verifyResponseStatusCode = (alias, responseCode) => {
   cy.wait(alias).its('response.statusCode').should('eq', responseCode);
 };
 
-export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
+export const handleIngestionRetry = (
+  type,
+  testIngestionButton,
+  count = 0,
+  ingestionType = 'metadata'
+) => {
+  const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
   const retryTimes = 25;
   let retryCount = count;
@@ -38,7 +44,7 @@ export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
     cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
       'have.text',
-      1
+      rowIndex
     );
     // click on the tab only for the first time
     if (retryCount === 0) {
@@ -52,20 +58,25 @@ export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
     testIngestionsTab();
     retryCount++;
     // the latest run should be success
-    cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-      if (
-        ($ingestionStatus.text() === 'Running' ||
-          $ingestionStatus.text() === 'Queued') &&
-        retryCount <= retryTimes
-      ) {
-        // retry after waiting for 20 seconds
-        cy.wait(20000);
-        cy.reload();
-        checkSuccessState();
-      } else {
-        cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
+    cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+      ($ingestionStatus) => {
+        if (
+          ($ingestionStatus.text() === 'Running' ||
+            $ingestionStatus.text() === 'Queued') &&
+          retryCount <= retryTimes
+        ) {
+          // retry after waiting for 20 seconds
+          cy.wait(20000);
+          cy.reload();
+          checkSuccessState();
+        } else {
+          cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
+            'have.text',
+            'Success'
+          );
+        }
       }
-    });
+    );
   };
 
   checkSuccessState();

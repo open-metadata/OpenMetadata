@@ -13,14 +13,14 @@
 
 /// <reference types="cypress" />
 
-import { goToAddNewServicePage, scheduleIngestion, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { goToAddNewServicePage, handleIngestionRetry, scheduleIngestion, testServiceCreationAndIngestion, uuid } from '../../common/common';
 import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Data Quality and Profiler should work properly', () => {
-  it.skip('Add and ingest mysql data', () => {
+  it('Add and ingest mysql data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root_username').type('openmetadata_user');
@@ -50,10 +50,12 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-    // cy.get(`[data-testid="${serviceName}"]`).should('be.visible').click();
-    cy.get('[data-testid="service-name-Mysql-ct-test-902002"]')
-      .should('be.visible')
+    cy.get(`[data-testid="service-name-${serviceName}"]`)
+      .should('exist')
       .click();
+    // cy.get('[data-testid="service-name-Mysql-ct-test-902002"]')
+    //   .should('be.visible')
+    //   .click();
     cy.get('[data-testid="tabs"]').should('exist');
     cy.wait('@ingestionData');
     cy.get('[data-testid="Ingestions"]')
@@ -83,5 +85,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
+
+    handleIngestionRetry('database', true, 0, 'profiler');
   });
 });
