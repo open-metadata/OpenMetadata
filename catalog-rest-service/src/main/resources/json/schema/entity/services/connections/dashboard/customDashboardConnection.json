@@ -27,12 +27,9 @@
       "type": "string",
       "default": "CustomDashboard"
     },
-    "config": {
-      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     }
   },
   "additionalProperties": false,
