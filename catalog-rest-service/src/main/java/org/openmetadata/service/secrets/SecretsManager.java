@@ -111,7 +111,7 @@ public abstract class SecretsManager {
   protected Class<?> createConnectionConfigClass(String connectionType, String connectionPackage)
       throws ClassNotFoundException {
     String clazzName =
-        "org.openmetadata.service.services.connections." + connectionPackage + "." + connectionType + "Connection";
+        "org.openmetadata.schema.services.connections." + connectionPackage + "." + connectionType + "Connection";
     return Class.forName(clazzName);
   }
 
