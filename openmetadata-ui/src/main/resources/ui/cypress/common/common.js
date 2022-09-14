@@ -27,9 +27,7 @@ export const interceptURL = (method, url, alias) => {
 
 //waiting for response and validating the response status code
 export const verifyResponseStatusCode = (alias, responseCode) => {
-  cy.wait(alias)
-    .its('response.statusCode')
-    .should('eq', responseCode);
+  cy.wait(alias).its('response.statusCode').should('eq', responseCode);
 };
 
 export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
@@ -219,17 +217,20 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('be.visible')
     .type('DELETE');
 
-  interceptURL('GET', '/api/v1/config/*', 'home');
+  interceptURL(
+    'GET',
+    '/api/v1/users/name/anonymous?fields=profile',
+    'homePage'
+  );
 
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-
-  verifyResponseStatusCode('@home', 200);
 
   cy.get('.Toastify__toast-body')
     .should('exist')
     .should('be.visible')
     .should('have.text', `${typeOfService} Service deleted successfully!`);
 
+  verifyResponseStatusCode('@homePage', 200);
   //Checking if the service got deleted successfully
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
