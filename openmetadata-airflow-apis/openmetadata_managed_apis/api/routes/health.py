@@ -12,7 +12,9 @@
 Health endpoint. Globally accessible
 """
 import traceback
+from typing import Callable
 
+from flask import Blueprint
 from openmetadata_managed_apis.utils.logger import routes_logger
 
 try:
@@ -20,29 +22,40 @@ try:
 except ImportError:
     from importlib_metadata import version
 
-from airflow.www.app import csrf
-from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 
 logger = routes_logger()
 
 
-@blueprint.route("/health", methods=["GET"])
-@csrf.exempt
-def health():
+def get_fn(blueprint: Blueprint) -> Callable:
     """
-    /health endpoint to check Airflow REST status without auth
+    Return the function loaded to a route
+    :param blueprint: Flask Blueprint to assign route to
+    :return: routed function
     """
 
-    try:
-        return ApiResponse.success(
-            {"status": "healthy", "version": version("openmetadata-ingestion")}
-        )
-    except Exception as exc:
-        msg = f"Internal error obtaining REST status due to [{exc}] "
-        logger.debug(traceback.format_exc())
-        logger.error(msg)
-        return ApiResponse.error(
-            status=ApiResponse.STATUS_SERVER_ERROR,
-            error=msg,
-        )
+    # Lazy import the requirements
+    # pylint: disable=import-outside-toplevel
+    from airflow.www.app import csrf
+
+    @blueprint.route("/health", methods=["GET"])
+    @csrf.exempt
+    def health():
+        """
+        /health endpoint to check Airflow REST status without auth
+        """
+
+        try:
+            return ApiResponse.success(
+                {"status": "healthy", "version": version("openmetadata-ingestion")}
+            )
+        except Exception as exc:
+            msg = f"Internal error obtaining REST status due to [{exc}] "
+            logger.debug(traceback.format_exc())
+            logger.error(msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=msg,
+            )
+
+    return health
