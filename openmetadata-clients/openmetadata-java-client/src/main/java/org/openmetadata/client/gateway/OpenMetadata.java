@@ -22,13 +22,13 @@ import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.api.CatalogVersion;
-import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.api.CatalogApi;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.schema.util.VersionUtils;
+import org.openmetadata.service.api.CatalogVersion;
+import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class OpenMetadata {

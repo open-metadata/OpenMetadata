@@ -15,9 +15,9 @@ package org.openmetadata.client.security;
 
 import feign.RequestTemplate;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.service.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.service.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 
 @Slf4j
 public class OpenMetadataAuthenticationProvider implements AuthenticationProvider {
