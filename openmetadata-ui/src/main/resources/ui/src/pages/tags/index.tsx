@@ -510,7 +510,7 @@ const TagsPage = () => {
   const tableColumn = useMemo(
     () => [
       {
-        title: ' Name',
+        title: 'Name',
         dataIndex: 'name',
         key: 'name',
       },

@@ -28,9 +28,10 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="delete-tag-category-button"]').should('be.visible');
     cy.get('[data-testid="description"]').should('be.visible');
     cy.get('[data-testid="table"]').should('be.visible');
-    cy.get('[data-testid="heading-name"]').should('be.visible');
-    cy.get('[data-testid="heading-description"]').should('be.visible');
-    cy.get('[data-testid="heading-actions"]').should('be.visible');
+
+    cy.get('.ant-table-thead > tr > .ant-table-cell').eq(0).contains('Name').should('be.visible')
+    cy.get('.ant-table-thead > tr > .ant-table-cell').eq(1).contains('Description').should('be.visible')
+    cy.get('.ant-table-thead > tr > .ant-table-cell').eq(2).contains('Actions').should('be.visible')
 
     cy.get('.activeCategory > .tag-category')
       .should('be.visible')
@@ -134,7 +135,7 @@ describe('Tags page should work', () => {
       .click()
       .parent()
       .should('have.class', 'activeCategory');
-    cy.get('.tableBody-row > :nth-child(1)')
+    cy.get('.ant-table-row > :nth-child(1)')
       .contains(NEW_TAG.name)
       .should('be.visible');
 

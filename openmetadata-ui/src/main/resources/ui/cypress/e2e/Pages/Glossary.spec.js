@@ -327,8 +327,8 @@ describe('Glossary page should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     goToAssetsTab(term);
-    cy.get('.tableBody-cell')
-      .contains('No assets available.')
+    cy.get('.ant-empty-description')
+      .contains('No Data')
       .should('be.visible');
 
     searchEntity(entity);
@@ -389,7 +389,7 @@ describe('Glossary page should work properly', () => {
     // go assets tab
     goToAssetsTab(term);
     cy.wait(1000);
-    cy.get('[data-testid="column"] > :nth-child(1) > a')
+    cy.get('.ant-table-thead > tr > .ant-table-cell')
       .contains(entity)
       .should('be.visible')
       .click();
