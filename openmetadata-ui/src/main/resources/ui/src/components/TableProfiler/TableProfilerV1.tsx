@@ -57,11 +57,7 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({
-  table,
-  onAddTestClick,
-  permissions,
-}) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
   const { profile, columns = [] } = table;
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
@@ -359,7 +355,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             key: col.name,
           }))}
           hasEditAccess={editTest}
-          onAddTestClick={onAddTestClick}
         />
       )}
 

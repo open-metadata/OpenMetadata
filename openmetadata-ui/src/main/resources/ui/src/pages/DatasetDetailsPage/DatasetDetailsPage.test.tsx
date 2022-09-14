@@ -370,10 +370,6 @@ describe('Test DatasetDetails page', () => {
       const addColumnTest = await findByTestId(container, 'add-column-test');
       const selectedColumn = await findByTestId(container, 'selected-column');
       const changeTab = await findByTestId(container, 'change-tab');
-      const qualityTestFormHandler = await findByTestId(
-        container,
-        'qualityTestFormHandler'
-      );
       const settingsUpdateHandler = await findByTestId(
         container,
         'settingsUpdateHandler'
@@ -417,7 +413,6 @@ describe('Test DatasetDetails page', () => {
       expect(addColumnTest).toBeInTheDocument();
       expect(selectedColumn).toBeInTheDocument();
       expect(changeTab).toBeInTheDocument();
-      expect(qualityTestFormHandler).toBeInTheDocument();
       expect(settingsUpdateHandler).toBeInTheDocument();
       expect(loadNodeHandler).toBeInTheDocument();
       expect(addLineageHandler).toBeInTheDocument();
@@ -440,7 +435,6 @@ describe('Test DatasetDetails page', () => {
       fireEvent.click(addColumnTest);
       fireEvent.click(selectedColumn);
       fireEvent.click(changeTab);
-      fireEvent.click(qualityTestFormHandler);
       fireEvent.click(settingsUpdateHandler);
       fireEvent.click(loadNodeHandler);
       fireEvent.click(addLineageHandler);

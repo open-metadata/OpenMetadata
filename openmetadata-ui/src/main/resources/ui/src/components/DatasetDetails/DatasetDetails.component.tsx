@@ -123,7 +123,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   feedCount,
   entityFieldThreadCount,
   createThread,
-  qualityTestFormHandler,
   deletePostHandler,
   paging,
   fetchFeedHandler,
@@ -744,7 +743,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <TableProfilerV1
                   permissions={tablePermissions}
                   table={tableDetails}
-                  onAddTestClick={qualityTestFormHandler}
                 />
               )}
 

@@ -17,7 +17,6 @@ import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import {
   ColumnProfile,
-  ColumnTestType,
   Table,
   TableProfile,
   TableProfilerConfig,
@@ -180,7 +179,7 @@ export const addColumnTestCase = async (
 export const deleteColumnTestCase = (
   tableId: string,
   columnName: string,
-  columnTestType: ColumnTestType
+  columnTestType: string
 ): Promise<AxiosResponse> => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },

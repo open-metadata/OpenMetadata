@@ -28,6 +28,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';

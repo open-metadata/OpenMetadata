@@ -36,7 +36,6 @@ import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { Column, DataType } from '../generated/entity/data/table';
 import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
 import { TagLabel } from '../generated/type/tagLabel';
-import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
@@ -271,7 +270,7 @@ export const makeRow = (column: Column) => {
 };
 
 export const makeData = (
-  columns: ModifiedTableColumn[] = []
+  columns: Column[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
   return columns.map((column) => ({
     ...makeRow(column),

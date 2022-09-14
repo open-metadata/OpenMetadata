@@ -201,14 +201,9 @@ const TourPage = () => {
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
-            handleAddColumnTestCase={handleCountChange}
-            handleAddTableTestCase={handleCountChange}
             handleExtentionUpdate={handleCountChange}
-            handleRemoveColumnTest={handleCountChange}
-            handleRemoveTableTest={handleCountChange}
             handleSelectedColumn={handleCountChange}
             handleShowTestForm={handleCountChange}
-            handleTestModeChange={handleCountChange}
             isNodeLoading={{
               id: undefined,
               state: false,
@@ -220,7 +215,6 @@ const TourPage = () => {
             owner={undefined as unknown as EntityReference}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
-            qualityTestFormHandler={handleCountChange}
             removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             selectedColumn=""
@@ -237,7 +231,6 @@ const TourPage = () => {
             tableTestCase={[]}
             tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}
-            testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
