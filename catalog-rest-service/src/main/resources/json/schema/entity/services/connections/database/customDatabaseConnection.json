@@ -24,8 +24,7 @@
     "sourcePythonClass": {
       "title": "Source Python Class Name",
       "description": "Source Python Class Name to instantiated by the ingestion workflow",
-      "type": "string",
-      "default": "CustomDatabase"
+      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",
