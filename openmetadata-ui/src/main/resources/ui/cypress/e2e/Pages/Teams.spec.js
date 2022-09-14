@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { toastNotification, updateOwner, uuid } from '../../common/common';
+import { descriptionBox, interceptURL, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
 
-const orgName = 'Organization';
 const updateddescription = 'This is updated description';
 
 const teamName = `team-ct-test-${uuid()}`;
@@ -31,16 +30,18 @@ describe('Teams flow should work properly', () => {
     cy.goToHomePage();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    interceptURL('GET', '/api/v1/users*', 'getTeams');
     //Clicking on teams
     cy.get('[data-menu-id*="teams"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    cy.wait(1000);
+    verifyResponseStatusCode('@getTeams', 200);
   });
 
   it('Add new team', () => {
+    interceptURL('GET', '/api/v1/teams*', 'addTeam');
     //Fetching the add button and clicking on it
     cy.get('button')
       .find('span')
@@ -48,7 +49,8 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@addTeam', 200);
+
     //Entering team details
     cy.get('[data-testid="name"]')
       .should('exist')
@@ -60,10 +62,12 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .type(TEAM_DETAILS.displayName);
 
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    cy.get(descriptionBox)
       .should('exist')
       .should('be.visible')
       .type(TEAM_DETAILS.description);
+    interceptURL('POST', '/api/v1/teams', 'saveTeam');
+    interceptURL('GET', '/api/v1/team*', 'createTeam');
 
     //Saving the created team
     cy.get('[form="add-team-form"]')
@@ -71,7 +75,8 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@saveTeam', 201);
+    verifyResponseStatusCode('@createTeam', 200);
 
     cy.reload();
 
@@ -85,10 +90,10 @@ describe('Teams flow should work properly', () => {
   it('Add owner to created team', () => {
     //Clicking on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
-    updateOwner()
+    updateOwner();
   });
 
-it('Add user to created team', () => {
+  it('Add user to created team', () => {
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
@@ -98,25 +103,32 @@ it('Add user to created team', () => {
       .should('be.visible')
       .click();
 
+    interceptURL('GET', '/api/v1/users?limit=100000', 'addUser');
+    interceptURL('GET', '/api/v1/users/*', 'getUsers');
     cy.get('[data-testid="add-user"]')
       .scrollIntoView()
       .should('exist')
       .should('be.visible')
       .click();
-
-    cy.wait(2000);
-
+    verifyResponseStatusCode('@addUser', 200);
+    verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="searchbar"]').type(TEAM_DETAILS.ownername);
 
     cy.wait(500);
 
-    cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
+    cy.get('[data-testid="data-container"]').should(
+      'contain',
+      TEAM_DETAILS.ownername
+    );
+    cy.get('[data-testid="checkboxAddUser"]')
+      .first()
+      .should('be.visible')
+      .click();
 
     //Saving the added user
-
+    interceptURL('PATCH', '/api/v1/teams/*', 'saveUser');
     cy.get('[data-testid="AddUserSave"]').should('be.visible').click();
-
-    cy.wait(500);
+    verifyResponseStatusCode('@saveUser', 200);
     //Asseting the added user
     cy.get('[data-testid="Users"]')
       .should('exist')
@@ -140,8 +152,7 @@ it('Add user to created team', () => {
     //Click on confirm button
     cy.get('[data-testid="save-button"]').should('be.visible').click();
 
-    // TODO: Remove cy.wait and wait for API to be completed before querying for new element
-    cy.wait(2000);
+    verifyResponseStatusCode('@saveUser', 200);
 
     //Verify if user is removed
     cy.get('[data-testid="Users"]')
@@ -149,7 +160,10 @@ it('Add user to created team', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="add-user"]').should('not.contain', TEAM_DETAILS.ownername);
+    cy.get('[data-testid="add-user"]').should(
+      'not.contain',
+      TEAM_DETAILS.ownername
+    );
   });
 
   it('Join team should work properly', () => {
@@ -166,10 +180,15 @@ it('Add user to created team', () => {
   });
 
   it('Update description and display name for created team', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
+      'getSelectedTeam'
+    );
     //Click on created team name
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@getSelectedTeam', 200);
     //Click on edit display name
     cy.get('[data-testid="edit-synonyms"]').should('be.visible').click();
 
@@ -180,25 +199,25 @@ it('Add user to created team', () => {
       .clear()
       .type(TEAM_DETAILS.updatedname);
 
+    interceptURL('PATCH', 'api/v1/teams/*', 'saveTeamName');
+    interceptURL('GET', '/api/v1/users*', 'updatedTeam');
     //Save the updated display name
     cy.get('[data-testid="saveAssociatedTag"]')
       .should('exist')
       .should('be.visible')
       .click();
-
-    cy.wait(1000);
+    verifyResponseStatusCode('@saveTeamName', 200);
     //Validate the updated display name
     cy.get('[data-testid="header"]')
       .find('.ant-typography')
       .should('contain', TEAM_DETAILS.updatedname);
+    verifyResponseStatusCode('@updatedTeam', 200);
 
     //Click on edit description button
-    cy.get('[data-testid="edit-description"] > [data-testid="image"]').should('be.visible').click();
+    cy.get('[data-testid="edit-description"]').should('be.visible').click();
 
     //Entering updated description
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .clear()
-      .type(updateddescription);
+    cy.get(descriptionBox).clear().type(updateddescription);
 
     cy.get('[data-testid="save"]').should('be.visible').click();
     //Validating the updated description
@@ -267,9 +286,16 @@ it('Add user to created team', () => {
   });
 
   it('Leave team flow should work properly', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
+      'getSelectedTeam'
+    );
+
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
+    verifyResponseStatusCode('@getSelectedTeam', 200);
     // //Click on Leave team
     cy.get('[data-testid="leave-team-button"]').should('be.visible').click();
 
@@ -282,23 +308,28 @@ it('Add user to created team', () => {
   });
 
   it('Delete created team', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
+      'getSelectedTeam'
+    );
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@getSelectedTeam', 200);
 
     cy.get('[data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    cy.wait(1000);
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+
     cy.get('[data-testid="delete-button-title"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    cy.wait(1000);
     //Click on permanent delete option
     cy.get('[data-testid="hard-delete-option"]')
       .should('contain', TEAM_DETAILS.name)
@@ -306,12 +337,14 @@ it('Add user to created team', () => {
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+
+    interceptURL('DELETE', '/api/v1/teams/*', 'deleteTeam');
     cy.get('[data-testid="confirm-button"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@deleteTeam', 200);
 
     //Verify the toast message
     toastNotification('Team deleted successfully!');

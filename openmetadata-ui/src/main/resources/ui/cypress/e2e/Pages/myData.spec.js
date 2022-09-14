@@ -13,7 +13,7 @@
 
 /// <reference types="cypress" />
 
-import { searchEntity, visitEntityTab } from '../../common/common';
+import { interceptURL, searchEntity, verifyResponseStatusCode, visitEntityTab } from '../../common/common';
 import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tables = Object.values(SEARCH_ENTITY_TABLE);
@@ -86,19 +86,22 @@ describe('MyData page should work', () => {
       .should('have.class', 'active');
 
     // click on the 1st result and go to entity details page and follow the entity
-    cy.wait(500);
+    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
     cy.get('[data-testid="table-link"]')
       .first()
       .contains(termObj.term, { matchCase: false })
       .click();
-    cy.wait(500);
+    verifyResponseStatusCode('@getEntityDetails', 200);
+
+    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
+    verifyResponseStatusCode('@waitAfterFollow', 200);
     // go to manage tab and search for logged in user and set the owner
-
+    interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'getUsers');
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@getUsers', 200);
     //Clicking on users tab
     cy.get('[data-testid="dropdown-tab"]')
       .contains('Users')
@@ -111,7 +114,6 @@ describe('MyData page should work', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    cy.wait(1000);
 
     cy.get(':nth-child(2) > [data-testid="owner-link"]')
       .scrollIntoView()
