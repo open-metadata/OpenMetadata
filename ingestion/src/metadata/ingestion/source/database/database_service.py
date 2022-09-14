@@ -236,14 +236,14 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
                 logger.warning("dbtConfigSource is not configured")
                 self.dbt_catalog = None
                 self.dbt_manifest = None
-                self.dbt_run_results =  None
+                self.dbt_run_results = None
                 self.data_models = {}
         else:
             dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
-            if len(dbt_details)==3:
-                self.dbt_catalog = dbt_details[0] 
-                self.dbt_manifest = dbt_details[1] 
-                self.dbt_run_results = dbt_details[2] 
+            if len(dbt_details) == 3:
+                self.dbt_catalog = dbt_details[0]
+                self.dbt_manifest = dbt_details[1]
+                self.dbt_run_results = dbt_details[2]
                 self.data_models = {}
 
     def prepare(self):
