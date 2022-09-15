@@ -83,7 +83,6 @@ const mockProps: TableProfilerProps = {
     ViewTests: true,
     ViewUsage: true,
   } as OperationPermission,
-  onAddTestClick: jest.fn(),
 };
 
 describe('Test TableProfiler component', () => {

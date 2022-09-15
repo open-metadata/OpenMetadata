@@ -12,6 +12,8 @@
 """
 Main Profile definition and queries to execute
 """
+from __future__ import annotations
+
 import traceback
 import warnings
 from datetime import datetime, timezone
@@ -21,7 +23,6 @@ from pydantic import ValidationError
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
-from typing_extensions import Self
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -359,7 +360,7 @@ class Profiler(Generic[TMetric]):
         self._table_results = profile_results["table"]
         self._column_results = profile_results["columns"]
 
-    def compute_metrics(self) -> Self:
+    def compute_metrics(self) -> Profiler:
         """Run the whole profiling using multithreading"""
         self.profile_entity()
         for column in self.columns:

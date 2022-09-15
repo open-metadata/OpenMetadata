@@ -7,7 +7,8 @@ slug: /deployment/security/okta
 
 Follow the sections in this guide to set up Okta SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
+
 This document will explain how to create an Okta app and configure it for OAuth. This will generate the information required for Single Sign On with Okta.
 
 ### Step 1: Create an Okta Account
@@ -114,9 +115,8 @@ The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL
 - The **Audience** is the same as the Client ID.
 <Image src="/images/deployment/security/okta/click-edit-token.png" alt="click-edit-token"/>
 
-</Collapse>
+## Create Service Application
 
-<Collapse title="Create Service Application">
 This is a guide to create ingestion bot service app.
 
 ### Step 1: Generate Public/Private Key Pair
@@ -196,8 +196,6 @@ curl --location --request POST '<domain-url>/oauth2/v1/clients' \
 <Image src="/images/deployment/security/okta/ensure-scopes-are-granted.png" alt="ensure-scopes-are-granted"/>
 
 - To get more information on the Scopes. Visit the [Doc](https://developer.okta.com/docs/guides/implement-oauth-for-okta/scopes/).
-
-</Collapse>
 
 After the applying these steps, you can update the configuration of your deployment:
 

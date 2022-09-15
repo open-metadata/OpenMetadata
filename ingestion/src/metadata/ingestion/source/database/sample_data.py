@@ -37,8 +37,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -75,8 +73,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
-from metadata.generated.schema.tests.columnTest import ColumnTestCase
-from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -87,7 +83,6 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -428,7 +423,6 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_locations()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
-        yield from self.ingest_table_tests()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
         yield from self.ingest_dashboards()
@@ -794,40 +788,6 @@ class SampleDataSource(Source[Entity]):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error ingesting users: {exc}")
-
-    def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
-        """
-        Iterate over all tables and fetch
-        the sample test data. For each table test and column
-        test, prepare all TestCaseResults
-        """
-        try:
-            for test_def in self.table_tests:
-                table_name = test_def["table"]
-
-                for table_test in test_def["tableTests"]:
-                    create_table_test = CreateTableTestRequest(
-                        description=table_test.get("description"),
-                        testCase=TableTestCase.parse_obj(table_test["testCase"]),
-                        result=TestCaseResult.parse_obj(table_test["result"]),
-                    )
-                    yield OMetaTableTest(
-                        table_name=table_name, table_test=create_table_test
-                    )
-
-                for col_test in test_def["columnTests"]:
-                    create_column_test = CreateColumnTestRequest(
-                        description=col_test.get("description"),
-                        columnName=col_test["columnName"],
-                        testCase=ColumnTestCase.parse_obj(col_test["testCase"]),
-                        result=TestCaseResult.parse_obj(col_test["result"]),
-                    )
-                    yield OMetaTableTest(
-                        table_name=table_name, column_test=create_column_test
-                    )
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error ingesting table tests: {exc}")
 
     def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
         """Iterate over all the profile data and ingest them"""

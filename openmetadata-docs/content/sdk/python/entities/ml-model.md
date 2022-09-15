@@ -37,9 +37,9 @@ This information, together with the rest of the features brought by OpenMetadata
 While we can already extract certain pieces of information automatically via our Connectors (e.g., [Mlflow](/connectors/mlmodel/mlflow)), there are attributes that we'll need to fill in by ourselves. Thanks to the [Solution Design](/developers/architecture/design) of OpenMetadata and the [Python SDK](/sdk/python), this is going to be a rather easy task that will unlock the full power of your **organization's metadata**.
 
 ## Properties
-Now that we have a clearer view of what we are trying to achieve, let's jump into a deeper view on the `MlModel` Entity [definition](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/mlmodel.json):
+Now that we have a clearer view of what we are trying to achieve, let's jump into a deeper view on the `MlModel` Entity [definition](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/data/mlmodel.json):
 
-- The `name` and `algorithm` are the only required properties when [creating](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createMlModel.json) an `MlModel`. We can just bring the top shell to the catalogue automatically and then choose which models we want to enrich.
+- The `name` and `algorithm` are the only required properties when [creating](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/api/data/createMlModel.json) an `MlModel`. We can just bring the top shell to the catalogue automatically and then choose which models we want to enrich.
 - The `dashboard` is a reference to a Dashboard Entity present in OpenMetadata (what we call an `EntityReference`). This should be a dashboard we have built that shows the evolution of our performance metrics. The **transparency** on ML services is integral, and that is why we have added it to the `MlModel` properties.
 - A server with the URL on where to reach the model **endpoint**, to `POST` input data or retrieve a prediction.
 - The mlStore specifies the **location** containing the model. Here we support both passing a URI with the object (e.g. `pkl`) location and/or a Docker image in its repository.
@@ -142,4 +142,4 @@ In this doc, we have seen the role that OpenMetadata serves from a Machine Learn
 
 We have shown how to use the Python API to enrich the models' metadata and add the lineage information with its related Entities and how the versioning will respond to changes.
 
-For further information on the properties, do not hesitate to review the [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/mlmodel.json) and for examples and usages with the Python API, you can take a look at our [integration tests](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/tests/integration/ometa/test_ometa_model_api.py).
+For further information on the properties, do not hesitate to review the [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/data/mlmodel.json) and for examples and usages with the Python API, you can take a look at our [integration tests](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/tests/integration/ometa/test_ometa_model_api.py).

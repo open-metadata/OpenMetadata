@@ -64,6 +64,11 @@ const NavBar = ({
   handleKeyDown,
   handleOnClick,
 }: NavBarProps) => {
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
   const history = useHistory();
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
@@ -75,8 +80,8 @@ const NavBar = ({
   const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
 
   const profilePicture = useMemo(
-    () => AppState?.userDetails?.profile?.images?.image512,
-    [AppState]
+    () => currentUser?.profile?.images?.image512,
+    [currentUser]
   );
 
   const { socket } = useWebSocketConnector();
@@ -211,6 +216,12 @@ const NavBar = ({
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (profilePicture) {
+      SetIsImgUrlValid(true);
+    }
+  }, [profilePicture]);
 
   return (
     <>

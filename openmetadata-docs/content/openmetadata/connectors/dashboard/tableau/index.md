@@ -107,11 +107,30 @@ this connector. Please follow the instructions below to ensure that
 you've configured the connector to read from your tableau service as
 desired.
 
+#### 1. Service Connection for a default tableau site
+For a default tableau site `Site Name` and `Site Url` fields should be kept empty as shown in the below image 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/tableau/service-connection.png"
+  src="/images/openmetadata/connectors/tableau/service-connection-default-site.png"
   alt="Configure service connection"
-  caption="Configure the service connection by filling the form"
+  caption="Configure the service connection for default site by filling the form"
+/>
+</div>
+
+#### 2. Service Connection for a non-default tableau site
+For a non-default tableau site `Site Name` and `Site Url` fields are required.
+
+<Note>
+
+If `https://xxx.tableau.com/#/site/sitename/home` represents the homepage url for your tableau site, the `sitename` from the url should be entered in the `Site Name` and `Site Url` fields.
+
+</Note>
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/tableau/service-connection-non-default-site.png"
+  alt="Configure service connection"
+  caption="Configure the service connection for a non-default site by filling the form"
 />
 </div>
 

@@ -784,6 +784,12 @@ const Users = ({
     prepareSelectedTeams();
   }, [userData]);
 
+  useEffect(() => {
+    if (image) {
+      SetIsImgUrlValid(true);
+    }
+  }, [image]);
+
   const getEntityData = useCallback(
     (entityData: EntityReference[], tabNumber: number) => {
       const updatedEntityData = filterEntityAssets(entityData || []);

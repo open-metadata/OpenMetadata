@@ -29,11 +29,7 @@ import {
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
-  addColumnTestCase,
   addFollower,
-  addTableTestCase,
-  deleteColumnTestCase,
-  deleteTableTestCase,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
@@ -139,7 +135,6 @@ jest.mock('../../components/DatasetDetails/DatasetDetails.component', () => {
         handleAddColumnTestCase,
         handleTestModeChange,
         handleShowTestForm,
-        handleSelectedColumn,
         setActiveTabHandler,
         qualityTestFormHandler,
         settingsUpdateHandler,
@@ -188,11 +183,6 @@ jest.mock('../../components/DatasetDetails/DatasetDetails.component', () => {
             data-testid="add-column-test"
             onClick={handleAddColumnTestCase}>
             add column test
-          </button>
-          <button
-            data-testid="selected-column"
-            onClick={() => handleSelectedColumn('test')}>
-            select column
           </button>
           <button
             data-testid="change-tab"
@@ -368,12 +358,7 @@ describe('Test DatasetDetails page', () => {
       const testForm = await findByTestId(container, 'test-form');
       const addTableTest = await findByTestId(container, 'add-table-test');
       const addColumnTest = await findByTestId(container, 'add-column-test');
-      const selectedColumn = await findByTestId(container, 'selected-column');
       const changeTab = await findByTestId(container, 'change-tab');
-      const qualityTestFormHandler = await findByTestId(
-        container,
-        'qualityTestFormHandler'
-      );
       const settingsUpdateHandler = await findByTestId(
         container,
         'settingsUpdateHandler'
@@ -415,9 +400,7 @@ describe('Test DatasetDetails page', () => {
       expect(testForm).toBeInTheDocument();
       expect(addTableTest).toBeInTheDocument();
       expect(addColumnTest).toBeInTheDocument();
-      expect(selectedColumn).toBeInTheDocument();
       expect(changeTab).toBeInTheDocument();
-      expect(qualityTestFormHandler).toBeInTheDocument();
       expect(settingsUpdateHandler).toBeInTheDocument();
       expect(loadNodeHandler).toBeInTheDocument();
       expect(addLineageHandler).toBeInTheDocument();
@@ -438,9 +421,7 @@ describe('Test DatasetDetails page', () => {
       fireEvent.click(testForm);
       fireEvent.click(addTableTest);
       fireEvent.click(addColumnTest);
-      fireEvent.click(selectedColumn);
       fireEvent.click(changeTab);
-      fireEvent.click(qualityTestFormHandler);
       fireEvent.click(settingsUpdateHandler);
       fireEvent.click(loadNodeHandler);
       fireEvent.click(addLineageHandler);
@@ -820,12 +801,6 @@ describe('Test DatasetDetails page', () => {
       (postThread as jest.Mock).mockImplementation(() =>
         Promise.reject({ response: { data: { message: 'Error!' } } })
       );
-      (deleteTableTestCase as jest.Mock).mockImplementation(() =>
-        Promise.reject({ response: { data: { message: 'Error!' } } })
-      );
-      (deleteColumnTestCase as jest.Mock).mockImplementation(() =>
-        Promise.reject({ response: { data: { message: 'Error!' } } })
-      );
 
       mockUseParams.tab = 'schema';
       const { container } = render(<DatasetDetailsPage />, {
@@ -904,12 +879,6 @@ describe('Test DatasetDetails page', () => {
       (postThread as jest.Mock).mockImplementation(() =>
         Promise.reject({ response: {} })
       );
-      (deleteTableTestCase as jest.Mock).mockImplementation(() =>
-        Promise.reject({ response: {} })
-      );
-      (deleteColumnTestCase as jest.Mock).mockImplementation(() =>
-        Promise.reject({ response: {} })
-      );
 
       const { container } = render(<DatasetDetailsPage />, {
         wrapper: MemoryRouter,
@@ -981,12 +950,6 @@ describe('Test DatasetDetails page', () => {
       );
       (postFeedById as jest.Mock).mockImplementation(() => Promise.reject({}));
       (postThread as jest.Mock).mockImplementation(() => Promise.reject({}));
-      (deleteTableTestCase as jest.Mock).mockImplementation(() =>
-        Promise.reject({})
-      );
-      (deleteColumnTestCase as jest.Mock).mockImplementation(() =>
-        Promise.reject({})
-      );
 
       const { container } = render(<DatasetDetailsPage />, {
         wrapper: MemoryRouter,
@@ -1198,170 +1161,6 @@ describe('Test DatasetDetails page', () => {
       expect(deletePostHandler).toBeInTheDocument();
 
       fireEvent.click(deletePostHandler);
-    });
-
-    // addTableTestCase api test
-
-    it('Show error message on fail of addTableTestCase api with error message', async () => {
-      (addTableTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: { data: { message: 'Error!' } } })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addTableTest = await findByTestId(container, 'add-table-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addTableTest).toBeInTheDocument();
-
-      fireEvent.click(addTableTest);
-    });
-
-    it('Show error message on fail of addTableTestCase api with empty response', async () => {
-      (addTableTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: {} })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addTableTest = await findByTestId(container, 'add-table-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addTableTest).toBeInTheDocument();
-
-      fireEvent.click(addTableTest);
-    });
-
-    it('Show error message on resolve of addTableTestCase api without response', async () => {
-      (addTableTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve()
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addTableTest = await findByTestId(container, 'add-table-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addTableTest).toBeInTheDocument();
-
-      fireEvent.click(addTableTest);
-    });
-
-    it('Show error message on resolve of addTableTestCase api without response data', async () => {
-      (addTableTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({ data: '' })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addTableTest = await findByTestId(container, 'add-table-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addTableTest).toBeInTheDocument();
-
-      fireEvent.click(addTableTest);
-    });
-
-    // addColumnTestCase api test
-
-    it('Show error message on fail of addColumnTestCase api with error message', async () => {
-      (addColumnTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: { data: { message: 'Error!' } } })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addColumnTest = await findByTestId(container, 'add-column-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addColumnTest).toBeInTheDocument();
-
-      fireEvent.click(addColumnTest);
-    });
-
-    it('Show error message on fail of addColumnTestCase api with empty response', async () => {
-      (addColumnTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: {} })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addColumnTest = await findByTestId(container, 'add-column-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addColumnTest).toBeInTheDocument();
-
-      fireEvent.click(addColumnTest);
-    });
-
-    it('Show error message on resolve of addColumnTestCase api without response', async () => {
-      (addColumnTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve()
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addColumnTest = await findByTestId(container, 'add-column-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addColumnTest).toBeInTheDocument();
-
-      fireEvent.click(addColumnTest);
-    });
-
-    it('Show error message on resolve of addColumnTestCase api without response data', async () => {
-      (addColumnTestCase as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({ data: '' })
-      );
-
-      const { container } = render(<DatasetDetailsPage />, {
-        wrapper: MemoryRouter,
-      });
-      const ContainerText = await findByTestId(
-        container,
-        'datasetdetails-component'
-      );
-      const addColumnTest = await findByTestId(container, 'add-column-test');
-
-      expect(ContainerText).toBeInTheDocument();
-      expect(addColumnTest).toBeInTheDocument();
-
-      fireEvent.click(addColumnTest);
     });
   });
 });

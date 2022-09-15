@@ -31,7 +31,7 @@ pip3 install "openmetadata-ingestion[tableau]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/tableauConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/dashboard/tableauConnection.json)
 you can find the structure to create a connection to Tableau.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -39,7 +39,7 @@ the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following
-[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
+[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
@@ -92,6 +92,116 @@ workflowConfig:
     authProvider: no-auth
 ```
 
+### Example Source Configurations for default and non-default tableau sites
+
+#### 1. Sample config for default tableau site
+
+For a default tableau site `siteName` and `siteUrl` fields should be kept as empty strings as shown in the below config.
+
+```yaml
+source:
+  type: tableau
+  serviceName: local_tableau
+  serviceConnection:
+    config:
+      type: Tableau
+      username: username
+      password: password
+      env: tableau_prod
+      hostPort: http://localhost
+      siteName: ""
+      siteUrl: ""
+      apiVersion: api_version
+      # If not setting user and password
+      # personalAccessTokenName: personal_access_token_name
+      # personalAccessTokenSecret: personal_access_token_secret
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+```
+
+#### 1. Sample config for non-default tableau site
+
+For a non-default tableau site `siteName` and `siteUrl` fields are required.
+
+<Note>
+
+If `https://xxx.tableau.com/#/site/sitename/home` represents the homepage url for your tableau site, the `sitename` from the url should be entered in the `siteName` and `siteUrl` fields in the config below.
+
+</Note>
+
+```yaml
+source:
+  type: tableau
+  serviceName: local_tableau
+  serviceConnection:
+    config:
+      type: Tableau
+      username: username
+      password: password
+      env: tableau_prod
+      hostPort: http://localhost
+      siteName: openmetadata
+      siteUrl: openmetadata
+      apiVersion: api_version
+      # If not setting user and password
+      # personalAccessTokenName: personal_access_token_name
+      # personalAccessTokenSecret: personal_access_token_secret
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+```
+
 #### Source Configuration - Service Connection
 
 - **hostPort**: URL to the Tableau instance.
@@ -106,7 +216,7 @@ workflowConfig:
 
 #### Source Configuration - Source Config
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
 - `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
@@ -135,7 +245,7 @@ workflowConfig:
     authProvider: no-auth
 ```
 
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client).
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">

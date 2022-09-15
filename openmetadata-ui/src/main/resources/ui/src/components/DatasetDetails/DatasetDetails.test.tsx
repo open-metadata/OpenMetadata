@@ -33,7 +33,6 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import DatasetDetails from './DatasetDetails.component';
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
@@ -160,7 +159,6 @@ const DatasetDetailsProps = {
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
   showTestForm: false,
-  testMode: 'table' as DatasetTestModeType,
   handleAddTableTestCase: jest.fn(),
   tableTestCase: [],
   selectedColumn: '',

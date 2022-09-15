@@ -15,8 +15,8 @@ Note: Make sure to add the Ingestion Client ID for the Service application in `b
 ```yaml
 global:
   authorizer:
-    className: "org.openmetadata.catalog.security.DefaultAuthorizer"
-    containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "user1"
       - "user2"

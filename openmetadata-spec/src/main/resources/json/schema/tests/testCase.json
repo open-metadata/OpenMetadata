@@ -1,0 +1,101 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testCase.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCase",
+  "description": "Test is a test definition to capture data quality tests against tables and columns.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.tests.TestCase",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "testCaseParameterValue": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.tests.TestCaseParameterValue",
+      "description": "This schema defines the parameter values that can be passed for a Test Case.",
+      "properties": {
+        "name": {
+          "description": "name of the parameter. Must match the parameter names in testCaseParameterDefinition",
+          "type": "string"
+        },
+        "value": {
+          "description": "value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this table instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this test case.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "testDefinition": {
+      "$ref": "../type/entityReference.json"
+    },
+    "entityLink": {
+      "$ref": "../type/basic.json#/definitions/entityLink"
+    },
+    "entityFQN": {
+      "type": "string"
+    },
+    "testSuite": {
+      "$ref": "../type/entityReference.json"
+    },
+    "parameterValues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testCaseParameterValue"
+      }
+    },
+    "testCaseResult": {
+      "$ref": "./basic.json#/definitions/testCaseResult"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "testDefinition", "entityLink", "testSuite"],
+  "additionalProperties": false
+}

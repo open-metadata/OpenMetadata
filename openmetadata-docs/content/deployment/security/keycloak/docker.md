@@ -16,8 +16,8 @@ The configuration below already uses the presets shown in the example of keycloa
 
 ```shell
 # OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.catalog.security.JwtFilter
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin-user]  # Your `name` from name@domain.com
 AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot,service-account-open-metadata]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
