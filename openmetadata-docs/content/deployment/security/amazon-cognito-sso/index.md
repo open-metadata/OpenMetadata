@@ -7,7 +7,7 @@ slug: /deployment/security/amazon-cognito
 
 Follow the sections in this guide to set up Amazon Cognito SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
 
 ### Step 1: Login to AWS Portal
 
@@ -53,8 +53,6 @@ Follow the sections in this guide to set up Amazon Cognito SSO.
 <Image src="/images/deployment/security/amazon-cognito-sso/create-server-credentials-7.png" alt="create-account"/>
 
 <Image src="/images/deployment/security/amazon-cognito-sso/create-server-credentials-8.png" alt="create-account" caption="Client ID"/>
-
-</Collapse>
 
 After the applying these steps, you can update the configuration of your deployment:
 

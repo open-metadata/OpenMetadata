@@ -28,7 +28,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ColumnTestType, Table } from '../generated/entity/data/table';
+import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
@@ -355,57 +355,6 @@ export const getEntityFeedLink: Function = (
 
 export const isSupportedTest = (dataType: string) => {
   return dataType === 'ARRAY' || dataType === 'STRUCT';
-};
-
-export const filteredColumnTestOption = (dataType: string) => {
-  switch (getDataTypeString(dataType)) {
-    case 'numeric':
-      return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.ColumnValueLengthsToBeBetween
-      );
-
-    case 'varchar': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeBetween,
-        ColumnTestType.ColumnValuesSumToBeBetween,
-        ColumnTestType.ColumnValueMinToBeBetween,
-        ColumnTestType.ColumnValueMaxToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-
-    case 'timestamp':
-    case 'date': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeNotInSet,
-        ColumnTestType.ColumnValueLengthsToBeBetween,
-        ColumnTestType.ColumnValuesSumToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-    case 'boolean': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeNotInSet,
-        ColumnTestType.ColumnValueLengthsToBeBetween,
-        ColumnTestType.ColumnValuesToBeBetween,
-        ColumnTestType.ColumnValuesSumToBeBetween,
-        ColumnTestType.ColumnValueMinToBeBetween,
-        ColumnTestType.ColumnValueMaxToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-    default:
-      return Object.values(ColumnTestType);
-  }
 };
 
 export const isColumnTestSupported = (dataType: string) => {

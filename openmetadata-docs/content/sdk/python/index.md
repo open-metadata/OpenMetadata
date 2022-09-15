@@ -19,7 +19,7 @@ Let's suppose that we have our local OpenMetadata server running at `http:localh
 
 However, let's imagine that we want to create or update an ML Model Entity with a `PUT`. To do so, we need to make sure that we are providing a proper JSON, covering all the attributes and types required by the Entity definition.
 
-By reviewing the [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createMlModel.json) for the create operation and the [fields definitions](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/mlmodel.json) of the Entity, we could come up with a rather simple description of a toy ML Model:
+By reviewing the [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/api/data/createMlModel.json) for the create operation and the [fields definitions](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/data/mlmodel.json) of the Entity, we could come up with a rather simple description of a toy ML Model:
 
 ```python
 {
@@ -162,7 +162,7 @@ As this is just using a local development, the `OpenMetadataConnection` is rathe
 
 <Note>
 
-The OpenMetadataConnection is defined as a JSON Schema as well. You can check the definition [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/metadata/openMetadataConnection.json)
+The OpenMetadataConnection is defined as a JSON Schema as well. You can check the definition [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/metadata/openMetadataConnection.json)
 </Note>
 
 From this point onwards, we will interact with the API by using `OpenMetadata` methods.
@@ -214,7 +214,7 @@ create_service = CreateDatabaseServiceRequest(
 
 Note how we can use both `String` definitions for the attributes, as well as specific types when possible, such as `serviceType=DatabaseServiceType.Mysql`. The less information we need to hardcode, the better.
 
-Another important point here is that the connection definitions are centralized as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections) you can find the root of all of them.
+Another important point here is that the connection definitions are centralized as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections) you can find the root of all of them.
 
 We can review the information that will be passed to the API by visiting the JSON definition of the class we just instantiated. As all these models are powered by `pydantic`, this conversion is transparent to us:
 

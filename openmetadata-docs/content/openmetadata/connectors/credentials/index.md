@@ -38,7 +38,7 @@ for a YAML configuration.
 
 # AWS Credentials
 
-The AWS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/security/credentials/awsCredentials.json).
+The AWS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/security/credentials/awsCredentials.json).
 Note that the only required field is the `awsRegion`. This configuration is rather flexible to allow installations under AWS
 that directly use instance roles for permissions to authenticate to whatever service we are pointing to without having to
 write the credentials down.
@@ -54,7 +54,7 @@ aws-vault exec <role> -- $SHELL -c 'metadata ingest -c <path to connector>'
 
 # GCS Credentials
 
-The GCS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/security/credentials/gcsCredentials.json).
+The GCS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/security/credentials/gcsCredentials.json).
 These are the fields that you can export when preparing a Service Account.
 
 Once the account is created, you can see the fields in the exported JSON file from:

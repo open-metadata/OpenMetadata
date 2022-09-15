@@ -65,7 +65,7 @@ workflowConfig:
     authProvider: no-auth
 ```
 The `serviceName` and `serviceConnection` used in the above config has to be the same as used during Metadata Ingestion.
-The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
+The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
 - queryLogFilePath: Enter the file path of query log csv file.
 
 ### 2. Run with the CLI

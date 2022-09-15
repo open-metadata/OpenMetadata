@@ -7,7 +7,7 @@ slug: /deployment/security/keycloak
 
 Follow the sections in this guide to set up Keycloak SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
 
 ### Step 1: Access the Keycloak Admin Console
 
@@ -56,8 +56,6 @@ Follow the sections in this guide to set up Keycloak SSO.
 - You will find your service account id related to the Client id "open-metadata"
 
 <Image src="/images/deployment/security/keycloak/7-client-service-account.png" alt="client-service-account.png"/>
-
-</Collapse>
 
 After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
 

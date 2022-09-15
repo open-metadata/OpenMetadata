@@ -12,7 +12,7 @@
  */
 
 import { TableTestsType } from '../components/TableProfiler/TableProfiler.interface';
-import { TestCaseStatus } from '../generated/tests/tableTest';
+import { TestCaseStatus } from '../generated/tests/testCase';
 
 export const updateTestResults = (
   results: TableTestsType['results'],

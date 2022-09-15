@@ -33,7 +33,7 @@ pip3 install "openmetadata-ingestion[databricks]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/databricksConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/database/databricksConnection.json)
 you can find the structure to create a connection to Databricks.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -41,7 +41,7 @@ the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following
-[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
+[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
@@ -144,7 +144,7 @@ workflowConfig:
 
 #### Source Configuration - Source Config
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
 - `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
 - `includeTables`: true or false, to ingest table data. Default is true.
@@ -175,7 +175,7 @@ workflowConfig:
     authProvider: no-auth
 ```
 
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client).
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
@@ -428,8 +428,8 @@ workflowConfig:
 
 #### Source Configuration
 
-- You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/databricksConnection.json).
-- The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
+- You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/database/databricksConnection.json).
+- The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
 
 Note that the filter patterns support regex as includes or excludes. E.g.,
 

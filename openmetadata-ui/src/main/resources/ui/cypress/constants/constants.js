@@ -147,7 +147,7 @@ export const service = {
   name: 'Glue',
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
-  Owner: 'Cloud_Infra',
+  Owner: 'Aaron Johnson',
 };
 
 export const SERVICE_TYPE = {
