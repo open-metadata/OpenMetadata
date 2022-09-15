@@ -58,6 +58,10 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     includes: [],
     excludes: [],
   },
+  mlModelFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
   includeLineage: false,
   includeView: false,
   includeTags: false,
@@ -73,6 +77,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   showTopicFilter: false,
   showChartFilter: false,
   showPipelineFilter: false,
+  showMlModelFilter: false,
   handleIncludeLineage: jest.fn(),
   handleIncludeView: jest.fn(),
   handleIncludeTags: jest.fn(),
