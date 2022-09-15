@@ -31,9 +31,9 @@ Then,
 
 ```yaml
 authorizerConfiguration:
-  className: "org.openmetadata.apis.security.DefaultAuthorizer"
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
   # JWT Filter
-  containerRequestFilter: "org.openmetadata.apis.security.JwtFilter"
+  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
   adminPrincipals:
     - "admin-user"
   botPrincipals:

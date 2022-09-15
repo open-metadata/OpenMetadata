@@ -159,7 +159,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.basedir}/../../openmetadata-apis/target/classes/assets/swagger.yaml</inputSpec>
+                            <inputSpec>${project.basedir}/../../openmetadata-service/target/classes/assets/swagger.yaml</inputSpec>
                             <language>java</language>
                             <library>feign</library>
                             <generateApiTests>true</generateApiTests>

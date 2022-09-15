@@ -31,7 +31,7 @@
   <modules>
     <module>common</module>
     <module>openmetadata-spec</module>
-    <module>openmetadata-apis</module>
+    <module>openmetadata-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
     <module>openmetadata-clients</module>
@@ -721,9 +721,9 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
-              <include>org.openmetadata.apis.resources.**.*.java</include>
-              <include>org.openmetadata.apis.util.*.java</include>
-              <include>org.openmetadata.apis.EnumBackwardCompatibilityTest</include>
+              <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.util.*.java</include>
+              <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
           </configuration>
         </plugin>
