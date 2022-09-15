@@ -156,12 +156,6 @@
             <version>3.0.0-M6</version>
         </dependency>
 
-        <!-- needed to use custom annotations in generated classes -->
-        <dependency>
-            <groupId>org.open-metadata</groupId>
-            <artifactId>common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
