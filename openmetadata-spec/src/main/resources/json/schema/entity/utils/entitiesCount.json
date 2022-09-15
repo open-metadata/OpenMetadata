@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/utils/entitiesCount.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entities Count",
+  "description": "This schema defines Entities Count. This contains aggregated entities count.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.util.EntitiesCount",
+  "properties": {
+    "tableCount": {
+      "description": "Table Count",
+      "type": "integer"
+    },
+    "topicCount": {
+      "description": "Topic Count",
+      "type": "integer"
+    },
+    "dashboardCount": {
+      "description": "Dashboard Count",
+      "type": "integer"
+    },
+    "pipelineCount": {
+      "description": "Pipeline Count",
+      "type": "integer"
+    },
+    "mlmodelCount": {
+      "description": "MlModel Count",
+      "type": "integer"
+    },
+    "servicesCount": {
+      "description": "Services Count",
+      "type": "integer"
+    },
+    "userCount": {
+      "description": "User Count",
+      "type": "integer"
+    },
+    "teamCount": {
+      "description": "Team Count",
+      "type": "integer"
+    },
+    "testSuiteCount": {
+      "description": "Test Suite Count",
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}

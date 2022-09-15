@@ -72,7 +72,7 @@ workflowConfig:
 
 #### Source Configuration - Source Config using AWS S3
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **awsAccessKeyId**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
@@ -121,7 +121,7 @@ workflowConfig:
 
 #### Source Configuration - Service Connection using GCS
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **type**: Credentials type, e.g. `service_account`.
 * **projectId**
@@ -139,7 +139,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Source Configuration - Source Config
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
 - `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
 - `includeTables`: true or false, to ingest table data. Default is true.
@@ -170,7 +170,7 @@ workflowConfig:
     authProvider: no-auth
 ```
 
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client).
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">

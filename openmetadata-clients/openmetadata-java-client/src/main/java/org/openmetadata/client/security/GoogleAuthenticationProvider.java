@@ -20,9 +20,9 @@ import feign.RequestTemplate;
 import java.io.FileInputStream;
 import java.util.Arrays;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class GoogleAuthenticationProvider implements AuthenticationProvider {

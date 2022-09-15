@@ -7,7 +7,7 @@ slug: /deployment/security/google
 
 Follow the sections in this guide to set up Google SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
 
 ### Step 1: Create the Account
 - Go to [Create Google Cloud Account](https://console.cloud.google.com/)
@@ -72,9 +72,8 @@ After selecting the **Application Type**, name your project and give the authori
 - You will find the **Client ID** and **Client Secret** in the top right corner
 <Image src="/images/deployment/security/google/find-clientid-and-secret.png" alt="find-clientid-and-secret"/>
 
-</Collapse>
+## Create Service Account
 
-<Collapse title="Create Service Account">
 This is a guide to create ingestion bot service account.
 
 ### Step 1: Create Service-Account
@@ -135,8 +134,6 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 <Image src="/images/deployment/security/google/save-json.png" alt="save-json"/>
 
 - The private-key/service-account JSON file will be downloaded.
-
-</Collapse>
 
 After the applying these steps, you can update the configuration of your deployment:
 

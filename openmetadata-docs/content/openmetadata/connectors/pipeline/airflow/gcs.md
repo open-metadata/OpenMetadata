@@ -20,10 +20,17 @@ to your OpenMetadata server.
 
 In your environment you will need to install the following packages:
 
-- `openmetadata-ingestion==0.11.1`
+- `openmetadata-ingestion==x.y.z`, (e.g., `openmetadata-ingestion==0.12.0`).
 - `sqlalchemy==1.4.27`: This is needed to align OpenMetadata version with the Composer internal requirements.
 - `flask-appbuilder==3.4.5`: Again, this is just an alignment of versions so that `openmetadata-ingestion` can
   work with GCS Composer internals.
+
+<Note>
+
+Make sure to use the `openmetadata-ingestion` version that matches the server version
+you currently have!
+
+</Note>
 
 ## Prepare the DAG!
 
@@ -81,24 +88,10 @@ sink:
 workflowConfig:
   loggerLevel: INFO
   openMetadataServerConfig:
-    hostPort: https://sandbox-beta.open-metadata.org/api
+    hostPort: https://sandbox.getcollate.io/api
     authProvider: google
     securityConfig:
-      credentials:
-        gcsConfig:
-          type: service_account
-          projectId: ...
-          privateKeyId: ...
-          privateKey: |
-            -----BEGIN PRIVATE KEY-----
-            ...
-            -----END PRIVATE KEY-----
-          clientEmail: ...
-          clientId: ...
-          authUri: https://accounts.google.com/o/oauth2/auth
-          tokenUri: https://oauth2.googleapis.com/token
-          authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
-          clientX509CertUrl: ...
+      secretKey: /home/airflow/gcs/data/gcs_creds_beta.json
 """
 
 
@@ -125,3 +118,12 @@ with DAG(
         python_callable=metadata_ingestion_workflow,
     )
 ```
+
+## Google SSO
+
+Against Google SSO we need to use the [Cloud Storage](https://cloud.google.com/composer/docs/concepts/cloud-storage)
+to pass the `secretKey` JSON file. Upload the file to the `gs://bucket-name/data` directory, which will be mapped
+against `/home/airflow/gcs/data/` in Airflow.
+
+You can see in the example above how our file is named `gcs_creds_beta.json`, which gets resolved in Airflow as
+`/home/airflow/gcs/data/gcs_creds_beta.json`.
