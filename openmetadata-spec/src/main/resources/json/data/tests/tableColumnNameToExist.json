@@ -1,13 +1,13 @@
 {
-    "name": "TableColumnNameToExist",
-    "displayName": "TableColumnNameToExist",
+    "name": "tableColumnNameToExist",
+    "displayName": "Table Column Name To Exist",
     "description": "This test defines the test TableColumnNameToExist. Test the table columns exists in the table.",
     "entityType": "TABLE",
-    "testPlatforms": ["OpenMetadata", "GreatExpectations"],
+    "testPlatforms": ["OpenMetadata"],
     "parameterDefinition": [
       {
         "name": "columnName",
-        "displayName": "ColumnName",
+        "displayName": "Column Name",
         "description": "Expected column of the table to exist",
         "dataType": "STRING",
         "required": true
