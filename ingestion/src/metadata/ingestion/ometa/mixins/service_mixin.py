@@ -45,7 +45,6 @@ class OMetaServiceMixin:
         """
 
         create_entity_class = self.get_create_entity_type(entity=entity)
-        print(create_entity_class)
         return create_entity_class(
             name=config.serviceName,
             serviceType=config.serviceConnection.__root__.config.type.value,

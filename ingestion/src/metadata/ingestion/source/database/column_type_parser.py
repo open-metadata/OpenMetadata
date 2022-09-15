@@ -92,6 +92,7 @@ class ColumnTypeParser:
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
         "GEOGRAPHY": "GEOGRAPHY",
+        "GEOMETRY": "GEOMETRY",
         "HYPERLOGLOG": "BINARY",
         "IMAGE": "BINARY",
         "INT": "INT",
@@ -169,6 +170,8 @@ class ColumnTypeParser:
         "XML": "BINARY",
         "XMLTYPE": "BINARY",
         "UUID": "UUID",
+        "POINT": "POINT",
+        "POLYGON": "POLYGON",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
