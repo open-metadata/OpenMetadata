@@ -36,8 +36,16 @@
       "default": 10
     },
     "authConfig": {
-      "description": "Auth Provider Configuration ",
+      "description": "Auth Provider Configuration.",
       "$ref": "authConfig.json"
+    },
+    "verifySSL": {
+      "description": "Client SSL verification policy: no-ssl, ignore, validate.",
+      "type": "string"
+    },
+    "sslConfig": {
+      "description": "OpenMetadata Client SSL configuration.",
+      "$ref": "sslConfig.json"
     }
   },
   "required": [
@@ -45,7 +53,8 @@
     "username",
     "password",
     "metadataApiEndpoint",
-    "authProvider"
+    "authProvider",
+    "verifySSL"
   ],
   "additionalProperties": false
 }
