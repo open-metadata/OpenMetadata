@@ -138,7 +138,7 @@ public abstract class ExternalSecretsManagerTest {
 
   @ParameterizedTest
   @MethodSource(
-      "org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
+      "org.openmetadata.apis.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
   public void testEncryptAndDecryptDbtConfigSource(
       Object config,
       EntityReference service,

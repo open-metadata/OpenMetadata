@@ -147,7 +147,7 @@ public final class CollectionRegistry {
     Reflections reflections =
         new Reflections(
             new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage("org.openmetadata.service"))
+                .setUrls(ClasspathHelper.forPackage("org.openmetadata.apis"))
                 .setScanners(new MethodAnnotationsScanner()));
 
     // Get classes marked with @Collection annotation
