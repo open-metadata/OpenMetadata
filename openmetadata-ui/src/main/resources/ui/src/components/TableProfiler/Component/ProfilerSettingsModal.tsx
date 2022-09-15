@@ -193,7 +193,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <Col data-testid="profile-sample-container" span={24}>
           <p>Profile Sample %</p>
           <div className="tw-px-2 tw-mb-1.5">
-            <Row>
+            <Row gutter={20}>
               <Col span={20}>
                 <Slider
                   className="profiler-slider"
@@ -218,9 +218,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   max={100}
                   min={0}
                   step={1}
-                  style={{
-                    margin: '0 16px',
-                  }}
                   value={profileSample}
                   onChange={(value) => {
                     setProfileSample(value);
