@@ -35,7 +35,7 @@ else
   JAVA="${JAVA_HOME}/bin/java"
 fi
 
-TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
+TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.service.util.TablesInitializer
 LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
 if  [ ${debug} ] ; then
   echo $LIBS_DIR
@@ -46,7 +46,7 @@ if [ -d "${LIBS_DIR}" ]; then
       CLASSPATH="$CLASSPATH":"$file"
   done
 else
-  CLASSPATH=`mvn -pl catalog-rest-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
+  CLASSPATH=`mvn -pl openmetadata-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
 fi
 
 execute() {

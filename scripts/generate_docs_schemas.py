@@ -33,7 +33,7 @@ from typing import List
 
 import jsonschema2md
 
-SOURCES_ROOT = "catalog-rest-service/src/main/resources/json/schema"
+SOURCES_ROOT = "openmetadata-service/src/main/resources/json/schema"
 SINK_ROOT = "openmetadata-docs/content"
 SCHEMAS_ROOT = SINK_ROOT + "/main-concepts/metadata-standard/schemas/"
 
