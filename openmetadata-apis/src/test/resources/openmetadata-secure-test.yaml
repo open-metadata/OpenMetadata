@@ -12,7 +12,7 @@
 clusterName: openmetadata
 
 swagger:
-  resourcePackage: org.openmetadata.service.webservice.resources
+  resourcePackage: org.openmetadata.apis.webservice.resources
 
 server:
   rootPath: '/api/*'
@@ -125,9 +125,9 @@ health:
 
 # Authorizer Configuration
 authorizerConfiguration:
-  className: "org.openmetadata.service.security.DefaultAuthorizer"
+  className: "org.openmetadata.apis.security.DefaultAuthorizer"
   # JWT Filter
-  containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
+  containerRequestFilter: "org.openmetadata.apis.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
   botPrincipals:
@@ -160,8 +160,8 @@ jwtTokenConfiguration:
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
-    - "org.openmetadata.service.events.AuditEventHandler"
-    - "org.openmetadata.service.events.ChangeEventHandler"
+    - "org.openmetadata.apis.events.AuditEventHandler"
+    - "org.openmetadata.apis.events.ChangeEventHandler"
 
 airflowConfiguration:
   apiEndpoint: "http://localhost:8080"
