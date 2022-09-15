@@ -136,7 +136,8 @@ public class ChangeEventHandler implements EventHandler {
 
   private void handleWebSocket(ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();
-    if (responseCode == Status.CREATED.getStatusCode() && responseContext.getEntity() != null
+    if (responseCode == Status.CREATED.getStatusCode()
+        && responseContext.getEntity() != null
         && responseContext.getEntity().getClass().equals(Thread.class)) {
       Thread thread = (Thread) responseContext.getEntity();
       try {
