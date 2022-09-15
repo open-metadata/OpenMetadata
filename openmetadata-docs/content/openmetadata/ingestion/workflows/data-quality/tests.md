@@ -3,63 +3,56 @@ title: Tests
 slug: /openmetadata/ingestion/workflows/data-quality/tests
 ---
 
-# Tests
-Here you can see all the supported tests and how to configure them.
+# Test
+Here you can see all the supported tests definitions and how to configure them in the YAML config file.
 
-A **Test Case** adds logic to the Metrics results. A Metric is neither good nor wrong, so we need the Test definitions to map results into Success or Failures.
+A **Test Definition** is a generic definition of a test. This Test Definition then gets specified in a Test Case. This Test Case is where the parameter(s) of a Test Definition are specified.
 
-In this section, you will learn what tests we currently support and how to configure them.
-
-## UI Configuration
-You can navigate in the UI to a Table Entity and **Add Tests** from there. The form will help you select the type of test, the column, and its configurations.
-
-From the **Data Quality** Tab you can create both Table and Column Tests:
-
-<Image
-    src={"/images/openmetadata/data-quality/tests/write-your-first-tests.png"}
-    alt="Write your first test"
-    caption="Write your first test"
-/>  
-
-<Image
-    src={"/images/openmetadata/data-quality/tests/sample-form-to-create-test.png"}
-    alt="Sample form to create a column test"
-    caption="Sample form to create a column test"
-/>  
-
-Directly from the **Profiler** tab, you can create a Column Test in the column of your choice:
-
-<Image
-    src={"/images/openmetadata/data-quality/tests/create-test-from-profiler-tab.png"}
-    alt="Create a column test from the profiler tab"
-    caption="Create a column test from the profiler tab"
-/>  
-
-If you'd rather configure the tests directly in the Workflow JSON, we'll show examples for each of them below.
+In this section, you will learn what tests we currently support and how to configure them in the YAML/JSON config file.
 
 ## Table Tests
-Tests applied on top of Table Metrics.
+Tests applied on top of a Table. Here is the list of all table tests:
+
+- [Table Row Count to Equal](#table-row-count-to-equal)
+- [Table Row Count to be Between](#table-row-count-to-be-between)
+- [Table Column Count to Equal](#table-column-count-to-equal)
+- [Table Column Count to be Between](#table-column-count-to-be-between)
+- [Table Column Name to Exist](#table-column-name-to-exist)
+- [Table Column to Match Set](#table-column-to-match-set)
+- [Table Custom SQL Test](#table-custom-sql-test)
 
 ### Table Row Count to Equal
-Validate that the `rowCount` metric is equal to a given value.
+Validate the total row count in the table is equal to the given value.
 
 **Properties**:
 
 * `value`: Expected number of rows.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: tableRowCountToEqual
+parameterValues:
+    - name: value
+      value: 2
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "value": 100
-    },
-    "tableTestType": "tableRowCountToEqual"
+{
+    "testDefinitionName": "tableRowCountToEqual",
+    "parameterValues": [
+        {
+            "name": "value",
+            "value": 2
+        }
+    ]
 }
 ```
 
 ### Table Row Count to be Between
-Validate that the `rowCount` metric is within a given range of values.
+Validate the total row count is within a given range of values.
 
 **Properties**:
 
@@ -68,15 +61,32 @@ Validate that the `rowCount` metric is within a given range of values.
 
 Any of those two need to be informed.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: tableRowCountToBeBetween
+parameterValues:
+    - name: minValue
+      value: 10
+    - name: maxValue
+      value: 10
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValue": 10,
-        "maxValue": 100
-    },
-    "tableTestType": "tableRowCountToBeBetween"
+{
+    "testDefinitionName": "tableRowCountToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValue",
+            "value": 10
+        },
+        {
+            "name": "maxValue",
+            "value": 10
+        }
+    ]
 }
 ```
 
@@ -87,34 +97,63 @@ Validate that the number of columns in a table is equal to a given value.
 
 * `columnCount`: Expected number of columns.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: tableColumnCountToEqual
+parameterValues:
+    - name: columnCount
+      value: 5
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "columnCount": 7
-    },
-    "tableTestType": "tableColumnCountToEqual"
+{
+    "testDefinitionName": "tableColumnCountToEqual",
+    "parameterValues": [
+        {
+            "name": "columnCount",
+            "value": 5
+        }
+    ]
 }
 ```
 
 ### Table Column Count to be Between
-Validate the number of colum in a table is between the given value
+Validate the number of columns in a table is between the given value
 
 **Properties**
 
 * `minColValue`: lower bound
 * `maxColValue`: upper bound
 
+**YAML Config**
+
+```yaml
+testDefinitionName: tableColumnCountToBeBetween
+parameterValues:
+    - name: minColValue
+      value: 5
+    - name: maxColValue
+      value: 10
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minColValue": 1,
-        "maxColValue": 10
-    },
-    "tableTestType": "tableColumnCountToBeBetween"
+{
+    "testDefinitionName": "tableColumnCountToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minColValue",
+            "value": 5
+        },
+        {
+            "name": "maxColValue",
+            "value": 10
+        }
+    ]
 }
 ```
 
@@ -125,55 +164,162 @@ Validate a column name is present in the table
 
 * `columnName`: the name of the column to check for
 
+**YAML Config**
+
+```yaml
+testDefinitionName: tableColumnNameToExist
+parameterValues:
+    - name: columnName
+      value: order_id
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "columnName": 1
-    },
-    "tableTestType": "tableColumnNameToExist"
+{
+    "testDefinitionName": "tableColumnNameToExist",
+    "parameterValues": [
+        {
+            "name": "columnName",
+            "value": "order_id"
+        }
+    ]
 }
 ```
 
 ### Table Column to Match Set
-Validate a list of table column name matches an expected set of column
+Validate a list of table column name matches an expected set of columns
 
 **Properties**
 
 * `columnNames`: comma separated string of column name
 * `ordered`: whether the test should check for column ordering. Default to False
 
+**YAML Config**
+
+```yaml
+testDefinitionName: tableColumnToMatchSet
+parameterValues:
+    - name: columnNames
+      value: "col1, col2, col3"
+    - name: ordered
+      value: true
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "columnNames": "col1, col2, col3",
-        "ordered": true
-    },
-    "tableTestType": "tableColumnToMatchSet"
+{
+    "testDefinitionName": "tableColumnToMatchSet",
+    "parameterValues": [
+        {
+            "name": "columnNames",
+            "value": "col1, col2, col3"
+        },
+        {
+            "name": "ordered",
+            "value": true
+        }
+    ]
+}
+```
+
+### Table Custom SQL Test
+Write you own SQL test. The test will pass if either of the following condition is met:
+- The query result return 0 row
+- The query expression `COUNT(<col>)` returns 0
+
+**Properties**
+
+* `sqlExpression`: SQL expression
+
+**Example**
+```sql
+SELECT 
+COUNT(customer_tier)
+FROM DUAL 
+WHERE customer_tier = 'GOLD' and lifetime_value < 10000;
+```
+
+```sql
+SELECT 
+customer_id
+FROM DUAL 
+WHERE lifetime_value < 0;
+```
+
+**YAML Config**
+
+```yaml
+testDefinitionName: tableCustomSQLQuery
+parameterValues:
+    - name: sqlExpression
+      value: >
+        SELECT 
+        COUNT(customer_tier)
+        FROM DUAL 
+        WHERE customer_tier = 'GOLD' and lifetime_value < 10000;
+```
+
+**JSON Config**
+
+```json
+{
+    "testDefinitionName": "tableCustomSQLQuery",
+    "parameterValues": [
+        {
+            "name": "sqlExpression",
+            "value": "SELECT  COUNT(customer_tier) FROM DUAL  WHERE customer_tier = 'GOLD' and lifetime_value < 10000;\n"
+        }
+    ]
 }
 ```
 
 ## Column Tests
-Tests applied on top of Column metrics.
+Tests applied on top of Column metrics. Here is the list of all column tests:
+- [Column Values to Be Unique](#column-values-to-be-unique)
+- [Column Values to Be Not Null](#column-values-to-be-not-null)
+- [Column Values to Match Regex](#column-values-to-match-regex)
+- [Column Values to not Match Regex](#column-values-to-not-match-regex)
+- [Column Values to Be in Set](#column-values-to-be-in-set)
+- [Column Values to Be Not In Set](#column-values-to-be-not-in-set)
+- [Column Values to Be Between](#column-values-to-be-between)
+- [Column Values Missing Count to Be Equal](#column-values-missing-count-to-be-equal)
+- [Column Values Lengths to Be Between](#column-values-lengths-to-be-between)
+- [Column Value Max to Be Between](#column-value-max-to-be-between)
+- [Column Value Min to Be Between](#column-value-min-to-be-between)
+- [Column Value Mean to Be Between](#column-value-mean-to-be-between)
+- [Column Value Median to Be Between](#column-value-median-to-be-between)
+- [Column Values Sum to Be Between](#column-values-sum-to-be-between)
+- [Column Values Standard Deviation to Be Between](#column-values-standard-deviation-to-be-between)
 
 ### Column Values to Be Unique
-Makes sure that there are no duplicates in a given column.
+Makes sure that there are no duplicate values in a given column.
 
 **Properties**
 
 * `columnValuesToBeUnique`: To be set as `true`. This is required for proper JSON parsing in the profiler module.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesToBeUnique
+parameterValues:
+    - name: columnNames
+      value: true
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "columnValuesToBeUnique": true
-    },
-    "columnTestType": "columnValuesToBeUnique"
+{
+    "testDefinitionName": "columnValuesToBeUnique",
+    "parameterValues": [
+        {
+            "name": "columnNames",
+            "value": true
+        }
+    ]
 }
 ```
 
@@ -184,14 +330,26 @@ Validates that there are no null values in the column.
 
 * `columnValuesToBeNotNull`: To be set as `true`. This is required for proper JSON parsing in the profiler module.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesToBeNotNull
+parameterValues:
+    - name: columnValuesToBeNotNull
+      value: true
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "columnValuesToBeNotNull": true
-    },
-    "columnTestType": "columnValuesToBeNotNull"
+{
+    "testDefinitionName": "columnValuesToBeNotNull",
+    "parameterValues": [
+        {
+            "name": "columnValuesToBeNotNull",
+            "value": true
+        }
+    ]
 }
 ```
 
@@ -202,14 +360,26 @@ This test allows us to specify how many values in a column we expect that will m
 
 * `regex`: SQL `LIKE` expression to match. E.g., `%something%`.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesToMatchRegex
+parameterValues:
+    - name: regex
+      value: "%something%"
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "regex": "%something%"
-    },
-    "columnTestType": "columnValuesToMatchRegex"
+{
+    "testDefinitionName": "columnValuesToMatchRegex",
+    "parameterValues": [
+        {
+            "name": "regex",
+            "value": "%something%"
+        }
+    ]
 }
 ```
 
@@ -220,14 +390,26 @@ This test allows us to specify values in a column we expect that will not match 
 
 * `forbiddenRegex`: SQL LIKE expression to match. E.g., `%something%`.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesToMatchRegex
+parameterValues:
+    - name: forbiddenRegex
+      value: "%something%"
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "forbiddenRegex": "%something%"
-    },
-    "columnTestType": "columnValuesToNotMatchRegex"
+{
+    "testDefinitionName": "columnValuesToMatchRegex",
+    "parameterValues": [
+        {
+            "name": "forbiddenRegex",
+            "value": "%something%"
+        }
+    ]
 }
 ```
 
@@ -238,14 +420,29 @@ Validate values form a set are present in a column.
 
 * `allowedValues`: List of allowed strings or numbers.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesToBeInSet
+parameterValues:
+    - name: allowedValues
+      value: ["forbidden1", "forbidden2"]
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "allowedValues": ["forbidden1", "forbidden2"]
-    },
-    "columnTestType": "columnValuesToBeInSet"
+{
+    "testDefinitionName": "columnValuesToBeInSet",
+    "parameterValues": [
+        {
+            "name": "allowedValues",
+            "value": [
+                "forbidden1",
+                "forbidden2"
+            ]
+        }
+    ]
 }
 ```
 
@@ -256,14 +453,29 @@ Validate that there are no values in a column in a set of forbidden values.
 
 * `forbiddenValues`: List of forbidden strings or numbers.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesToBeNotInSet
+parameterValues:
+    - name: forbiddenValues
+      value: ["forbidden1", "forbidden2"]
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "forbiddenValues": ["forbidden1", "forbidden2"]
-    },
-    "columnTestType": "columnValuesToBeNotInSet"
+{
+    "testDefinitionName": "columnValuesToBeNotInSet",
+    "parameterValues": [
+        {
+            "name": "forbiddenValues",
+            "value": [
+                "forbidden1",
+                "forbidden2"
+            ]
+        }
+    ]
 }
 ```
 
@@ -278,15 +490,29 @@ Validate that the values of a column are within a given range.
 
 Any of those two need to be informed.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesToBeBetween
+parameterValues:
+    - name: minValue
+      value: ["forbidden1", "forbidden2"]
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValue": 10,
-        "maxValue": 100
-    },
-    "columnTestType": "columnValuesToBeBetween"
+{
+    "testDefinitionName": "columnValuesToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValue",
+            "value": [
+                "forbidden1",
+                "forbidden2"
+            ]
+        }
+    ]
 }
 ```
 
@@ -298,15 +524,56 @@ Validates that the number of missing values matches a given number. Missing valu
 * `missingCountValue`: The number of missing values needs to be equal to this. This field is mandatory.
 * `missingValueMatch`: A list of strings to consider as missing values. Optional.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValuesMissingCountToBeEqual
+parameterValues:
+    - name: missingValueMatch
+      value: ["NA", "N/A"]
+    - name: missingCountValue
+      value: 100
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "missingCountValue": 100,
-        "missingValueMatch": ["NA", "N/A"]
-    },
-    "columnTestType": "columnValuesMissingCountToBeEqual"
+{
+    "testDefinitionName": "columnValuesMissingCountToBeEqual",
+    "parameterValues": [
+        {
+            "name": "missingValueMatch",
+            "value": [
+                "NA",
+                "N/A"
+            ]
+        },
+        {
+            "name": "missingCountValue",
+            "value": 100
+        }
+    ]
+}
+```
+
+**JSON Config**
+
+```json
+{
+    "testDefinitionName": "columnValuesMissingCountToBeEqual",
+    "parameterValues": [
+        {
+            "name": "missingValueMatch",
+            "value": [
+                "NA",
+                "N/A"
+            ]
+        },
+        {
+            "name": "missingCountValue",
+            "value": 100
+        }
+    ]
 }
 ```
 
@@ -321,15 +588,32 @@ Validates that the lengths of the strings in a column are within a given range.
 
 Any of those two need to be informed.
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValueLengthsToBeBetween
+parameterValues:
+    - name: minLength
+      value: 50
+    - name: maxLength
+      value: 100
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minLength": 4,
-        "maxLength": 18
-    },
-    "columnTestType": "columnValueLengthsToBeBetween"
+{
+    "testDefinitionName": "columnValueLengthsToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minLength",
+            "value": 50
+        },
+        {
+            "name": "maxLength",
+            "value": 100
+        }
+    ]
 }
 ```
 
@@ -342,15 +626,32 @@ Validate the maximum value of a column is between a specific range
 * `minValueForMaxInCol`: lower bound
 * `maxValueForMaxInCol`: upper bound
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValueMaxToBeBetween
+parameterValues:
+    - name: minValueForMaxInCol
+      value: 50
+    - name: maxValueForMaxInCol
+      value: 100
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValueForMaxInCol": 10,
-        "maxValueForMaxInCol": 50
-    },
-    "columnTestType": "columnValueMaxToBeBetween"
+{
+    "testDefinitionName": "columnValueMaxToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValueForMaxInCol",
+            "value": 50
+        },
+        {
+            "name": "maxValueForMaxInCol",
+            "value": 100
+        }
+    ]
 }
 ```
 
@@ -363,15 +664,32 @@ Validate the minimum value of a column is between a specific range
 * `minValueForMinInCol`: lower bound
 * `maxValueForMinInCol`: upper bound
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValueMinToBeBetween
+parameterValues:
+    - name: minValueForMinInCol
+      value: 10
+    - name: maxValueForMinInCol
+      value: 50
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValueForMinInCol": 10,
-        "maxValueForMinInCol": 50
-    },
-    "columnTestType": "columnValueMinToBeBetween"
+{
+    "testDefinitionName": "columnValueMinToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValueForMinInCol",
+            "value": 10
+        },
+        {
+            "name": "maxValueForMinInCol",
+            "value": 50
+        }
+    ]
 }
 ```
 
@@ -384,15 +702,32 @@ Validate the mean of a column is between a specific range
 * `minValueForMeanInCol`: lower bound
 * `maxValueForMeanInCol`: upper bound
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValueMeanToBeBetween
+parameterValues:
+    - name: minValueForMeanInCol
+      value: 5
+    - name: maxValueForMeanInCol
+      value: 10
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValueForMeanInCol": 10,
-        "maxValueForMeanInCol": 50
-    },
-    "columnTestType": "columnValueMeanToBeBetween"
+{
+    "testDefinitionName": "columnValueMeanToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValueForMeanInCol",
+            "value": 5
+        },
+        {
+            "name": "maxValueForMeanInCol",
+            "value": 10
+        }
+    ]
 }
 ```
 
@@ -405,15 +740,32 @@ Validate the median of a column is between a specific range
 * `minValueForMedianInCol`: lower bound
 * `maxValueForMedianInCol`: upper bound
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValueMedianToBeBetween
+parameterValues:
+    - name: minValueForMedianInCol
+      value: 5
+    - name: maxValueForMedianInCol
+      value: 10
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValueForMedianInCol": 10,
-        "maxValueForMedianInCol": 50
-    },
-    "columnTestType": "columnValueMedianToBeBetween"
+{
+    "testDefinitionName": "columnValueMedianToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValueForMedianInCol",
+            "value": 5
+        },
+        {
+            "name": "maxValueForMedianInCol",
+            "value": 10
+        }
+    ]
 }
 ```
 
@@ -426,15 +778,32 @@ Validate the sum of a column is between a specific range
 * `minValueForColSum`: lower bound
 * `maxValueForColSum`: upper bound
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValueMedianToBeBetween
+parameterValues:
+    - name: minValueForMedianInCol
+      value: 5
+    - name: maxValueForMedianInCol
+      value: 10
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValueForColSum": 10,
-        "maxValueForColSum": 50
-    },
-    "columnTestType": "columnValuesSumToBeBetween"
+{
+    "testDefinitionName": "columnValueMedianToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValueForMedianInCol",
+            "value": 5
+        },
+        {
+            "name": "maxValueForMedianInCol",
+            "value": 10
+        }
+    ]
 }
 ```
 
@@ -447,14 +816,31 @@ Validate the standard deviation of a column is between a specific range
 * `minValueForStdDevInCol`: lower bound
 * `minValueForStdDevInCol`: upper bound
 
+**YAML Config**
+
+```yaml
+testDefinitionName: columnValueStdDevToBeBetween
+parameterValues:
+    - name: minValueForStdDevInCol
+      value: 5
+    - name: maxValueForStdDevInCol
+      value: 10
+```
+
 **JSON Config**
 
 ```json
-"testCase": {
-    "config": {
-        "minValueForStdDevInCol": 10,
-        "maxValueForStdDevInCol": 50
-    },
-    "columnTestType": "columnValueStdDevToBeBetween"
+{
+    "testDefinitionName": "columnValueStdDevToBeBetween",
+    "parameterValues": [
+        {
+            "name": "minValueForStdDevInCol",
+            "value": 5
+        },
+        {
+            "name": "maxValueForStdDevInCol",
+            "value": 10
+        }
+    ]
 }
 ```
