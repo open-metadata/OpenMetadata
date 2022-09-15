@@ -140,7 +140,7 @@ authorizerConfiguration:
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
 
 authenticationConfiguration:
-  provider: ${AUTHENTICATION_PROVIDER:-"no-auth"}
+  provider: ${AUTHENTICATION_PROVIDER:-no-auth}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
