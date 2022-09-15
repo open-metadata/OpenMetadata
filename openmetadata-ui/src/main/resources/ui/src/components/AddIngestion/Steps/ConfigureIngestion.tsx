@@ -145,9 +145,7 @@ const ConfigureIngestion = ({
           placeholder="75"
           type="number"
           value={profileSample}
-          onChange={(e) =>
-            handleProfileSampleValidation(parseInt(e.target.value))
-          }
+          onChange={(e) => handleProfileSampleValidation(+e.target.value)}
         />
         {profileSampleError && errorMsg('Value must be between 0 and 99.')}
       </div>
