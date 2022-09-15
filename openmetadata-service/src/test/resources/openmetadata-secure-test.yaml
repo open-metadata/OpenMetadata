@@ -169,6 +169,7 @@ airflowConfiguration:
   password: "admin"
   metadataApiEndpoint: "http://localhost:8585/api"
   authProvider: "no-auth"
+  verifySSL: "no-ssl"
 
 slackChat:
   slackUrl: "http://localhost:8080"
