@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { uuid } from '../../common/common';
+import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -52,15 +52,14 @@ const removePolicyFromRole = (policyName) => {
 describe('Roles page should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
-    cy.intercept('GET', '*api/v1/roles*').as('getRoles');
+
+    interceptURL('GET', '*api/v1/roles*', 'getRoles');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
     cy.get('[data-menu-id*="roles"]').should('be.visible').click();
 
-    cy.wait('@getRoles', { timeout: 15000 })
-      .its('response.statusCode')
-      .should('equal', 200);
+    verifyResponseStatusCode('@getRoles', 200);
 
     cy.url().should('eq', 'http://localhost:8585/settings/access/roles');
   });
@@ -92,10 +91,8 @@ describe('Roles page should work properly', () => {
       .should('be.visible');
     //Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering description
-    cy.get(
-      '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-    ).type(description);
+    //Entering descrription
+    cy.get(descriptionBox).type(description);
     //Select the policies
     cy.get('.ant-select').should('be.visible').click();
 
@@ -170,10 +167,8 @@ describe('Roles page should work properly', () => {
       .should('be.visible');
     //Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering description
-    cy.get(
-      '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-    ).type(description);
+    //Entering descrription
+    cy.get(descriptionBox).type(description);
     //Do not Select the policies
     //Save the role
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
@@ -193,9 +188,7 @@ describe('Roles page should work properly', () => {
       .click();
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
 
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .clear()
-      .type(`${description}-updated`);
+    cy.get(descriptionBox).clear().type(`${description}-updated`);
     cy.get('[data-testid="save"]').should('be.visible').click();
 
     cy.get('[data-testid="inactive-link"]').should('be.visible');
