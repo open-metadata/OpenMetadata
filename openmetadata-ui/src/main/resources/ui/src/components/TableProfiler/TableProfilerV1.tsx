@@ -242,6 +242,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         <Radio.Group
           buttonStyle="solid"
           className="profiler-switch"
+          data-testid="profiler-switch"
           optionType="button"
           options={tabOptions}
           value={activeTab}

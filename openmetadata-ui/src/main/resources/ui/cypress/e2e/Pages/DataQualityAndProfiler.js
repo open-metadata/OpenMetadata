@@ -14,7 +14,7 @@
 /// <reference types="cypress" />
 
 import { descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
-import { NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import { DELETE_TERM, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -167,5 +167,72 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.contains(`${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`).should(
       'be.visible'
     );
+  });
+
+  it('Edit Test Case should work properly', () => {
+    const testName = `${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`;
+    cy.goToHomePage();
+
+    searchEntity(TEAM_ENTITY);
+    goToProfilerTab();
+
+    cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
+      .contains('Data Quality')
+      .should('be.visible')
+      .click();
+
+    cy.get(`[data-testid="${testName}"]`).should('be.visible');
+    cy.get(`[data-testid="edit-${testName}"]`).should('be.visible').click();
+    cy.get('#tableTestForm_params_columnName')
+      .scrollIntoView()
+      .clear()
+      .wait(200)
+      .type('test');
+    interceptURL('PATCH', '/api/v1/testCase/*', 'updateTest');
+    cy.get('.ant-modal-footer').contains('Submit').click();
+    verifyResponseStatusCode('@updateTest', 200);
+    cy.get('.Toastify__toast-body')
+      .contains('Test case updated successfully!')
+      .should('be.visible')
+      .wait(200);
+    cy.get(`[data-testid="${testName}"]`).should('be.visible').click();
+    cy.contains('columnName: test').scrollIntoView().should('exist');
+  });
+
+  it('Delete Test Case should work properly', () => {
+    const testName = `${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`;
+    cy.goToHomePage();
+
+    searchEntity(TEAM_ENTITY);
+    goToProfilerTab();
+
+    cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
+      .contains('Data Quality')
+      .should('be.visible')
+      .click();
+
+    cy.get(`[data-testid="${testName}"]`).should('be.visible');
+    cy.get(`[data-testid="delete-${testName}"]`).should('be.visible').click();
+    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL(
+      'DELETE',
+      '/api/v1/testCase/*?hardDelete=true&recursive=false',
+      'deleteTest'
+    );
+    interceptURL('GET', '/api/v1/testCase?*', 'getTestCase');
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.be.disabled')
+      .click();
+    verifyResponseStatusCode('@deleteTest', 200);
+    verifyResponseStatusCode('@getTestCase', 200);
+    cy.get('.Toastify__toast-body')
+      .contains('Test Case deleted successfully!')
+      .should('be.visible')
+      .wait(200);
+    cy.get('table').contains('No Data').should('be.visible');
   });
 });

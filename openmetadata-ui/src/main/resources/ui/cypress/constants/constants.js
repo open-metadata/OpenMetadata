@@ -96,7 +96,7 @@ export const TEAMS = {
 };
 
 export const NEW_TEST_SUITE = {
-  name: `mysql_matrix_${id}`,
+  name: `mysql_matrix`,
   description: 'mysql critical matrix',
 };
 

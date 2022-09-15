@@ -145,6 +145,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
                 <Button
                   className="flex-center"
+                  data-testid={`delete-${record.name}`}
                   disabled={!hasAccess}
                   icon={
                     <SVGIcons
@@ -166,6 +167,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
                 <Button
                   className="flex-center"
+                  data-testid={`edit-${record.name}`}
                   disabled={!hasAccess}
                   icon={
                     <SVGIcons
