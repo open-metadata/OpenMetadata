@@ -24,19 +24,21 @@ import org.simplejavamail.mailer.MailerBuilder;
 @Slf4j
 public class EmailUtil {
   public static final String USERNAME = "userName";
+  public static final String ENTITY = "entity";
+  public static final String SUPPORTURL = "supportUrl";
   public static final String EMAILTEMPLATEBASEPATH = "/emailTemplates";
   // Email Verification
-  public static final String EMAILVERIFICATIONSUBJECT = "OpenMetadata: Verify your Email Address (Action Required)";
+  private final String EMAILVERIFICATIONSUBJECT = "%s: Verify your Email Address (Action Required)";
   public static final String EMAILVERIFICATIONLINKKEY = "userEmailTokenVerificationLink";
   public static final String EMAILVERIFICATIONTEMPLATEPATH = "email-verification.ftl";
   // Password Reset Link
-  public static final String PASSWORDRESETSUBJECT = "OpenMetadata: Reset your Password";
+  private final String PASSWORDRESETSUBJECT = "%s: Reset your Password";
   public static final String PASSWORDRESETLINKKEY = "userResetPasswordLink";
   public static final String EXPIRATIONTIMEKEY = "expirationTime";
   public static final String DEFAULTEXPIRATIONTIME = "60";
   public static final String PASSWORDRESETTEMPLATEFILE = "reset-link.ftl";
   // Account Change Status
-  public static final String ACCOUNTSTATUSSUBJECT = "OpenMetadata: Change in Account Status";
+  private final String ACCOUNTSTATUSSUBJECT = "%s: Change in Account Status";
   public static final String ACTIONKEY = "action";
   public static final String ACTIONSTATUSKEY = "actionStatus";
   public static final String ACCOUNTSTATUSTEMPLATEFILE = "account-activity-change.ftl";
@@ -52,7 +54,7 @@ public class EmailUtil {
       this.mailer = this.createMailer(smtpServerSettings);
       this.templateConfiguration = new Configuration(VERSION_2_3_28);
     } catch (Exception ex) {
-      LOG.error("Error in instantialting [MAILER] : Reason {} ", ex.getMessage());
+      LOG.error("Error in instantiating [MAILER] : Reason {} ", ex.getMessage());
     }
   }
 
@@ -263,5 +265,25 @@ public class EmailUtil {
       }
       return INSTANCE;
     }
+  }
+
+  public String getEmailVerificationSubject() {
+    return String.format(EMAILVERIFICATIONSUBJECT, defaultSmtpSettings.getEmailingEntity());
+  }
+
+  public String getPasswordResetSubject() {
+    return String.format(PASSWORDRESETSUBJECT, defaultSmtpSettings.getEmailingEntity());
+  }
+
+  public String getAccountStatusChangeSubject() {
+    return String.format(ACCOUNTSTATUSSUBJECT, defaultSmtpSettings.getEmailingEntity());
+  }
+
+  public String getEmailingEntity() {
+    return defaultSmtpSettings.getEmailingEntity();
+  }
+
+  public String getSupportUrl() {
+    return defaultSmtpSettings.getSupportUrl();
   }
 }

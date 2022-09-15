@@ -53,7 +53,7 @@
                                   <span style="font-weight: 400;">Status: <strong>${actionStatus}</strong>
                                   </span>
                                 <div class="" style="border-top: 0; font-size: 1px; mso-line-height-rule: exactly; line-height: 1px; max-height: 0; margin: 20px 0; overflow: hidden;"> ​ </div>
-                                <p class="" style="margin: 20px 0; font-size: 16px; mso-line-height-rule: exactly; line-height: 1px;"> Let us know if you need anything. We are&nbsp;<a style="color: #316fea; text-decoration: none;" href="https://slack.open-metadata.org" target="_blank" rel="noopener">here</a>&nbsp;to help.</p>
+                                <p class="" style="margin: 20px 0; font-size: 16px; mso-line-height-rule: exactly; line-height: 1px;"> Let us know if you need anything. We are&nbsp;<a style="color: #316fea; text-decoration: none;" href="${supportUrl}" target="_blank" rel="noopener">here</a>&nbsp;to help.</p>
                                 <p class="tw-signoff" style="margin: 45px 0 5px; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;"> Happy Exploring!<br />Thanks</p>
                               </td>
                             </tr>

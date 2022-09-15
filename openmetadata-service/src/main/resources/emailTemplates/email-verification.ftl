@@ -44,7 +44,7 @@
                               <td class="tw-card-body" style="padding: 20px 35px; text-align: left; color: #6f6f6f; font-family: sans-serif; border-top: 0;">
                                 <h1 class="tw-h1" style="font-size: 24px; font-weight: bold; mso-line-height-rule: exactly; line-height: 32px; margin: 0 0 20px; color: #474747;"> Hi ${userName},</h1>
                                 <p class="" style="margin: 20px 0; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;">
-                                  <span style="font-weight: 400;">Welcome to <strong>OpenMetadata</strong>, the all-in-one platform for data discovery, data quality, observability, governance, data lineage, and team collaboration. </span>
+                                  <span style="font-weight: 400;">Welcome to <strong>${entity}</strong>, the all-in-one platform for data discovery, data quality, observability, governance, data lineage, and team collaboration. </span>
                                   <br />
                                   <br />
                                   <span style="font-weight: 400;">Thanks for joining. Please confirm your email address to complete the registration process. Please click the link below or copy and paste this URL into your web browser to verify your email.</span>
@@ -74,8 +74,8 @@
                                 </table>
                                 <div class="" style="border-top: 0; font-size: 1px; mso-line-height-rule: exactly; line-height: 1px; max-height: 0; margin: 20px 0; overflow: hidden;"> ​ </div>
                                 <p class="" style="margin: 20px 0; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;"> The verification link is valid for <strong>${expirationTime}</strong> hours only. </p>
-                                <p class="" style="margin: 20px 0; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;"> Feel free to reachout to us on&nbsp;<a style="color: #316fea; text-decoration: none;" href="https://slack.open-metadata.org" target="_blank" rel="noopener">Slack</a>&nbsp;for any questions you may have. </p>
-                                <p class="tw-signoff" style="margin: 45px 0 5px; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;"> Thanks,<br />The OpenMetadata Team</p>
+                                <p class="" style="margin: 20px 0; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;"> Feel free to reachout to us on&nbsp;<a style="color: #316fea; text-decoration: none;" href="${supportUrl}" target="_blank" rel="noopener">Slack</a>&nbsp;for any questions you may have. </p>
+                                <p class="tw-signoff" style="margin: 45px 0 5px; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;"> Thanks,<br />The ${entity} Team</p>
                               </td>
                             </tr>
                           </tbody>

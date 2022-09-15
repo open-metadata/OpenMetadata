@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
+import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
+import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -62,7 +64,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
@@ -74,7 +75,6 @@ import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
-import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
@@ -625,6 +625,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       sendEmailVerification(uriInfo, registeredUser);
     } catch (Exception e) {
       LOG.error("Error in sending mail to the User : {}", e.getMessage());
+      return Response.status(424)
+          .entity(
+              "User Registration Successful. Email for Verification couldn't be sent. Please contact your administrator")
+          .build();
     }
     return Response.status(Response.Status.OK).entity("User Registration Successful.").build();
   }
@@ -647,7 +651,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           String token)
       throws IOException {
     confirmEmailRegistration(uriInfo, token);
-    return Response.status(Response.Status.OK).entity("User Verified Successfully").build();
+    return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
   @GET
@@ -667,13 +671,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("token")
           String token)
       throws IOException {
-    User registeredUser = recreateRegistrationToken(uriInfo, token);
+    User registeredUser = extendRegistrationToken(uriInfo, token);
     try {
       sendEmailVerification(uriInfo, registeredUser);
     } catch (Exception e) {
       LOG.error("Error in sending Email Verification mail to the User : {}", e.getMessage());
+      return Response.status(424)
+          .entity("There is some issue in sending the Mail. Please contact your administrator.")
+          .build();
     }
-    return Response.status(Response.Status.OK).build();
+    return Response.status(Response.Status.OK)
+        .entity("Email Verification Mail Sent. Please check your Mailbox.")
+        .build();
   }
 
   @POST
@@ -696,6 +705,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       sendPasswordResetLink(uriInfo, registeredUser);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
+      return Response.status(424)
+          .entity("There is some issue in sending the Mail. Please contact your administrator.")
+          .build();
     }
 
     return Response.status(Response.Status.OK).build();
@@ -718,12 +730,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request) throws IOException {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
+    if (passwordResetToken == null) {
+      throw new EntityNotFoundException("Token not found for Password Reset. Please issue new Password Reset Request.");
+    }
     User storedUser =
         dao.getByName(
             uriInfo, request.getUsername(), new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
-      throw new RuntimeException("Invalid token for the user");
+      throw new RuntimeException("Token does not belong to the user.");
     }
     verifyPasswordResetTokenExpiry(passwordResetToken);
     // passwords validity
@@ -737,30 +752,35 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     storedUser.getAuthenticationMechanism().setConfig(newAuthForUser);
 
-    // delete the token as well , since already used
-    tokenRepository.deleteToken(passwordResetToken.getToken().toString());
-
     // Don't want to return the entity just a 201 or 200 should do
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, storedUser);
 
+    // delete the user's all password reset token as well , since already updated
+    tokenRepository.deleteTokenByUserAndType(storedUser.getId().toString(), PASSWORD_RESET.toString());
     // Update user about Password Change
     try {
       Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+      templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
       templatePopulator.put(EmailUtil.USERNAME, storedUser.getName());
       templatePopulator.put(EmailUtil.ACTIONKEY, "Update Password");
       templatePopulator.put(EmailUtil.ACTIONSTATUSKEY, "Change Successful");
 
       EmailUtil.getInstance()
           .sendMail(
-              EmailUtil.ACCOUNTSTATUSSUBJECT,
+              EmailUtil.getInstance().getAccountStatusChangeSubject(),
               templatePopulator,
               storedUser.getEmail(),
               EmailUtil.EMAILTEMPLATEBASEPATH,
               EmailUtil.ACCOUNTSTATUSTEMPLATEFILE);
     } catch (Exception ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage());
+      return Response.status(424)
+          .entity(
+              "Password updated successfully. There is some problem in sending mail. Please contact your administrator.")
+          .build();
     }
-    return Response.status(response.getStatus()).build();
+    return Response.status(response.getStatus()).entity("Password Changed Successfully").build();
   }
 
   @POST
@@ -796,7 +816,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
       dao.createOrUpdate(uriInfo, storedUser);
       // it has to be 200 since we already fetched user , and we don't want to return any other data
-      return Response.status(200).build();
+      return Response.status(200).entity("Password Updated Successfully").build();
     } else {
       return Response.status(403).entity("Old Password is not correct").build();
     }
@@ -882,7 +902,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
       return Response.status(200).entity(response).build();
     } else {
-      return Response.status(403).entity("Not Authorized!").build();
+      return Response.status(403).entity("Please enter correct Password").build();
     }
   }
 
@@ -984,7 +1004,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (emailVerificationToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new RuntimeException(
           String.format(
-              "Email Verification Token %s Expired token. Please issue a new request",
+              "Email Verification Token %s is expired. Please issue a new request for email verification",
               emailVerificationToken.getToken()));
     }
 
@@ -996,9 +1016,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
   }
 
-  public User recreateRegistrationToken(UriInfo uriInfo, String existingToken) throws IOException {
+  public User extendRegistrationToken(UriInfo uriInfo, String existingToken) throws IOException {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(existingToken);
-    User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("*"));
+    User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("isEmailVerified"));
     if (registeredUser.getIsEmailVerified()) {
       // no need to do anything
       return registeredUser;
@@ -1016,7 +1036,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     UUID mailVerificationToken = UUID.randomUUID();
     EmailVerificationToken emailVerificationToken =
         TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
-    tokenRepository.insertToken(emailVerificationToken);
+
     LOG.info("Generated Email verification token [" + mailVerificationToken + "]");
 
     String emailVerificationLink =
@@ -1024,22 +1044,28 @@ public class UserResource extends EntityResource<User, UserRepository> {
             "%s://%s/users/registrationConfirmation?token=%s",
             uriInfo.getRequestUri().getScheme(), uriInfo.getRequestUri().getHost(), mailVerificationToken);
     Map<String, String> templatePopulator = new HashMap<>();
+
+    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
     templatePopulator.put(EmailUtil.EMAILVERIFICATIONLINKKEY, emailVerificationLink);
     templatePopulator.put(EmailUtil.EXPIRATIONTIMEKEY, "24");
     EmailUtil.getInstance()
         .sendMail(
-            EmailUtil.EMAILVERIFICATIONSUBJECT,
+            EmailUtil.getInstance().getEmailVerificationSubject(),
             templatePopulator,
             user.getEmail(),
             EmailUtil.EMAILTEMPLATEBASEPATH,
             EmailUtil.EMAILVERIFICATIONTEMPLATEPATH);
+
+    // insert the token
+    tokenRepository.insertToken(emailVerificationToken);
   }
 
   private void sendPasswordResetLink(UriInfo uriInfo, User user) throws IOException, TemplateException {
     UUID mailVerificationToken = UUID.randomUUID();
     PasswordResetToken resetToken = TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
-    tokenRepository.insertToken(resetToken);
+
     LOG.info("Generated Password Reset verification token [" + mailVerificationToken + "]");
 
     String passwordResetLink =
@@ -1050,31 +1076,31 @@ public class UserResource extends EntityResource<User, UserRepository> {
             user.getFullyQualifiedName(),
             mailVerificationToken);
     Map<String, String> templatePopulator = new HashMap<>();
+    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
     templatePopulator.put(EmailUtil.PASSWORDRESETLINKKEY, passwordResetLink);
     templatePopulator.put(EmailUtil.EXPIRATIONTIMEKEY, EmailUtil.DEFAULTEXPIRATIONTIME);
 
     EmailUtil.getInstance()
         .sendMail(
-            EmailUtil.PASSWORDRESETSUBJECT,
+            EmailUtil.getInstance().getPasswordResetSubject(),
             templatePopulator,
             user.getEmail(),
             EmailUtil.EMAILTEMPLATEBASEPATH,
             EmailUtil.PASSWORDRESETTEMPLATEFILE);
+
+    tokenRepository.insertToken(resetToken);
   }
 
   public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
     // first delete the existing user mapping for the token
     // TODO: Currently one user will be mapped to one refreshToken , so essentially each user is assigned one
     // refreshToken
-    // TODO: Future : Each user will have multiple Devices to login with, where each will have refresh token, i.e
-    // refreshTokenPerDevice
-    List<TokenInterface> refreshTokenListForUser =
-        tokenRepository.findByUserIdAndType(currentUserId.toString(), TokenType.REFRESH_TOKEN.toString());
+    // TODO: Future : Each user will have multiple Devices to login with, where each will have refresh token, i.e per
+    // devie
     // just delete the existing token
-    if (refreshTokenListForUser != null && refreshTokenListForUser.size() > 0) {
-      tokenRepository.deleteToken(refreshTokenListForUser.get(0).getToken().toString());
-    }
+    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
     tokenRepository.insertToken(newRefreshToken);
@@ -1100,11 +1126,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new RuntimeException("Invalid Refresh Token");
     }
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new RuntimeException(
-          "Expired token. Please issue a new request : " + storedRefreshToken.getToken().toString());
+      throw new RuntimeException("Expired token. Please login again : " + storedRefreshToken.getToken().toString());
     }
     // TODO: currently allow single login from a place, later multiple login can be added
-    tokenRepository.deleteToken(storedRefreshToken.getToken().toString());
+    // just delete the existing token
+    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
     // we use rotating refresh token , generate new token
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database

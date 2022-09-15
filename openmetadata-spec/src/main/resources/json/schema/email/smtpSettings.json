@@ -6,6 +6,16 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.email.SmtpSettings",
   "properties": {
+    "emailingEntity": {
+      "description": "Emailing Entity",
+      "type": "string",
+      "default": "OpenMetadata"
+    },
+    "supportUrl": {
+      "description": "Support Url",
+      "type": "string",
+      "default": "https://slack.open-metadata.org"
+    },
     "enableSmtpServer": {
       "description": "If this is enable password will details will be shared on mail",
       "type": "boolean",

@@ -133,7 +133,7 @@ authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.NoopAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.NoopFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
-  allowedEmailRegistrationDomains: ${ALLOWED_REGISTRATION_DOMAIN:-["all"]}
+  allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
@@ -231,6 +231,8 @@ health:
         successAttempts: 1
 
 email:
+  emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
+  supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
   enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
   openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
   serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
