@@ -25,18 +25,13 @@
 
   <artifactId>openmetadata-dist</artifactId>
   <packaging>pom</packaging>
-  <name>Catalog Distribution</name>
-  <description>Catalog binary distribution</description>
+  <name>OpenMetadata Distribution</name>
+  <description>OpenMetadata binary distribution</description>
 
   <dependencies>
     <dependency>
       <groupId>org.open-metadata</groupId>
       <artifactId>openmetadata-apis</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.open-metadata</groupId>
-      <artifactId>common</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>
