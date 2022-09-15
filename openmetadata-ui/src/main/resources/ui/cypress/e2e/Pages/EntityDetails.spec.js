@@ -12,7 +12,7 @@
  */
 
 import moment from 'moment';
-import { searchEntity } from '../../common/common';
+import { descriptionBox, interceptURL, searchEntity, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -29,26 +29,25 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .should('have.class', 'active')
       .click();
-
-    cy.wait(500);
-
+    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
     //Click on manage button
     cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
+    verifyResponseStatusCode('@getEntityDetails', 200);
     cy.get('[data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    cy.wait(1000);
+    cy.get('[data-menu-id*="delete-button"]')
+      .should('exist')
+      .should('be.visible');
     // check for delete section and delete button is available or not
     // cy.get('[data-testid="danger-zone"]').scrollIntoView().should('be.visible');
     cy.get('[data-testid="delete-button-title"]')
       .should('be.visible')
       .click()
       .as('deleteBtn');
-
-    cy.wait(1000);
 
     cy.get('[data-testid="hard-delete-option"]')
       .should('contain', `Permanently Delete ${singuler} “${value.term}”`)
@@ -82,7 +81,9 @@ describe('Entity Details Page', () => {
     // open modal and type required text in input box to delete entity
 
     cy.get('@deleteBtn').click();
-    cy.wait(1000);
+    cy.get('[data-menu-id*="delete-button"]')
+      .should('exist')
+      .should('be.visible');
     cy.get('@permanentDelete').click();
     cy.get('@textBox').type(DELETE_TERM);
     cy.get('@confirmBtn').should('not.be.disabled');
@@ -129,13 +130,21 @@ describe('Entity Details Page', () => {
       .should('have.class', 'active')
       .click();
 
+    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
+
     cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@getEntityDetails', 200);
+
+    interceptURL(
+      'GET',
+      '/api/v1/users/loggedInUser/groupTeams',
+      'waitForUsers'
+    );
 
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@waitForUsers', 200);
     //Clicking on users tab
     cy.get('[data-testid="dropdown-tab"]')
       .contains('Users')
@@ -143,12 +152,14 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
+    interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
     //Selecting the user
     cy.get('[data-testid="list-item"]')
       .should('exist')
       .should('be.visible')
       .click();
-    cy.wait(1000);
+
+    verifyResponseStatusCode('@validateOwner', 200);
 
     cy.get('[data-testid="owner-link"]')
       .scrollIntoView()
@@ -156,8 +167,6 @@ describe('Entity Details Page', () => {
       .then((text) => {
         expect(text).equal('Aaron Johnson');
       });
-
-    cy.wait(1000);
 
     cy.get('[data-testid="edit-Tier-icon"]')
       .scrollIntoView()
@@ -178,16 +187,17 @@ describe('Entity Details Page', () => {
       });
 
     cy.get('[data-testid="entity-tags"]').should('contain', 'Tier1');
-    cy.wait(1000);
 
     // Test out the activity feed and task tab
-    cy.get('[data-testid="Activity Feeds & Tasks"]').should('be.visible').click()
+    cy.get('[data-testid="Activity Feeds & Tasks"]')
+      .should('be.visible')
+      .click();
     // Check for tab count
-    cy.get('[data-testid=filter-count').should('be.visible').contains("2")
+    cy.get('[data-testid=filter-count').should('be.visible').contains('2');
 
-    // Check for activity feeds - count should be 2 
+    // Check for activity feeds - count should be 2
     // 1 for tier change and 1 for owner change
-    cy.get('[data-testid="message-container"]').its('length').should("eq",2)
+    cy.get('[data-testid="message-container"]').its('length').should('eq', 2);
 
     cy.clickOnLogo();
 
@@ -207,9 +217,11 @@ describe('Entity Details Page', () => {
   };
 
   const addAnnouncement = (value) => {
-    const currentDate = Date.now()
+    const currentDate = Date.now();
     const startDate = moment(currentDate, 'x').format('yyyy-MM-DDThh:mm');
-    const endDate=moment(currentDate, 'x').add(5, 'days').format('yyyy-MM-DDThh:mm');
+    const endDate = moment(currentDate, 'x')
+      .add(5, 'days')
+      .format('yyyy-MM-DDThh:mm');
     searchEntity(value.term);
     cy.get(`[data-testid="${value.entity}-tab"]`).should('be.visible').click();
     cy.get(`[data-testid="${value.entity}-tab"]`)
@@ -217,35 +229,43 @@ describe('Entity Details Page', () => {
       .should('have.class', 'active')
       .click();
 
+    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
+
     cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@getEntityDetails', 200);
 
-    cy.get('[data-testid="manage-button"]').should('be.visible').click()
-    cy.get('[data-testid="announcement-button"]').should('be.visible').click()
-    cy.get('.ant-empty-description').should('be.visible').contains("No Announcements, Click on add announcement to add one.")
-    cy.get('[data-testid="add-announcement"]').should('be.visible').click()
-    cy.get('.ant-modal-header').should('be.visible').contains("Make an announcement")
-    cy.get('.ant-modal-body').should('be.visible')
-    cy.get('#title').should('be.visible').type("Announcement Title")
-    cy.get('#startDate').should('be.visible').type(startDate)
-    cy.get('#endtDate').should('be.visible').type(endDate)
-     cy.get(
-      '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-     ).type("Description");
-    
-    cy.get('.ant-modal-footer > .ant-btn-primary').should('be.visible').contains("Submit").scrollIntoView().click();
-  
+    cy.get('[data-testid="manage-button"]').should('be.visible').click();
+    cy.get('[data-testid="announcement-button"]').should('be.visible').click();
+    cy.get('.ant-empty-description')
+      .should('be.visible')
+      .contains('No Announcements, Click on add announcement to add one.');
+    cy.get('[data-testid="add-announcement"]').should('be.visible').click();
+    cy.get('.ant-modal-header')
+      .should('be.visible')
+      .contains('Make an announcement');
+    cy.get('.ant-modal-body').should('be.visible');
+    cy.get('#title').should('be.visible').type('Announcement Title');
+    cy.get('#startDate').should('be.visible').type(startDate);
+    cy.get('#endtDate').should('be.visible').type(endDate);
+    cy.get(descriptionBox).type('Description');
+
+    cy.get('.ant-modal-footer > .ant-btn-primary')
+      .should('be.visible')
+      .contains('Submit')
+      .scrollIntoView()
+      .click();
+
     cy.wait(5000);
 
-    cy.get('.anticon > svg').should("be.visible").click()
+    cy.get('.anticon > svg').should('be.visible').click();
 
     // reload page to get the active announcement card
-    cy.reload()
+    cy.reload();
 
     // check for announcement card on entity page
-    cy.get('[data-testid="announcement-card"]').should("be.visible")
-    
+    cy.get('[data-testid="announcement-card"]').should('be.visible');
+
     cy.clickOnLogo();
   };
 
@@ -259,7 +279,7 @@ describe('Entity Details Page', () => {
     Object.values(DELETE_ENTITY).forEach((value) => {
       addAnnouncement(value);
     });
-  })
+  });
 
   it('Delete entity flow should work properly', () => {
     Object.values(DELETE_ENTITY).forEach((value) => {

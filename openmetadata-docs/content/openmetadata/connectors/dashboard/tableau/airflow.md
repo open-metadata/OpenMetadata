@@ -92,6 +92,117 @@ workflowConfig:
     authProvider: no-auth
 ```
 
+### Example Source Configurations for default and non-default tableau sites
+
+#### 1. Sample config for default tableau site
+
+For a default tableau site `siteName` and `siteUrl` fields should be kept as empty strings as shown in the below config.
+
+```yaml
+source:
+  type: tableau
+  serviceName: local_tableau
+  serviceConnection:
+    config:
+      type: Tableau
+      username: username
+      password: password
+      env: tableau_prod
+      hostPort: http://localhost
+      siteName: ""
+      siteUrl: ""
+      apiVersion: api_version
+      # If not setting user and password
+      # personalAccessTokenName: personal_access_token_name
+      # personalAccessTokenSecret: personal_access_token_secret
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+```
+
+#### 1. Sample config for non-default tableau site
+
+For a non-default tableau site `siteName` and `siteUrl` fields are required.
+
+<Note>
+
+If `https://xxx.tableau.com/#/site/sitename/home` represents the homepage url for your tableau site, the `sitename` from the url should be entered in the `siteName` and `siteUrl` fields in the config below.
+
+</Note>
+
+```yaml
+source:
+  type: tableau
+  serviceName: local_tableau
+  serviceConnection:
+    config:
+      type: Tableau
+      username: username
+      password: password
+      env: tableau_prod
+      hostPort: http://localhost
+      siteName: openmetadata
+      siteUrl: openmetadata
+      apiVersion: api_version
+      # If not setting user and password
+      # personalAccessTokenName: personal_access_token_name
+      # personalAccessTokenSecret: personal_access_token_secret
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+```
+
+
 #### Source Configuration - Service Connection
 
 - **hostPort**: URL to the Tableau instance.

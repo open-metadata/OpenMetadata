@@ -453,6 +453,8 @@ site_menu:
     url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
     url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-owner
 
   - category: OpenMetadata / Ingestion / Workflows / Usage
     url: /openmetadata/ingestion/workflows/usage
