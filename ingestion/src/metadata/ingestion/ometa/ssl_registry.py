@@ -17,7 +17,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
     VerifySSL,
 )
-
 from metadata.utils.dispatch import enum_register
 
 
