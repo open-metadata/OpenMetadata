@@ -21,6 +21,7 @@ from base64 import b64encode
 from datetime import timedelta
 
 import click
+import pkg_resources
 import requests as requests
 
 from metadata.generated.schema.entity.data.table import Table
@@ -35,10 +36,11 @@ logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
 
+VERSION = pkg_resources.require("openmetadata-ingestion")[0].version
 
 DOCKER_URL_ROOT = (
-    "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/"
-)
+    "https://raw.githubusercontent.com/open-metadata/OpenMetadata/{version}/docker/metadata/"
+).format(version=f"{VERSION}-release" if "dev" not in VERSION else "main")
 
 DEFAULT_COMPOSE_FILE = "docker-compose.yml"
 BACKEND_DATABASES = {
