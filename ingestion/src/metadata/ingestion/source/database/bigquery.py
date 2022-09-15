@@ -216,15 +216,17 @@ class BigquerySource(CommonDbSourceService):
         database = self.context.database.name.__root__
         table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
         if table.time_partitioning is not None:
-            table_partition = TablePartition(
-                interval=str(table.partitioning_type),
-                intervalType=IntervalType.TIME_UNIT.value,
-            )
-            if (
-                hasattr(table.time_partitioning, "field")
-                and table.time_partitioning.field
-            ):
+            if table.time_partitioning.field:
+                table_partition = TablePartition(
+                    interval=str(table.time_partitioning.type_),
+                    intervalType=IntervalType.TIME_UNIT.value,
+                )
                 table_partition.columns = [table.time_partitioning.field]
+            else:
+                table_partition = TablePartition(
+                    interval=str(table.time_partitioning.type_),
+                    intervalType=IntervalType.INGESTION_TIME.value,
+                )
             return True, table_partition
         elif table.range_partitioning:
             table_partition = TablePartition(
