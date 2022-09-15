@@ -1,4 +1,4 @@
-package org.openmetadata.catalog.email;
+package org.openmetadata.service.util;
 
 import static freemarker.template.Configuration.VERSION_2_3_28;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.email.EmailRequest;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;

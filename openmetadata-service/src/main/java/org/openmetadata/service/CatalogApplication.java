@@ -84,7 +84,8 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.catalog.util.ConfigurationHolder;
+import org.openmetadata.service.util.ConfigurationHolder;
+import org.openmetadata.service.util.EmailUtil;
 
 /** Main catalog application */
 @Slf4j

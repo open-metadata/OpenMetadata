@@ -1,4 +1,4 @@
-package org.openmetadata.catalog.auth;
+package org.openmetadata.service.auth;
 
 import lombok.Getter;
 import lombok.Setter;

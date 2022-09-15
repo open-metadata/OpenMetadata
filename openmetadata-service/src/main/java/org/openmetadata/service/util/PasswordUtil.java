@@ -1,4 +1,4 @@
-package org.openmetadata.catalog.util;
+package org.openmetadata.service.util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +39,7 @@ public class PasswordUtil {
     RuleResult result = validator.validate(password);
     if (!result.isValid()) {
       throw new RuntimeException(
-          "Password must be of minimum 8 characters, with one special , one Upper, one lower case character");
+          "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.");
     }
   }
 

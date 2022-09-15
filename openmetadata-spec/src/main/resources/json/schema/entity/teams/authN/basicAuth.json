@@ -4,7 +4,7 @@
   "title": "BasicAuthMechanism",
   "description": "User basic Auth Mechanism.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.teams.authn.BasicAuthMechanism",
+  "javaType": "org.openmetadata.schema.teams.authn.BasicAuthMechanism",
   "properties": {
     "password": {
       "description": "User Password",

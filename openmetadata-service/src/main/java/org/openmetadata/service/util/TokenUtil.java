@@ -1,13 +1,17 @@
-package org.openmetadata.catalog.util;
+package org.openmetadata.service.util;
+
+import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
+import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
+import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import org.openmetadata.catalog.auth.EmailVerificationToken;
-import org.openmetadata.catalog.auth.PasswordResetToken;
-import org.openmetadata.catalog.auth.RefreshToken;
-import org.openmetadata.catalog.auth.TokenInterface;
-import org.openmetadata.catalog.auth.TokenType;
+import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.auth.EmailVerificationToken;
+import org.openmetadata.schema.auth.PasswordResetToken;
+import org.openmetadata.schema.auth.RefreshToken;
+import org.openmetadata.schema.auth.TokenType;
 
 public class TokenUtil {
   public static TokenInterface createNewTokenWithDefaults(UUID userId, UUID tokenId, TokenType type) {

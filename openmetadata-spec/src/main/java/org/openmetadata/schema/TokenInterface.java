@@ -1,6 +1,7 @@
-package org.openmetadata.catalog.auth;
+package org.openmetadata.schema;
 
 import java.util.UUID;
+import org.openmetadata.schema.auth.TokenType;
 
 public interface TokenInterface {
   UUID getToken();

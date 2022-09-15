@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
+import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
+import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -40,6 +43,11 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.auth.EmailVerificationToken;
+import org.openmetadata.schema.auth.PasswordResetToken;
+import org.openmetadata.schema.auth.RefreshToken;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Chart;
@@ -219,6 +227,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SettingsDAO getSettingsDAO();
+
+  @CreateSqlObject
+  TokenDAO getTokenDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2557,6 +2568,13 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("after") String after,
         @Bind("relation") int relation);
+
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
+    int checkEmailExists(@Bind("email") String email);
+
+    @SqlQuery(value = "SELECT json FROM user_entity WHERE email = :email")
+    String findUserByEmail(@Bind("email") String email);
   }
 
   interface ChangeEventDAO {
@@ -3117,5 +3135,8 @@ public interface CollectionDAO {
 
     @SqlUpdate(value = "DELETE from token_details WHERE token = :token")
     void delete(@Bind("token") String token);
+
+    @SqlUpdate(value = "DELETE from token_details WHERE userid = :userid AND tokenType = :tokenType")
+    void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);
   }
 }

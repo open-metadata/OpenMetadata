@@ -1,14 +1,14 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/configuration/emailVerificationToken.json",
+  "$id": "https://open-metadata.org/schema/auth/emailVerificationToken.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EmailVerificationToken",
   "description": "This schema defines Email Verification Token Schema.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.auth.EmailVerificationToken",
-  "javaInterfaces": ["org.openmetadata.catalog.auth.TokenInterface"],
+  "javaType": "org.openmetadata.schema.auth.EmailVerificationToken",
+  "javaInterfaces": ["org.openmetadata.schema.TokenInterface"],
   "definitions": {
     "tokenType": {
-      "javaType": "org.openmetadata.catalog.auth.TokenType",
+      "javaType": "org.openmetadata.schema.auth.TokenType",
       "description": "Refresh Count",
       "type": "string",
       "enum": [

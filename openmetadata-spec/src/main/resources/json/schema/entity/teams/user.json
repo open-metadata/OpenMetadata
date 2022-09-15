@@ -125,8 +125,7 @@
     },
     "isEmailVerified": {
       "description": "If the User has verified the mail",
-      "type": "boolean",
-      "default": false
+      "type": "boolean"
     }
   },
   "additionalProperties": false,

@@ -1,10 +1,10 @@
-package org.openmetadata.catalog.jdbi3;
+package org.openmetadata.service.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.auth.TokenInterface;
-import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class TokenRepository {
@@ -33,6 +33,14 @@ public class TokenRepository {
   public void deleteToken(String token) {
     try {
       dao.getTokenDAO().delete(token);
+    } catch (Exception ex) {
+      LOG.info("Token not present for the user");
+    }
+  }
+
+  public void deleteTokenByUserAndType(String userId, String type) {
+    try {
+      dao.getTokenDAO().deleteTokenByUserAndType(userId, type);
     } catch (Exception ex) {
       LOG.info("Token not present for the user");
     }

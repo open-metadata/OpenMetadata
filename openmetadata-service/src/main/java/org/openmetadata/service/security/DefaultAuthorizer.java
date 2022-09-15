@@ -16,7 +16,6 @@ package org.openmetadata.service.security;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
-import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;

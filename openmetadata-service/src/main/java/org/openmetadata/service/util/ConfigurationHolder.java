@@ -1,10 +1,10 @@
-package org.openmetadata.catalog.util;
+package org.openmetadata.service.util;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.service.CatalogApplicationConfig;
 
 @Slf4j
 public class ConfigurationHolder {

@@ -161,7 +161,7 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
-      throw new AuthenticationException("Invalid token");
+      throw new AuthenticationException("Invalid token", runtimeException);
     }
     return jwt;
   }

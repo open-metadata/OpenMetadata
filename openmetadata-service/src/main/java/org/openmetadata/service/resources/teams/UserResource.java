@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.teams;
 
+import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
+
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
@@ -42,6 +44,7 @@ import javax.json.JsonValue;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -59,9 +62,22 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.ChangePasswordRequest;
+import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.auth.EmailVerificationToken;
+import org.openmetadata.schema.auth.LoginRequest;
+import org.openmetadata.schema.auth.PasswordResetRequest;
+import org.openmetadata.schema.auth.PasswordResetToken;
+import org.openmetadata.schema.auth.RefreshToken;
+import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.TokenRefreshRequest;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
 import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
@@ -70,19 +86,26 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.ConfigurationHolder;
+import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
 @Path("/v1/users")
@@ -94,6 +117,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
+
+  private final TokenRepository tokenRepository;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -588,7 +613,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "registerUser",
       summary = "Register User",
-      tags = "registration",
+      tags = "users",
       description = "Register a new User",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -601,7 +626,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (Exception e) {
       LOG.error("Error in sending mail to the User : {}", e.getMessage());
     }
-    return Response.status(Response.Status.OK).build();
+    return Response.status(Response.Status.OK).entity("User Registration Successful.").build();
   }
 
   @GET
@@ -609,7 +634,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "confirmUserEmail",
       summary = "Confirm User Email",
-      tags = "registration",
+      tags = "users",
       description = "Confirm User Email",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -630,7 +655,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "resendRegistrationToken",
       summary = "Resend Registration Token",
-      tags = "registration",
+      tags = "users",
       description = "Resend Registration Token",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -656,14 +681,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "generatePasswordResetLink",
       summary = "Generate Password Reset Link",
-      tags = "registration",
+      tags = "users",
       description = "Generate Password Reset Link",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid PasswordResetLinkRequest request)
-      throws IOException {
+  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
     String userName = request.getEmail().split("@")[0];
     User registeredUser =
         dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
@@ -744,7 +768,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "changeUserPassword",
       summary = "Change Password For User",
-      tags = "registration",
+      tags = "users",
       description = "Create a new user.",
       responses = {
         @ApiResponse(
@@ -783,7 +807,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "checkEmailInUse",
       summary = "Check if a mail is already in use",
-      tags = "registration",
+      tags = "users",
       description = "Check if a mail is already in use",
       responses = {
         @ApiResponse(
@@ -792,9 +816,28 @@ public class UserResource extends EntityResource<User, UserRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Boolean.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response checkEmailInUse(@Valid PasswordResetLinkRequest request) {
+  public Response checkEmailInUse(@Valid EmailRequest request) {
     boolean emailExists = dao.checkEmailAlreadyExists(request.getEmail());
     return Response.status(Response.Status.OK).entity(emailExists).build();
+  }
+
+  @POST
+  @Path("/checkEmailVerified")
+  @Operation(
+      operationId = "checkEmailIsVerified",
+      summary = "Check if a mail is verified",
+      tags = "users",
+      description = "Check if a mail is already in use",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Return true or false",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Boolean.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
+    User user = dao.getByName(uriInfo, request.getEmail().split("@")[0], getFields("isEmailVerified"));
+    return Response.status(Response.Status.OK).entity(user.getIsEmailVerified()).build();
   }
 
   @POST
@@ -911,7 +954,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .getAllowedEmailRegistrationDomains();
     if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
       LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
-      throw new RuntimeException("Email with the given domain is not allowed. Contact Administrator");
+      throw new BadRequestException("Email with the given domain is not allowed. Contact Administrator");
     }
     validateEmailAlreadyExists(newRegistrationRequestEmail);
     PasswordUtil.validatePassword(newRegistrationRequest.getPassword());
@@ -928,7 +971,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
-
+    if (emailVerificationToken == null) {
+      throw new EntityNotFoundException("Invalid Token. Please issue a new Request");
+    }
     User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("*"));
     if (registeredUser.getIsEmailVerified()) {
       LOG.info("User [{}] already registered.", emailToken);
@@ -943,12 +988,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
               emailVerificationToken.getToken()));
     }
 
-    // deleting the entry for the token from the Database
-    tokenRepository.deleteToken(emailVerificationToken.getToken().toString());
-
     // Update the user
     registeredUser.setIsEmailVerified(true);
     dao.createOrUpdate(uriInfo, registeredUser);
+
+    // deleting the entry for the token from the Database
+    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
   }
 
   public User recreateRegistrationToken(UriInfo uriInfo, String existingToken) throws IOException {
@@ -999,7 +1044,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     String passwordResetLink =
         String.format(
-            "%s://%s/registration/password/reset?user=%s&token=%s",
+            "%s://%s/users/password/reset?user=%s&token=%s",
             uriInfo.getRequestUri().getScheme(),
             uriInfo.getRequestUri().getHost(),
             user.getFullyQualifiedName(),

@@ -117,8 +117,6 @@ DELETE FROM field_relationship WHERE fromType IN ('role', 'policy') OR toType IN
 DELETE FROM entity_relationship WHERE fromEntity IN ('role', 'policy') OR toEntity IN ('role', 'policy');
 ALTER TABLE role_entity DROP COLUMN defaultRole;
 
-ALTER TABLE user_entity ADD CONSTRAINT emailUnique UNIQUE (email);
-
 CREATE TABLE IF NOT EXISTS token_details (
     token VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.token') STORED NOT NULL,
     userId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.userId') STORED NOT NULL,
