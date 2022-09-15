@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/dagsterConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DagsterConnection",
+  "description": "Dagster Metadata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.DagsterConnection",
+  "definitions": {
+    "DagsterType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Dagster"],
+      "default": "Dagster"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/DagsterType",
+      "default": "Dagster"
+    },
+    "hostPort": {
+      "title": "Host And Port",
+      "description": "Pipeline Service Management/UI URI.",
+      "type": "string",
+      "format": "uri"
+    },
+    "numberOfStatus": {
+      "description": "Pipeline Service Number Of Status",
+      "type": "integer",
+      "default": "10"
+    },
+    "dbConnection": {
+      "title": "Metadata Database Connection",
+      "description": "Underlying database connection. See https://docs.dagster.io/getting-started for supported backends.",
+      "oneOf": [
+        {
+          "$ref": "../database/mysqlConnection.json"
+        },
+        {
+          "$ref": "../database/postgresConnection.json"
+        },
+        {
+          "$ref": "../database/sqliteConnection.json"
+        }
+      ]
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "dbConnection"]
+}

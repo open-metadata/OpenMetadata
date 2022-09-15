@@ -18,17 +18,22 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.open-metadata</groupId>
-  <artifactId>catalog</artifactId>
-  <name>OpenMetadata-catalog</name>
-  <description>Openmetadata catalog</description>
+  <artifactId>platform</artifactId>
+  <name>OpenMetadata-Platform</name>
+  <description> is an all-in-one platform for data discovery, data lineage, data quality, observability, governance,
+    and team collaboration. It is one of the fastest growing open-source projects with a vibrant community and
+    adoption by a diverse set of companies in a variety of industry verticals. Powered by a centralized metadata store
+    based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
+    OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
+  </description>
   <version>0.13.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>common</module>
-    <module>catalog-rest-service</module>
+    <module>openmetadata-spec</module>
+    <module>openmetadata-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
-    <module>openmetadata-core</module>
     <module>openmetadata-clients</module>
   </modules>
   <packaging>pom</packaging>
@@ -716,9 +721,9 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
-              <include>org.openmetadata.catalog.resources.**.*.java</include>
-              <include>org.openmetadata.catalog.util.*.java</include>
-              <include>org.openmetadata.catalog.EnumBackwardCompatibilityTest</include>
+              <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.util.*.java</include>
+              <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
           </configuration>
         </plugin>

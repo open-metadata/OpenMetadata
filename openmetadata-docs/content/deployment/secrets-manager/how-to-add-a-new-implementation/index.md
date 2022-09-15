@@ -18,7 +18,7 @@ Create a new entry in the JSON schema definition of the Secrets Manager provider
   "title": "Secrets Manager Provider",
   "description": "OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager providers as the ones configured on the OpenMetadata server.",
   "type": "string",
-  "javaType": "org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider",
+  "javaType": "org.openmetadata.service.services.connections.metadata.SecretsManagerProvider",
   "enum": ["noop", "aws", "aws-ssm", "awesome-sm"],
   "additionalProperties": false
 }
@@ -28,7 +28,7 @@ You can find [this](https://github.com/open-metadata/OpenMetadata/blob/main/open
 
 ## 2. Update OM Server code
 
-Once we have updated the JSON Schema, we can start implementing our Secrets Manager, extending the `ThirdPartySecretsManager.java` abstract class located [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/secrets/ThirdPartySecretsManager.java). For example:
+Once we have updated the JSON Schema, we can start implementing our Secrets Manager, extending the `ThirdPartySecretsManager.java` abstract class located [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/catalog/secrets/ThirdPartySecretsManager.java). For example:
 
 ```java
 public abstract class AwesomeSecretsManager extends ThirdPartySecretsManager {
@@ -50,7 +50,7 @@ public abstract class AwesomeSecretsManager extends ThirdPartySecretsManager {
 }
 ```
 
-After this, we can update `SecretsManagerFactory.java` which is a factory class. We can find this file [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/java/org/openmetadata/catalog/secrets/SecretsManagerFactory.java).
+After this, we can update `SecretsManagerFactory.java` which is a factory class. We can find this file [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/catalog/secrets/SecretsManagerFactory.java).
 
 ```java
 ...

@@ -58,7 +58,6 @@ build
 dist
 
 # Registry Kerberos SASL secrets directory
-secrets
 
 # ts build info and report
 openmetadata-ui/src/main/resources/ui/webpack
