@@ -130,7 +130,7 @@ public class IngestionPipelineResourceUnitTest {
 
   @ParameterizedTest
   @MethodSource(
-      "org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
+      "org.openmetadata.apis.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
   void testGetIsEncryptedWhenSecretManagerIsConfigured(
       Object config,
       EntityReference service,
@@ -166,7 +166,7 @@ public class IngestionPipelineResourceUnitTest {
 
   @ParameterizedTest
   @MethodSource(
-      "org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
+      "org.openmetadata.apis.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
   void testGetByNameIsEncryptedWhenSecretManagerIsConfigured(
       Object config,
       EntityReference service,
