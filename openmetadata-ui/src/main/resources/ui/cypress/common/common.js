@@ -378,10 +378,12 @@ export const visitEntityTab = (id) => {
  * Search for entities through the search bar
  * @param {string} term Entity name
  */
-export const searchEntity = (term) => {
+export const searchEntity = (term, suggestionOverly = true) => {
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
-  cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+  if (suggestionOverly) {
+    cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+  }
 };
 
 // add new tag to entity and its table

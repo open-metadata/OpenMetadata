@@ -13,6 +13,8 @@
 
 import { uuid } from '../common/common';
 
+const id = uuid();
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -93,6 +95,16 @@ export const TEAMS = {
   Data_Platform: { name: 'Data_Platform', users: 16 },
 };
 
+export const NEW_TEST_SUITE = {
+  name: `mysql_matrix_${id}`,
+  description: 'mysql critical matrix',
+};
+
+export const NEW_TABLE_TEST_CASE = {
+  type: 'TableColumnNameToExist',
+  description: 'New table test case for TableColumnNameToExist',
+};
+
 export const NEW_TEAM = {
   team_1: {
     name: 'account',
@@ -105,7 +117,7 @@ export const NEW_TEAM = {
     description: 'Service department',
   },
 };
-const id = uuid();
+
 export const NEW_USER = {
   email: `test_${id}@gmail.com`,
   display_name: `Test user ${id}`,

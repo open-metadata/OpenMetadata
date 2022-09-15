@@ -74,6 +74,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
+        render: (name: string) => <span data-testid={name}>{name}</span>,
       },
       {
         title: 'Description',

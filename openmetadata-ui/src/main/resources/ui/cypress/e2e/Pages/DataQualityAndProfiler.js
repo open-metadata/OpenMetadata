@@ -13,11 +13,25 @@
 
 /// <reference types="cypress" />
 
-import { goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
-import { SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import { descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
+import { NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+
+const goToProfilerTab = () => {
+  // click on the 1st result and go to entity details page and follow the entity
+  interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
+  cy.get('[data-testid="table-link"]')
+    .first()
+    .contains(TEAM_ENTITY, { matchCase: false })
+    .click();
+  verifyResponseStatusCode('@getEntityDetails', 200);
+
+  cy.get('[data-testid="Profiler & Data Quality"]')
+    .should('be.visible')
+    .click();
+};
 
 describe('Data Quality and Profiler should work properly', () => {
   it('Add and ingest mysql data', () => {
@@ -25,7 +39,7 @@ describe('Data Quality and Profiler should work properly', () => {
     const connectionInput = () => {
       cy.get('#root_username').type('openmetadata_user');
       cy.get('#root_password').type('openmetadata_password');
-      cy.get('#root_hostPort').type('172.16.239.10:3306');
+      cy.get('#root_hostPort').type('mysql:3306');
       cy.get('#root_databaseSchema').type('openmetadata_db');
     };
 
@@ -44,21 +58,14 @@ describe('Data Quality and Profiler should work properly', () => {
     );
   });
 
-  it.only('Add Profiler ingestion', () => {
+  it('Add Profiler ingestion', () => {
     cy.goToHomePage();
     searchEntity(TEAM_ENTITY);
+    goToProfilerTab();
 
-    // click on the 1st result and go to entity details page and follow the entity
-    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
-    cy.get('[data-testid="table-link"]')
-      .first()
-      .contains(TEAM_ENTITY, { matchCase: false })
-      .click();
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
 
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
+    cy.clickOnLogo();
 
     cy.get('[data-testid="service-summary"] [data-testid="service"]')
       .should('be.visible')
@@ -67,9 +74,6 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
-    // cy.get('[data-testid="service-name-Mysql-ct-test-902002"]')
-    //   .should('be.visible')
-    //   .click();
     cy.get('[data-testid="tabs"]').should('exist');
     cy.wait('@ingestionData');
     cy.get('[data-testid="Ingestions"]')
@@ -101,5 +105,67 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     handleIngestionRetry('database', true, 0, 'profiler');
+
+    // check if profiler is ingested properly
+    searchEntity(TEAM_ENTITY, false);
+    goToProfilerTab();
+    cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
+  });
+
+  it('Add table test case with new test suite', () => {
+    cy.goToHomePage();
+
+    searchEntity(TEAM_ENTITY);
+    goToProfilerTab();
+
+    cy.get('[data-testid="profiler-add-table-test-btn"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="create-new-test-suite"]')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="new-test-title"]')
+      .should('be.visible')
+      .contains('New Test Suite');
+
+    cy.get('[data-testid="test-suite-name"]')
+      .scrollIntoView()
+      .type(NEW_TEST_SUITE.name);
+
+    cy.get(descriptionBox).scrollIntoView().type(NEW_TEST_SUITE.description);
+
+    cy.get('[data-testid="next-button"]').scrollIntoView().click();
+    cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
+    cy.contains(NEW_TABLE_TEST_CASE.type).should('be.visible').click();
+    cy.get('#tableTestForm_params_columnName').should('be.visible').type('id');
+    cy.get(descriptionBox)
+      .scrollIntoView()
+      .type(NEW_TABLE_TEST_CASE.description);
+
+    cy.get('[data-testid="submit-test"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
+    scheduleIngestion();
+
+    cy.get('[data-testid="success-line"]').should('be.visible');
+
+    // wait for ingestion to run
+    cy.clock();
+    cy.wait(10000);
+
+    cy.get('[data-testid="view-service-button"]')
+      .should('be.visible')
+      .click({ force: true });
+
+    cy.contains(`${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`).should(
+      'be.visible'
+    );
   });
 });
