@@ -142,7 +142,6 @@ EXPECTED_COLUMN_VALUE = [
         ordinalPosition=None,
         jsonSchema=None,
         children=None,
-        columnTests=None,
         customMetrics=None,
         profile=None,
     ),
@@ -162,7 +161,6 @@ EXPECTED_COLUMN_VALUE = [
         ordinalPosition=None,
         jsonSchema=None,
         children=None,
-        columnTests=None,
         customMetrics=None,
         profile=None,
     ),
@@ -182,7 +180,6 @@ EXPECTED_COLUMN_VALUE = [
         ordinalPosition=None,
         jsonSchema=None,
         children=None,
-        columnTests=None,
         customMetrics=None,
         profile=None,
     ),
@@ -202,7 +199,6 @@ EXPECTED_COLUMN_VALUE = [
         ordinalPosition=None,
         jsonSchema=None,
         children=None,
-        columnTests=None,
         customMetrics=None,
         profile=None,
     ),
@@ -225,6 +221,8 @@ class PostgresUnitTest(TestCase):
         ] = MOCK_DATABASE_SERVICE
         self.postgres_source.context.__dict__["database"] = MOCK_DATABASE
         self.postgres_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+
+    def test_datatype(self):
         inspector = types.SimpleNamespace()
         inspector.get_columns = (
             lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
@@ -232,10 +230,8 @@ class PostgresUnitTest(TestCase):
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
-        self.result, _ = self.postgres_source.get_columns_and_constraints(
+        result, _ = self.postgres_source.get_columns_and_constraints(
             "public", "user", "postgres", inspector
         )
-
-    def test_datatype(self):
-        for i in range(len(self.result)):
-            self.assertEqual(self.result[i], EXPECTED_COLUMN_VALUE[i])
+        for i in range(len(EXPECTED_COLUMN_VALUE)):
+            self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
