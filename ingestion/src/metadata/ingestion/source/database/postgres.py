@@ -87,10 +87,6 @@ PGDialect.ischema_names = ischema_names
 
 
 class PostgresSource(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
-        self.pgconn = self.engine.raw_connection()
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -148,7 +144,7 @@ class PostgresSource(CommonDbSourceService):
         return False, None
 
     def type_of_column_name(self, sa_type, table_name: str, column_name: str):
-        cur = self.pgconn.cursor()
+        cur = self.engine.cursor()
         schema_table = table_name.split(".")
         cur.execute(
             """select data_type, udt_name

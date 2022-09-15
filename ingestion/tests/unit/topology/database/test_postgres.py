@@ -30,8 +30,8 @@ mock_postgres_config = {
         "serviceConnection": {
             "config": {
                 "type": "Postgres",
-                "username": "postgres",
-                "password": "abcd1234",
+                "username": "username",
+                "password": "password",
                 "hostPort": "localhost:5432",
                 "database": "postgres",
             }
@@ -210,12 +210,14 @@ EXPECTED_COLUMN_VALUE = [
 
 
 class PostgresUnitTest(TestCase):
-    def test_datatypes(self) -> None:
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_postgres_config)
-        connection = config.source.serviceConnection.__root__.config
+    @patch("metadata.ingestion.source.database.common_db_source.test_connection")
+    def __init__(self, methodName, test_connection) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_postgres_config)
         self.postgres_source = PostgresSource.create(
             mock_postgres_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
+            self.config.workflowConfig.openMetadataServerConfig,
         )
 
         self.postgres_source.context.__dict__[
@@ -230,10 +232,10 @@ class PostgresUnitTest(TestCase):
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
-
-        result, _ = self.postgres_source.get_columns_and_constraints(
+        self.result, _ = self.postgres_source.get_columns_and_constraints(
             "public", "user", "postgres", inspector
         )
 
-        for i in range(len(EXPECTED_COLUMN_VALUE)):
-            self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
+    def test_datatype(self):
+        for i in range(len(self.result)):
+            self.assertEqual(self.result[i], EXPECTED_COLUMN_VALUE[i])
