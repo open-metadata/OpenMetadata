@@ -14,13 +14,16 @@
       "description": "Type of MlModel service",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Mlflow", "Sklearn"],
+      "enum": ["Mlflow", "Sklearn", "CustomMlModel"],
       "javaEnums": [
         {
           "name": "Mlflow"
         },
         {
           "name": "Sklearn"
+        },
+        {
+          "name": "CustomMlModel"
         }
       ]
     },
@@ -40,6 +43,9 @@
             },
             {
               "$ref": "./connections/mlmodel/sklearnConnection.json"
+            },
+            {
+              "$ref": "./connections/mlmodel/customMlModelConnection.json"
             }
           ]
         }

@@ -75,13 +75,6 @@ class Workflow:
             self.config.source.type
         )
 
-        source_class = self.get(
-            "metadata.ingestion.source.{}.{}.{}Source".format(
-                service_type.name.lower(),
-                self.typeClassFetch(source_type, True),
-                self.typeClassFetch(source_type, False),
-            )
-        )
         metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
@@ -89,6 +82,18 @@ class Workflow:
         self._retrieve_service_connection_if_needed(metadata_config, service_type)
 
         self._retrieve_dbt_config_source_if_needed(metadata_config, service_type)
+
+        logger.info(f"Service type:{service_type},{source_type} configured")
+
+        source_class = self.get(
+            self.config.source.serviceConnection.__root__.config.sourcePythonClass
+            if source_type.startswith("custom")
+            else "metadata.ingestion.source.{}.{}.{}Source".format(
+                service_type.name.lower(),
+                self.typeClassFetch(source_type, True),
+                self.typeClassFetch(source_type, False),
+            )
+        )
 
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
