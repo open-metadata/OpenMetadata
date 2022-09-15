@@ -235,4 +235,37 @@ describe('Data Quality and Profiler should work properly', () => {
       .wait(200);
     cy.get('table').contains('No Data').should('be.visible');
   });
+
+  it('Delete Test suite should work properly', () => {
+    cy.goToHomePage();
+    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="global-setting-left-panel"]')
+      .contains('Test Suite')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-row-key="mysql_matrix"] > :nth-child(1) > a')
+      .contains(NEW_TEST_SUITE.name)
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="test-suite-delete"]').should('be.visible').click();
+    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL(
+      'DELETE',
+      '/api/v1/testSuite/*?hardDelete=true&recursive=true',
+      'deleteTestSuite'
+    );
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.be.disabled')
+      .click();
+    verifyResponseStatusCode('@deleteTestSuite', 200);
+    cy.get('.Toastify__toast-body')
+      .contains('Test Suite deleted successfully!')
+      .should('be.visible')
+      .wait(200);
+  });
 });
