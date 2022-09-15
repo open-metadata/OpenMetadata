@@ -657,7 +657,7 @@ export const getOptionalFields = (
       );
     }
 
-    case ServiceCategory.ML_MODAL_SERVICES: {
+    case ServiceCategory.ML_MODEL_SERVICES: {
       const mlmodel = service as MlmodelService;
 
       return (
@@ -758,7 +758,7 @@ export const getResourceEntityFromServiceCategory = (
       return ResourceEntity.DATABASE_SERVICE;
 
     case 'mlModels':
-    case ServiceCategory.ML_MODAL_SERVICES:
+    case ServiceCategory.ML_MODEL_SERVICES:
       return ResourceEntity.ML_MODEL_SERVICE;
 
     case 'messaging':

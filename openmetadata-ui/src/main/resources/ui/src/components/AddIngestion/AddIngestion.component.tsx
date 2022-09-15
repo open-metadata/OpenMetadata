@@ -471,7 +471,7 @@ const AddIngestion = ({
           type: ConfigType.PipelineMetadata,
         };
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         return {
           mlModelFilterPattern: getFilterPatternData(
             mlModelFilterPattern,

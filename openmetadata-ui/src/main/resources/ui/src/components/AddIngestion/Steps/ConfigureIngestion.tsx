@@ -439,7 +439,7 @@ const ConfigureIngestion = ({
           </Fragment>
         );
 
-      case ServiceCategory.ML_MODAL_SERVICES:
+      case ServiceCategory.ML_MODEL_SERVICES:
         return (
           <Fragment>
             <FilterPattern
