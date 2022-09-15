@@ -31,8 +31,7 @@ services:
     ports:
       - "3306:3306"
     networks:
-      local_app_net:
-        ipv4_address: 172.16.239.10
+      - local_app_net
     healthcheck:
       test: mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --silent --execute "use openmetadata_db"
       interval: 15s
@@ -46,8 +45,7 @@ services:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
     networks:
-      local_app_net:
-        ipv4_address: 172.16.239.11
+      - local_app_net
     expose:
       - 9200
       - 9300
@@ -125,8 +123,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      local_app_net:
-        ipv4_address: 172.16.239.13
+      - local_app_net
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
 
