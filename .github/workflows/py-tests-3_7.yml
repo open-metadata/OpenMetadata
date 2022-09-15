@@ -16,12 +16,12 @@ on:
     branches: [main]
     paths:
       - ingestion/**
-      - catalog-rest-service/**
+      - openmetadata-service/**
   pull_request_target:
     branches: [main]
     paths:
       - ingestion/**
-      - catalog-rest-service/**
+      - openmetadata-service/**
 
 jobs:
   py-run-tests:

@@ -20,10 +20,8 @@ import {
 } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
-import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
-  ColumnTestType,
+  Column,
   Table,
   TableData,
   TableJoins,
@@ -31,15 +29,10 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import {
-  DatasetTestModeType,
-  ModifiedTableColumn,
-} from '../../interface/dataQuality.interface';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
@@ -61,7 +54,7 @@ export interface DatasetDetailsProps {
   description: string;
   tableProfile: Table['profile'];
   tableQueries: Table['tableQueries'];
-  columns: ModifiedTableColumn[];
+  columns: Column[];
   tier: TagLabel;
   sampleData: TableData;
   entityLineage: EntityLineage;
@@ -77,18 +70,7 @@ export interface DatasetDetailsProps {
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
-  testMode: DatasetTestModeType;
-  tableTestCase: TableTest[];
-  showTestForm: boolean;
-  selectedColumn: string;
   paging: Paging;
-  qualityTestFormHandler: (
-    tabValue: number,
-    testMode?: DatasetTestModeType,
-    columnName?: string
-  ) => void;
-  handleShowTestForm: (value: boolean) => void;
-  handleTestModeChange: (mode: DatasetTestModeType) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
@@ -98,19 +80,11 @@ export interface DatasetDetailsProps {
   descriptionUpdateHandler: (updatedTable: Table) => Promise<void>;
   tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
-  handleSelectedColumn: (value: string | undefined) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
-  handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: CreateColumnTest) => void;
-  handleRemoveTableTest: (testType: TableTestType) => void;
-  handleRemoveColumnTest: (
-    columnName: string,
-    testType: ColumnTestType
-  ) => void;
   deletePostHandler: (
     threadId: string,
     postId: string,

@@ -17,7 +17,7 @@ On this page, you will learn all the metrics that we currently support and their
 
 <Note>
 
-You can check the definition of the `columnProfile` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#L271). On the other hand, the metrics are implemented [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/orm\_profiler/metrics).
+You can check the definition of the `columnProfile` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/data/table.json#L271). On the other hand, the metrics are implemented [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/orm\_profiler/metrics).
 
 </Note>
 
