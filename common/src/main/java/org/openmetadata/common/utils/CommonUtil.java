@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.utils;
+package org.openmetadata.common.utils;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 

@@ -28,11 +28,11 @@ import static org.openmetadata.apis.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.apis.util.EntityUtil.nextVersion;
 import static org.openmetadata.apis.util.EntityUtil.objectMatch;
 import static org.openmetadata.apis.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -77,6 +77,7 @@ import org.openmetadata.apis.util.RestUtil.DeleteResponse;
 import org.openmetadata.apis.util.RestUtil.PatchResponse;
 import org.openmetadata.apis.util.RestUtil.PutResponse;
 import org.openmetadata.apis.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -93,7 +94,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.utils.CommonUtil;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to

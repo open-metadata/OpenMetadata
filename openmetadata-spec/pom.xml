@@ -18,6 +18,12 @@
     </properties>
 
     <dependencies>
+        <!-- needed to use custom annotations in generated classes -->
+        <dependency>
+            <groupId>org.open-metadata</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
