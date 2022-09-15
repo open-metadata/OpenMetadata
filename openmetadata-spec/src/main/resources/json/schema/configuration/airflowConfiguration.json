@@ -41,7 +41,8 @@
     },
     "verifySSL": {
       "description": "Client SSL verification policy: no-ssl, ignore, validate.",
-      "type": "string"
+      "type": "string",
+      "default": "no-ssl"
     },
     "sslConfig": {
       "description": "OpenMetadata Client SSL configuration.",
@@ -53,8 +54,7 @@
     "username",
     "password",
     "metadataApiEndpoint",
-    "authProvider",
-    "verifySSL"
+    "authProvider"
   ],
   "additionalProperties": false
 }
