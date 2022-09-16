@@ -28,7 +28,7 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
-import org.openmetadata.service.CatalogApplicationTest;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -46,7 +46,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UtilResourceTest extends CatalogApplicationTest {
+public class UtilResourceTest extends OpenMetadataApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -55,12 +55,12 @@ public class UtilResourceTest extends CatalogApplicationTest {
   }
 
   public static EntitiesCount getEntitiesCount() throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("util/entities/count");
+    WebTarget target = OpenMetadataApplicationTest.getResource("util/entities/count");
     return TestUtils.get(target, EntitiesCount.class, ADMIN_AUTH_HEADERS);
   }
 
   public static ServicesCount getServicesCount() throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("util/services/count");
+    WebTarget target = OpenMetadataApplicationTest.getResource("util/services/count");
     return TestUtils.get(target, ServicesCount.class, ADMIN_AUTH_HEADERS);
   }
 

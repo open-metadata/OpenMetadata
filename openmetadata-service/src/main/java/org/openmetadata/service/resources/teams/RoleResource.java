@@ -54,8 +54,8 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
@@ -91,7 +91,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(CatalogApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     List<String> jsonFiles = EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", Entity.ROLE));
     jsonFiles.forEach(
         jsonFile -> {

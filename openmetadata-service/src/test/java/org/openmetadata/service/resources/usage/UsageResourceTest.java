@@ -50,8 +50,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.schema.type.UsageDetails;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.RestUtil;
@@ -59,7 +59,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class UsageResourceTest extends CatalogApplicationTest {
+class UsageResourceTest extends OpenMetadataApplicationTest {
   private static final String PUT = "PUT";
   private static final String POST = "POST";
   public static final List<Table> TABLES = new ArrayList<>();
