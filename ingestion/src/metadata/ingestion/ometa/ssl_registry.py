@@ -41,5 +41,5 @@ def ignore_ssl_init(_: OpenMetadataConnection) -> bool:
 
 
 @ssl_verification_registry.add(VerifySSL.validate.value)
-def okta_auth_init(config: OpenMetadataConnection) -> str:
+def validate_ssl_init(config: OpenMetadataConnection) -> str:
     return config.sslConfig.certificatePath
