@@ -19,6 +19,10 @@ from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
+from metadata.ingestion.ometa.ssl_registry import (
+    InvalidSSLVerificationException,
+    ssl_verification_registry,
+)
 from metadata.utils.secrets.secrets_manager_factory import (
     get_secrets_manager_from_om_connection,
 )
@@ -187,11 +191,20 @@ class OpenMetadata(
 
         self._auth_provider = auth_provider_fn(self.config)
 
+        get_verify_ssl = ssl_verification_registry.registry.get(
+            self.config.verifySSL.value
+        )
+        if not get_verify_ssl:
+            raise InvalidSSLVerificationException(
+                f"Cannot find {self.config.verifySSL.value} in {ssl_verification_registry.registry}"
+            )
+
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
             auth_token=self._auth_provider.get_access_token,
+            verify=get_verify_ssl(config),
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data

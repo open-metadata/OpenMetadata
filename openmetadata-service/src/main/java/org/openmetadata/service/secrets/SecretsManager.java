@@ -19,6 +19,7 @@ import com.google.common.base.CaseFormat;
 import java.util.List;
 import lombok.Getter;
 import org.openmetadata.api.configuration.airflow.AuthConfiguration;
+import org.openmetadata.api.configuration.airflow.SSLConfig;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -75,10 +76,26 @@ public abstract class SecretsManager {
     OpenMetadataServerConnection.AuthProvider authProvider =
         OpenMetadataServerConnection.AuthProvider.fromValue(airflowConfiguration.getAuthProvider());
     String openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
+    OpenMetadataServerConnection.VerifySSL verifySSL =
+        OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     return new OpenMetadataServerConnection()
         .withAuthProvider(authProvider)
         .withHostPort(openMetadataURL)
-        .withSecurityConfig(decryptAuthProviderConfig(authProvider, airflowConfiguration.getAuthConfig()));
+        .withSecurityConfig(decryptAuthProviderConfig(authProvider, airflowConfiguration.getAuthConfig()))
+        .withVerifySSL(verifySSL)
+        .withSslConfig(getAirflowSSLConfig(verifySSL, airflowConfiguration.getSslConfig()));
+  }
+
+  protected Object getAirflowSSLConfig(OpenMetadataServerConnection.VerifySSL verifySSL, SSLConfig sslConfig) {
+    switch (verifySSL) {
+      case NO_SSL:
+      case IGNORE:
+        return null;
+      case VALIDATE:
+        return sslConfig.getValidate();
+      default:
+        throw new IllegalArgumentException("OpenMetadata doesn't support SSL verification type " + verifySSL.value());
+    }
   }
 
   public abstract AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration);
