@@ -1,19 +1,19 @@
 {
     "name": "columnValueMinToBeBetween",
-    "displayName": "ColumnValueMinToBeBetween",
+    "displayName": "Column Value Min. To Be Between",
     "description": "This schema defines the test ColumnValueMinToBeBetween. Test the minimum value in a col is within a range.",
     "entityType": "COLUMN",
-    "testPlatforms": ["OpenMetadata", "GreatExpectations"],
+    "testPlatforms": ["OpenMetadata"],
     "parameterDefinition": [
       {
         "name": "minValueForMinInCol",
-        "displayName": "minValueForMinInCol",
+        "displayName": "Min",
         "description": "Expected minimum value in the column to be greater or equal than",
         "dataType": "INT"
       },
       {
         "name": "maxValueForMinInCol",
-        "displayName": "maxValueForMinInCol",
+        "displayName": "Max",
         "description": "Expect minimum value in the column to be lower or equal than",
         "dataType": "INT"
       }
