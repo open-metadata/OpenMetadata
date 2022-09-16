@@ -297,7 +297,7 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
     from delta import configure_spark_with_delta_pip
 
     builder = (
-        pyspark.sql.SparkSession.builder.appName("OpenMetadata")
+        pyspark.sql.SparkSession.builder.appName(connection.appName or "OpenMetadata")
         .enableHiveSupport()
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
