@@ -36,7 +36,7 @@ def no_ssl_init(_: OpenMetadataConnection) -> None:
 
 
 @ssl_verification_registry.add(VerifySSL.ignore.value)
-def google_auth_init(_: OpenMetadataConnection) -> bool:
+def ignore_ssl_init(_: OpenMetadataConnection) -> bool:
     return False
 
 
