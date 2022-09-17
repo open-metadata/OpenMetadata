@@ -36,7 +36,7 @@ import org.openmetadata.service.validators.AirflowConfigValidation;
 
 @Getter
 @Setter
-public class CatalogApplicationConfig extends Configuration {
+public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("database")
   @NotNull
   @Valid

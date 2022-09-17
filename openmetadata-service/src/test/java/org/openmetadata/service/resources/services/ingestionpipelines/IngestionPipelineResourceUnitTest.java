@@ -51,8 +51,8 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowRESTClient;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -76,7 +76,7 @@ public class IngestionPipelineResourceUnitTest {
 
   @Mock CollectionDAO collectionDAO;
 
-  @Mock CatalogApplicationConfig catalogApplicationConfig;
+  @Mock OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
   @Mock SecretsManager secretsManager;
 
@@ -105,7 +105,7 @@ public class IngestionPipelineResourceUnitTest {
     Map<String, String> expectedMap = Map.of("task", "log");
     try (MockedConstruction<AirflowRESTClient> mocked =
         mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
-      ingestionPipelineResource.initialize(catalogApplicationConfig);
+      ingestionPipelineResource.initialize(openMetadataApplicationConfig);
       assertEquals(
           expectedMap, ingestionPipelineResource.getLastIngestionLogs(null, securityContext, DAG_ID).getEntity());
       PipelineServiceClient client = mocked.constructed().get(0);
@@ -118,7 +118,7 @@ public class IngestionPipelineResourceUnitTest {
     TestServiceConnection testServiceConnection = new TestServiceConnection();
     try (MockedConstruction<AirflowRESTClient> mocked =
         mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
-      ingestionPipelineResource.initialize(catalogApplicationConfig);
+      ingestionPipelineResource.initialize(openMetadataApplicationConfig);
       PipelineServiceClient client = mocked.constructed().get(0);
       HttpResponse<String> httpResponse = mock(HttpResponse.class);
       when(client.testConnection(any())).thenReturn(httpResponse);

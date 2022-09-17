@@ -45,8 +45,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.filter.FilterRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -65,7 +65,7 @@ public class ChangeEventHandler implements EventHandler {
   private FeedRepository feedDao;
   private ObjectMapper mapper;
 
-  public void init(CatalogApplicationConfig config, Jdbi jdbi) {
+  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
     this.mapper = new ObjectMapper();

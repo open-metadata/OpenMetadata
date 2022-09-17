@@ -32,25 +32,25 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
-import org.openmetadata.service.CatalogApplicationConfig;
-import org.openmetadata.service.CatalogApplicationTest;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.util.TestUtils;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class ConfigResourceTest extends CatalogApplicationTest {
+class ConfigResourceTest extends OpenMetadataApplicationTest {
 
-  static CatalogApplicationConfig config;
+  static OpenMetadataApplicationConfig config;
 
   @BeforeAll
   static void setup() throws IOException, ConfigurationException {
     // Get config object from test yaml file
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
-    YamlConfigurationFactory<CatalogApplicationConfig> factory =
-        new YamlConfigurationFactory<>(CatalogApplicationConfig.class, validator, objectMapper, "dw");
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
     config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
