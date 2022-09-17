@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
+import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -46,6 +47,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -198,6 +200,70 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     change = getChangeDescription(term.getVersion());
     fieldUpdated(change, "status", Status.DRAFT, Status.APPROVED);
     patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void patch_name(TestInfo test) throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest(getEntityName(test), "", "", null);
+    Glossary g1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    EntityReference g1Ref = g1.getEntityReference();
+    String glossaryName = g1.getFullyQualifiedName();
+
+    // Create glossary term t1 in glossary g1
+    CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1Ref);
+    GlossaryTerm t1 = createEntity(create, ADMIN_AUTH_HEADERS);
+    EntityReference tRef1 = t1.getEntityReference();
+    TagLabel t1Label = EntityUtil.getTagLabel(t1);
+
+    // Create glossary term t11 under t1
+    create = createRequest("t11", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef1);
+    GlossaryTerm t11 = createEntity(create, ADMIN_AUTH_HEADERS);
+    EntityReference tRef11 = t11.getEntityReference();
+    TagLabel t11Label = EntityUtil.getTagLabel(t11);
+
+    // Create glossary term t111 under t11
+    create = createRequest("t111", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef11);
+    GlossaryTerm t111 = createEntity(create, ADMIN_AUTH_HEADERS);
+    TagLabel t111Label = EntityUtil.getTagLabel(t111);
+
+    // Assign glossary terms to a table
+    // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = Arrays.asList(getColumn("c1", BIGINT, t11Label), getColumn("c2", BIGINT, t111Label));
+    CreateTable createTable =
+        tableResourceTest.createRequest("glossaryTermPatchNameTest").withTags(List.of(t1Label)).withColumns(columns);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // update t1 to term1
+    String json = JsonUtils.pojoToJson(t1);
+    ChangeDescription change = new ChangeDescription();
+    fieldUpdated(change, FIELD_NAME, "t1", "term1");
+    t1.setName("term1");
+    t1.setFullyQualifiedName(String.format("%s.term1", glossaryName));
+    patchEntityAndCheck(t1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // List terms under glossary1
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "children,relatedTerms,reviewers,tags");
+    queryParams.put("glossary", g1.getId().toString());
+    ResultList<GlossaryTerm> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, list.getData().size());
+
+    assertEquals(String.format("%s.term1", glossaryName), list.getData().get(0).getFullyQualifiedName());
+    assertEquals("term1", list.getData().get(0).getName());
+    assertEquals(String.format("%s.term1.t11", glossaryName), list.getData().get(1).getFullyQualifiedName());
+    assertEquals(String.format("%s.term1.t11.t111", glossaryName), list.getData().get(2).getFullyQualifiedName());
+
+    table = tableResourceTest.getEntity(table.getId(), FIELD_TAGS, ADMIN_AUTH_HEADERS);
+    assertEquals(String.format("%s.term1", glossaryName), table.getTags().get(0).getTagFQN());
+    List<Column> cols = table.getColumns();
+    Optional<Column> c1 = cols.stream().filter(c -> c.getName().equals("c1")).findAny();
+    Optional<Column> c2 = cols.stream().filter(c -> c.getName().equals("c2")).findAny();
+    assertTrue(c1.isPresent());
+    assertTrue(c2.isPresent());
+    assertEquals(String.format("%s.term1.t11", glossaryName), c1.get().getTags().get(0).getTagFQN());
+    assertEquals(String.format("%s.term1.t11.t111", glossaryName), c2.get().getTags().get(0).getTagFQN());
   }
 
   @Test

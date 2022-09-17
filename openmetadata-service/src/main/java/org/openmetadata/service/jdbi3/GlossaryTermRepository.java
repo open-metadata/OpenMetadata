@@ -41,11 +41,13 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.springframework.util.CollectionUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final String UPDATE_FIELDS = "tags,references,relatedTerms,reviewers,synonyms";
-  private static final String PATCH_FIELDS = "tags,references,relatedTerms,reviewers,synonyms";
+  private static final String UPDATE_FIELDS = "name,tags,references,relatedTerms,reviewers,synonyms";
+  private static final String PATCH_FIELDS = "name,tags,references,relatedTerms,reviewers,synonyms";
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -213,6 +215,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
       updateReviewers(original, updated);
+      updateName(original, updated);
     }
 
     @Override
@@ -222,6 +225,35 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       List<String> targetFQNList = daoCollection.tagUsageDAO().tagTargetFQN(fqn);
       for (String targetFQN : targetFQNList) {
         applyTags(updatedTags, targetFQN);
+      }
+    }
+
+    private void updateChildName(EntityReference child, String parentFqn) throws IOException {
+      GlossaryTerm childTerm = get(null, child.getId(), new Fields(List.of("parent", "children")));
+      String oldFqn = childTerm.getFullyQualifiedName();
+      EntityReference parent = childTerm.getParent();
+      parent.setFullyQualifiedName(parentFqn);
+      setFullyQualifiedName(childTerm);
+      String newFqn = childTerm.getFullyQualifiedName();
+      dao.update(childTerm.getId(), JsonUtils.pojoToJson(childTerm));
+      // update all the tag usages
+      daoCollection.tagUsageDAO().updateTagFqn(oldFqn, newFqn);
+      List<EntityReference> grandChildren = childTerm.getChildren();
+      if (!CollectionUtils.isEmpty(grandChildren)) {
+        for (EntityReference grandChild : grandChildren) {
+          updateChildName(grandChild, newFqn);
+        }
+      }
+    }
+
+    private void updateName(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws IOException {
+      if (updatedTerm != null && !updatedTerm.getName().equals(origTerm.getName())) {
+        recordChange("name", origTerm.getName(), updatedTerm.getName());
+        List<EntityReference> children = getChildren(updatedTerm);
+        for (EntityReference child : children) {
+          updateChildName(child, updatedTerm.getFullyQualifiedName());
+        }
+        daoCollection.tagUsageDAO().updateTagFqn(origTerm.getFullyQualifiedName(), updatedTerm.getFullyQualifiedName());
       }
     }
 

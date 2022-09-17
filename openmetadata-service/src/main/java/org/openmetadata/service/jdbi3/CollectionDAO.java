@@ -1854,6 +1854,10 @@ public interface CollectionDAO {
 
   @RegisterRowMapper(TagLabelMapper.class)
   interface TagUsageDAO {
+
+    @SqlUpdate("UPDATE tag_usage SET  tagFQN = :newTag WHERE tagFQN = :oldTag")
+    void updateTagFqn(@Bind("oldTag") String oldTag, @Bind("newTag") String newTag);
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)",
