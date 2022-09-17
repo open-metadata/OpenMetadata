@@ -200,7 +200,7 @@ public class NoopSecretsManagerTest {
 
     Object actualConfig =
         secretsManager.encryptOrDecryptServiceConnectionConfig(
-            sklearnConnection, databaseServiceType.value(), connectionName, ServiceType.ML_MODEL, decrypt);
+            sklearnConnection, databaseServiceType.value(), connectionName, ServiceType.MLMODEL, decrypt);
 
     assertNotSame(sklearnConnection, actualConfig);
   }

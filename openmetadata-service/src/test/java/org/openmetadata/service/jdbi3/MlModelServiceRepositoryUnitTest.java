@@ -28,7 +28,7 @@ public class MlModelServiceRepositoryUnitTest
     extends ServiceEntityRepositoryTest<MlModelServiceRepository, MlModelService, MlModelConnection> {
 
   protected MlModelServiceRepositoryUnitTest() {
-    super(ServiceType.ML_MODEL);
+    super(ServiceType.MLMODEL);
   }
 
   @Override

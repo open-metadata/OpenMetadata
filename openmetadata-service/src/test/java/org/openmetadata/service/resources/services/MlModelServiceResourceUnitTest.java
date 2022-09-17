@@ -71,7 +71,7 @@ public class MlModelServiceResourceUnitTest
 
   @Override
   protected ServiceType serviceType() {
-    return ServiceType.ML_MODEL;
+    return ServiceType.MLMODEL;
   }
 
   @Override
