@@ -32,6 +32,6 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
         secretsManager,
         MlModelConnection.class,
         UPDATE_FIELDS,
-        ServiceType.ML_MODEL);
+        ServiceType.MLMODEL);
   }
 }

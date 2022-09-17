@@ -84,7 +84,7 @@ public class MlModelServiceResource
         new MlModelServiceRepository(dao, secretsManager),
         authorizer,
         secretsManager,
-        ServiceType.ML_MODEL);
+        ServiceType.MLMODEL);
   }
 
   public static class MlModelServiceList extends ResultList<MlModelService> {
