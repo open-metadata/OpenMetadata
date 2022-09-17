@@ -10,7 +10,7 @@
     "Database",
     "Messaging",
     "Metadata",
-    "MlModel",
+    "Mlmodel",
     "Pipeline"
   ],
   "additionalProperties": false
