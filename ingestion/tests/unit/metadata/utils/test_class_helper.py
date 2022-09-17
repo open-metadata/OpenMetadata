@@ -20,7 +20,7 @@ from metadata.utils.class_helper import (
         ("mysql", ServiceType.Database),
         ("kafka", ServiceType.Messaging),
         ("amundsen", ServiceType.Metadata),
-        ("mlflow", ServiceType.MlModel),
+        ("mlflow", ServiceType.Mlmodel),
         ("airflow", ServiceType.Pipeline),
         ("clickhouse_usage", ServiceType.Database),
         ("sample-data", ServiceType.Database),
@@ -42,7 +42,7 @@ def test_get_service_type_from_source_type(
         (ServiceType.Database, DatabaseService),
         (ServiceType.Messaging, MessagingService),
         (ServiceType.Metadata, MetadataService),
-        (ServiceType.MlModel, MlModelService),
+        (ServiceType.Mlmodel, MlModelService),
         (ServiceType.Pipeline, PipelineService),
     ],
 )
