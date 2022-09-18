@@ -199,13 +199,17 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
     Convert the validation error into a message to log
     """
     missing_fields = [
-        f"Extra parameter in {err.get('loc')}"
+        f"Extra parameter '{err.get('loc')[0]}'"
+        if len(err.get("loc")) == 1
+        else f"Extra parameter in {err.get('loc')}"
         for err in validation_error.errors()
         if err.get("type") == "value_error.extra"
     ]
 
     extra_fields = [
-        f"Missing parameter in {err.get('loc')}"
+        f"Missing parameter '{err.get('loc')[0]}'"
+        if len(err.get("loc")) == 1
+        else f"Missing parameter in {err.get('loc')}"
         for err in validation_error.errors()
         if err.get("type") == "value_error.missing"
     ]
@@ -385,6 +389,9 @@ def parse_workflow_config_gracefully(
                 )
             raise scoped_error
         except Exception as runtime_error:
+            runtime_error = (
+                runtime_error.model.__name__ if runtime_error.model else "workflow"
+            )
             raise ParsingConfigurationError(
                 f"We encountered an error parsing the configuration of your workflow.\n"
                 "You might need to review your config based on the original cause of this failure:\n"
