@@ -49,7 +49,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -143,9 +143,9 @@ public final class TablesInitializer {
     String confFilePath = commandLine.getOptionValue(OPTION_CONFIG_FILE_PATH);
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
-    YamlConfigurationFactory<CatalogApplicationConfig> factory =
-        new YamlConfigurationFactory<>(CatalogApplicationConfig.class, validator, objectMapper, "dw");
-    CatalogApplicationConfig config =
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+    OpenMetadataApplicationConfig config =
         factory.build(
             new SubstitutingSourceProvider(
                 new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
@@ -212,7 +212,7 @@ public final class TablesInitializer {
   }
 
   private static void execute(
-      CatalogApplicationConfig config,
+      OpenMetadataApplicationConfig config,
       Flyway flyway,
       RestHighLevelClient client,
       SchemaMigrationOption schemaMigrationOption)
@@ -301,7 +301,7 @@ public final class TablesInitializer {
     System.out.println(message);
   }
 
-  private static void createIngestionBot(CatalogApplicationConfig config) {
+  private static void createIngestionBot(OpenMetadataApplicationConfig config) {
     final Jdbi jdbi =
         Jdbi.create(
             config.getDataSourceFactory().getUrl(),
@@ -346,7 +346,7 @@ public final class TablesInitializer {
     }
   }
 
-  private static void updateIngestionBot(CatalogApplicationConfig config) {
+  private static void updateIngestionBot(OpenMetadataApplicationConfig config) {
     final Jdbi jdbi =
         Jdbi.create(
             config.getDataSourceFactory().getUrl(),

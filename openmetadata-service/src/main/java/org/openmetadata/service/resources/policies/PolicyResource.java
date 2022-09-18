@@ -56,9 +56,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ResourceDescriptor;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -96,7 +96,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @SuppressWarnings("unused") // Method is used for reflection
-  public void initialize(CatalogApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
     ResourceRegistry.add(listOrEmpty(PolicyResource.getResourceDescriptors()));

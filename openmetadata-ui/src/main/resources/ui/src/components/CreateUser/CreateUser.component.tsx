@@ -309,18 +309,6 @@ const CreateUser = ({
                   <div className="switch" />
                 </div>
               </div>
-              <div className="tw-flex tw-pt-1">
-                <label>Bot</label>
-                <div
-                  className={classNames('toggle-switch', { open: isBot })}
-                  data-testid="bot"
-                  onClick={() => {
-                    setIsBot((prev) => !prev);
-                    setIsAdmin(false);
-                  }}>
-                  <div className="switch" />
-                </div>
-              </div>
             </Field>
           </>
         )}

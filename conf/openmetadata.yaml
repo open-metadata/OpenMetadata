@@ -203,6 +203,10 @@ airflowConfiguration:
       tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
     openmetadata:
       jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
+  verifySSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  sslConfig:
+    validate:
+      certificatePath: ${AIRFLOW_SSL_CERT_PATH:-""} # Local path for Airflow
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.

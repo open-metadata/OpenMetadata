@@ -12,12 +12,9 @@
 Test the connection against a source system
 """
 import traceback
+from typing import Callable
 
-from airflow.api_connexion import security
-from airflow.security import permissions
-from airflow.www.app import csrf
-from flask import Response, request
-from openmetadata_managed_apis.api.app import blueprint
+from flask import Blueprint, Response, request
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.test_connection import test_source_connection
 from openmetadata_managed_apis.utils.logger import routes_logger
@@ -28,38 +25,53 @@ from metadata.ingestion.api.parser import parse_test_connection_request_graceful
 logger = routes_logger()
 
 
-@blueprint.route("/test_connection", methods=["POST"])
-@csrf.exempt
-@security.requires_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
-def test_connection() -> Response:
+def get_fn(blueprint: Blueprint) -> Callable:
     """
-    Given a WorkflowSource Schema, create the engine
-    and test the connection
+    Return the function loaded to a route
+    :param blueprint: Flask Blueprint to assign route to
+    :return: routed function
     """
-    json_request = request.get_json()
 
-    try:
-        test_service_connection = parse_test_connection_request_gracefully(
-            config_dict=json_request
-        )
-        response = test_source_connection(test_service_connection)
+    # Lazy import the requirements
+    # pylint: disable=import-outside-toplevel
+    from airflow.api_connexion import security
+    from airflow.security import permissions
+    from airflow.www.app import csrf
 
-        return response
+    @blueprint.route("/test_connection", methods=["POST"])
+    @csrf.exempt
+    @security.requires_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
+    def test_connection() -> Response:
+        """
+        Given a WorkflowSource Schema, create the engine
+        and test the connection
+        """
+        json_request = request.get_json()
 
-    except ValidationError as err:
-        msg = f"Request Validation Error parsing payload. (Workflow)Source expected: {err}"
-        logger.debug(traceback.format_exc())
-        logger.error(msg)
-        return ApiResponse.error(
-            status=ApiResponse.STATUS_BAD_REQUEST,
-            error=msg,
-        )
+        try:
+            test_service_connection = parse_test_connection_request_gracefully(
+                config_dict=json_request
+            )
+            response = test_source_connection(test_service_connection)
 
-    except Exception as exc:
-        msg = f"Internal error testing connection due to [{exc}] "
-        logger.debug(traceback.format_exc())
-        logger.error(msg)
-        return ApiResponse.error(
-            status=ApiResponse.STATUS_SERVER_ERROR,
-            error=msg,
-        )
+            return response
+
+        except ValidationError as err:
+            msg = f"Request Validation Error parsing payload. (Workflow)Source expected: {err}"
+            logger.debug(traceback.format_exc())
+            logger.error(msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=msg,
+            )
+
+        except Exception as exc:
+            msg = f"Internal error testing connection due to [{exc}] "
+            logger.debug(traceback.format_exc())
+            logger.error(msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=msg,
+            )
+
+    return test_connection
