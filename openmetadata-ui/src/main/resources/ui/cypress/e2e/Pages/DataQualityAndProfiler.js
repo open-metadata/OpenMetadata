@@ -18,6 +18,7 @@ import { DELETE_TERM, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE,
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const columnTestName = `${NEW_COLUMN_TEST_CASE.column}_${NEW_COLUMN_TEST_CASE.type}`;
 
 const goToProfilerTab = () => {
   // click on the 1st result and go to entity details page and follow the entity
@@ -288,6 +289,68 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-row-key="id_columnValueLengthsToBeBetween"]').should(
       'be.visible'
     );
+  });
+
+  it('Edit column test case should work properly', () => {
+    cy.goToHomePage();
+    searchEntity(TEAM_ENTITY);
+    interceptURL('GET', '/api/v1/testCase?*', 'testCase');
+    goToProfilerTab();
+    verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="id-test-count"]').should('be.visible').click();
+    cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
+    cy.get(`[data-testid="edit-${columnTestName}"]`)
+      .should('be.visible')
+      .click();
+    cy.get('#tableTestForm_params_minLength')
+      .scrollIntoView()
+      .should('be.visible')
+      .clear()
+      .type(4);
+    interceptURL('PATCH', '/api/v1/testCase/*', 'updateTest');
+    cy.get('.ant-modal-footer').contains('Submit').click();
+    verifyResponseStatusCode('@updateTest', 200);
+    cy.get('.Toastify__toast-body')
+      .contains('Test case updated successfully!')
+      .should('be.visible')
+      .wait(200);
+    cy.get(`[data-testid="${columnTestName}"]`).should('be.visible').click();
+    cy.contains('minLength: 4').scrollIntoView().should('exist');
+  });
+
+  it.only('Delete Column Test Case should work properly', () => {
+    cy.goToHomePage();
+    searchEntity(TEAM_ENTITY);
+    interceptURL('GET', '/api/v1/testCase?*', 'testCase');
+    goToProfilerTab();
+    verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="id-test-count"]').should('be.visible').click();
+
+    cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
+    cy.get(`[data-testid="delete-${columnTestName}"]`)
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL(
+      'DELETE',
+      '/api/v1/testCase/*?hardDelete=true&recursive=false',
+      'deleteTest'
+    );
+    interceptURL('GET', '/api/v1/testCase?*', 'getTestCase');
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.be.disabled')
+      .click();
+    verifyResponseStatusCode('@deleteTest', 200);
+    verifyResponseStatusCode('@getTestCase', 200);
+    cy.get('.Toastify__toast-body')
+      .contains('Test Case deleted successfully!')
+      .should('be.visible')
+      .wait(200);
+    cy.get('table').contains('No Data').should('be.visible');
   });
 
   it('Delete Test suite should work properly', () => {
