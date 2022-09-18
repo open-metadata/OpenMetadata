@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 @Slf4j
 public class ConfigurationHolder {
@@ -40,8 +40,8 @@ public class ConfigurationHolder {
   private static ConfigurationHolder INSTANCE = null;
   private final ConcurrentHashMap<ConfigurationType, Object> CONFIG_MAP = new ConcurrentHashMap<>();
 
-  public void init(CatalogApplicationConfig config) {
-    for (Field field : CatalogApplicationConfig.class.getDeclaredFields()) {
+  public void init(OpenMetadataApplicationConfig config) {
+    for (Field field : OpenMetadataApplicationConfig.class.getDeclaredFields()) {
       if (field.isAnnotationPresent(JsonProperty.class)) {
         String configType = field.getAnnotation(JsonProperty.class).value();
         if (configType != null && !configType.equals("")) {
