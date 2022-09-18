@@ -14,6 +14,7 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
+import customMlModelConnection from '../jsons/connectionSchemas/connections/mlmodel/customMlModelConnection.json';
 import mlflowConnection from '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
 import sklearnConnection from '../jsons/connectionSchemas/connections/mlmodel/sklearnConnection.json';
 
@@ -28,6 +29,11 @@ export const getMlmodelConfig = (type: MlModelServiceType) => {
     }
     case MlModelServiceType.Sklearn: {
       schema = sklearnConnection;
+
+      break;
+    }
+    case MlModelServiceType.CustomMlModel: {
+      schema = customMlModelConnection;
 
       break;
     }

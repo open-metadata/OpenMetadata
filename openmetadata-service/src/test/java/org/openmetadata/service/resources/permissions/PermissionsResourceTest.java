@@ -57,8 +57,8 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -72,7 +72,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class PermissionsResourceTest extends CatalogApplicationTest {
+class PermissionsResourceTest extends OpenMetadataApplicationTest {
   private static final String ORG_POLICY_NAME = "OrganizationPolicy";
   private static List<Rule> ORG_RULES;
 

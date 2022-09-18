@@ -188,6 +188,33 @@ class Profiler(Generic[TMetric]):
         """
         return [metric for metric in self.metrics if issubclass(metric, _type)]
 
+    def _check_profile_and_handle(
+        self, profile: CreateTableProfileRequest
+    ) -> CreateTableProfileRequest:
+        """Check if the profile data are empty. if empty then raise else return
+
+        Args:
+            profile (CreateTableProfileRequest): profile data
+
+        Raises:
+            Exception: that will be caught in the workflow and add the entity to failure source and processor status
+
+        Returns:
+            CreateTableProfileRequest:
+        """
+        for attrs, val in profile.tableProfile:
+            if attrs not in {"timestamp", "profileSample"} and val:
+                return profile
+
+        for col_element in profile.columnProfile:
+            for attrs, val in col_element:
+                if attrs not in {"timestamp", "name"} and val:
+                    return profile
+
+        raise Exception(
+            f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}"
+        )
+
     @property
     def static_metrics(self) -> List[Type[StaticMetric]]:
         return self._filter_metrics(StaticMetric)
@@ -393,9 +420,11 @@ class Profiler(Generic[TMetric]):
         else:
             sample_data = None
 
+        profile = self._check_profile_and_handle(self.get_profile())
+
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,
-            profile=self.get_profile(),
+            profile=profile,
             sample_data=sample_data,
         )
 

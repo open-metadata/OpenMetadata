@@ -91,7 +91,10 @@
         "ENUM",
         "JSON",
         "UUID",
-        "VARIANT"
+        "VARIANT",
+        "GEOMETRY",
+        "POINT",
+        "POLYGON"
       ]
     },
     "constraint": {

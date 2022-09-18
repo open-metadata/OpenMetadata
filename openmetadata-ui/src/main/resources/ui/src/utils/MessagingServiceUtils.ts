@@ -17,6 +17,7 @@ import {
   MessagingConnection,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
+import customMessagingConnection from '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json';
 import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
 import redpandaConnection from '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json';
 
@@ -43,6 +44,11 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
 
     case MessagingServiceType.Redpanda:
       schema = redpandaConnection;
+
+      break;
+
+    case MessagingServiceType.CustomMessaging:
+      schema = customMessagingConnection;
 
       break;
 

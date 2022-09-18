@@ -14,7 +14,7 @@ Python API REST wrapper and helpers
 import datetime
 import time
 import traceback
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError
@@ -104,6 +104,7 @@ class ClientConfig(ConfigModel):
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
     auth_token_mode: Optional[str] = "Bearer"
+    verify: Optional[Union[bool, str]] = None
 
 
 # pylint: disable=too-many-instance-attributes
@@ -124,6 +125,7 @@ class REST:
         self._retry_codes = self.config.retry_codes
         self._auth_token = self.config.auth_token
         self._auth_token_mode = self.config.auth_token_mode
+        self._verify = self.config.verify
 
     # pylint: disable=too-many-arguments
     def _request(
@@ -164,11 +166,11 @@ class REST:
             # uncanny issues in non-GET request redirecting http->https.
             # It's better to fail early if the URL isn't right.
             "allow_redirects": self.config.allow_redirects,
+            "verify": self._verify,
         }
-        if method.upper() == "GET":
-            opts["params"] = data
-        else:
-            opts["data"] = data
+
+        method_key = "params" if method.upper() == "GET" else "data"
+        opts[method_key] = data
 
         total_retries = self._retry if self._retry > 0 else 0
         retry = total_retries

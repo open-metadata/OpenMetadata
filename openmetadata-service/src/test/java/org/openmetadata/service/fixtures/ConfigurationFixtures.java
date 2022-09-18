@@ -3,6 +3,7 @@ package org.openmetadata.service.fixtures;
 import io.dropwizard.db.DataSourceFactory;
 import java.util.List;
 import org.openmetadata.api.configuration.airflow.AuthConfiguration;
+import org.openmetadata.api.configuration.airflow.SSLConfig;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
 import org.openmetadata.schema.security.client.AzureSSOClientConfig;
@@ -10,24 +11,25 @@ import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.migration.MigrationConfiguration;
 
 public class ConfigurationFixtures {
 
-  public static CatalogApplicationConfig buildCatalogApplicationConfig(
+  public static OpenMetadataApplicationConfig buildOpenMetadataApplicationConfig(
       OpenMetadataServerConnection.AuthProvider authProvider) {
-    CatalogApplicationConfig catalogApplicationConfig = new CatalogApplicationConfig();
+    OpenMetadataApplicationConfig openMetadataApplicationConfig = new OpenMetadataApplicationConfig();
     DataSourceFactory dataSourceFactory = new DataSourceFactory();
     dataSourceFactory.setDriverClass("driverClass");
     dataSourceFactory.setUrl("http://localhost");
     MigrationConfiguration migrationConfiguration = new MigrationConfiguration();
     migrationConfiguration.setPath("/fake/path");
-    catalogApplicationConfig.setDataSourceFactory(dataSourceFactory);
-    catalogApplicationConfig.setMigrationConfiguration(migrationConfiguration);
-    catalogApplicationConfig.setAirflowConfiguration(buildAirflowConfig(authProvider));
-    return catalogApplicationConfig;
+    openMetadataApplicationConfig.setDataSourceFactory(dataSourceFactory);
+    openMetadataApplicationConfig.setMigrationConfiguration(migrationConfiguration);
+    openMetadataApplicationConfig.setAirflowConfiguration(buildAirflowConfig(authProvider));
+    return openMetadataApplicationConfig;
   }
 
   public static AirflowConfiguration buildAirflowConfig(OpenMetadataServerConnection.AuthProvider authProvider) {
@@ -36,6 +38,22 @@ public class ConfigurationFixtures {
     airflowConfiguration.setPassword("admin");
     airflowConfiguration.setApiEndpoint("http://localhost:8080/api");
     airflowConfiguration.setMetadataApiEndpoint("http://localhost:8585/api");
+    airflowConfiguration.setAuthProvider(authProvider.value());
+    return airflowConfiguration;
+  }
+
+  public static AirflowConfiguration buildAirflowSSLConfig(OpenMetadataServerConnection.AuthProvider authProvider) {
+    AirflowConfiguration airflowConfiguration = new AirflowConfiguration();
+    airflowConfiguration.setUsername("admin");
+    airflowConfiguration.setPassword("admin");
+    airflowConfiguration.setApiEndpoint("http://localhost:8080/api");
+    airflowConfiguration.setMetadataApiEndpoint("http://localhost:8585/api");
+    airflowConfiguration.setVerifySSL(String.valueOf(OpenMetadataServerConnection.VerifySSL.VALIDATE));
+
+    ValidateSSLClientConfig validateSSLClientConfig = new ValidateSSLClientConfig().withCertificatePath("/public.cert");
+    SSLConfig sslConfig = new SSLConfig().withValidate(validateSSLClientConfig);
+
+    airflowConfiguration.setSslConfig(sslConfig);
     airflowConfiguration.setAuthProvider(authProvider.value());
     return airflowConfiguration;
   }

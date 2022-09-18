@@ -21,7 +21,8 @@
         "Redash",
         "Metabase",
         "PowerBI",
-        "Mode"
+        "Mode",
+        "CustomDashboard"
       ],
       "javaEnums": [
         {
@@ -44,6 +45,9 @@
         },
         {
           "name": "Mode"
+        },
+        {
+          "name": "CustomDashboard"
         }
       ]
     },
@@ -78,6 +82,9 @@
             },
             {
               "$ref": "./connections/dashboard/modeConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/customDashboardConnection.json"
             }
           ]
         }

@@ -60,8 +60,8 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerC
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowRESTClient;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -85,7 +85,7 @@ import org.openmetadata.service.util.ResultList;
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
-  private CatalogApplicationConfig catalogApplicationConfig;
+  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final SecretsManager secretsManager;
 
   @Getter private final IngestionPipelineRepository ingestionPipelineRepository;
@@ -103,9 +103,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     this.ingestionPipelineRepository = new IngestionPipelineRepository(dao, secretsManager);
   }
 
-  public void initialize(CatalogApplicationConfig config) {
-    this.catalogApplicationConfig = config;
-    this.pipelineServiceClient = new AirflowRESTClient(catalogApplicationConfig.getAirflowConfiguration());
+  public void initialize(OpenMetadataApplicationConfig config) {
+    this.openMetadataApplicationConfig = config;
+    this.pipelineServiceClient = new AirflowRESTClient(openMetadataApplicationConfig.getAirflowConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
   }
 
@@ -498,7 +498,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         testServiceConnection
             .withConnection(secretsManager.storeTestConnectionObject(testServiceConnection))
             .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider())
-            .withClusterName(catalogApplicationConfig.getClusterName());
+            .withClusterName(openMetadataApplicationConfig.getClusterName());
     HttpResponse<String> response = pipelineServiceClient.testConnection(testServiceConnection);
     return Response.status(200, response.body()).build();
   }
@@ -586,8 +586,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
-        secretsManager.decryptServerConnection(catalogApplicationConfig.getAirflowConfiguration());
-    openMetadataServerConnection.setClusterName(catalogApplicationConfig.getClusterName());
+        secretsManager.decryptServerConnection(openMetadataApplicationConfig.getAirflowConfiguration());
+    openMetadataServerConnection.setClusterName(openMetadataApplicationConfig.getClusterName());
     openMetadataServerConnection.setSecretsManagerProvider(this.secretsManager.getSecretsManagerProvider());
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
