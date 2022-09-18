@@ -102,7 +102,16 @@ export const NEW_TEST_SUITE = {
 
 export const NEW_TABLE_TEST_CASE = {
   type: 'TableColumnNameToExist',
+  field: 'id',
   description: 'New table test case for TableColumnNameToExist',
+};
+
+export const NEW_COLUMN_TEST_CASE = {
+  column: 'id',
+  type: 'columnValueLengthsToBeBetween',
+  min: 3,
+  max: 6,
+  description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
 export const NEW_TEAM = {

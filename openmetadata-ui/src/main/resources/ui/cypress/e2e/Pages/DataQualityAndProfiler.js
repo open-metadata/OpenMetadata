@@ -14,7 +14,7 @@
 /// <reference types="cypress" />
 
 import { descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
-import { DELETE_TERM, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import { DELETE_TERM, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -127,20 +127,22 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
 
+    // creating new test suite
     cy.get('[data-testid="new-test-title"]')
       .should('be.visible')
       .contains('New Test Suite');
-
     cy.get('[data-testid="test-suite-name"]')
       .scrollIntoView()
       .type(NEW_TEST_SUITE.name);
-
     cy.get(descriptionBox).scrollIntoView().type(NEW_TEST_SUITE.description);
-
     cy.get('[data-testid="next-button"]').scrollIntoView().click();
+
+    // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
     cy.contains(NEW_TABLE_TEST_CASE.type).should('be.visible').click();
-    cy.get('#tableTestForm_params_columnName').should('be.visible').type('id');
+    cy.get('#tableTestForm_params_columnName')
+      .should('be.visible')
+      .type(NEW_TABLE_TEST_CASE.field);
     cy.get(descriptionBox)
       .scrollIntoView()
       .type(NEW_TABLE_TEST_CASE.description);
@@ -236,6 +238,58 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('table').contains('No Data').should('be.visible');
   });
 
+  it('Add Column test case should work properly', () => {
+    cy.goToHomePage();
+    searchEntity(TEAM_ENTITY);
+    goToProfilerTab();
+    cy.get('[data-testid="add-test-id"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    // selecting existing test suite
+    cy.get('#selectTestSuite_testSuiteId').should('exist').click();
+    cy.contains(NEW_TEST_SUITE.name).should('be.visible').click();
+    cy.get('[data-testid="next-button"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    // creating new test case
+    cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE.type}"]`)
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('#tableTestForm_params_minLength')
+      .scrollIntoView()
+      .should('be.visible')
+      .type(NEW_COLUMN_TEST_CASE.min);
+    cy.get('#tableTestForm_params_maxLength')
+      .scrollIntoView()
+      .should('be.visible')
+      .type(NEW_COLUMN_TEST_CASE.max);
+    cy.get(descriptionBox)
+      .scrollIntoView()
+      .type(NEW_COLUMN_TEST_CASE.description);
+
+    cy.get('[data-testid="submit-test"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="success-line"]')
+      .contains(
+        'has been created successfully. This will be picked up in the next run.'
+      )
+      .should('be.visible');
+    cy.get('[data-testid="view-service-button"]').scrollIntoView().click();
+
+    cy.get('[data-row-key="id_columnValueLengthsToBeBetween"]').should(
+      'be.visible'
+    );
+  });
+
   it('Delete Test suite should work properly', () => {
     cy.goToHomePage();
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
@@ -244,7 +298,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[data-row-key="mysql_matrix"] > :nth-child(1) > a')
+    cy.get(`[data-row-key="${NEW_TEST_SUITE.name}"] > :nth-child(1) > a`)
       .contains(NEW_TEST_SUITE.name)
       .should('be.visible')
       .click();
