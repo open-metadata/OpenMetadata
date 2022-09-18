@@ -15,8 +15,8 @@ package org.openmetadata.service.secrets;
 
 import static java.util.Objects.isNull;
 
-import com.google.common.base.CaseFormat;
 import java.util.List;
+import java.util.Locale;
 import lombok.Getter;
 import org.openmetadata.api.configuration.airflow.AuthConfiguration;
 import org.openmetadata.api.configuration.airflow.SSLConfig;
@@ -133,7 +133,8 @@ public abstract class SecretsManager {
   }
 
   protected String extractConnectionPackageName(ServiceType serviceType) {
-    return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, serviceType.value());
+    // All package names must be lowercase per java naming convention
+    return serviceType.value().toLowerCase(Locale.ROOT);
   }
 
   public abstract Object storeTestConnectionObject(TestServiceConnection testServiceConnection);
