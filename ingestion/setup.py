@@ -139,7 +139,7 @@ dev = {
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
-    "pydantic[email]==1.9.1"
+    "pydantic[email]==1.9.1",
 }
 test = {
     "isort==5.10.1",
