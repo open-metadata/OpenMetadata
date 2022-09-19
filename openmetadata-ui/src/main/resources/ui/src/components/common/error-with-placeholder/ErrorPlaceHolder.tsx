@@ -39,7 +39,7 @@ const ErrorPlaceHolder = ({
   buttons,
   description,
   classes,
-  size = SIZE.HIGH,
+  size = SIZE.LARGE,
 }: Props) => {
   const { Paragraph, Link } = Typography;
 

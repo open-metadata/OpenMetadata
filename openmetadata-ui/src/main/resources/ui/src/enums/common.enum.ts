@@ -19,5 +19,5 @@ export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
 export enum SIZE {
   SMALL = '60',
   MEDIUM = '80',
-  HIGH = '100',
+  LARGE = '100',
 }
