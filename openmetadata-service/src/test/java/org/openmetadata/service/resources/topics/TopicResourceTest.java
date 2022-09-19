@@ -44,8 +44,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.SchemaType;
 import org.openmetadata.schema.type.topic.TopicSampleData;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
@@ -301,7 +301,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   public static Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("topics/" + topicId + "/sampleData");
+    WebTarget target = OpenMetadataApplicationTest.getResource("topics/" + topicId + "/sampleData");
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
   }
 }

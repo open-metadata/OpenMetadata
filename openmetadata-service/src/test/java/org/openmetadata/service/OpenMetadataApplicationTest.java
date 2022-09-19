@@ -35,10 +35,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 @Slf4j
-public abstract class CatalogApplicationTest {
+public abstract class OpenMetadataApplicationTest {
   protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
   private static JdbcDatabaseContainer<?> SQL_CONTAINER;
-  public static DropwizardAppExtension<CatalogApplicationConfig> APP;
+  public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
 
@@ -76,7 +76,7 @@ public abstract class CatalogApplicationTest {
 
     APP =
         new DropwizardAppExtension<>(
-            CatalogApplication.class,
+            OpenMetadataApplication.class,
             CONFIG_PATH,
             // Database overrides
             ConfigOverride.config("database.driverClass", SQL_CONTAINER.getDriverClassName()),

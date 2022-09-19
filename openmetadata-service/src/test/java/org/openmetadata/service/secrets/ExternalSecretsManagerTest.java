@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
@@ -102,6 +103,20 @@ public abstract class ExternalSecretsManagerTest {
             .withAuthProvider(GOOGLE)
             .withHostPort(airflowConfiguration.getMetadataApiEndpoint())
             .withSecurityConfig(null);
+    OpenMetadataServerConnection actualServerConnection = secretsManager.decryptServerConnection(airflowConfiguration);
+    assertEquals(expectedServerConnection, actualServerConnection);
+  }
+
+  @Test
+  void testDecryptServerConnectionWithSSL() {
+    AirflowConfiguration airflowConfiguration = ConfigurationFixtures.buildAirflowSSLConfig(NO_AUTH);
+    OpenMetadataServerConnection expectedServerConnection =
+        new OpenMetadataServerConnection()
+            .withAuthProvider(NO_AUTH)
+            .withHostPort(airflowConfiguration.getMetadataApiEndpoint())
+            .withSecurityConfig(null)
+            .withVerifySSL(OpenMetadataServerConnection.VerifySSL.VALIDATE)
+            .withSslConfig(new ValidateSSLClientConfig().withCertificatePath("/public.cert"));
     OpenMetadataServerConnection actualServerConnection = secretsManager.decryptServerConnection(airflowConfiguration);
     assertEquals(expectedServerConnection, actualServerConnection);
   }

@@ -74,8 +74,8 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -239,7 +239,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * openmetadata-service/src/main/resources/json/data/{entityType}
    *
    * <p>This method needs to be explicitly called, typically from initialize method. See {@link
-   * org.openmetadata.service.resources.teams.RoleResource#initialize(CatalogApplicationConfig)}
+   * org.openmetadata.service.resources.teams.RoleResource#initialize(OpenMetadataApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
     List<String> jsonDataFiles =

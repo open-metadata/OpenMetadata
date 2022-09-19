@@ -28,7 +28,7 @@ base_requirements = {
     "click>=7.1.1",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic[email]==1.8.2",
+    "pydantic[email]==1.9.0",
     "google>=3.0.0",
     "google-auth>=1.33.0",
     "python-dateutil>=2.8.1",
@@ -133,12 +133,13 @@ plugins: Dict[str, Set[str]] = {
     "nifi": {},
 }
 dev = {
-    "datamodel-code-generator==0.12.0",
+    "datamodel-code-generator==0.13.0",
     "black==22.3.0",
     "pycln==1.3.2",
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
+    "pydantic[email]==1.9.0",
 }
 test = {
     "isort==5.10.1",

@@ -16,10 +16,10 @@ package org.openmetadata.service.events;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public interface EventHandler {
-  void init(CatalogApplicationConfig config, Jdbi jdbi);
+  void init(OpenMetadataApplicationConfig config, Jdbi jdbi);
 
   Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext);
 

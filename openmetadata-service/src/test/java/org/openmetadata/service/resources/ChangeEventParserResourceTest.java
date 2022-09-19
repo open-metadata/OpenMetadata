@@ -40,7 +40,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.State;
-import org.openmetadata.service.CatalogApplicationTest;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.ChangeEventParser;
@@ -49,7 +49,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 @TestInstance(Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ChangeEventParserResourceTest extends CatalogApplicationTest {
+class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
   Table TABLE;
 

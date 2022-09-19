@@ -54,8 +54,8 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -91,7 +91,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(CatalogApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     dao.initOrganization();
   }
 

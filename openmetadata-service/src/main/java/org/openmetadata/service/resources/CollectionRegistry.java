@@ -39,7 +39,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
@@ -182,7 +182,7 @@ public final class CollectionRegistry {
   public void registerResources(
       Jdbi jdbi,
       Environment environment,
-      CatalogApplicationConfig config,
+      OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       SecretsManager secretsManager) {
     // Build list of ResourceDescriptors
@@ -254,7 +254,7 @@ public final class CollectionRegistry {
   private static Object createResource(
       CollectionDAO daoObject,
       String resourceClass,
-      CatalogApplicationConfig config,
+      OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       SecretsManager secretsManager)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
@@ -272,7 +272,7 @@ public final class CollectionRegistry {
                 .newInstance(daoObject, authorizer, secretsManager);
       } catch (NoSuchMethodException ex) {
         try {
-          resource = clz.getDeclaredConstructor(CatalogApplicationConfig.class).newInstance(config);
+          resource = clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
         } catch (NoSuchMethodException exc) {
           resource = Class.forName(resourceClass).getConstructor().newInstance();
         }
@@ -281,7 +281,7 @@ public final class CollectionRegistry {
 
     // Call initialize method, if it exists
     try {
-      Method initializeMethod = resource.getClass().getMethod("initialize", CatalogApplicationConfig.class);
+      Method initializeMethod = resource.getClass().getMethod("initialize", OpenMetadataApplicationConfig.class);
       initializeMethod.invoke(resource, config);
     } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
       // Method does not exist and initialize is not called
