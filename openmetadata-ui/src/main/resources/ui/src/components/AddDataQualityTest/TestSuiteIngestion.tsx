@@ -178,22 +178,17 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const handleAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            setIsAirflowRunning(true);
-            resolve();
-          } else {
-            setIsAirflowRunning(false);
-            reject();
-          }
-        })
-        .catch(() => {
+    return checkAirflowStatus()
+      .then((res) => {
+        if (res.status === 200) {
+          setIsAirflowRunning(true);
+        } else {
           setIsAirflowRunning(false);
-          reject();
-        });
-    });
+        }
+      })
+      .catch(() => {
+        setIsAirflowRunning(false);
+      });
   };
 
   useEffect(() => {

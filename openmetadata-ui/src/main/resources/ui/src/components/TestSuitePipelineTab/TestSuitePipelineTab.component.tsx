@@ -266,30 +266,19 @@ const TestSuitePipelineTab = () => {
     }
   };
 
-  const getAirflowStatus = () => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            resolve();
-          } else {
-            reject();
-          }
-        })
-        .catch(() => reject());
-    });
-  };
-
   useEffect(() => {
     getAllIngestionWorkflows();
     fetchAirFlowEndPoint();
   }, []);
 
   useEffect(() => {
-    getAirflowStatus()
-      .then(() => {
-        setIsAirflowRunning(true);
-        getAllIngestionWorkflows();
+    checkAirflowStatus()
+      .then((res) => {
+        if (res.status === 200) {
+          setIsAirflowRunning(true);
+        } else {
+          setIsAirflowRunning(false);
+        }
       })
       .catch(() => {
         setIsAirflowRunning(false);
