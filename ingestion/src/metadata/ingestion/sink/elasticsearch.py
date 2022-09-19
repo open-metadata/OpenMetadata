@@ -144,9 +144,9 @@ class ElasticsearchSink(Sink[Entity]):
         return cls(config, metadata_config)
 
     def __init__(
-            self,
-            config: ElasticSearchConfig,
-            metadata_config: OpenMetadataConnection,
+        self,
+        config: ElasticSearchConfig,
+        metadata_config: OpenMetadataConnection,
     ) -> None:
 
         self.config = config
@@ -241,8 +241,8 @@ class ElasticsearchSink(Sink[Entity]):
         :return: list of elasticsearch_mapping indices
         """
         if (
-                self.elasticsearch_client.indices.exists(index_name)
-                and not self.config.recreate_indexes
+            self.elasticsearch_client.indices.exists(index_name)
+            and not self.config.recreate_indexes
         ):
             mapping = self.elasticsearch_client.indices.get_mapping()
             if not mapping[index_name]["mappings"]:
@@ -362,15 +362,8 @@ class ElasticsearchSink(Sink[Entity]):
         table_fqn = table.fullyQualifiedName.__root__
         table_name = table.name
         suggest = [
-            {
-                "input": [table_fqn],
-                "weight": 5
-             },
-            {
-                "input": [table_name],
-                "weight": 10
-            },
-
+            {"input": [table_fqn], "weight": 5},
+            {"input": [table_name], "weight": 10},
         ]
         column_suggest = []
         schema_suggest = []
@@ -765,12 +758,12 @@ class ElasticsearchSink(Sink[Entity]):
         return tag_docs
 
     def _parse_columns(
-            self,
-            columns: List[Column],
-            parent_column,
-            column_names,
-            column_descriptions,
-            tags,
+        self,
+        columns: List[Column],
+        parent_column,
+        column_names,
+        column_descriptions,
+        tags,
     ):
         for column in columns:
             col_name = (
