@@ -146,28 +146,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           return (
             <Row align="middle">
               <Tooltip
-                placement="bottomLeft"
-                title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
-                <Button
-                  className="flex-center"
-                  data-testid={`delete-${record.name}`}
-                  disabled={!hasAccess}
-                  icon={
-                    <SVGIcons
-                      alt="Delete"
-                      className="tw-h-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
-                  type="text"
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of delete button
-                    e.stopPropagation();
-                    setSelectedTestCase(record);
-                  }}
-                />
-              </Tooltip>
-              <Tooltip
                 placement="bottomRight"
                 title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
                 <Button
@@ -187,6 +165,28 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     // preventing expand/collapse on click of edit button
                     e.stopPropagation();
                     setEditTestCase(record);
+                  }}
+                />
+              </Tooltip>
+              <Tooltip
+                placement="bottomLeft"
+                title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+                <Button
+                  className="flex-center"
+                  data-testid={`delete-${record.name}`}
+                  disabled={!hasAccess}
+                  icon={
+                    <SVGIcons
+                      alt="Delete"
+                      className="tw-h-4"
+                      icon={Icons.DELETE}
+                    />
+                  }
+                  type="text"
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of delete button
+                    e.stopPropagation();
+                    setSelectedTestCase(record);
                   }}
                 />
               </Tooltip>
