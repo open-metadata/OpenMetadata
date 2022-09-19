@@ -74,7 +74,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -111,7 +111,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -148,7 +148,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -156,7 +156,7 @@
         }
       },
       "deleted": {
-        "type": "boolean"
+        "type": "text"
       },
       "entityType": {
         "type": "keyword"

@@ -2,6 +2,7 @@ package org.openmetadata.service.elasticsearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
