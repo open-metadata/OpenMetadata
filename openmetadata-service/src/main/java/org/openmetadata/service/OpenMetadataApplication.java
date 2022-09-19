@@ -84,6 +84,8 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.ConfigurationHolder;
+import org.openmetadata.service.util.EmailUtil;
 
 /** Main catalog application */
 @Slf4j
@@ -94,6 +96,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
+    // This should be first only as this holder has some config
+    ConfigurationHolder.getInstance().init(catalogConfig);
+    // init email Util for handling
+    EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(

@@ -139,6 +139,11 @@
     <jwks-rsa.version>0.21.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
+    <freemarker.version>2.3.28</freemarker.version>
+    <passay.version>1.6.2</passay.version>
+    <bcrypt.version>0.9.0</bcrypt.version>
+    <simplejavamail.version>7.5.0</simplejavamail.version>
+    <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
   </properties>
   <dependencyManagement>
     <dependencies>

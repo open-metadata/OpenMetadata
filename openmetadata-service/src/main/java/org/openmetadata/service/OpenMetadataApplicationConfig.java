@@ -30,6 +30,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.secrets.SecretsManagerConfiguration;
 import org.openmetadata.service.validators.AirflowConfigValidation;
@@ -89,6 +90,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("clusterName")
   private String clusterName;
+
+  @JsonProperty("email")
+  private SmtpSettings smtpSettings;
 
   @Override
   public String toString() {

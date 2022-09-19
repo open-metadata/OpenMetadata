@@ -82,9 +82,38 @@ public class JWTTokenGenerator {
     }
   }
 
+  public JWTAuthMechanism generateJWTToken(String userName, String email, JWTTokenExpiry expiry, boolean isBot) {
+    try {
+      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
+      Algorithm algorithm = Algorithm.RSA256(null, privateKey);
+      Date expires = getExpiryDate(expiry);
+      String token =
+          JWT.create()
+              .withIssuer(issuer)
+              .withKeyId(kid)
+              .withClaim("sub", userName)
+              .withClaim("email", email)
+              .withClaim("isBot", isBot)
+              .withIssuedAt(new Date(System.currentTimeMillis()))
+              .withExpiresAt(expires)
+              .sign(algorithm);
+      jwtAuthMechanism.setJWTToken(token);
+      jwtAuthMechanism.setJWTTokenExpiresAt(expires != null ? expires.getTime() : null);
+      return jwtAuthMechanism;
+    } catch (Exception e) {
+      throw new JWTCreationException("Failed to generate JWT Token. Please check your OpenMetadata Configuration.", e);
+    }
+  }
+
   public Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {
     LocalDateTime expiryDate;
     switch (jwtTokenExpiry) {
+      case OneHour:
+        expiryDate = LocalDateTime.now().plusHours(1);
+        break;
+      case One:
+        expiryDate = LocalDateTime.now().plusDays(1);
+        break;
       case Seven:
         expiryDate = LocalDateTime.now().plusDays(7);
         break;
