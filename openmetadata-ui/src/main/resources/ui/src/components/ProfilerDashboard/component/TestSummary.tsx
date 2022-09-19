@@ -34,6 +34,7 @@ import {
   PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { SIZE } from '../../../enums/common.enum';
 import {
   TestCaseParameterValue,
   TestCaseResult,
@@ -199,7 +200,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       <Col span={14}>
         {isLoading ? (
           <Loader />
-        ) : results.length ? (
+        ) : (
           <div>
             <Space align="end" className="tw-w-full" direction="vertical">
               <Select
@@ -209,35 +210,41 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
                 onChange={handleTimeRangeChange}
               />
             </Space>
-            <ResponsiveContainer className="tw-bg-white" minHeight={300}>
-              <LineChart
-                data={chartData.data}
-                margin={{
-                  top: 8,
-                  bottom: 8,
-                  right: 8,
-                }}>
-                <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
-                <YAxis allowDataOverflow padding={{ top: 8, bottom: 8 }} />
-                <Tooltip />
-                <Legend />
-                {data.parameterValues?.length === 2 && referenceArea()}
-                {chartData?.information?.map((info, i) => (
-                  <Line
-                    dataKey={info.label}
-                    dot={updatedDot}
-                    key={i}
-                    stroke={info.color}
-                    type="monotone"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+
+            {results.length ? (
+              <ResponsiveContainer className="tw-bg-white" minHeight={300}>
+                <LineChart
+                  data={chartData.data}
+                  margin={{
+                    top: 8,
+                    bottom: 8,
+                    right: 8,
+                  }}>
+                  <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
+                  <YAxis allowDataOverflow padding={{ top: 8, bottom: 8 }} />
+                  <Tooltip />
+                  <Legend />
+                  {data.parameterValues?.length === 2 && referenceArea()}
+                  {chartData?.information?.map((info, i) => (
+                    <Line
+                      dataKey={info.label}
+                      dot={updatedDot}
+                      key={i}
+                      stroke={info.color}
+                      type="monotone"
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.MEDIUM}>
+                <Typography.Paragraph className="m-b-md">
+                  No Results Available. Try filtering by a different time
+                  period.
+                </Typography.Paragraph>
+              </ErrorPlaceHolder>
+            )}
           </div>
-        ) : (
-          <ErrorPlaceHolder classes="tw-mt-0">
-            <Typography.Text>No Result Available</Typography.Text>
-          </ErrorPlaceHolder>
         )}
       </Col>
       <Col span={10}>

@@ -48,6 +48,8 @@ class DynamodbSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
         self.dynamodb = self.connection.client
+        self.data_models = {}
+        self.dbt_tests = {}
         self.database_source_state = set()
         super().__init__()
 

@@ -72,7 +72,7 @@ Once you configure the above settings, restart OpenMetadata server .
 
 Once the above configuration is updated, the server is restarted. Admin can go to Settings -> Bots page.
 
-<Image src="/images/deployment/security/enable-jwt/bots.png" alt="bots"/>
+<Image src="/images/deployment/security/enable-jwt/bot.png" alt="bots"/> 
 
 Click on the generate token to create a token for the ingestion bot.
 

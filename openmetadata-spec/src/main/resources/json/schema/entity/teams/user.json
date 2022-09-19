@@ -18,11 +18,14 @@
             },
             {
               "$ref": "./authN/jwtAuth.json"
+            },
+            {
+              "$ref": "./authN/basicAuth.json"
             }
           ]
         },
         "authType": {
-          "enum": ["JWT", "SSO"]
+          "enum": ["JWT", "SSO", "BASIC"]
         }
       },
       "additionalProperties": false
@@ -119,6 +122,10 @@
     "inheritedRoles": {
       "description": "Roles that a user is inheriting through membership in teams that have set team default roles.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "isEmailVerified": {
+      "description": "If the User has verified the mail",
+      "type": "boolean"
     }
   },
   "additionalProperties": false,
