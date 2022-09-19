@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
+import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
+import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -40,6 +43,11 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.auth.EmailVerificationToken;
+import org.openmetadata.schema.auth.PasswordResetToken;
+import org.openmetadata.schema.auth.RefreshToken;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Chart;
@@ -219,6 +227,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SettingsDAO getSettingsDAO();
+
+  @CreateSqlObject
+  TokenDAO getTokenDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2557,6 +2568,13 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("after") String after,
         @Bind("relation") int relation);
+
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
+    int checkEmailExists(@Bind("email") String email);
+
+    @SqlQuery(value = "SELECT json FROM user_entity WHERE email = :email")
+    String findUserByEmail(@Bind("email") String email);
   }
 
   interface ChangeEventDAO {
@@ -3056,5 +3074,69 @@ public interface CollectionDAO {
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+  }
+
+  class TokenRowMapper implements RowMapper<TokenInterface> {
+    @Override
+    public TokenInterface map(ResultSet rs, StatementContext ctx) throws SQLException {
+      try {
+        return getToken(TokenType.fromValue(rs.getString("tokenType")), rs.getString("json"));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    public static TokenInterface getToken(TokenType type, String json) throws IOException {
+      TokenInterface resp = null;
+      try {
+        switch (type) {
+          case EMAIL_VERIFICATION:
+            resp = JsonUtils.readValue(json, EmailVerificationToken.class);
+            break;
+          case PASSWORD_RESET:
+            resp = JsonUtils.readValue(json, PasswordResetToken.class);
+            break;
+          case REFRESH_TOKEN:
+            resp = JsonUtils.readValue(json, RefreshToken.class);
+            break;
+          default:
+            throw new RuntimeException("Invalid Token Type.");
+        }
+      } catch (IOException e) {
+        throw e;
+      }
+      return resp;
+    }
+  }
+
+  interface TokenDAO {
+    @SqlQuery("SELECT tokenType, json FROM user_tokens WHERE token = :token")
+    @RegisterRowMapper(TokenRowMapper.class)
+    TokenInterface findByToken(@Bind("token") String token) throws StatementException;
+
+    @SqlQuery("SELECT tokenType, json FROM user_tokens WHERE userId = :userId AND tokenType = :tokenType ")
+    @RegisterRowMapper(TokenRowMapper.class)
+    List<TokenInterface> getAllUserTokenWithType(@Bind("userId") String userId, @Bind("tokenType") String tokenType)
+        throws StatementException;
+
+    @ConnectionAwareSqlUpdate(value = "INSERT INTO user_tokens (json) VALUES (:json)", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO user_tokens (json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE user_tokens SET json = :json WHERE token = :token",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
+        connectionType = POSTGRES)
+    void update(@Bind("token") String token, @Bind("json") String json);
+
+    @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
+    void delete(@Bind("token") String token);
+
+    @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
+    void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);
   }
 }

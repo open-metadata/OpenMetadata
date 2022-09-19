@@ -15,6 +15,7 @@ import { Typography } from 'antd';
 import React from 'react';
 import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
 import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
+import { SIZE } from '../../../enums/common.enum';
 
 type Props = {
   children?: React.ReactNode;
@@ -27,6 +28,7 @@ type Props = {
   buttonId?: string;
   description?: React.ReactNode;
   classes?: string;
+  size?: string;
 };
 
 const ErrorPlaceHolder = ({
@@ -37,6 +39,7 @@ const ErrorPlaceHolder = ({
   buttons,
   description,
   classes,
+  size = SIZE.LARGE,
 }: Props) => {
   const { Paragraph, Link } = Typography;
 
@@ -44,7 +47,7 @@ const ErrorPlaceHolder = ({
     <>
       <div className="flex-center flex-col tw-mt-24 " data-testid="error">
         {' '}
-        <img data-testid="no-data-image" src={AddPlaceHolder} width="100" />
+        <img data-testid="no-data-image" src={AddPlaceHolder} width={size} />
       </div>
       <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
         {description ? (
@@ -75,7 +78,7 @@ const ErrorPlaceHolder = ({
         <img
           data-testid="no-data-image"
           src={NoDataFoundPlaceHolder}
-          width="100"
+          width={size}
         />
       </div>
       {children ? (
