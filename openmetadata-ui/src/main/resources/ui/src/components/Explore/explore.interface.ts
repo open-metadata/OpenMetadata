@@ -41,7 +41,7 @@ export interface ExploreProps {
   fetchCount: () => void;
   handleFilterChange: (data: FilterObject) => void;
   handlePathChange: (path: string) => void;
-  handleSearchText: (text: string) => void;
+  handleSearchText?: (text: string) => void;
   onShowDeleted: (checked: boolean) => void;
   handleTabCounts: (value: { [key: string]: number }) => void;
 }

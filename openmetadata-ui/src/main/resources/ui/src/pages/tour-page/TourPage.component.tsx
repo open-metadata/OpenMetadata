@@ -158,9 +158,6 @@ const TourPage = () => {
             fetchCount={handleCountChange}
             handleFilterChange={handleFilterChange}
             handlePathChange={handleCountChange}
-            handleSearchText={() => {
-              ('');
-            }}
             handleTabCounts={handleCountChange}
             searchQuery=""
             searchText=""

@@ -628,7 +628,7 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     isTourPage
       ? updateData(mockSearchData as unknown as ExploreSearchData)
-      : handleSearchText(searchQuery || emptyValue);
+      : handleSearchText && handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
   }, [searchQuery]);
 
