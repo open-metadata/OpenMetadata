@@ -39,6 +39,10 @@ import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
+import {
+  getDayCron,
+  getHourCron,
+} from '../components/common/CronEditor/CronEditor.constant';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -64,7 +68,10 @@ import { Topic } from '../generated/entity/data/topic';
 import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -1009,5 +1016,21 @@ export const getOwnerValue = (owner: EntityReference) => {
       return getUserPath(owner?.fullyQualifiedName ?? '');
     default:
       return '';
+  }
+};
+
+export const getIngestionFrequency = (pipelineType: PipelineType) => {
+  const value = {
+    min: 0,
+    hour: 0,
+  };
+
+  switch (pipelineType) {
+    case PipelineType.TestSuite:
+    case PipelineType.Metadata:
+      return getHourCron(value);
+
+    default:
+      return getDayCron(value);
   }
 };
