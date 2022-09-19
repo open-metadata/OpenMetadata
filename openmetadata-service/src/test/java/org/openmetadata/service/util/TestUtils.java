@@ -57,7 +57,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
-import org.openmetadata.schema.services.connections.mlModel.MlflowConnection;
+import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GlueConnection;
 import org.openmetadata.schema.type.DashboardConnection;
