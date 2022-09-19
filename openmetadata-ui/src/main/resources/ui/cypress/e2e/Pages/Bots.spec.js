@@ -78,6 +78,7 @@ describe('Bots Page should work properly', () => {
 
   it('Update display name and description', () => {
     getCreatedBot();
+
     //Click on edit display name
     cy.get('[data-testid="edit-displayName"]')
       .should('exist')
@@ -89,7 +90,9 @@ describe('Bots Page should work properly', () => {
       .clear()
       .type(updatedBotName);
     //Save the updated display name
+    interceptURL('PATCH', '/api/v1/users/*', 'updateBot');
     cy.get('[data-testid="save-displayName"]').should('be.visible').click();
+    verifyResponseStatusCode('@updateBot', 200);
     //Verify the display name is updated on bot details page
     cy.get('[data-testid="container"]').should('contain', updatedBotName);
     //Click on edit description button
@@ -103,10 +106,14 @@ describe('Bots Page should work properly', () => {
     verifyResponseStatusCode('@getBotsPage', 200);
 
     //Verify the updated name is displayed in the Bots listing page
-    cy.get('table')
-      .should('not.contain', botName)
-      .and('contain', updatedBotName)
-      .and('contain', updatedDescription);
+    cy.get(`[data-testid="bot-link-${updatedBotName}"]`).should(
+      'contain',
+      updatedBotName
+    );
+    cy.get('[data-testid="markdown-parser"]').should(
+      'contain',
+      updatedDescription
+    );
   });
 
   it('Delete created bot', () => {
