@@ -19,6 +19,7 @@ import cronstrue from 'cronstrue';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  checkAirflowStatus,
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -38,6 +39,7 @@ import { checkPermission } from '../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import PopOver from '../common/popover/PopOver';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -67,6 +69,7 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
 
   const viewPermission = useMemo(
     () =>
@@ -263,9 +266,34 @@ const TestSuitePipelineTab = () => {
     }
   };
 
+  const getAirflowStatus = () => {
+    return new Promise<void>((resolve, reject) => {
+      checkAirflowStatus()
+        .then((res) => {
+          if (res.status === 200) {
+            resolve();
+          } else {
+            reject();
+          }
+        })
+        .catch(() => reject());
+    });
+  };
+
   useEffect(() => {
     getAllIngestionWorkflows();
     fetchAirFlowEndPoint();
+  }, []);
+
+  useEffect(() => {
+    getAirflowStatus()
+      .then(() => {
+        setIsAirflowRunning(true);
+        getAllIngestionWorkflows();
+      })
+      .catch(() => {
+        setIsAirflowRunning(false);
+      });
   }, []);
 
   const pipelineColumns = useMemo(() => {
@@ -497,7 +525,9 @@ const TestSuitePipelineTab = () => {
     return <Loader />;
   }
 
-  return (
+  return !isAirflowRunning ? (
+    <ErrorPlaceHolderIngestion />
+  ) : (
     <TestCaseCommonTabContainer
       buttonName="Add Ingestion"
       hasAccess={createPermission}
