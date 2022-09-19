@@ -440,6 +440,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Radio.Group
               buttonStyle="solid"
               className="profiler-switch"
+              data-testid="profiler-switch"
               optionType="button"
               options={tabOptions}
               value={activeTab}
