@@ -162,7 +162,7 @@ const ServicePage: FunctionComponent = () => {
         return 'Topics';
       case ServiceCategory.PIPELINE_SERVICES:
         return 'Pipelines';
-      case ServiceCategory.ML_MODAL_SERVICES:
+      case ServiceCategory.ML_MODEL_SERVICES:
         return 'Models';
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -503,7 +503,7 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         fetchMlModal(paging);
 
         break;
@@ -524,7 +524,7 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.PIPELINE_SERVICES:
         return getEntityLink(SearchIndex.PIPELINE, fqn);
 
-      case ServiceCategory.ML_MODAL_SERVICES:
+      case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
@@ -575,7 +575,7 @@ const ServicePage: FunctionComponent = () => {
           </>
         );
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         return (
           <>
             <th className="tableHead-cell">Model Name</th>
@@ -659,7 +659,7 @@ const ServicePage: FunctionComponent = () => {
           </td>
         );
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         const mlmodal = data as Mlmodel;
 
         return (

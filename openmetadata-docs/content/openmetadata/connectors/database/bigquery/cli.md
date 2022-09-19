@@ -193,8 +193,7 @@ workflowConfig:
 If you prefer to pass the credentials file, you can do so as follows:
 ```yaml
 credentials:
-  gcsConfig:
-    gcsCredentialsPath: <path to file>
+  gcsConfig: <path to file>
 ```
 
 - **Enable Policy Tag Import (Optional)**: Mark as 'True' to enable importing policy tags from BigQuery to OpenMetadata.

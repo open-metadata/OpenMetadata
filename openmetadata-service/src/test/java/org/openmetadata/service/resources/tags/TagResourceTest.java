@@ -50,8 +50,8 @@ import org.openmetadata.schema.api.tags.CreateTagCategory.TagCategoryType;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.CategoryList;
 import org.openmetadata.service.util.EntityUtil;
@@ -62,7 +62,7 @@ import org.openmetadata.service.util.TestUtils;
 /** Tests not covered here: Tag category and Tag usage counts are covered in TableResourceTest */
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TagResourceTest extends CatalogApplicationTest {
+public class TagResourceTest extends OpenMetadataApplicationTest {
   public static String TAGS_URL;
   public static TagCategory USER_TAG_CATEGORY;
   public static Tag ADDRESS_TAG;

@@ -51,7 +51,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.Webhook.Status;
 import org.openmetadata.schema.type.WebhookType;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.WebhookDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -92,7 +92,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   }
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(CatalogApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     try {
       List<String> listAllWebhooks = webhookDAO.listAllWebhooks(webhookDAO.getTableName());
       List<Webhook> webhookList = JsonUtils.readObjects(listAllWebhooks, Webhook.class);
