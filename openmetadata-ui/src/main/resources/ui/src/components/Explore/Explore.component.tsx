@@ -350,59 +350,60 @@ const Explore: React.FC<ExploreProps> = ({
   const fetchData = (value: SearchDataFunctionType[]) => {
     if (isTourPage) {
       updateData(mockSearchData as unknown as ExploreSearchData);
-    }
-    const promiseValue = value.map((d) => {
-      currentSearchIndex.current = d.searchIndex;
+    } else {
+      const promiseValue = value.map((d) => {
+        currentSearchIndex.current = d.searchIndex;
 
-      return searchData(
-        d.queryString,
-        d.from,
-        d.size,
-        d.filters,
-        d.sortField,
-        d.sortOrder,
-        d.searchIndex,
-        showDeleted
-      );
-    });
+        return searchData(
+          d.queryString,
+          d.from,
+          d.size,
+          d.filters,
+          d.sortField,
+          d.sortOrder,
+          d.searchIndex,
+          showDeleted
+        );
+      });
 
-    Promise.all(promiseValue)
-      .then(
-        ([
-          resSearchResults,
-          resAggServiceType,
-          resAggTier,
-          resAggTag,
-          resAggDatabase,
-          resAggDatabaseSchema,
-          resAggServiceName,
-        ]: Array<SearchResponse>) => {
-          setError('');
-          if (
-            currentSearchIndex.current ===
-              resSearchResults.data.hits.hits[0]?._index ||
-            isEmpty(resSearchResults.data.hits.hits)
-          ) {
-            updateData({
-              resSearchResults,
-              resAggServiceType,
-              resAggTier,
-              resAggTag,
-              resAggDatabase,
-              resAggDatabaseSchema,
-              resAggServiceName,
-            });
-            if (isEmpty(resSearchResults.data.hits.hits)) {
-              setTotalNumberOfValues(0);
-              setIsEntityLoading(false);
+      Promise.all(promiseValue)
+        .then(
+          ([
+            resSearchResults,
+            resAggServiceType,
+            resAggTier,
+            resAggTag,
+            resAggDatabase,
+            resAggDatabaseSchema,
+            resAggServiceName,
+          ]: Array<SearchResponse>) => {
+            setError('');
+            if (
+              currentSearchIndex.current ===
+                resSearchResults.data.hits.hits[0]?._index ||
+              isEmpty(resSearchResults.data.hits.hits)
+            ) {
+              updateData({
+                resSearchResults,
+                resAggServiceType,
+                resAggTier,
+                resAggTag,
+                resAggDatabase,
+                resAggDatabaseSchema,
+                resAggServiceName,
+              });
+              if (isEmpty(resSearchResults.data.hits.hits)) {
+                setTotalNumberOfValues(0);
+                setIsEntityLoading(false);
+              }
             }
           }
-        }
-      )
-      .catch((err: AxiosError) => {
-        const errMsg = get(err, 'response.data.responseMessage', '');
-        setError(errMsg);
-      });
+        )
+        .catch((err: AxiosError) => {
+          const errMsg = get(err, 'response.data.responseMessage', '');
+          setError(errMsg);
+        });
+    }
   };
 
   const fetchTableData = () => {
