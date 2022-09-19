@@ -13,7 +13,6 @@
 import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
 
-
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
 const description = 'This is bot description';
@@ -85,7 +84,9 @@ describe('Bots Page should work properly', () => {
       .clear()
       .type(updatedBotName);
     //Save the updated display name
+    interceptURL('PATCH', 'api/v1/users/*', 'updateDisplayName');
     cy.get('[data-testid="save-displayName"]').should('be.visible').click();
+    verifyResponseStatusCode('@updateDisplayName', 200);
     //Verify the display name is updated on bot details page
     cy.get('[data-testid="container"]').should('contain', updatedBotName);
     //Click on edit description button
