@@ -74,9 +74,9 @@ Add a new Run/Debug configuration like the below screenshot.
 <Image src="/images/developers/contribute/build-code-and-run-tests/intellij-runtime-config.png" alt="Intellij Runtime Configuration" caption="Intellij Runtime Configuration"/>
 
 ## Add missing dependency
-Right-click on catalog-rest-service
+Right-click on openmetadata-service
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-catalog-rest-service.png" alt="Open project" caption=" "/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-openmetadata-service.png" alt="Open project" caption=" "/>
 
 Click on "Open Module Settings"
 

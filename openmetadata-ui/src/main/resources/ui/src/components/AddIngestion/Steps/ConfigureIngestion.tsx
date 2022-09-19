@@ -36,6 +36,7 @@ const ConfigureIngestion = ({
   topicFilterPattern,
   chartFilterPattern,
   pipelineFilterPattern,
+  mlModelFilterPattern,
   includeLineage,
   includeView,
   includeTags,
@@ -51,6 +52,7 @@ const ConfigureIngestion = ({
   showTopicFilter,
   showChartFilter,
   showPipelineFilter,
+  showMlModelFilter,
   queryLogDuration,
   stageFileLocation,
   threadCount,
@@ -145,9 +147,7 @@ const ConfigureIngestion = ({
           placeholder="75"
           type="number"
           value={profileSample}
-          onChange={(e) =>
-            handleProfileSampleValidation(parseInt(e.target.value))
-          }
+          onChange={(e) => handleProfileSampleValidation(+e.target.value)}
         />
         {profileSampleError && errorMsg('Value must be between 0 and 99.')}
       </div>
@@ -434,6 +434,25 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getPipelineFieldToggles()}
+          </Fragment>
+        );
+
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showMlModelFilter}
+              excludePattern={mlModelFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.MLMODEL)
+              }
+              includePattern={mlModelFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.MLMODEL}
+            />
+            {getSeparator('')}
           </Fragment>
         );
       default:

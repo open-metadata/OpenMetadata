@@ -11,26 +11,35 @@
  *  limitations under the License.
  */
 
-import { addCustomPropertiesForEntity, deleteCreatedProperty, editCreatedProperty } from '../../common/common';
+import { addCustomPropertiesForEntity, deleteCreatedProperty, editCreatedProperty, interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { ENTITIES } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
+
+    interceptURL('GET', '/api/v1/users*', 'getTeams');
+
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    cy.wait(1000);
+
+    verifyResponseStatusCode('@getTeams', 200);
   });
 
   it('Add Integer custom property for all Entities', () => {
     Object.values(ENTITIES).forEach((entity) => {
+      interceptURL(
+        'GET',
+        `/api/v1/metadata/types/name/${entity.name}*`,
+        'getEntity'
+      );
       //Selecting the entity
       cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
         .scrollIntoView()
         .should('be.visible')
         .click();
 
-      cy.wait(1000);
-      
+      verifyResponseStatusCode('@getEntity', 200);
+
       //Getting the property
       const propertyName = addCustomPropertiesForEntity(
         entity,
@@ -45,7 +54,8 @@ describe('Custom Properties should work properly', () => {
         .scrollIntoView()
         .should('be.visible')
         .click();
-      cy.wait(1000);
+
+      verifyResponseStatusCode('@getEntity', 200);
 
       editCreatedProperty(propertyName);
 
@@ -55,11 +65,19 @@ describe('Custom Properties should work properly', () => {
 
   it('Add String custom property for all Entities', () => {
     Object.values(ENTITIES).forEach((entity) => {
+      interceptURL(
+        'GET',
+        `/api/v1/metadata/types/name/${entity.name}*`,
+        'getEntity'
+      );
+
       //Selecting the entity
       cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
         .scrollIntoView()
         .should('be.visible')
         .click();
+
+      verifyResponseStatusCode('@getEntity', 200);
 
       const propertyName = addCustomPropertiesForEntity(
         entity,
@@ -76,7 +94,8 @@ describe('Custom Properties should work properly', () => {
         .scrollIntoView()
         .should('be.visible')
         .click();
-      cy.wait(1000);
+
+      verifyResponseStatusCode('@getEntity', 200);
 
       editCreatedProperty(propertyName);
 
@@ -86,11 +105,20 @@ describe('Custom Properties should work properly', () => {
 
   it('Add Markdown custom property for all Entities', () => {
     Object.values(ENTITIES).forEach((entity) => {
+      interceptURL(
+        'GET',
+        `/api/v1/metadata/types/name/${entity.name}*`,
+        'getEntity'
+      );
+
       //Selecting the entity
       cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
         .scrollIntoView()
         .should('be.visible')
         .click();
+
+      verifyResponseStatusCode('@getEntity', 200);
+
       const propertyName = addCustomPropertiesForEntity(
         entity,
         'markdown',
@@ -104,7 +132,8 @@ describe('Custom Properties should work properly', () => {
         .scrollIntoView()
         .should('be.visible')
         .click();
-      cy.wait(1000);
+
+      verifyResponseStatusCode('@getEntity', 200);
 
       editCreatedProperty(propertyName);
 

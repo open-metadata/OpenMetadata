@@ -16,7 +16,7 @@ on:
     branches:
       - main
     paths:
-      - 'catalog-rest-service/src/main/resources/json/**'
+      - 'openmetadata-service/src/main/resources/json/**'
 
 concurrency: 
   group: py-generate-${{ github.head_ref }}

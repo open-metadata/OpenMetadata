@@ -25,9 +25,9 @@ Then,
 
 ```yaml
 authorizerConfiguration:
-  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
   # JWT Filter
-  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
   adminPrincipals:
     - "user1"
     - "user2"

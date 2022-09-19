@@ -18,13 +18,13 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.interceptors.Auth0AccessTokenRequestInterceptor;
 import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.Auth0AccessTokenApi;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class Auth0AuthenticationProvider implements AuthenticationProvider {

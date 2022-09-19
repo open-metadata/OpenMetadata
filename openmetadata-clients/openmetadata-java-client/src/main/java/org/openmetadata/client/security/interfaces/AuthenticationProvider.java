@@ -15,7 +15,7 @@ package org.openmetadata.client.security.interfaces;
 
 import feign.RequestInterceptor;
 import java.io.IOException;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 public interface AuthenticationProvider extends RequestInterceptor {
   AuthenticationProvider create(OpenMetadataServerConnection iConfig);

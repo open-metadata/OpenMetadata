@@ -38,6 +38,14 @@ class ProcessorStatus(Status):
 
 
 @dataclass
+class ProfilerProcessorStatus(ProcessorStatus):
+    entity: str = None
+
+    def failure(self, column: str, metric: str, reason: str) -> None:
+        self.failures.append({self.entity: {column: {metric: {reason}}}})
+
+
+@dataclass
 class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
     @abstractmethod

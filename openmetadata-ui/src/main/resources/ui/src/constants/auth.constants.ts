@@ -12,4 +12,4 @@
  */
 
 export const NO_AUTH = 'no-auth';
-export const NOOP_FILTER = 'org.openmetadata.catalog.security.NoopFilter';
+export const NOOP_FILTER = 'org.openmetadata.service.security.NoopFilter';

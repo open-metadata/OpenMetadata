@@ -35,10 +35,10 @@ import {
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
+  TestCaseParameterValue,
   TestCaseResult,
   TestCaseStatus,
-} from '../../../generated/tests/tableTest';
-import { TestCaseParameterValue } from '../../../generated/tests/testCase';
+} from '../../../generated/tests/testCase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';

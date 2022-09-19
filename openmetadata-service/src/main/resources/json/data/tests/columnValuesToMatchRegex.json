@@ -1,0 +1,16 @@
+{
+  "name": "columnValuesToMatchRegex",
+  "displayName": "Column Values To Match Regex Pattern",
+  "description": "This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ",
+  "entityType": "COLUMN",
+  "testPlatforms": ["OpenMetadata"],
+  "parameterDefinition": [
+    {
+      "name": "regex",
+      "displayName": "RegEx Pattern",
+      "description": "The regular expression the column entries should match.",
+      "dataType": "STRING",
+      "required": true
+    }
+  ]
+}

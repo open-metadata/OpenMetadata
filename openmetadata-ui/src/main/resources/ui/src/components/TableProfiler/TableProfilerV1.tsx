@@ -34,8 +34,7 @@ import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
-import { TestCaseStatus } from '../../generated/tests/tableTest';
-import { TestCase } from '../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import {
   formatNumberWithComma,
@@ -57,11 +56,7 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({
-  table,
-  onAddTestClick,
-  permissions,
-}) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
   const { profile, columns = [] } = table;
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
@@ -359,7 +354,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             key: col.name,
           }))}
           hasEditAccess={editTest}
-          onAddTestClick={onAddTestClick}
         />
       )}
 
