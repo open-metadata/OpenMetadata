@@ -141,6 +141,22 @@ export const getAuthConfig = (
 
       break;
     }
+    case AuthTypes.BASIC: {
+      config = {
+        auth: {
+          authority,
+          clientId,
+          callbackUrl,
+          postLogoutRedirectUri: '/',
+        },
+        cache: {
+          cacheLocation: BrowserCacheLocation.LocalStorage,
+        },
+        provider,
+      } as Configuration;
+
+      break;
+    }
     case AuthTypes.AZURE:
       {
         config = {
@@ -189,6 +205,7 @@ export const isProtectedRoute = (pathname: string) => {
   return (
     pathname !== ROUTES.SIGNUP &&
     pathname !== ROUTES.SIGNIN &&
+    pathname !== ROUTES.FORGOT_PASSWORD &&
     pathname !== ROUTES.CALLBACK &&
     pathname !== ROUTES.SILENT_CALLBACK
   );

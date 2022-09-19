@@ -151,6 +151,9 @@ const jsonData = {
     'update-test-suite-error': 'Error while updating test suite',
 
     'fetch-settings': 'Error while fetching settings',
+    'email-not-found': 'Email is not exist with us!',
+    'email-found': 'Email is exist with us!',
+    'unauthorized-user': 'UnAuthorized user! please check email or password',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
@@ -170,6 +173,8 @@ const jsonData = {
     'update-profile-congif-success': 'Profile config updated successfully!',
     'update-test-case-success': 'Test case updated successfully!',
     'update-webhook-success': 'Webhook updated successfully!',
+    'create-user-account': 'User account created successfully!',
+    'reset-password-success': 'Password reset successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
@@ -180,6 +185,8 @@ const jsonData = {
   label: {
     'delete-entity-text':
       'Once you delete this entity, it will be removed permanently.',
+    'email-confirmation':
+      'Please confirm your email, confirmation has been sent to your email',
   },
   message: {
     'no-services': 'No services',

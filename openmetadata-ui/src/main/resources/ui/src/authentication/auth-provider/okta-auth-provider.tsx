@@ -14,7 +14,7 @@
 import { OktaAuth } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import React, { FunctionComponent, ReactNode } from 'react';
-import { oidcTokenKey } from '../../constants/constants';
+import localState from '../../utils/LocalStorageUtils';
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -45,7 +45,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     const idToken = _oktaAuth.getIdToken() || '';
     const scopes =
       _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-    localStorage.setItem(oidcTokenKey, idToken);
+    localState.setOidcToken(idToken);
     _oktaAuth
       .getUser()
       .then((info) => {

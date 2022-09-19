@@ -40,11 +40,7 @@ import {
 } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
 import { NO_AUTH } from '../../constants/auth.constants';
-import {
-  oidcTokenKey,
-  REDIRECT_PATHNAME,
-  ROUTES,
-} from '../../constants/constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { AuthTypes } from '../../enums/signin.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -61,6 +57,7 @@ import {
   msalInstance,
   setMsalInstance,
 } from '../../utils/AuthProvider.util';
+import localState from '../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   fetchAllUsers,
@@ -68,11 +65,13 @@ import {
   matchUserDetails,
 } from '../../utils/UserDataUtils';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
+import BasicAuthAuthenticator from '../authenticators/basic-auth.authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
 import Auth0Callback from '../callbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
+import BasicAuthProvider from './basic-auth.provider';
 import OktaAuthProvider from './okta-auth-provider';
 
 interface AuthProviderProps {
@@ -93,7 +92,8 @@ export const AuthProvider = ({
   const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
-  const oidcUserToken = localStorage.getItem(oidcTokenKey);
+  const oidcUserToken = localState.getOidcToken();
+
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
     Boolean(oidcUserToken)
   );
@@ -154,7 +154,7 @@ export const AuthProvider = ({
   const resetUserDetails = (forceLogout = false) => {
     appState.updateUserDetails({} as User);
     appState.updateUserPermissions([]);
-    localStorage.removeItem(oidcTokenKey);
+    localState.removeOidcToken();
     setIsUserAuthenticated(false);
     setLoadingIndicator(false);
     clearTimeout(timeoutId);
@@ -246,13 +246,13 @@ export const AuthProvider = ({
       if (onRenewIdTokenHandlerPromise) {
         onRenewIdTokenHandlerPromise
           .then(() => {
-            resolve(localStorage.getItem(oidcTokenKey) || '');
+            resolve(localState.getOidcToken() || '');
           })
           .catch((error) => {
             if (error.message !== 'Frame window timed out') {
               reject(error);
             } else {
-              resolve(localStorage.getItem(oidcTokenKey) || '');
+              resolve(localState.getOidcToken() || '');
             }
           });
       } else {
@@ -392,7 +392,7 @@ export const AuthProvider = ({
   const initializeAxiosInterceptors = () => {
     // Axios Request interceptor to add Bearer tokens in Header
     axiosClient.interceptors.request.use(async function (config) {
-      const token: string | void = localStorage.getItem(oidcTokenKey) || '';
+      const token: string | void = localState.getOidcToken() || '';
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;
@@ -491,6 +491,16 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     switch (authConfig?.provider) {
+      case AuthTypes.NO_AUTH:
+      case AuthTypes.BASIC: {
+        return (
+          <BasicAuthProvider>
+            <BasicAuthAuthenticator ref={authenticatorRef}>
+              {children}
+            </BasicAuthAuthenticator>
+          </BasicAuthProvider>
+        );
+      }
       case AuthTypes.AUTH0: {
         return (
           <Auth0Provider
@@ -574,6 +584,7 @@ export const AuthProvider = ({
           (!location.pathname.includes(ROUTES.CALLBACK) &&
             location.pathname !== ROUTES.HOME &&
             location.pathname !== ROUTES.SIGNUP &&
+            location.pathname !== ROUTES.REGISTER &&
             location.pathname !== ROUTES.SIGNIN)
         ) {
           getLoggedInUserDetails();

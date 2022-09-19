@@ -11,20 +11,26 @@
  *  limitations under the License.
  */
 
+import { Alert, Button, Divider, Form, Input, Typography } from 'antd';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import Loader from '../../components/Loader/Loader';
 import LoginButton from '../../components/LoginButton/LoginButton';
-import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import localState from '../../utils/LocalStorageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
+  const [form] = Form.useForm();
+
   const history = useHistory();
   const {
     isAuthDisabled,
@@ -33,12 +39,21 @@ const SigninPage = () => {
     onLogoutHandler,
     isAuthenticated,
   } = useAuthContext();
+
+  const { isAuthProviderBasic } = useMemo(() => {
+    return {
+      isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
+    };
+  }, [authConfig]);
+
+  const { handleLogin, isUserCreated } = useBasicAuth();
+
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
   }, [isAuthDisabled, isAuthenticated]);
 
   const isTokenExpired = () => {
-    const token = localStorage.getItem(oidcTokenKey);
+    const token = localState.getOidcToken();
     if (token) {
       try {
         const { exp } = jwtDecode<JwtPayload>(token);
@@ -136,19 +151,93 @@ const SigninPage = () => {
     return <Loader />;
   }
 
+  const handleSubmit = async (data: { email: string; password: string }) => {
+    handleLogin(data.email, data.password);
+  };
+
+  const onClickSignUp = () => history.push(ROUTES.REGISTER);
+
+  const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
+
+  const validationMessages = {
+    required: '${label} is required',
+    types: {
+      email: '${label} is not valid',
+    },
+    whitespace: '${label} is required',
+  };
+
   return (
     <div className="tw-flex tw-flex-col tw-h-full">
       <div
         className="tw-flex tw-bg-body-main tw-flex-grow"
         data-testid="signin-page">
         <div className="tw-w-5/12">
-          <div className="tw-mt-52 tw-text-center">
+          <div className="mt-24 tw-text-center flex-center flex-col">
+            {isUserCreated ? (
+              <Alert
+                closable
+                showIcon
+                description="Please verify your mail, confirmation mail has been sent to your email"
+                message="Email Confirmation"
+                type="warning"
+              />
+            ) : null}
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <p className="tw-mt-24 tw-mx-auto tw-text-xl tw-text-grey-muted tw-font-medium tw-w-10/12">
-              Centralized Metadata Store, Discover, Collaborate and get your
-              Data Right
-            </p>
-            <div className="tw-mt-24">{getSignInButton()}</div>
+            <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
+              Centralized Metadata Store, Discover, <br />
+              Collaborate and get your Data Right
+            </Typography.Text>
+
+            {isAuthProviderBasic ? (
+              <div className="w-60 login-form ">
+                <Form
+                  className="w-full"
+                  form={form}
+                  layout="vertical"
+                  validateMessages={validationMessages}
+                  onFinish={handleSubmit}>
+                  <Form.Item
+                    label="Email"
+                    name="email"
+                    requiredMark={false}
+                    rules={[{ type: 'email', required: true }]}>
+                    <Input placeholder="Enter email" />
+                  </Form.Item>
+                  <Form.Item
+                    label="Password"
+                    name="password"
+                    requiredMark={false}
+                    rules={[{ required: true }]}>
+                    <Input.Password placeholder="Enter password" />
+                  </Form.Item>
+
+                  <Button className="w-full" htmlType="submit" type="primary">
+                    Login
+                  </Button>
+                </Form>
+                <div className="mt-8" onClick={onClickForgotPassword}>
+                  <Typography.Link underline>Forgot Password</Typography.Link>
+                </div>
+
+                <Divider className="w-min-0 mt-8 mb-12 justify-center">
+                  <Typography.Text type="secondary">or</Typography.Text>
+                </Divider>
+
+                <div className="mt-4 flex flex-center">
+                  <Typography.Text strong className="mr-8">
+                    Not loggedIn user?
+                  </Typography.Text>
+                  <Button type="primary" onClick={onClickSignUp}>
+                    Sign Up
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {!isAuthProviderBasic ? (
+              <div className="">{getSignInButton()}</div>
+            ) : null}
           </div>
         </div>
         <div className="tw-w-7/12 tw-relative">
