@@ -181,7 +181,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         <Typography.Paragraph
           className="tw-heading tw-text-base"
           data-testid="header">
-          Schedule Ingestion
+          Schedule for Ingestion
         </Typography.Paragraph>
       </Col>
 

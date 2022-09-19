@@ -237,6 +237,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
         <Radio.Group
           buttonStyle="solid"
           className="profiler-switch"
+          data-testid="profiler-switch"
           optionType="button"
           options={tabOptions}
           value={activeTab}
@@ -307,7 +308,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
       </Row>
 
       {isUndefined(profile) && (
-        <div className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4">
+        <div
+          className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+          data-testid="no-profiler-placeholder">
           <NoDataIcon />
           <p className="tw-mb-0 tw-ml-2">
             Data Profiler is an optional configuration in Ingestion. Please

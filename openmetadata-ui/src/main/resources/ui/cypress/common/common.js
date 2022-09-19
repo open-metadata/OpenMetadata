@@ -30,7 +30,13 @@ export const verifyResponseStatusCode = (alias, responseCode) => {
   cy.wait(alias).its('response.statusCode').should('eq', responseCode);
 };
 
-export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
+export const handleIngestionRetry = (
+  type,
+  testIngestionButton,
+  count = 0,
+  ingestionType = 'metadata'
+) => {
+  const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
   const retryTimes = 25;
   let retryCount = count;
@@ -38,7 +44,7 @@ export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
     cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
       'have.text',
-      1
+      rowIndex
     );
     // click on the tab only for the first time
     if (retryCount === 0) {
@@ -52,23 +58,43 @@ export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
     testIngestionsTab();
     retryCount++;
     // the latest run should be success
-    cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-      if (
-        ($ingestionStatus.text() === 'Running' ||
-          $ingestionStatus.text() === 'Queued') &&
-        retryCount <= retryTimes
-      ) {
-        // retry after waiting for 20 seconds
-        cy.wait(20000);
-        cy.reload();
-        checkSuccessState();
-      } else {
-        cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
+    cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+      ($ingestionStatus) => {
+        if (
+          ($ingestionStatus.text() === 'Running' ||
+            $ingestionStatus.text() === 'Queued') &&
+          retryCount <= retryTimes
+        ) {
+          // retry after waiting for 20 seconds
+          cy.wait(20000);
+          cy.reload();
+          checkSuccessState();
+        } else {
+          cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
+            'have.text',
+            'Success'
+          );
+        }
       }
-    });
+    );
   };
 
   checkSuccessState();
+};
+
+export const scheduleIngestion = () => {
+  // Schedule & Deploy
+  cy.contains('Schedule for Ingestion').should('be.visible');
+  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
+  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+
+  // check success
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
+    'be.visible'
+  );
+  cy.contains('has been created and deployed successfully').should(
+    'be.visible'
+  );
 };
 
 //Storing the created service name and the type of service for later use
@@ -142,19 +168,9 @@ export const testServiceCreationAndIngestion = (
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
   }
 
-  // Schedule & Deploy
-  cy.contains('Schedule for Ingestion').should('be.visible');
-  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
-  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+  scheduleIngestion();
 
-  // check success
-  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
-    'be.visible'
-  );
   cy.contains(`${serviceName}_metadata`).should('be.visible');
-  cy.contains('has been created and deployed successfully').should(
-    'be.visible'
-  );
   // On the Right panel
   cy.contains('Metadata Ingestion Added & Deployed Successfully').should(
     'be.visible'
@@ -216,17 +232,22 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
     .type('DELETE');
-
-  interceptURL('GET', '/api/v1/*', 'homePage');
+  interceptURL(
+    'DELETE',
+    '/api/v1/services/*/*?hardDelete=true&recursive=true',
+    'deleteService'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/*/name/*?fields=owner',
+    'serviceDetails'
+  );
 
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-
-  cy.get('.Toastify__toast-body')
-    .should('exist')
-    .should('be.visible')
-    .should('have.text', `${typeOfService} Service deleted successfully!`);
-  cy.url().should('eq', 'http://localhost:8585/my-data');
-  verifyResponseStatusCode('@homePage', 200);
+  verifyResponseStatusCode('@deleteService', 200);
+  cy.reload();
+  verifyResponseStatusCode('@serviceDetails', 404);
+  cy.contains(`instance for ${service_Name} not found`);
   //Checking if the service got deleted successfully
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
@@ -362,10 +383,12 @@ export const visitEntityTab = (id) => {
  * Search for entities through the search bar
  * @param {string} term Entity name
  */
-export const searchEntity = (term) => {
+export const searchEntity = (term, suggestionOverly = true) => {
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
-  cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+  if (suggestionOverly) {
+    cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+  }
 };
 
 // add new tag to entity and its table
