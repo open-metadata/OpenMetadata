@@ -264,6 +264,7 @@ export const makeRow = (column: Column) => {
   return {
     description: column.description || '',
     tags: column?.tags || [],
+    key: column?.name,
     ...column,
   };
 };
