@@ -232,17 +232,22 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
     .type('DELETE');
-
-  interceptURL('GET', '/api/v1/*', 'homePage');
+  interceptURL(
+    'DELETE',
+    '/api/v1/services/*/*?hardDelete=true&recursive=true',
+    'deleteService'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/*/name/*?fields=owner',
+    'serviceDetails'
+  );
 
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-
-  cy.get('.Toastify__toast-body')
-    .should('exist')
-    .should('be.visible')
-    .should('have.text', `${typeOfService} Service deleted successfully!`);
-  cy.url().should('eq', 'http://localhost:8585/my-data');
-  verifyResponseStatusCode('@homePage', 200);
+  verifyResponseStatusCode('@deleteService', 200);
+  cy.reload();
+  verifyResponseStatusCode('@serviceDetails', 404);
+  cy.contains(`instance for ${service_Name} not found`);
   //Checking if the service got deleted successfully
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
