@@ -35,6 +35,7 @@ import {
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
+import { replaceSpaceWith_ } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -105,13 +106,15 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const createIngestionPipeline = async (repeatFrequency: string) => {
+    const updatedName = replaceSpaceWith_(testSuite.name);
+
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
       },
-      name: `${testSuite.name}_${PipelineType.TestSuite}`,
+      name: `${updatedName}_${PipelineType.TestSuite}`,
       pipelineType: PipelineType.TestSuite,
       service: {
         id: testSuite.id || '',
