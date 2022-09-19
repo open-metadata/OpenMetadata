@@ -490,7 +490,9 @@ const PoliciesDetailPage = () => {
                         direction="vertical"
                         size={20}>
                         {policy.rules.map((rule) => (
-                          <Card key={rule.name || 'rule'}>
+                          <Card
+                            data-testid="rule-card"
+                            key={rule.name || 'rule'}>
                             <Space
                               align="baseline"
                               className="tw-w-full tw-justify-between tw-pb-5"

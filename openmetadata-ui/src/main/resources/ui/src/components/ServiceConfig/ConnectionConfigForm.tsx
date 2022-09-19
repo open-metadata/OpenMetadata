@@ -139,7 +139,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
         break;
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         connSch = getMlmodelConfig(serviceType as MlModelServiceType);
 
         break;

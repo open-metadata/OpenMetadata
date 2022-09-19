@@ -110,7 +110,10 @@ const PoliciesListPage = () => {
   ) : isEmpty(policies) ? (
     fetchErrorPlaceHolder()
   ) : (
-    <Row className="policies-list-container" gutter={[16, 16]}>
+    <Row
+      className="policies-list-container"
+      data-testid="policies-list-container"
+      gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
           <Tooltip

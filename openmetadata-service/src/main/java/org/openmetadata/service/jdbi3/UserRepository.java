@@ -46,8 +46,8 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams";
+  static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams,isEmailVerified";
   private final EntityReference organization;
 
   public UserRepository(CollectionDAO dao) {
@@ -133,6 +133,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
     user.setAuthenticationMechanism(
         fields.contains("authenticationMechanism") ? user.getAuthenticationMechanism() : null);
+    user.setIsEmailVerified(fields.contains("isEmailVerified") ? user.getIsEmailVerified() : null);
     return user.withInheritedRoles(fields.contains("roles") ? getInheritedRoles(user) : null);
   }
 
@@ -163,6 +164,10 @@ public class UserRepository extends EntityRepository<User> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.userAlreadyPartOfTeam(user.getName(), team.get().getDisplayName()));
     }
+  }
+
+  public boolean checkEmailAlreadyExists(String emailId) {
+    return daoCollection.userDAO().checkEmailExists(emailId) > 0;
   }
 
   private List<EntityReference> getOwns(User user) throws IOException {
@@ -275,6 +280,7 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
       recordChange("email", original.getEmail(), updated.getEmail());
+      recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
       updateAuthenticationMechanism(original, updated);
     }
 

@@ -145,7 +145,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   messaging: ServiceCategory.MESSAGING_SERVICES,
   dashboards: ServiceCategory.DASHBOARD_SERVICES,
   pipelines: ServiceCategory.PIPELINE_SERVICES,
-  mlModels: ServiceCategory.ML_MODAL_SERVICES,
+  mlModels: ServiceCategory.ML_MODEL_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {

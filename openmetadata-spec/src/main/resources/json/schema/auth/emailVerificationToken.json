@@ -1,0 +1,53 @@
+{
+  "$id": "https://open-metadata.org/schema/auth/emailVerificationToken.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EmailVerificationToken",
+  "description": "This schema defines Email Verification Token Schema.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.EmailVerificationToken",
+  "javaInterfaces": ["org.openmetadata.schema.TokenInterface"],
+  "definitions": {
+    "tokenType": {
+      "javaType": "org.openmetadata.schema.auth.TokenType",
+      "description": "Refresh Count",
+      "type": "string",
+      "enum": [
+        "REFRESH_TOKEN",
+        "EMAIL_VERIFICATION",
+        "PASSWORD_RESET"
+      ]
+    }
+  },
+  "properties": {
+    "token": {
+      "description": "Unique Refresh Token for user",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "userId": {
+      "description": " User this email Verification token is given to",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "tokenType": {
+      "description": "Token Type",
+      "$ref": "#/definitions/tokenType",
+      "default": "EMAIL_VERIFICATION"
+    },
+    "tokenStatus": {
+      "description": "Refresh Count",
+      "type": "string",
+      "enum": ["STATUS_PENDING", "STATUS_CONFIRMED"]
+    },
+    "expiryDate": {
+      "description": "Expiry Date-Time of the token",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": [
+    "token",
+    "user",
+    "tokenType",
+    "tokenStatus",
+    "expiryDate"
+  ],
+  "additionalProperties": false
+}

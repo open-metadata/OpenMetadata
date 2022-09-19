@@ -63,6 +63,18 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private boolean enforcePrincipalDomain;
 
+  public static final List<String> EXCLUDED_ENDPOINTS =
+      List.of(
+          "config",
+          "version",
+          "signup",
+          "registrationConfirmation",
+          "resendRegistrationToken",
+          "generatePasswordResetLink",
+          "password/reset",
+          "checkEmailInUse",
+          "login");
+
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
@@ -96,7 +108,7 @@ public class JwtFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    if (uriInfo.getPath().contains("config") || uriInfo.getPath().contains("version")) {
+    if (EXCLUDED_ENDPOINTS.stream().anyMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
       return;
     }
 
@@ -149,7 +161,7 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
-      throw new AuthenticationException("Invalid token");
+      throw new AuthenticationException("Invalid token", runtimeException);
     }
     return jwt;
   }
