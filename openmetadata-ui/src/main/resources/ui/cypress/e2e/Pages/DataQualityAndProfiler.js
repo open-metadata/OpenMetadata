@@ -162,11 +162,16 @@ describe('Data Quality and Profiler should work properly', () => {
     // wait for ingestion to run
     cy.clock();
     cy.wait(10000);
-
+    interceptURL(
+      'GET',
+      '/api/v1/testCase?fields=testCaseResult,testDefinition,testSuite&testSuiteId=*&limit=10',
+      'testCase'
+    );
     cy.get('[data-testid="view-service-button"]')
       .should('be.visible')
       .click({ force: true });
 
+    verifyResponseStatusCode('@testCase', 200);
     cy.contains(`${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`).should(
       'be.visible'
     );
