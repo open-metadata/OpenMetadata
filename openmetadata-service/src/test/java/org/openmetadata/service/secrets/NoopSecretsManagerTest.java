@@ -56,7 +56,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
-import org.openmetadata.schema.services.connections.mlModel.SklearnConnection;
+import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.fixtures.ConfigurationFixtures;

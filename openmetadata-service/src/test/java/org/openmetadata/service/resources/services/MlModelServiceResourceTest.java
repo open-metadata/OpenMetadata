@@ -30,7 +30,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceType;
 import org.openmetadata.schema.entity.services.MlModelService;
-import org.openmetadata.schema.services.connections.mlModel.MlflowConnection;
+import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;

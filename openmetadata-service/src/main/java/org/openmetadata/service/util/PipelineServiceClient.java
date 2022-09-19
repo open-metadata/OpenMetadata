@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.service.CatalogApplication;
+import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.PipelineServiceVersionException;
 
@@ -92,7 +92,7 @@ public abstract class PipelineServiceClient {
   }
 
   public static String getServerVersion() throws IOException {
-    InputStream fileInput = CatalogApplication.class.getResourceAsStream("/catalog/VERSION");
+    InputStream fileInput = OpenMetadataApplication.class.getResourceAsStream("/catalog/VERSION");
     Properties props = new Properties();
     props.load(fileInput);
     return props.getProperty("version", "unknown");

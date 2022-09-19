@@ -95,14 +95,14 @@ logger = profiler_logger()
 validation_enum_registry = enum_register()
 
 # Table Tests
-validation_enum_registry.add("TableRowCountToEqual")(table_row_count_to_equal)
-validation_enum_registry.add("TableRowCountToBeBetween")(table_row_count_to_be_between)
-validation_enum_registry.add("TableColumnCountToEqual")(table_column_count_to_equal)
-validation_enum_registry.add("TableColumnCountToBeBetween")(
+validation_enum_registry.add("tableRowCountToEqual")(table_row_count_to_equal)
+validation_enum_registry.add("tableRowCountToBeBetween")(table_row_count_to_be_between)
+validation_enum_registry.add("tableColumnCountToEqual")(table_column_count_to_equal)
+validation_enum_registry.add("tableColumnCountToBeBetween")(
     table_column_count_to_be_between
 )
-validation_enum_registry.add("TableColumnToMatchSet")(table_column_to_match_set)
-validation_enum_registry.add("TableColumnNameToExist")(table_column_name_to_exist)
+validation_enum_registry.add("tableColumnToMatchSet")(table_column_to_match_set)
+validation_enum_registry.add("tableColumnNameToExist")(table_column_name_to_exist)
 validation_enum_registry.add("tableCustomSQLQuery")(table_custom_sql_query)
 
 # # Column Tests
@@ -133,7 +133,7 @@ validation_enum_registry.add("columnValueStdDevToBeBetween")(
 
 # # Column Session Tests
 validation_enum_registry.add("columnValuesToBeNotInSet")(column_values_not_in_set)
-validation_enum_registry.add("ColumnValuesToBeInSet")(column_values_in_set)
+validation_enum_registry.add("columnValuesToBeInSet")(column_values_in_set)
 validation_enum_registry.add("columnValuesToMatchRegex")(column_values_to_match_regex)
 validation_enum_registry.add("columnValuesToNotMatchRegex")(
     column_values_to_not_match_regex

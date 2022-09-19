@@ -231,11 +231,20 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     context = create_source_context(topology)
 
     def __init__(self):
-        dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
-        self.dbt_catalog = dbt_details[0] if dbt_details else None
-        self.dbt_manifest = dbt_details[1] if dbt_details else None
-        self.dbt_run_results = dbt_details[2] if dbt_details else None
-        self.data_models = {}
+        if hasattr(self.source_config.dbtConfigSource, "dbtSecurityConfig"):
+            if self.source_config.dbtConfigSource.dbtSecurityConfig is None:
+                logger.info("dbtConfigSource is not configured")
+                self.dbt_catalog = None
+                self.dbt_manifest = None
+                self.dbt_run_results = None
+                self.data_models = {}
+        else:
+            dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
+            if dbt_details:
+                self.dbt_catalog = dbt_details[0] if len(dbt_details) == 3 else None
+                self.dbt_manifest = dbt_details[1] if len(dbt_details) == 3 else None
+                self.dbt_run_results = dbt_details[2] if len(dbt_details) == 3 else None
+                self.data_models = {}
 
     def prepare(self):
         self._parse_data_model()

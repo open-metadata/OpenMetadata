@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class Fernet {
   private static Fernet instance;
@@ -54,7 +54,7 @@ public class Fernet {
     return instance;
   }
 
-  public void setFernetKey(CatalogApplicationConfig config) {
+  public void setFernetKey(OpenMetadataApplicationConfig config) {
     FernetConfiguration fernetConfiguration = config.getFernetConfiguration();
     if (fernetConfiguration != null && !FERNET_NO_ENCRYPTION.equals(fernetConfiguration.getFernetKey())) {
       setFernetKey(fernetConfiguration.getFernetKey());

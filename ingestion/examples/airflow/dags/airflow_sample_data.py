@@ -39,7 +39,7 @@ source:
   serviceConnection:
     config:
       type: SampleData
-      sampleDataFolder: "./examples/sample_data"
+      sampleDataFolder: "/home/airflow/ingestion/examples/sample_data"
   sourceConfig: {}
 sink:
   type: metadata-rest

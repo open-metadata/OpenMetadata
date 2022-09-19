@@ -22,12 +22,16 @@ import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     DataType,
     Table,
+    TableProfile,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -190,6 +194,32 @@ class ProfilerTest(TestCase):
         )
 
         assert not profiler.column_results
+
+    def test__check_profile_and_handle(self):
+        """test _check_profile_and_handle returns as expected"""
+        profiler = Profiler(
+            Metrics.COUNT.value,
+            profiler_interface=self.sqa_profiler_interface,
+        )
+
+        profile = profiler._check_profile_and_handle(
+            CreateTableProfileRequest(
+                tableProfile=TableProfile(
+                    timestamp=datetime.now().timestamp(), columnCount=10
+                )
+            )
+        )
+
+        assert profile.tableProfile.columnCount == 10
+
+        with pytest.raises(Exception):
+            profiler._check_profile_and_handle(
+                CreateTableProfileRequest(
+                    tableProfile=TableProfile(
+                        timestamp=datetime.now().timestamp(), profileSample=100
+                    )
+                )
+            )
 
     @classmethod
     def tearDownClass(cls) -> None:

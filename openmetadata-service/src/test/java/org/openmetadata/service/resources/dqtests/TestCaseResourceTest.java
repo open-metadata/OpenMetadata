@@ -44,8 +44,8 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
@@ -351,7 +351,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   public static void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
+    WebTarget target = OpenMetadataApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
     TestUtils.put(target, data, CREATED, authHeaders);
   }
 
@@ -409,13 +409,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   public static void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult/" + timestamp);
+    WebTarget target = OpenMetadataApplicationTest.getResource("testCase/" + fqn + "/testCaseResult/" + timestamp);
     TestUtils.delete(target, authHeaders);
   }
 
   public static ResultList<TestCaseResult> getTestCaseResults(
       String fqn, Integer limit, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
+    WebTarget target = OpenMetadataApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
     target = limit != null ? target.queryParam("limit", limit) : target;
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
   }
@@ -423,7 +423,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   public static ResultList<TestCase> getTestCases(
       Integer limit, String fields, String link, Boolean includeAll, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase");
+    WebTarget target = OpenMetadataApplicationTest.getResource("testCase");
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     if (link != null) {
@@ -438,7 +438,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   public static ResultList<TestCase> getTestCases(
       Integer limit, String fields, TestSuite testSuite, Boolean includeAll, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase");
+    WebTarget target = OpenMetadataApplicationTest.getResource("testCase");
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     target = target.queryParam("testSuiteId", testSuite.getId());

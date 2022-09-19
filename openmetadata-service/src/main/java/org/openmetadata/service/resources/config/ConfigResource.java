@@ -25,7 +25,7 @@ import javax.ws.rs.core.MediaType;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.sandbox.SandboxConfiguration;
@@ -37,11 +37,11 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
-  private final CatalogApplicationConfig catalogApplicationConfig;
+  private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;
 
-  public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
-    this.catalogApplicationConfig = catalogApplicationConfig;
+  public ConfigResource(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+    this.openMetadataApplicationConfig = openMetadataApplicationConfig;
     this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
   }
 
@@ -62,8 +62,8 @@ public class ConfigResource {
       })
   public AuthenticationConfiguration getAuthConfig() {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
-    if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {
-      authenticationConfiguration = catalogApplicationConfig.getAuthenticationConfiguration();
+    if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
+      authenticationConfiguration = openMetadataApplicationConfig.getAuthenticationConfiguration();
     }
     return authenticationConfiguration;
   }
@@ -85,8 +85,8 @@ public class ConfigResource {
       })
   public AuthorizerConfiguration getAuthorizerConfig() {
     AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
-    if (catalogApplicationConfig.getAuthorizerConfiguration() != null) {
-      authorizerConfiguration = catalogApplicationConfig.getAuthorizerConfiguration();
+    if (openMetadataApplicationConfig.getAuthorizerConfiguration() != null) {
+      authorizerConfiguration = openMetadataApplicationConfig.getAuthorizerConfiguration();
     }
     return authorizerConfiguration;
   }
@@ -106,7 +106,7 @@ public class ConfigResource {
       })
   public SandboxConfiguration getSandboxMode() {
     SandboxConfiguration sandboxConfiguration = new SandboxConfiguration();
-    if (catalogApplicationConfig.isSandboxModeEnabled()) {
+    if (openMetadataApplicationConfig.isSandboxModeEnabled()) {
       sandboxConfiguration.setSandboxModeEnabled(true);
     }
     return sandboxConfiguration;
@@ -129,8 +129,8 @@ public class ConfigResource {
       })
   public SlackChatConfiguration getSlackChatConfiguration() {
     SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
-    if (catalogApplicationConfig.getSlackChatConfiguration() != null) {
-      slackChatConfiguration = catalogApplicationConfig.getSlackChatConfiguration();
+    if (openMetadataApplicationConfig.getSlackChatConfiguration() != null) {
+      slackChatConfiguration = openMetadataApplicationConfig.getSlackChatConfiguration();
     }
     return slackChatConfiguration;
   }
@@ -152,8 +152,9 @@ public class ConfigResource {
       })
   public AirflowConfigurationForAPI getAirflowConfig() {
     AirflowConfigurationForAPI airflowConfigurationForAPI = new AirflowConfigurationForAPI();
-    if (catalogApplicationConfig.getAirflowConfiguration() != null) {
-      airflowConfigurationForAPI.setApiEndpoint(catalogApplicationConfig.getAirflowConfiguration().getApiEndpoint());
+    if (openMetadataApplicationConfig.getAirflowConfiguration() != null) {
+      airflowConfigurationForAPI.setApiEndpoint(
+          openMetadataApplicationConfig.getAirflowConfiguration().getApiEndpoint());
     }
     return airflowConfigurationForAPI;
   }

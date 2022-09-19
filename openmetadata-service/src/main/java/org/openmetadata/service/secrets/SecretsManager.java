@@ -15,10 +15,11 @@ package org.openmetadata.service.secrets;
 
 import static java.util.Objects.isNull;
 
-import com.google.common.base.CaseFormat;
 import java.util.List;
+import java.util.Locale;
 import lombok.Getter;
 import org.openmetadata.api.configuration.airflow.AuthConfiguration;
+import org.openmetadata.api.configuration.airflow.SSLConfig;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -75,10 +76,26 @@ public abstract class SecretsManager {
     OpenMetadataServerConnection.AuthProvider authProvider =
         OpenMetadataServerConnection.AuthProvider.fromValue(airflowConfiguration.getAuthProvider());
     String openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
+    OpenMetadataServerConnection.VerifySSL verifySSL =
+        OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     return new OpenMetadataServerConnection()
         .withAuthProvider(authProvider)
         .withHostPort(openMetadataURL)
-        .withSecurityConfig(decryptAuthProviderConfig(authProvider, airflowConfiguration.getAuthConfig()));
+        .withSecurityConfig(decryptAuthProviderConfig(authProvider, airflowConfiguration.getAuthConfig()))
+        .withVerifySSL(verifySSL)
+        .withSslConfig(getAirflowSSLConfig(verifySSL, airflowConfiguration.getSslConfig()));
+  }
+
+  protected Object getAirflowSSLConfig(OpenMetadataServerConnection.VerifySSL verifySSL, SSLConfig sslConfig) {
+    switch (verifySSL) {
+      case NO_SSL:
+      case IGNORE:
+        return null;
+      case VALIDATE:
+        return sslConfig.getValidate();
+      default:
+        throw new IllegalArgumentException("OpenMetadata doesn't support SSL verification type " + verifySSL.value());
+    }
   }
 
   public abstract AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration);
@@ -116,7 +133,8 @@ public abstract class SecretsManager {
   }
 
   protected String extractConnectionPackageName(ServiceType serviceType) {
-    return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, serviceType.value());
+    // All package names must be lowercase per java naming convention
+    return serviceType.value().toLowerCase(Locale.ROOT);
   }
 
   public abstract Object storeTestConnectionObject(TestServiceConnection testServiceConnection);

@@ -21,7 +21,7 @@ import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.util.ParallelStreamUtil;
 
 @Slf4j
@@ -32,13 +32,13 @@ public class EventFilter implements ContainerResponseFilter {
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
-  public EventFilter(CatalogApplicationConfig config, Jdbi jdbi) {
+  public EventFilter(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
     registerEventHandlers(config, jdbi);
   }
 
-  private void registerEventHandlers(CatalogApplicationConfig config, Jdbi jdbi) {
+  private void registerEventHandlers(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     try {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());

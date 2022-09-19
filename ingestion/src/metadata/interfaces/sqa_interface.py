@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.api.models import TablePartitionConfig
@@ -88,6 +89,13 @@ class SQAInterface(InterfaceProtocol):
         self._thread_count = thread_count
         self.table_entity = table_entity
         self._create_ometa_obj(metadata_config)
+
+        self.processor_status = ProfilerProcessorStatus()
+        self.processor_status.entity = (
+            self.table_entity.fullyQualifiedName.__root__
+            if self.table_entity.fullyQualifiedName
+            else None
+        )
 
         # Allows SQA Interface to be used without OM server config
         self.table = table or self._convert_table_to_orm_object(sqa_metadata_obj)
@@ -279,6 +287,7 @@ class SQAInterface(InterfaceProtocol):
                 session=session,
                 column=column,
                 sample=sample,
+                processor_status=self.processor_status,
             )
 
             if column is not None:
@@ -435,6 +444,7 @@ def get_static_metrics(
     runner: QueryRunner,
     session: Session,
     column: Column,
+    processor_status: ProfilerProcessorStatus,
     *args,
     **kwargs,
 ) -> Dict[str, Union[str, int]]:
@@ -462,6 +472,7 @@ def get_static_metrics(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
+        processor_status.failure(f"{column.name}", "Static Metrics", f"{exc}")
 
 
 def get_query_metrics(
@@ -470,6 +481,7 @@ def get_query_metrics(
     session: Session,
     column: Column,
     sample,
+    processor_status: ProfilerProcessorStatus,
     *args,
     **kwargs,
 ) -> Optional[Dict[str, Union[str, int]]]:
@@ -501,6 +513,7 @@ def get_query_metrics(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
+        processor_status.failure(f"{column.name}", "Query Metrics", f"{exc}")
 
 
 def get_window_metrics(
@@ -508,6 +521,7 @@ def get_window_metrics(
     runner: QueryRunner,
     session: Session,
     column: Column,
+    processor_status: ProfilerProcessorStatus,
     *args,
     **kwargs,
 ) -> Dict[str, Union[str, int]]:
@@ -531,6 +545,7 @@ def get_window_metrics(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
+        processor_status.failure(f"{column.name}", "Window Metrics", f"{exc}")
 
 
 compute_metrics_registry = enum_register()

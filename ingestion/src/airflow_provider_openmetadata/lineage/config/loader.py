@@ -67,6 +67,7 @@ def parse_airflow_config(
             ),
             authProvider=auth_provider_type,
             securityConfig=security_config,
+            verifySSL=conf.get(LINEAGE, "verify_ssl", fallback="no-ssl"),
         ),
     )
 

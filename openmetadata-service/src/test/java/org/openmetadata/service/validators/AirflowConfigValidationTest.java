@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.api.configuration.airflow.AuthConfiguration;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.fixtures.ConfigurationFixtures;
 
 public class AirflowConfigValidationTest {
@@ -27,31 +27,33 @@ public class AirflowConfigValidationTest {
 
   @Test
   void testOpenMetadataGoogleClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.GOOGLE);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildGoogleAuthConfig());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.GOOGLE);
+    openMetadataApplicationConfig
+        .getAirflowConfiguration()
+        .setAuthConfig(ConfigurationFixtures.buildGoogleAuthConfig());
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getGoogle().setSecretKey("");
-    violations = new ArrayList<>(validator.validate(catalogApplicationConfig));
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getGoogle().setSecretKey("");
+    violations = new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals("\ngoogle SSO client config requires secretKey", violations.get(0).getMessage());
   }
 
   @Test
   void testOpenMetadataOktaClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.OKTA);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildOktaAuthConfig());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.OKTA);
+    openMetadataApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildOktaAuthConfig());
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setClientId("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setPrivateKey("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setEmail("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setOrgURL("");
-    violations = new ArrayList<>(validator.validate(catalogApplicationConfig));
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setClientId("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setPrivateKey("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setEmail("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getOkta().setOrgURL("");
+    violations = new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals(
         "\nokta SSO client config requires clientId\n"
@@ -63,16 +65,16 @@ public class AirflowConfigValidationTest {
 
   @Test
   void testOpenMetadataAuth0ClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.AUTH_0);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildAuth0Config());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.AUTH_0);
+    openMetadataApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildAuth0Config());
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getAuth0().setClientId("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getAuth0().setSecretKey("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getAuth0().setDomain("");
-    violations = new ArrayList<>(validator.validate(catalogApplicationConfig));
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getAuth0().setClientId("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getAuth0().setSecretKey("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getAuth0().setDomain("");
+    violations = new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals(
         "\nauth0 SSO client config requires clientId\n"
@@ -83,17 +85,17 @@ public class AirflowConfigValidationTest {
 
   @Test
   void testOpenMetadataAzureClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.AZURE);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildAzureAuthConfig());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.AZURE);
+    openMetadataApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildAzureAuthConfig());
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setClientId("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setClientSecret("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setAuthority("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setScopes(List.of());
-    violations = new ArrayList<>(validator.validate(catalogApplicationConfig));
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setClientId("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setClientSecret("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setAuthority("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getAzure().setScopes(List.of());
+    violations = new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals(
         "\nazure SSO client config requires clientId\n"
@@ -105,16 +107,18 @@ public class AirflowConfigValidationTest {
 
   @Test
   void testOpenMetadataCustomOIDCClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildCustomOIDCConfig());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC);
+    openMetadataApplicationConfig
+        .getAirflowConfiguration()
+        .setAuthConfig(ConfigurationFixtures.buildCustomOIDCConfig());
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setClientId("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setSecretKey("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setTokenEndpoint("");
-    violations = new ArrayList<>(validator.validate(catalogApplicationConfig));
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setClientId("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setSecretKey("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setTokenEndpoint("");
+    violations = new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals(
         "\ncustom-oidc SSO client config requires clientId\n"
@@ -125,16 +129,18 @@ public class AirflowConfigValidationTest {
 
   @Test
   void testOpenMetadataNoAuthClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(ConfigurationFixtures.buildCustomOIDCConfig());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC);
+    openMetadataApplicationConfig
+        .getAirflowConfiguration()
+        .setAuthConfig(ConfigurationFixtures.buildCustomOIDCConfig());
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setClientId("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setSecretKey("");
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setTokenEndpoint("");
-    violations = new ArrayList<>(validator.validate(catalogApplicationConfig));
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setClientId("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setSecretKey("");
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getCustomOidc().setTokenEndpoint("");
+    violations = new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals(
         "\ncustom-oidc SSO client config requires clientId\n"
@@ -145,37 +151,38 @@ public class AirflowConfigValidationTest {
 
   @Test
   void testOpenMetadataOpenmetadataClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.OPENMETADATA);
-    catalogApplicationConfig
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(
+            OpenMetadataServerConnection.AuthProvider.OPENMETADATA);
+    openMetadataApplicationConfig
         .getAirflowConfiguration()
         .setAuthConfig(ConfigurationFixtures.buildOpenmetadataAuthConfig());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
-    catalogApplicationConfig.getAirflowConfiguration().getAuthConfig().getOpenmetadata().setJwtToken("");
-    violations = new ArrayList<>(validator.validate(catalogApplicationConfig));
+    openMetadataApplicationConfig.getAirflowConfiguration().getAuthConfig().getOpenmetadata().setJwtToken("");
+    violations = new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals("\nopenmetadata SSO client config requires jwtToken", violations.get(0).getMessage());
   }
 
   @Test
   void testNoAuthClientConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.NO_AUTH);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(new AuthConfiguration());
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.NO_AUTH);
+    openMetadataApplicationConfig.getAirflowConfiguration().setAuthConfig(new AuthConfiguration());
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(0, violations.size());
   }
 
   @Test
   void testAuthClientConfiguredWithoutConfigValidation() {
-    CatalogApplicationConfig catalogApplicationConfig =
-        ConfigurationFixtures.buildCatalogApplicationConfig(OpenMetadataServerConnection.AuthProvider.GOOGLE);
-    catalogApplicationConfig.getAirflowConfiguration().setAuthConfig(null);
-    List<ConstraintViolation<CatalogApplicationConfig>> violations =
-        new ArrayList<>(validator.validate(catalogApplicationConfig));
+    OpenMetadataApplicationConfig openMetadataApplicationConfig =
+        ConfigurationFixtures.buildOpenMetadataApplicationConfig(OpenMetadataServerConnection.AuthProvider.GOOGLE);
+    openMetadataApplicationConfig.getAirflowConfiguration().setAuthConfig(null);
+    List<ConstraintViolation<OpenMetadataApplicationConfig>> violations =
+        new ArrayList<>(validator.validate(openMetadataApplicationConfig));
     assertEquals(1, violations.size());
     assertEquals("\ngoogle SSO client config requires authConfig section", violations.get(0).getMessage());
   }

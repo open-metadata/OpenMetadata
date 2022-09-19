@@ -22,8 +22,8 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -107,7 +107,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public static ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testSuite");
+    WebTarget target = OpenMetadataApplicationTest.getResource("testSuite");
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);

@@ -43,6 +43,24 @@
       ],
       "default": "no-auth"
     },
+    "verifySSL": {
+      "description": "OpenMetadata Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ],
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "description": "OpenMetadata Client SSL configuration",
+      "oneOf": [
+        {
+          "$ref": "../../../../security/ssl/validateSSLClientConfig.json"
+        }
+      ]
+    },
     "securityConfig": {
       "mask": true,
       "description": "OpenMetadata Client security configuration.",
