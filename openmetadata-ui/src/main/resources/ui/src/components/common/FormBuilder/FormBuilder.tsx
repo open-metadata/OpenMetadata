@@ -12,10 +12,10 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import Form, { FormProps } from '@rjsf/core';
+import Form, { AjvError, FormProps } from '@rjsf/core';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getPipelineServiceHostIp } from '../../../axiosAPIs/ingestionPipelineAPI';
@@ -135,6 +135,15 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   };
 
+  const transformErrors = (errors: AjvError[]) =>
+    errors.map((error) => {
+      const fieldName = error.params.missingProperty;
+      const customMessage = `${startCase(fieldName)} is required`;
+      error.message = customMessage;
+
+      return error;
+    });
+
   return (
     <Form
       ArrayFieldTemplate={ArrayFieldTemplate}
@@ -147,6 +156,8 @@ const FormBuilder: FunctionComponent<Props> = ({
         oForm = form as Form<ConfigData>;
       }}
       schema={schema}
+      showErrorList={false}
+      transformErrors={transformErrors}
       uiSchema={uiSchema}
       onChange={(e) => {
         handleChange(e.formData);

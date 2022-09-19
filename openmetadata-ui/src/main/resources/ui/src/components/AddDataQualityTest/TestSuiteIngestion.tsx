@@ -35,7 +35,10 @@ import {
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
-import { replaceSpaceWith_ } from '../../utils/CommonUtils';
+import {
+  getIngestionFrequency,
+  replaceSpaceWith_,
+} from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -224,7 +227,10 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           />
         ) : (
           <TestSuiteScheduler
-            initialData={ingestionPipeline?.airflowConfig.scheduleInterval}
+            initialData={
+              ingestionPipeline?.airflowConfig.scheduleInterval ||
+              getIngestionFrequency(PipelineType.TestSuite)
+            }
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />
