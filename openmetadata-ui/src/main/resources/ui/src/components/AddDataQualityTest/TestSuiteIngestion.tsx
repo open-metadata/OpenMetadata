@@ -103,13 +103,15 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const createIngestionPipeline = async (repeatFrequency: string) => {
+    const updatedName = testSuite.name.replace(/ /g, '_');
+
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
       },
-      name: `${testSuite.name}_${PipelineType.TestSuite}`,
+      name: `${updatedName}_${PipelineType.TestSuite}`,
       pipelineType: PipelineType.TestSuite,
       service: {
         id: testSuite.id || '',
