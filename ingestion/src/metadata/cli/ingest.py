@@ -16,12 +16,10 @@ import pathlib
 import sys
 import traceback
 
-import click
-from pydantic import ValidationError
-
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 from metadata.utils.logger import cli_logger
+from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
 
@@ -34,17 +32,18 @@ def run_ingest(config_path: str) -> None:
     """
 
     config_file = pathlib.Path(config_path)
-    config_dict = load_config_file(config_file)
-
+    config_dict = None
     try:
+        config_dict = load_config_file(config_file)
         workflow = Workflow.create(config_dict)
         logger.debug(f"Using config: {workflow.config}")
-    except ValidationError as err:
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        click.echo(err, err=True)
+        print_init_error(exc, config_dict, WorkflowType.ingest)
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    ret = workflow.print_status()
+    workflow.print_status()
+    ret = workflow.result_status()
     sys.exit(ret)

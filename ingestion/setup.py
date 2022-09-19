@@ -171,6 +171,7 @@ setup(
     python_requires=">=3.7",
     options={"build_exe": build_options},
     package_dir={"": "src"},
+    package_data={"metadata.examples": ["workflows/*.yaml"]},
     zip_safe=False,
     dependency_links=[],
     project_urls={

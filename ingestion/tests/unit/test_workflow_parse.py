@@ -52,6 +52,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
     PipelineServiceMetadataPipeline,
 )
 from metadata.ingestion.api.parser import (
+    ParsingConfigurationError,
     get_connection_class,
     get_service_type,
     get_source_config_class,
@@ -190,10 +191,13 @@ class TestWorkflowParse(TestCase):
             },
         }
 
-        with self.assertRaises(ValidationError) as err:
+        with self.assertRaises(ParsingConfigurationError) as err:
             parse_workflow_config_gracefully(config_dict)
 
-        self.assertIn("1 validation error for MssqlConnection", str(err.exception))
+        self.assertIn(
+            "We encountered an error parsing the configuration of your MssqlConnection.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'random'",
+            str(err.exception),
+        )
 
     def test_parsing_ko_mssql_source_config(self):
         """
@@ -227,11 +231,11 @@ class TestWorkflowParse(TestCase):
             },
         }
 
-        with self.assertRaises(ValidationError) as err:
+        with self.assertRaises(ParsingConfigurationError) as err:
             parse_workflow_config_gracefully(config_dict)
 
         self.assertIn(
-            "1 validation error for DatabaseServiceMetadataPipeline\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            "We encountered an error parsing the configuration of your DatabaseServiceMetadataPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'random'",
             str(err.exception),
         )
 
@@ -267,11 +271,11 @@ class TestWorkflowParse(TestCase):
             },
         }
 
-        with self.assertRaises(ValidationError) as err:
+        with self.assertRaises(ParsingConfigurationError) as err:
             parse_workflow_config_gracefully(config_dict)
 
         self.assertIn(
-            "1 validation error for GlueConnection\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            "We encountered an error parsing the configuration of your GlueConnection.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'random'",
             str(err.exception),
         )
 
@@ -300,11 +304,11 @@ class TestWorkflowParse(TestCase):
             },
         }
 
-        with self.assertRaises(ValidationError) as err:
+        with self.assertRaises(ParsingConfigurationError) as err:
             parse_workflow_config_gracefully(config_dict)
 
         self.assertIn(
-            "1 validation error for PipelineServiceMetadataPipeline\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            "We encountered an error parsing the configuration of your PipelineServiceMetadataPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'random'",
             str(err.exception),
         )
 

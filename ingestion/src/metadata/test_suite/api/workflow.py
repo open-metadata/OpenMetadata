@@ -20,7 +20,6 @@ from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
-import click
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
@@ -53,6 +52,7 @@ from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcesso
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.workflow_output_handler import print_test_suite_status
 
 logger: Logger = test_suite_logger()
 
@@ -426,26 +426,20 @@ class TestSuiteWorkflow:
                 logger.warning(f"Could not run test case {test_case.name}: {exc}")
                 self.status.failure(test_case.fullyQualifiedName.__root__)
 
-    def print_status(self) -> int:
+    def print_status(self) -> None:
         """
-        Runs click echo to print the
-        workflow results
+        Print the workflow results with click
         """
-        click.echo()
-        click.secho("Processor Status:", bold=True)
-        click.echo(self.status.as_string())
-        if hasattr(self, "sink"):
-            click.secho("Sink Status:", bold=True)
-            click.echo(self.sink.get_status().as_string())
-            click.echo()
+        print_test_suite_status(self)
 
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
         if self.status.failures or (
             hasattr(self, "sink") and self.sink.get_status().failures
         ):
-            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-
-        click.secho("Workflow finished successfully", fg="green", bold=True)
         return 0
 
     def raise_from_status(self, raise_warnings=False):
