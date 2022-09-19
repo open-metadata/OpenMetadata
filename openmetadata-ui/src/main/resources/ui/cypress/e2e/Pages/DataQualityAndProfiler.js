@@ -318,7 +318,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.contains('minLength: 4').scrollIntoView().should('exist');
   });
 
-  it.only('Delete Column Test Case should work properly', () => {
+  it('Delete Column Test Case should work properly', () => {
     cy.goToHomePage();
     searchEntity(TEAM_ENTITY);
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
