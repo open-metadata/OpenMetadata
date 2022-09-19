@@ -55,6 +55,7 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
+import { Bot } from '../generated/entity/bot';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
@@ -655,6 +656,7 @@ export const getEntityName = (
     | Role
     | GlossaryTerm
     | Webhook
+    | Bot
 ) => {
   return entity?.displayName || entity?.name || '';
 };
