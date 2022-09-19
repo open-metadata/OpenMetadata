@@ -134,6 +134,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         key: 'Tests',
         render: (_, record) => (
           <Link
+            data-testid={`${record.name}-test-count`}
             to={getProfilerDashboardWithFqnPath(
               ProfilerDashboardType.COLUMN,
               record.fullyQualifiedName || '',
@@ -181,6 +182,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               )}>
               <Button
                 className="flex-center"
+                data-testid={`add-test-${record.name}`}
                 disabled={!hasEditAccess}
                 icon={
                   <SVGIcons
