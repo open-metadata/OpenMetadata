@@ -127,6 +127,9 @@ export const testServiceCreationAndIngestion = (
 
   connectionInput();
 
+  // check for the ip-address widget
+  cy.get('[data-testid="ip-address"]').should("exist")
+
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();

@@ -150,6 +150,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       <FormBuilder
         cancelText={cancelText}
         formData={validConfig}
+        isAirflowAvailable={isAirflowAvailable}
         okText={okText}
         schema={connSch.schema}
         status={status}
