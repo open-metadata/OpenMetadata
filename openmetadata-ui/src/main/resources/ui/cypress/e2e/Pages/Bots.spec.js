@@ -52,8 +52,13 @@ describe('Bots Page should work properly', () => {
   });
 
   it('Create new Bot', () => {
+    cy.get('[data-testid="add-bot"]')
+      .should('exist')
+      .should('be.visible')
+      .as('addBotButton');
+    cy.wait(500);
     //Click on add bot button
-    cy.get('[data-testid="add-bot"]').should('be.visible').click();
+    cy.get('@addBotButton').click();
     //Enter email
     cy.get('[data-testid="email"]').should('exist').type(botEmail);
     //Enter display name
@@ -84,9 +89,7 @@ describe('Bots Page should work properly', () => {
       .clear()
       .type(updatedBotName);
     //Save the updated display name
-    interceptURL('PATCH', 'api/v1/users/*', 'updateDisplayName');
     cy.get('[data-testid="save-displayName"]').should('be.visible').click();
-    verifyResponseStatusCode('@updateDisplayName', 200);
     //Verify the display name is updated on bot details page
     cy.get('[data-testid="container"]').should('contain', updatedBotName);
     //Click on edit description button
