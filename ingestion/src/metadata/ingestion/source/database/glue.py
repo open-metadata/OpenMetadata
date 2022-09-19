@@ -63,6 +63,8 @@ class GlueSource(DatabaseServiceSource):
         self.status = SQLSourceStatus()
         self.connection = get_connection(self.service_connection)
         self.glue = self.connection.client
+        self.data_models = {}
+        self.dbt_tests = {}
 
         self.database_name = None
         self.next_db_token = None

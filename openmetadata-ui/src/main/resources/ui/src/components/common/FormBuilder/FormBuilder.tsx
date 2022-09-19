@@ -31,6 +31,7 @@ import Loader from '../../Loader/Loader';
 interface Props extends FormProps<ConfigData> {
   okText: string;
   cancelText: string;
+  isAirflowAvailable: boolean;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
@@ -48,6 +49,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   onSubmit,
   onTestConnection,
   uiSchema,
+  isAirflowAvailable,
   ...props
 }: Props) => {
   let oForm: Form<ConfigData> | null;
@@ -71,8 +73,10 @@ const FormBuilder: FunctionComponent<Props> = ({
   };
 
   useEffect(() => {
-    fetchHostIp();
-  }, []);
+    if (isAirflowAvailable) {
+      fetchHostIp();
+    }
+  }, [isAirflowAvailable]);
 
   const handleCancel = () => {
     setLocalFormData(formatFormDataForRender(formData));
@@ -131,18 +135,6 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   };
 
-  const getPipelineServiceHostIpForm = () => {
-    return (
-      <div className="tw-flex">
-        <SVGIcons alt="info-badge" icon={Icons.ARROW_RIGHT_PRIMARY} />
-        <span className="tw-ml-2">
-          OpenMetadata will connect to your resource from the IP {hostIp}. Make
-          sure to allow inbound traffic in your network security settings.
-        </span>
-      </div>
-    );
-  };
-
   const transformErrors = (errors: AjvError[]) =>
     errors.map((error) => {
       const fieldName = error.params.missingProperty;
@@ -178,9 +170,15 @@ const FormBuilder: FunctionComponent<Props> = ({
           No Connection Configs available.
         </div>
       )}
-      {!isEmpty(schema) && onTestConnection && (
-        <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
-          <div className="tw-self-center">{getPipelineServiceHostIpForm()}</div>
+      {!isEmpty(schema) && isAirflowAvailable && (
+        <div
+          className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
+          data-testid="ip-address">
+          <div className="tw-self-center">
+            OpenMetadata will connect to your resource from the IP {hostIp}.
+            Make sure to allow inbound traffic in your network security
+            settings.
+          </div>
         </div>
       )}
       {!isEmpty(schema) && onTestConnection && (

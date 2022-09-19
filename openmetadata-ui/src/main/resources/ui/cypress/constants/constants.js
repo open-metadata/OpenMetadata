@@ -13,6 +13,8 @@
 
 import { uuid } from '../common/common';
 
+const id = uuid();
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -81,6 +83,7 @@ export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
+export const TEAM_ENTITY = 'team_entity';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';
@@ -90,6 +93,25 @@ export const TEAMS = {
   Cloud_Infra: { name: 'Cloud_Infra', users: 15 },
   Customer_Support: { name: 'Customer_Support', users: 20 },
   Data_Platform: { name: 'Data_Platform', users: 16 },
+};
+
+export const NEW_TEST_SUITE = {
+  name: `mysql_matrix`,
+  description: 'mysql critical matrix',
+};
+
+export const NEW_TABLE_TEST_CASE = {
+  type: 'TableColumnNameToExist',
+  field: 'id',
+  description: 'New table test case for TableColumnNameToExist',
+};
+
+export const NEW_COLUMN_TEST_CASE = {
+  column: 'id',
+  type: 'columnValueLengthsToBeBetween',
+  min: 3,
+  max: 6,
+  description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
 export const NEW_TEAM = {
@@ -104,7 +126,7 @@ export const NEW_TEAM = {
     description: 'Service department',
   },
 };
-const id = uuid();
+
 export const NEW_USER = {
   email: `test_${id}@gmail.com`,
   display_name: `Test user ${id}`,

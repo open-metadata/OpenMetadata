@@ -202,6 +202,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         form.resetFields();
         onCancel();
       }}
+      okText="Submit"
       title={`Edit ${testCase?.name}`}
       visible={visible}
       onCancel={onCancel}
