@@ -108,7 +108,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -145,7 +145,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                "type": "text"
              },
              "deleted": {
-              "type": "boolean"
+              "type": "text"
              },
              "href": {
               "type": "text"
@@ -153,7 +153,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             }
            },
            "deleted": {
-              "type": "boolean"
+              "type": "text"
             },
             "followers": {
               "type": "keyword"
@@ -203,7 +203,14 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "suggest": {
-              "type": "completion"
+              "type": "completion",
+              "contexts": [
+                {
+                    "name": "deleted",
+                    "type": "category",
+                    "path": "deleted"
+                }
+             ]
             },
              "task_suggest": {
               "type": "completion"
