@@ -59,6 +59,8 @@ class SalesforceSource(DatabaseServiceSource):
         self.connection = get_connection(self.service_connection)
         self.client = self.connection.client
         self.table_constraints = None
+        self.data_models = {}
+        self.dbt_tests = {}
         self.database_source_state = set()
         super().__init__()
 
