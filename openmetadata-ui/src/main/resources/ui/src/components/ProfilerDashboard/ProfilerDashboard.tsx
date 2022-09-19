@@ -31,11 +31,8 @@ import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
-import {
-  Column,
-  Table,
-  TestCaseStatus,
-} from '../../generated/entity/data/table';
+import { Column, Table } from '../../generated/entity/data/table';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';

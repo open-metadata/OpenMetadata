@@ -14,7 +14,7 @@
 import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { ColumnProfilerConfig } from '../generated/entity/data/table';
-import { TestCaseStatus } from '../generated/tests/tableTest';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { JSON_TAB_SIZE } from './constants';
 
 export const excludedMetrics = [

@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { Fragment } from 'react';
+import React from 'react';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -34,9 +33,8 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { Column, DataType } from '../generated/entity/data/table';
-import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
-import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
@@ -271,7 +269,7 @@ export const makeRow = (column: Column) => {
 };
 
 export const makeData = (
-  columns: ModifiedTableColumn[] = []
+  columns: Column[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
   return columns.map((column) => ({
     ...makeRow(column),
@@ -355,51 +353,4 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
     default:
       return '';
   }
-};
-
-export const getTableTestsValue = (tableTestCase: TableTest[]) => {
-  const tableTestLength = tableTestCase.length;
-
-  const failingTests = tableTestCase.filter((test) =>
-    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Failed)
-  );
-  const passingTests = tableTestCase.filter((test) =>
-    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Success)
-  );
-
-  return (
-    <Fragment>
-      {tableTestLength ? (
-        <Fragment>
-          {failingTests.length ? (
-            <div className="tw-flex">
-              <p className="tw-mr-2">
-                <FontAwesomeIcon
-                  className="tw-text-status-failed"
-                  icon="times"
-                />
-              </p>
-              <p>{`${failingTests.length}/${tableTestLength} tests failing`}</p>
-            </div>
-          ) : (
-            <Fragment>
-              {passingTests.length ? (
-                <div className="tw-flex">
-                  <div className="tw-mr-2">
-                    <FontAwesomeIcon
-                      className="tw-text-status-success"
-                      icon="check-square"
-                    />
-                  </div>
-                  <>{`${passingTests.length} tests`}</>
-                </div>
-              ) : (
-                <>{`${tableTestLength} tests`}</>
-              )}
-            </Fragment>
-          )}
-        </Fragment>
-      ) : null}
-    </Fragment>
-  );
 };

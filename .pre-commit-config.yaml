@@ -20,7 +20,7 @@ repos:
     rev: v2.5.1
     hooks:
       - id: prettier
-        files: ^catalog-rest-service/src/main/resources/json/schema/
+        files: ^openmetadata-service/src/main/resources/json/schema/
   - repo: local
     hooks:
       - id: google-style-java

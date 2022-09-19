@@ -22,10 +22,7 @@ from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._struct import STRUCT
-from sqlalchemy_bigquery._types import (
-    _get_sqla_column_type,
-    _get_transitive_schema_fields,
-)
+from sqlalchemy_bigquery._types import _get_sqla_column_type
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
@@ -61,9 +58,8 @@ _types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
 
 def get_columns(bq_schema):
-    fields = _get_transitive_schema_fields(bq_schema)
     col_list = []
-    for field in fields:
+    for field in bq_schema:
         col_obj = {
             "name": field.name,
             "type": _get_sqla_column_type(field)
