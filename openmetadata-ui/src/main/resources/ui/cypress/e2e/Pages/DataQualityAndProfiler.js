@@ -22,7 +22,11 @@ const columnTestName = `${NEW_COLUMN_TEST_CASE.column}_${NEW_COLUMN_TEST_CASE.ty
 
 const goToProfilerTab = () => {
   // click on the 1st result and go to entity details page and follow the entity
-  interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
+  interceptURL(
+    'GET',
+    '//api/v1/tables/name/*?fields=columns,usageSummary,followers,joins,tags,owner,dataModel,profile,tests,tableConstraints,extension&include=all',
+    'getEntityDetails'
+  );
   cy.get('[data-testid="table-link"]')
     .first()
     .contains(TEAM_ENTITY, { matchCase: false })
