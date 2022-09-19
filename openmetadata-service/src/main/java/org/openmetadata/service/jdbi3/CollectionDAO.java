@@ -3110,33 +3110,33 @@ public interface CollectionDAO {
   }
 
   interface TokenDAO {
-    @SqlQuery("SELECT tokenType, json FROM token_details WHERE token = :token")
+    @SqlQuery("SELECT tokenType, json FROM user_tokens WHERE token = :token")
     @RegisterRowMapper(TokenRowMapper.class)
     TokenInterface findByToken(@Bind("token") String token) throws StatementException;
 
-    @SqlQuery("SELECT tokenType, json FROM token_details WHERE userId = :userId AND tokenType = :tokenType ")
+    @SqlQuery("SELECT tokenType, json FROM user_tokens WHERE userId = :userId AND tokenType = :tokenType ")
     @RegisterRowMapper(TokenRowMapper.class)
     List<TokenInterface> getAllUserTokenWithType(@Bind("userId") String userId, @Bind("tokenType") String tokenType)
         throws StatementException;
 
-    @ConnectionAwareSqlUpdate(value = "INSERT INTO token_details (json) VALUES (:json)", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(value = "INSERT INTO user_tokens (json) VALUES (:json)", connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO token_details (json) VALUES (:json :: jsonb)",
+        value = "INSERT INTO user_tokens (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE token_details SET json = :json WHERE token = :token",
+        value = "UPDATE user_tokens SET json = :json WHERE token = :token",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE token_details SET json = (:json :: jsonb) WHERE token = :token",
+        value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
         connectionType = POSTGRES)
     void update(@Bind("token") String token, @Bind("json") String json);
 
-    @SqlUpdate(value = "DELETE from token_details WHERE token = :token")
+    @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
 
-    @SqlUpdate(value = "DELETE from token_details WHERE userid = :userid AND tokenType = :tokenType")
+    @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);
   }
 }
