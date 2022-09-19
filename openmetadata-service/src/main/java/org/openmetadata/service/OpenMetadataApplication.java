@@ -87,11 +87,11 @@ import org.openmetadata.service.socket.WebSocketManager;
 
 /** Main catalog application */
 @Slf4j
-public class CatalogApplication extends Application<CatalogApplicationConfig> {
+public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
 
   @Override
-  public void run(CatalogApplicationConfig catalogConfig, Environment environment)
+  public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
@@ -182,14 +182,15 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   @SneakyThrows
   @Override
-  public void initialize(Bootstrap<CatalogApplicationConfig> bootstrap) {
+  public void initialize(Bootstrap<OpenMetadataApplicationConfig> bootstrap) {
     bootstrap.setConfigurationSourceProvider(
         new SubstitutingSourceProvider(
             bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
     bootstrap.addBundle(
         new SwaggerBundle<>() {
           @Override
-          protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(CatalogApplicationConfig catalogConfig) {
+          protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(
+              OpenMetadataApplicationConfig catalogConfig) {
             return catalogConfig.getSwaggerBundleConfig();
           }
         });
@@ -197,7 +198,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     bootstrap.addBundle(
         new HealthCheckBundle<>() {
           @Override
-          protected HealthConfiguration getHealthConfiguration(final CatalogApplicationConfig configuration) {
+          protected HealthConfiguration getHealthConfiguration(final OpenMetadataApplicationConfig configuration) {
             return configuration.getHealthConfiguration();
           }
         });
@@ -223,7 +224,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
-  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment)
+  private void registerAuthorizer(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
@@ -251,24 +252,24 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
-  private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
+  private void registerEventFilter(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
     }
   }
 
-  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig) {
+  private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     // register ElasticSearch Event publisher
-    if (catalogApplicationConfig.getElasticSearchConfiguration() != null) {
+    if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
       ElasticSearchEventPublisher elasticSearchEventPublisher =
-          new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
+          new ElasticSearchEventPublisher(openMetadataApplicationConfig.getElasticSearchConfiguration());
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
     }
   }
 
   private void registerResources(
-      CatalogApplicationConfig config, Environment environment, Jdbi jdbi, SecretsManager secretsManager) {
+      OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi, SecretsManager secretsManager) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, secretsManager);
     if (config.getElasticSearchConfiguration() != null) {
       environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
@@ -279,7 +280,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.getApplicationContext().setErrorHandler(eph);
   }
 
-  private void intializeWebsockets(CatalogApplicationConfig catalogConfig, Environment environment) {
+  private void intializeWebsockets(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
     if (catalogConfig.getAuthorizerConfiguration() != null) {
@@ -312,8 +313,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   }
 
   public static void main(String[] args) throws Exception {
-    CatalogApplication catalogApplication = new CatalogApplication();
-    catalogApplication.run(args);
+    OpenMetadataApplication OpenMetadataApplication = new OpenMetadataApplication();
+    OpenMetadataApplication.run(args);
   }
 
   public static class ManagedShutdown implements Managed {

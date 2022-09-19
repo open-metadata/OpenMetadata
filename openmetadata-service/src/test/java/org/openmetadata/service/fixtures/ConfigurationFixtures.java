@@ -13,23 +13,23 @@ import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.migration.MigrationConfiguration;
 
 public class ConfigurationFixtures {
 
-  public static CatalogApplicationConfig buildCatalogApplicationConfig(
+  public static OpenMetadataApplicationConfig buildOpenMetadataApplicationConfig(
       OpenMetadataServerConnection.AuthProvider authProvider) {
-    CatalogApplicationConfig catalogApplicationConfig = new CatalogApplicationConfig();
+    OpenMetadataApplicationConfig openMetadataApplicationConfig = new OpenMetadataApplicationConfig();
     DataSourceFactory dataSourceFactory = new DataSourceFactory();
     dataSourceFactory.setDriverClass("driverClass");
     dataSourceFactory.setUrl("http://localhost");
     MigrationConfiguration migrationConfiguration = new MigrationConfiguration();
     migrationConfiguration.setPath("/fake/path");
-    catalogApplicationConfig.setDataSourceFactory(dataSourceFactory);
-    catalogApplicationConfig.setMigrationConfiguration(migrationConfiguration);
-    catalogApplicationConfig.setAirflowConfiguration(buildAirflowConfig(authProvider));
-    return catalogApplicationConfig;
+    openMetadataApplicationConfig.setDataSourceFactory(dataSourceFactory);
+    openMetadataApplicationConfig.setMigrationConfiguration(migrationConfiguration);
+    openMetadataApplicationConfig.setAirflowConfiguration(buildAirflowConfig(authProvider));
+    return openMetadataApplicationConfig;
   }
 
   public static AirflowConfiguration buildAirflowConfig(OpenMetadataServerConnection.AuthProvider authProvider) {

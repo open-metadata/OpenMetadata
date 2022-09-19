@@ -23,7 +23,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
-import org.openmetadata.service.CatalogApplication;
+import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.resources.Collection;
 
 @Slf4j
@@ -37,7 +37,7 @@ public class VersionResource {
   static {
     OPEN_METADATA_SERVER_VERSION = new OpenMetadataServerVersion();
     try {
-      InputStream fileInput = CatalogApplication.class.getResourceAsStream("/catalog/VERSION");
+      InputStream fileInput = OpenMetadataApplication.class.getResourceAsStream("/catalog/VERSION");
       Properties props = new Properties();
       props.load(fileInput);
       OPEN_METADATA_SERVER_VERSION.setVersion(props.getProperty("version", "unknown"));

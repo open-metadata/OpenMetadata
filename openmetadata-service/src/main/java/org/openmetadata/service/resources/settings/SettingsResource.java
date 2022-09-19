@@ -47,7 +47,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.filter.EventFilter;
 import org.openmetadata.schema.filter.Filters;
 import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.service.CatalogApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.filter.FilterRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SettingsRepository;
@@ -70,7 +70,7 @@ public class SettingsResource {
   private List<EventFilter> bootStrappedFilters;
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(CatalogApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     initSettings();
   }
 
