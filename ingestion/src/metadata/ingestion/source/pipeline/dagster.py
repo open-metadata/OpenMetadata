@@ -11,10 +11,10 @@
 """
 Dagster source to extract metadata from OM UI
 """
-import json
 from collections.abc import Iterable
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, List, Optional
 
+from dagster_graphql import DagsterGraphQLClient
 from sqlalchemy import text
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import Session
@@ -51,7 +51,7 @@ logger = ingestion_logger()
 
 STATUS_MAP = {
     "success": StatusType.Successful.value,
-    "failed": StatusType.Failed.value,
+    "failure": StatusType.Failed.value,
     "queued": StatusType.Pending.value,
 }
 
@@ -96,9 +96,55 @@ class DagsterSource(PipelineServiceSource):
         return self._session
 
     def get_run_list(self):
+        host_port = self.service_connection.hostPort
+        char_to_replace = {"https://": "", "http://": ""}
+        for key, value in char_to_replace.items():
+            host_port = host_port.replace(key, value)
 
-        run_list = self.session.execute("select * from runs")
-        return run_list
+        host, port = host_port.split(":")
+        try:
+            client = DagsterGraphQLClient(hostname=host, port_number=int(port))
+            result = client._execute(
+                """
+            query AssetNodeQuery {
+            assetNodes {
+                __typename
+                ... on AssetNode {
+                    id
+                    jobNames
+                    groupName
+                    graphName
+                    opName
+                    opNames
+                    jobs{
+                        id
+                        name
+                        description
+                        runs{
+                            id
+                            runId
+                            status
+                            stats{
+                                    ... on RunStatsSnapshot {
+                                            startTime
+                                            endTime
+                                            stepsFailed
+                                        }
+                                }
+                    
+                        }
+                    }
+                
+                
+                    }
+                }
+            }
+        """
+            )
+        except ConnectionError:
+            return False
+
+        return result["assetNodes"]
 
     def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
         """
@@ -106,22 +152,17 @@ class DagsterSource(PipelineServiceSource):
         :param serialized_dag: SerializedDAG from dagster metadata DB
         :return: Create Pipeline request with tasks
         """
+        task_list: List[Task] = []
 
-        task_list = [{"name": row["pipeline_name"]} for row in self.get_run_list()]
-        run_body = json.loads(pipeline_details["run_body"])
-        location_name = run_body["external_pipeline_origin"][
-            "external_repository_origin"
-        ]["repository_location_origin"]["location_name"]
-        repository_name = run_body["external_pipeline_origin"][
-            "external_repository_origin"
-        ]["repository_name"]
-        pipeline_url = f"/workspace/{repository_name}@{location_name}/jobs/{pipeline_details.pipeline_name}/"
+        for job in pipeline_details["jobs"]:
+            task = Task(
+                name=job["name"],
+            )
+            task_list.append(task)
+
         yield CreatePipelineRequest(
-            name=pipeline_details.pipeline_name,
-            description=pipeline_details.pipeline_name,
-            pipelineUrl=pipeline_url,
-            pipelineLocation=location_name,
-            startDate=pipeline_details.create_timestamp,
+            name=pipeline_details["opName"],
+            description=pipeline_details["opName"],
             tasks=task_list,
             service=EntityReference(
                 id=self.context.pipeline_service.id.__root__, type="pipelineService"
@@ -129,29 +170,32 @@ class DagsterSource(PipelineServiceSource):
         )
 
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
-        run_list = self.get_run_list()
-        for run in run_list:
-            log_link = f"{self.service_connection.hostPort}/instance/runs/{run.run_id}"
-            task_status = TaskStatus(
-                name=run["pipeline_name"],
-                executionStatus=STATUS_MAP.get(
-                    run["status"].lower(), StatusType.Pending.value
-                ),
-                startTime=datetime_to_ts(run[9]),
-                endTime=datetime_to_ts(run[10]),
-                logLink=log_link,
-            )
-            pipeline_status = PipelineStatus(
-                taskStatus=[task_status],
-                executionStatus=STATUS_MAP.get(
-                    run["status"].lower(), StatusType.Pending.value
-                ),
-                timestamp=run[10].timestamp(),
-            )
-            yield OMetaPipelineStatus(
-                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                pipeline_status=pipeline_status,
-            )
+        for job in pipeline_details["jobs"]:
+            for run in job["runs"]:
+                log_link = (
+                    f"{self.service_connection.hostPort}/instance/runs/{run['runId']}"
+                )
+
+                task_status = TaskStatus(
+                    name=job["name"],
+                    executionStatus=STATUS_MAP.get(
+                        run["status"].lower(), StatusType.Pending.value
+                    ),
+                    startTime=round(run["stats"]["startTime"]),
+                    endTime=round(run["stats"]["endTime"]),
+                    logLink=log_link,
+                )
+                pipeline_status = PipelineStatus(
+                    taskStatus=[task_status],
+                    executionStatus=STATUS_MAP.get(
+                        run["status"].lower(), StatusType.Pending.value
+                    ),
+                    timestamp=round(run["stats"]["endTime"]),
+                )
+                yield OMetaPipelineStatus(
+                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                    pipeline_status=pipeline_status,
+                )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details
@@ -168,7 +212,7 @@ class DagsterSource(PipelineServiceSource):
 
     def get_pipelines_list(self) -> Dict:
 
-        results = self.engine.execute(text("SELECT * from runs"))
+        results = self.get_run_list()
         for result in results:
             yield result
 
@@ -176,4 +220,4 @@ class DagsterSource(PipelineServiceSource):
         """
         Get Pipeline Name
         """
-        return pipeline_details["pipeline_name"]
+        return pipeline_details["opName"]
