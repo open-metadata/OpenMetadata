@@ -9,7 +9,7 @@
                     "name": "table_column_count_equals",
                     "description": "test the number of column in table",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
-                    "testDefinitionName": "TableColumnCountToEqual",
+                    "testDefinitionName": "tableColumnCountToEqual",
                     "parameterValues": [
                         {
                             "name": "columnCount",
@@ -21,7 +21,7 @@
                     "name": "table_column_count_between",
                     "description": "test the number of column in table is between x and y",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
-                    "testDefinitionName": "TableColumnCountToBeBetween",
+                    "testDefinitionName": "tableColumnCountToBeBetween",
                     "parameterValues": [
                         {
                             "name": "minColValue",

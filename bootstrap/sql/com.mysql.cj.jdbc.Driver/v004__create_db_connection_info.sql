@@ -116,12 +116,3 @@ DELETE FROM policy_entity;
 DELETE FROM field_relationship WHERE fromType IN ('role', 'policy') OR toType IN ('role', 'policy');
 DELETE FROM entity_relationship WHERE fromEntity IN ('role', 'policy') OR toEntity IN ('role', 'policy');
 ALTER TABLE role_entity DROP COLUMN defaultRole;
-
-CREATE TABLE IF NOT EXISTS user_tokens (
-    token VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.token') STORED NOT NULL,
-    userId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.userId') STORED NOT NULL,
-    tokenType VARCHAR(50) GENERATED ALWAYS AS (json ->> '$.tokenType') STORED NOT NULL,
-    json JSON NOT NULL,
-    expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate') NOT NULL,
-    PRIMARY KEY (token)
-);
