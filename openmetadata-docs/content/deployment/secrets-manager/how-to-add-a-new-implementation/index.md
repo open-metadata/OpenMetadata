@@ -18,7 +18,7 @@ Create a new entry in the JSON schema definition of the Secrets Manager provider
   "title": "Secrets Manager Provider",
   "description": "OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager providers as the ones configured on the OpenMetadata server.",
   "type": "string",
-  "javaType": "org.openmetadata.service.services.connections.metadata.SecretsManagerProvider",
+  "javaType": "org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider",
   "enum": ["noop", "aws", "aws-ssm", "awesome-sm"],
   "additionalProperties": false
 }

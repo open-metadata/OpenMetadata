@@ -9,7 +9,7 @@ This document describes OpenMetadata Server Configuration
 
 ```yaml
 swagger:
-  resourcePackage: org.openmetadata.service.resources
+  resourcePackage: org.openmetadata.catalog.resources
 
 
 server:
@@ -26,7 +26,7 @@ server:
 logging:
   level: INFO
   loggers:
-    org.openmetadata.service.common: DEBUG
+    org.openmetadata.catalog.common: DEBUG
     io.swagger: ERROR
   appenders:
     - type: file
@@ -54,7 +54,7 @@ elasticsearch:
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
-    - "org.openmetadata.service.events.AuditEventHandler"
+    - "org.openmetadata.catalog.events.AuditEventHandler"
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -136,7 +136,7 @@ ElasticSearch running on the local machine. Please make sure you update it with 
 ```yaml
 eventHandlerConfiguration:
   eventHandlerClassNames:
-    - "org.openmetadata.service.events.AuditEventHandler"
+    - "org.openmetadata.catalog.events.AuditEventHandler"
 ```
 
 EventHandler configuration is optional. It will update the AuditLog in MySQL DB and also ElasticSearch indexes whenever
