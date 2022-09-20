@@ -163,15 +163,21 @@ export const searchFormattedUsersAndTeams = (
     Promise.allSettled(promises)
       .then(
         ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
-          const users =
-            resUsers.status === SettledStatus.FULFILLED
-              ? formatUsersResponse(resUsers.value.data.hits.hits)
-              : [];
-          const teams =
-            resTeams.status === SettledStatus.FULFILLED
-              ? formatTeamsResponse(resTeams.value.data.hits.hits)
-              : [];
-          resolve({ users, teams });
+          const userCheck = resUsers.status === SettledStatus.FULFILLED;
+          const teamCheck = resTeams.status === SettledStatus.FULFILLED;
+          const users = userCheck
+            ? formatUsersResponse(resUsers.value.data.hits.hits)
+            : [];
+          const teams = teamCheck
+            ? formatTeamsResponse(resTeams.value.data.hits.hits)
+            : [];
+          const usersTotal = userCheck
+            ? resUsers.value.data.hits.total.value
+            : 0;
+          const teamsTotal = teamCheck
+            ? resTeams.value.data.hits.total.value
+            : 0;
+          resolve({ users, teams, usersTotal, teamsTotal });
         }
       )
       .catch((err: AxiosError) => {
