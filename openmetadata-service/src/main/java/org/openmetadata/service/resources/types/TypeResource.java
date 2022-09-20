@@ -55,8 +55,8 @@ import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.CatalogApplicationConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
@@ -89,7 +89,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(CatalogApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
     List<Type> types = JsonUtils.getTypes();
@@ -373,15 +373,16 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "addProperty",
-      summary = "Add a Property to an entity",
+      summary = "Add or update a Property to an entity",
       tags = "metadata",
       description =
-          "Add a property to an entity type. Properties can only be added to entity type and not property type.",
+          "Add or update a property to an entity type. "
+              + "Properties can only be added to entity type and not property type.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "type for instance {id} is not found")
       })
-  public Response addProperty(
+  public Response addOrUpdateProperty(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,

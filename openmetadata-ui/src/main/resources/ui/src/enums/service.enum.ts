@@ -16,7 +16,7 @@ export enum ServiceCategory {
   MESSAGING_SERVICES = 'messagingServices',
   DASHBOARD_SERVICES = 'dashboardServices',
   PIPELINE_SERVICES = 'pipelineServices',
-  ML_MODAL_SERVICES = 'mlmodelServices',
+  ML_MODEL_SERVICES = 'mlmodelServices',
 }
 
 export enum IngestionType {

@@ -4152,4 +4152,391 @@ export const mockSearchData = {
     },
     request: {},
   },
+  resAggDatabase: {
+    data: {
+      took: 1,
+      timed_out: false,
+      _shards: {
+        total: 1,
+        successful: 1,
+        skipped: 0,
+        failed: 0,
+      },
+      hits: {
+        total: {
+          value: 18,
+          relation: 'eq',
+        },
+        max_score: null,
+        hits: [],
+      },
+      aggregations: {
+        'sterms#EntityType': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'table',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#ServiceCategory': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'databaseService',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Tier': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [],
+        },
+        'sterms#ServiceName': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'sample_data',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Database': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'ecommerce_db',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Service': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'BigQuery',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Tags': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'PII.None',
+              doc_count: 1,
+            },
+          ],
+        },
+        'sterms#DatabaseSchema': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'shopify',
+              doc_count: 18,
+            },
+          ],
+        },
+      },
+    },
+    status: 200,
+    statusText: 'OK',
+    headers: {
+      connection: 'close',
+      'content-encoding': 'gzip',
+      'content-type': 'application/json',
+      date: 'Thu, 15 Sep 2022 17:29:32 GMT',
+      'transfer-encoding': 'chunked',
+      vary: 'Accept-Encoding',
+      'x-powered-by': 'Express',
+    },
+    config: {
+      transitional: {
+        silentJSONParsing: true,
+        forcedJSONParsing: true,
+        clarifyTimeoutError: false,
+      },
+      transformRequest: [null],
+      transformResponse: [null],
+      timeout: 0,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+      },
+      baseURL: '/api/v1',
+      method: 'get',
+      url: '/search/query?q=*&from=0&size=0&sort_field=updatedAt&sort_order=desc&index=table_search_index',
+    },
+    request: {},
+  },
+  resAggDatabaseSchema: {
+    data: {
+      took: 1,
+      timed_out: false,
+      _shards: {
+        total: 1,
+        successful: 1,
+        skipped: 0,
+        failed: 0,
+      },
+      hits: {
+        total: {
+          value: 18,
+          relation: 'eq',
+        },
+        max_score: null,
+        hits: [],
+      },
+      aggregations: {
+        'sterms#EntityType': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'table',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#ServiceCategory': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'databaseService',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Tier': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [],
+        },
+        'sterms#ServiceName': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'sample_data',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Database': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'ecommerce_db',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Service': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'BigQuery',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Tags': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'PII.None',
+              doc_count: 1,
+            },
+          ],
+        },
+        'sterms#DatabaseSchema': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'shopify',
+              doc_count: 18,
+            },
+          ],
+        },
+      },
+    },
+    status: 200,
+    statusText: 'OK',
+    headers: {
+      connection: 'close',
+      'content-encoding': 'gzip',
+      'content-type': 'application/json',
+      date: 'Thu, 15 Sep 2022 17:29:32 GMT',
+      'transfer-encoding': 'chunked',
+      vary: 'Accept-Encoding',
+      'x-powered-by': 'Express',
+    },
+    config: {
+      transitional: {
+        silentJSONParsing: true,
+        forcedJSONParsing: true,
+        clarifyTimeoutError: false,
+      },
+      transformRequest: [null],
+      transformResponse: [null],
+      timeout: 0,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+      },
+      baseURL: '/api/v1',
+      method: 'get',
+      url: '/search/query?q=*&from=0&size=0&sort_field=updatedAt&sort_order=desc&index=table_search_index',
+    },
+    request: {},
+  },
+  resAggServiceName: {
+    data: {
+      took: 1,
+      timed_out: false,
+      _shards: {
+        total: 1,
+        successful: 1,
+        skipped: 0,
+        failed: 0,
+      },
+      hits: {
+        total: {
+          value: 18,
+          relation: 'eq',
+        },
+        max_score: null,
+        hits: [],
+      },
+      aggregations: {
+        'sterms#EntityType': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'table',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#ServiceCategory': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'databaseService',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Tier': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [],
+        },
+        'sterms#ServiceName': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'sample_data',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Database': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'ecommerce_db',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Service': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'BigQuery',
+              doc_count: 18,
+            },
+          ],
+        },
+        'sterms#Tags': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'PII.None',
+              doc_count: 1,
+            },
+          ],
+        },
+        'sterms#DatabaseSchema': {
+          doc_count_error_upper_bound: 0,
+          sum_other_doc_count: 0,
+          buckets: [
+            {
+              key: 'shopify',
+              doc_count: 18,
+            },
+          ],
+        },
+      },
+    },
+    status: 200,
+    statusText: 'OK',
+    headers: {
+      connection: 'close',
+      'content-encoding': 'gzip',
+      'content-type': 'application/json',
+      date: 'Thu, 15 Sep 2022 17:29:32 GMT',
+      'transfer-encoding': 'chunked',
+      vary: 'Accept-Encoding',
+      'x-powered-by': 'Express',
+    },
+    config: {
+      transitional: {
+        silentJSONParsing: true,
+        forcedJSONParsing: true,
+        clarifyTimeoutError: false,
+      },
+      transformRequest: [null],
+      transformResponse: [null],
+      timeout: 0,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+      },
+      baseURL: '/api/v1',
+      method: 'get',
+      url: '/search/query?q=*&from=0&size=0&sort_field=updatedAt&sort_order=desc&index=table_search_index',
+    },
+    request: {},
+  },
 };

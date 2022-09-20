@@ -40,8 +40,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateLocation;
 import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.locations.LocationResource.LocationList;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -106,7 +106,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   private List<EntityReference> getAssociatedEntity(Location location) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource(String.format("locations/association/%s", location.getId()));
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource(String.format("locations/association/%s", location.getId()));
     return (List<EntityReference>) TestUtils.get(target, List.class, ADMIN_AUTH_HEADERS);
   }
 

@@ -99,12 +99,12 @@ logging:
 
 database:
   # the name of the JDBC driver, h2 is used for testing
-  driverClass: com.mysql.cj.jdbc.Driver
+  driverClass: com.postgresql.Driver
   # the username and password
   user: test
   password:
   # the JDBC URL; the database is called washvalet
-  url: jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
+  url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
   path: "../bootstrap/sql"
@@ -169,6 +169,15 @@ airflowConfiguration:
   password: "admin"
   metadataApiEndpoint: "http://localhost:8585/api"
   authProvider: "no-auth"
+
+email:
+  enableSmtpServer : "false"
+  openMetadataUrl: ""
+  serverEndpoint: ""
+  serverPort: ""
+  username: ""
+  password: ""
+  transportationStrategy: "SMTP_TLS"
 
 slackChat:
   slackUrl: "http://localhost:8080"

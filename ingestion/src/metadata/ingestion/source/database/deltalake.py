@@ -80,6 +80,8 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
+        self.data_models = {}
+        self.dbt_tests = {}
 
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")

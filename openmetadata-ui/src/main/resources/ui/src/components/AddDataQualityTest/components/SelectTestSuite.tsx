@@ -118,7 +118,9 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
 
       {isNewTestSuite ? (
         <>
-          <Typography.Paragraph className="tw-text-base tw-mt-5">
+          <Typography.Paragraph
+            className="tw-text-base tw-mt-5"
+            data-testid="new-test-title">
             New Test Suite
           </Typography.Paragraph>
           <Form.Item
@@ -139,7 +141,10 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                 },
               },
             ]}>
-            <Input placeholder="Enter test suite name" />
+            <Input
+              data-testid="test-suite-name"
+              placeholder="Enter test suite name"
+            />
           </Form.Item>
           <Form.Item
             label="Description:"
@@ -168,6 +173,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
       ) : (
         <Row className="tw-mb-10" justify="center">
           <Button
+            data-testid="create-new-test-suite"
             icon={
               <SVGIcons
                 alt="plus"
@@ -184,7 +190,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
       <Form.Item noStyle>
         <Space className="tw-w-full tw-justify-end" size={16}>
           <Button onClick={handleCancelClick}>Cancel</Button>
-          <Button htmlType="submit" type="primary">
+          <Button data-testid="next-button" htmlType="submit" type="primary">
             Next
           </Button>
         </Space>

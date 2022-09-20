@@ -151,7 +151,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       url: mlModelDetail.service.name
         ? getServiceDetailsPath(
             mlModelDetail.service.name,
-            ServiceCategory.ML_MODAL_SERVICES
+            ServiceCategory.ML_MODEL_SERVICES
           )
         : '',
       imgSrc: mlModelDetail.serviceType

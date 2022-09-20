@@ -456,7 +456,28 @@
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-kafka</artifactId>
-      <version>1.8.0</version>
+      <version>${dropwizardkafka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>at.favre.lib</groupId>
+      <artifactId>bcrypt</artifactId>
+      <version>${bcrypt.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.simplejavamail</groupId>
+      <artifactId>simple-java-mail</artifactId>
+      <version>${simplejavamail.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.passay</groupId>
+      <artifactId>passay</artifactId>
+      <version>${passay.version}</version>
+    </dependency>
+    <!--Template engine-->
+    <dependency>
+      <groupId>org.freemarker</groupId>
+      <artifactId>freemarker</artifactId>
+      <version>${freemarker.version}</version>
     </dependency>
   </dependencies>
 

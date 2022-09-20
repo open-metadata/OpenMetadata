@@ -20,7 +20,6 @@ import traceback
 from copy import deepcopy
 from typing import Iterable, List, Optional
 
-import click
 from pydantic import ValidationError
 from sqlalchemy import MetaData
 
@@ -68,6 +67,7 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
+from metadata.utils.workflow_output_handler import print_profiler_status
 
 logger = profiler_logger()
 
@@ -451,38 +451,24 @@ class ProfilerWorkflow:
                     f"Unexpected exception executing in database [{database}]: {exc}"
                 )
 
-    def print_status(self) -> int:
+    def print_status(self) -> None:
         """
-        Runs click echo to print the
-        workflow results
+        Print the workflow results with click
         """
-        click.echo()
-        click.secho("Source Status:", bold=True)
-        click.echo(self.source_status.as_string())
-        click.secho("Processor Status:", bold=True)
-        click.echo(self.status.as_string())
-        if hasattr(self, "sink"):
-            click.secho("Sink Status:", bold=True)
-            click.echo(self.sink.get_status().as_string())
-            click.echo()
+        print_profiler_status(self)
 
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
         if (
             self.source_status.failures
             or self.status.failures
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
-            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-        if (
-            self.source_status.warnings
-            or self.status.failures
-            or (hasattr(self, "sink") and self.sink.get_status().warnings)
-        ):
-            click.secho("Workflow finished with warnings", fg="yellow", bold=True)
+        else:
             return 0
-
-        click.secho("Workflow finished successfully", fg="green", bold=True)
-        return 0
 
     def raise_from_status(self, raise_warnings=False):
         """

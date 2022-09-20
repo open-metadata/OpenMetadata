@@ -123,8 +123,8 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.CatalogApplicationTest;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
@@ -154,7 +154,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class EntityResourceTest<T extends EntityInterface, K extends CreateEntity>
-    extends CatalogApplicationTest {
+    extends OpenMetadataApplicationTest {
   private static final Map<String, EntityResourceTest<? extends EntityInterface, ? extends CreateEntity>>
       ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
   private final String entityType;
@@ -316,6 +316,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions(test);
     new TestCaseResourceTest().setupTestCase(test);
+    new TypeResourceTest().setupTypes();
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
@@ -1261,7 +1262,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // PUT valid custom field intA to the entity type
     TypeResourceTest typeResourceTest = new TypeResourceTest();
-    INT_TYPE = typeResourceTest.getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
     Type entityType = typeResourceTest.getEntityByName(this.entityType, "customProperties", ADMIN_AUTH_HEADERS);
     CustomProperty fieldA =
         new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
@@ -1269,7 +1269,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     final UUID id = entityType.getId();
 
     // PATCH valid custom field stringB
-    STRING_TYPE = typeResourceTest.getEntityByName("string", "", ADMIN_AUTH_HEADERS);
     CustomProperty fieldB =
         new CustomProperty()
             .withName("stringB")
@@ -1677,7 +1676,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return updated;
   }
 
-  private void validateEntityHistory(
+  protected void validateEntityHistory(
       UUID id, UpdateType updateType, ChangeDescription expectedChangeDescription, Map<String, String> authHeaders)
       throws IOException {
     // GET ../entity/{id}/versions to list the all the versions of an entity
@@ -1696,7 +1695,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  private void validateLatestVersion(
+  protected void validateLatestVersion(
       EntityInterface entityInterface,
       UpdateType updateType,
       ChangeDescription expectedChangeDescription,
