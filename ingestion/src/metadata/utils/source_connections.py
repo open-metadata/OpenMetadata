@@ -12,6 +12,7 @@
 """
 Hosts the singledispatch to build source URLs
 """
+import os
 from functools import singledispatch
 from urllib.parse import quote_plus
 
@@ -359,6 +360,7 @@ def _(connection: BigQueryConnection):
     if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
         project_id = connection.credentials.gcsConfig.projectId
     if project_id:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = connection.credentials.gcsConfig.projectId
         return f"{connection.scheme.value}://{project_id}"
     return f"{connection.scheme.value}://"
 
