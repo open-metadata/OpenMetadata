@@ -127,8 +127,7 @@ describe('Entity Details Page', () => {
     cy.get(`[data-testid="${value.entity}-tab"]`).should('be.visible').click();
     cy.get(`[data-testid="${value.entity}-tab"]`)
       .should('be.visible')
-      .should('have.class', 'active')
-      .click();
+      .should('have.class', 'active');
 
     interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
 
