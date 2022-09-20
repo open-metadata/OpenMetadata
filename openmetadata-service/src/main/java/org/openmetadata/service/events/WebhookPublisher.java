@@ -92,6 +92,7 @@ public class WebhookPublisher extends AbstractEventPublisher {
 
   public synchronized void updateWebhook(Webhook updatedWebhook) {
     currentBackoffTime = BACKOFF_NORMAL;
+    webhook.setDescription(updatedWebhook.getDescription());
     webhook.setTimeout(updatedWebhook.getTimeout());
     webhook.setBatchSize(updatedWebhook.getBatchSize());
     webhook.setEndpoint(updatedWebhook.getEndpoint());
