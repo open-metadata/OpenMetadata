@@ -20,8 +20,8 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.authentication.clientId | string | `Empty String` |
 | global.authentication.callbackUrl | string | `Empty String` |
 | global.authentication.jwtPrincipalClaims | list | `[email,preferred_username,sub]` |
-| global.authorizer.className | string | `org.openmetadata.service.security.NoopAuthorizer` |
-| global.authorizer.containerRequestFilter | string | `org.openmetadata.service.security.NoopFilter` |
+| global.authorizer.className | string | `org.openmetadata.catalog.security.NoopAuthorizer` |
+| global.authorizer.containerRequestFilter | string | `org.openmetadata.catalog.security.NoopFilter` |
 | global.authorizer.enforcePrincipalDomain | bool | `false` |
 | global.authorizer.enableSecureSocketConnection | bool | `false` |
 | global.authorizer.initialAdmins | list | `[admin]` |
