@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        database: [mysql, postgresql]
         job: [0, 1]
     environment: cypress
     steps:
@@ -55,7 +56,7 @@ jobs:
       - name: Start Server and Ingest Sample Data
         env:
           INGESTION_DEPENDENCY: "all"
-        run: ./docker/run_local_docker.sh
+        run: ./docker/run_local_docker.sh -d ${{ matrix.database }}
         timeout-minutes: 30
 
       - name: Run Cypress Tests
@@ -66,6 +67,7 @@ jobs:
           parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
+          group: Tests with database ${{ matrix.database }}
           browser: chrome
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
