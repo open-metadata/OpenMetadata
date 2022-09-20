@@ -558,6 +558,7 @@ declare module 'Models' {
 
   export interface EditorContentRef {
     getEditorContent: () => string;
+    clearEditorContent: () => void;
   }
 
   // Feed interfaces and types
