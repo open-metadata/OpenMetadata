@@ -38,6 +38,7 @@ import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -56,6 +57,7 @@ const BotListV1 = ({
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
+  const [searchedData, setSearchedData] = useState<Bot[]>([]);
 
   const createPermission = checkPermission(
     Operation.Create,
@@ -77,11 +79,12 @@ const BotListV1 = ({
       setLoading(true);
       const { data, paging } = await getBots({
         after,
-        limit: PAGE_SIZE_MEDIUM,
+        limit: 100,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       setPaging(paging);
       setBotUsers(data);
+      setSearchedData(data);
       if (!showDeleted && isEmpty(data)) {
         setHandleErrorPlaceholder(true);
       } else {
@@ -173,9 +176,24 @@ const BotListV1 = ({
     fetchBots();
   }, [selectedUser]);
 
+  const handleSearch = (text: string) => {
+    if (text) {
+      const matchedData = botUsers.filter(
+        (bot) =>
+          bot.name.includes(text) ||
+          bot.displayName?.includes(text) ||
+          bot.description?.includes(text)
+      );
+      setSearchedData(matchedData);
+    } else {
+      setSearchedData(botUsers);
+    }
+  };
+
   // Fetch initial bot
   useEffect(() => {
     setBotUsers([]);
+    setSearchedData([]);
     fetchBots(showDeleted);
   }, [showDeleted]);
 
@@ -218,9 +236,16 @@ const BotListV1 = ({
     </Row>
   ) : (
     <Row gutter={[16, 16]}>
-      <Col flex={1} />
-      <Col>
-        <Space size={16}>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder="Search for bots..."
+          typingInterval={500}
+          onSearch={handleSearch}
+        />
+      </Col>
+      <Col span={16}>
+        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}
@@ -247,7 +272,7 @@ const BotListV1 = ({
           <Col span={24}>
             <Table
               columns={columns}
-              dataSource={botUsers}
+              dataSource={searchedData}
               loading={{
                 spinning: loading,
                 indicator: <Loader size="small" />,
