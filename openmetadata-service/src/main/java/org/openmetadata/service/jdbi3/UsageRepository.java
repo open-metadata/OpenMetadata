@@ -134,8 +134,12 @@ public class UsageRepository {
     // Insert usage record
     insertToUsageRepository(method, entityId, entityType, usage);
     Table updated = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
-    dao.usageDAO().insertOrUpdateCount(usage.getDate(), table.getDatabaseSchema().getId().toString(), Entity.DATABASE_SCHEMA, usage.getCount());
-    dao.usageDAO().insertOrUpdateCount(usage.getDate(), table.getDatabase().getId().toString(), Entity.DATABASE, usage.getCount());
+    dao.usageDAO()
+        .insertOrUpdateCount(
+            usage.getDate(), table.getDatabaseSchema().getId().toString(), Entity.DATABASE_SCHEMA, usage.getCount());
+    dao.usageDAO()
+        .insertOrUpdateCount(
+            usage.getDate(), table.getDatabase().getId().toString(), Entity.DATABASE, usage.getCount());
     dao.usageDAO().computePercentile(entityType, usage.getDate());
 
     ChangeDescription change =
