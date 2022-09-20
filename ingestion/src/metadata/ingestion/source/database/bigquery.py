@@ -245,3 +245,4 @@ class BigquerySource(CommonDbSourceService):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
+        os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
