@@ -65,7 +65,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -102,7 +102,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -113,13 +113,20 @@
         "type": "text"
       },
       "deleted": {
-        "type": "boolean"
+        "type": "text"
       },
       "entityType": {
         "type": "keyword"
       },
       "suggest": {
-        "type": "completion"
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       }
     }
   }

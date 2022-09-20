@@ -389,7 +389,10 @@ class ElasticsearchSink(Sink[Entity]):
         service_suggest.append({"input": [table.service.name], "weight": 5})
         database_suggest.append({"input": [database_entity.name.__root__], "weight": 5})
         schema_suggest.append(
-            {"input": [database_schema_entity.name.__root__], "weight": 5}
+            {
+                "input": [database_schema_entity.name.__root__],
+                "weight": 5,
+            }
         )
         self._parse_columns(
             table.columns, None, column_names, column_descriptions, tags

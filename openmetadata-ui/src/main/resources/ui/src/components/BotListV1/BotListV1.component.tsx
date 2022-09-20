@@ -30,6 +30,7 @@ import { Bot } from '../../generated/entity/bot';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { getEntityName } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -102,11 +103,14 @@ const BotListV1 = ({
         title: 'Name',
         dataIndex: 'displayName',
         key: 'displayName',
-        render: (name, record) => (
+        render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
-            to={getBotsPath(record.fullyQualifiedName || record.name)}>
-            {name}
+            data-testid={`bot-link-${getEntityName(record?.botUser)}`}
+            to={getBotsPath(
+              record?.botUser?.fullyQualifiedName || record?.botUser?.name || ''
+            )}>
+            {getEntityName(record?.botUser)}
           </Link>
         ),
       },
@@ -115,10 +119,12 @@ const BotListV1 = ({
         dataIndex: 'description',
         key: 'description',
         render: (_, record) =>
-          record?.description ? (
-            <RichTextEditorPreviewer markdown={record?.description || ''} />
+          record?.botUser?.description ? (
+            <RichTextEditorPreviewer
+              markdown={record?.botUser?.description || ''}
+            />
           ) : (
-            'No Description'
+            <span data-testid="no-description">No Description</span>
           ),
       },
       {
@@ -132,6 +138,7 @@ const BotListV1 = ({
               placement="bottom"
               title={deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
               <Button
+                data-testid={`bot-delete-${getEntityName(record?.botUser)}`}
                 disabled={!deletePermission}
                 icon={
                   <SVGIcons
@@ -194,6 +201,7 @@ const BotListV1 = ({
                 title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
                 <Button
                   ghost
+                  data-testid="add-bot"
                   disabled={!createPermission}
                   type="primary"
                   onClick={handleAddBotClick}>
@@ -225,6 +233,7 @@ const BotListV1 = ({
           <Tooltip
             title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
             <Button
+              data-testid="add-bot"
               disabled={!createPermission}
               type="primary"
               onClick={handleAddBotClick}>

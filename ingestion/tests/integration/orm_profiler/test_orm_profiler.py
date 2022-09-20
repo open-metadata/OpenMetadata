@@ -19,7 +19,6 @@ No sample data is required beforehand
 from copy import deepcopy
 from unittest import TestCase
 
-import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
@@ -183,7 +182,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        status = profiler_workflow.print_status()
+        status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
         assert status == 0

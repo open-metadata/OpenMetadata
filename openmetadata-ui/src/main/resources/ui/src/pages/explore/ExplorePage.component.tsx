@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { get, isEmpty } from 'lodash';
-import {
-  Bucket,
-  FilterObject,
-  SearchDataFunctionType,
-  SearchResponse,
-} from 'Models';
+import { isEmpty } from 'lodash';
+import { Bucket, FilterObject } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -26,24 +20,19 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
-  ExploreSearchData,
   TabCounts,
   UrlParams,
 } from '../../components/Explore/explore.interface';
-import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
+import { getExplorePathWithSearch } from '../../constants/constants';
 import {
   emptyValue,
-  getCurrentIndex,
   getCurrentTab,
   getEntityTypeByIndex,
   getInitialFilter,
   getQueryParam,
   getSearchFilter,
-  INITIAL_FROM,
-  INITIAL_SORT_ORDER,
   INITIAL_TAB_COUNTS,
   tabsInfo,
-  ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import jsonData from '../../jsons/en';
@@ -62,11 +51,11 @@ const ExplorePage: FunctionComponent = () => {
     () => getQueryParam(getSearchFilter(location.search)),
     [location.search]
   );
-  const [error, setError] = useState<string>('');
+
   const { searchQuery, tab } = useParams<UrlParams>();
+
   const [searchText, setSearchText] = useState<string>(searchQuery || '');
   const [tabCounts, setTabCounts] = useState<TabCounts>(INITIAL_TAB_COUNTS);
-  const [searchResult, setSearchResult] = useState<ExploreSearchData>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
     tabsInfo[getCurrentTab(tab) - 1].sortField
@@ -137,49 +126,6 @@ const ExplorePage: FunctionComponent = () => {
     fetchEntityCount(SearchIndex.MLMODEL);
   };
 
-  const fetchData = (value: SearchDataFunctionType[]) => {
-    const promiseValue = value.map((d) => {
-      return searchData(
-        d.queryString,
-        d.from,
-        d.size,
-        d.filters,
-        d.sortField,
-        d.sortOrder,
-        d.searchIndex,
-        showDeleted
-      );
-    });
-
-    Promise.all(promiseValue)
-      .then(
-        ([
-          resSearchResults,
-          resAggServiceType,
-          resAggTier,
-          resAggTag,
-          resAggDatabase,
-          resAggDatabaseSchema,
-          resAggServiceName,
-        ]: Array<SearchResponse>) => {
-          setError('');
-          setSearchResult({
-            resSearchResults,
-            resAggServiceType,
-            resAggTier,
-            resAggTag,
-            resAggDatabase,
-            resAggDatabaseSchema,
-            resAggServiceName,
-          });
-        }
-      )
-      .catch((err: AxiosError) => {
-        const errMsg = get(err, 'response.data.responseMessage', '');
-        setError(errMsg);
-      });
-  };
-
   useEffect(() => {
     fetchCounts();
   }, [searchText, showDeleted, initialFilter]);
@@ -188,55 +134,10 @@ const ExplorePage: FunctionComponent = () => {
     AppState.updateExplorePageTab(tab);
   }, [tab]);
 
-  useEffect(() => {
-    setSearchResult(undefined);
-
-    fetchData([
-      {
-        queryString: searchText,
-        from: INITIAL_FROM,
-        size: PAGE_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-      {
-        queryString: searchText,
-        from: INITIAL_FROM,
-        size: ZERO_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-      {
-        queryString: searchText,
-        from: INITIAL_FROM,
-        size: ZERO_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-      {
-        queryString: searchText,
-        from: INITIAL_FROM,
-        size: ZERO_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-    ]);
-  }, []);
-
   return (
     <PageContainerV1>
       <Explore
-        error={error}
         fetchCount={fetchCounts}
-        fetchData={fetchData}
         handleFilterChange={handleFilterChange}
         handlePathChange={handlePathChange}
         handleSearchText={handleSearchText}
@@ -245,7 +146,6 @@ const ExplorePage: FunctionComponent = () => {
         isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
         searchFilter={searchFilter}
         searchQuery={searchQuery}
-        searchResult={searchResult}
         searchText={searchText}
         showDeleted={showDeleted}
         sortValue={initialSortField}
