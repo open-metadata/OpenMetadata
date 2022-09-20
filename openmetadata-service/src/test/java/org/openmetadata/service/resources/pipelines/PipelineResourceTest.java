@@ -294,7 +294,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     verifyPipelineStatus(putResponse.getPipelineStatus(), pipelineStatus);
 
     ResultList<PipelineStatus> pipelineStatues =
-        getPipelineStatues(pipeline.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+        getPipelineStatues(
+            pipeline.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2022-01-15"),
+            TestUtils.dateToTimestamp("2022-01-16"),
+            ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus), 1);
 
     // Validate that a new GET will come with the proper status
@@ -311,7 +315,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     putResponse = putPipelineStatusData(pipeline.getFullyQualifiedName(), newPipelineStatus, ADMIN_AUTH_HEADERS);
     // Validate put response
     verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus);
-    pipelineStatues = getPipelineStatues(pipeline.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    pipelineStatues =
+        getPipelineStatues(
+            pipeline.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2022-01-15"),
+            TestUtils.dateToTimestamp("2022-01-16"),
+            ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
     // Replace pipeline status for a date
@@ -323,13 +332,16 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     putResponse = putPipelineStatusData(pipeline.getFullyQualifiedName(), newPipelineStatus1, ADMIN_AUTH_HEADERS);
     // Validate put response
     verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus1);
-    pipelineStatues = getPipelineStatues(pipeline.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    pipelineStatues =
+        getPipelineStatues(
+            pipeline.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2022-01-15"),
+            TestUtils.dateToTimestamp("2022-01-16"),
+            ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus1), 2);
 
     String dateStr = "2021-09-";
     List<PipelineStatus> pipelineStatusList = new ArrayList<>();
-    pipelineStatusList.add(pipelineStatus);
-    pipelineStatusList.add(newPipelineStatus1);
     for (int i = 11; i <= 20; i++) {
       pipelineStatus =
           new PipelineStatus()
@@ -340,8 +352,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       pipelineStatusList.add(pipelineStatus);
     }
     pipelineStatues =
-        getPipelineStatues(pipeline.getFullyQualifiedName(), pipelineStatusList.size(), ADMIN_AUTH_HEADERS);
-    verifyPipelineStatuses(pipelineStatues, pipelineStatusList, 12);
+        getPipelineStatues(
+            pipeline.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-11"),
+            TestUtils.dateToTimestamp("2021-09-20"),
+            ADMIN_AUTH_HEADERS);
+    verifyPipelineStatuses(pipelineStatues, pipelineStatusList, 10);
 
     // create another table and add profiles
     Pipeline pipeline1 =
@@ -359,13 +375,21 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       pipeline1StatusList.add(pipelineStatus);
     }
     pipelineStatues =
-        getPipelineStatues(pipeline1.getFullyQualifiedName(), pipelineStatusList.size(), ADMIN_AUTH_HEADERS);
+        getPipelineStatues(
+            pipeline1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, pipeline1StatusList, 5);
     deletePipelineStatus(
         pipeline1.getFullyQualifiedName(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
     pipeline1StatusList.remove(0);
     pipelineStatues =
-        getPipelineStatues(pipeline1.getFullyQualifiedName(), pipelineStatusList.size(), ADMIN_AUTH_HEADERS);
+        getPipelineStatues(
+            pipeline1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, pipeline1StatusList, 4);
   }
 
@@ -556,9 +580,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   public static ResultList<PipelineStatus> getPipelineStatues(
-      String fqn, Integer limit, Map<String, String> authHeaders) throws HttpResponseException {
+      String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("pipelines/" + fqn + "/status");
-    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
   }
 

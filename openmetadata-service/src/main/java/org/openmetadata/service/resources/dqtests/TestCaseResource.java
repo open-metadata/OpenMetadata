@@ -465,7 +465,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public ResultList<TestCaseResult> listTestCaseResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Parameter(
               description = "Filter testCase results after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -475,34 +475,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "Filter testCase results before the given end timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number of testCase results returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of testCase results before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of testCase results after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-
     ListFilter filter =
         new ListFilter(Include.ALL)
             .addQueryParam("entityFQN", fqn)
             .addQueryParam("extension", TestCaseRepository.TESTCASE_RESULT_EXTENSION);
 
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getTestCaseResults(filter, before, after, limitParam);
+    return dao.getTestCaseResults(fqn, startTs, endTs);
   }
 
   @DELETE
