@@ -201,11 +201,11 @@ public class DefaultAuthorizer implements Authorizer {
     EntityRepository<Bot> botRepository = Entity.getEntityRepository(Entity.BOT);
     try {
       RestUtil.PutResponse<Bot> addedBot = botRepository.createOrUpdate(null, bot);
-      LOG.debug("Added user entry: {}", addedBot);
+      LOG.debug("Added bot entry: {}", addedBot);
     } catch (Exception exception) {
-      // In HA set up the other server may have already added the user.
+      // In HA set up the other server may have already added the bot.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("User entry: {} already exists.", bot);
+      LOG.debug("Bot entry: {} already exists.", bot);
     }
   }
 
