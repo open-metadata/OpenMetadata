@@ -200,18 +200,23 @@ describe('Teams flow should work properly', () => {
       .type(TEAM_DETAILS.updatedname);
 
     interceptURL('PATCH', 'api/v1/teams/*', 'saveTeamName');
-    interceptURL('GET', '/api/v1/users*', 'updatedTeam');
+    interceptURL(
+      'GET',
+      `api/v1/users?fields=teams,roles&team=${TEAM_DETAILS.name}&limit=15`,
+      'getTeam'
+    );
     //Save the updated display name
     cy.get('[data-testid="saveAssociatedTag"]')
       .should('exist')
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@saveTeamName', 200);
+
     //Validate the updated display name
-    cy.get('[data-testid="header"]')
-      .find('.ant-typography')
-      .should('contain', TEAM_DETAILS.updatedname);
-    verifyResponseStatusCode('@updatedTeam', 200);
+    cy.get('[data-testid="team-heading"]').then(($el) => {
+      cy.wrap($el).should('have.text', TEAM_DETAILS.updatedname);
+    });
+    verifyResponseStatusCode('@saveTeamName', 200);
+    verifyResponseStatusCode('@getTeam', 200);
 
     //Click on edit description button
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
