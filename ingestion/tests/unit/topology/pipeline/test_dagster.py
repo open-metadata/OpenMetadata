@@ -51,9 +51,9 @@ mock_dagster_config = {
                 "type": "Dagster",
                 "hostPort": "http://localhost:3000",
                 "dbConnection": {
-                    "username": "dagster_user",
-                    "password": "dagter_pass",
-                    "databaseSchema": "dagster_db",
+                    "username": "user",
+                    "password": "password",
+                    "databaseSchema": "database_db",
                     "hostPort": "localhost:3306",
                 },
             }
@@ -70,8 +70,7 @@ mock_dagster_config = {
 }
 
 
-EXPECTED_DAGSTER_DETAILS = mock_data[6]["pipeline_code_origin"]
-
+EXPECTED_DAGSTER_DETAILS = mock_data["assetNodes"]
 MOCK_CONNECTION_URI_PATH = "/workspace/__repository__do_it_all_with_default_config@cereal.py/jobs/do_it_all_with_default_config/"
 MOCK_LOG_URL = (
     "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
@@ -179,8 +178,7 @@ class DagsterUnitTest(TestCase):
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
 
     def test_pipeline_name(self):
-
         assert (
             self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
-            == mock_data[6]["pipeline_code_origin"]["pipeline_name"]
+            == mock_data["assetNodes"]["opName"]
         )
