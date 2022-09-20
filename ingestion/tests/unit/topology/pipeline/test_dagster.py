@@ -71,6 +71,38 @@ mock_dagster_config = {
 
 
 EXPECTED_DAGSTER_DETAILS = mock_data["assetNodes"]
+
+EXPECTED_CREATED_PIPELINES = [
+    CreatePipelineRequest(
+        name="cereals",
+        displayName=None,
+        description="cereals",
+        pipelineUrl=None,
+        concurrency=None,
+        pipelineLocation=None,
+        startDate=None,
+        tasks=[
+            Task(
+                name="__ASSET_JOB",
+                displayName=None,
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=None,
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            )
+        ],
+        tags=None,
+        owner=None,
+        service=EntityReference(
+            id="86ff3c40-7c51-4ff5-9727-738cead28d9a", type="pipelineService"
+        ),
+    ),
+]
 MOCK_CONNECTION_URI_PATH = "/workspace/__repository__do_it_all_with_default_config@cereal.py/jobs/do_it_all_with_default_config/"
 MOCK_LOG_URL = (
     "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
@@ -111,25 +143,6 @@ EXPECTED_PIPELINE_STATUS = [
         ),
     ),
 ]
-
-
-EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
-    name="a6ebb16c-505f-446d-8642-171c3320ccef",
-    displayName="do_it_all_with_default_configs",
-    description="do_it_all_with_default_config",
-    pipelineUrl=MOCK_CONNECTION_URI_PATH,
-    tasks=[
-        Task(
-            name="do_it_all_with_default_config",
-            displayName="",
-            description="",
-            taskUrl="",
-        )
-    ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
-)
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
@@ -182,3 +195,12 @@ class DagsterUnitTest(TestCase):
             self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
             == mock_data["assetNodes"]["opName"]
         )
+
+    def test_yield_pipeline(self):
+        result = self.dagster.yield_pipeline(mock_data["assetNodes"])
+        self.pipelines_list = []
+        for r in result:
+            self.pipelines_list.append(r)
+
+        for i in range(len(self.pipelines_list)):
+            assert self.pipelines_list[i] == EXPECTED_CREATED_PIPELINES[i]
