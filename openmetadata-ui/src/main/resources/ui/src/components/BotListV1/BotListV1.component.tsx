@@ -21,7 +21,7 @@ import { getBots } from '../../axiosAPIs/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -79,7 +79,7 @@ const BotListV1 = ({
       setLoading(true);
       const { data, paging } = await getBots({
         after,
-        limit: 100,
+        limit: PAGE_SIZE_LARGE,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       setPaging(paging);
@@ -282,10 +282,10 @@ const BotListV1 = ({
             />
           </Col>
           <Col span={24}>
-            {paging.total > PAGE_SIZE_MEDIUM && (
+            {paging.total > PAGE_SIZE_LARGE && (
               <NextPrevious
                 currentPage={currentPage}
-                pageSize={PAGE_SIZE_MEDIUM}
+                pageSize={PAGE_SIZE_LARGE}
                 paging={paging}
                 pagingHandler={handlePageChange}
                 totalCount={paging.total}
