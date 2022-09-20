@@ -4,7 +4,7 @@
   "title": "CustomMlModelConnection",
   "description": "Custom MlModel Service connection to build a source that is not supported by OpenMetadata yet.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.mlModel.CustomMlModelConnection",
+  "javaType": "org.openmetadata.schema.services.connections.mlmodel.CustomMlModelConnection",
   "definitions": {
     "customMlModelType": {
       "title": "Service Type",
