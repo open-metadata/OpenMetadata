@@ -1334,7 +1334,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (K U : updatedList) {
         // If an entry in the updated list is not in original list, then it is added during update
         K stored = origList.stream().filter(c -> typeMatch.test(c, U)).findAny().orElse(null);
-        if (stored == null) { // New column added
+        if (stored == null) { // New entry added
           addedItems.add(U);
         }
       }

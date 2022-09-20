@@ -373,15 +373,16 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "addProperty",
-      summary = "Add a Property to an entity",
+      summary = "Add or update a Property to an entity",
       tags = "metadata",
       description =
-          "Add a property to an entity type. Properties can only be added to entity type and not property type.",
+          "Add or update a property to an entity type. "
+              + "Properties can only be added to entity type and not property type.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "type for instance {id} is not found")
       })
-  public Response addProperty(
+  public Response addOrUpdateProperty(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,

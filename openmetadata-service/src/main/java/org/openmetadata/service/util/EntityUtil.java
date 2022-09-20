@@ -141,7 +141,9 @@ public final class EntityUtil {
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
   public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
-      (ref1, ref2) -> ref1.getName().equals(ref2.getName());
+      (ref1, ref2) ->
+          ref1.getName().equals(ref2.getName())
+              && entityReferenceMatch.test(ref1.getPropertyType(), ref2.getPropertyType());
 
   public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
@@ -384,6 +386,13 @@ public final class EntityUtil {
     return ruleField == null
         ? FullyQualifiedName.build("rules", rule.getName())
         : FullyQualifiedName.build("rules", rule.getName(), ruleField);
+  }
+
+  /** Return customer property field name of format "extension".propertyName */
+  public static String getCustomField(CustomProperty property, String propertyFieldName) {
+    return propertyFieldName == null
+        ? FullyQualifiedName.build("customProperties", property.getName())
+        : FullyQualifiedName.build("customProperties", property.getName(), propertyFieldName);
   }
 
   public static Double nextVersion(Double version) {
