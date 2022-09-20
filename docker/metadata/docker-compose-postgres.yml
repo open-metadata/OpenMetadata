@@ -142,7 +142,7 @@ services:
       DB_HOST: ${DB_HOST:-postgresql}
       DB_PORT: ${DB_PORT:-5432}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
-      AIRFLOW_DB_SCHEME: ${AIRFLOW_DB_SCHEME:-postgresql+psycopg2}
+      DB_SCHEME: ${DB_SCHEME:-postgresql+psycopg2}
       DB_USER: ${DB_USER:-airflow_user}
       DB_PASSWORD: ${DB_PASSWORD:-airflow_pass}
       DB_SCHEME: ${DB_SCHEME:-postgresql+psycopg2}
