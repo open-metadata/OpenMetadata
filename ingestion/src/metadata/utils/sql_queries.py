@@ -542,24 +542,3 @@ REDSHIFT_PARTITION_DETAILS = """
   from SVV_TABLE_INFO
   where diststyle not like 'AUTO%%'
 """
-
-TABLEAU_GRAPHQL_LINEAGE_QUERY = """
-{
-  workbooks {
-    id
-    luid
-    name
-    upstreamTables{
-      name
-      schema
-      upstreamDatabases{
-        name
-      }
-      referencedByQueries{
-        name
-        query
-      }
-    }
-  }
-}
-"""

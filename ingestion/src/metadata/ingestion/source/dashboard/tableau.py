@@ -11,10 +11,10 @@
 """
 Tableau source module
 """
+import json
 import traceback
 from typing import Iterable, List, Optional
 
-import json
 from requests.utils import urlparse
 from tableau_api_lib.utils.querying import (
     get_views_dataframe,
@@ -55,10 +55,30 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import TABLEAU_GRAPHQL_LINEAGE_QUERY
 
 logger = ingestion_logger()
 TABLEAU_TAG_CATEGORY = "TableauTags"
+
+TABLEAU_LINEAGE_GRAPHQL_QUERY = """
+{
+  workbooks {
+    id
+    luid
+    name
+    upstreamTables{
+      name
+      schema
+      upstreamDatabases{
+        name
+      }
+      referencedByQueries{
+        name
+        query
+      }
+    }
+  }
+}
+"""
 
 
 class TableauSource(DashboardServiceSource):
@@ -113,8 +133,12 @@ class TableauSource(DashboardServiceSource):
         self.owner = {user["id"]: user for user in owner}
 
         # Fetch Datasource information for lineage
-        graphql_query_result = self.client.metadata_graphql_query(query=TABLEAU_GRAPHQL_LINEAGE_QUERY)
-        self.workboook_datasources = json.loads(graphql_query_result.text)["data"].get("workbooks")
+        graphql_query_result = self.client.metadata_graphql_query(
+            query=TABLEAU_LINEAGE_GRAPHQL_QUERY
+        )
+        self.workboook_datasources = json.loads(graphql_query_result.text)["data"].get(
+            "workbooks"
+        )
 
         return super().prepare()
 
@@ -230,13 +254,16 @@ class TableauSource(DashboardServiceSource):
         """
         Get lineage between dashboard and data sources
         """
-        print("*"*100)
 
         dashboard_id = dashboard_details.get("id")
-        dashboard_name = dashboard_details.get("name")
-        data_source = next((data_source for data_source in self.workboook_datasources if data_source.get("luid") == dashboard_id), None)
-        print(data_source)
-        print(self.config.serviceName)
+        data_source = next(
+            (
+                data_source
+                for data_source in self.workboook_datasources
+                if data_source.get("luid") == dashboard_id
+            ),
+            None,
+        )
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -248,19 +275,23 @@ class TableauSource(DashboardServiceSource):
             fqn=to_fqn,
         )
 
-        try:   
+        try:
             upstream_tables = data_source.get("upstreamTables")
             for upstream_table in upstream_tables:
-                database_schema_table = upstream_table.get("name").split(".")
+                database_schema_table = fqn.split_table_name(upstream_table.get("name"))
+                database_name = database_schema_table.get("database")
+                schema_name = database_schema_table.get("database_schema")
+                table_name = database_schema_table.get("table")
                 from_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
                     service_name=db_service_name,
-                    schema_name=database_schema_table[1],
-                    table_name=database_schema_table[2],
-                    database_name=database_schema_table[0],
+                    schema_name=schema_name
+                    if schema_name
+                    else upstream_table.get("schema"),
+                    table_name=table_name,
+                    database_name=database_name,
                 )
-                print(from_fqn)
                 from_entity = self.metadata.get_by_name(
                     entity=Table,
                     fqn=from_fqn,
