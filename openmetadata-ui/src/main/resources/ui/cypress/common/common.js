@@ -654,7 +654,7 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   //Adding value for the custom property
 
   //Navigating through the created custom property for adding value
-  cy.get('tbody"]')
+  cy.get('tbody')
     .contains(propertyName)
     .scrollIntoView()
     .next('td')
