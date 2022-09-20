@@ -426,7 +426,7 @@ def get_table_metrics(
         dictionnary of results
     """
     try:
-        row = runner.select_first_from_table(*[metric().fn() for metric in metrics])
+        row = runner.select_first_from_sample(*[metric().fn() for metric in metrics])
 
         if row:
             return dict(row)
