@@ -13,3 +13,29 @@ CREATE TABLE IF NOT EXISTS user_tokens (
     expiryDate BIGINT GENERATED ALWAYS AS ((json ->> 'expiryDate')::bigint) STORED NOT NULL,
     PRIMARY KEY (token)
 );
+
+UPDATE dbservice_entity
+SET json = jsonb_set(
+        json,
+        '{connection,config,metastoreConnection}',
+        jsonb_build_object('metastoreHostPort', json#>'{connection,config,metastoreHostPort}')
+    )
+WHERE serviceType = 'DeltaLake'
+  AND json#>'{connection,config,metastoreHostPort}' is not null;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,metastoreHostPort}'
+WHERE serviceType = 'DeltaLake';
+
+UPDATE dbservice_entity
+SET json = jsonb_set(
+        json,
+        '{connection,config,metastoreConnection}',
+        jsonb_build_object('metastoreFilePath', json#>'{connection,config,metastoreFilePath}')
+    )
+WHERE serviceType = 'DeltaLake'
+  AND json#>'{connection,config,metastoreFilePath}' is not null;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,metastoreFilePath}'
+WHERE serviceType = 'DeltaLake';

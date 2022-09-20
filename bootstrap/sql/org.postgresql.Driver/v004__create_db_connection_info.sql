@@ -111,29 +111,3 @@ DELETE FROM policy_entity;
 DELETE FROM field_relationship WHERE fromType IN ('role', 'policy') OR toType IN ('role', 'policy');
 DELETE FROM entity_relationship WHERE fromEntity IN ('role', 'policy') OR toEntity IN ('role', 'policy');
 ALTER TABLE role_entity DROP COLUMN defaultRole;
-
-UPDATE dbservice_entity
-SET json = jsonb_set(
-        json,
-        '{connection,config,metastoreConnection}',
-        jsonb_build_object('metastoreHostPort', json#>'{connection,config,metastoreHostPort}')
-        )
-WHERE serviceType = 'DeltaLake'
-  AND json#>'{connection,config,metastoreHostPort}' is not null;
-
-UPDATE dbservice_entity
-SET json = json::jsonb #- '{connection,config,metastoreHostPort}'
-WHERE serviceType = 'DeltaLake';
-
-UPDATE dbservice_entity
-SET json = jsonb_set(
-        json,
-        '{connection,config,metastoreConnection}',
-        jsonb_build_object('metastoreFilePath', json#>'{connection,config,metastoreFilePath}')
-        )
-WHERE serviceType = 'DeltaLake'
-  AND json#>'{connection,config,metastoreFilePath}' is not null;
-
-UPDATE dbservice_entity
-SET json = json::jsonb #- '{connection,config,metastoreFilePath}'
-WHERE serviceType = 'DeltaLake';

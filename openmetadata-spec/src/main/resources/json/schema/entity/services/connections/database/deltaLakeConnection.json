@@ -14,6 +14,7 @@
     },
     "metastoreHostPortConnection": {
       "title": "Hive Metastore Service",
+      "type":"object",
       "properties": {
         "metastoreHostPort": {
           "title": "Hive Metastore Service",
@@ -25,6 +26,7 @@
     },
     "metastoreDbConnection": {
       "title": "Hive Metastore Database",
+      "type":"object",
       "properties": {
         "metastoreDb": {
           "title": "Hive Metastore Database",
@@ -36,6 +38,7 @@
     },
     "metastoreFilePathConnection": {
       "title": "Hive Metastore File Path",
+      "type":"object",
       "properties": {
         "metastoreFilePath": {
           "title": "Hive Metastore File Path",
