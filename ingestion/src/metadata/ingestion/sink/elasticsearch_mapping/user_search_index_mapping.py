@@ -78,7 +78,7 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -115,7 +115,7 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -152,7 +152,7 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -160,13 +160,20 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
              }
             },
             "deleted": {
-              "type": "boolean"
+              "type": "text"
             },
             "entityType": {
               "type": "keyword"
             },
             "suggest": {
-              "type": "completion"
+              "type": "completion",
+              "contexts": [
+                {
+                    "name": "deleted",
+                    "type": "category",
+                    "path": "deleted"
+                }
+             ]
             }
          }
       }

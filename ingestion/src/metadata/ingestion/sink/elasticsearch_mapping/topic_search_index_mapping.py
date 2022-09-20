@@ -104,7 +104,7 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -141,7 +141,7 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -149,7 +149,7 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
              }
             },
             "deleted": {
-              "type": "boolean"
+              "type": "text"
             },
             "followers": {
               "type": "keyword"
@@ -199,7 +199,14 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "suggest": {
-              "type": "completion"
+              "type": "completion",
+              "contexts": [
+                {
+                    "name": "deleted",
+                    "type": "category",
+                    "path": "deleted"
+                }
+             ]
             },
             "service_suggest": {
               "type": "completion"
