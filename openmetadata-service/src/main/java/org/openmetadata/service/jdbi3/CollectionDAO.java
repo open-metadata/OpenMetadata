@@ -2667,8 +2667,7 @@ public interface CollectionDAO {
       if (entityType == null) {
         String mysqlCondition =
             String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
-        String psqlCondition =
-            String.format("%s AND (json#>'{testPlatforms}') LIKE '%%%s%%' ", condition, testPlatform);
+        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
         return listBefore(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, before);
       }
 
@@ -2683,8 +2682,7 @@ public interface CollectionDAO {
               condition, entityType, testPlatform);
       String psqlCondition =
           String.format(
-              "%s AND entityType='%s' AND (json#>'{testPlatforms}') LIKE '%%%s%%' ",
-              condition, entityType, testPlatform);
+              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
       return listBefore(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, before);
     }
 
@@ -2700,8 +2698,7 @@ public interface CollectionDAO {
       if (entityType == null) {
         String mysqlCondition =
             String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
-        String psqlCondition =
-            String.format("%s AND (json#>'{testPlatforms}') LIKE '%%%s%%' ", condition, testPlatform);
+        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
         return listAfter(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, after);
       }
 
@@ -2716,8 +2713,7 @@ public interface CollectionDAO {
               condition, entityType, testPlatform);
       String psqlCondition =
           String.format(
-              "%s AND entityType='%s' AND (json#>'{testPlatforms}') LIKE '%%%s%%' ",
-              condition, entityType, testPlatform);
+              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
       return listAfter(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, after);
     }
 
@@ -2733,8 +2729,7 @@ public interface CollectionDAO {
       if (entityType == null) {
         String mysqlCondition =
             String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
-        String psqlCondition =
-            String.format("%s AND (json#>'{testPlatforms}') LIKE '%%%s%%' ", condition, testPlatform);
+        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
         return listCount(getTableName(), getNameColumn(), mysqlCondition, psqlCondition);
       }
 
@@ -2749,8 +2744,7 @@ public interface CollectionDAO {
               condition, entityType, testPlatform);
       String psqlCondition =
           String.format(
-              "%s AND entityType='%s' AND (json#>'{testPlatforms}') LIKE '%%%s%%' ",
-              condition, entityType, testPlatform);
+              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
       return listCount(getTableName(), getNameColumn(), mysqlCondition, psqlCondition);
     }
 
