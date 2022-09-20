@@ -14,6 +14,7 @@ Tableau source module
 import traceback
 from typing import Iterable, List, Optional
 
+import json
 from requests.utils import urlparse
 from tableau_api_lib.utils.querying import (
     get_views_dataframe,
@@ -54,6 +55,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import TABLEAU_GRAPHQL_LINEAGE_QUERY
 
 logger = ingestion_logger()
 TABLEAU_TAG_CATEGORY = "TableauTags"
@@ -75,6 +77,7 @@ class TableauSource(DashboardServiceSource):
         self.workbooks = {}
         self.tags = []
         self.owner = {}
+        self.workboook_datasources = {}
 
     def prepare(self):
         # Restructuring the api response for workbooks
@@ -108,6 +111,10 @@ class TableauSource(DashboardServiceSource):
         # Fetch User/Owner Details
         owner = get_all_user_fields(self.client)
         self.owner = {user["id"]: user for user in owner}
+
+        # Fetch Datasource information for lineage
+        graphql_query_result = self.client.metadata_graphql_query(query=TABLEAU_GRAPHQL_LINEAGE_QUERY)
+        self.workboook_datasources = json.loads(graphql_query_result.text)["data"].get("workbooks")
 
         return super().prepare()
 
@@ -223,39 +230,37 @@ class TableauSource(DashboardServiceSource):
         """
         Get lineage between dashboard and data sources
         """
-        datasource_list = (
-            get_workbook_connections_dataframe(self.client, dashboard_details.get("id"))
-            .get("datasource_name")
-            .tolist()
-        )
-        dashboard_name = dashboard_details.get("name")
+        print("*"*100)
 
+        dashboard_id = dashboard_details.get("id")
+        dashboard_name = dashboard_details.get("name")
+        data_source = next((data_source for data_source in self.workboook_datasources if data_source.get("luid") == dashboard_id), None)
+        print(data_source)
+        print(self.config.serviceName)
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
             service_name=self.config.serviceName,
-            dashboard_name=dashboard_name,
+            dashboard_name=dashboard_id,
         )
         to_entity = self.metadata.get_by_name(
             entity=LineageDashboard,
             fqn=to_fqn,
         )
 
-        for datasource in datasource_list:
-            try:
-                schema_and_table_name = (
-                    datasource.split("(")[1].split(")")[0].split(".")
-                )
-                schema_name = schema_and_table_name[0]
-                table_name = schema_and_table_name[1]
+        try:   
+            upstream_tables = data_source.get("upstreamTables")
+            for upstream_table in upstream_tables:
+                database_schema_table = upstream_table.get("name").split(".")
                 from_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
                     service_name=db_service_name,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    database_name=None,
+                    schema_name=database_schema_table[1],
+                    table_name=database_schema_table[2],
+                    database_name=database_schema_table[0],
                 )
+                print(from_fqn)
                 from_entity = self.metadata.get_by_name(
                     entity=Table,
                     fqn=from_fqn,
@@ -272,11 +277,11 @@ class TableauSource(DashboardServiceSource):
                         )
                     )
                     yield lineage
-            except (Exception, IndexError) as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
-                )
+        except (Exception, IndexError) as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
+            )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
