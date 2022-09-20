@@ -17,6 +17,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
+import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -105,7 +108,16 @@ public class TypeRepository extends EntityRepository<Type> {
     setFields(type, putFields);
 
     dao.findEntityById(property.getPropertyType().getId()); // Validate customProperty type exists
-    type.getCustomProperties().add(property);
+
+    // If property already exists, then update it. Else add the new property.
+    List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
+    for (CustomProperty existing : type.getCustomProperties()) {
+      if (!existing.getName().equals(property.getName())) {
+        updatedProperties.add(existing);
+      }
+    }
+
+    type.setCustomProperties(updatedProperties);
     type.setUpdatedBy(updatedBy);
     type.setUpdatedAt(System.currentTimeMillis());
     return createOrUpdate(uriInfo, type);
@@ -146,7 +158,7 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomProperty> origFields = listOrEmpty(original.getCustomProperties());
       List<CustomProperty> added = new ArrayList<>();
       List<CustomProperty> deleted = new ArrayList<>();
-      recordListChange("customProperties", origFields, updatedFields, added, deleted, EntityUtil.customFieldMatch);
+      recordListChange("customProperties", origFields, updatedFields, added, deleted, customFieldMatch);
       for (CustomProperty property : added) {
         String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
         String customPropertyJson = JsonUtils.pojoToJson(property);
@@ -180,7 +192,27 @@ public class TypeRepository extends EntityRepository<Type> {
                 Entity.TYPE,
                 Entity.TYPE,
                 Relationship.HAS.ordinal());
+        // Delete all the data stored in the entity extension for the custom property
+        daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
       }
+
+      // Record changes to updated custome properties (only description can be updated)
+      for (CustomProperty updated : updatedFields) {
+        // Find property that matches name and type
+        CustomProperty stored =
+            origFields.stream().filter(c -> customFieldMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New property added
+          continue;
+        }
+
+        updateCustomPropertyDescription(stored, updated);
+      }
+    }
+
+    private void updateCustomPropertyDescription(CustomProperty orig, CustomProperty updated)
+        throws JsonProcessingException {
+      String fieldName = getCustomField(orig, FIELD_DESCRIPTION);
+      recordChange(fieldName, orig.getDescription(), updated.getDescription());
     }
   }
 }
