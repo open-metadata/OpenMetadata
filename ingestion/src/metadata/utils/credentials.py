@@ -112,7 +112,10 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
         return
 
     if isinstance(gcs_credentials.gcsConfig, GCSValues):
-        if gcs_credentials.gcsConfig.projectId and not gcs_credentials.gcsConfig.privateKey:
+        if (
+            gcs_credentials.gcsConfig.projectId
+            and not gcs_credentials.gcsConfig.privateKey
+        ):
             logger.info(
                 "Overriding default projectid, using the current environment permissions authenticated via gcloud SDK."
             )
