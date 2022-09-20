@@ -14,7 +14,7 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getBots } from '../../axiosAPIs/botsAPI';
@@ -178,11 +178,12 @@ const BotListV1 = ({
 
   const handleSearch = (text: string) => {
     if (text) {
+      const normalizeText = lowerCase(text);
       const matchedData = botUsers.filter(
         (bot) =>
-          bot.name.includes(text) ||
-          bot.displayName?.includes(text) ||
-          bot.description?.includes(text)
+          bot.name.includes(normalizeText) ||
+          bot.displayName?.includes(normalizeText) ||
+          bot.description?.includes(normalizeText)
       );
       setSearchedData(matchedData);
     } else {
