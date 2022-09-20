@@ -690,7 +690,10 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
     .next('td')
     .as('value');
 
-  cy.get('@value').should('contain', value);
+    cy.get('tbody')
+    .contains(propertyName)
+    .scrollIntoView()
+    .next('td').should('contain', value);
 
   //returning the property name since it needs to be deleted and updated
   return propertyName;

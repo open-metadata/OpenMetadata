@@ -38,10 +38,6 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
-  const customProperties = entityTypeDetail.customProperties || [];
-
-  const extension = entityDetails.extension;
-
   const onExtensionUpdate = async (
     updatedExtension: CustomPropertyProps['entityDetails']['extension']
   ) => {
@@ -51,29 +47,30 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
     });
   };
 
-  const tableColumn: ColumnsType<CustomProperty> = useMemo(
-    () => [
+  const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
+    return [
       {
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
+        width: '50%',
       },
       {
         title: 'Value',
         dataIndex: 'value',
         key: 'value',
+        width: '50%',
         render: (_, record) => (
           <PropertyValue
-            extension={extension}
+            extension={entityDetails.extension}
             propertyName={record.name}
             propertyType={record.propertyType}
             onExtensionUpdate={onExtensionUpdate}
           />
         ),
       },
-    ],
-    []
-  );
+    ];
+  }, [entityDetails.extension]);
 
   useEffect(() => {
     fetchTypeDetail();
@@ -81,13 +78,13 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
 
   return (
     <>
-      {isEmpty(customProperties) ? (
+      {isEmpty(entityTypeDetail.customProperties) ? (
         <ErrorPlaceHolder heading="Custom Properties" />
       ) : (
         <Table
           columns={tableColumn}
           data-testid="custom-properties-table"
-          dataSource={customProperties}
+          dataSource={entityTypeDetail.customProperties || []}
           pagination={false}
           size="small"
         />
