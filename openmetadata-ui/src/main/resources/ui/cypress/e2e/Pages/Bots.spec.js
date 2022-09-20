@@ -40,7 +40,7 @@ describe('Bots Page should work properly', () => {
       .click();
     interceptURL(
       'GET',
-      'api/v1/bots?limit=15&include=non-deleted',
+      'api/v1/bots?limit=100&include=non-deleted',
       'getBotsPage'
     );
     cy.get('.ant-menu-title-content')
