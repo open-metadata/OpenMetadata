@@ -116,6 +116,11 @@ class DBTMixin:
                                 owner = self.metadata.get_entity_reference(
                                     entity=Team, fqn=team_owner_fqn
                                 )
+                            else:
+                                logger.warning(
+                                    f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}"
+                                )
+
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=description if description else None,
