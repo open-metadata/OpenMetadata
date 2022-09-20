@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -96,14 +97,30 @@ class DBTMixin:
                     schema = mnode["schema"] if mnode["schema"] else "default"
                     raw_sql = mnode.get("raw_sql", "")
                     description = mnode.get("description")
-                    dbt_user_name = cnode["metadata"].get("owner")
-                    user_name = f"*{dbt_user_name}*"
-                    user_fqn = fqn.build(
-                        self.metadata, entity_type=User, user_name=user_name
-                    )
-                    owner = self.metadata.get_entity_reference(
-                        entity=User, fqn=user_fqn
-                    )
+                    dbt_owner = cnode["metadata"].get("owner")
+                    owner = None
+                    if dbt_owner:
+                        owner_name = f"*{dbt_owner}*"
+                        user_owner_fqn = fqn.build(
+                            self.metadata, entity_type=User, user_name=owner_name
+                        )
+                        if user_owner_fqn:
+                            owner = self.metadata.get_entity_reference(
+                                entity=User, fqn=user_owner_fqn
+                            )
+                        else:
+                            team_owner_fqn = fqn.build(
+                                self.metadata, entity_type=Team, team_name=owner_name
+                            )
+                            if team_owner_fqn:
+                                owner = self.metadata.get_entity_reference(
+                                    entity=Team, fqn=team_owner_fqn
+                                )
+                            else:
+                                logger.warning(
+                                    f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}"
+                                )
+
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=description if description else None,
