@@ -85,7 +85,7 @@ plugins: Dict[str, Set[str]] = {
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
     "hive": {
-        "pyhive~=0.6.3",
+        "pyhive~=0.6.5",
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
