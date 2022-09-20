@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Statistic } from 'antd';
 import React from 'react';
-import { TestCaseStatus } from '../../../generated/tests/tableTest';
+import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { formTwoDigitNmber } from '../../../utils/CommonUtils';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ProfilerSummaryCardProps } from '../profilerDashboard.interface';
@@ -25,7 +25,7 @@ const ProfilerSummaryCard: React.FC<ProfilerSummaryCardProps> = ({
 }) => {
   return (
     <Card className="tw-rounded-md tw-border">
-      <p className="tw-text-base tw-font-medium tw-mb-7">{title}</p>
+      <p className="tw-text-base tw-font-medium tw-mb-4">{title}</p>
       <Row className="table-profiler-summary">
         {data.map((item) => (
           <Col className="overall-summary-card" key={item.title} span={8}>

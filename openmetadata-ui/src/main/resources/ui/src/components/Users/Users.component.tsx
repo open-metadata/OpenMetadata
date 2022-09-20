@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Space, Switch } from 'antd';
+import { Card, Image, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -61,7 +61,8 @@ import Ellipses from '../common/Ellipses/Ellipses';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
@@ -100,6 +101,7 @@ const Users = ({
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
 
   const location = useLocation();
 
@@ -157,10 +159,9 @@ const Users = ({
     setIsDisplayNameEdit(false);
   };
 
-  const handleDescriptionChange = (description: string) => {
-    if (description !== userData.description) {
-      updateUserDetails({ description });
-    }
+  const handleDescriptionChange = async (description: string) => {
+    await updateUserDetails({ description });
+
     setIsDescriptionEdit(false);
   };
 
@@ -630,19 +631,19 @@ const Users = ({
           key="left-panel-card"
           style={{
             ...leftPanelAntCardStyle,
-            marginTop: '12px',
           }}>
           <div className="tw-flex tw-flex-col">
-            {image ? (
-              <div>
-                <img
-                  alt="profile"
-                  className="tw-w-full"
-                  height="150px"
-                  referrerPolicy="no-referrer"
-                  src={image}
-                />
-              </div>
+            {isImgUrlValid ? (
+              <Image
+                alt="profile"
+                className="tw-w-full"
+                preview={false}
+                referrerPolicy="no-referrer"
+                src={image || ''}
+                onError={() => {
+                  SetIsImgUrlValid(false);
+                }}
+              />
             ) : (
               <div style={{ width: 'inherit' }}>
                 <ProfilePicture
@@ -702,7 +703,7 @@ const Users = ({
           </div>
           {isTaskType ? (
             <Space align="end" size={5}>
-              <Switch size="small" onChange={onSwitchChange} />
+              <Switch onChange={onSwitchChange} />
               <span className="tw-ml-1">Closed Tasks</span>
             </Space>
           ) : null}
@@ -783,6 +784,12 @@ const Users = ({
     prepareSelectedTeams();
   }, [userData]);
 
+  useEffect(() => {
+    if (image) {
+      SetIsImgUrlValid(true);
+    }
+  }, [image]);
+
   const getEntityData = useCallback(
     (entityData: EntityReference[], tabNumber: number) => {
       const updatedEntityData = filterEntityAssets(entityData || []);
@@ -818,7 +825,7 @@ const Users = ({
   );
 
   return (
-    <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
       <div className="tw-mb-10">
         <TabsPane
           activeTab={activeTab}
@@ -830,7 +837,7 @@ const Users = ({
       <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
       <div>{activeTab === 3 && getEntityData(userData.owns || [], 3)}</div>
       <div>{activeTab === 4 && getEntityData(userData.follows || [], 4)}</div>
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 

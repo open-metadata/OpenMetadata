@@ -28,11 +28,12 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
-import { NoDataFoundPlaceHolder } from '../../constants/services.const';
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { RowData } from './RowData';
+import './SampleDataTable.style.less';
 
 export interface SampleColumns {
   name: string;
@@ -103,10 +104,10 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
         </button>
       ) : null}
 
-      <div
-        className="tw-table-responsive tw-overflow-x-auto tw-table-container"
-        ref={tableRef}>
-        {sampleData?.rows?.length && sampleData?.columns?.length ? (
+      {sampleData?.rows?.length && sampleData?.columns?.length ? (
+        <div
+          className="tw-table-responsive tw-overflow-x-auto tw-table-container"
+          ref={tableRef}>
           <table
             className="tw-min-w-max tw-w-full tw-table-auto"
             data-testid="sample-data-table">
@@ -154,12 +155,12 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
               })}
             </tbody>
           </table>
-        ) : (
-          <div className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center tw-p-8">
-            <div className="tw-mt-12">
-              <img alt="No Service" src={NoDataFoundPlaceHolder} width={120} />
-            </div>
-            <div className="tw-mt-8 tw-max-w-x tw-text-center">
+        </div>
+      ) : (
+        <Space align="center" className="w-full" direction="vertical">
+          <ErrorPlaceHolder>
+            {' '}
+            <div className="tw-max-w-x tw-text-center">
               <Typography.Paragraph style={{ marginBottom: '4px' }}>
                 {' '}
                 No sample data available
@@ -178,9 +179,9 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                 </Link>
               </Typography.Paragraph>
             </div>
-          </div>
-        )}
-      </div>
+          </ErrorPlaceHolder>
+        </Space>
+      )}
     </div>
   );
 };

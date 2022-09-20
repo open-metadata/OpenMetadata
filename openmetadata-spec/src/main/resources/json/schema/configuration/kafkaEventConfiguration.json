@@ -1,0 +1,41 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/kafkaEventConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KafkaEventConfiguration",
+  "description": "This schema defines the Kafka Event Publisher Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.kafka.KafkaEventConfiguration",
+  "properties": {
+    "topics": {
+      "description": "Topics of Kafka Producer",
+      "type": "string"
+    },
+    "bootstrapServers": {
+      "description": "Kafka bootstrap servers",
+      "type": "string"
+    },
+    "keySerializer": {
+      "description": "Serializer class for key",
+      "default": "org.apache.kafka.common.serialization.StringSerializer",
+      "type": "string"
+    },
+    "valueSerializer": {
+      "description": "Serializer class for value",
+      "default": "org.apache.kafka.common.serialization.StringSerializer",
+      "type": "string"
+    },
+    "kafkaConfig": {
+      "title": "Producer Config",
+      "description": "Kafka Producer Config",
+      "existingJavaType": "java.util.Map<String,String>",
+      "type": "object"
+    },
+    "batchSize": {
+      "description": "Batch size",
+      "default": 16384,
+      "type": "integer"
+    }
+  },
+  "required": ["topics", "bootstrapServers"],
+  "additionalProperties": false
+}

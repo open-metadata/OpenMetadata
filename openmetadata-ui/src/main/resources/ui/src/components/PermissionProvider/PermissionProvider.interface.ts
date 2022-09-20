@@ -23,7 +23,6 @@ export type OperationPermission = {
 
 export enum ResourceEntity {
   ALL = 'all',
-  ACTIVITY_FEED = 'activityFeed',
   BOT = 'bot',
   CHART = 'chart',
   DASHBOARD = 'dashboard',
@@ -65,6 +64,10 @@ export interface PermissionContextType {
   getEntityPermission: (
     resource: ResourceEntity,
     entityId: string
+  ) => Promise<OperationPermission>;
+  getEntityPermissionByFqn: (
+    resource: ResourceEntity,
+    entityFqn: string
   ) => Promise<OperationPermission>;
   getResourcePermission: (
     resource: ResourceEntity

@@ -7,21 +7,15 @@ slug: /deployment/security/custom-oidc
 
 Follow the sections in this guide to set up Custom OIDC SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
 
 - Go to the console of your preferred custom OIDC SSO provider
 - Create an OIDC client application with implicit flow enabled to get a client ID.
-
-</Collapse>
 
 ### Create Client ID and Secret Key
 
 - Navigate to your preferred OIDC provider console and create an OIDC client application.
 - Generate client ID and secret key in JSON format.
-
-<Collapse title="Create Service Account">
-
-</Collapse>
 
 After the applying these steps, you can update the configuration of your deployment:
 

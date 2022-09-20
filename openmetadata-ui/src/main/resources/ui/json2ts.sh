@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-schema_directory='catalog-rest-service/src/main/resources/json/schema/'
+schema_directory='openmetadata-spec/src/main/resources/json/schema/'
 om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated/'
 addLicensing(){
     dir=$1
@@ -33,7 +33,7 @@ getTypes(){
         rm -r $om_ui_directory
     fi
 
-    for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
+    for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/openmetadata-spec\/src\/main\/resources\/json\/schema\///g')
     do
         joblist=$(jobs | wc -l)
         while (( ${joblist} >= 30 ))

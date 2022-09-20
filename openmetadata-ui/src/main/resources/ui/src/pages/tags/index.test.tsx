@@ -261,11 +261,11 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock(
-  '../../components/containers/PageLayout',
+  '../../components/containers/PageLayoutV1',
   () =>
     ({ children, leftPanel }: { children: ReactNode; leftPanel: ReactNode }) =>
       (
-        <div data-testid="PageLayout">
+        <div data-testid="PageLayoutV1">
           <div data-testid="left-panel-content">{leftPanel}</div>
           {children}
         </div>
@@ -278,14 +278,6 @@ jest.mock(
     ({ children }: { children: ReactNode }) =>
       <div data-testid="PageContainerV1">{children}</div>
 );
-
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
 
 jest.mock(
   '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -320,14 +312,6 @@ jest.mock('../../components/Modals/FormModal', () => {
 
 jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
-});
-
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div>{children}</div>
-    ));
 });
 
 describe('Test TagsPage page', () => {

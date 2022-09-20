@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ProfilerDashboardTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   IN_PAGE_SEARCH_ROUTES,
@@ -36,6 +37,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
+import { ProfilerDashboardType } from '../enums/table.enum';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -292,14 +294,21 @@ export const getPath = (pathName: string) => {
 };
 
 export const getProfilerDashboardWithFqnPath = (
-  dashboardType: string,
-  entityTypeFQN: string
+  dashboardType: ProfilerDashboardType,
+  entityTypeFQN: string,
+  tab?: ProfilerDashboardTab
 ) => {
-  let path = ROUTES.PROFILER_DASHBOARD;
+  let path = tab
+    ? ROUTES.PROFILER_DASHBOARD_WITH_TAB
+    : ROUTES.PROFILER_DASHBOARD;
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
     .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };

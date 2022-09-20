@@ -12,9 +12,10 @@
 IP endpoint
 """
 import traceback
-from typing import Optional
+from typing import Callable, Optional
 
 import requests
+from flask import Blueprint
 from openmetadata_managed_apis.utils.logger import routes_logger
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
@@ -24,10 +25,6 @@ try:
 except ImportError:
     from importlib_metadata import version
 
-from airflow.api_connexion import security
-from airflow.security import permissions
-from airflow.www.app import csrf
-from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 
 logger = routes_logger()
@@ -41,6 +38,7 @@ def _get_ip_safely(url: str) -> Optional[str]:
     :param url: Service giving us the IP
     :return: Host IP
     """
+
     try:
         host_ip = requests.get(url)
         return host_ip.text
@@ -52,32 +50,47 @@ def _get_ip_safely(url: str) -> Optional[str]:
         return None
 
 
-@blueprint.route("/ip", methods=["GET"])
-@csrf.exempt
-@security.requires_access([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
-def get_host_ip():
+def get_fn(blueprint: Blueprint) -> Callable:
     """
-    /ip endpoint to check Airflow host IP. Users will need to whitelist
-    this IP to access their source systems.
+    Return the function loaded to a route
+    :param blueprint: Flask Blueprint to assign route to
+    :return: routed function
     """
 
-    try:
+    # Lazy import the requirements
+    # pylint: disable=import-outside-toplevel
+    from airflow.api_connexion import security
+    from airflow.security import permissions
+    from airflow.www.app import csrf
 
-        for ip_service in IP_SERVICES:
-            host_ip = _get_ip_safely(ip_service)
-            if host_ip:
-                return ApiResponse.success({"ip": host_ip})
+    @blueprint.route("/ip", methods=["GET"])
+    @csrf.exempt
+    @security.requires_access([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
+    def get_host_ip():
+        """
+        /ip endpoint to check Airflow host IP. Users will need to whitelist
+        this IP to access their source systems.
+        """
 
-        return ApiResponse.error(
-            status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Could not extract the host IP from neither {IP_SERVICES}. Verify connectivity.",
-        )
+        try:
 
-    except Exception as exc:
-        msg = f"Internal error obtaining host IP due to [{exc}] "
-        logger.debug(traceback.format_exc())
-        logger.error(msg)
-        return ApiResponse.error(
-            status=ApiResponse.STATUS_SERVER_ERROR,
-            error=msg,
-        )
+            for ip_service in IP_SERVICES:
+                host_ip = _get_ip_safely(ip_service)
+                if host_ip:
+                    return ApiResponse.success({"ip": host_ip})
+
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Could not extract the host IP from neither {IP_SERVICES}. Verify connectivity.",
+            )
+
+        except Exception as exc:
+            msg = f"Internal error obtaining host IP due to [{exc}] "
+            logger.debug(traceback.format_exc())
+            logger.error(msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=msg,
+            )
+
+    return get_host_ip

@@ -10,11 +10,8 @@
 #  limitations under the License.
 
 import importlib
-import time
 import traceback
 from typing import Type, TypeVar
-
-import click
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -39,8 +36,8 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
-from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.workflow_output_handler import print_status
 
 logger = ingestion_logger()
 
@@ -75,13 +72,6 @@ class Workflow:
             self.config.source.type
         )
 
-        source_class = self.get(
-            "metadata.ingestion.source.{}.{}.{}Source".format(
-                service_type.name.lower(),
-                self.typeClassFetch(source_type, True),
-                self.typeClassFetch(source_type, False),
-            )
-        )
         metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
@@ -89,6 +79,18 @@ class Workflow:
         self._retrieve_service_connection_if_needed(metadata_config, service_type)
 
         self._retrieve_dbt_config_source_if_needed(metadata_config, service_type)
+
+        logger.info(f"Service type:{service_type},{source_type} configured")
+
+        source_class = self.get(
+            self.config.source.serviceConnection.__root__.config.sourcePythonClass
+            if source_type.startswith("custom")
+            else "metadata.ingestion.source.{}.{}.{}Source".format(
+                service_type.name.lower(),
+                self.typeClassFetch(source_type, True),
+                self.typeClassFetch(source_type, False),
+            )
+        )
 
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
@@ -221,48 +223,21 @@ class Workflow:
                 "Source reported warnings", self.source.get_status()
             )
 
-    def print_status(self) -> int:
-        click.echo()
-        click.secho("Source Status:", bold=True)
-        click.echo(self.source.get_status().as_string())
-        if hasattr(self, "stage"):
-            click.secho("Stage Status:", bold=True)
-            click.echo(self.stage.get_status().as_string())
-            click.echo()
-        if hasattr(self, "sink"):
-            click.secho("Sink Status:", bold=True)
-            click.echo(self.sink.get_status().as_string())
-            click.echo()
-        if hasattr(self, "bulk_sink"):
-            click.secho("Bulk Sink Status:", bold=True)
-            click.echo(self.bulk_sink.get_status().as_string())
-            click.echo()
+    def print_status(self):
+        """
+        Print the workflow results with click
+        """
+        print_status(self)
 
-        if self.source.get_status().source_start_time:
-            click.secho(
-                f"Workflow finished in time {pretty_print_time_duration(time.time()-self.source.get_status().source_start_time)} ",
-                fg="bright_cyan",
-                bold=True,
-            )
-
-            click.secho(
-                f"Success % : {self.source.get_status().calculate_success()}",
-                fg="bright_cyan",
-                bold=True,
-            )
-
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
         if self.source.get_status().failures or (
             hasattr(self, "sink") and self.sink.get_status().failures
         ):
-            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-        elif self.source.get_status().warnings or (
-            hasattr(self, "sink") and self.sink.get_status().warnings
-        ):
-            click.secho("Workflow finished with warnings", fg="yellow", bold=True)
-            return 0
         else:
-            click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
 
     def _retrieve_service_connection_if_needed(

@@ -22,13 +22,13 @@ const mockProps = {
   onSelectionChange: mockSelChange,
 };
 
-jest.mock('react-select/async', () => {
-  return jest
+jest.mock('antd', () => ({
+  TreeSelect: jest
     .fn()
     .mockImplementation(({ onChange }) => (
-      <div onClick={() => onChange([])}>AsyncSelect.component</div>
-    ));
-});
+      <div onClick={() => onChange([])}>TreeSelect.component</div>
+    )),
+}));
 
 jest.mock('../../axiosAPIs/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() =>
@@ -41,12 +41,10 @@ jest.mock('../../axiosAPIs/teamsAPI', () => ({
 }));
 
 jest.mock('../../axiosAPIs/miscAPI', () => ({
-  getSuggestedTeams: jest.fn().mockImplementation(() =>
+  getTeamsByQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      data: {
-        suggest: {
-          'metadata-suggest': [{ options: [] }],
-        },
+      hits: {
+        hits: [],
       },
     })
   ),
@@ -58,9 +56,9 @@ describe('TeamsSelectable component test', () => {
       wrapper: MemoryRouter,
     });
 
-    const asyncSelect = await findByText('AsyncSelect.component');
+    const treeSelect = await findByText('TreeSelect.component');
 
-    expect(asyncSelect).toBeInTheDocument();
+    expect(treeSelect).toBeInTheDocument();
   });
 
   it('TeamsSelectable component should fire selection change', async () => {
@@ -68,17 +66,17 @@ describe('TeamsSelectable component test', () => {
       wrapper: MemoryRouter,
     });
 
-    const asyncSelect = await findByText('AsyncSelect.component');
+    const treeSelect = await findByText('TreeSelect.component');
 
     fireEvent.click(
-      asyncSelect,
+      treeSelect,
       new MouseEvent('click', {
         bubbles: true,
         cancelable: true,
       })
     );
 
-    expect(asyncSelect).toBeInTheDocument();
+    expect(treeSelect).toBeInTheDocument();
     expect(mockSelChange).toHaveBeenCalled();
   });
 });

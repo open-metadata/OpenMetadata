@@ -10,8 +10,9 @@
 #  limitations under the License.
 
 from airflow.plugins_manager import AirflowPlugin
+from airflow.www.app import cached_app
 from flask import Blueprint
-from openmetadata_managed_apis.api import app
+from openmetadata_managed_apis.api.app import get_blueprint
 from openmetadata_managed_apis.api.config import PLUGIN_NAME
 from openmetadata_managed_apis.views.rest_api import RestApiView
 
@@ -25,8 +26,9 @@ template_blueprint = Blueprint(
     template_folder="views/templates",
 )
 
-# Import REST API blueprint
-api_blueprint = app.blueprint
+with cached_app().app_context():
+    # Import REST API blueprint
+    api_blueprint = get_blueprint()
 
 
 class RestApiPlugin(AirflowPlugin):

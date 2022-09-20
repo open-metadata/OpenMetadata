@@ -1,0 +1,22 @@
+{
+    "name": "columnValueStdDevToBeBetween",
+    "displayName": "Column Value Std Dev To Be Between",
+    "description": "This schema defines the test ColumnValueStdDevToBeBetween. Test the std. dev. value in a col is within a range.",
+    "entityType": "COLUMN",
+    "testPlatforms": ["OpenMetadata"],
+    "parameterDefinition": [
+      {
+        "name": "minValueForStdDevInCol",
+        "displayName": "Min",
+        "description": "Expected std. dev value for the column to be greater or equal than",
+        "dataType": "INT"
+      },
+      {
+        "name": "maxValueForStdDevInCol",
+        "displayName": "Max",
+        "description": "Expected std. dev value for the column to be greater or equal than",
+        "dataType": "INT"
+      }
+    ]
+  }
+  

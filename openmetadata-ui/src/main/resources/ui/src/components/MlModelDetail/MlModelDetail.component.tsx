@@ -35,7 +35,6 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
-  getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -45,7 +44,11 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
-import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import {
+  getEntityName,
+  getEntityPlaceHolder,
+  getOwnerValue,
+} from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -68,10 +71,10 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   activeTab: number;
   followMlModelHandler: () => void;
   unfollowMlModelHandler: () => void;
-  descriptionUpdateHandler: (updatedMlModel: Mlmodel) => void;
+  descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   setActiveTabHandler: (value: number) => void;
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
-  updateMlModelFeatures: (updatedMlModel: Mlmodel) => void;
+  updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   lineageTabData: {
     loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
@@ -83,7 +86,7 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
     lineageLeafNodes: LeafNodes;
     isNodeLoading: LoadingNodeState;
   };
-  onExtensionUpdate: (updatedMlModel: Mlmodel) => void;
+  onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
 }
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
@@ -125,7 +128,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (mlModelDetail.id) {
+      fetchResourcePermission();
+    }
   }, [mlModelDetail.id]);
 
   const currentUser = useMemo(
@@ -146,7 +151,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       url: mlModelDetail.service.name
         ? getServiceDetailsPath(
             mlModelDetail.service.name,
-            ServiceCategory.ML_MODAL_SERVICES
+            ServiceCategory.ML_MODEL_SERVICES
           )
         : '',
       imgSrc: mlModelDetail.serviceType
@@ -163,15 +168,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const mlModelPageInfo: ExtraInfo[] = [
     {
       key: 'Owner',
-      value:
-        mlModelDetail.owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(mlModelDetail.owner?.name || '')
-          : getEntityName(mlModelDetail.owner),
+      value: getOwnerValue(mlModelDetail.owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(mlModelDetail.owner),
         mlModelDetail.owner?.deleted
       ),
-      isLink: mlModelDetail.owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName:
         mlModelDetail.owner?.type === OwnerType.USER
@@ -273,13 +275,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const onCancel = () => setIsEdit(false);
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (mlModelDetail.description !== updatedHTML) {
       const updatedMlModelDetails = {
         ...mlModelDetail,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedMlModelDetails);
+      await descriptionUpdateHandler(updatedMlModelDetails);
       setIsEdit(false);
     } else {
       setIsEdit(false);
@@ -332,8 +334,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const onFeaturesUpdate = (features: Mlmodel['mlFeatures']) => {
-    updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
+  const onFeaturesUpdate = async (features: Mlmodel['mlFeatures']) => {
+    await updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
   };
 
   const getMlHyperParameters = () => {
@@ -521,9 +523,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                   <MlModelFeaturesList
                     handleFeaturesUpdate={onFeaturesUpdate}
-                    hasEditAccess={mlModelPermissions.ViewAll}
                     mlFeatures={mlModelDetail.mlFeatures}
-                    owner={mlModelDetail.owner}
+                    permissions={mlModelPermissions}
                   />
                 </Fragment>
               )}

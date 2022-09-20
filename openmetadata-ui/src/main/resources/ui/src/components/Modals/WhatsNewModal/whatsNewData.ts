@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 7;
+export const LATEST_VERSION_ID = 8;
 
-export const COOKIE_VERSION = 'VERSION_0_11_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_12_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -368,6 +368,167 @@ export const WHATS_NEW = [
       Connectors: `- Five new connectors have been added - [Airbyte](https://airbyte.com), [Mode](https://mode.com), [AWS Data Lake](https://aws.amazon.com/big-data/datalakes-and-analytics/what-is-a-data-lake/), [Google Cloud Data Lake](https://cloud.google.com/learn/what-is-a-data-lake#section-6), and [Apache Pinot](https://pinot.apache.org/).\n- **DBT Cloud** support was added and we now extract manifest and catalog files from API.\n- The **ingestion scheduler** now supports a minute level selection.\n- The **Snowflake** metadata extraction has been optimized.\n- The **Looker** connector now fetches the ‘Usage’ and ‘Access’ metadata for Dashboards and Charts.`,
       'UI Improvements': `- The OpenMetadata UI has a **new layout**.\n- In the **Activity Feeds**, the options to reply to a conversation, as well as to delete can now be found on hovering over the conversation.\n- Users can react with **Emojis** on the activity feeds, conversations and replies.\n- Hovering on the links provides a **quick preview** of the entity details.\n- The UI supports adding Tasks. **Pending tasks** will be displayed on the right panel.\n- A tooltip has been added to display the **FQN** on hover in the Activity Feed header.`,
       'Other Changes': `- Admin users define **Roles** and associate these roles to Teams. When a user picks a Team, the Role gets automatically assigned.\n- An option has been added to recreate a fresh index from the data available in **Elasticsearch**.\n- A simple **webhook server** has been added to the metadata command to register and listen to the metadata change events.\n- The ingestion configurations are supported as **YAML**.\n- In the previous release, we added support for **Azure SSO** on Airflow. In the current release, we’ve added support for Azure SSO in Java SDK Client.\n- OpenMetadata now supports **AWS Cognito SSO**.\n- When **deleting** a database service, the number of databases, schemas and tables is displayed in the confirmation dialog.`,
+    },
+  },
+  {
+    id: 8,
+    version: 'v0.12.0',
+    description: 'Released on 7 September 2022.',
+    features: [
+      {
+        title: 'Roles and policies',
+        description:
+          'We now support a rich team management system with a world class Roles and Policies hierarchy based on fine-grained operations and rich SpEL based conditional rules to organize your metadata and users. We support Attribute and Rule based Policies as well as User and Resource based Policies.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/heN9h-XEK6g',
+      },
+      {
+        title: 'Data Quality and Data Profiler',
+        description: `The 0.12 release offers an integrated catalog, Profiler and Data Quality solution designed with engineers and business users in mind. We've introduced Test Suites, brand new dashboards for Profiler, Data Quality Tests at the Table & Column levels, Custom Tests & lots more.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/EmopVu6aux4',
+      },
+      {
+        title: 'Webhooks and Slack Improvements',
+        description:
+          'Slack and Microsoft Teams webhook integrations have been supported to send event notifications in real time. Users can choose to receive notifications for only the required entities by using event filters based on when an entity is created, updated, or deleted.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/47hyjnuSY4Q',
+      },
+      {
+        title: 'Announcements',
+        description:
+          'With Announcements, you can now inform your entire team of all the upcoming events and changes. OpenMetadata supports these announcement banners for Entities or data assets like Tables, Topics, Pipelines, and Dashboards.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/xflbzDuEBvU',
+      },
+      {
+        title: 'Activity Feed Notifications',
+        description:
+          'The Activity Feed Notifications has been improved to allow users to choose the events they want to be notified about. In the 0.12 release, we’ve also streamlined the Notifications menu with two separate tabs for Tasks and Mentions, that’ll display only the recent notifications.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/t3r-QIJcNPk',
+      },
+      {
+        title: 'Global Settings',
+        description:
+          'The OpenMetadata Settings dropdown menu has been transformed into a single, centralized Settings page for added convenience in viewing all the available options. The Global Settings comprises setting options for Team Members, Access based on Roles and Policies, Services, Data Quality, Collaboration, Custom Attributes, and Integrations for webhooks and bots.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/OhlFOY48xB0',
+      },
+      {
+        title: 'Custom Properties',
+        description:
+          'OpenMetadata now supports adding custom properties for all entities, so organizations can tweak the data as per their needs.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/49tWRQfR_PA',
+      },
+      {
+        title: 'New Connectors',
+        description: `Four new connectors have been introduced: **Redpanda**, **Dagster**, **Fivetran**, and **Apache NiFi**.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/mSdHhXb3MMA',
+      },
+    ],
+    changeLogs: {
+      'Roles and Policies': `-   With Teams hierarchy, Admins can create a team structure with multiple layers of sub-teams.
+
+-   Roles are assigned to Users. Roles are a collection of Policies. Each Role must have at least one policy attached to it.
+
+-   A Role supports multiple policies with a one to many relationship.
+
+-   Policies are assigned to Teams. Policy is a collection of Rules, which define access based on certain conditions.
+
+-   Policies can have more than one Rule and these Rules can be added to more than one Policy.
+
+-   Fine grained operations can be used to define the conditional rules for each Policy. All the Operations (Create/Edit/View/Delete) supported by an Entity are published.
+
+-   OpenMetadata supports SpEL (Spring Expression Language) based conditions.
+
+-   Conditions can be based on tags, ownership, teams using "If this, then that" conditions.
+
+-   We support Attribute and Rule based Policies as well as User and Resource based Policies.
+
+-   There can be Organizational as well as Team level roles. Team level roles cannot override the organizational level roles.`,
+      'Data Profiler and Data Quality': `-   Added custom SQL data quality tests. Now you can write your data quality test logic using  SQL statements.
+
+-   New Data Profiler dashboard displays the evolution of metrics, metrics of higher dimensions, and also the evolution of the data quality test results.
+
+-   Sample data is captured for metrics.
+
+-   Table and Column levels dashboards for data quality.
+
+-   Moved away from the FQN filter. Now users can just include/exclude filter patterns by name.
+
+-   Profile data available in a timeseries fashion.
+
+-   Profile sample enabled at the Workflow level.
+
+-   Define the percentage of table data to be profiled.
+
+-   Multithreading implemented to compute metrics parallely.
+
+-   Implemented Test Suites, wherein relevant Test Cases that belong to multiple tables can be grouped together and scheduled in a single workflow.
+
+-   UI supports detailed data quality tests.
+
+-   UI support to add tests at the Table and Column levels.
+
+-   Test results are displayed in a time series fashion.
+
+-   Notify users of Test results by sending notifications using Slack or MS Teams webhooks.`,
+      'Data Collaboration': `-   Supports webhook integration to Slack, and Microsoft Teams.
+
+-   Supports announcement banners for data assets like Tables, Topics, Pipelines, and Dashboards.
+
+-   Streamlined the Notifications menu with two separate tabs for Tasks and Mentions.
+
+-   Configure Activity Feed notifications for selected events at a system level.
+
+-   Tasks can be created based on requests to create or update tags.`,
+      'Pluggable Secrets Store': `-   Introduced a Secrets Manager Interface to communicate with any Key Management Store.
+
+-   All of the services secrets can be stored in a Pluggable Secrets Store
+
+-   Implementation of AWS Secret Store and Systems Store`,
+      Connectors: `- [Redpanda](https://docs.open-metadata.org/openmetadata/connectors/messaging/redpanda) as a Messaging service, which allows users to document its topics and schemas.
+
+-   [Dagster](https://docs.open-metadata.org/openmetadata/connectors/pipeline/dagster) as a pipeline service.
+
+-   [Fivetran](https://docs.open-metadata.org/openmetadata/connectors/pipeline/fivetran) as a pipeline service.
+
+-   Apache NiFi as a pipeline service.
+
+-   Users can add multiple database service names to track lineage for dashboard services.
+
+-   Captures Metabase lineage with SQL lineage.
+
+-   ROW type support has been added for Trino.
+
+-   Amazon Web Service access keys are optional for DBT metadata ingestion.
+
+-   A single service now supports multiple Metadata Ingestion workflows`,
+      Lineage: `-   Separate workflow for Lineage and Usage.
+
+-   Usage Queries have been optimized.
+
+-   Result Limit has been added to usage queries`,
+      'UI UX Improvements': `-   Roles and Policies have been enhanced to use rich SpEL based conditions and fine grained operations to create rules.
+
+-   A single, centralized Settings Page for added convenience
+
+-   Displays all teams when registering for the first time, instead of just 10 teams.
+
+-   UI improvements on the Schema, Service and Database details pages.`,
+      'Other Changes': `-   Custom Properties support for all entities.
+
+-   Supports keyboard shortcuts, such as Command + k for 'Search', Escape to 'Cancel', and Enter to 'Save'.
+
+-   Upgraded to the latest Airflow container.
+
+-   Supports space in the Tags category and Primary Tags.
+
+-   The [OpenMetadata documentation](https://docs.open-metadata.org) site has been revamped.`,
     },
   },
 ];

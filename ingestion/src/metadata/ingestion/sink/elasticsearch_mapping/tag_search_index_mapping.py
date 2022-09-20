@@ -51,13 +51,20 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "type": "text"
       },
       "deleted": {
-        "type": "boolean"
+        "type": "text"
       },
        "deprecated": {
         "type": "boolean"
       },
       "suggest": {
-        "type": "completion"
+        "type": "completion",
+        "contexts": [
+            {
+                "name": "deleted",
+                "type": "category",
+                "path": "deleted"
+            }
+        ]
       }
     }
   }

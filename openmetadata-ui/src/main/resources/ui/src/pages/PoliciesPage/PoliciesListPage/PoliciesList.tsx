@@ -173,9 +173,10 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
       <Table
         className="policies-list-table"
         columns={columns}
+        data-testid="policies-list-table"
         dataSource={policies}
         pagination={false}
-        size="middle"
+        size="small"
       />
       {selectedPolicy && deletePolicyPermission && (
         <DeleteWidgetModal

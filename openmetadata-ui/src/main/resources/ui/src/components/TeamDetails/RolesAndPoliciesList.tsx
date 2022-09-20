@@ -112,7 +112,7 @@ const ListEntities = ({
       columns={columns}
       dataSource={list}
       pagination={false}
-      size="middle"
+      size="small"
     />
   );
 };

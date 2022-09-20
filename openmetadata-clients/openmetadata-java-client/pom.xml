@@ -5,7 +5,7 @@
     <parent>
         <artifactId>openmetadata-clients</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>0.12.0-SNAPSHOT</version>
+        <version>0.13.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -20,7 +20,7 @@
     <dependencies>
         <dependency>
             <groupId>org.open-metadata</groupId>
-            <artifactId>openmetadata-core</artifactId>
+            <artifactId>openmetadata-spec</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -159,7 +159,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.basedir}/../../catalog-rest-service/target/classes/assets/swagger.yaml</inputSpec>
+                            <inputSpec>${project.basedir}/../../openmetadata-service/target/classes/assets/swagger.yaml</inputSpec>
                             <language>java</language>
                             <library>feign</library>
                             <generateApiTests>true</generateApiTests>

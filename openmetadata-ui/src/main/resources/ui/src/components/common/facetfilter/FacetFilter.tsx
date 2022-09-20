@@ -20,6 +20,7 @@ import {
   facetFilterPlaceholder,
   LIST_SIZE,
 } from '../../../constants/constants';
+import { checkSelected } from '../../../utils/FilterUtils';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
 
@@ -128,6 +129,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return [];
     }
   };
+
   const getFilterItems = (aggregation: AggregationType) => {
     return (
       <>
@@ -135,9 +137,10 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           (bucket: Bucket, index: number) => (
             <FilterContainer
               count={bucket.doc_count}
-              isSelected={filters[
-                toLower(aggregation.title) as keyof FilterObject
-              ].includes(bucket.key)}
+              isSelected={checkSelected(
+                filters[toLower(aggregation.title) as keyof FilterObject],
+                bucket.key.replace(/ /g, '+')
+              )}
               key={index}
               name={bucket.key}
               type={toLower(aggregation.title) as keyof FilterObject}
@@ -175,10 +178,10 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   return (
     <>
       <div
-        className="sidebar-my-data-holder mt-2 mb-3"
+        className="sidebar-my-data-holder my-3"
         data-testid="show-deleted-cntnr">
         <div
-          className="filter-group tw-justify-between tw-mb-1"
+          className="filter-group tw-justify-between tw-my-3 tw-px-3"
           data-testid="filter-container-deleted">
           <div className="tw-flex">
             <div className="filters-title tw-w-36 tw-truncate custom-checkbox-label">
@@ -206,7 +209,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
               <div data-testid={aggregation.title}>
                 <div className="tw-flex tw-justify-between tw-flex-col">
                   <h6
-                    className="tw-heading tw-my-1"
+                    className="tw-heading tw-my-1 tw-px-3"
                     data-testid="filter-heading">
                     {
                       facetFilterPlaceholder.find(
@@ -248,7 +251,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                   </div>
                 </div>
                 <div
-                  className="sidebar-my-data-holder"
+                  className="sidebar-my-data-holder tw-px-3"
                   data-testid={`filter-containers-${index}`}>
                   {getFilterItems(aggregation)}
                 </div>

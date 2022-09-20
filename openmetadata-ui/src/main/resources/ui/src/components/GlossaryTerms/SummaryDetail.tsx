@@ -26,7 +26,7 @@ const SummaryDetail = ({
     <Space direction="vertical" {...props}>
       <Space>
         <Typography.Text type="secondary">{title}</Typography.Text>
-        <div className="tw-ml-2" data-testid={`section-${kebabCase(title)}`}>
+        <div data-testid={`section-${kebabCase(title)}`}>
           <Tooltip title={hasAccess ? 'Add' : NO_PERMISSION_FOR_ACTION}>
             <Button
               className="tw-cursor-pointer"

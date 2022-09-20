@@ -11,7 +11,7 @@ In this page, you will learn how to use the `metadata` CLI to run a one-ingestio
 
 <PythonMod connector="Amundsen" module="amundsen" />
 
-Make sure you are running openmetadata-ingestion version 0.10.2 or above.
+Make sure you are running openmetadata-ingestion version 0.11.0 or above.
 
 
 ## Create Database Services
@@ -56,13 +56,13 @@ the database services, `my service` page looks like below, and we are ready to s
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json)
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json)
 you can find the structure to create a connection to Amundsen. 
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a
 YAML configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
-The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json).
+The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json).
 
 ### 1. Define the YAML Config
 
@@ -83,8 +83,8 @@ source:
       encrypted: <true or false>
       modelClass: <modelclass>
   sourceConfig:
-    config:
-      enableDataProfiler: false
+    config: {}
+
 sink:
   type: metadata-rest
   config: {}
@@ -96,7 +96,7 @@ workflowConfig:
 
 ### Source Configuration - Service Connection
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json).
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json).
 
 - `username`: Enter the username of your Amundsen user in the Username field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow. 
 - `password`: Enter the password for your amundsen user in the Password field. 

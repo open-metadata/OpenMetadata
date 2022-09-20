@@ -11,22 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tooltip, Typography } from 'antd';
+import { Button as ButtonAntd, Card, Col, Row, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import {
-  getServiceDetailsPath,
-  PAGE_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { getServiceDetailsPath, PAGE_SIZE } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import {
-  AddPlaceHolder,
-  servicesDisplayName,
-} from '../../constants/services.const';
+import { servicesDisplayName } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
@@ -43,8 +36,8 @@ import {
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -64,8 +57,6 @@ const Services = ({
   currentPage,
   onPageChange,
 }: ServicesProps) => {
-  const { Paragraph, Link: AntdLink } = Typography;
-
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
@@ -115,7 +106,9 @@ const Services = ({
             <Row data-testid="data-container" gutter={[16, 16]}>
               {serviceData.map((service, index) => (
                 <Col key={index} lg={8} xl={6}>
-                  <Card size="small" style={leftPanelAntCardStyle}>
+                  <Card
+                    size="small"
+                    style={{ ...leftPanelAntCardStyle, height: '100%' }}>
                     <div
                       className="tw-flex tw-justify-between tw-text-grey-muted"
                       data-testid="service-card">
@@ -185,41 +178,32 @@ const Services = ({
           )}
         </Fragment>
       ) : (
-        <div className="tw-flex tw-items-center tw-flex-col">
-          <div className="tw-mt-24">
-            <img alt="No Service" src={AddPlaceHolder} width={120} />
-          </div>
-          <div className="tw-mt-8 tw-max-w-x tw-text-center">
-            <Paragraph style={{ marginBottom: '4px' }}>
-              {' '}
-              Adding a new {servicesDisplayName[serviceName]} is easy, just give
-              it a spin!
-            </Paragraph>
-            <Paragraph>
-              {' '}
-              Still need help? Refer to our{' '}
-              <AntdLink href={CONNECTORS_DOCS} target="_blank">
-                docs
-              </AntdLink>{' '}
-              for more information.
-            </Paragraph>
-
-            <div className="tw-text-lg tw-text-center">
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <Button
+        <Col span={24}>
+          <ErrorPlaceHolder
+            buttons={
+              <Tooltip
+                placement="left"
+                title={
+                  addServicePermission
+                    ? 'Add Service'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <ButtonAntd
+                  ghost
                   data-testid="add-service-button"
+                  disabled={!addServicePermission}
                   size="small"
-                  theme="primary"
-                  variant="outlined"
+                  type="primary"
                   onClick={handleAddServiceClick}>
                   Add new {servicesDisplayName[serviceName]}
-                </Button>
-              </NonAdminAction>{' '}
-            </div>
-          </div>
-        </div>
+                </ButtonAntd>
+              </Tooltip>
+            }
+            doc={CONNECTORS_DOCS}
+            heading={servicesDisplayName[serviceName]}
+            type="ADD_DATA"
+          />
+        </Col>
       )}
     </Row>
   );

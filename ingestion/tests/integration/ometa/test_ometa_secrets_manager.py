@@ -30,7 +30,7 @@ from metadata.ingestion.ometa.auth_provider import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.utils.secrets.local_secrets_manager import LocalSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
 
 
 class OMetaSecretManagerTest(TestCase):
@@ -55,7 +55,7 @@ class OMetaSecretManagerTest(TestCase):
 
     def test_ometa_with_local_secret_manager(self):
         self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is LocalSecretsManager
+        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
         assert type(self.metadata._auth_provider) is NoOpAuthenticationProvider
 
     def test_ometa_with_local_secret_manager_with_google_auth(self):
@@ -64,7 +64,7 @@ class OMetaSecretManagerTest(TestCase):
             secretKey="/fake/path"
         )
         self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is LocalSecretsManager
+        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
         assert type(self.metadata._auth_provider) is GoogleAuthenticationProvider
 
     def test_ometa_with_aws_secret_manager(self):

@@ -16,7 +16,7 @@ now allows all users to perform backups regardless of the underlying infrastruct
 
 ## Requirements
 
-The backup CLI needs to be used with `openmetadata-ingestion` version 0.12 or higher.
+The backup CLI needs to be used with `openmetadata-ingestion` version 0.11.5 or higher.
 
 ## Installation
 
@@ -30,7 +30,7 @@ One of the `backup` features is to upload the generated backup to cloud storage 
 you can instead install the package with the backup plugin:
 
 ```commandline
-pip install "openmetadata-ingestion[backup]"
+pip install "openmetadata-ingestion[backup,mysql]"
 ```
 
 ## Requirements & Considerations

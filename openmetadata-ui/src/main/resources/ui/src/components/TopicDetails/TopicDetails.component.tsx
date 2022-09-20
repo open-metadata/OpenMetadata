@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -20,7 +21,6 @@ import React, {
   useState,
 } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -36,6 +36,7 @@ import {
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
+  getOwnerValue,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -138,7 +139,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }, [topicDetails.id, getEntityPermission, setTopicPermissions]);
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (topicDetails.id) {
+      fetchResourcePermission();
+    }
   }, [topicDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
@@ -249,18 +252,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 6,
     },
   ];
+
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(owner?.name || '')
-          : getEntityName(owner),
+      value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
         owner?.deleted
       ),
-      isLink: owner?.type === 'team',
+      isLink: true,
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
@@ -278,14 +279,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedTopicDetails = {
         ...topicDetails,
         description: updatedHTML,
       };
-      descriptionUpdateHandler(updatedTopicDetails);
-      setIsEdit(false);
+      try {
+        await descriptionUpdateHandler(updatedTopicDetails);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
     } else {
       setIsEdit(false);
     }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Empty, Row, Select, Space, Typography } from 'antd';
+import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import moment from 'moment';
@@ -34,12 +34,14 @@ import {
   PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { SIZE } from '../../../enums/common.enum';
 import {
+  TestCaseParameterValue,
   TestCaseResult,
   TestCaseStatus,
-} from '../../../generated/tests/tableTest';
-import { TestCaseParameterValue } from '../../../generated/tests/testCase';
+} from '../../../generated/tests/testCase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
@@ -198,7 +200,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       <Col span={14}>
         {isLoading ? (
           <Loader />
-        ) : results.length ? (
+        ) : (
           <div>
             <Space align="end" className="tw-w-full" direction="vertical">
               <Select
@@ -208,33 +210,41 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
                 onChange={handleTimeRangeChange}
               />
             </Space>
-            <ResponsiveContainer className="tw-bg-white" minHeight={300}>
-              <LineChart
-                data={chartData.data}
-                margin={{
-                  top: 8,
-                  bottom: 8,
-                  right: 8,
-                }}>
-                <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
-                <YAxis allowDataOverflow padding={{ top: 8, bottom: 8 }} />
-                <Tooltip />
-                <Legend />
-                {data.parameterValues?.length === 2 && referenceArea()}
-                {chartData?.information?.map((info, i) => (
-                  <Line
-                    dataKey={info.label}
-                    dot={updatedDot}
-                    key={i}
-                    stroke={info.color}
-                    type="monotone"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+
+            {results.length ? (
+              <ResponsiveContainer className="tw-bg-white" minHeight={300}>
+                <LineChart
+                  data={chartData.data}
+                  margin={{
+                    top: 8,
+                    bottom: 8,
+                    right: 8,
+                  }}>
+                  <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
+                  <YAxis allowDataOverflow padding={{ top: 8, bottom: 8 }} />
+                  <Tooltip />
+                  <Legend />
+                  {data.parameterValues?.length === 2 && referenceArea()}
+                  {chartData?.information?.map((info, i) => (
+                    <Line
+                      dataKey={info.label}
+                      dot={updatedDot}
+                      key={i}
+                      stroke={info.color}
+                      type="monotone"
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.MEDIUM}>
+                <Typography.Paragraph className="m-b-md">
+                  No Results Available. Try filtering by a different time
+                  period.
+                </Typography.Paragraph>
+              </ErrorPlaceHolder>
+            )}
           </div>
-        ) : (
-          <Empty description="No Result Available" />
         )}
       </Col>
       <Col span={10}>

@@ -3,83 +3,92 @@ title: Latest Release
 slug: /overview/latest-release
 ---
 
-# 0.11.0 Release - June 30th 2022 🎉
+# 0.12.0 Release - Sept 7th 2022 🎉
 
-You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-11-release-8b82c85636a)
+You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 or watch an awesome video showing the new features!
 
-<YouTube videoId="V_HkZsMkvho" start="0:00" end="8:03"/>
+<YouTube videoId="tv3pyCLcJfQ" start="0:00" end="17:04"/>
 
 <br></br>
 <br></br>
 
-## Data Collaboration - Tasks and Emojis
+## Team Hierarchy
+Prior releases supported a flat hierarchy of just Teams and Users. In 0.12, support has been added for the entire organizational hierarchy with Business Unit, Division, Department, and Groups. An organization from small to very large can now be modeled in OpenMetadata with this feature.
 
-Data Collaboration has been the prime focus of the 0.11 Release, the groundwork for which has been laid in the past
-several releases. In the 0.9 release, we introduced Activity Feeds, Conversation Threads, and the ability to request
-descriptions. In this release, we’ve added Tasks, as an extension to the ability to create conversations and post
-replies. We are particularly excited about the ability to suggest tasks. This brings the collaboration to the next level
-where an organization can crowdsource the knowledge and continuously improve descriptions.
+## Roles and Policies
 
-## Column Level Lineage [#2931](https://github.com/open-metadata/OpenMetadata/issues/2931)
+Access Control functionality has been revamped to support many use cases that were not possible before. Previously, a Role contained a single Policy, which consisted of simple Rules to Allow/Not Allow. The advanced rule configuration in the 0.12 release allows users to build more expressive rules using conditions.
 
-In OpenMetadata, we primarily compute column-level lineage through SQL query analysis. Lineage information is
-consolidated from various sources, such as ETL pipelines, DBT, query analysis, and so on. In the backend, we’ve added
-column-level lineage API support. The UI now supports exploring this rich column-level lineage for understanding the
-relationship between tables and performing impact analysis. While exploring the lineage, users can manually edit both
-the table and column level lineage to capture any information that is not automatically surfaced.
+- A Role is a collection of Policies. Roles can be assigned to users or teams where all the users in the team inherit the team roles.
+- A Policy is a collection of Rules. A Policy can be reused as it can be part of a Role or can be directly assigned to Teams.
+- A Rule is defined by a set of Resources, a set of Operations, an Effect to either Deny or Allow the operation, and a condition written as SpEL expression to add additional conditions based on metadata attributes. Examples of conditions — isOwner(), noOwner() && !matchTags('PII').
 
-## Custom Properties
+## Data Quality and Data Profiler
 
-The key goal of the OpenMetadata project is to define Open Metadata Standards to make metadata centralized, easily
-shareable, and make tool interoperability easier. We take a schema-first approach for strongly typed metadata types and
-entities modeled using JSON schema as follows:
+OpenMetadata began support for Data Quality in the 0.10 release, and support was added for publishing Great Expectations results in the 0.11 release. Our goal with OpenMetadata is to define metadata standards for all things data and in this release, we are standardizing Tests and Data Quality metadata. Data Quality Tests can be expressed in JSON schema and now these tests can be added dynamically using the Test Definitions API. We have also added a custom SQL data quality test that allows you to write your data quality tests using SQL statements.
 
-OpenMetadata now supports adding new types and extending entities when organizations need to capture custom metadata.
-New types and custom fields can be added to entities either using API or in OpenMetadata UI. This extensibility is based
-on JSON schema and hence has all the benefits of strong typing, rich constraints, documentation, and automatic
-validation similar to the core OpenMetadata schemas.
+An interactive dashboard helps to visualize and explore the data from the Data Profiler. You can explore how your data is changing over time, and identify data drifts using this dashboard. You can also see how data quality is changing by looking at how tests are doing over time. What is even better is, that you can explore this at both the table level or drill down to each column level going back up to 60 days.
 
-## Advanced Search
+The UI supports the detailed exploration of data quality tests, and users can drill down for the details of the test results present in a time series fashion. Tests can be added easily from the Profiler tab in the UI, both at the Table and Column levels. The UI provides a one-glance update on the metrics with a summary of data quality at the Table and Column levels.
 
-Users can search by multiple parameters to narrow down the search results. Separate advanced search options are
-available for Tables, Topics, Dashboards, Pipelines, and ML Models. All these entities are searchable by common search
-options such as Owner, Tag, and Service.
+## Announcements
 
-## Glossary UI Updates
+Informing users about upcoming changes to the data is a big challenge. In most organizations, a team sends an email well in advance about the change. But no one reads/tracks them and finally, when the change is done, many users are unprepared to handle it.
 
-The Glossary UI has been upgraded. However, the existing glossary functionality remains the same, with the ability to
-add Glossary, Terms, Tags, Descriptions, Reviewers etc...
+With Announcements, you can now inform your entire team of all the upcoming events and changes, such as deprecation, deletion, or schema changes. These announcements can be scheduled with a start date and an end date. All the users following your data are not only notified in Activity Feeds but a banner is also shown on the data asset details page for users to discover (or be reminded of) the announcement.
 
-On the UI, the arrangement displaying the Summary, Related Terms, Synonyms, and References has been changed. The
-Reviewers are shown on the right panel with an option to add or remove existing reviewers.
+## Activity Feed Notifications
 
-## Profiler and Data Quality Improvements
+In 0.12, we’ve also streamlined the Notifications menu with two separate tabs for Tasks and Mentions, that’ll display only the recent notifications. You can always navigate to your User Profile page to view more activities.
 
-Profiling data and communicating quality across the organization is core to OpenMetadata. While numerous tools exist,
-they are often isolated and require users to navigate multiple interfaces. In OpenMetadata, these tests and data
-profiles are displayed alongside your assets (tables, views) and allow you to get a 360-degree view of your data.
+## Slack & Microsoft Teams integration
 
-## Great Expectations Integration
+Users can get timely updates about the metadata change events for all entities through APIs using webhooks. The webhook integration with Slack has been further improved in this release.
 
-While OpenMetadata allows you to set up and run data quality tests directly from the UI, we understand certain
-organizations already have their own data quality tool. That’s why we have developed a direct integration between Great
-Expectations and OpenMetadata. Using our `openmetadata-ingestion[great-expectations]` python submodule, you can now add
-custom actions to your Great Expectations checkpoints file that will automatically ingest your data quality test results
-into OpenMetadata at the end of your checkpoint file run.
+OpenMetadata also supports webhook integration to Microsoft Teams, just as it supports Slack. Users can choose to receive notifications for only the required entities by using event filters based on when an entity is created, updated, or deleted. 
 
-## ML Models
+## Tasks
 
-In this release, we are happy to share the addition of ML Model Entities to the UI. This will allow users to describe,
-and share models and their features as any other data asset. The UI support also includes the ingestion through the UI
-from [MLflow](https://mlflow.org/). In future releases, we will add connectors to other popular ML platforms. This is
-just the beginning. We want to learn about the use cases from the community and connect with people that want to help us
-shape the vision and roadmap. Do not hesitate to reach out!
+In the 0.11 release, a request to add or update descriptions for data assets could be converted to a Task. In the 0.12 release, Tasks can be created based on requests to create or update tags. Also, a glossary term approval workflow can be converted to a Task.
+
+
+## Secret Management Store Interface
+
+In 0.12, we have completely revamped how that secret is stored, accessed, and by whom; by introducing a Secrets Manager Interface to communicate with any Key Management Store. The KMS will mediate between any OpenMetadata internal requirement and sensitive information. That way, users can choose to use the underlying database as KMS, or any external system. The OpenMetadata community has already added support for AWS Key Management Service and AWS SSM.
 
 ## Connectors
+New connectors are an essential part of every release in OpenMetadata. We are introducing four new connectors in this release:
 
-In every release, OpenMetadata has maintained its focus on adding new connectors. In the 0.11 release, five new
-connectors have been added - [Airbyte](https://airbyte.com/), [Mode](https://mode.com/),
-[AWS Data Lake](https://aws.amazon.com/big-data/datalakes-and-analytics/what-is-a-data-lake/),
-[Google Cloud Data Lake](https://cloud.google.com/learn/what-is-a-data-lake#section-6),
-and [Apache Pinot](https://pinot.apache.org/).
+- Redpanda is a Kafka API-compatible streaming data platform for developers that unifies historical and real-time data. OpenMetadata now supports Redpanda as a Messaging service, which allows users to document its topics and schemas. Refer to the Redpanda documentation for more info.
+- Dagster is a new-generation Python-based orchestrator that’s designed for developing and maintaining data assets, such as tables, data sets, machine learning models, and reports. It has been added as part of OpenMetadata’s pipeline connectors. Read more from the Dagster documentation.
+- Fivetran delivers ready-to-use connectors that automatically adapt as schemas and APIs change, ensuring consistent, reliable access to data. It has been added as a pipeline service. For more information, refer to the Fivetran documentation.
+- Apache NiFi automates the flow of data between systems. OpenMetadata now supports a NiFi connector as the third new pipeline service on this release.
+
+## Lineage
+We’ve enhanced the performance of workflows by having a separate workflow for Lineage and Usage. By using two workflows for computing specific pieces of information, we can effectively filter down the queries to extract lineage.
+
+During table usage ingestion, the tables retrieved successfully will be cached, so that there is no need to repeat the same calls multiple times as many queries would be referencing the same tables.
+Usage queries have been optimized.
+A result limit has been added to Usage queries.
+
+## Global Settings
+The OpenMetadata Settings dropdown menu has been transformed into a single, centralized Settings page for added convenience in viewing all the available options. The Global Settings comprises setting options for Team Members, Access based on Roles and Policies, Services, Data Quality, Collaboration, Custom Attributes, and Integrations for webhooks and bots. Admins can view or update settings for various services like Slack, MS Teams, Webhooks, etc from the Global Settings page.
+
+
+## UI/UX Improvements
+The major UI UX improvements have been done around Roles and Policies and a Global Settings page. Quite a lot of tweaks have been made to the UI to improve the UX.
+
+When creating a new user or when a user is registering for the first time, the dropdown menu for Teams now displays an option to ‘Show All’ teams. Previously, we supported the display of only the first 10 teams. An option has also been provided to search and filter.
+UI improvements have been made on the Schema, Service, and Database details pages.
+Manage Tab has been replaced with the manage button on the UI.
+
+
+## Thanks to our Contributors
+We are thankful for the overwhelming feedback and support we received from our community. We are grateful to the following community members for their code contributions:
+
+- Pedro Sereno for capturing Metabase lineage with SQL lineage.
+- Francisco J. Jurado Moreno — for working on caching tables when ingesting database usage; optimizing Redshift usage query; Datalake connector performance; non-scheduled workflows; and to add a comment to tag all OpenMetadata-related queries.
+- Nihar Doshi — for helping with cleaning Atlas, Amundsen, and metadata_rest; and checking MSSQL with windows authentication.
+
+Thanks to Abcabhishek, Bleachzk, Bryson Edwards, Daniel, Fikrifikar, geoHeil, Laila Patel, Nicolas Parot Alvarez, Nilesh Khatri, Pauline Tolstova, Pedro Sereno, Preeti Jain, Sam Firke, Samuel Stuetz, Sidharth Reddy Pallerla, Taurus-Le, TheFu527, Tomislav Sabados, Trillhaa, Upen Bendre for creating issues in GitHub. Thanks to Sergey Stepanov, Zlgonzalez for your feedback and suggestions.

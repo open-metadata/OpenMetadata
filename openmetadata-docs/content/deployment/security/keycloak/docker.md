@@ -9,15 +9,15 @@ To enable security for the Docker deployment, follow the next steps:
 
 ## 1. Create an .env file
 
-Create an `openmetadata_oidc.env` file and add the following contents as an example. Use the information
+Create an `openmetadata_keycloak.env` file and add the following contents as an example. Use the information
 generated when setting up the account.
 
 The configuration below already uses the presets shown in the example of keycloak configurations, you can change to yours.
 
 ```shell
 # OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.catalog.security.JwtFilter
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin-user]  # Your `name` from name@domain.com
 AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot,service-account-open-metadata]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
@@ -39,5 +39,5 @@ OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL="http://localhost:8080/realms/dat
 ## 2. Start Docker
 
 ```commandline
-docker compose --env-file ~/openmetadata_azure.env up -d
+docker compose --env-file ~/openmetadata_keycloak.env up -d
 ```

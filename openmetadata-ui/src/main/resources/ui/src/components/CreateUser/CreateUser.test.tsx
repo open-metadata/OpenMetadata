@@ -53,7 +53,6 @@ describe('Test CreateUser component', () => {
     const PageLayout = await findByTestId(container, 'PageLayout');
     const email = await findByTestId(container, 'email');
     const admin = await findByTestId(container, 'admin');
-    const bot = await findByTestId(container, 'bot');
     const cancelButton = await findByTestId(container, 'cancel-user');
     const saveButton = await findByTestId(container, 'save-user');
     const description = await findByText(
@@ -68,7 +67,6 @@ describe('Test CreateUser component', () => {
 
     expect(PageLayout).toBeInTheDocument();
     expect(email).toBeInTheDocument();
-    expect(bot).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(dropdown).toBeInTheDocument();

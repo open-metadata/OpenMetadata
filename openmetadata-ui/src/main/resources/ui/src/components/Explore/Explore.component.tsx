@@ -16,24 +16,20 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, lowerCase } from 'lodash';
+import { cloneDeep, get, isEmpty, lowerCase } from 'lodash';
 import {
   AggregationType,
   Bucket,
   FilterObject,
   FormattedTableData,
+  SearchDataFunctionType,
   SearchResponse,
 } from 'Models';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
+import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
@@ -57,6 +53,7 @@ import {
   UPDATABLE_AGGREGATION,
   ZERO_SIZE,
 } from '../../constants/explore.constants';
+import { mockSearchData } from '../../constants/mockTourData.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
 import {
@@ -68,8 +65,13 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { AdvanceField, ExploreProps } from './explore.interface';
+import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
+import PageLayoutV1 from '../containers/PageLayoutV1';
+import {
+  AdvanceField,
+  ExploreProps,
+  ExploreSearchData,
+} from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -79,20 +81,18 @@ const Explore: React.FC<ExploreProps> = ({
   searchFilter,
   tab,
   searchQuery,
-  searchResult,
   sortValue,
-  error,
   fetchCount,
   handleFilterChange,
   handlePathChange,
   handleSearchText,
-  fetchData,
   showDeleted,
   onShowDeleted,
   isFilterSelected,
   handleTabCounts,
 }: ExploreProps) => {
   const location = useLocation();
+  const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const history = useHistory();
   const filterObject: FilterObject = {
     ...INITIAL_FILTERS,
@@ -112,6 +112,8 @@ const Explore: React.FC<ExploreProps> = ({
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
+  const [error, setError] = useState<string>('');
+  const currentSearchIndex = useRef<string>();
 
   const [isEntityLoading, setIsEntityLoading] = useState(true);
   const [isFilterSet, setIsFilterSet] = useState<boolean>(
@@ -185,7 +187,7 @@ const Explore: React.FC<ExploreProps> = ({
         setSearchTag('');
       }
       const filter = filters[type];
-      const index = filter.indexOf(selectedFilter);
+      const index = filter.indexOf(`"${selectedFilter.replace(/ /g, '+')}"`);
       filter.splice(index, 1);
       const selectedFilterCount = getFilterCount(filters);
       setIsFilterSet(selectedFilterCount >= 1);
@@ -290,6 +292,117 @@ const Explore: React.FC<ExploreProps> = ({
         break;
       default:
         break;
+    }
+  };
+
+  const updateData = (searchResult: ExploreSearchData) => {
+    if (searchResult) {
+      updateSearchResults(searchResult.resSearchResults);
+      setCount(searchResult.resSearchResults.data.hits.total.value);
+      if (forceSetAgg.current) {
+        setAggregations(
+          searchResult.resSearchResults.data.hits.hits.length > 0
+            ? getAggregationList(
+                searchResult.resSearchResults.data.aggregations
+              )
+            : getAggregationListFromQS(location.search)
+        );
+        setIsInitialFilterSet(false);
+      } else {
+        const aggServiceType = getAggregationList(
+          searchResult.resAggServiceType.data.aggregations,
+          'service'
+        );
+        const aggTier = getAggregationList(
+          searchResult.resAggTier.data.aggregations,
+          'tier'
+        );
+        const aggTag = getAggregationList(
+          searchResult.resAggTag.data.aggregations,
+          'tags'
+        );
+        const aggDatabase = getAggregationList(
+          searchResult.resAggDatabase.data.aggregations,
+          'database'
+        );
+        const aggDatabaseSchema = getAggregationList(
+          searchResult.resAggDatabaseSchema.data.aggregations,
+          'databaseschema'
+        );
+        const aggServiceName = getAggregationList(
+          searchResult.resAggServiceName.data.aggregations,
+          'servicename'
+        );
+
+        updateAggregationCount([
+          ...aggServiceType,
+          ...aggTier,
+          ...aggTag,
+          ...aggDatabase,
+          ...aggDatabaseSchema,
+          ...aggServiceName,
+        ]);
+      }
+    }
+    setIsEntityLoading(false);
+  };
+
+  const fetchData = (value: SearchDataFunctionType[]) => {
+    if (isTourPage) {
+      updateData(mockSearchData as unknown as ExploreSearchData);
+    } else {
+      const promiseValue = value.map((d) => {
+        currentSearchIndex.current = d.searchIndex;
+
+        return searchData(
+          d.queryString,
+          d.from,
+          d.size,
+          d.filters,
+          d.sortField,
+          d.sortOrder,
+          d.searchIndex,
+          showDeleted
+        );
+      });
+
+      Promise.all(promiseValue)
+        .then(
+          ([
+            resSearchResults,
+            resAggServiceType,
+            resAggTier,
+            resAggTag,
+            resAggDatabase,
+            resAggDatabaseSchema,
+            resAggServiceName,
+          ]: Array<SearchResponse>) => {
+            setError('');
+            if (
+              currentSearchIndex.current ===
+                resSearchResults.data.hits.hits[0]?._index ||
+              isEmpty(resSearchResults.data.hits.hits)
+            ) {
+              updateData({
+                resSearchResults,
+                resAggServiceType,
+                resAggTier,
+                resAggTag,
+                resAggDatabase,
+                resAggDatabaseSchema,
+                resAggServiceName,
+              });
+              if (isEmpty(resSearchResults.data.hits.hits)) {
+                setTotalNumberOfValues(0);
+                setIsEntityLoading(false);
+              }
+            }
+          }
+        )
+        .catch((err: AxiosError) => {
+          const errMsg = get(err, 'response.data.responseMessage', '');
+          setError(errMsg);
+        });
     }
   };
 
@@ -513,7 +626,9 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   useEffect(() => {
-    handleSearchText(searchQuery || emptyValue);
+    isTourPage
+      ? updateData(mockSearchData as unknown as ExploreSearchData)
+      : handleSearchText && handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
   }, [searchQuery]);
 
@@ -551,58 +666,6 @@ const Explore: React.FC<ExploreProps> = ({
       fetchTableData();
     }
   }, [searchText, searchIndex, showDeleted]);
-
-  useEffect(() => {
-    if (searchResult) {
-      updateSearchResults(searchResult.resSearchResults);
-      setCount(searchResult.resSearchResults.data.hits.total.value);
-      if (forceSetAgg.current) {
-        setAggregations(
-          searchResult.resSearchResults.data.hits.hits.length > 0
-            ? getAggregationList(
-                searchResult.resSearchResults.data.aggregations
-              )
-            : getAggregationListFromQS(location.search)
-        );
-        setIsInitialFilterSet(false);
-      } else {
-        const aggServiceType = getAggregationList(
-          searchResult.resAggServiceType.data.aggregations,
-          'service'
-        );
-        const aggTier = getAggregationList(
-          searchResult.resAggTier.data.aggregations,
-          'tier'
-        );
-        const aggTag = getAggregationList(
-          searchResult.resAggTag.data.aggregations,
-          'tags'
-        );
-        const aggDatabase = getAggregationList(
-          searchResult.resAggDatabase.data.aggregations,
-          'database'
-        );
-        const aggDatabaseSchema = getAggregationList(
-          searchResult.resAggDatabaseSchema.data.aggregations,
-          'databaseschema'
-        );
-        const aggServiceName = getAggregationList(
-          searchResult.resAggServiceName.data.aggregations,
-          'servicename'
-        );
-
-        updateAggregationCount([
-          ...aggServiceType,
-          ...aggTier,
-          ...aggTag,
-          ...aggDatabase,
-          ...aggDatabaseSchema,
-          ...aggServiceName,
-        ]);
-      }
-      setIsEntityLoading(false);
-    }
-  }, [searchResult]);
 
   useEffect(() => {
     getData();
@@ -653,11 +716,9 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        style={{ ...leftPanelAntCardStyle, marginTop: '16px', height: '98%' }}>
-        <Fragment>
-          <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+      <LeftPanelCard id="explorer">
+        <div className="tw-py-3" data-testid="data-summary-container">
+          <div className="tw-w-64 tw-px-3 tw-flex-shrink-0">
             <Button
               className={classNames('tw-underline tw-pb-4')}
               disabled={!getFilterCount(filters)}
@@ -681,8 +742,8 @@ const Explore: React.FC<ExploreProps> = ({
               onSelectHandler={handleSelectedFilter}
             />
           )}
-        </Fragment>
-      </Card>
+        </div>
+      </LeftPanelCard>
     );
   };
 
@@ -690,38 +751,36 @@ const Explore: React.FC<ExploreProps> = ({
     !connectionError && Boolean(selectedAdvancedFields.length);
 
   return (
-    <Fragment>
-      <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
-        {error ? (
-          <ErrorPlaceHolderES errorMessage={error} type="error" />
-        ) : (
-          <>
-            {!connectionError && getTabs()}
-            {advanceFieldCheck && (
-              <AdvancedFields
-                fields={selectedAdvancedFields}
-                index={searchIndex}
-                onClear={onAdvancedFieldClear}
-                onFieldRemove={onAdvancedFieldRemove}
-                onFieldValueSelect={onAdvancedFieldValueSelect}
-              />
-            )}
-            <SearchedData
-              showResultCount
-              currentPage={currentPage}
-              data={data}
-              isFilterSelected={isFilterSelected}
-              isLoading={
-                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-              }
-              paginate={paginate}
-              searchText={searchText}
-              totalValue={totalNumberOfValue}
+    <PageLayoutV1
+      className="tw-h-full tw-px-6"
+      leftPanel={Boolean(!error) && fetchLeftPanel()}>
+      {error ? (
+        <ErrorPlaceHolderES errorMessage={error} type="error" />
+      ) : (
+        <div>
+          {!connectionError && getTabs()}
+          {advanceFieldCheck && (
+            <AdvancedFields
+              fields={selectedAdvancedFields}
+              index={searchIndex}
+              onClear={onAdvancedFieldClear}
+              onFieldRemove={onAdvancedFieldRemove}
+              onFieldValueSelect={onAdvancedFieldValueSelect}
             />
-          </>
-        )}
-      </PageLayout>
-    </Fragment>
+          )}
+          <SearchedData
+            showResultCount
+            currentPage={currentPage}
+            data={data}
+            isFilterSelected={isFilterSelected}
+            isLoading={!isTourPage && isEntityLoading}
+            paginate={paginate}
+            searchText={searchText}
+            totalValue={totalNumberOfValue}
+          />
+        </div>
+      )}
+    </PageLayoutV1>
   );
 };
 

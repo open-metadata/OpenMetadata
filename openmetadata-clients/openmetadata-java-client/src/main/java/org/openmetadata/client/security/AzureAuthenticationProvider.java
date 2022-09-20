@@ -23,9 +23,9 @@ import feign.RequestTemplate;
 import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.security.client.AzureSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class AzureAuthenticationProvider implements AuthenticationProvider {

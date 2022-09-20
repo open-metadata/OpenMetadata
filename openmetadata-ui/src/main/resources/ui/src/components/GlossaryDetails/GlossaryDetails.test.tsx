@@ -44,14 +44,6 @@ jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
 });
 
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
-    ));
-});
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -59,6 +51,13 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <p>{children}</p>
+    )),
+}));
 
 const mockProps = {
   glossary: mockedGlossaries[0],

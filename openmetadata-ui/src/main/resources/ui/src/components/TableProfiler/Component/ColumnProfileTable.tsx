@@ -37,6 +37,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
+import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import {
   ColumnProfileTableProps,
   columnTestResultType,
@@ -131,8 +132,17 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Tests',
         dataIndex: 'Tests',
         key: 'Tests',
-        render: (_, record) =>
-          columnTestSummary?.[record.fullyQualifiedName || '']?.count || 0,
+        render: (_, record) => (
+          <Link
+            data-testid={`${record.name}-test-count`}
+            to={getProfilerDashboardWithFqnPath(
+              ProfilerDashboardType.COLUMN,
+              record.fullyQualifiedName || '',
+              ProfilerDashboardTab.DATA_QUALITY
+            )}>
+            {columnTestSummary?.[record.fullyQualifiedName || '']?.count || 0}
+          </Link>
+        ),
       },
       {
         title: 'Status',
@@ -172,6 +182,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               )}>
               <Button
                 className="flex-center"
+                data-testid={`add-test-${record.name}`}
                 disabled={!hasEditAccess}
                 icon={
                   <SVGIcons
