@@ -2,6 +2,10 @@ package org.openmetadata.service.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
+import java.util.ArrayList;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -14,11 +18,6 @@ import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.ArrayList;
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class KafkaEventPublisher extends AbstractEventPublisher {

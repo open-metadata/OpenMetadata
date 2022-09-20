@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-
 import static org.openmetadata.schema.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
 import static org.openmetadata.schema.settings.SettingsType.KAFKA_EVENT_CONFIGURATION;
 
