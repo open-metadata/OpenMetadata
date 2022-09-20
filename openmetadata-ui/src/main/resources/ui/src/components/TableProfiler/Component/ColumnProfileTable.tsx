@@ -157,16 +157,16 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               }))
             : DEFAULT_TEST_VALUE;
 
-          const hasStatus = currentResult.every(({ value }) => !value);
+          const hasStatus = currentResult.some(({ value }) => value !== 0);
 
           return hasStatus ? (
-            <Typography.Text> --- </Typography.Text>
-          ) : (
             <Space size={16}>
               {currentResult.map((test, i) => (
                 <TestIndicator key={i} type={test.type} value={test.value} />
               ))}
             </Space>
+          ) : (
+            <Typography.Text> --- </Typography.Text>
           );
         },
       },
