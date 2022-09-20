@@ -107,10 +107,6 @@ class DeltalakeSource(DatabaseServiceSource):
             raise InvalidSourceException(
                 f"Expected DeltaLakeConnection, but got {connection}"
             )
-        if not connection.metastoreFilePath and not connection.metastoreHostPort:
-            raise MetaStoreNotFoundException(
-                "Either of metastoreFilePath or metastoreHostPort is required"
-            )
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:
