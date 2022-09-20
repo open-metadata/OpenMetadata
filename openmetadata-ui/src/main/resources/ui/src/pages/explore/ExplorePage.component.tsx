@@ -35,10 +35,8 @@ import {
   tabsInfo,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import jsonData from '../../jsons/en';
 import { getTotalEntityCountByType } from '../../utils/EntityUtils';
 import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
@@ -108,9 +106,8 @@ const ExplorePage: FunctionComponent = () => {
 
       setTabCounts((prev) => ({ ...prev, [entityType]: count }));
     } catch (_error) {
-      showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-count-error']
-      );
+      // eslint-disable-next-line no-console
+      console.error(_error);
     }
   };
 

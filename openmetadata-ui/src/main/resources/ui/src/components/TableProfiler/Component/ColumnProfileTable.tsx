@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table, Tooltip } from 'antd';
+import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -158,12 +158,16 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               }))
             : DEFAULT_TEST_VALUE;
 
-          return (
+          const hasStatus = currentResult.some(({ value }) => value !== 0);
+
+          return hasStatus ? (
             <Space size={16}>
               {currentResult.map((test, i) => (
                 <TestIndicator key={i} type={test.type} value={test.value} />
               ))}
             </Space>
+          ) : (
+            <Typography.Text> --- </Typography.Text>
           );
         },
       },
