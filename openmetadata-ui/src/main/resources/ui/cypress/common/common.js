@@ -128,7 +128,7 @@ export const testServiceCreationAndIngestion = (
   connectionInput();
 
   // check for the ip-address widget
-  cy.get('[data-testid="ip-address"]').should("exist")
+  cy.get('[data-testid="ip-address"]').should('exist');
 
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
@@ -690,10 +690,11 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
     .next('td')
     .as('value');
 
-    cy.get('tbody')
+  cy.get('tbody')
     .contains(propertyName)
     .scrollIntoView()
-    .next('td').should('contain', value);
+    .next('td')
+    .should('contain', value);
 
   //returning the property name since it needs to be deleted and updated
   return propertyName;
@@ -780,4 +781,11 @@ export const updateOwner = () => {
       //Asserting the added name
       cy.get('[data-testid="owner-link"]').should('contain', text.trim());
     });
+};
+
+export const mySqlConnectionInput = () => {
+  cy.get('#root_username').type(Cypress.env('mysqlUsername'));
+  cy.get('#root_password').type(Cypress.env('mysqlPassword'));
+  cy.get('#root_hostPort').type(Cypress.env('mysqlHostPort'));
+  cy.get('#root_databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
 };
