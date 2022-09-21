@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { toLower } from 'lodash';
+import { isEmpty, toLower } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
 import PropTypes from 'prop-types';
 import React, { Fragment, FunctionComponent, useState } from 'react';
@@ -110,13 +110,25 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
     }
   };
 
+  const getTagsWithLabel = (sortedTags: Array<Bucket>) => {
+    return sortedTags.map((tags) => {
+      const containQuotes = tags.key.split('"')[1];
+
+      return {
+        ...tags,
+        label: isEmpty(containQuotes)
+          ? tags.key.split('.').at(-1)
+          : containQuotes,
+      };
+    });
+  };
+
   const getBucketsByTitle = (title: string, buckets: Array<Bucket>) => {
     switch (title) {
       case 'Service':
         return getBuckets(buckets, showAllServices, true);
       case 'Tags':
-        return getBuckets(buckets, showAllTags, true);
-
+        return getTagsWithLabel(getBuckets(buckets, showAllTags, true));
       case 'Tier':
         return getBuckets(buckets, showAllTier);
       case 'Database':
@@ -142,6 +154,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                 bucket.key.replace(/ /g, '+')
               )}
               key={index}
+              label={bucket.label}
               name={bucket.key}
               type={toLower(aggregation.title) as keyof FilterObject}
               onSelect={onSelectHandler}
