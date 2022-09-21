@@ -15,6 +15,7 @@
         "Create",
         "Delete",
         "ViewAll",
+        "ViewBasic",
         "ViewUsage",
         "ViewTests",
         "ViewQueries",
