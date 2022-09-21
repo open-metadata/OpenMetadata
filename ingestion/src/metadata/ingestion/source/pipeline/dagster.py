@@ -11,12 +11,12 @@
 """
 Dagster source to extract metadata from OM UI
 """
+import traceback
 from collections.abc import Iterable
 from typing import Dict, Iterable, List, Optional
 
 from dagster_graphql import DagsterGraphQLClient
 from sqlalchemy import text
-from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -39,13 +39,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.connections import (
-    create_and_bind_session,
-    get_connection,
-    test_connection,
-)
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import DAGSTER_PIPELINE_DETAILS_GRAPHQL
 
 logger = ingestion_logger()
 
@@ -69,9 +66,8 @@ class DagsterSource(PipelineServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        self._session = None
         self.service_connection = config.serviceConnection.__root__.config
-        self.engine: Engine = get_connection(self.service_connection.dbConnection)
+        self.client = get_connection(self.service_connection)
         super().__init__(config, metadata_config)
         # Create the connection to the database
 
@@ -85,64 +81,13 @@ class DagsterSource(PipelineServiceSource):
             )
         return cls(config, metadata_config)
 
-    @property
-    def session(self) -> Session:
-        """
-        Return the SQLAlchemy session from the engine
-        """
-        if not self._session:
-            self._session = create_and_bind_session(self.engine)
-
-        return self._session
-
     def get_run_list(self):
-        host_port = self.service_connection.hostPort
-        char_to_replace = {"https://": "", "http://": ""}
-        for key, value in char_to_replace.items():
-            host_port = host_port.replace(key, value)
-
-        host, port = host_port.split(":")
         try:
-            client = DagsterGraphQLClient(hostname=host, port_number=int(port))
-            result = client._execute(
-                """
-            query AssetNodeQuery {
-            assetNodes {
-                __typename
-                ... on AssetNode {
-                    id
-                    jobNames
-                    groupName
-                    graphName
-                    opName
-                    opNames
-                    jobs{
-                        id
-                        name
-                        description
-                        runs{
-                            id
-                            runId
-                            status
-                            stats{
-                                    ... on RunStatsSnapshot {
-                                            startTime
-                                            endTime
-                                            stepsFailed
-                                        }
-                                }
-                    
-                        }
-                    }
-                
-                
-                    }
-                }
-            }
-        """
-            )
-        except ConnectionError:
-            return False
+            # client = DagsterGraphQLClient(hostname=host, port_number=int(port))
+            result = self.client.client._execute(DAGSTER_PIPELINE_DETAILS_GRAPHQL)
+        except ConnectionError as conerr:
+            logger.error("Cannot connect to dagster client", conerr)
+            logger.debug("Failed due to : ", traceback.format_exc())
 
         return result["assetNodes"]
 
@@ -204,11 +149,8 @@ class DagsterSource(PipelineServiceSource):
         Not implemented, as this connector does not create any lineage
         """
 
-    def close(self):
-        self.session.close()
-
     def test_connection(self) -> None:
-        test_connection(self.engine)
+        test_connection(self.client)
 
     def get_pipelines_list(self) -> Dict:
 

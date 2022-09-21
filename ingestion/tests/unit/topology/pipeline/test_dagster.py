@@ -50,12 +50,6 @@ mock_dagster_config = {
             "config": {
                 "type": "Dagster",
                 "hostPort": "http://localhost:3000",
-                "dbConnection": {
-                    "username": "user",
-                    "password": "password",
-                    "databaseSchema": "database_db",
-                    "hostPort": "localhost:3306",
-                },
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
@@ -175,8 +169,7 @@ MOCK_PIPELINE = Pipeline(
 
 class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    @patch("sqlalchemy.engine.base.Engine.connect")
-    def __init__(self, methodName, mock_connect, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
 
@@ -186,7 +179,6 @@ class DagsterUnitTest(TestCase):
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.engine = mock_connect.return_value
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
 
