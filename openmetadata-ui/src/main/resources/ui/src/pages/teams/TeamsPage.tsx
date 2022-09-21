@@ -266,14 +266,18 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading(false));
   };
 
-  const updateTeamHandler = (updatedData: Team) => {
+  const updateTeamHandler = (updatedData: Team, fetchTeam = true) => {
     const jsonPatch = compare(selectedTeam, updatedData);
 
     return new Promise<void>((resolve, reject) => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            fetchTeamByFqn(selectedTeam.name);
+            if (fetchTeam) {
+              fetchTeamByFqn(selectedTeam.name);
+            } else {
+              setSelectedTeam((previous) => ({ ...previous, ...res }));
+            }
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];

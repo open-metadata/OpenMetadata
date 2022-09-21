@@ -51,7 +51,6 @@ from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import DeleteTable
-from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -128,8 +127,6 @@ class MetadataRestSink(Sink[Entity]):
             self.write_tag_category(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
-        elif isinstance(record, OMetaTableTest):
-            self.write_table_tests(record)
         elif isinstance(record, OMetaPipelineStatus):
             self.write_pipeline_status(record)
         elif isinstance(record, DataModelLink):
@@ -520,34 +517,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Unexpected error deleting table [{record.table.name}]: {exc}"
-            )
-
-    def write_table_tests(self, record: OMetaTableTest) -> None:
-        """
-        Iterate over all table_tests and column_tests
-        for the given table and add them to the backend.
-
-        :param record: Sample data record
-        """
-        try:
-            # Fetch the table that we have already ingested
-            table = self.metadata.get_by_name(entity=Table, fqn=record.table_name)
-
-            test = None
-            if record.table_test:
-                self.metadata.add_table_test(table=table, table_test=record.table_test)
-                test = record.table_test.testCase.tableTestType.value
-
-            if record.column_test:
-                self.metadata.add_column_test(table=table, col_test=record.column_test)
-                test = record.column_test.testCase.columnTestType.value
-
-            logger.info(f"Table Tests: {record.table_name}.{test}")
-            self.status.records_written(f"Table Tests: {record.table_name}.{test}")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error writing table tests [{record.table_name}]: {exc}"
             )
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):

@@ -70,6 +70,7 @@ const GlobalSettingLeftPanel = () => {
     <LeftPanelCard id="settings">
       <Menu
         className="global-setting-left-panel"
+        data-testid="global-setting-left-panel"
         items={menuItems}
         mode="inline"
         selectedKeys={[`${settingCategory}.${tab}`]}

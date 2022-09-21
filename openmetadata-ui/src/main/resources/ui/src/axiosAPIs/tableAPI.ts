@@ -13,16 +13,12 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
-import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import {
   ColumnProfile,
-  ColumnTestType,
   Table,
   TableProfile,
   TableProfilerConfig,
 } from '../generated/entity/data/table';
-import { TableTestType } from '../generated/tests/tableTest';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
@@ -127,69 +123,6 @@ export const removeFollower = async (tableId: string, userId: string) => {
   >(`/tables/${tableId}/followers/${userId}`, configOptions);
 
   return response.data;
-};
-
-export const addTableTestCase = async (
-  tableId: string,
-  data: CreateTableTest
-) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
-  const response = await APIClient.put<CreateTableTest, AxiosResponse<Table>>(
-    `/tables/${tableId}/tableTest`,
-    data,
-    configOptions
-  );
-
-  return response.data;
-};
-
-export const deleteTableTestCase = (
-  tableId: string,
-  tableTestType: TableTestType
-): Promise<AxiosResponse> => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
-  return APIClient.delete(
-    `/tables/${tableId}/tableTest/${tableTestType}`,
-    configOptions
-  );
-};
-
-export const addColumnTestCase = async (
-  tableId: string,
-  data: CreateColumnTest
-) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
-  const response = await APIClient.put<CreateColumnTest, AxiosResponse<Table>>(
-    `/tables/${tableId}/columnTest`,
-    data,
-    configOptions
-  );
-
-  return response.data;
-};
-
-export const deleteColumnTestCase = (
-  tableId: string,
-  columnName: string,
-  columnTestType: ColumnTestType
-): Promise<AxiosResponse> => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
-  return APIClient.delete(
-    `/tables/${tableId}/columnTest/${columnName}/${columnTestType}`,
-    configOptions
-  );
 };
 
 export const getTableProfilerConfig = async (tableId: string) => {

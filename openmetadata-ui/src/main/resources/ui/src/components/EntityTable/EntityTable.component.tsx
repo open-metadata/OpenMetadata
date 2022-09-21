@@ -30,15 +30,9 @@ import { getTableDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import {
-  Column,
-  ColumnTest,
-  JoinedWith,
-} from '../../generated/entity/data/table';
+import { Column, JoinedWith } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
@@ -87,9 +81,7 @@ const EntityTable = ({
 }: EntityTableProps) => {
   const history = useHistory();
 
-  const [searchedColumns, setSearchedColumns] = useState<ModifiedTableColumn[]>(
-    []
-  );
+  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
 
   const data = React.useMemo(
     () => makeData(searchedColumns),
@@ -167,7 +159,7 @@ const EntityTable = ({
   };
 
   const updateColumnDescription = (
-    tableCols: ModifiedTableColumn[],
+    tableCols: Column[],
     changedColName: string,
     description: string
   ) => {
@@ -176,7 +168,7 @@ const EntityTable = ({
         col.description = description;
       } else {
         updateColumnDescription(
-          col?.children as ModifiedTableColumn[],
+          col?.children as Column[],
           changedColName,
           description
         );
@@ -185,7 +177,7 @@ const EntityTable = ({
   };
 
   const updateColumnTags = (
-    tableCols: ModifiedTableColumn[],
+    tableCols: Column[],
     changedColName: string,
     newColumnTags: Array<TagOption>
   ) => {
@@ -214,7 +206,7 @@ const EntityTable = ({
         col.tags = getUpdatedTags(col);
       } else {
         updateColumnTags(
-          col?.children as ModifiedTableColumn[],
+          col?.children as Column[],
           changedColName,
           newColumnTags
         );
@@ -301,7 +293,7 @@ const EntityTable = ({
     return searchedValue;
   };
 
-  const getColumnName = (cell: ModifiedTableColumn) => {
+  const getColumnName = (cell: Column) => {
     const fqn = cell?.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
     // wrap it in quotes if dot is present
@@ -311,7 +303,7 @@ const EntityTable = ({
       : columnName;
   };
 
-  const onRequestDescriptionHandler = (cell: ModifiedTableColumn) => {
+  const onRequestDescriptionHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -324,7 +316,7 @@ const EntityTable = ({
     );
   };
 
-  const onUpdateDescriptionHandler = (cell: ModifiedTableColumn) => {
+  const onUpdateDescriptionHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -337,7 +329,7 @@ const EntityTable = ({
     );
   };
 
-  const onRequestTagsHandler = (cell: ModifiedTableColumn) => {
+  const onRequestTagsHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -345,7 +337,7 @@ const EntityTable = ({
     );
   };
 
-  const onUpdateTagsHandler = (cell: ModifiedTableColumn) => {
+  const onUpdateTagsHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -375,7 +367,7 @@ const EntityTable = ({
     handleEditColumn(column, index);
   };
 
-  const getRequestDescriptionElement = (cell: ModifiedTableColumn) => {
+  const getRequestDescriptionElement = (cell: Column) => {
     const hasDescription = Boolean(cell?.description ?? '');
 
     return (
@@ -407,7 +399,7 @@ const EntityTable = ({
     );
   };
 
-  const getRequestTagsElement = (cell: ModifiedTableColumn) => {
+  const getRequestTagsElement = (cell: Column) => {
     const hasTags = !isEmpty(cell?.tags || []);
     const text = hasTags ? 'Update request tags' : 'Request tags';
 
@@ -430,72 +422,7 @@ const EntityTable = ({
     );
   };
 
-  const getTestStats = (
-    record: ModifiedTableColumn | Column,
-    columnTestLength: number | undefined
-  ) => {
-    const columnTests =
-      columnTestLength && columnTestLength > 0
-        ? record.columnTests ?? []
-        : ([] as ColumnTest[]);
-
-    const failingTests = columnTests.filter((test) =>
-      test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Failed)
-    );
-    const passingTests = columnTests.filter((test) =>
-      test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Success)
-    );
-
-    return [failingTests, passingTests];
-  };
-
-  const getColumnTestsCell = (
-    columnTestLength: number | undefined,
-    failingTests: ColumnTest[],
-    passingTests: ColumnTest[]
-  ) => {
-    return (
-      <>
-        {columnTestLength ? (
-          <>
-            {failingTests.length ? (
-              <div className="tw-flex">
-                <p className="tw-mr-2">
-                  <FontAwesomeIcon
-                    className="tw-text-status-failed"
-                    icon="times"
-                  />
-                </p>
-                <p>
-                  {`${failingTests.length}/${columnTestLength} tests failing`}
-                </p>
-              </div>
-            ) : (
-              <>
-                {passingTests.length ? (
-                  <div className="tw-flex">
-                    <div className="tw-mr-2">
-                      <FontAwesomeIcon
-                        className="tw-text-status-success"
-                        icon="check-square"
-                      />
-                    </div>
-                    <p>{`${passingTests.length} tests`}</p>
-                  </div>
-                ) : (
-                  <p>{`${columnTestLength} tests`}</p>
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          '--'
-        )}
-      </>
-    );
-  };
-
-  const getDataTypeDisplayCell = (record: ModifiedTableColumn | Column) => {
+  const getDataTypeDisplayCell = (record: Column | Column) => {
     return (
       <>
         {record.dataTypeDisplay ? (
@@ -542,10 +469,7 @@ const EntityTable = ({
     );
   };
 
-  const getDescriptionCell = (
-    index: number,
-    record: ModifiedTableColumn | Column
-  ) => {
+  const getDescriptionCell = (index: number, record: Column | Column) => {
     return (
       <div className="hover-icon-group">
         <div className="tw-inline-block">
@@ -682,7 +606,7 @@ const EntityTable = ({
     );
   };
 
-  const getTagsCell = (index: number, record: ModifiedTableColumn | Column) => {
+  const getTagsCell = (index: number, record: Column | Column) => {
     return (
       <div className="hover-icon-group">
         {isReadOnly ? (
@@ -758,22 +682,8 @@ const EntityTable = ({
   };
 
   const renderCell = useCallback(
-    (key: string, record: ModifiedTableColumn | Column, index: number) => {
-      const columnTestLength = record?.columnTests?.length;
-
-      const [failingTests, passingTests] = getTestStats(
-        record,
-        columnTestLength
-      );
-
+    (key: string, record: Column | Column, index: number) => {
       switch (key) {
-        case TABLE_HEADERS_V1.columnTests:
-          return getColumnTestsCell(
-            columnTestLength,
-            failingTests,
-            passingTests
-          );
-
         case TABLE_HEADERS_V1.dataTypeDisplay:
           return getDataTypeDisplayCell(record);
 
@@ -812,11 +722,8 @@ const EntityTable = ({
         accessor: 'name',
         ellipsis: true,
         width: 180,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => renderCell(TABLE_HEADERS_V1.name, record, index),
+        render: (_: Array<unknown>, record: Column, index: number) =>
+          renderCell(TABLE_HEADERS_V1.name, record, index),
       },
       {
         title: 'Type',
@@ -825,11 +732,7 @@ const EntityTable = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => {
+        render: (_: Array<unknown>, record: Column, index: number) => {
           return renderCell(TABLE_HEADERS_V1.dataTypeDisplay, record, index);
         },
       },
@@ -838,11 +741,8 @@ const EntityTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => renderCell(TABLE_HEADERS_V1.description, record, index),
+        render: (_: Array<unknown>, record: Column, index: number) =>
+          renderCell(TABLE_HEADERS_V1.description, record, index),
       },
       {
         title: 'Tags',
@@ -850,11 +750,8 @@ const EntityTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn | Column,
-          index: number
-        ) => renderCell(TABLE_HEADERS_V1.tags, record, index),
+        render: (_: Array<unknown>, record: Column | Column, index: number) =>
+          renderCell(TABLE_HEADERS_V1.tags, record, index),
       },
     ],
     [editColumnTag, isTagLoading, renderCell]

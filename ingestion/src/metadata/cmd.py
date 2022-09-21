@@ -18,7 +18,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
 import click
-from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import run_backup
@@ -28,6 +27,7 @@ from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
+from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
 
@@ -79,23 +79,26 @@ def ingest(config: str) -> None:
     "-c",
     "--config",
     type=click.Path(exists=True, dir_okay=False),
-    help="test suite Workflow config",
+    help="Test Suite Workflow config",
     required=True,
 )
 def test(config: str) -> None:
     """Main command for running test suites"""
     config_file = pathlib.Path(config)
-    workflow_config = load_config_file(config_file)
+    workflow_test_config_dict = None
     try:
-        logger.debug(f"Using config: {workflow_config}")
-        workflow = TestSuiteWorkflow.create(workflow_config)
-    except ValidationError as err:
-        click.echo(err, err=True)
+        workflow_test_config_dict = load_config_file(config_file)
+        logger.debug(f"Using config: {workflow_test_config_dict}")
+        workflow = TestSuiteWorkflow.create(workflow_test_config_dict)
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        print_init_error(exc, workflow_test_config_dict, WorkflowType.profile)
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    ret = workflow.print_status()
+    workflow.print_status()
+    ret = workflow.result_status()
     sys.exit(ret)
 
 
@@ -110,20 +113,20 @@ def test(config: str) -> None:
 def profile(config: str) -> None:
     """Main command for profiling Table sources into Metadata"""
     config_file = pathlib.Path(config)
-    workflow_config = load_config_file(config_file)
-
+    workflow_config_dict = None
     try:
-        logger.debug(f"Using config: {workflow_config}")
-        workflow = ProfilerWorkflow.create(workflow_config)
-    except ValidationError as err:
+        workflow_config_dict = load_config_file(config_file)
+        logger.debug(f"Using config: {workflow_config_dict}")
+        workflow = ProfilerWorkflow.create(workflow_config_dict)
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Error creating Profiler Workflow: {err}")
-        click.echo(err, err=True)
+        print_init_error(exc, workflow_config_dict, WorkflowType.profile)
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    ret = workflow.print_status()
+    workflow.print_status()
+    ret = workflow.result_status()
     sys.exit(ret)
 
 

@@ -110,7 +110,7 @@ if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
 fi
 
 #Application classname
-APP_CLASS="org.openmetadata.catalog.CatalogApplication"
+APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then

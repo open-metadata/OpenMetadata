@@ -21,6 +21,7 @@ from sqlalchemy.orm.util import AliasedClass
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
+from metadata.orm_profiler.orm.registry import Dialects
 from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
 
 RANDOM_LABEL = "random"
@@ -50,9 +51,15 @@ class Sampler:
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
-        return self.session.query(
-            self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
-        ).cte(f"{self.table.__tablename__}_rnd")
+        return (
+            self.session.query(
+                self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
+            )
+            .suffix_with(
+                f"SAMPLE SYSTEM ({self.profile_sample})", dialect=Dialects.Snowflake
+            )
+            .cte(f"{self.table.__tablename__}_rnd")
+        )
 
     def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
         """

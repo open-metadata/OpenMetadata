@@ -15,8 +15,8 @@ Curious about how OpenMetadata is built? You can take a look at the [High Level 
 </Note>
 
 You can explore the JSON Schemas in different ways:
-1. You can check all the definitions in [GitHub](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema).
-    Navigating through the directories you can find, for example, the definition of a [Table](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json).
+1. You can check all the definitions in [GitHub](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema).
+    Navigating through the directories you can find, for example, the definition of a [Table](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/data/table.json).
 2. If you prefer to stay in the docs, we also have you covered. We have converted the JSON Schemas to markdown files
     that you can explore following the left menu titles, or navigating the structure by clicking on `Next` at the
     end of each page. Again, this would be the structure of a [Table](/main-concepts/metadata-standard/schemas/entity/data/table).

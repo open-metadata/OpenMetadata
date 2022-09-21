@@ -20,4 +20,5 @@ export enum FilterPatternEnum {
   TOPIC = 'topic',
   FQN = 'fqn',
   PIPELINE = 'pipeline',
+  MLMODEL = 'mlModel',
 }

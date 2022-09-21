@@ -15,3 +15,9 @@ export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
   TEAM = 'team',
   SERVICE = 'service',
 }
+
+export enum SIZE {
+  SMALL = '60',
+  MEDIUM = '80',
+  LARGE = '100',
+}

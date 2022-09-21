@@ -13,10 +13,11 @@ from collections import namedtuple
 from typing import Iterable, Tuple
 
 from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql.sqltypes import String
 
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
@@ -49,6 +50,24 @@ INTERVAL_TYPE_MAP = {
 }
 
 
+class GEOMETRY(String):
+    """The SQL GEOMETRY type."""
+
+    __visit_name__ = "GEOMETRY"
+
+
+class POINT(String):
+    """The SQL POINT type."""
+
+    __visit_name__ = "POINT"
+
+
+class POLYGON(String):
+    """The SQL GEOMETRY type."""
+
+    __visit_name__ = "POLYGON"
+
+
 @reflection.cache
 def get_table_names(self, connection, schema=None, **kw):
     """
@@ -61,14 +80,13 @@ def get_table_names(self, connection, schema=None, **kw):
     return [name for name, in result]
 
 
+ischema_names.update({"geometry": GEOMETRY, "point": POINT, "polygon": POLYGON})
+
 PGDialect.get_table_names = get_table_names
+PGDialect.ischema_names = ischema_names
 
 
 class PostgresSource(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
-        self.pgconn = self.engine.raw_connection()
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -126,7 +144,7 @@ class PostgresSource(CommonDbSourceService):
         return False, None
 
     def type_of_column_name(self, sa_type, table_name: str, column_name: str):
-        cur = self.pgconn.cursor()
+        cur = self.engine.cursor()
         schema_table = table_name.split(".")
         cur.execute(
             """select data_type, udt_name

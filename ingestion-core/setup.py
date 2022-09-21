@@ -21,14 +21,14 @@ def get_long_description():
 
 
 dev = {
-    "datamodel-code-generator==0.11.14",
+    "datamodel-code-generator==0.13.0",
     "black==21.12b0",
     "incremental",
     "twine",
     "twisted",
     "wheel",
     "click",
-    "pydantic[email]==1.8.2",
+    "pydantic[email]==1.9.0",
 }
 
 setup(

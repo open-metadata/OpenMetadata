@@ -58,7 +58,7 @@ class MlflowSource(MlModelServiceSource):
         connection: MlflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MlflowConnection):
             raise InvalidSourceException(
-                f"Expected MysqlConnection, but got {connection}"
+                f"Expected MlFlowConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 

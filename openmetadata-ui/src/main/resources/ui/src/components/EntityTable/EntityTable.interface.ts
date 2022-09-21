@@ -13,11 +13,10 @@
 
 import { EntityFieldThreads } from 'Models';
 import { ThreadType } from '../../generated/api/feed/createThread';
-import { ColumnJoins, Table } from '../../generated/entity/data/table';
-import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
+import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
 
 export interface EntityTableProps {
-  tableColumns: ModifiedTableColumn[];
+  tableColumns: Column[];
   joins: Array<ColumnJoins>;
   columnName: string;
   hasDescriptionEditAccess?: boolean;
@@ -28,7 +27,7 @@ export interface EntityTableProps {
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
-  onUpdate?: (columns: ModifiedTableColumn[]) => Promise<void>;
+  onUpdate?: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
 }

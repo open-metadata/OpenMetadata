@@ -25,8 +25,7 @@ services:
     expose:
       - 3306
     networks:
-      app_net:
-        ipv4_address: 172.16.240.10
+      - app_net
     healthcheck:
       test: mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --silent --execute "use openmetadata_db"
       interval: 15s
@@ -40,8 +39,7 @@ services:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
     networks:
-      app_net:
-        ipv4_address: 172.16.240.11
+      - app_net
     ports:
       - "9200:9200"
       - "9300:9300"
@@ -53,8 +51,8 @@ services:
     environment:
       ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
-      AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
-      AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
+      AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.NoopAuthorizer}
+      AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.NoopFilter}
       AUTHORIZER_ADMIN_PRINCIPALS: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
       AUTHORIZER_INGESTION_PRINCIPALS: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
       AUTHORIZER_PRINCIPAL_DOMAIN: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
@@ -102,6 +100,9 @@ services:
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
+      # Airflow SSL Configurations
+      AIRFLOW_VERIFY_SSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"}
+      AIRFLOW_SSL_CERT_PATH: ${AIRFLOW_SSL_CERT_PATH:-""}
     expose:
       - 8585
       - 8586
@@ -117,11 +118,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      app_net:
-        ipv4_address: 172.16.240.13
-    extra_hosts:
-      - "localhost:172.16.240.10"
-      - "elasticsearch:172.16.240.11"
+      - app_net
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
 
@@ -136,25 +133,31 @@ services:
       openmetadata-server:
         condition: service_healthy
     environment:
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__LINEAGE__BACKEND: airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+      AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: airflow_docker
+      AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
+      AIRFLOW__LINEAGE__AUTH_PROVIDER_TYPE: no-auth # Update this if you are using SSO
+      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
       AIRFLOW_DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+pymysql}
       DB_USER: ${DB_USER:-airflow_user}
       DB_PASSWORD: ${DB_PASSWORD:-airflow_pass}
+    entrypoint: /bin/bash
+    command:
+      - "/opt/airflow/ingestion_dependency.sh"
     expose:
       - 8080
     ports:
       - "8080:8080"
     networks:
       - app_net
-    extra_hosts:
-      - "localhost:172.16.240.10"
-      - "localhost:172.16.240.11"
-      - "localhost:172.16.240.13"
     volumes:
-      - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
-      - ingestion-volume-dags:/ingestion/examples/airflow/dags
+      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
+      - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
 
 networks:

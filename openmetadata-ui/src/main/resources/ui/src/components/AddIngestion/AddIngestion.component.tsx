@@ -36,7 +36,10 @@ import {
   DatabaseServiceMetadataPipelineClass,
   DbtConfigSource,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getIngestionFrequency,
+} from '../../utils/CommonUtils';
 import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
 import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
@@ -96,7 +99,7 @@ const AddIngestion = ({
   );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
-    data?.airflowConfig.scheduleInterval ?? ''
+    data?.airflowConfig.scheduleInterval ?? getIngestionFrequency(pipelineType)
   );
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(
@@ -125,6 +128,11 @@ const AddIngestion = ({
   const [showPipelineFilter, setShowPipelineFilter] = useState(
     !isUndefined(
       (data?.sourceConfig.config as ConfigClass)?.pipelineFilterPattern
+    )
+  );
+  const [showMlModelFilter, setShowMlModelFilter] = useState(
+    !isUndefined(
+      (data?.sourceConfig.config as ConfigClass)?.mlModelFilterPattern
     )
   );
   const configData = useMemo(
@@ -213,6 +221,12 @@ const AddIngestion = ({
         INITIAL_FILTER_PATTERN
     );
 
+  const [mlModelFilterPattern, setMlModelFilterPattern] =
+    useState<FilterPattern>(
+      (data?.sourceConfig.config as ConfigClass)?.mlModelFilterPattern ??
+        INITIAL_FILTER_PATTERN
+    );
+
   const [queryLogDuration, setQueryLogDuration] = useState<number>(
     (data?.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
   );
@@ -274,6 +288,10 @@ const AddIngestion = ({
         setPipelineFilterPattern({ ...pipelineFilterPattern, includes: value });
 
         break;
+      case FilterPatternEnum.MLMODEL:
+        setMlModelFilterPattern({ ...mlModelFilterPattern, includes: value });
+
+        break;
     }
   };
   const getExcludeValue = (value: Array<string>, type: FilterPatternEnum) => {
@@ -309,6 +327,10 @@ const AddIngestion = ({
         setPipelineFilterPattern({ ...pipelineFilterPattern, excludes: value });
 
         break;
+      case FilterPatternEnum.MLMODEL:
+        setMlModelFilterPattern({ ...mlModelFilterPattern, excludes: value });
+
+        break;
     }
   };
 
@@ -340,6 +362,10 @@ const AddIngestion = ({
         break;
       case FilterPatternEnum.PIPELINE:
         setShowPipelineFilter(value);
+
+        break;
+      case FilterPatternEnum.MLMODEL:
+        setShowMlModelFilter(value);
 
         break;
     }
@@ -448,8 +474,12 @@ const AddIngestion = ({
           type: ConfigType.PipelineMetadata,
         };
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         return {
+          mlModelFilterPattern: getFilterPatternData(
+            mlModelFilterPattern,
+            showMlModelFilter
+          ),
           type: ConfigType.MlModelMetadata,
         };
       }
@@ -669,6 +699,7 @@ const AddIngestion = ({
             ingestionName={ingestionName}
             markDeletedTables={markDeletedTables}
             markDeletedTablesFromFilterOnly={markDeletedTablesFromFilterOnly}
+            mlModelFilterPattern={mlModelFilterPattern}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
             profileSample={profileSample}
@@ -679,6 +710,7 @@ const AddIngestion = ({
             showChartFilter={showChartFilter}
             showDashboardFilter={showDashboardFilter}
             showDatabaseFilter={showDatabaseFilter}
+            showMlModelFilter={showMlModelFilter}
             showPipelineFilter={showPipelineFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}

@@ -7,7 +7,7 @@ slug: /deployment/security/one-login
 
 Follow the sections in this guide to set up OneLogin SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
 
 ### Step 1: Configure a new Application
 
@@ -44,17 +44,13 @@ Follow the sections in this guide to set up OneLogin SSO.
 
 - Copy the Issuer URL
 
-</Collapse>
-
-<Collapse title="Create Service Account">
+## Create Service Account
 
 ### Create Secret Key
 
 - Navigate to "SSO" settings of the application and click on `Show client secret` to copy the secret key
 
 <Image src="/images/deployment/security/one-login/create-service-account.png" alt="create-account"/>
-
-</Collapse>
 
 After the applying these steps, you can update the configuration of your deployment:
 

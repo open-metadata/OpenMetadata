@@ -29,16 +29,16 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.client_version import get_client_version
 from metadata.utils.logger import cli_logger, ometa_logger
 
 logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
 
+RELEASE_BRANCH_VERSION = get_client_version()
 
-DOCKER_URL_ROOT = (
-    "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/"
-)
+DOCKER_URL_ROOT = f"https://raw.githubusercontent.com/open-metadata/OpenMetadata/{RELEASE_BRANCH_VERSION}/docker/metadata/"
 
 DEFAULT_COMPOSE_FILE = "docker-compose.yml"
 BACKEND_DATABASES = {
@@ -219,7 +219,7 @@ def run_docker(
     except MemoryError:
         logger.debug(traceback.format_exc())
         click.secho(
-            f"Please Allocate More memory to Docker.\nRecommended: 6GB\nCurrent: "
+            f"Please Allocate More memory to Docker.\nRecommended: 6GB+\nCurrent: "
             f"{round(float(dict(docker_info).get('mem_total')) / calc_gb)}",
             fg="red",
         )

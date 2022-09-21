@@ -80,6 +80,8 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
+        self.data_models = {}
+        self.dbt_tests = {}
 
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
@@ -104,10 +106,6 @@ class DeltalakeSource(DatabaseServiceSource):
         if not isinstance(connection, DeltaLakeConnection):
             raise InvalidSourceException(
                 f"Expected DeltaLakeConnection, but got {connection}"
-            )
-        if not connection.metastoreFilePath and not connection.metastoreHostPort:
-            raise MetaStoreNotFoundException(
-                "Either of metastoreFilePath or metastoreHostPort is required"
             )
         return cls(config, metadata_config)
 

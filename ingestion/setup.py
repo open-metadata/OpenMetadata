@@ -26,10 +26,9 @@ base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
-    "typing_extensions>=3.7.4",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic[email]==1.8.2",
+    "pydantic[email]==1.9.0",
     "google>=3.0.0",
     "google-auth>=1.33.0",
     "python-dateutil>=2.8.1",
@@ -42,7 +41,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.5",
+    "sqllineage==1.3.6",
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
@@ -86,7 +85,7 @@ plugins: Dict[str, Set[str]] = {
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
     "hive": {
-        "pyhive~=0.6.3",
+        "pyhive~=0.6.5",
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
@@ -134,15 +133,16 @@ plugins: Dict[str, Set[str]] = {
     "nifi": {},
 }
 dev = {
-    "datamodel-code-generator==0.12.0",
+    "datamodel-code-generator==0.13.0",
     "black==22.3.0",
     "pycln==1.3.2",
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
+    "pydantic[email]==1.9.0",
 }
 test = {
-    "isort",
+    "isort==5.10.1",
     "pre-commit",
     "pylint",
     "pytest==7.0.0",
@@ -171,6 +171,7 @@ setup(
     python_requires=">=3.7",
     options={"build_exe": build_options},
     package_dir={"": "src"},
+    package_data={"metadata.examples": ["workflows/*.yaml"]},
     zip_safe=False,
     dependency_links=[],
     project_urls={

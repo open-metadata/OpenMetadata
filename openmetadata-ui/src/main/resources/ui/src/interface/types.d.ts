@@ -259,6 +259,8 @@ declare module 'Models' {
   export type SearchedUsersAndTeams = {
     users: FormattedUsersData[];
     teams: FormattedTeamsData[];
+    usersTotal?: number;
+    teamsTotal?: number;
   };
 
   export type TagOption = {
