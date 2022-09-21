@@ -40,7 +40,6 @@ interface InitialContext {
   handleResetPassword: (payload: PasswordResetRequest) => void;
   handleLogout: () => void;
   isPasswordResetLinkSent: boolean;
-  isUserCreated: boolean;
   isResetTokenExpired: boolean;
 }
 
@@ -58,13 +57,12 @@ const initialContext = {
   handleResetPassword: stub,
   handleLogout: stub,
   isPasswordResetLinkSent: false,
-  isUserCreated: false,
   isResetTokenExpired: false,
 };
 
 const BasicAuthProvider = ({ children, onLoginSuccess }: BasicAuthProps) => {
   const [isPasswordResetLinkSent, setIsPasswordResetLinkSent] = useState(false);
-  const [isUserCreated, setIsUserCreated] = useState(false);
+
   const [isResetTokenExpired, setIsResetTokenExpired] = useState(false);
 
   const { setIsAuthDisabled, setLoadingIndicator } = useAuthContext();
@@ -115,7 +113,6 @@ const BasicAuthProvider = ({ children, onLoginSuccess }: BasicAuthProps) => {
         const response = await basicAuthRegister(request);
 
         if (response === HTTP_STATUS_CODE.SUCCESS) {
-          setIsUserCreated(true);
           showSuccessToast(
             jsonData['api-success-messages']['create-user-account']
           );
@@ -190,7 +187,6 @@ const BasicAuthProvider = ({ children, onLoginSuccess }: BasicAuthProps) => {
     handleLogout,
     isResetTokenExpired,
     isPasswordResetLinkSent,
-    isUserCreated,
   };
 
   return (

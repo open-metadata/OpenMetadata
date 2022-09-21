@@ -81,7 +81,7 @@ interface AuthProviderProps {
 
 const cookieStorage = new CookieStorage();
 
-const userAPIQueryFields = 'profile,teams,roles';
+const userAPIQueryFields = 'profile,teams,roles,isEmailVerified';
 
 export const AuthProvider = ({
   childComponentType,
@@ -491,7 +491,6 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     switch (authConfig?.provider) {
-      case AuthTypes.NO_AUTH:
       case AuthTypes.BASIC: {
         return (
           <BasicAuthProvider onLoginSuccess={handleSuccessfulLogin}>

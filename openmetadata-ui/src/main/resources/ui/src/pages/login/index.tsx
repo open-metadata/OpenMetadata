@@ -13,9 +13,11 @@
 
 import { Alert, Button, Divider, Form, Input, Typography } from 'antd';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
+import AppState from '../../AppState';
 import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
@@ -46,7 +48,7 @@ const SigninPage = () => {
     };
   }, [authConfig]);
 
-  const { handleLogin, isUserCreated } = useBasicAuth();
+  const { handleLogin } = useBasicAuth();
 
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
@@ -131,6 +133,13 @@ const SigninPage = () => {
     );
   };
 
+  const currentUser = AppState.getCurrentUserDetails();
+
+  const isEmailVerified = useMemo(
+    () => isEmpty(currentUser) || currentUser?.isEmailVerified,
+    [currentUser]
+  );
+
   // If user is neither logged in or nor security is disabled
   // invoke logout handler to clean-up any slug storage
   useEffect(() => {
@@ -174,7 +183,7 @@ const SigninPage = () => {
         data-testid="signin-page">
         <div className="tw-w-5/12">
           <div className="mt-24 tw-text-center flex-center flex-col">
-            {isUserCreated ? (
+            {isAuthProviderBasic && currentUser && !isEmailVerified ? (
               <Alert
                 closable
                 showIcon

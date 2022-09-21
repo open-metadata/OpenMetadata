@@ -207,7 +207,8 @@ export const isProtectedRoute = (pathname: string) => {
     pathname !== ROUTES.SIGNIN &&
     pathname !== ROUTES.FORGOT_PASSWORD &&
     pathname !== ROUTES.CALLBACK &&
-    pathname !== ROUTES.SILENT_CALLBACK
+    pathname !== ROUTES.SILENT_CALLBACK &&
+    pathname !== ROUTES.REGISTER
   );
 };
 
