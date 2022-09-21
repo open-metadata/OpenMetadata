@@ -17,6 +17,7 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface ConnectorConfig {
   username: string;
@@ -58,6 +59,7 @@ export interface IngestionProps {
   ingestionList: Array<IngestionPipeline>;
   serviceList: Array<DatabaseService>;
   currrentPage: number;
+  permissions: OperationPermission;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   deployIngestion: (id: string) => Promise<void>;

@@ -13,22 +13,21 @@
 
 import { EntityFieldThreads } from 'Models';
 import { ThreadType } from '../../generated/api/feed/createThread';
-import { ColumnJoins, Table } from '../../generated/entity/data/table';
-import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
+import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
 
 export interface EntityTableProps {
-  owner: Table['owner'];
-  tableColumns: ModifiedTableColumn[];
+  tableColumns: Column[];
   joins: Array<ColumnJoins>;
   columnName: string;
-  hasEditAccess: boolean;
+  hasDescriptionEditAccess?: boolean;
+  hasTagEditAccess?: boolean;
   tableConstraints: Table['tableConstraints'];
   searchText?: string;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
-  onUpdate?: (columns: ModifiedTableColumn[]) => void;
+  onUpdate?: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
 }

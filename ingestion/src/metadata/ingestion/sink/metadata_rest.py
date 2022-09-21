@@ -46,13 +46,11 @@ from metadata.ingestion.lineage.sql_lineage import (
     _create_lineage_by_table_name,
     get_lineage_by_query,
 )
-from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import DeleteTable
-from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -67,7 +65,7 @@ from metadata.ingestion.source.database.database_service import (
     TableLocationLink,
 )
 from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
@@ -121,8 +119,6 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, OMetaPolicy):
-            self.write_policies(record)
         elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
         elif isinstance(record, OMetaUserProfile):
@@ -131,8 +127,6 @@ class MetadataRestSink(Sink[Entity]):
             self.write_tag_category(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
-        elif isinstance(record, OMetaTableTest):
-            self.write_table_tests(record)
         elif isinstance(record, OMetaPipelineStatus):
             self.write_pipeline_status(record)
         elif isinstance(record, DataModelLink):
@@ -370,35 +364,6 @@ class MetadataRestSink(Sink[Entity]):
                 f"Unexpected error writing db schema and table [{db_schema_and_table}]: {exc}"
             )
 
-    def write_policies(self, ometa_policy: OMetaPolicy) -> None:
-        try:
-            created_location = None
-            if ometa_policy.location is not None:
-                created_location = self._create_location(ometa_policy.location)
-                logger.info(f"Successfully ingested Location {created_location.name}")
-                self.status.records_written(f"Location: {created_location.name}")
-
-            policy_request = CreatePolicyRequest(
-                name=ometa_policy.policy.name,
-                displayName=ometa_policy.policy.displayName,
-                description=ometa_policy.policy.description,
-                owner=ometa_policy.policy.owner,
-                policyUrl=ometa_policy.policy.policyUrl,
-                policyType=ometa_policy.policy.policyType,
-                rules=ometa_policy.policy.rules,
-                location=created_location.id if created_location else None,
-            )
-            created_policy = self.metadata.create_or_update(policy_request)
-            logger.info(f"Successfully ingested Policy {created_policy.name}")
-            self.status.records_written(f"Policy: {created_policy.name}")
-
-        except (APIError, ValidationError) as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to ingest Policy [{ometa_policy.policy.name}]: {err}"
-            )
-            self.status.failure(f"Policy: {ometa_policy.policy.name}")
-
     def _create_location(self, location: Location) -> Location:
         try:
             location_request = CreateLocationRequest(
@@ -446,12 +411,19 @@ class MetadataRestSink(Sink[Entity]):
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:
             created_lineage = self.metadata.add_lineage(add_lineage)
-            logger.info(f"Successfully added Lineage {created_lineage}")
-            self.status.records_written(f"Lineage: {created_lineage}")
+            created_lineage_info = created_lineage["entity"]["fullyQualifiedName"]
+
+            logger.info(f"Successfully added Lineage from {created_lineage_info}")
+            self.status.records_written(f"Lineage from: {created_lineage_info}")
         except (APIError, ValidationError) as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to ingest lineage [{add_lineage}]: {err}")
-            self.status.failure(f"Lineage: {add_lineage}")
+            logger.error(
+                f"Failed to ingest lineage [{get_add_lineage_log_str(add_lineage)}]: {err}"
+            )
+            self.status.failure(f"Lineage: {get_add_lineage_log_str(add_lineage)}")
+        except (KeyError, ValueError) as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to extract lineage information after sink - {err}")
 
     def _create_role(self, create_role: CreateRoleRequest) -> Role:
         try:
@@ -545,34 +517,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Unexpected error deleting table [{record.table.name}]: {exc}"
-            )
-
-    def write_table_tests(self, record: OMetaTableTest) -> None:
-        """
-        Iterate over all table_tests and column_tests
-        for the given table and add them to the backend.
-
-        :param record: Sample data record
-        """
-        try:
-            # Fetch the table that we have already ingested
-            table = self.metadata.get_by_name(entity=Table, fqn=record.table_name)
-
-            test = None
-            if record.table_test:
-                self.metadata.add_table_test(table=table, table_test=record.table_test)
-                test = record.table_test.testCase.tableTestType.value
-
-            if record.column_test:
-                self.metadata.add_column_test(table=table, col_test=record.column_test)
-                test = record.column_test.testCase.columnTestType.value
-
-            logger.info(f"Table Tests: {record.table_name}.{test}")
-            self.status.records_written(f"Table Tests: {record.table_name}.{test}")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error writing table tests [{record.table_name}]: {exc}"
             )
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):

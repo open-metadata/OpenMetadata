@@ -21,11 +21,14 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeType,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -34,6 +37,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.api.models import TablePartitionConfig
@@ -55,6 +59,7 @@ from metadata.utils.constants import TEN_MIN
 from metadata.utils.dispatch import enum_register
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import sqa_interface_registry_logger
+from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 from metadata.utils.timeout import cls_timeout
 
 logger = sqa_interface_registry_logger()
@@ -71,6 +76,7 @@ class SQAInterface(InterfaceProtocol):
     def __init__(
         self,
         service_connection_config,
+        sqa_metadata_obj: Optional[MetaData] = None,
         metadata_config: Optional[OpenMetadataConnection] = None,
         thread_count: Optional[int] = 5,
         table_entity: Optional[Table] = None,
@@ -84,11 +90,20 @@ class SQAInterface(InterfaceProtocol):
         self.table_entity = table_entity
         self._create_ometa_obj(metadata_config)
 
+        self.processor_status = ProfilerProcessorStatus()
+        self.processor_status.entity = (
+            self.table_entity.fullyQualifiedName.__root__
+            if self.table_entity.fullyQualifiedName
+            else None
+        )
+
         # Allows SQA Interface to be used without OM server config
-        self.table = table or self._convert_table_to_orm_object()
+        self.table = table or self._convert_table_to_orm_object(sqa_metadata_obj)
+        self.service_connection_config = service_connection_config
 
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()
+        self.set_session_tag(self.session)
 
         self.profile_sample = profile_sample
         self.profile_query = profile_query
@@ -128,6 +143,23 @@ class SQAInterface(InterfaceProtocol):
         """
         engine = get_connection(service_connection_config)
         return create_and_bind_thread_safe_session(engine)
+
+    def set_session_tag(self, session):
+        """
+        Set session query tag
+        Args:
+            service_connection_config: connection details for the specific service
+        """
+        if (
+            self.service_connection_config.type.value == SnowflakeType.Snowflake.value
+            and hasattr(self.service_connection_config, "queryTag")
+            and self.service_connection_config.queryTag
+        ):
+            session.execute(
+                SNOWFLAKE_SESSION_TAG_QUERY.format(
+                    query_tag=self.service_connection_config.queryTag
+                )
+            )
 
     def _get_engine(self, service_connection_config):
         """Get engine for database
@@ -205,9 +237,17 @@ class SQAInterface(InterfaceProtocol):
             )
         return thread_local.runner
 
-    def _convert_table_to_orm_object(self) -> DeclarativeMeta:
-        """Given a table entity return a SQA ORM object"""
-        return ometa_to_orm(self.table_entity, self._metadata)
+    def _convert_table_to_orm_object(
+        self, sqa_metadata_obj: Optional[MetaData]
+    ) -> DeclarativeMeta:
+        """Given a table entity return a SQA ORM object
+
+        Args:
+            sqa_metadata_obj: sqa metadata registry
+        Returns:
+            DeclarativeMeta
+        """
+        return ometa_to_orm(self.table_entity, self._metadata, sqa_metadata_obj)
 
     def get_columns(self) -> Column:
         """get columns from an orm object"""
@@ -228,33 +268,32 @@ class SQAInterface(InterfaceProtocol):
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
         Session = self.session_factory
-        session = Session()
-        sampler = self._create_thread_safe_sampler(
-            session,
-            table,
-        )
-        sample = sampler.random_sample()
-        runner = self._create_thread_safe_runner(
-            session,
-            table,
-            sample,
-        )
+        with Session() as session:
+            self.set_session_tag(session)
+            sampler = self._create_thread_safe_sampler(
+                session,
+                table,
+            )
+            sample = sampler.random_sample()
+            runner = self._create_thread_safe_runner(
+                session,
+                table,
+                sample,
+            )
 
-        row = compute_metrics_registry.registry[metric_type.value](
-            metrics,
-            runner=runner,
-            session=session,
-            column=column,
-            sample=sample,
-        )
+            row = compute_metrics_registry.registry[metric_type.value](
+                metrics,
+                runner=runner,
+                session=session,
+                column=column,
+                sample=sample,
+                processor_status=self.processor_status,
+            )
 
-        try:
-            column = column.name
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            if column is not None:
+                column = column.name
 
-        return row, column
+            return row, column
 
     def get_all_metrics(
         self,
@@ -387,7 +426,7 @@ def get_table_metrics(
         dictionnary of results
     """
     try:
-        row = runner.select_first_from_table(*[metric().fn() for metric in metrics])
+        row = runner.select_first_from_sample(*[metric().fn() for metric in metrics])
 
         if row:
             return dict(row)
@@ -405,6 +444,7 @@ def get_static_metrics(
     runner: QueryRunner,
     session: Session,
     column: Column,
+    processor_status: ProfilerProcessorStatus,
     *args,
     **kwargs,
 ) -> Dict[str, Union[str, int]]:
@@ -432,6 +472,7 @@ def get_static_metrics(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
+        processor_status.failure(f"{column.name}", "Static Metrics", f"{exc}")
 
 
 def get_query_metrics(
@@ -440,6 +481,7 @@ def get_query_metrics(
     session: Session,
     column: Column,
     sample,
+    processor_status: ProfilerProcessorStatus,
     *args,
     **kwargs,
 ) -> Optional[Dict[str, Union[str, int]]]:
@@ -471,6 +513,7 @@ def get_query_metrics(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
+        processor_status.failure(f"{column.name}", "Query Metrics", f"{exc}")
 
 
 def get_window_metrics(
@@ -478,6 +521,7 @@ def get_window_metrics(
     runner: QueryRunner,
     session: Session,
     column: Column,
+    processor_status: ProfilerProcessorStatus,
     *args,
     **kwargs,
 ) -> Dict[str, Union[str, int]]:
@@ -501,6 +545,7 @@ def get_window_metrics(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
+        processor_status.failure(f"{column.name}", "Window Metrics", f"{exc}")
 
 
 compute_metrics_registry = enum_register()

@@ -36,6 +36,35 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
+jest.mock('antd', () => ({
+  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Divider: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: {
+    Title: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
+  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
+    <div>
+      {children}
+      {overlay}
+    </div>
+  )),
+  Menu: jest.fn().mockImplementation(({ items }) => (
+    <div>
+      {items.map((item: { key: string; label: JSX.Element }) => {
+        <div key={item.key}>{item.label}</div>;
+      })}
+    </div>
+  )),
+}));
+
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
@@ -184,38 +213,44 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 2', async () => {
-    render(<GlossaryPageV1 />);
+    await act(async () => {
+      render(<GlossaryPageV1 />);
 
-    const glossaryComponent = await screen.findByText(/Glossary.component/i);
-    const handleAddGlossaryClick = await screen.findByTestId(
-      'handleAddGlossaryClick'
-    );
-    const handleAddGlossaryTermClick = await screen.findByTestId(
-      'handleAddGlossaryTermClick'
-    );
-    const handleChildLoading = await screen.findByTestId('handleChildLoading');
-    const handleExpandedKey = await screen.findByTestId('handleExpandedKey');
-    const handleGlossaryDelete = await screen.findByTestId(
-      'handleGlossaryDelete'
-    );
-    const handleGlossaryTermUpdate = await screen.findByTestId(
-      'handleGlossaryTermUpdate'
-    );
-    const handleGlossaryTermDelete = await screen.findByTestId(
-      'handleGlossaryTermDelete'
-    );
-    const handleSearchText = await screen.findByTestId('handleSearchText');
+      const glossaryComponent = await screen.findByText(/Glossary.component/i);
+      const handleAddGlossaryClick = await screen.findByTestId(
+        'handleAddGlossaryClick'
+      );
+      const handleAddGlossaryTermClick = await screen.findByTestId(
+        'handleAddGlossaryTermClick'
+      );
+      const handleChildLoading = await screen.findByTestId(
+        'handleChildLoading'
+      );
+      const handleExpandedKey = await screen.findByTestId('handleExpandedKey');
+      const handleGlossaryDelete = await screen.findByTestId(
+        'handleGlossaryDelete'
+      );
+      const handleGlossaryTermUpdate = await screen.findByTestId(
+        'handleGlossaryTermUpdate'
+      );
+      const handleGlossaryTermDelete = await screen.findByTestId(
+        'handleGlossaryTermDelete'
+      );
+      const handleSearchText = await screen.findByTestId('handleSearchText');
 
-    expect(glossaryComponent).toBeInTheDocument();
+      expect(glossaryComponent).toBeInTheDocument();
 
-    fireEvent.click(handleAddGlossaryClick);
-    fireEvent.click(handleAddGlossaryTermClick);
-    fireEvent.click(handleChildLoading);
-    fireEvent.click(handleExpandedKey);
-    fireEvent.click(handleGlossaryDelete);
-    fireEvent.click(handleGlossaryTermUpdate);
-    fireEvent.click(handleGlossaryTermDelete);
-    fireEvent.click(handleSearchText);
+      fireEvent.click(handleAddGlossaryClick);
+      fireEvent.click(handleAddGlossaryTermClick);
+      fireEvent.click(handleChildLoading);
+      fireEvent.click(handleExpandedKey);
+      fireEvent.click(handleGlossaryDelete);
+
+      fireEvent.click(handleGlossaryTermUpdate);
+      fireEvent.click(handleGlossaryTermDelete);
+
+      fireEvent.click(handleSearchText);
+    });
   });
 
   describe('Render Sad Paths', () => {
@@ -230,7 +265,9 @@ describe('Test GlossaryComponent page', () => {
 
       expect(handleGlossaryTermDelete).toBeInTheDocument();
 
-      fireEvent.click(handleGlossaryTermDelete);
+      await act(async () => {
+        fireEvent.click(handleGlossaryTermDelete);
+      });
     });
 
     it('show error if deleteGlossary API fails', async () => {
@@ -244,7 +281,9 @@ describe('Test GlossaryComponent page', () => {
 
       expect(handleGlossaryDelete).toBeInTheDocument();
 
-      fireEvent.click(handleGlossaryDelete);
+      await act(async () => {
+        fireEvent.click(handleGlossaryDelete);
+      });
     });
 
     it('show error if patchGlossaryTerm API resolves without data', async () => {
@@ -258,7 +297,9 @@ describe('Test GlossaryComponent page', () => {
 
       expect(handleGlossaryTermUpdate).toBeInTheDocument();
 
-      fireEvent.click(handleGlossaryTermUpdate);
+      await act(async () => {
+        fireEvent.click(handleGlossaryTermUpdate);
+      });
     });
   });
 });

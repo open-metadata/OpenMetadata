@@ -12,6 +12,8 @@
 """
 Main Profile definition and queries to execute
 """
+from __future__ import annotations
+
 import traceback
 import warnings
 from datetime import datetime, timezone
@@ -21,7 +23,6 @@ from pydantic import ValidationError
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
-from typing_extensions import Self
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -43,6 +44,7 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TMetric,
 )
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
@@ -186,6 +188,33 @@ class Profiler(Generic[TMetric]):
         """
         return [metric for metric in self.metrics if issubclass(metric, _type)]
 
+    def _check_profile_and_handle(
+        self, profile: CreateTableProfileRequest
+    ) -> CreateTableProfileRequest:
+        """Check if the profile data are empty. if empty then raise else return
+
+        Args:
+            profile (CreateTableProfileRequest): profile data
+
+        Raises:
+            Exception: that will be caught in the workflow and add the entity to failure source and processor status
+
+        Returns:
+            CreateTableProfileRequest:
+        """
+        for attrs, val in profile.tableProfile:
+            if attrs not in {"timestamp", "profileSample"} and val:
+                return profile
+
+        for col_element in profile.columnProfile:
+            for attrs, val in col_element:
+                if attrs not in {"timestamp", "name"} and val:
+                    return profile
+
+        raise Exception(
+            f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}"
+        )
+
     @property
     def static_metrics(self) -> List[Type[StaticMetric]]:
         return self._filter_metrics(StaticMetric)
@@ -216,13 +245,21 @@ class Profiler(Generic[TMetric]):
             self.profiler_interface.table_entity.tableProfilerConfig
             and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
         ):
-            metric_names = (
-                metric_array
-                for col_name, metric_array in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
-                if col_name == column
+            metric_names = next(
+                (
+                    include_columns.metrics
+                    for include_columns in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+                    if include_columns.columnName == column.name
+                ),
+                None,
             )
+
             if metric_names:
-                metrics = [Metric.get(metric_name) for metric_name in metric_names]
+                metrics = [
+                    Metric.value
+                    for Metric in Metrics
+                    if Metric.value.name() in metric_names
+                ]
 
         return [metric for metric in metrics if metric.is_col_metric()]
 
@@ -290,11 +327,6 @@ class Profiler(Generic[TMetric]):
 
     def _prepare_column_metrics_for_thread_pool(self):
         """prepare column metrics for thread pool"""
-        window_metrics = [
-            metric
-            for metric in self.get_col_metrics(self.static_metrics)
-            if metric.is_window_metric()
-        ]
         columns = [
             column
             for column in self.columns
@@ -355,7 +387,7 @@ class Profiler(Generic[TMetric]):
         self._table_results = profile_results["table"]
         self._column_results = profile_results["columns"]
 
-    def compute_metrics(self) -> Self:
+    def compute_metrics(self) -> Profiler:
         """Run the whole profiling using multithreading"""
         self.profile_entity()
         for column in self.columns:
@@ -375,16 +407,24 @@ class Profiler(Generic[TMetric]):
         self.compute_metrics()
 
         if generate_sample_data:
-            logger.info(
-                f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
-            )
-            sample_data = self.profiler_interface.fetch_sample_data()
+            try:
+                logger.info(
+                    f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                )
+                sample_data = self.profiler_interface.fetch_sample_data()
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error fetching sample data: {err}")
+                sample_data = None
+
         else:
             sample_data = None
 
+        profile = self._check_profile_and_handle(self.get_profile())
+
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,
-            profile=self.get_profile(),
+            profile=profile,
             sample_data=sample_data,
         )
 

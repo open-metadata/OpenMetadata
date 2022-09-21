@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
+import { Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { uniqueId } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
-import { Type } from '../../../generated/entity/type';
-import { isEven } from '../../../utils/CommonUtils';
+import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
 import { CustomPropertyProps } from './CustomPropertyTable.interface';
 import { PropertyValue } from './PropertyValue';
 
@@ -37,76 +38,57 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
-  const customProperties = entityTypeDetail.customProperties || [];
-
-  const extension = entityDetails.extension;
-
-  const onExtensionUpdate = (
+  const onExtensionUpdate = async (
     updatedExtension: CustomPropertyProps['entityDetails']['extension']
   ) => {
-    handleExtentionUpdate({ ...entityDetails, extension: updatedExtension });
+    await handleExtentionUpdate({
+      ...entityDetails,
+      extension: updatedExtension,
+    });
   };
+
+  const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
+    return [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+        width: '50%',
+      },
+      {
+        title: 'Value',
+        dataIndex: 'value',
+        key: 'value',
+        width: '50%',
+        render: (_, record) => (
+          <PropertyValue
+            extension={entityDetails.extension}
+            propertyName={record.name}
+            propertyType={record.propertyType}
+            onExtensionUpdate={onExtensionUpdate}
+          />
+        ),
+      },
+    ];
+  }, [entityDetails.extension]);
 
   useEffect(() => {
     fetchTypeDetail();
   }, []);
 
   return (
-    <div className="tw-bg-white tw-border tw-border-main tw-rounded">
-      <table className="tw-w-full" data-testid="custom-properties-table">
-        <thead data-testid="table-header">
-          <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
-            <th className="tableHead-cell tw-w-2/4" data-testid="property-name">
-              Name
-            </th>
-            <th
-              className="tableHead-cell tw-w-2/4"
-              data-testid="property-value">
-              Value
-            </th>
-          </tr>
-        </thead>
-        <tbody data-testid="table-body">
-          {customProperties.length ? (
-            customProperties.map((property, index) => (
-              <tr
-                className={classNames(
-                  `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                  'tw-border-l-0 tw-border-r-0',
-                  {
-                    'tw-border-b-0': index === customProperties.length - 1,
-                  }
-                )}
-                data-testid="data-row"
-                key={uniqueId()}>
-                <td className="tableBody-cell">{property.name}</td>
-
-                <td className="tableBody-cell">
-                  <PropertyValue
-                    extension={extension}
-                    propertyName={property.name}
-                    propertyType={property.propertyType}
-                    onExtensionUpdate={onExtensionUpdate}
-                  />
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr
-              className={classNames(
-                'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0'
-              )}
-              data-testid="no-data-row"
-              key={uniqueId()}>
-              <td className="tableBody-cell tw-text-center" colSpan={2}>
-                <span className="tw-text-grey-muted">
-                  No custom properties available
-                </span>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {isEmpty(entityTypeDetail.customProperties) ? (
+        <ErrorPlaceHolder heading="Custom Properties" />
+      ) : (
+        <Table
+          columns={tableColumn}
+          data-testid="custom-properties-table"
+          dataSource={entityTypeDetail.customProperties || []}
+          pagination={false}
+          size="small"
+        />
+      )}
+    </>
   );
 };

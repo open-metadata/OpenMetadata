@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { EntityFieldThreadCount } from 'Models';
 import { configOptions } from '../constants/constants';
 import { TaskOperation } from '../constants/feed.constants';
@@ -33,8 +34,12 @@ export const getAllFeeds = async (
   after?: string,
   type?: ThreadType,
   filterType?: FeedFilter,
-  taskStatus?: ThreadTaskStatus
+  taskStatus?: ThreadTaskStatus,
+  userId?: string
 ) => {
+  const isFilterAll = filterType === FeedFilter.ALL;
+  const isFilterUndefined = isUndefined(filterType);
+
   const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
     `/feed`,
     {
@@ -42,8 +47,9 @@ export const getAllFeeds = async (
         entityLink: entityLink,
         after,
         type,
-        filterType: filterType !== FeedFilter.ALL ? filterType : undefined,
+        filterType: isFilterAll || isFilterUndefined ? undefined : filterType,
         taskStatus,
+        userId: isFilterAll || isFilterUndefined ? undefined : userId,
       },
     }
   );

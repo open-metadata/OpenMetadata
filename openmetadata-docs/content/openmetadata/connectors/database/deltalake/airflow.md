@@ -14,7 +14,7 @@ Configure and schedule Deltalake metadata and profiler workflows from the OpenMe
 
 ## Requirements
 
-<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
+<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12.1 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
 
@@ -32,7 +32,7 @@ pip3 install "openmetadata-ingestion[deltalake]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/deltalakeConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/database/deltalakeConnection.json)
 you can find the structure to create a connection to Deltalake.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -40,7 +40,7 @@ the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following
-[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
+[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
@@ -53,9 +53,11 @@ source:
   serviceConnection:
     config:
       type: DeltaLake
-      # Choose either metastoreHostPort or metastoreFilePath
-      metastoreHostPort: "<metastore host port>"
-      # metastoreFilePath: "<path_to_metastore>/metastore_db"
+      metastoreConnection:
+        # Pick only of the three
+        metastoreHostPort: "<metastore host port>"
+        # metastoreDb: jdbc:mysql://localhost:3306/demo_hive
+        # metastoreFilePath: "<path_to_metastore>/metastore_db"
       appName: MyApp
   sourceConfig:
     config:
@@ -125,6 +127,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: "<OpenMetadata host and port>"
     authProvider: "<OpenMetadata auth provider>"
@@ -133,16 +136,38 @@ workflowConfig:
 
 #### Source Configuration - Service Connection
 
-- **Metastore Host Port**: Enter the Host & Port of Hive Metastore to configure the Spark Session. Either
-  of `metastoreHostPort` or `metastoreFilePath` is required.
+- **Metastore Host Port**: Enter the Host & Port of Hive Metastore Service to configure the Spark Session. Either
+  of `metastoreHostPort`, `metastoreDb` or `metastoreFilePath` is required.
 - **Metastore File Path**: Enter the file path to local Metastore in case Spark cluster is running locally. Either
-  of `metastoreHostPort` or `metastoreFilePath` is required.
+  of `metastoreHostPort`, `metastoreDb` or `metastoreFilePath` is required.
+- **Metastore DB**: The JDBC connection to the underlying Hive metastore DB. Either
+  of `metastoreHostPort`, `metastoreDb` or `metastoreFilePath` is required.
 - **appName (Optional)**: Enter the app name of spark session.
 - **Connection Arguments (Optional)**: Key-Value pairs that will be used to pass extra `config` elements to the Spark
   Session builder.
 
 We are internally running with `pyspark` 3.X and `delta-lake` 2.0.0. This means that we need to consider Spark
 configuration options for 3.X.
+
+##### Metastore Host Port
+
+When connecting to an External Metastore passing the parameter `Metastore Host Port`, we will be preparing a Spark Session with the configuration
+
+```
+.config("hive.metastore.uris", "thrift://{connection.metastoreHostPort}") 
+```
+
+Then, we will be using the `catalog` functions from the Spark Session to pick up the metadata exposed by the Hive Metastore.
+
+##### Metastore File Path
+
+If instead we use a local file path that contains the metastore information (e.g., for local testing with the default `metastore_db` directory), we will set
+
+```
+.config("spark.driver.extraJavaOptions", "-Dderby.system.home={connection.metastoreFilePath}") 
+```
+
+To update the `Derby` information. More information about this in a great [SO thread](https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell).
 
 - You can find all supported configurations [here](https://spark.apache.org/docs/latest/configuration.html)
 - If you need further information regarding the Hive metastore, you can find
@@ -151,7 +176,7 @@ configuration options for 3.X.
 
 #### Source Configuration - Source Config
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
 - `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
 - `includeTables`: true or false, to ingest table data. Default is true.
@@ -182,7 +207,7 @@ workflowConfig:
     authProvider: no-auth
 ```
 
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client).
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">

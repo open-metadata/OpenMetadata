@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -25,7 +26,13 @@ import { getListTestCase } from '../../axiosAPIs/testAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
+import { ProfilerDashboardTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
@@ -35,17 +42,43 @@ import {
   getNameFromFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType, tab } = useParams<{
+    entityTypeFQN: string;
+    dashboardType: ProfilerDashboardType;
+    tab: ProfilerDashboardTab;
+  }>();
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [table, setTable] = useState<Table>({} as Table);
   const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
+
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermission } = usePermissionProvider();
+
+  const fetchResourcePermission = async () => {
+    try {
+      const tablePermission = await getEntityPermission(
+        ResourceEntity.TABLE,
+        table.id
+      );
+
+      setTablePermissions(tablePermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    }
+  };
 
   const fetchProfilerData = async (fqn: string, days = 3) => {
     try {
@@ -68,8 +101,9 @@ const ProfilerDashboardPage = () => {
   const fetchTestCases = async (fqn: string) => {
     try {
       const { data } = await getListTestCase({
-        fields: 'testDefinition,testCaseResult',
+        fields: 'testDefinition,testCaseResult,testSuite',
         entityLink: fqn,
+        includeAllTests: !isColumnView,
         limit: API_RES_MAX_SIZE,
       });
       setTestCases(data);
@@ -83,6 +117,10 @@ const ProfilerDashboardPage = () => {
     }
   };
 
+  const handleTestCaseUpdate = () => {
+    fetchTestCases(generateEntityLink(entityTypeFQN, isColumnView));
+  };
+
   const fetchTableEntity = async () => {
     try {
       const fqn = isColumnView
@@ -93,11 +131,6 @@ const ProfilerDashboardPage = () => {
       }`;
       const data = await getTableDetailsByFQN(fqn, field);
       setTable(data ?? ({} as Table));
-      if (isColumnView) {
-        fetchProfilerData(entityTypeFQN);
-      } else {
-        fetchTestCases(generateEntityLink(entityTypeFQN));
-      }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -122,6 +155,19 @@ const ProfilerDashboardPage = () => {
     }
   };
 
+  const getProfilerDashboard = (permission: OperationPermission) => {
+    if (
+      tab === ProfilerDashboardTab.DATA_QUALITY &&
+      (permission.ViewAll || permission.ViewTests)
+    ) {
+      fetchTestCases(generateEntityLink(entityTypeFQN));
+    } else if (permission.ViewAll || permission.ViewDataProfile) {
+      fetchProfilerData(entityTypeFQN);
+    } else {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (entityTypeFQN) {
       fetchTableEntity();
@@ -130,6 +176,18 @@ const ProfilerDashboardPage = () => {
       setError(true);
     }
   }, [entityTypeFQN]);
+
+  useEffect(() => {
+    if (!isEmpty(table)) {
+      fetchResourcePermission();
+    }
+  }, [table]);
+
+  useEffect(() => {
+    if (!isEmpty(table)) {
+      getProfilerDashboard(tablePermissions);
+    }
+  }, [table, tablePermissions]);
 
   if (isLoading) {
     return <Loader />;
@@ -155,6 +213,7 @@ const ProfilerDashboardPage = () => {
         table={table}
         testCases={testCases}
         onTableChange={updateTableHandler}
+        onTestCaseUpdate={handleTestCaseUpdate}
       />
     </PageContainerV1>
   );

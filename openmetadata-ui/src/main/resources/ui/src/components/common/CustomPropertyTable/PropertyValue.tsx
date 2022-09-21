@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { toNumber } from 'lodash';
+import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -24,7 +24,7 @@ interface Props {
   propertyName: string;
   propertyType: EntityReference;
   extension: Table['extension'];
-  onExtensionUpdate: (updatedExtension: Table['extension']) => void;
+  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
 }
 
 const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
@@ -55,7 +55,7 @@ export const PropertyValue: FC<Props> = ({
   };
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const onInputSave = (updatedValue: any) => {
+  const onInputSave = async (updatedValue: any) => {
     const updatedExtension = {
       ...(extension || {}),
       [propertyName]:
@@ -63,7 +63,8 @@ export const PropertyValue: FC<Props> = ({
           ? toNumber(updatedValue || 0)
           : updatedValue,
     };
-    onExtensionUpdate(updatedExtension);
+    await onExtensionUpdate(updatedExtension);
+    setShowInput(false);
   };
 
   const getPropertyInput = () => {
@@ -107,14 +108,27 @@ export const PropertyValue: FC<Props> = ({
     }
   };
 
-  const getValueElement = () =>
-    value ? (
-      getPropertyValue()
-    ) : (
-      <span className="tw-text-grey-muted" data-testid="no-data">
-        No data
-      </span>
-    );
+  const getValueElement = () => {
+    const propertyValue = getPropertyValue();
+    const isInteger = propertyType.name === 'integer';
+    if (isInteger) {
+      return !isUndefined(value) ? (
+        propertyValue
+      ) : (
+        <span className="tw-text-grey-muted" data-testid="no-data">
+          No data
+        </span>
+      );
+    } else {
+      return value ? (
+        propertyValue
+      ) : (
+        <span className="tw-text-grey-muted" data-testid="no-data">
+          No data
+        </span>
+      );
+    }
+  };
 
   return (
     <div>

@@ -11,7 +11,7 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 ## Requirements
@@ -40,7 +40,7 @@ pip3 install "openmetadata-ingestion[clickhouse-usage]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json)
 you can find the structure to create a connection to Clickhouse.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -48,7 +48,7 @@ the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following
-[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
+[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
@@ -135,6 +135,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: "<OpenMetadata host and port>"
     authProvider: "<OpenMetadata auth provider>"
@@ -152,7 +153,7 @@ workflowConfig:
 
 #### Source Configuration - Source Config
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
 - `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
 - `includeTables`: true or false, to ingest table data. Default is true.
@@ -183,7 +184,7 @@ workflowConfig:
     authProvider: no-auth
 ```
 
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client).
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
@@ -404,6 +405,7 @@ bulkSink:
   config:
     filename: "/tmp/clickhouse_usage"
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: "<OpenMetadata host and port>"
     authProvider: "<OpenMetadata auth provider>"
@@ -411,12 +413,12 @@ workflowConfig:
 
 #### Source Configuration - Service Connection
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
 They are the same as metadata ingestion.
 
 #### Source Configuration - Source Config
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
 
 - `queryLogDuration`: Configuration to tune how far we want to look back in query logs to process usage data.
 - `resultLimit`: Configuration to set the limit for query logs
@@ -441,7 +443,7 @@ pip3 install --upgrade 'openmetadata-ingestion[clickhouse-usage]'
 
 For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the YAML configuration will be enough.
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
 While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be
@@ -508,6 +510,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: "<OpenMetadata host and port>"
     authProvider: "<OpenMetadata auth provider>"
@@ -515,8 +518,8 @@ workflowConfig:
 
 #### Source Configuration
 
-- You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json).
-- The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
+- You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json).
+- The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
 
 Note that the filter patterns support regex as includes or excludes. E.g.,
 

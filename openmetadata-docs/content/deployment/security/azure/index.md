@@ -7,7 +7,7 @@ slug: /deployment/security/azure
 
 Follow the sections in this guide to set up Azure SSO.
 
-<Collapse title="Create Server Credentials">
+## Create Server Credentials
 
 ### Step 1: Login to Azure Active Directory
 
@@ -49,9 +49,7 @@ Admin permissions are required to register the application on the Azure portal.
 "authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
 ```
 
-</Collapse>
-
-<Collapse title="Create Service Application">
+## Create Service Application
 
 ### Step 1: Access Tokens and ID Tokens
 
@@ -157,9 +155,6 @@ below. `https://login.microsoftonline.com/TenantID`
 This information is required to configure Airflow.
 
 <Image src="/images/deployment/security/azure/client-id-and-authority.png" alt="client-id-authority"/>
-
-
-</Collapse>
 
 After the applying these steps, you can update the configuration of your deployment:
 

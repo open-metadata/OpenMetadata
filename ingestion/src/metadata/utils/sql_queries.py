@@ -271,6 +271,7 @@ NEO4J_AMUNDSEN_USER_QUERY = textwrap.dedent(
         user.employee_type as employee_type, manager.email as manager_email,
         user.slack_id as slack_id, user.is_active as is_active, user.role_name as role_name,
         REDUCE(sum_r = 0, r in COLLECT(DISTINCT read)| sum_r + r.read_count) AS total_read,
+        COLLECT(DISTINCT b) as entities_owned,
         count(distinct b) as total_own,
         count(distinct c) AS total_follow
         order by user.email
@@ -467,22 +468,16 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
     """
       SELECT
         u.usename,
-        d.datname,
+        d.datname database_name,
         s.query query_text,
-        a.query_start start_time,
-        s.total_exec_time,
-        s.mean_exec_time,
-        s.calls
+        s.total_exec_time
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
         JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
-        JOIN pg_catalog.pg_stat_activity a ON d.datname = a.datname
       WHERE
-        a.query_start >= '{start_time}' AND
-        a.state_change <  current_timestamp
-        AND s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        AND s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%' AND
+        s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
         {filters}
       LIMIT {result_limit}
     """
@@ -525,3 +520,19 @@ on
  where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
 """
 )
+
+SNOWFLAKE_GET_CLUSTER_KEY = """
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
+  from   information_schema.tables 
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
+"""
+
+
+REDSHIFT_PARTITION_DETAILS = """
+  select "schema", "table", diststyle
+  from SVV_TABLE_INFO
+  where diststyle not like 'AUTO%%'
+"""

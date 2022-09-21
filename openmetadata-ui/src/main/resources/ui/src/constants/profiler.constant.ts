@@ -14,7 +14,7 @@
 import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { ColumnProfilerConfig } from '../generated/entity/data/table';
-import { TestCaseStatus } from '../generated/tests/tableTest';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { JSON_TAB_SIZE } from './constants';
 
 export const excludedMetrics = [
@@ -205,5 +205,4 @@ export const codeMirrorOption = {
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   { name: 'Select/Add Test Suite', step: 1 },
   { name: 'Configure Test Case', step: 2 },
-  //   { name: 'Schedule Interval', step: 3 },
 ];

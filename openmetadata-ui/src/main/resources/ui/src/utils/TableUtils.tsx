@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { Fragment } from 'react';
+import React from 'react';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -30,14 +29,16 @@ import {
   getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { Column, DataType } from '../generated/entity/data/table';
-import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
-import { ModifiedTableColumn } from '../interface/dataQuality.interface';
-import { getNameFromFQN, getTableFQNFromColumnFQN } from './CommonUtils';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './CommonUtils';
 import { getGlossaryPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
@@ -162,7 +163,7 @@ export const getConstraintIcon = (constraint = '', className = '') => {
 
   return (
     <PopOver
-      className={classNames('tw-absolute tw-left-1', className)}
+      className={classNames(className)}
       position="bottom"
       size="small"
       title={title}
@@ -263,12 +264,13 @@ export const makeRow = (column: Column) => {
   return {
     description: column.description || '',
     tags: column?.tags || [],
+    key: column?.name,
     ...column,
   };
 };
 
 export const makeData = (
-  columns: ModifiedTableColumn[] = []
+  columns: Column[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
   return columns.map((column) => ({
     ...makeRow(column),
@@ -313,7 +315,7 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
 
   if (includeColumn) {
     const tableFqn = getTableFQNFromColumnFQN(fqn);
-    const columnName = getNameFromFQN(fqn);
+    const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
 
     return columnLink
       .replace('ENTITY_FQN', tableFqn)
@@ -321,6 +323,21 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
   } else {
     return tableLink.replace('ENTITY_FQN', fqn);
   }
+};
+
+export const getEntityFqnFromEntityLink = (
+  entityLink: string,
+  includeColumn = false
+) => {
+  const link = entityLink.split('>')[0];
+  const entityLinkData = link.split('::');
+  const tableFqn = entityLinkData[2];
+
+  if (includeColumn) {
+    return `${tableFqn}.${entityLinkData[entityLinkData.length - 1]}`;
+  }
+
+  return tableFqn;
 };
 
 export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
@@ -337,51 +354,4 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
     default:
       return '';
   }
-};
-
-export const getTableTestsValue = (tableTestCase: TableTest[]) => {
-  const tableTestLength = tableTestCase.length;
-
-  const failingTests = tableTestCase.filter((test) =>
-    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Failed)
-  );
-  const passingTests = tableTestCase.filter((test) =>
-    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Success)
-  );
-
-  return (
-    <Fragment>
-      {tableTestLength ? (
-        <Fragment>
-          {failingTests.length ? (
-            <div className="tw-flex">
-              <p className="tw-mr-2">
-                <FontAwesomeIcon
-                  className="tw-text-status-failed"
-                  icon="times"
-                />
-              </p>
-              <p>{`${failingTests.length}/${tableTestLength} tests failing`}</p>
-            </div>
-          ) : (
-            <Fragment>
-              {passingTests.length ? (
-                <div className="tw-flex">
-                  <div className="tw-mr-2">
-                    <FontAwesomeIcon
-                      className="tw-text-status-success"
-                      icon="check-square"
-                    />
-                  </div>
-                  <>{`${passingTests.length} tests`}</>
-                </div>
-              ) : (
-                <>{`${tableTestLength} tests`}</>
-              )}
-            </Fragment>
-          )}
-        </Fragment>
-      ) : null}
-    </Fragment>
-  );
 };

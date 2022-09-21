@@ -40,5 +40,5 @@ OM_AUTH_AIRFLOW_OKTA_SCOPES={OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
 ## 2. Start Docker
 
 ```commandline
-docker compose --env-file ~/openmetadata_azure.env up -d
+docker compose --env-file ~/openmetadata_okta.env up -d
 ```

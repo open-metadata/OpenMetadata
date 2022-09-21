@@ -1,7 +1,0 @@
-{
-  "name": "columnValuesToBeNotNull",
-  "displayName": "columnValuesToBeNotNull",
-  "description": "This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a column are null. Values must be explicitly null. Empty strings don't count as null. ",
-  "entityType": "COLUMN",
-  "testPlatforms": ["OpenMetadata", "GreatExpectations"]
-}

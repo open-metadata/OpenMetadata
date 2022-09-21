@@ -16,6 +16,12 @@ Before proceeding, ensure that you have installed the node and yarn with the ver
 
 Install [Node](https://nodejs.org/en/download/) and [Yarn](https://classic.yarnpkg.com/lang/en/docs/install/).
 
+Install ANTLR using our recipes via
+
+```shell
+sudo make install_antlr_cli
+```
+
 Using the command below, spin up the server locally from the directory `openmetadata-dist/target/openmetadata-*-SNAPSHOT`.
 
 ```shell

@@ -16,14 +16,9 @@
 @abortedColor: #efae2f;
 @grayColor: #dde3ea;
 @primary-color: #7147e8;
+@primary-color-lite: #7147e833;
 
 .table-profiler-container {
-  .profiler-setting-btn {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-  }
-
   .overall-summery-card:not(:first-child) {
     border-left: 1px solid rgb(229, 231, 235);
     padding-left: 16px;
@@ -37,17 +32,6 @@
   }
   .aborted {
     color: @abortedColor;
-  }
-
-  .profiler-progress-bar-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 4px;
-
-    .progress-bar {
-      width: 100px;
-    }
   }
 
   .ant-table-row .ant-table-cell:first-child,

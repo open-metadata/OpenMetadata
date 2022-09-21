@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ProfilerDashboardTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   IN_PAGE_SEARCH_ROUTES,
@@ -28,6 +29,7 @@ import {
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
+  PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
@@ -35,6 +37,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
+import { ProfilerDashboardType } from '../enums/table.enum';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -291,14 +294,21 @@ export const getPath = (pathName: string) => {
 };
 
 export const getProfilerDashboardWithFqnPath = (
-  dashboardType: string,
-  entityTypeFQN: string
+  dashboardType: ProfilerDashboardType,
+  entityTypeFQN: string,
+  tab?: ProfilerDashboardTab
 ) => {
-  let path = ROUTES.PROFILER_DASHBOARD;
+  let path = tab
+    ? ROUTES.PROFILER_DASHBOARD_WITH_TAB
+    : ROUTES.PROFILER_DASHBOARD;
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
     .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
@@ -340,6 +350,29 @@ export const getAddDataQualityTableTestPath = (
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
     .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+
+  return path;
+};
+
+export const getTestSuitePath = (testSuiteName: string) => {
+  let path = ROUTES.TEST_SUITES;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+
+  return path;
+};
+
+export const getTestSuiteIngestionPath = (
+  testSuiteName: string,
+  ingestionFQN?: string
+) => {
+  let path = ingestionFQN
+    ? ROUTES.TEST_SUITES_EDIT_INGESTION
+    : ROUTES.TEST_SUITES_ADD_INGESTION;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+
+  if (ingestionFQN) {
+    path = path.replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN);
+  }
 
   return path;
 };

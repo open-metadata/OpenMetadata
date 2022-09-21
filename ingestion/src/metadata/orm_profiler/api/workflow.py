@@ -20,21 +20,25 @@ import traceback
 from copy import deepcopy
 from typing import Iterable, List, Optional
 
-import click
 from pydantic import ValidationError
+from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
+    IntervalType,
     Table,
     TableProfile,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -63,6 +67,7 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
+from metadata.utils.workflow_output_handler import print_profiler_status
 
 logger = profiler_logger()
 
@@ -206,16 +211,45 @@ class ProfilerWorkflow:
         Args:
             entity: table entity
         """
+        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
+        if entity.serviceType != DatabaseServiceType.BigQuery:
+            return None
         entity_config: TableConfig = self.get_config_for_entity(entity)
         if entity_config:
             return entity_config.partitionConfig
 
+        if entity.tablePartition:
+            if entity.tablePartition.intervalType in {
+                IntervalType.TIME_UNIT,
+                IntervalType.INGESTION_TIME,
+            }:
+                try:
+                    partition_field = entity.tablePartition.columns[0]
+                except Exception:
+                    raise TypeError(
+                        "Unsupported ingestion based partition type. Skipping table"
+                    )
+
+                return TablePartitionConfig(
+                    partitionField=partition_field,
+                )
+
+            raise TypeError(
+                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
+            )
+
         return None
 
-    def create_profiler_interface(self, service_connection_config, table_entity: Table):
+    def create_profiler_interface(
+        self,
+        service_connection_config,
+        table_entity: Table,
+        sqa_metadata_obj: Optional[MetaData] = None,
+    ):
         """Creates a profiler interface object"""
         return SQAInterface(
             service_connection_config,
+            sqa_metadata_obj=sqa_metadata_obj,
             metadata_config=self.metadata_config,
             thread_count=self.source_config.threadCount,
             table_entity=table_entity,
@@ -281,7 +315,7 @@ class ProfilerWorkflow:
                     table.databaseSchema.name,
                 ):
                     self.source_status.filter(
-                        table.databaseSchema.fullyQualifiedName,
+                        f"Schema pattern not allowed: {table.fullyQualifiedName.__root__}",
                         "Schema pattern not allowed",
                     )
                     continue
@@ -290,18 +324,18 @@ class ProfilerWorkflow:
                     table.name.__root__,
                 ):
                     self.source_status.filter(
-                        table.fullyQualifiedName.__root__, "Table pattern not allowed"
+                        f"Table pattern not allowed: {table.fullyQualifiedName.__root__}",
+                        "Table pattern not allowed",
                     )
                     continue
 
-                self.source_status.scanned(table.fullyQualifiedName.__root__)
                 yield table
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unexpected error filtering entities for table [{table}]: {exc}"
+                    f"Unexpected error filtering entities for table [{table.fullyQualifiedName.__root__}]: {exc}"
                 )
-                self.source_status.filter(table.fullyQualifiedName.__root__, f"{exc}")
+                self.source_status.failure(table.fullyQualifiedName.__root__, f"{exc}")
 
     def get_database_entities(self):
         """List all databases in service"""
@@ -381,11 +415,12 @@ class ProfilerWorkflow:
 
         for database in databases:
             copied_service_config = self.copy_service_config(database)
+            sqa_metadata_obj = MetaData()
             try:
                 for entity in self.get_table_entities(database=database):
                     try:
                         profiler_interface = self.create_profiler_interface(
-                            copied_service_config, entity
+                            copied_service_config, entity, sqa_metadata_obj
                         )
                         self.create_profiler_obj(entity, profiler_interface)
                         profile: TableProfile = self.profiler_obj.process(
@@ -394,11 +429,21 @@ class ProfilerWorkflow:
                         profiler_interface.close()
                         if hasattr(self, "sink"):
                             self.sink.write_record(profile)
+                        self.status.failures.extend(
+                            profiler_interface.processor_status.failures
+                        )  # we can have column level failures we need to report
                         self.status.processed(entity.fullyQualifiedName.__root__)
+                        self.source_status.scanned(entity.fullyQualifiedName.__root__)
                     except Exception as exc:  # pylint: disable=broad-except
                         logger.debug(traceback.format_exc())
                         logger.warning(
-                            f"Unexpected exception processing entity [{entity}]: {exc}"
+                            f"Unexpected exception processing entity [{entity.fullyQualifiedName.__root__}]: {exc}"
+                        )
+                        self.status.failures.extend(
+                            profiler_interface.processor_status.failures
+                        )
+                        self.source_status.failure(
+                            entity.fullyQualifiedName.__root__, f"{exc}"
                         )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -406,38 +451,24 @@ class ProfilerWorkflow:
                     f"Unexpected exception executing in database [{database}]: {exc}"
                 )
 
-    def print_status(self) -> int:
+    def print_status(self) -> None:
         """
-        Runs click echo to print the
-        workflow results
+        Print the workflow results with click
         """
-        click.echo()
-        click.secho("Source Status:", bold=True)
-        click.echo(self.source_status.as_string())
-        click.secho("Processor Status:", bold=True)
-        click.echo(self.status.as_string())
-        if hasattr(self, "sink"):
-            click.secho("Sink Status:", bold=True)
-            click.echo(self.sink.get_status().as_string())
-            click.echo()
+        print_profiler_status(self)
 
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
         if (
             self.source_status.failures
             or self.status.failures
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
-            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-        if (
-            self.source_status.warnings
-            or self.status.failures
-            or (hasattr(self, "sink") and self.sink.get_status().warnings)
-        ):
-            click.secho("Workflow finished with warnings", fg="yellow", bold=True)
+        else:
             return 0
-
-        click.secho("Workflow finished successfully", fg="green", bold=True)
-        return 0
 
     def raise_from_status(self, raise_warnings=False):
         """

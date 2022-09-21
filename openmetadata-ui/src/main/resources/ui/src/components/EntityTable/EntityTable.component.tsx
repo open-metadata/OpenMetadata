@@ -25,25 +25,15 @@ import React, {
   useState,
 } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import {
-  Column,
-  ColumnTest,
-  JoinedWith,
-} from '../../generated/entity/data/table';
+import { Column, JoinedWith } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { useAuth } from '../../hooks/authHooks';
-import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 import {
-  getHtmlForNonAdminAction,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
@@ -53,7 +43,6 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
-import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
@@ -67,7 +56,6 @@ import {
   getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from '../../utils/TasksUtils';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -81,8 +69,8 @@ const EntityTable = ({
   tableColumns,
   searchText,
   onUpdate,
-  owner,
-  hasEditAccess,
+  hasDescriptionEditAccess,
+  hasTagEditAccess,
   joins,
   entityFieldThreads,
   isReadOnly = false,
@@ -91,13 +79,9 @@ const EntityTable = ({
   tableConstraints,
   entityFieldTasks,
 }: EntityTableProps) => {
-  const { isAdminUser, userPermissions } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
 
-  const [searchedColumns, setSearchedColumns] = useState<ModifiedTableColumn[]>(
-    []
-  );
+  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
 
   const data = React.useMemo(
     () => makeData(searchedColumns),
@@ -175,7 +159,7 @@ const EntityTable = ({
   };
 
   const updateColumnDescription = (
-    tableCols: ModifiedTableColumn[],
+    tableCols: Column[],
     changedColName: string,
     description: string
   ) => {
@@ -184,7 +168,7 @@ const EntityTable = ({
         col.description = description;
       } else {
         updateColumnDescription(
-          col?.children as ModifiedTableColumn[],
+          col?.children as Column[],
           changedColName,
           description
         );
@@ -193,7 +177,7 @@ const EntityTable = ({
   };
 
   const updateColumnTags = (
-    tableCols: ModifiedTableColumn[],
+    tableCols: Column[],
     changedColName: string,
     newColumnTags: Array<TagOption>
   ) => {
@@ -222,7 +206,7 @@ const EntityTable = ({
         col.tags = getUpdatedTags(col);
       } else {
         updateColumnTags(
-          col?.children as ModifiedTableColumn[],
+          col?.children as Column[],
           changedColName,
           newColumnTags
         );
@@ -230,7 +214,7 @@ const EntityTable = ({
     });
   };
 
-  const handleEditColumnChange = (columnDescription: string): void => {
+  const handleEditColumnChange = async (columnDescription: string) => {
     if (editColumn) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnDescription(
@@ -238,7 +222,7 @@ const EntityTable = ({
         editColumn.column.name,
         columnDescription
       );
-      onUpdate?.(tableCols);
+      await onUpdate?.(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
@@ -309,13 +293,7 @@ const EntityTable = ({
     return searchedValue;
   };
 
-  const checkPermission = () =>
-    isAdminUser ||
-    hasEditAccess ||
-    isAuthDisabled ||
-    hasPemission(Operation.EditDescription, EntityType.TABLE, userPermissions);
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const getColumnName = (cell: any) => {
+  const getColumnName = (cell: Column) => {
     const fqn = cell?.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
     // wrap it in quotes if dot is present
@@ -325,8 +303,7 @@ const EntityTable = ({
       : columnName;
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onRequestDescriptionHandler = (cell: any) => {
+  const onRequestDescriptionHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -339,8 +316,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onUpdateDescriptionHandler = (cell: any) => {
+  const onUpdateDescriptionHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -353,8 +329,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onRequestTagsHandler = (cell: any) => {
+  const onRequestTagsHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -362,8 +337,7 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const onUpdateTagsHandler = (cell: any) => {
+  const onUpdateTagsHandler = (cell: Column) => {
     const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
@@ -376,13 +350,13 @@ const EntityTable = ({
     columnConstraint?: string
   ) => {
     if (!isNil(columnConstraint)) {
-      return getConstraintIcon(columnConstraint);
+      return getConstraintIcon(columnConstraint, 'tw-mr-2');
     } else {
       const flag = tableConstraints?.find((constraint) =>
         constraint.columns?.includes(columnName)
       );
       if (!isUndefined(flag)) {
-        return getConstraintIcon(flag.constraintType);
+        return getConstraintIcon(flag.constraintType, 'tw-mr-2');
       } else {
         return null;
       }
@@ -393,12 +367,12 @@ const EntityTable = ({
     handleEditColumn(column, index);
   };
 
-  const getRequestDescriptionElement = (cell: ModifiedTableColumn) => {
-    const hasDescription = Boolean(cell.fullyQualifiedName);
+  const getRequestDescriptionElement = (cell: Column) => {
+    const hasDescription = Boolean(cell?.description ?? '');
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -425,14 +399,13 @@ const EntityTable = ({
     );
   };
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const getRequestTagsElement = (cell: any) => {
-    const hasTags = !isEmpty(cell.value || []);
+  const getRequestTagsElement = (cell: Column) => {
+    const hasTags = !isEmpty(cell?.tags || []);
     const text = hasTags ? 'Update request tags' : 'Request tags';
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
+        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
         data-testid="request-tags"
         onClick={() =>
           hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
@@ -449,72 +422,7 @@ const EntityTable = ({
     );
   };
 
-  const getTestStats = (
-    record: ModifiedTableColumn | Column,
-    columnTestLength: number | undefined
-  ) => {
-    const columnTests =
-      columnTestLength && columnTestLength > 0
-        ? record.columnTests ?? []
-        : ([] as ColumnTest[]);
-
-    const failingTests = columnTests.filter((test) =>
-      test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Failed)
-    );
-    const passingTests = columnTests.filter((test) =>
-      test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Success)
-    );
-
-    return [failingTests, passingTests];
-  };
-
-  const getColumnTestsCell = (
-    columnTestLength: number | undefined,
-    failingTests: ColumnTest[],
-    passingTests: ColumnTest[]
-  ) => {
-    return (
-      <>
-        {columnTestLength ? (
-          <>
-            {failingTests.length ? (
-              <div className="tw-flex">
-                <p className="tw-mr-2">
-                  <FontAwesomeIcon
-                    className="tw-text-status-failed"
-                    icon="times"
-                  />
-                </p>
-                <p>
-                  {`${failingTests.length}/${columnTestLength} tests failing`}
-                </p>
-              </div>
-            ) : (
-              <>
-                {passingTests.length ? (
-                  <div className="tw-flex">
-                    <div className="tw-mr-2">
-                      <FontAwesomeIcon
-                        className="tw-text-status-success"
-                        icon="check-square"
-                      />
-                    </div>
-                    <p>{`${passingTests.length} tests`}</p>
-                  </div>
-                ) : (
-                  <p>{`${columnTestLength} tests`}</p>
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          '--'
-        )}
-      </>
-    );
-  };
-
-  const getDataTypeDisplayCell = (record: ModifiedTableColumn | Column) => {
+  const getDataTypeDisplayCell = (record: Column | Column) => {
     return (
       <>
         {record.dataTypeDisplay ? (
@@ -561,10 +469,7 @@ const EntityTable = ({
     );
   };
 
-  const getDescriptionCell = (
-    index: number,
-    record: ModifiedTableColumn | Column
-  ) => {
+  const getDescriptionCell = (index: number, record: Column | Column) => {
     return (
       <div className="hover-icon-group">
         <div className="tw-inline-block">
@@ -579,19 +484,19 @@ const EntityTable = ({
                 <span className="tw-no-description">No description</span>
               )}
             </div>
-            <div className="tw-flex tw--mt-2">
+            <div className="tw-flex tw--mt-1.5">
               {!isReadOnly ? (
                 <Fragment>
-                  {checkPermission() && (
+                  {hasDescriptionEditAccess && (
                     <>
                       <button
-                        className="tw-self-start tw-w-8 tw-h-8 tw-ml-1 focus:tw-outline-none tw-flex-none hover-cell-icon"
+                        className="tw-self-start tw-w-7 tw-h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
                         onClick={() => handleUpdate(record, index)}>
                         <SVGIcons
                           alt="edit"
                           icon="icon-edit"
                           title="Edit"
-                          width="14px"
+                          width="16px"
                         />
                       </button>
                     </>
@@ -701,7 +606,7 @@ const EntityTable = ({
     );
   };
 
-  const getTagsCell = (index: number, record: ModifiedTableColumn | Column) => {
+  const getTagsCell = (index: number, record: Column | Column) => {
     return (
       <div className="hover-icon-group">
         {isReadOnly ? (
@@ -726,28 +631,22 @@ const EntityTable = ({
                 }
               }
             }}>
-            <NonAdminAction
-              html={getHtmlForNonAdminAction(Boolean(owner))}
-              isOwner={hasEditAccess}
-              permission={Operation.EditTags}
-              position="left"
-              trigger="click">
-              <TagsContainer
-                showAddTagButton
-                editable={editColumnTag?.index === index}
-                isLoading={isTagLoading && editColumnTag?.index === index}
-                selectedTags={record?.tags || []}
-                size="small"
-                tagList={allTags}
-                type="label"
-                onCancel={() => {
-                  handleTagSelection();
-                }}
-                onSelectionChange={(tags) => {
-                  handleTagSelection(tags, record?.name);
-                }}
-              />
-            </NonAdminAction>
+            <TagsContainer
+              editable={editColumnTag?.index === index}
+              isLoading={isTagLoading && editColumnTag?.index === index}
+              selectedTags={record?.tags || []}
+              showAddTagButton={hasTagEditAccess}
+              size="small"
+              tagList={allTags}
+              type="label"
+              onCancel={() => {
+                handleTagSelection();
+              }}
+              onSelectionChange={(tags) => {
+                handleTagSelection(tags, record?.name);
+              }}
+            />
+
             <div className="tw-mt-1 tw-flex">
               {getRequestTagsElement(record)}
               {getFieldThreadElement(
@@ -783,22 +682,8 @@ const EntityTable = ({
   };
 
   const renderCell = useCallback(
-    (key: string, record: ModifiedTableColumn | Column, index: number) => {
-      const columnTestLength = record?.columnTests?.length;
-
-      const [failingTests, passingTests] = getTestStats(
-        record,
-        columnTestLength
-      );
-
+    (key: string, record: Column | Column, index: number) => {
       switch (key) {
-        case TABLE_HEADERS_V1.columnTests:
-          return getColumnTestsCell(
-            columnTestLength,
-            failingTests,
-            passingTests
-          );
-
         case TABLE_HEADERS_V1.dataTypeDisplay:
           return getDataTypeDisplayCell(record);
 
@@ -818,7 +703,7 @@ const EntityTable = ({
               ) : (
                 <span>
                   {prepareConstraintIcon(record.name, record.constraint)}
-                  <span className="tw-ml-4">{record.name}</span>
+                  <span>{record.name}</span>
                 </span>
               )}
             </Fragment>
@@ -837,11 +722,8 @@ const EntityTable = ({
         accessor: 'name',
         ellipsis: true,
         width: 180,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => renderCell(TABLE_HEADERS_V1.name, record, index),
+        render: (_: Array<unknown>, record: Column, index: number) =>
+          renderCell(TABLE_HEADERS_V1.name, record, index),
       },
       {
         title: 'Type',
@@ -850,26 +732,8 @@ const EntityTable = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => {
+        render: (_: Array<unknown>, record: Column, index: number) => {
           return renderCell(TABLE_HEADERS_V1.dataTypeDisplay, record, index);
-        },
-      },
-      {
-        title: 'Data Quality',
-        dataIndex: 'columnTests',
-        key: 'columnTests',
-        accessor: 'columnTests',
-        width: 200,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => {
-          return renderCell(TABLE_HEADERS_V1.columnTests, record, index);
         },
       },
       {
@@ -877,11 +741,8 @@ const EntityTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn,
-          index: number
-        ) => renderCell(TABLE_HEADERS_V1.description, record, index),
+        render: (_: Array<unknown>, record: Column, index: number) =>
+          renderCell(TABLE_HEADERS_V1.description, record, index),
       },
       {
         title: 'Tags',
@@ -889,11 +750,8 @@ const EntityTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (
-          _: Array<unknown>,
-          record: ModifiedTableColumn | Column,
-          index: number
-        ) => renderCell(TABLE_HEADERS_V1.tags, record, index),
+        render: (_: Array<unknown>, record: Column | Column, index: number) =>
+          renderCell(TABLE_HEADERS_V1.tags, record, index),
       },
     ],
     [editColumnTag, isTagLoading, renderCell]
@@ -940,7 +798,6 @@ const EntityTable = ({
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
-          // expandable={}
         />
       )}
     </>

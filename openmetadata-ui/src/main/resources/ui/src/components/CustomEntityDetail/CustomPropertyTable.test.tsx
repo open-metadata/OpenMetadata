@@ -60,6 +60,7 @@ const mockProperties = [
 ];
 
 const mockProp = {
+  hasAccess: true,
   customProperties: mockProperties,
   updateEntityType: mockUpdateEntityType,
 };

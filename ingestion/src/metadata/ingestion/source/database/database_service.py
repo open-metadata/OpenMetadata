@@ -70,7 +70,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt_source import DBTMixin
 from metadata.utils import fqn
 from metadata.utils.dbt_config import get_dbt_details
-from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -121,7 +120,12 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process=["create_dbt_lineage", "yield_view_lineage"],
+        post_process=[
+            "create_dbt_lineage",
+            "create_dbt_tests_suite_definition",
+            "create_dbt_test_cases",
+            "yield_view_lineage",
+        ],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -226,11 +230,25 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)
 
+    # Initialize DBT structures for all Databases
+    data_models = {}
+    dbt_tests = {}
+
     def __init__(self):
-        dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
-        self.dbt_catalog = dbt_details[0] if dbt_details else None
-        self.dbt_manifest = dbt_details[1] if dbt_details else None
-        self.data_models = {}
+        if hasattr(self.source_config.dbtConfigSource, "dbtSecurityConfig"):
+            if self.source_config.dbtConfigSource.dbtSecurityConfig is None:
+                logger.info("dbtConfigSource is not configured")
+                self.dbt_catalog = None
+                self.dbt_manifest = None
+                self.dbt_run_results = None
+                self.data_models = {}
+        else:
+            dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
+            if dbt_details:
+                self.dbt_catalog = dbt_details[0] if len(dbt_details) == 3 else None
+                self.dbt_manifest = dbt_details[1] if len(dbt_details) == 3 else None
+                self.dbt_run_results = dbt_details[2] if len(dbt_details) == 3 else None
+                self.data_models = {}
 
     def prepare(self):
         self._parse_data_model()

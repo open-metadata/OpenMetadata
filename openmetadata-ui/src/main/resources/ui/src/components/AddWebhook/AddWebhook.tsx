@@ -14,10 +14,9 @@
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip } from 'antd';
-import { Store } from 'antd/lib/form/interface';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isEmpty, isEqual, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, {
   FunctionComponent,
@@ -26,7 +25,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ROUTES, TERM_ALL } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -43,7 +42,6 @@ import { PageLayoutType } from '../../enums/layout.enum';
 import {
   CreateWebhook,
   EventFilter,
-  Filters,
 } from '../../generated/api/events/createWebhook';
 import { WebhookType } from '../../generated/entity/events/webhook';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -67,76 +65,19 @@ import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { AddWebhookProps } from './AddWebhook.interface';
-import SelectComponent from './select-component';
-import {
-  EVENT_FILTERS_DEFAULT_VALUE,
-  EVENT_FILTER_FORM_INITIAL_VALUE,
-} from './WebhookConstants';
+import EventFilterTree from './EventFilterTree.component';
 
-const CONFIGURE_TEXT: { [key: string]: string } = {
-  msteams: CONFIGURE_MS_TEAMS_TEXT,
-  slack: CONFIGURE_SLACK_TEXT,
-  generic: CONFIGURE_WEBHOOK_TEXT,
+const CONFIGURE_TEXT: { [key: string]: { body: string; heading: string } } = {
+  msteams: {
+    body: CONFIGURE_MS_TEAMS_TEXT,
+    heading: 'Configure MS Team Webhooks',
+  },
+  slack: { body: CONFIGURE_SLACK_TEXT, heading: 'Configure Slack Webhooks' },
+  generic: { body: CONFIGURE_WEBHOOK_TEXT, heading: 'Configure Webhooks' },
 };
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
-};
-
-const getFormData = (eventFilters: EventFilter[]): Store => {
-  if (eventFilters.length === 1 && eventFilters[0].entityType === TERM_ALL) {
-    return EVENT_FILTER_FORM_INITIAL_VALUE;
-  }
-
-  const formEventFilters = {} as Store;
-
-  eventFilters?.forEach((eventFilter) => {
-    if (eventFilter.entityType === TERM_ALL) {
-      return;
-    }
-
-    formEventFilters[eventFilter.entityType] = true;
-    formEventFilters[`${eventFilter.entityType}-tree`] =
-      eventFilter.filters?.map((filter) => filter.eventType) || [];
-  });
-
-  return formEventFilters;
-};
-
-const getEventFilters = (eventFilterFormData: Store): EventFilter[] => {
-  if (isEqual(eventFilterFormData, EVENT_FILTER_FORM_INITIAL_VALUE)) {
-    return [EVENT_FILTERS_DEFAULT_VALUE];
-  }
-
-  const newFilters = Object.entries(eventFilterFormData).reduce(
-    (acc, [key, value]) => {
-      if (key.includes('-tree')) {
-        return acc;
-      }
-      if (value) {
-        const selectedFilter = eventFilterFormData[`${key}-tree`] as string[];
-
-        return [
-          ...acc,
-          {
-            entityType: key,
-            filters:
-              selectedFilter[0] === TERM_ALL
-                ? EVENT_FILTERS_DEFAULT_VALUE.filters
-                : (selectedFilter.map((filter) => ({
-                    eventType: filter,
-                    fields: [TERM_ALL],
-                  })) as Filters[]),
-          },
-        ];
-      }
-
-      return acc;
-    },
-    [] as EventFilter[]
-  );
-
-  return [EVENT_FILTERS_DEFAULT_VALUE, ...newFilters];
 };
 
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
@@ -152,11 +93,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   onSave,
 }: AddWebhookProps) => {
   const markdownRef = useRef<EditorContentRef>();
-  const [eventFilterFormData, setEventFilterFormData] = useState<Store>(
-    data?.eventFilters
-      ? getFormData(data?.eventFilters)
-      : EVENT_FILTER_FORM_INITIAL_VALUE
-  );
+  const [eventFilterFormData, setEventFilterFormData] = useState<
+    EventFilter[] | undefined
+  >(data?.eventFilters);
   const [name, setName] = useState<string>(data?.name || '');
   const [endpointUrl, setEndpointUrl] = useState<string>(data?.endpoint || '');
   const [description] = useState<string>(data?.description || '');
@@ -289,7 +228,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         name,
         description: markdownRef.current?.getEditorContent() || undefined,
         endpoint: endpointUrl,
-        eventFilters: getEventFilters(eventFilterFormData),
+        eventFilters: eventFilterFormData ?? ([] as EventFilter[]),
         batchSize,
         timeout: connectionTimeout,
         enabled: active,
@@ -335,9 +274,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const getSaveButton = () => {
-    const savePermission =
-      (mode === 'add' && addWebhookPermission) ||
-      (mode === 'edit' && editWebhookPermission);
+    const savePermission = addWebhookPermission || editWebhookPermission;
 
     return (
       <>
@@ -382,11 +319,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
-        <CardV1
-          description={CONFIGURE_TEXT[webhookType]}
-          heading="Configure Webhooks"
-          id="webhook"
-        />
+        <CardV1 heading={CONFIGURE_TEXT[webhookType].heading} id="webhook">
+          {CONFIGURE_TEXT[webhookType].body}
+        </CardV1>
       </div>
     );
   }, [webhookType]);
@@ -509,9 +444,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               </span>,
               'tw-mt-3'
             )}
-            <SelectComponent
-              eventFilterFormData={eventFilterFormData}
-              setEventFilterFormData={(data) => setEventFilterFormData(data)}
+            <EventFilterTree
+              value={eventFilterFormData || []}
+              onChange={setEventFilterFormData}
             />
             <Field>
               <div className="tw-flex tw-justify-end tw-pt-1">

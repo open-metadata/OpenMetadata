@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
+import { Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isNil, isUndefined, startCase } from 'lodash';
+import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
@@ -47,6 +46,8 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
@@ -55,7 +56,13 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
+import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../constants/HelperTextUtil';
+import { servicesDisplayName } from '../../constants/services.const';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -69,7 +76,6 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
@@ -77,10 +83,12 @@ import {
   getEntityName,
   isEven,
 } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
   getDeleteEntityMessage,
+  getResourceEntityFromServiceCategory,
   getServiceCategoryFromType,
   getServiceRouteFromServiceType,
   servicePageTabs,
@@ -97,9 +105,8 @@ export type ServicePageData = Database | Topic | Dashboard;
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const history = useHistory();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const [serviceName, setServiceName] = useState<ServiceTypes>(
     (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
   );
@@ -129,6 +136,23 @@ const ServicePage: FunctionComponent = () => {
   const [tableCount, setTableCount] = useState<number>(0);
 
   const [deleteWidgetVisible, setDeleteWidgetVisible] = useState(false);
+  const [servicePermission, setServicePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchServicePermission = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getEntityPermissionByFqn(
+        getResourceEntityFromServiceCategory(serviceCategory),
+        serviceFQN
+      );
+      setServicePermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -138,7 +162,7 @@ const ServicePage: FunctionComponent = () => {
         return 'Topics';
       case ServiceCategory.PIPELINE_SERVICES:
         return 'Pipelines';
-      case ServiceCategory.ML_MODAL_SERVICES:
+      case ServiceCategory.ML_MODEL_SERVICES:
         return 'Models';
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -149,39 +173,22 @@ const ServicePage: FunctionComponent = () => {
   const tabs = [
     {
       name: getCountLabel(),
-      icon: {
-        alt: 'schema',
-        name: 'icon-database',
-        title: 'Database',
-        selectedName: 'icon-schemacolor',
-      },
       isProtected: false,
+
       position: 1,
       count: instanceCount,
     },
     {
       name: 'Ingestions',
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
-      },
       isProtected: false,
+
       position: 2,
       count: ingestions.length,
     },
     {
       name: 'Connection',
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
-      },
-
-      isProtected: !isAdminUser && !isAuthDisabled,
-      isHidden: !isAdminUser && !isAuthDisabled,
+      isProtected: !servicePermission.EditAll,
+      isHidden: !servicePermission.EditAll,
       position: 3,
     },
   ];
@@ -496,7 +503,7 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         fetchMlModal(paging);
 
         break;
@@ -517,7 +524,7 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.PIPELINE_SERVICES:
         return getEntityLink(SearchIndex.PIPELINE, fqn);
 
-      case ServiceCategory.ML_MODAL_SERVICES:
+      case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
@@ -568,7 +575,7 @@ const ServicePage: FunctionComponent = () => {
           </>
         );
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         return (
           <>
             <th className="tableHead-cell">Model Name</th>
@@ -652,7 +659,7 @@ const ServicePage: FunctionComponent = () => {
           </td>
         );
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         const mlmodal = data as Mlmodel;
 
         return (
@@ -683,72 +690,78 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    setIsLoading(true);
-    getServiceByFQN(serviceName, serviceFQN, 'owner')
-      .then((resService) => {
-        if (resService) {
-          const { description, serviceType } = resService;
-          setServiceDetails(resService);
-          setConnectionDetails(
-            resService.connection?.config as DashboardConnection
-          );
-          setDescription(description ?? '');
-          setSlashedTableName([
-            {
-              name: startCase(serviceName || ''),
-              url: getSettingPath(
-                GlobalSettingsMenuCategory.SERVICES,
-                getServiceRouteFromServiceType(serviceName)
-              ),
-            },
-            {
-              name: getEntityName(resService),
-              url: '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              activeTitle: true,
-            },
-          ]);
-          getOtherDetails();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['fetch-service-error']
-          );
-        }
-      })
-      .finally(() => setIsLoading(false));
-  }, [serviceFQN, serviceName]);
+    if (servicePermission.ViewAll) {
+      setIsLoading(true);
+      getServiceByFQN(serviceName, serviceFQN, 'owner')
+        .then((resService) => {
+          if (resService) {
+            const { description, serviceType } = resService;
+            setServiceDetails(resService);
+            setConnectionDetails(
+              resService.connection?.config as DashboardConnection
+            );
+            setDescription(description ?? '');
+            setSlashedTableName([
+              {
+                name: startCase(serviceName || ''),
+                url: getSettingPath(
+                  GlobalSettingsMenuCategory.SERVICES,
+                  getServiceRouteFromServiceType(serviceName)
+                ),
+              },
+              {
+                name: getEntityName(resService),
+                url: '',
+                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+                activeTitle: true,
+              },
+            ]);
+            getOtherDetails();
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['fetch-service-error']
+            );
+          }
+        })
+        .catch((error: AxiosError) => {
+          if (error.response?.status === 404) {
+            setIsError(true);
+          } else {
+            showErrorToast(
+              error,
+              jsonData['api-error-messages']['fetch-service-error']
+            );
+          }
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [serviceFQN, serviceName, servicePermission, serviceType]);
 
   useEffect(() => {
-    const currentTab = getCurrentServiceTab(tab);
-    const currentTabIndex = currentTab - 1;
+    if (servicePermission.ViewAll) {
+      const currentTab = getCurrentServiceTab(tab);
+      const currentTabIndex = currentTab - 1;
 
-    if (tabs[currentTabIndex].isProtected) {
-      activeTabHandler(1);
+      if (tabs[currentTabIndex].isProtected) {
+        activeTabHandler(1);
+      }
+
+      getAirflowStatus()
+        .then(() => {
+          setIsAirflowRunning(true);
+          getAllIngestionWorkflows();
+        })
+        .catch(() => {
+          setIsAirflowRunning(false);
+        });
     }
-
-    getAirflowStatus()
-      .then(() => {
-        setIsAirflowRunning(true);
-        getAllIngestionWorkflows();
-      })
-      .catch(() => {
-        setIsAirflowRunning(false);
-      });
-  }, []);
+  }, [servicePermission]);
 
   const onCancel = () => {
     setIsEdit(false);
   };
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
+  const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
       const { id } = serviceDetails;
 
@@ -761,18 +774,19 @@ const ServicePage: FunctionComponent = () => {
         // TODO: Fix type issue below
       } as unknown as ServiceOption;
 
-      updateService(serviceName, id, updatedServiceDetails)
-        .then((res) => {
-          setDescription(updatedHTML);
-          setServiceDetails(res);
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['update-description-error']
-          );
-        })
-        .finally(() => setIsEdit(false));
+      try {
+        const response = await updateService(
+          serviceName,
+          id,
+          updatedServiceDetails
+        );
+        setDescription(updatedHTML);
+        setServiceDetails(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
+      }
     } else {
       setIsEdit(false);
     }
@@ -856,6 +870,7 @@ const ServicePage: FunctionComponent = () => {
             ingestionList={ingestions}
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
+            permissions={servicePermission}
             serviceCategory={serviceName as ServiceCategory}
             serviceDetails={serviceDetails as ServicesType}
             serviceList={serviceList}
@@ -886,8 +901,12 @@ const ServicePage: FunctionComponent = () => {
     setDeleteWidgetVisible(true);
   };
 
+  useEffect(() => {
+    fetchServicePermission();
+  }, [serviceFQN, serviceCategory]);
+
   return (
-    <Row className="tw-my-4" gutter={[16, 16]}>
+    <Row className="page-container" gutter={[16, 16]}>
       {isLoading ? (
         <Loader />
       ) : isError ? (
@@ -895,190 +914,218 @@ const ServicePage: FunctionComponent = () => {
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <Col span={24}>
-          <div
-            className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
-            data-testid="service-page">
-            <Space
-              align="center"
-              className="tw-justify-between"
-              style={{ width: '100%' }}>
-              <TitleBreadcrumb titleLinks={slashedTableName} />
-              <Button
-                data-testid="service-delete"
-                size="small"
-                theme="primary"
-                variant="outlined"
-                onClick={handleDelete}>
-                <IcDeleteColored
-                  className="tw-mr-1.5"
-                  height={14}
-                  viewBox="0 0 24 24"
-                  width={14}
-                />
-                Delete
-              </Button>
-              <DeleteWidgetModal
-                isRecursiveDelete
-                allowSoftDelete={false}
-                deleteMessage={getDeleteEntityMessage(
-                  serviceName || '',
-                  instanceCount,
-                  schemaCount,
-                  tableCount
-                )}
-                entityId={serviceDetails?.id}
-                entityName={serviceDetails?.name || ''}
-                entityType={serviceName?.slice(0, -1)}
-                visible={deleteWidgetVisible}
-                onCancel={() => setDeleteWidgetVisible(false)}
-              />
-            </Space>
-
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
-              {extraInfo.map((info, index) => (
-                <span className="tw-flex" key={index}>
-                  <EntitySummaryDetails
-                    data={info}
-                    updateOwner={handleUpdateOwner}
-                  />
-
-                  {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                    <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                      |
-                    </span>
-                  ) : null}
-                </span>
-              ))}
-            </div>
-
-            <div
-              className="tw-my-2 tw--ml-5"
-              data-testid="description-container">
-              <Description
-                description={description || ''}
-                entityFqn={serviceFQN}
-                entityName={serviceFQN}
-                entityType={serviceCategory.slice(0, -1)}
-                hasEditAccess={isAdminUser || isAuthDisabled}
-                isEdit={isEdit}
-                onCancel={onCancel}
-                onDescriptionEdit={onDescriptionEdit}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </div>
-
-            <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
-              <TabsPane
-                activeTab={activeTab}
-                className="tw-flex-initial"
-                setActiveTab={activeTabHandler}
-                tabs={tabs}
-              />
-              <div className="tw-flex-grow">
-                {activeTab === 1 && (
-                  <Fragment>
-                    <div
-                      className="tw-mt-4 tw-px-1"
-                      data-testid="table-container">
-                      <table
-                        className="tw-bg-white tw-w-full tw-mb-4"
-                        data-testid="database-tables">
-                        <thead>
-                          <tr className="tableHead-row">{getTableHeaders()}</tr>
-                        </thead>
-                        <tbody className="tableBody">
-                          {data.length > 0 ? (
-                            data.map((dataObj, index) => (
-                              <tr
-                                className={classNames(
-                                  'tableBody-row',
-                                  !isEven(index + 1) ? 'odd-row' : null
-                                )}
-                                data-testid="column"
-                                key={index}>
-                                <td className="tableBody-cell">
-                                  <Link
-                                    to={getLinkForFqn(
-                                      dataObj.fullyQualifiedName || ''
-                                    )}>
-                                    {getEntityName(
-                                      dataObj as unknown as EntityReference
-                                    )}
-                                  </Link>
-                                </td>
-                                <td className="tableBody-cell">
-                                  {dataObj.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={dataObj.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="tableBody-cell">
-                                  <p>{dataObj?.owner?.name || '--'}</p>
-                                </td>
-                                {getOptionalTableCells(dataObj as Database)}
-                              </tr>
-                            ))
-                          ) : (
-                            <tr className="tableBody-row">
-                              <td
-                                className="tableBody-cell tw-text-center"
-                                colSpan={4}>
-                                No records found.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-                      <NextPrevious
-                        currentPage={currentPage}
-                        pageSize={PAGE_SIZE}
-                        paging={paging}
-                        pagingHandler={pagingHandler}
-                        totalCount={paging.total}
+        <>
+          {servicePermission.ViewAll ? (
+            <Col span={24}>
+              <div
+                className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
+                data-testid="service-page">
+                <Space
+                  align="center"
+                  className="tw-justify-between"
+                  style={{ width: '100%' }}>
+                  <TitleBreadcrumb titleLinks={slashedTableName} />
+                  <Tooltip
+                    title={
+                      servicePermission.Delete
+                        ? 'Delete'
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
+                      data-testid="service-delete"
+                      disabled={!servicePermission.Delete}
+                      size="small"
+                      theme="primary"
+                      variant="outlined"
+                      onClick={handleDelete}>
+                      <IcDeleteColored
+                        className="tw-mr-1.5"
+                        height={14}
+                        viewBox="0 0 24 24"
+                        width={14}
                       />
+                      Delete
+                    </Button>
+                  </Tooltip>
+                  <DeleteWidgetModal
+                    isRecursiveDelete
+                    allowSoftDelete={false}
+                    deleteMessage={getDeleteEntityMessage(
+                      serviceName || '',
+                      instanceCount,
+                      schemaCount,
+                      tableCount
                     )}
-                  </Fragment>
-                )}
+                    entityId={serviceDetails?.id}
+                    entityName={serviceDetails?.name || ''}
+                    entityType={serviceName?.slice(0, -1)}
+                    visible={deleteWidgetVisible}
+                    onCancel={() => setDeleteWidgetVisible(false)}
+                  />
+                </Space>
 
-                {activeTab === 2 && getIngestionTab()}
+                <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
+                  {extraInfo.map((info, index) => (
+                    <span className="tw-flex" key={index}>
+                      <EntitySummaryDetails
+                        data={info}
+                        updateOwner={
+                          servicePermission.EditAll ||
+                          servicePermission.EditOwner
+                            ? handleUpdateOwner
+                            : undefined
+                        }
+                      />
 
-                {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
-                  <>
-                    <div className="tw-my-4 tw-flex tw-justify-end">
-                      <Button
-                        className={classNames(
-                          'tw-h-8 tw-rounded tw-px-4 tw-py-1',
-                          {
-                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                          }
-                        )}
-                        data-testid="add-new-service-button"
-                        size="small"
-                        theme="primary"
-                        variant="outlined"
-                        onClick={handleEditConnection}>
-                        Edit Connection
-                      </Button>
-                    </div>
-                    <ServiceConnectionDetails
-                      connectionDetails={connectionDetails || {}}
-                      serviceCategory={serviceCategory}
-                      serviceFQN={serviceDetails?.serviceType || ''}
-                    />
-                  </>
-                )}
+                      {extraInfo.length !== 1 &&
+                      index < extraInfo.length - 1 ? (
+                        <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                          |
+                        </span>
+                      ) : null}
+                    </span>
+                  ))}
+                </div>
+
+                <div
+                  className="tw-my-2 tw--ml-5"
+                  data-testid="description-container">
+                  <Description
+                    description={description || ''}
+                    entityFqn={serviceFQN}
+                    entityName={serviceFQN}
+                    entityType={serviceCategory.slice(0, -1)}
+                    hasEditAccess={
+                      servicePermission.EditAll ||
+                      servicePermission.EditDescription
+                    }
+                    isEdit={isEdit}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                  />
+                </div>
+
+                <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+                  <TabsPane
+                    activeTab={activeTab}
+                    className="tw-flex-initial"
+                    setActiveTab={activeTabHandler}
+                    tabs={tabs}
+                  />
+                  <div className="tw-flex-grow">
+                    {activeTab === 1 &&
+                      (isEmpty(data) ? (
+                        <ErrorPlaceHolder
+                          doc={CONNECTORS_DOCS}
+                          heading={servicesDisplayName[serviceName]}
+                        />
+                      ) : (
+                        <Fragment>
+                          <div
+                            className="tw-my-4 tw-table-container"
+                            data-testid="table-container">
+                            <table
+                              className="tw-bg-white tw-w-full"
+                              data-testid="database-tables">
+                              <thead>
+                                <tr className="tableHead-row">
+                                  {getTableHeaders()}
+                                </tr>
+                              </thead>
+                              <tbody className="tableBody">
+                                {data.map((dataObj, index) => (
+                                  <tr
+                                    className={classNames(
+                                      'tableBody-row',
+                                      !isEven(index + 1) ? 'odd-row' : null
+                                    )}
+                                    data-testid="column"
+                                    key={index}>
+                                    <td className="tableBody-cell">
+                                      <Link
+                                        to={getLinkForFqn(
+                                          dataObj.fullyQualifiedName || ''
+                                        )}>
+                                        {getEntityName(
+                                          dataObj as unknown as EntityReference
+                                        )}
+                                      </Link>
+                                    </td>
+                                    <td className="tableBody-cell">
+                                      {dataObj.description ? (
+                                        <RichTextEditorPreviewer
+                                          markdown={dataObj.description}
+                                        />
+                                      ) : (
+                                        <span className="tw-no-description">
+                                          No description
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="tableBody-cell">
+                                      <p>{dataObj?.owner?.name || '--'}</p>
+                                    </td>
+                                    {getOptionalTableCells(dataObj as Database)}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {Boolean(
+                            !isNil(paging.after) || !isNil(paging.before)
+                          ) && (
+                            <NextPrevious
+                              currentPage={currentPage}
+                              pageSize={PAGE_SIZE}
+                              paging={paging}
+                              pagingHandler={pagingHandler}
+                              totalCount={paging.total}
+                            />
+                          )}
+                        </Fragment>
+                      ))}
+
+                    {activeTab === 2 && getIngestionTab()}
+
+                    {activeTab === 3 && (
+                      <>
+                        <div className="tw-my-4 tw-flex tw-justify-end">
+                          <Tooltip
+                            title={
+                              servicePermission.EditAll
+                                ? 'Edit Connection'
+                                : NO_PERMISSION_FOR_ACTION
+                            }>
+                            <Button
+                              className={classNames(
+                                'tw-h-8 tw-rounded tw-px-4 tw-py-1'
+                              )}
+                              data-testid="add-new-service-button"
+                              disabled={!servicePermission.EditAll}
+                              size="small"
+                              theme="primary"
+                              variant="outlined"
+                              onClick={handleEditConnection}>
+                              Edit Connection
+                            </Button>
+                          </Tooltip>
+                        </div>
+                        <ServiceConnectionDetails
+                          connectionDetails={connectionDetails || {}}
+                          serviceCategory={serviceCategory}
+                          serviceFQN={serviceDetails?.serviceType || ''}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </Col>
+            </Col>
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </Row>
   );

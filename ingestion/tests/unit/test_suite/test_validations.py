@@ -292,7 +292,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
+        res = validation_enum_registry.registry["columnValuesMissingCount"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -313,7 +313,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
+        res = validation_enum_registry.registry["columnValuesMissingCount"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -479,12 +479,12 @@ class testSuiteValidation(unittest.TestCase):
             testSuite=EntityReference(id=uuid4(), type="TestSuite"),
             testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(name="minColvalue", value="2"),
-                TestCaseParameterValue(name="maxColvalue", value="10"),
+                TestCaseParameterValue(name="minColValue", value="2"),
+                TestCaseParameterValue(name="maxColValue", value="10"),
             ],
         )
 
-        res = validation_enum_registry.registry["TableColumnCountToBeBetween"](
+        res = validation_enum_registry.registry["tableColumnCountToBeBetween"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -504,7 +504,7 @@ class testSuiteValidation(unittest.TestCase):
             parameterValues=[TestCaseParameterValue(name="columnCount", value="6")],
         )
 
-        res = validation_enum_registry.registry["TableColumnCountToEqual"](
+        res = validation_enum_registry.registry["tableColumnCountToEqual"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -524,7 +524,7 @@ class testSuiteValidation(unittest.TestCase):
             parameterValues=[TestCaseParameterValue(name="columnName", value="id")],
         )
 
-        res = validation_enum_registry.registry["TableColumnNameToExist"](
+        res = validation_enum_registry.registry["tableColumnNameToExist"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -546,7 +546,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableColumnToMatchSet"](
+        res = validation_enum_registry.registry["tableColumnToMatchSet"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -571,7 +571,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableColumnToMatchSet"](
+        res = validation_enum_registry.registry["tableColumnToMatchSet"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -592,7 +592,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableColumnToMatchSet"](
+        res = validation_enum_registry.registry["tableColumnToMatchSet"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -614,7 +614,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableCustomSQLQuery"](
+        res = validation_enum_registry.registry["tableCustomSQLQuery"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -636,7 +636,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableCustomSQLQuery"](
+        res = validation_enum_registry.registry["tableCustomSQLQuery"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -657,7 +657,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableRowCountToBeBetween"](
+        res = validation_enum_registry.registry["tableRowCountToBeBetween"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -679,7 +679,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableRowCountToEqual"](
+        res = validation_enum_registry.registry["tableRowCountToEqual"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,

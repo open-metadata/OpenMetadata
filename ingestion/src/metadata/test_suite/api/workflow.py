@@ -16,21 +16,24 @@ Workflow definition for the test suite
 from __future__ import annotations
 
 import traceback
+from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
-import click
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import IntervalType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -40,15 +43,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.basic import EntityLink
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.workflow_output_handler import print_test_suite_status
 
 logger: Logger = test_suite_logger()
 
@@ -110,6 +114,17 @@ class TestSuiteWorkflow:
             )
             raise err
 
+    def _filter_test_cases_for_table_entity(
+        self, table_fqn: str, test_cases: List[TestCase]
+    ) -> list[TestCase]:
+        """Filter test cases for specific entity"""
+        return [
+            test_case
+            for test_case in test_cases
+            if test_case.entityLink.__root__.split("::")[2].replace(">", "")
+            == table_fqn
+        ]
+
     def _get_unique_table_entities(self, test_cases: List[TestCase]) -> Set:
         """from a list of test cases extract unique table entities"""
         table_fqns = [
@@ -138,7 +153,13 @@ class TestSuiteWorkflow:
                         "databaseservice",
                     )
                 )
-                return service_connection.__root__.config
+                service_connection_config = deepcopy(service_connection.__root__.config)
+                if (
+                    hasattr(service_connection_config, "supportsDatabase")
+                    and not service_connection_config.database
+                ):
+                    service_connection_config.database = table_fqn.split(".")[1]
+                return service_connection_config
 
             logger.error(
                 f"Could not retrive connection details for entity {entity_link}"
@@ -178,6 +199,37 @@ class TestSuiteWorkflow:
 
         return None
 
+    def _get_partition_details(self, entity: Table) -> Optional[TablePartitionConfig]:
+        """Get partition details
+
+        Args:
+            entity: table entity
+        """
+        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
+        if entity.serviceType != DatabaseServiceType.BigQuery:
+            return None
+        if entity.tablePartition:
+            if entity.tablePartition.intervalType in {
+                IntervalType.TIME_UNIT,
+                IntervalType.INGESTION_TIME,
+            }:
+                try:
+                    partition_field = entity.tablePartition.columns[0]
+                except Exception:
+                    raise TypeError(
+                        "Unsupported ingestion based partition type. Skipping table"
+                    )
+
+                return TablePartitionConfig(
+                    partitionField=partition_field,
+                )
+
+            raise TypeError(
+                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
+            )
+
+        return None
+
     def _create_sqa_tests_runner_interface(self, table_fqn: str):
         """create the interface to execute test against SQA sources"""
         table_entity = self._get_table_entity_from_test_case(table_fqn)
@@ -192,6 +244,9 @@ class TestSuiteWorkflow:
             else None,
             profile_query=self._get_profile_query(table_entity)
             if not self._get_profile_sample(table_entity)
+            else None,
+            partition_config=self._get_partition_details(table_entity)
+            if not self._get_profile_query(table_entity)
             else None,
         )
 
@@ -209,6 +264,7 @@ class TestSuiteWorkflow:
             entity=TestSuite,
             fqn=self.config.source.serviceName,
         )
+
         if test_suite:
             return [test_suite]
         return None
@@ -322,7 +378,7 @@ class TestSuiteWorkflow:
                 logger.warning(
                     f"Couldn't create test case name {test_case_name_to_create}: {exc}"
                 )
-                logger.debug(traceback.format_exc(exc))
+                logger.debug(traceback.format_exc())
 
         return created_test_case
 
@@ -344,42 +400,46 @@ class TestSuiteWorkflow:
         unique_table_fqns = self._get_unique_table_entities(test_cases)
 
         for table_fqn in unique_table_fqns:
-            sqa_interface = self._create_sqa_tests_runner_interface(table_fqn)
-            for test_case in test_cases:
-                try:
-                    data_test_runner = self._create_data_tests_runner(sqa_interface)
-                    test_result = data_test_runner.run_and_handle(test_case)
-                    if not test_result:
-                        continue
-                    if hasattr(self, "sink"):
-                        self.sink.write_record(test_result)
-                    logger.info(f"Successfuly ran test case {test_case.name.__root__}")
-                    self.status.processed(test_case.fullyQualifiedName.__root__)
-                except Exception as exc:
-                    logger.debug(traceback.format_exc(exc))
-                    logger.warning(f"Could not run test case {test_case.name}: {exc}")
-                    self.status.failure(test_case.fullyQualifiedName.__root__)
+            try:
+                sqa_interface = self._create_sqa_tests_runner_interface(table_fqn)
+                for test_case in self._filter_test_cases_for_table_entity(
+                    table_fqn, test_cases
+                ):
+                    try:
+                        data_test_runner = self._create_data_tests_runner(sqa_interface)
+                        test_result = data_test_runner.run_and_handle(test_case)
+                        if not test_result:
+                            continue
+                        if hasattr(self, "sink"):
+                            self.sink.write_record(test_result)
+                        logger.info(
+                            f"Successfuly ran test case {test_case.name.__root__}"
+                        )
+                        self.status.processed(test_case.fullyQualifiedName.__root__)
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Could not run test case {test_case.name}: {exc}"
+                        )
+            except TypeError as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Could not run test case {test_case.name}: {exc}")
+                self.status.failure(test_case.fullyQualifiedName.__root__)
 
-    def print_status(self) -> int:
+    def print_status(self) -> None:
         """
-        Runs click echo to print the
-        workflow results
+        Print the workflow results with click
         """
-        click.echo()
-        click.secho("Processor Status:", bold=True)
-        click.echo(self.status.as_string())
-        if hasattr(self, "sink"):
-            click.secho("Sink Status:", bold=True)
-            click.echo(self.sink.get_status().as_string())
-            click.echo()
+        print_test_suite_status(self)
 
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
         if self.status.failures or (
             hasattr(self, "sink") and self.sink.get_status().failures
         ):
-            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-
-        click.secho("Workflow finished successfully", fg="green", bold=True)
         return 0
 
     def raise_from_status(self, raise_warnings=False):

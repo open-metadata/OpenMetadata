@@ -47,11 +47,14 @@ import {
   EdgeData,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -79,6 +82,7 @@ import {
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -90,6 +94,7 @@ export type ChartType = {
 const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { dashboardFQN, tab } = useParams() as Record<string, string>;
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
@@ -136,6 +141,27 @@ const DashboardDetailsPage = () => {
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
+  const [dashboardPermissions, setDashboardPermissions] = useState(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setLoading(true);
+    try {
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.DASHBOARD,
+        entityFqn
+      );
+      setDashboardPermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (dashboardDetailsTabs[currentTabIndex].path !== tab) {
@@ -172,7 +198,9 @@ const DashboardDetailsPage = () => {
       getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
       after,
       threadType,
-      feedFilter
+      feedFilter,
+      undefined,
+      USERId
     )
       .then((res) => {
         const { data, paging: pagingObj } = res;
@@ -439,25 +467,21 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const descriptionUpdateHandler = (updatedDashboard: Dashboard) => {
-    saveUpdatedDashboardData(updatedDashboard)
-      .then((res) => {
-        if (res) {
-          const { description, version } = res;
-          setCurrentVersion(version + '');
-          setDashboardDetails(res);
-          setDescription(description + '');
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedDashboard: Dashboard) => {
+    try {
+      const response = await saveUpdatedDashboardData(updatedDashboard);
+      if (response) {
+        const { description, version } = response;
+        setCurrentVersion(version + '');
+        setDashboardDetails(response);
+        setDescription(description + '');
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const followDashboard = () => {
@@ -548,30 +572,26 @@ const DashboardDetailsPage = () => {
     });
   };
 
-  const onChartUpdate = (
+  const onChartUpdate = async (
     index: number,
     chartId: string,
     patch: Array<Operation>
   ) => {
-    updateChart(chartId, patch)
-      .then((res) => {
-        if (res) {
-          setCharts((prevCharts) => {
-            const charts = [...prevCharts];
-            charts[index] = res;
+    try {
+      const response = await updateChart(chartId, patch);
+      if (response) {
+        setCharts((prevCharts) => {
+          const charts = [...prevCharts];
+          charts[index] = response;
 
-            return charts;
-          });
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-chart-error']
-        );
-      });
+          return charts;
+        });
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const handleChartTagSelection = (
@@ -733,9 +753,15 @@ const DashboardDetailsPage = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    fetchDashboardDetail(dashboardFQN);
-    setEntityLineage({} as EntityLineage);
-    getEntityFeedCount();
+    if (dashboardPermissions.ViewAll) {
+      fetchDashboardDetail(dashboardFQN);
+      setEntityLineage({} as EntityLineage);
+      getEntityFeedCount();
+    }
+  }, [dashboardFQN, dashboardPermissions]);
+
+  useEffect(() => {
+    fetchResourcePermission(dashboardFQN);
   }, [dashboardFQN]);
 
   useEffect(() => {
@@ -754,52 +780,58 @@ const DashboardDetailsPage = () => {
           {getEntityMissingError('dashboard', dashboardFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <DashboardDetails
-          activeTab={activeTab}
-          addLineageHandler={addLineageHandler}
-          chartDescriptionUpdateHandler={onChartUpdate}
-          chartTagUpdateHandler={handleChartTagSelection}
-          charts={charts}
-          createThread={createThread}
-          dashboardDetails={dashboardDetails}
-          dashboardFQN={dashboardFQN}
-          dashboardTags={tags}
-          dashboardUrl={dashboardUrl}
-          deletePostHandler={deletePostHandler}
-          deleted={deleted}
-          description={description}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldTaskCount={entityFieldTaskCount}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityLineage={entityLineage}
-          entityLineageHandler={entityLineageHandler}
-          entityName={displayName}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={getFeedData}
-          followDashboardHandler={followDashboard}
-          followers={followers}
-          isLineageLoading={isLineageLoading}
-          isNodeLoading={isNodeLoading}
-          isentityThreadLoading={isentityThreadLoading}
-          lineageLeafNodes={leafNodes}
-          loadNodeHandler={loadNodeHandler}
-          owner={owner as EntityReference}
-          paging={paging}
-          postFeedHandler={postFeedHandler}
-          removeLineageHandler={removeLineageHandler}
-          serviceType={serviceType}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          slashedDashboardName={slashedDashboardName}
-          tagUpdateHandler={onTagUpdate}
-          tier={tier as TagLabel}
-          unfollowDashboardHandler={unfollowDashboard}
-          updateThreadHandler={updateThreadHandler}
-          version={currentVersion as string}
-          versionHandler={versionHandler}
-          onExtensionUpdate={handleExtentionUpdate}
-        />
+        <>
+          {dashboardPermissions.ViewAll ? (
+            <DashboardDetails
+              activeTab={activeTab}
+              addLineageHandler={addLineageHandler}
+              chartDescriptionUpdateHandler={onChartUpdate}
+              chartTagUpdateHandler={handleChartTagSelection}
+              charts={charts}
+              createThread={createThread}
+              dashboardDetails={dashboardDetails}
+              dashboardFQN={dashboardFQN}
+              dashboardTags={tags}
+              dashboardUrl={dashboardUrl}
+              deletePostHandler={deletePostHandler}
+              deleted={deleted}
+              description={description}
+              descriptionUpdateHandler={descriptionUpdateHandler}
+              entityFieldTaskCount={entityFieldTaskCount}
+              entityFieldThreadCount={entityFieldThreadCount}
+              entityLineage={entityLineage}
+              entityLineageHandler={entityLineageHandler}
+              entityName={displayName}
+              entityThread={entityThread}
+              feedCount={feedCount}
+              fetchFeedHandler={getFeedData}
+              followDashboardHandler={followDashboard}
+              followers={followers}
+              isLineageLoading={isLineageLoading}
+              isNodeLoading={isNodeLoading}
+              isentityThreadLoading={isentityThreadLoading}
+              lineageLeafNodes={leafNodes}
+              loadNodeHandler={loadNodeHandler}
+              owner={owner as EntityReference}
+              paging={paging}
+              postFeedHandler={postFeedHandler}
+              removeLineageHandler={removeLineageHandler}
+              serviceType={serviceType}
+              setActiveTabHandler={activeTabHandler}
+              settingsUpdateHandler={settingsUpdateHandler}
+              slashedDashboardName={slashedDashboardName}
+              tagUpdateHandler={onTagUpdate}
+              tier={tier as TagLabel}
+              unfollowDashboardHandler={unfollowDashboard}
+              updateThreadHandler={updateThreadHandler}
+              version={currentVersion as string}
+              versionHandler={versionHandler}
+              onExtensionUpdate={handleExtentionUpdate}
+            />
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </>
   );

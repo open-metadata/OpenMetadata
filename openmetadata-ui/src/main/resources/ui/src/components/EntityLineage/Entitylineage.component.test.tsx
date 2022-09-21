@@ -190,7 +190,7 @@ jest.mock('../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
-  hasPemission: jest.fn().mockReturnValue(false),
+  hasPermission: jest.fn().mockReturnValue(false),
 }));
 
 describe('Test EntityLineage Component', () => {

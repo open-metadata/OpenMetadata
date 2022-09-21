@@ -43,6 +43,7 @@ jest.mock('../../../AppState', () => {
     fullyQualifiedName: 'aaron_johnson0',
     displayName: 'Aaron Johnson',
     deleted: false,
+    isAdmin: true,
     href: 'http://localhost:8585/api/v1/users/011bdb24-90a7-4a97-ba66-24002adb2b12',
     teams: [{ id: '8754b53f-15cd-4d9a-af52-bdb3a2abffss' }],
   };
@@ -96,22 +97,6 @@ describe('Test Popover content component', () => {
     expect(replyButton).toBe(null);
   });
 
-  it('Should not render the edit button if user is not a author', async () => {
-    render(<PopoverContent {...mockProps} isAuthor={false} />);
-
-    const editButton = screen.queryByTestId('edit-message');
-
-    expect(editButton).toBe(null);
-  });
-
-  it('Should not render the delete button if user is not a author', async () => {
-    render(<PopoverContent {...mockProps} isAuthor={false} />);
-
-    const deleteButton = screen.queryByTestId('delete-message');
-
-    expect(deleteButton).toBe(null);
-  });
-
   it('Should render reaction popover on click of reaction button', async () => {
     render(<PopoverContent {...mockProps} />);
 
@@ -153,6 +138,30 @@ describe('Test Popover content component', () => {
 
   it('Should call onConfirmation function on click of delete button', async () => {
     render(<PopoverContent {...mockProps} />);
+
+    const deleteButton = await screen.findByTestId('delete-message');
+
+    expect(deleteButton).toBeInTheDocument();
+
+    fireEvent.click(deleteButton);
+
+    expect(onConfirmation).toBeCalled();
+  });
+
+  it('Announcement should be editable by admin user', async () => {
+    render(<PopoverContent {...mockProps} isAnnouncement isAuthor={false} />);
+
+    const editButton = await screen.findByTestId('edit-message');
+
+    expect(editButton).toBeInTheDocument();
+
+    fireEvent.click(editButton);
+
+    expect(onEdit).toBeCalled();
+  });
+
+  it('Announcement should be delete by admin user', async () => {
+    render(<PopoverContent {...mockProps} isAnnouncement isAuthor={false} />);
 
     const deleteButton = await screen.findByTestId('delete-message');
 

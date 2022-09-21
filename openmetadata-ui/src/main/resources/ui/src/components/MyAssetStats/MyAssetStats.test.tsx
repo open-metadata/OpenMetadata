@@ -39,6 +39,7 @@ const mockProp = {
     servicesCount: 193,
     userCount: 100,
     teamCount: 7,
+    testSuiteCount: 1,
   } as EntitiesCount,
 };
 
@@ -53,14 +54,14 @@ describe('Test MyDataHeader Component', () => {
     expect(myDataHeader).toBeInTheDocument();
   });
 
-  it('Should have 8 data summary details', () => {
+  it('Should have 9 data summary details', () => {
     const { container } = render(<MyAssetStats {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
     const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary.length).toBe(8);
+    expect(dataSummary.length).toBe(9);
   });
 
   it('OnClick it should redirect to respective page', () => {
@@ -83,6 +84,9 @@ describe('Test MyDataHeader Component', () => {
     expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels/');
     expect(service).toHaveAttribute('href', '/settings/services/databases');
     expect(user).toHaveAttribute('href', '/settings/members/users');
-    expect(terms).toHaveAttribute('href', '/settings/members/teams');
+    expect(terms).toHaveAttribute(
+      'href',
+      '/settings/members/teams/Organization'
+    );
   });
 });

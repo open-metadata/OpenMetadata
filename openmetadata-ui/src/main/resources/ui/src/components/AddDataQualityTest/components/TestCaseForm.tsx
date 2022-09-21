@@ -36,6 +36,7 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../../generated/tests/testDefinition';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -55,10 +56,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
     initialValue?.testDefinition?.id
   );
-  const [testCases, setTestCases] = useState<{ [key: string]: TestCase }>({});
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [sqlQuery, setSqlQuery] = useState({
     name: 'sqlExpression',
-    value: initialValue?.parameterValues?.[0].value || '',
+    value: initialValue?.parameterValues?.[0]?.value || '',
   });
 
   const fetchAllTestDefinitions = async () => {
@@ -80,23 +81,23 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         limit: API_RES_MAX_SIZE,
         entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
       });
-      const modifiedData = data.reduce((acc, curr) => {
-        return { ...acc, [curr.testDefinition.fullyQualifiedName || '']: curr };
-      }, {});
-      setTestCases(modifiedData);
+
+      setTestCases(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const GenerateParamsField = useCallback(() => {
+  const getSelectedTestDefinition = () => {
     const testType = initialValue?.testDefinition?.id ?? selectedTestType;
-    const selectedDefinition = testDefinitions.find(
-      (definition) => definition.id === testType
-    );
 
+    return testDefinitions.find((definition) => definition.id === testType);
+  };
+
+  const GenerateParamsField = useCallback(() => {
+    const selectedDefinition = getSelectedTestDefinition();
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
-      const name = selectedDefinition.parameterDefinition[0].name;
+      const name = selectedDefinition.parameterDefinition[0]?.name;
       if (name === 'sqlExpression') {
         return (
           <Row>
@@ -130,10 +131,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     params: Record<string, string | { [key: string]: string }[]>;
     testTypeId: string;
   }) => {
-    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
-    const selectedDefinition = testDefinitions.find(
-      (definition) => definition.id === testType
-    );
+    const selectedDefinition = getSelectedTestDefinition();
     const paramsValue = selectedDefinition?.parameterDefinition?.[0];
 
     const parameterValues =
@@ -172,6 +170,40 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     onCancel(createTestCaseObj(data));
   };
 
+  const getParamsValue = () => {
+    return initialValue?.parameterValues?.reduce(
+      (acc, curr) => ({
+        ...acc,
+        [curr.name || '']:
+          getSelectedTestDefinition()?.parameterDefinition?.[0].dataType ===
+          TestDataType.Array
+            ? (JSON.parse(curr?.value || '[]') as string[]).map((val) => ({
+                value: val,
+              }))
+            : curr?.value,
+      }),
+      {}
+    );
+  };
+
+  const handleValueChange: FormProps['onValuesChange'] = (value) => {
+    if (value.testTypeId) {
+      const testType = testDefinitions.find(
+        (test) => test.id === value.testTypeId
+      );
+      setSelectedTestType(value.testTypeId);
+      const testCount = testCases.filter((test) =>
+        test.name.includes(`${getNameFromFQN(entityTypeFQN)}_${testType?.name}`)
+      );
+      // generating dynamic unique name based on entity_testCase_number
+      form.setFieldsValue({
+        testName: `${getNameFromFQN(entityTypeFQN)}_${testType?.name}${
+          testCount.length ? `_${testCount.length}` : ''
+        }`,
+      });
+    }
+  };
+
   useEffect(() => {
     if (testDefinitions.length === 0) {
       fetchAllTestDefinitions();
@@ -179,30 +211,22 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     if (isEmpty(testCases)) {
       fetchAllTestCases();
     }
+    form.setFieldsValue({
+      testName: initialValue?.name ?? getNameFromFQN(entityTypeFQN),
+      testTypeId: initialValue?.testDefinition?.id,
+      params: initialValue?.parameterValues?.length
+        ? getParamsValue()
+        : undefined,
+    });
   }, []);
 
   return (
     <Form
       form={form}
-      initialValues={{
-        testName: initialValue?.name,
-        testTypeId: initialValue?.testDefinition?.id,
-        params: initialValue?.parameterValues?.reduce(
-          (acc, curr) => ({
-            ...acc,
-            [curr.name || '']: curr.value,
-          }),
-          {}
-        ),
-      }}
       layout="vertical"
       name="tableTestForm"
       onFinish={handleFormSubmit}
-      onValuesChange={(value) => {
-        if (value.testTypeId) {
-          setSelectedTestType(value.testTypeId);
-        }
-      }}>
+      onValuesChange={handleValueChange}>
       <Form.Item
         label="Name:"
         name="testName"
@@ -213,9 +237,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           },
           {
             validator: (_, value) => {
-              if (
-                Object.values(testCases).some((suite) => suite.name === value)
-              ) {
+              if (testCases.some((test) => test.name === value)) {
                 return Promise.reject('Name already exist!');
               }
 
@@ -253,7 +275,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       <Form.Item noStyle>
         <Space className="tw-w-full tw-justify-end" size={16}>
           <Button onClick={onBack}>Back</Button>
-          <Button htmlType="submit" type="primary">
+          <Button data-testid="submit-test" htmlType="submit" type="primary">
             Submit
           </Button>
         </Space>

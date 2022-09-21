@@ -33,11 +33,7 @@ import {
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
-  addColumnTestCase,
   addFollower,
-  addTableTestCase,
-  deleteColumnTestCase,
-  deleteTableTestCase,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
@@ -50,6 +46,11 @@ import {
   EdgeData,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -58,15 +59,13 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
-import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
   Column,
-  ColumnTestType,
   Table,
   TableData,
   TableJoins,
@@ -74,15 +73,10 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import {
-  DatasetTestModeType,
-  ModifiedTableColumn,
-} from '../../interface/dataQuality.interface';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
@@ -100,12 +94,14 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [isSampleDataLoading, setIsSampleDataLoading] =
@@ -123,7 +119,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [description, setDescription] = useState('');
-  const [columns, setColumns] = useState<ModifiedTableColumn[]>([]);
+  const [columns, setColumns] = useState<Column[]>([]);
   const [sampleData, setSampleData] = useState<TableData>({
     columns: [],
     rows: [],
@@ -174,25 +170,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
     EntityFieldThreadCount[]
   >([]);
 
-  // Data Quality tab state
-  const [testMode, setTestMode] = useState<DatasetTestModeType>('table');
-  const [showTestForm, setShowTestForm] = useState(false);
-  const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
-  const [selectedColumn, setSelectedColumn] = useState<string>();
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const handleTestModeChange = (mode: DatasetTestModeType) => {
-    setTestMode(mode);
-  };
-
-  const handleShowTestForm = (value: boolean) => {
-    setShowTestForm(value);
-  };
-
-  const handleSelectedColumn = (value: string | undefined) => {
-    setSelectedColumn(value);
-  };
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -206,22 +188,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           datasetTableTabs[currentTabIndex].path
         ),
       });
-      handleShowTestForm(false);
-    }
-  };
-
-  const qualityTestFormHandler = (
-    tabValue: number,
-    testMode?: DatasetTestModeType,
-    columnName?: string
-  ) => {
-    activeTabHandler(tabValue);
-    if (testMode) {
-      setTestMode(testMode as DatasetTestModeType);
-      setShowTestForm(true);
-      if (columnName) {
-        setSelectedColumn(columnName);
-      }
     }
   };
 
@@ -256,7 +222,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
       getEntityFeedLink(EntityType.TABLE, tableFQN),
       after,
       threadType,
-      feedType
+      feedType,
+      undefined,
+      USERId
     )
       .then((res) => {
         const { data, paging: pagingObj } = res;
@@ -285,6 +253,24 @@ const DatasetDetailsPage: FunctionComponent = () => {
   ) => {
     !after && setEntityThread([]);
     getFeedData(after, feedType, threadType);
+  };
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setIsLoading(true);
+    try {
+      const tablePermission = await getEntityPermissionByFqn(
+        ResourceEntity.TABLE,
+        entityFqn
+      );
+
+      setTablePermissions(tablePermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchTableDetail = () => {
@@ -360,10 +346,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               activeTitle: true,
             },
           ]);
-
-          if (res.tableTests && res.tableTests.length > 0) {
-            setTableTestCase(res.tableTests);
-          }
 
           addToRecentViewed({
             displayName: getEntityName(res),
@@ -513,55 +495,46 @@ const DatasetDetailsPage: FunctionComponent = () => {
     return patchTableDetails(tableId, jsonPatch);
   };
 
-  const descriptionUpdateHandler = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          const { description, version } = res;
-          setCurrentVersion(version + '');
-          setTableDetails(res);
-          setDescription(description ?? '');
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-description-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedTable: Table) => {
+    try {
+      const response = await saveUpdatedTableData(updatedTable);
+      if (response) {
+        const { description, version } = response;
+        setCurrentVersion(version + '');
+        setTableDetails((previous) => ({ ...previous, description, version }));
+
+        setDescription(description ?? '');
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['update-description-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
-  const columnsUpdateHandler = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          const { columns, version } = res;
-          setCurrentVersion(version + '');
-          setTableDetails(res);
-          setColumns(columns);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-entity-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-error']
-        );
-      });
+  const columnsUpdateHandler = async (updatedTable: Table) => {
+    try {
+      const response = await saveUpdatedTableData(updatedTable);
+      if (response) {
+        const { columns, version } = response;
+        setCurrentVersion(version + '');
+        setTableDetails(response);
+        setColumns(columns);
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const onTagUpdate = (updatedTable: Table) => {
     saveUpdatedTableData(updatedTable)
       .then((res) => {
         if (res) {
-          setTableDetails(res);
+          setTableDetails((previous) => ({ ...previous, tags: res.tags }));
           setTier(getTierTags(res.tags ?? []));
           setCurrentVersion(res.version + '');
           setTableTags(getTagsWithoutTier(res.tags ?? []));
@@ -585,7 +558,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
           if (res) {
             const { version, owner, tags = [] } = res;
             setCurrentVersion(version + '');
-            setTableDetails(res);
+            setTableDetails((previous) => ({
+              ...previous,
+              owner,
+              version,
+              tags,
+            }));
             setOwner(owner);
             setTier(getTierTags(tags));
             getEntityFeedCount();
@@ -778,146 +756,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const handleAddTableTestCase = (data: CreateTableTest) => {
-    addTableTestCase(tableDetails.id, data)
-      .then((res) => {
-        if (res) {
-          const { tableTests = [] } = res;
-          let itsNewTest = true;
-          const existingData = tableTestCase.map((test) => {
-            if (test.name === tableTests[0].name) {
-              itsNewTest = false;
-
-              return tableTests[0];
-            }
-
-            return test;
-          });
-          if (itsNewTest) {
-            existingData.push(tableTests[0]);
-          }
-          setTableTestCase(existingData);
-          handleShowTestForm(false);
-          showSuccessToast(
-            `Test ${data.testCase.tableTestType} for ${name} has been ${
-              itsNewTest ? 'added' : 'updated'
-            } successfully.`
-          );
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['add-table-test-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['add-table-test-error']
-        );
-      });
-  };
-
-  const handleAddColumnTestCase = (data: CreateColumnTest) => {
-    addColumnTestCase(tableDetails.id, data)
-      .then((res) => {
-        if (res) {
-          let itsNewTest = true;
-          const columnTestRes = res.columns.find(
-            (d: Column) => d.name === data.columnName
-          );
-          const updatedColumns = columns.map((d) => {
-            if (d.name === data.columnName) {
-              const columnTest = columnTestRes?.columnTests?.length
-                ? columnTestRes?.columnTests[0]
-                : null;
-              const oldTest =
-                (d as ModifiedTableColumn)?.columnTests?.filter(
-                  (test) => test.id !== columnTest?.id
-                ) || [];
-
-              itsNewTest =
-                oldTest.length ===
-                (d as ModifiedTableColumn)?.columnTests?.length;
-
-              return {
-                ...d,
-                columnTests: columnTest ? [...oldTest, columnTest] : oldTest,
-              };
-            }
-
-            return d;
-          });
-          setColumns(updatedColumns);
-          handleShowTestForm(false);
-          setSelectedColumn(undefined);
-          showSuccessToast(
-            `Test ${data.testCase.columnTestType} for ${
-              data.columnName
-            } has been ${itsNewTest ? 'added' : 'updated'} successfully.`
-          );
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['add-column-test-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['add-column-test-error']
-        );
-      });
-  };
-
-  const handleRemoveTableTest = (testType: TableTestType) => {
-    deleteTableTestCase(tableDetails.id, testType)
-      .then(() => {
-        const updatedTest = tableTestCase.filter(
-          (d) => d.testCase.tableTestType !== testType
-        );
-        setTableTestCase(updatedTest);
-        showSuccessToast(jsonData['api-success-messages']['delete-test']);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-test-error']
-        );
-      });
-  };
-
-  const handleRemoveColumnTest = (
-    columnName: string,
-    testType: ColumnTestType
-  ) => {
-    deleteColumnTestCase(tableDetails.id, columnName, testType)
-      .then(() => {
-        const updatedColumns = columns.map((d) => {
-          if (d.name === columnName) {
-            const updatedTest =
-              (d as ModifiedTableColumn)?.columnTests?.filter(
-                (test) => test.testCase.columnTestType !== testType
-              ) || [];
-
-            return {
-              ...d,
-              columnTests: updatedTest,
-            };
-          }
-
-          return d;
-        });
-        setColumns(updatedColumns);
-        showSuccessToast(jsonData['api-success-messages']['delete-test']);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-test-error']
-        );
-      });
-  };
-
   const deletePostHandler = (
     threadId: string,
     postId: string,
@@ -935,31 +773,39 @@ const DatasetDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtentionUpdate = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          const { version, owner: ownerValue, tags } = res;
-          setCurrentVersion(version?.toString());
-          setTableDetails(res);
-          setOwner(ownerValue);
-          setTier(getTierTags(tags ?? []));
-        } else {
-          throw jsonData['api-error-messages']['update-entity-error'];
-        }
-      })
-      .catch((extensionErr: AxiosError) => {
-        showErrorToast(
-          extensionErr,
-          jsonData['api-error-messages']['update-entity-error']
-        );
-      });
+  const handleExtentionUpdate = async (updatedTable: Table) => {
+    try {
+      const response = await saveUpdatedTableData(updatedTable);
+      if (response) {
+        const { version, owner: ownerValue, tags, extension } = response;
+        setCurrentVersion(version?.toString());
+        setTableDetails((previous) => ({
+          ...previous,
+          version,
+          owner,
+          tags,
+          extension,
+        }));
+        setOwner(ownerValue);
+        setTier(getTierTags(tags ?? []));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   useEffect(() => {
-    fetchTableDetail();
-    setActiveTab(getCurrentDatasetTab(tab));
-    getEntityFeedCount();
+    if (tablePermissions.ViewAll) {
+      fetchTableDetail();
+      setActiveTab(getCurrentDatasetTab(tab));
+      getEntityFeedCount();
+    }
+  }, [tablePermissions]);
+
+  useEffect(() => {
+    fetchResourcePermission(tableFQN);
   }, [tableFQN]);
 
   useEffect(() => {
@@ -982,70 +828,64 @@ const DatasetDetailsPage: FunctionComponent = () => {
           {getEntityMissingError('table', tableFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <DatasetDetails
-          activeTab={activeTab}
-          addLineageHandler={addLineageHandler}
-          columns={columns}
-          columnsUpdateHandler={columnsUpdateHandler}
-          createThread={createThread}
-          dataModel={tableDetails.dataModel}
-          datasetFQN={tableFQN}
-          deletePostHandler={deletePostHandler}
-          deleted={deleted}
-          description={description}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldTaskCount={entityFieldTaskCount}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityLineage={entityLineage}
-          entityLineageHandler={entityLineageHandler}
-          entityName={name}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={handleFeedFetchFromFeedList}
-          followTableHandler={followTable}
-          followers={followers}
-          handleAddColumnTestCase={handleAddColumnTestCase}
-          handleAddTableTestCase={handleAddTableTestCase}
-          handleExtentionUpdate={handleExtentionUpdate}
-          handleRemoveColumnTest={handleRemoveColumnTest}
-          handleRemoveTableTest={handleRemoveTableTest}
-          handleSelectedColumn={handleSelectedColumn}
-          handleShowTestForm={handleShowTestForm}
-          handleTestModeChange={handleTestModeChange}
-          isLineageLoading={isLineageLoading}
-          isNodeLoading={isNodeLoading}
-          isQueriesLoading={isTableQueriesLoading}
-          isSampleDataLoading={isSampleDataLoading}
-          isentityThreadLoading={isentityThreadLoading}
-          joins={joins}
-          lineageLeafNodes={leafNodes}
-          loadNodeHandler={loadNodeHandler}
-          owner={owner as EntityReference}
-          paging={paging}
-          postFeedHandler={postFeedHandler}
-          qualityTestFormHandler={qualityTestFormHandler}
-          removeLineageHandler={removeLineageHandler}
-          sampleData={sampleData}
-          selectedColumn={selectedColumn as string}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          showTestForm={showTestForm}
-          slashedTableName={slashedTableName}
-          tableDetails={tableDetails}
-          tableProfile={tableProfile}
-          tableQueries={tableQueries}
-          tableTags={tableTags}
-          tableTestCase={tableTestCase}
-          tableType={tableType}
-          tagUpdateHandler={onTagUpdate}
-          testMode={testMode}
-          tier={tier as TagLabel}
-          unfollowTableHandler={unfollowTable}
-          updateThreadHandler={updateThreadHandler}
-          usageSummary={usageSummary}
-          version={currentVersion}
-          versionHandler={versionHandler}
-        />
+        <>
+          {tablePermissions.ViewAll ? (
+            <DatasetDetails
+              activeTab={activeTab}
+              addLineageHandler={addLineageHandler}
+              columns={columns}
+              columnsUpdateHandler={columnsUpdateHandler}
+              createThread={createThread}
+              dataModel={tableDetails.dataModel}
+              datasetFQN={tableFQN}
+              deletePostHandler={deletePostHandler}
+              deleted={deleted}
+              description={description}
+              descriptionUpdateHandler={descriptionUpdateHandler}
+              entityFieldTaskCount={entityFieldTaskCount}
+              entityFieldThreadCount={entityFieldThreadCount}
+              entityLineage={entityLineage}
+              entityLineageHandler={entityLineageHandler}
+              entityName={name}
+              entityThread={entityThread}
+              feedCount={feedCount}
+              fetchFeedHandler={handleFeedFetchFromFeedList}
+              followTableHandler={followTable}
+              followers={followers}
+              handleExtentionUpdate={handleExtentionUpdate}
+              isLineageLoading={isLineageLoading}
+              isNodeLoading={isNodeLoading}
+              isQueriesLoading={isTableQueriesLoading}
+              isSampleDataLoading={isSampleDataLoading}
+              isentityThreadLoading={isentityThreadLoading}
+              joins={joins}
+              lineageLeafNodes={leafNodes}
+              loadNodeHandler={loadNodeHandler}
+              owner={owner as EntityReference}
+              paging={paging}
+              postFeedHandler={postFeedHandler}
+              removeLineageHandler={removeLineageHandler}
+              sampleData={sampleData}
+              setActiveTabHandler={activeTabHandler}
+              settingsUpdateHandler={settingsUpdateHandler}
+              slashedTableName={slashedTableName}
+              tableDetails={tableDetails}
+              tableProfile={tableProfile}
+              tableQueries={tableQueries}
+              tableTags={tableTags}
+              tableType={tableType}
+              tagUpdateHandler={onTagUpdate}
+              tier={tier as TagLabel}
+              unfollowTableHandler={unfollowTable}
+              updateThreadHandler={updateThreadHandler}
+              usageSummary={usageSummary}
+              version={currentVersion}
+              versionHandler={versionHandler}
+            />
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </>
   );

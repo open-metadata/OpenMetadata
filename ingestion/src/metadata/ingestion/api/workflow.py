@@ -10,10 +10,8 @@
 #  limitations under the License.
 
 import importlib
-import time
+import traceback
 from typing import Type, TypeVar
-
-import click
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -38,8 +36,8 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
-from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.workflow_output_handler import print_status
 
 logger = ingestion_logger()
 
@@ -74,13 +72,6 @@ class Workflow:
             self.config.source.type
         )
 
-        source_class = self.get(
-            "metadata.ingestion.source.{}.{}.{}Source".format(
-                service_type.name.lower(),
-                self.typeClassFetch(source_type, True),
-                self.typeClassFetch(source_type, False),
-            )
-        )
         metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
@@ -88,6 +79,18 @@ class Workflow:
         self._retrieve_service_connection_if_needed(metadata_config, service_type)
 
         self._retrieve_dbt_config_source_if_needed(metadata_config, service_type)
+
+        logger.info(f"Service type:{service_type},{source_type} configured")
+
+        source_class = self.get(
+            self.config.source.serviceConnection.__root__.config.sourcePythonClass
+            if source_type.startswith("custom")
+            else "metadata.ingestion.source.{}.{}.{}Source".format(
+                service_type.name.lower(),
+                self.typeClassFetch(source_type, True),
+                self.typeClassFetch(source_type, False),
+            )
+        )
 
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
@@ -220,48 +223,21 @@ class Workflow:
                 "Source reported warnings", self.source.get_status()
             )
 
-    def print_status(self) -> int:
-        click.echo()
-        click.secho("Source Status:", bold=True)
-        click.echo(self.source.get_status().as_string())
-        if hasattr(self, "stage"):
-            click.secho("Stage Status:", bold=True)
-            click.echo(self.stage.get_status().as_string())
-            click.echo()
-        if hasattr(self, "sink"):
-            click.secho("Sink Status:", bold=True)
-            click.echo(self.sink.get_status().as_string())
-            click.echo()
-        if hasattr(self, "bulk_sink"):
-            click.secho("Bulk Sink Status:", bold=True)
-            click.echo(self.bulk_sink.get_status().as_string())
-            click.echo()
+    def print_status(self):
+        """
+        Print the workflow results with click
+        """
+        print_status(self)
 
-        if self.source.get_status().source_start_time:
-            click.secho(
-                f"Workflow finished in time {pretty_print_time_duration(time.time()-self.source.get_status().source_start_time)} ",
-                fg="bright_cyan",
-                bold=True,
-            )
-
-            click.secho(
-                f"Success % : {self.source.get_status().calculate_success()}",
-                fg="bright_cyan",
-                bold=True,
-            )
-
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
         if self.source.get_status().failures or (
             hasattr(self, "sink") and self.sink.get_status().failures
         ):
-            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-        elif self.source.get_status().warnings or (
-            hasattr(self, "sink") and self.sink.get_status().warnings
-        ):
-            click.secho("Workflow finished with warnings", fg="yellow", bold=True)
-            return 0
         else:
-            click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
 
     def _retrieve_service_connection_if_needed(
@@ -279,16 +255,23 @@ class Workflow:
         if service_type is not ServiceType.Metadata and not self._is_sample_source(
             self.config.source.type
         ):
+            service_name = self.config.source.serviceName
             metadata = OpenMetadata(config=metadata_config)
-            service = metadata.get_by_name(
-                get_service_class_from_service_type(service_type),
-                self.config.source.serviceName,
-            )
-            if service:
-                self.config.source.serviceConnection = (
-                    metadata.secrets_manager_client.retrieve_service_connection(
-                        service, service_type.name.lower()
+            try:
+                service = metadata.get_by_name(
+                    get_service_class_from_service_type(service_type),
+                    service_name,
+                )
+                if service:
+                    self.config.source.serviceConnection = (
+                        metadata.secrets_manager_client.retrieve_service_connection(
+                            service, service_type.name.lower()
+                        )
                     )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting dbtConfigSource for service name [{service_name}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     def _retrieve_dbt_config_source_if_needed(
@@ -308,17 +291,23 @@ class Workflow:
             and config.type == DatabaseMetadataConfigType.DatabaseMetadata
         ):
             metadata = OpenMetadata(config=metadata_config)
-            dbt_config_source: object = (
-                metadata.secrets_manager_client.retrieve_dbt_source_config(
-                    self.config.source.sourceConfig,
-                    self.config.source.serviceName,
+            try:
+                dbt_config_source: object = (
+                    metadata.secrets_manager_client.retrieve_dbt_source_config(
+                        self.config.source.sourceConfig,
+                        self.config.source.serviceName,
+                    )
                 )
-            )
-            if dbt_config_source and self.config.source.sourceConfig.config:
-                config_dict = self.config.source.sourceConfig.config.dict()
-                config_dict["dbtConfigSource"] = dbt_config_source
-                self.config.source.sourceConfig.config = (
-                    DatabaseServiceMetadataPipeline.parse_obj(config_dict)
+                if dbt_config_source:
+                    config_dict = config.dict()
+                    config_dict["dbtConfigSource"] = dbt_config_source
+                    self.config.source.sourceConfig.config = (
+                        DatabaseServiceMetadataPipeline.parse_obj(config_dict)
+                    )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting dbtConfigSource for config [{config}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     @staticmethod

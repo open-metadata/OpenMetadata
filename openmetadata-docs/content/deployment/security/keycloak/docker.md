@@ -9,7 +9,7 @@ To enable security for the Docker deployment, follow the next steps:
 
 ## 1. Create an .env file
 
-Create an `openmetadata_oidc.env` file and add the following contents as an example. Use the information
+Create an `openmetadata_keycloak.env` file and add the following contents as an example. Use the information
 generated when setting up the account.
 
 The configuration below already uses the presets shown in the example of keycloak configurations, you can change to yours.
@@ -32,14 +32,12 @@ AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 # Airflow Configuration
 AIRFLOW_AUTH_PROVIDER=custom-oidc
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID=open-metadata # Update with your Client ID
-# Make sure to add the path where the file is saved in the Airflow Volume
-# It needs to be reachable locally by the container
-OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH={Secret Key} # Update with your Secret Key
+OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY={Secret Key} # Update with your Secret Key
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL="http://localhost:8080/realms/data-sec/protocol/openid-connect/token"
 ```
 
 ## 2. Start Docker
 
 ```commandline
-docker compose --env-file ~/openmetadata_azure.env up -d
+docker compose --env-file ~/openmetadata_keycloak.env up -d
 ```

@@ -148,7 +148,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           Click on the <strong>&quot;Profiler&quot;</strong> tab.
         </p>
       ),
-      selector: '#profiler',
+      selector: '#profilerDataQuality',
     },
     {
       content: () => (
@@ -185,31 +185,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       stepInteraction: false,
       selector: '#lineageDetails',
-    },
-    {
-      beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('manage');
-      },
-      actionType: 'click',
-      content: () => (
-        <p>
-          Click on the <strong>&quot;Manage&quot;</strong> tab
-        </p>
-      ),
-      selector: '#manage',
-    },
-    {
-      beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
-      },
-      content: () => (
-        <p>
-          From <strong>&quot;Manage&quot;</strong>, you can claim ownership, and
-          set the tier.
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#manageTabDetails',
     },
   ];
 };

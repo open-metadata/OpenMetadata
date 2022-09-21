@@ -100,3 +100,14 @@ CREATE TABLE IF NOT EXISTS openmetadata_settings (
     UNIQUE(configType)
 );
 
+DELETE FROM entity_extension
+WHERE jsonSchema IN ('tableProfile', 'columnTest', 'tableTest');
+
+DELETE FROM ingestion_pipeline_entity 
+WHERE json_extract_path_text("json", 'pipelineType') = 'profiler';
+
+DELETE FROM role_entity;
+DELETE FROM policy_entity;
+DELETE FROM field_relationship WHERE fromType IN ('role', 'policy') OR toType IN ('role', 'policy');
+DELETE FROM entity_relationship WHERE fromEntity IN ('role', 'policy') OR toEntity IN ('role', 'policy');
+ALTER TABLE role_entity DROP COLUMN defaultRole;

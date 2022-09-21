@@ -40,12 +40,12 @@ export type DbtConfigCloud = Pick<
 
 export type DbtConfigLocal = Pick<
   DbtConfigSource,
-  'dbtCatalogFilePath' | 'dbtManifestFilePath'
+  'dbtCatalogFilePath' | 'dbtManifestFilePath' | 'dbtRunResultsFilePath'
 >;
 
 export type DbtConfigHttp = Pick<
   DbtConfigSource,
-  'dbtCatalogHttpPath' | 'dbtManifestHttpPath'
+  'dbtCatalogHttpPath' | 'dbtManifestHttpPath' | 'dbtRunResultsHttpPath'
 >;
 
 export type DbtConfigS3GCS = Pick<

@@ -130,6 +130,17 @@ site_menu:
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
 
+  - category: Deployment / Enable Secrets Manager
+    url: /deployment/secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations
+    url: /deployment/secrets-manager/supported-implementations
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS Secrets Manager
+    url: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS SSM Parameter Store
+    url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+  - category: Deployment / Enable Secrets Manager / How to add a new implementation
+    url: /deployment/secrets-manager/how-to-add-a-new-implementation
+
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
   - category: Deployment / Upgrade OpenMetadata / Backup Metadata
@@ -146,6 +157,8 @@ site_menu:
     url: /deployment/upgrade/versions/090-to-010
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
     url: /deployment/upgrade/versions/010-to-011
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
+    url: /deployment/upgrade/versions/011-to-012
 
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
@@ -186,6 +199,8 @@ site_menu:
     url: /openmetadata/connectors/database/redshift/airflow
   - category: OpenMetadata / Connectors / Database / Redshift / CLI
     url: /openmetadata/connectors/database/redshift/cli
+  - category: OpenMetadata / Connectors / Database / Redshift / Troubleshooting
+    url: /openmetadata/connectors/database/redshift/troubleshooting
   - category: OpenMetadata / Connectors / Database / Glue
     url: /openmetadata/connectors/database/glue
   - category: OpenMetadata / Connectors / Database / Glue / Airflow
@@ -272,6 +287,8 @@ site_menu:
     url: /openmetadata/connectors/database/hive/airflow
   - category: OpenMetadata / Connectors / Database / Hive / CLI
     url: /openmetadata/connectors/database/hive/cli
+  - category: OpenMetadata / Connectors / Database / Hive / Troubleshooting
+    url: /openmetadata/connectors/database/hive/troubleshooting
   - category: OpenMetadata / Connectors / Database / Presto
     url: /openmetadata/connectors/database/presto
   - category: OpenMetadata / Connectors / Database / Presto / Airflow
@@ -364,7 +381,13 @@ site_menu:
     url: /openmetadata/connectors/messaging/kafka/airflow
   - category: OpenMetadata / Connectors / Messaging / Kafka / CLI
     url: /openmetadata/connectors/messaging/kafka/cli
-  
+  - category: OpenMetadata / Connectors / Messaging / Redpanda
+    url: /openmetadata/connectors/messaging/redpanda
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / Airflow
+    url: /openmetadata/connectors/messaging/redpanda/airflow
+  - category: OpenMetadata / Connectors / Messaging / Redpanda / CLI
+    url: /openmetadata/connectors/messaging/redpanda/cli
+
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
   - category: OpenMetadata / Connectors / Pipeline / Airflow
@@ -393,6 +416,12 @@ site_menu:
     url: /openmetadata/connectors/pipeline/fivetran/airflow
   - category: OpenMetadata / Connectors / Pipeline / Fivetran / CLI
     url: /openmetadata/connectors/pipeline/fivetran/cli
+  - category: OpenMetadata / Connectors / Pipeline / Dagster
+    url: /openmetadata/connectors/pipeline/dagster
+  - category: OpenMetadata / Connectors / Pipeline / Dagster / Airflow
+    url: /openmetadata/connectors/pipeline/dagster/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Dagster / CLI
+    url: /openmetadata/connectors/pipeline/dagster/cli
 
   - category: OpenMetadata / Connectors / ML Model
     url: /openmetadata/connectors/ml-model
@@ -424,6 +453,8 @@ site_menu:
     url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
     url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-owner
 
   - category: OpenMetadata / Ingestion / Workflows / Usage
     url: /openmetadata/ingestion/workflows/usage
@@ -435,6 +466,10 @@ site_menu:
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
     url: /openmetadata/ingestion/workflows/profiler/metrics
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality
+    url: /openmetadata/ingestion/workflows/data-quality
+  - category: OpenMetadata / Ingestion / Workflows / Data Quality / Tests
+    url: /openmetadata/ingestion/workflows/data-quality/tests
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
   - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually
@@ -450,11 +485,6 @@ site_menu:
 
   - category: OpenMetadata / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
-
-  - category: OpenMetadata / Data Quality
-    url: /openmetadata/data-quality
-  - category: OpenMetadata / Data Quality / Tests
-    url: /openmetadata/data-quality/tests
 
   - category: OpenMetadata / Teams & Users
     url: /openmetadata/users
@@ -985,6 +1015,8 @@ site_menu:
     url: /sdk/python/ingestion
   - category: SDK / Python SDK / Ingestion / DBT
     url: /sdk/python/ingestion/dbt
+  - category: SDK / Python SDK / Ingestion / Lineage
+    url: /sdk/python/ingestion/lineage
   - category: SDK / Python SDK / Build a Connector
     url: /sdk/python/build-connector
   - category: SDK / Python SDK / Build a Connector / Source

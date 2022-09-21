@@ -21,39 +21,22 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
 import TableProfilerV1 from './TableProfilerV1';
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockImplementation(() => {
+    jest.fn();
+  }),
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
-jest.mock('antd', () => ({
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <button {...props}>{children}</button>
-    )),
 
-  Col: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Row: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Empty: jest
-    .fn()
-    .mockImplementation(({ description }) => <div>{description}</div>),
-}));
-
-// mock internel imports
+// mock internal imports
 jest.mock('./Component/ProfilerSettingsModal', () => {
   return jest.fn().mockImplementation(() => {
     return <div>ProfilerSettingsModal.component</div>;
@@ -64,7 +47,7 @@ jest.mock('./Component/ColumnProfileTable', () => {
     return <div>ColumnProfileTable.component</div>;
   });
 });
-jest.mock('../../utils/DatasetDetailsUtils');
+
 jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   formTwoDigitNmber: jest.fn(),
@@ -78,7 +61,28 @@ jest.mock('../../axiosAPIs/testAPI', () => ({
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
-  onAddTestClick: jest.fn(),
+  permissions: {
+    Create: true,
+    Delete: true,
+    EditAll: true,
+    EditCustomFields: true,
+    EditDataProfile: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditLineage: true,
+    EditOwner: true,
+    EditQueries: true,
+    EditSampleData: true,
+    EditTags: true,
+    EditTests: true,
+    EditTier: true,
+    ViewAll: true,
+    ViewDataProfile: true,
+    ViewQueries: true,
+    ViewSampleData: true,
+    ViewTests: true,
+    ViewUsage: true,
+  } as OperationPermission,
 };
 
 describe('Test TableProfiler component', () => {
@@ -100,21 +104,6 @@ describe('Test TableProfiler component', () => {
     expect(profileContainer).toBeInTheDocument();
     expect(settingBtn).toBeInTheDocument();
     expect(addTableTest).toBeInTheDocument();
-  });
-
-  it('No data placeholder should be visible where there is no profiler', async () => {
-    render(
-      <TableProfilerV1
-        {...mockProps}
-        table={{ ...mockProps.table, profile: undefined }}
-      />
-    );
-
-    const noProfiler = await screen.findByTestId(
-      'no-profiler-placeholder-container'
-    );
-
-    expect(noProfiler).toBeInTheDocument();
   });
 
   it('CTA: Add table test should work properly', async () => {

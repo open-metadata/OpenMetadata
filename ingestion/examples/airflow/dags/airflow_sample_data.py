@@ -35,18 +35,18 @@ default_args = {
 config = """
 source:
   type: sample_data
-  serviceName: sample_data
+  serviceName: sample_data_ingestion
   serviceConnection:
     config:
       type: SampleData
-      sampleDataFolder: "./examples/sample_data"
+      sampleDataFolder: "/home/airflow/ingestion/examples/sample_data"
   sourceConfig: {}
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
+    hostPort: http://openmetadata-server:8585/api
     authProvider: no-auth
 """
 

@@ -117,7 +117,7 @@ const SelectServiceType = ({
                     )}
                   </div>
                 </div>
-                <p className="">{type}</p>
+                <p className="break-word text-center">{type}</p>
               </div>
             ))}
           </div>

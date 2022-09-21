@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/customMessagingConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomMessagingConnection",
+  "description": "Custom Messaging Service Connection to build a source that is not supported by OpenMetadata yet.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.CustomMessagingConnection",
+  "definitions": {
+    "customMessagingType": {
+      "title": "Service Type",
+      "description": "Custom messaging service type",
+      "type": "string",
+      "enum": ["CustomMessaging"],
+      "default": "CustomMessaging"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Custom messaging service type",
+      "$ref": "#/definitions/customMessagingType",
+      "default": "CustomMessaging"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["sourcePythonClass", "type"]
+}

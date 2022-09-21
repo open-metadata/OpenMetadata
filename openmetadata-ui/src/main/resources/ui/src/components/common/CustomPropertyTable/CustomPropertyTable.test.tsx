@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
@@ -50,6 +50,10 @@ jest.mock('./PropertyValue', () => ({
   PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
+jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
+});
+
 jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -69,41 +73,27 @@ const mockProp = {
 
 describe('Test CustomProperty Table Component', () => {
   it('Should render table component', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <CustomPropertyTable {...mockProp} />
-    );
-    const table = await findByTestId('custom-properties-table');
+    render(<CustomPropertyTable {...mockProp} />);
+    const table = await screen.findByTestId('custom-properties-table');
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await findByTestId('property-name');
-    const propertyValue = await findByTestId('property-value');
+    const propertyName = await screen.findByText('Name');
+    const propertyValue = await screen.findByText('Value');
+    const rows = await screen.findAllByRole('row');
 
     expect(propertyName).toBeInTheDocument();
     expect(propertyValue).toBeInTheDocument();
-
-    const dataRows = await findAllByTestId('data-row');
-
-    expect(dataRows).toHaveLength(mockCustomProperties.length);
+    expect(rows).toHaveLength(mockCustomProperties.length + 1);
   });
 
   it('Should render no data placeholder if custom properties list is empty', async () => {
     (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ customProperties: [] })
     );
-    const { findByTestId } = render(<CustomPropertyTable {...mockProp} />);
-    const table = await findByTestId('custom-properties-table');
+    const { findByText } = render(<CustomPropertyTable {...mockProp} />);
+    const noDataPlaceHolder = await findByText('ErrorPlaceHolder.component');
 
-    expect(table).toBeInTheDocument();
-
-    const propertyName = await findByTestId('property-name');
-    const propertyValue = await findByTestId('property-value');
-
-    expect(propertyName).toBeInTheDocument();
-    expect(propertyValue).toBeInTheDocument();
-
-    const noDataRow = await findByTestId('no-data-row');
-
-    expect(noDataRow).toBeInTheDocument();
+    expect(noDataPlaceHolder).toBeInTheDocument();
   });
 });

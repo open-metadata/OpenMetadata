@@ -18,7 +18,6 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
 import Explore from '../../components/Explore/Explore.component';
-import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
 import { MyDataProps } from '../../components/MyData/MyData.interface';
 import NavBar from '../../components/nav-bar/NavBar';
@@ -27,7 +26,6 @@ import { ROUTES, TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
   mockDatasetData,
   mockFeedData,
-  mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
@@ -58,15 +56,13 @@ const TourPage = () => {
     AppState.currentTourPage
   );
   const [myDataSearchResult, setMyDataSearchResult] = useState(mockFeedData);
-  const [exploreSearchResult, setExploreSearchResult] =
-    useState(exploreSearchData);
   const [datasetActiveTab, setdatasetActiveTab] = useState(
     AppState.activeTabforTourDatasetPage
   );
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
   const [searchValue, setSearchValue] = useState('');
 
-  const handleCountChange = () => {
+  const handleCountChange = async () => {
     setExplorePageCounts(exploreCount);
   };
 
@@ -134,6 +130,7 @@ const TourPage = () => {
               servicesCount: 4,
               userCount: 100,
               teamCount: 7,
+              testSuiteCount: 2,
             }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
@@ -158,15 +155,11 @@ const TourPage = () => {
         return (
           <Explore
             isFilterSelected
-            error=""
             fetchCount={handleCountChange}
-            fetchData={() => setExploreSearchResult(exploreSearchData)}
             handleFilterChange={handleFilterChange}
             handlePathChange={handleCountChange}
-            handleSearchText={() => setExploreSearchResult(exploreSearchData)}
             handleTabCounts={handleCountChange}
             searchQuery=""
-            searchResult={exploreSearchResult as unknown as ExploreSearchData}
             searchText=""
             showDeleted={false}
             sortValue=""
@@ -200,14 +193,7 @@ const TourPage = () => {
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
-            handleAddColumnTestCase={handleCountChange}
-            handleAddTableTestCase={handleCountChange}
             handleExtentionUpdate={handleCountChange}
-            handleRemoveColumnTest={handleCountChange}
-            handleRemoveTableTest={handleCountChange}
-            handleSelectedColumn={handleCountChange}
-            handleShowTestForm={handleCountChange}
-            handleTestModeChange={handleCountChange}
             isNodeLoading={{
               id: undefined,
               state: false,
@@ -219,13 +205,10 @@ const TourPage = () => {
             owner={undefined as unknown as EntityReference}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
-            qualityTestFormHandler={handleCountChange}
             removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
-            selectedColumn=""
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}
-            showTestForm={false}
             slashedTableName={mockDatasetData.slashedTableName}
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
@@ -233,10 +216,8 @@ const TourPage = () => {
             }
             tableQueries={[]}
             tableTags={mockDatasetData.tableTags}
-            tableTestCase={[]}
             tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}
-            testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}

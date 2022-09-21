@@ -16,7 +16,6 @@ import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
-import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -29,7 +28,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ColumnTestType, Table } from '../generated/entity/data/table';
+import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
@@ -143,26 +142,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Rows',
-          value: profile ? (
-            <TableProfilerGraph
-              className="tw--mt-5"
-              data={
-                [
-                  {
-                    date: new Date(profile?.timestamp || 0),
-                    value: profile.rowCount ?? 0,
-                  },
-                ] as Array<{
-                  date: Date;
-                  value: number;
-                }>
-              }
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-          ) : (
-            '--'
-          ),
+          value: profile && profile?.rowCount ? profile.rowCount : '--',
           isLink: false,
         },
       ];
@@ -375,57 +355,6 @@ export const getEntityFeedLink: Function = (
 
 export const isSupportedTest = (dataType: string) => {
   return dataType === 'ARRAY' || dataType === 'STRUCT';
-};
-
-export const filteredColumnTestOption = (dataType: string) => {
-  switch (getDataTypeString(dataType)) {
-    case 'numeric':
-      return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.ColumnValueLengthsToBeBetween
-      );
-
-    case 'varchar': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeBetween,
-        ColumnTestType.ColumnValuesSumToBeBetween,
-        ColumnTestType.ColumnValueMinToBeBetween,
-        ColumnTestType.ColumnValueMaxToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-
-    case 'timestamp':
-    case 'date': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeNotInSet,
-        ColumnTestType.ColumnValueLengthsToBeBetween,
-        ColumnTestType.ColumnValuesSumToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-    case 'boolean': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeNotInSet,
-        ColumnTestType.ColumnValueLengthsToBeBetween,
-        ColumnTestType.ColumnValuesToBeBetween,
-        ColumnTestType.ColumnValuesSumToBeBetween,
-        ColumnTestType.ColumnValueMinToBeBetween,
-        ColumnTestType.ColumnValueMaxToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-    default:
-      return Object.values(ColumnTestType);
-  }
 };
 
 export const isColumnTestSupported = (dataType: string) => {

@@ -14,11 +14,16 @@
 import 'tailwindcss/tailwind.css';
 import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import './antd-master.less';
+import './app.less';
 import './components/glossary.less';
+import './components/profiler.less';
+import './components/size.less';
 import './components/step.less';
 import './fonts.css';
+import './modal.less';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
+import './spacing.less';
 import './tailwind.css';
 import './temp.css';
 import './x-custom/code-mirror.css';

@@ -14,22 +14,31 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
-import { getUserPath, PAGE_SIZE, ROUTES } from '../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CreateUser } from '../../generated/api/teams/createUser';
-import { EntityReference, User } from '../../generated/entity/teams/user';
+import { Operation } from '../../generated/entity/policies/policy';
+import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { getEntityName, getTeamsText } from '../../utils/CommonUtils';
+import {
+  commonUserDetailColumns,
+  getEntityName,
+} from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import './usersList.less';
 
 interface UserListV1Props {
@@ -57,11 +66,22 @@ const UserListV1: FC<UserListV1Props> = ({
   onPagingChange,
   afterDeleteAction,
 }) => {
+  const { permissions } = usePermissionProvider();
   const history = useHistory();
   const [selectedUser, setSelectedUser] = useState<User>();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const showRestore = showDeletedUser && !isDataLoading;
+
+  const createPermission = useMemo(
+    () => checkPermission(Operation.Create, ResourceEntity.USER, permissions),
+    [permissions]
+  );
+
+  const deletePermission = useMemo(
+    () => checkPermission(Operation.Delete, ResourceEntity.USER, permissions),
+    [permissions]
+  );
 
   const handleAddNewUser = () => {
     history.push(ROUTES.CREATE_USER);
@@ -105,29 +125,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      {
-        title: 'Username',
-        dataIndex: 'username',
-        key: 'username',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getUserPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: 'Email',
-        dataIndex: 'email',
-        key: 'email',
-      },
-      {
-        title: 'Teams',
-        dataIndex: 'teams',
-        key: 'teams',
-        render: (teams: EntityReference[]) => getTeamsText(teams),
-      },
+      ...commonUserDetailColumns,
       {
         title: 'Actions',
         dataIndex: 'actions',
@@ -156,8 +154,11 @@ const UserListV1: FC<UserListV1Props> = ({
                 />
               </Tooltip>
             )}
-            <Tooltip placement="bottom" title="Delete">
+            <Tooltip
+              placement="bottom"
+              title={deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
               <Button
+                disabled={!deletePermission}
                 icon={
                   <SVGIcons
                     alt="Delete"
@@ -178,6 +179,46 @@ const UserListV1: FC<UserListV1Props> = ({
     ];
   }, [showRestore]);
 
+  const fetchErrorPlaceHolder = useMemo(
+    () => (type: string) => {
+      return (
+        <Row>
+          <Col className="w-full tw-flex tw-justify-end">
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                size="small"
+                onClick={onShowDeletedUserChange}
+              />
+              <span className="tw-ml-2">Deleted Users</span>
+            </span>
+          </Col>
+          <Col span={24}>
+            <ErrorPlaceHolder
+              buttons={
+                <Button
+                  ghost
+                  // data-testid="add-user"
+                  disabled={!createPermission}
+                  type="primary"
+                  onClick={handleAddNewUser}>
+                  Add User
+                </Button>
+              }
+              heading="User"
+              type={type}
+            />
+          </Col>
+        </Row>
+      );
+    },
+    []
+  );
+
+  if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
+    return fetchErrorPlaceHolder('ADD_DATA');
+  }
+
   return (
     <Row className="user-listing" gutter={[16, 16]}>
       <Col span={8}>
@@ -194,14 +235,19 @@ const UserListV1: FC<UserListV1Props> = ({
           <span>
             <Switch
               checked={showDeletedUser}
-              size="small"
               onClick={onShowDeletedUserChange}
             />
             <span className="tw-ml-2">Deleted Users</span>
           </span>
-          <Button type="primary" onClick={handleAddNewUser}>
-            Add User
-          </Button>
+          <Tooltip
+            title={createPermission ? 'Add User' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              disabled={!createPermission}
+              type="primary"
+              onClick={handleAddNewUser}>
+              Add User
+            </Button>
+          </Tooltip>
         </Space>
       </Col>
 
@@ -219,11 +265,11 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={24}>
-        {paging.total > PAGE_SIZE && (
+        {paging.total > PAGE_SIZE_MEDIUM && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchTerm)}
-            pageSize={PAGE_SIZE}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={onPagingChange}
             totalCount={paging.total}

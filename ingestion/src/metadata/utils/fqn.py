@@ -14,6 +14,7 @@ Filter information has been taken from the
 ES indexes definitions
 """
 import re
+from collections import namedtuple
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
@@ -33,7 +34,9 @@ from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -311,6 +314,66 @@ def _(
     return str(entity.fullyQualifiedName.__root__)
 
 
+@fqn_build_registry.add(Team)
+def _(
+    metadata: OpenMetadata,
+    *,
+    team_name: str,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
+    """
+    Building logic for Team
+    :param metadata: OMeta client
+    :param team_name: Team name
+    :return:
+    """
+
+    fqn_search_string = _build(team_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Team,
+        fqn_search_string=fqn_search_string,
+    )
+    entity: Optional[Union[Team, List[Team]]] = get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+    if not entity:
+        return None
+    if fetch_multiple_entities:
+        return [str(user.fullyQualifiedName.__root__) for user in entity]
+    return str(entity.fullyQualifiedName.__root__)
+
+
+@fqn_build_registry.add(TestCase)
+def _(
+    _: OpenMetadata,  # ES Search not enabled for TestCase
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    table_name: str,
+    column_name: str,
+    test_case_name: str,
+) -> str:
+    if column_name:
+        return _build(
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            column_name,
+            test_case_name,
+        )
+    else:
+        return _build(
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            test_case_name,
+        )
+
+
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     """
     Given a table name, try to extract database, schema and
@@ -325,3 +388,28 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
 
     database, database_schema, table = full_details
     return {"database": database, "database_schema": database_schema, "table": table}
+
+
+def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
+    """given a test case fqn split each element
+
+    Args:
+        test_case_fqn (str): test case fqn
+
+    Returns:
+        Dict[str, Optional[str]]:
+    """
+    SplitTestCaseFqn = namedtuple(
+        "SplitTestCaseFqn", "service database schema table column test_case"
+    )
+    details = split(test_case_fqn)
+    if len(details) < 5:
+        raise ValueError(
+            f"{test_case_fqn} does not appear to be a valid test_case fqn "
+        )
+    if len(details) != 6:
+        details.insert(4, None)
+
+    service, database, schema, table, column, test_case = details
+
+    return SplitTestCaseFqn(service, database, schema, table, column, test_case)

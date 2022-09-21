@@ -15,18 +15,15 @@ import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  getExplorePathWithSearch,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { getExplorePathWithSearch } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
+import { TeamType } from '../../generated/entity/teams/team';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { MyAssetStatsProps, Summary } from './MyAssetStats.interface';
 
@@ -72,6 +69,16 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: getExplorePathWithSearch(undefined, 'mlmodels'),
         dataTestId: 'mlmodels',
       },
+      testSuite: {
+        icon: Icons.TEST_SUITE,
+        data: 'Test Suite',
+        count: entityCounts.testSuiteCount,
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.DATA_QUALITY,
+          GlobalSettingOptions.TEST_SUITE
+        ),
+        dataTestId: 'test-suite',
+      },
       service: {
         icon: Icons.SERVICE,
         data: 'Services',
@@ -97,10 +104,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
         count: entityCounts.teamCount,
-        link: getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.TEAMS
-        ),
+        link: getTeamsWithFqnPath(TeamType.Organization),
         dataTestId: 'terms',
       },
     };
@@ -128,33 +132,16 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
                 icon={data.icon}
               />
               {data.link ? (
-                data.adminOnly ? (
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <Link
-                      className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
-                      data-testid={data.dataTestId}
-                      to={data.link}>
-                      <Button
-                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                        type="text">
-                        {data.data}
-                      </Button>
-                    </Link>
-                  </NonAdminAction>
-                ) : (
-                  <Link
-                    className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
-                    data-testid={data.dataTestId}
-                    to={data.link}>
-                    <Button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                      type="text">
-                      {data.data}
-                    </Button>
-                  </Link>
-                )
+                <Link
+                  className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
+                  data-testid={data.dataTestId}
+                  to={data.link}>
+                  <Button
+                    className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                    type="text">
+                    {data.data}
+                  </Button>
+                </Link>
               ) : (
                 <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
               )}

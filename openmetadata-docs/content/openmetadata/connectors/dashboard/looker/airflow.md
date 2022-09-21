@@ -31,7 +31,7 @@ pip3 install "openmetadata-ingestion[looker]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/lookerConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/entity/services/connections/dashboard/lookerConnection.json)
 you can find the structure to create a connection to Looker.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -39,7 +39,7 @@ the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following
-[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
+[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
@@ -52,8 +52,8 @@ source:
   serviceConnection:
     config:
       type: Looker
-      username: username
-      password: password
+      clientId: Client ID
+      clientSecret: Client Secret
       hostPort: http://hostPort
   sourceConfig:
     config:
@@ -79,6 +79,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
@@ -87,13 +88,13 @@ workflowConfig:
 #### Source Configuration - Service Connection
 
 - **hostPort**: URL to the Looker instance.
-- **username**: Specify the User to connect to Looker. It should have enough privileges to read all the metadata.
-- **password**: Password to connect to Looker.
+- **clientId**: Specify the Client ID to connect to Looker. It should have enough privileges to read all the metadata.
+- **clientSecret**: Client Secret to connect to Looker.
 - **env**: Looker Environment.
 
 #### Source Configuration - Source Config
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
 - `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
@@ -122,7 +123,7 @@ workflowConfig:
     authProvider: no-auth
 ```
 
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client).
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">

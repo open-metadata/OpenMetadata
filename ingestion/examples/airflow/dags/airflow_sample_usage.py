@@ -36,11 +36,11 @@ config = """
 {
   "source": {
     "type": "sample-usage",
-    "serviceName": "sample_data",
+    "serviceName": "sample_data_usage",
     "serviceConnection": {
       "config": {
         "type": "SampleData",
-        "sampleDataFolder": "./examples/sample_data"
+        "sampleDataFolder": "/home/airflow/ingestion/examples/sample_data"
       }
     },
     "sourceConfig": {
@@ -67,7 +67,7 @@ config = """
   },
   "workflowConfig": {
     "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
+      "hostPort": "http://openmetadata-server:8585/api",
       "authProvider": "no-auth"
     }
   }

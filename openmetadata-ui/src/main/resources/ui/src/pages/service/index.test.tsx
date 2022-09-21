@@ -23,18 +23,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import ServicePage from './index';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: true,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 const mockData = {
   description: '',
   href: 'link',
@@ -82,6 +70,33 @@ const mockDatabase = {
     before: null,
   },
 };
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+  DEFAULT_ENTITY_PERMISSION: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  },
+}));
+
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
 
 jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
@@ -184,6 +199,9 @@ jest.mock('../../utils/ServiceUtils', () => ({
   ]),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
+  getResourceEntityFromServiceCategory: jest
+    .fn()
+    .mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
   getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),

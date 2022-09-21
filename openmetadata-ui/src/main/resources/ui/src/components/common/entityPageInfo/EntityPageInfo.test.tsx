@@ -12,11 +12,13 @@
  */
 
 import {
+  act,
   findByTestId,
   findByText,
   fireEvent,
   queryByTestId,
   render,
+  screen,
 } from '@testing-library/react';
 import { flatten } from 'lodash';
 import { FormattedGlossaryTermData, TagOption } from 'Models';
@@ -207,14 +209,6 @@ jest.mock('../../../utils/TagsUtils', () => ({
     return tagList;
   }),
 }));
-
-jest.mock('../non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="tag-action">{children}</p>
-    ));
-});
 
 jest.mock('../../tags-container/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
@@ -468,7 +462,10 @@ describe('Test EntityPageInfo component', () => {
 
     expect(entityPageInfoContainer).toBeInTheDocument();
 
-    const tagAction = await findByTestId(entityPageInfoContainer, 'tag-action');
+    const tagAction = await findByTestId(
+      entityPageInfoContainer,
+      'tags-wrapper'
+    );
 
     // should render tag action either add tag or edit tag
     expect(tagAction).toBeInTheDocument();
@@ -618,29 +615,29 @@ describe('Test EntityPageInfo component', () => {
   });
 
   it('Check that tags and glossary terms are not present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getByTestId, queryByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-      {
+    await act(async () => {
+      (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject()
+      );
+      (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject()
+      );
+
+      render(<EntityPageInfo {...mockEntityInfoProp} isTagEditable />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+      const tagWrapper = screen.getByTestId('tags-wrapper');
 
-    const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+      fireEvent.click(
+        tagWrapper,
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
 
-    const tag1 = queryByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryByText('Glossary.Tag1');
+      const tag1 = screen.queryByText('TagCat1.Tag1');
+      const glossaryTerm1 = screen.queryByText('Glossary.Tag1');
 
-    expect(tag1).not.toBeInTheDocument();
-    expect(glossaryTerm1).not.toBeInTheDocument();
+      expect(tag1).not.toBeInTheDocument();
+      expect(glossaryTerm1).not.toBeInTheDocument();
+    });
   });
 });

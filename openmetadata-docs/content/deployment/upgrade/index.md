@@ -5,6 +5,26 @@ slug: /deployment/upgrade
 
 # Upgrade OpenMetadata
 
+## Releases
+
+OpenMetadata community will be doing feature releases and stable releases. 
+ - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
+ - Stable releases are to upgrade your production environments and share it with your users.
+
+## 0.12.0 - Feature release
+ 
+ OpenMetadata 0.12.0 is a feature release ** Please do not upgrade your production ** 
+ Join our slack https://slack.open-metadata.org provide your feedback and help community to get to the stable 0.12.1 release
+ 
+## 0.12.0 - Known Issues
+
+- Upgrade Issues - https://github.com/open-metadata/OpenMetadata/issues/7504
+- Bots listing page not showing Ingestion Bot account - https://github.com/open-metadata/OpenMetadata/issues/7539
+- UI- Search Filter malfunction - https://github.com/open-metadata/OpenMetadata/issues/7313
+
+ 
+ 
+
 ## Backup Metadata
 
 Before upgrading your OpenMetadata version we recommend backing up the metadata.
@@ -59,13 +79,13 @@ Once your metadata is safe, follow the required upgrade instructions:
 You can find further information about specific version upgrades in the following sections:
 
 <InlineCalloutContainer>
-  <InlineCallout
+ <InlineCallout
     color="violet-70"
     icon="10k"
-    bold="Upgrade 0.9"
-    href="/deployment/upgrade/versions/090-to-010"
+    bold="Upgrade 0.11 to 0.12"
+    href="/deployment/upgrade/versions/011-to-012"
   >
-    Upgrade from 0.9 to 0.10. This is a backward incompatible upgrade!
+    Upgrade from 0.11 to 0.12 inplace.
   </InlineCallout>
   <InlineCallout
     color="violet-70"
@@ -74,5 +94,13 @@ You can find further information about specific version upgrades in the followin
     href="/deployment/upgrade/versions/010-to-011"
   >
     Upgrade from 0.10 to 0.11 inplace.
+  </InlineCallout>
+   <InlineCallout
+    color="violet-70"
+    icon="10k"
+    bold="Upgrade 0.9"
+    href="/deployment/upgrade/versions/090-to-010"
+  >
+    Upgrade from 0.9 to 0.10. This is a backward incompatible upgrade!
   </InlineCallout>
 </InlineCalloutContainer>

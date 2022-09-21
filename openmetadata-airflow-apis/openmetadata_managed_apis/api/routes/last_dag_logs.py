@@ -12,12 +12,9 @@
 Return the last DagRun logs for each task
 """
 import traceback
+from typing import Callable
 
-from airflow.api_connexion import security
-from airflow.security import permissions
-from airflow.www.app import csrf
-from flask import Response
-from openmetadata_managed_apis.api.app import blueprint
+from flask import Blueprint, Response
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_arg_dag_id
 from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
@@ -26,23 +23,38 @@ from openmetadata_managed_apis.utils.logger import routes_logger
 logger = routes_logger()
 
 
-@blueprint.route("/last_dag_logs", methods=["GET"])
-@csrf.exempt
-@security.requires_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
-def last_logs() -> Response:
+def get_fn(blueprint: Blueprint) -> Callable:
     """
-    Retrieve all logs from the task instances of a last DAG run
+    Return the function loaded to a route
+    :param blueprint: Flask Blueprint to assign route to
+    :return: routed function
     """
 
-    dag_id = get_arg_dag_id()
+    # Lazy import the requirements
+    # pylint: disable=import-outside-toplevel
+    from airflow.api_connexion import security
+    from airflow.security import permissions
+    from airflow.www.app import csrf
 
-    try:
-        return last_dag_logs(dag_id)
+    @blueprint.route("/last_dag_logs", methods=["GET"])
+    @csrf.exempt
+    @security.requires_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
+    def last_logs() -> Response:
+        """
+        Retrieve all logs from the task instances of a last DAG run
+        """
 
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.error(f"Failed to get last run logs for [{dag_id}]: {exc}")
-        return ApiResponse.error(
-            status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to get last run logs for [{dag_id}] due to [{exc}] ",
-        )
+        dag_id = get_arg_dag_id()
+
+        try:
+            return last_dag_logs(dag_id)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to get last run logs for [{dag_id}]: {exc}")
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Failed to get last run logs for [{dag_id}] due to [{exc}] ",
+            )
+
+    return last_logs

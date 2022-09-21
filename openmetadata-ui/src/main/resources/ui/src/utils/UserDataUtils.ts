@@ -129,14 +129,19 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
     });
 };
 
-export const getUserProfilePic = (userId?: string, username?: string) => {
+export const getUserProfilePic = (
+  permission: boolean,
+  userId?: string,
+  username?: string
+) => {
   let profile;
   if (userId || username) {
     profile = AppState.getUserProfilePic(userId, username);
 
     if (
       isUndefined(profile) &&
-      !AppState.isProfilePicLoading(userId, username)
+      !AppState.isProfilePicLoading(userId, username) &&
+      permission
     ) {
       fetchUserProfilePic(userId, username);
     }
@@ -150,9 +155,10 @@ export const searchFormattedUsersAndTeams = (
   from = 1
 ): Promise<SearchedUsersAndTeams> => {
   return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+    const teamQuery = `${searchQuery} AND teamType:Group`;
     const promises = [
       getSearchedUsers(searchQuery, from),
-      getSearchedTeams(searchQuery, from),
+      getSearchedTeams(teamQuery, from),
     ];
     Promise.allSettled(promises)
       .then(
@@ -165,7 +171,15 @@ export const searchFormattedUsersAndTeams = (
             resTeams.status === SettledStatus.FULFILLED
               ? formatTeamsResponse(resTeams.value.data.hits.hits)
               : [];
-          resolve({ users, teams });
+          const usersTotal =
+            resUsers.status === SettledStatus.FULFILLED
+              ? resUsers.value.data.hits.total.value
+              : 0;
+          const teamsTotal =
+            resTeams.status === SettledStatus.FULFILLED
+              ? resTeams.value.data.hits.total.value
+              : 0;
+          resolve({ users, teams, usersTotal, teamsTotal });
         }
       )
       .catch((err: AxiosError) => {

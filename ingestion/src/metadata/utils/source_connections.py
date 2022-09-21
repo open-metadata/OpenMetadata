@@ -12,6 +12,7 @@
 """
 Hosts the singledispatch to build source URLs
 """
+import os
 from functools import singledispatch
 from urllib.parse import quote_plus
 
@@ -147,7 +148,7 @@ def _(connection):
 
 @get_connection_url.register
 def _(connection: MssqlConnection):
-    if connection.scheme.value == connection.scheme.mssql_pyodbc:
+    if connection.scheme.value == connection.scheme.mssql_pyodbc.value:
         return f"{connection.scheme.value}://{connection.uriString}"
     return get_connection_url_common(connection)
 
@@ -359,6 +360,8 @@ def _(connection: BigQueryConnection):
     if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
         project_id = connection.credentials.gcsConfig.projectId
     if project_id:
+        # Setting environment variable based on project id given by user / set in ADC
+        os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
         return f"{connection.scheme.value}://{project_id}"
     return f"{connection.scheme.value}://"
 
@@ -406,6 +409,9 @@ def _(connection: AthenaConnection):
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
     if connection.workgroup:
         url += f"&work_group={connection.workgroup}"
+    if connection.awsConfig.awsSessionToken:
+        url += f"&aws_session_token={quote_plus(connection.awsConfig.awsSessionToken)}"
+
     return url
 
 

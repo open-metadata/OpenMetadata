@@ -10,7 +10,7 @@ In this section, we provide guides and references to use the Oracle connector.
 Configure and schedule Oracle metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler and Quality Tests](#data-profiler-and-quality-tests)
+- [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -134,7 +134,9 @@ the changes.
 - **Username**: Specify the User to connect to Oracle. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to Oracle.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Oracle deployment in the Host and Port field.
-- **Oracle Service Name**: The Oracle Service name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in tnsnames.
+- **Oracle Connection Type** : Select the Oracle Connection Type. The type can either be `Oracle Service Name` or `Database Schema`
+  - **Oracle Service Name**: The Oracle Service name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in tnsnames.
+  - **Database Schema**: The name of the database schema available in Oracle that you want to connect with.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
@@ -217,13 +219,22 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-## Data Profiler and Quality Tests
+## Data Profiler
 
 <Tile
 icon="schema"
 title="Profiler Workflow"
-text="Learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI."
+text="Learn more about how to configure the Data Profiler from the UI."
 link="/openmetadata/ingestion/workflows/profiler"
+/>
+
+## Data Quality
+
+<Tile
+icon="air"
+title="Data Quality Workflow"
+text="Learn more about how to configure the Data Quality tests from the UI."
+link="/openmetadata/ingestion/workflows/data-quality"
 />
 
 ## DBT Integration

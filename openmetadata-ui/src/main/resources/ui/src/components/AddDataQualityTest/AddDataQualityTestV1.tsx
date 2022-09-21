@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -37,10 +37,9 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import {
   getCurrentUserId,
   getEntityName,
-  getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getTestSuitePath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -55,7 +54,7 @@ import {
 import RightPanel from './components/RightPanel';
 import SelectTestSuite from './components/SelectTestSuite';
 import TestCaseForm from './components/TestCaseForm';
-import { INGESTION_DATA, TEST_FORM_DATA } from './rightPanelData';
+import { addTestSuiteRightPanel, INGESTION_DATA } from './rightPanelData';
 import TestSuiteIngestion from './TestSuiteIngestion';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
@@ -97,15 +96,17 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       },
       {
         name: getEntityName(table),
-        url: getTableTabPath(fullyQualifiedName),
+        url: getTableTabPath(entityTypeFQN, 'profiler'),
       },
     ];
 
     if (isColumnFqn) {
       const colVal = [
         {
-          name: getNameFromFQN(entityTypeFQN),
-          url: getTableTabPath(fullyQualifiedName),
+          name: getPartialNameFromTableFQN(entityTypeFQN, [
+            FqnPart.NestedColumn,
+          ]),
+          url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {
           name: 'Add Column Test',
@@ -126,7 +127,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   }, [table, entityTypeFQN, isColumnFqn]);
 
   const handleViewTestSuiteClick = () => {
-    history.push(getSettingPath());
+    history.push(
+      getTestSuitePath(selectedTestSuite?.data?.fullyQualifiedName || '')
+    );
   };
 
   const handleAirflowStatusCheck = (): Promise<void> => {
@@ -226,7 +229,8 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
             &quot;{successName}&quot;
           </span>
           <span>
-            has been created successfully. and will be pickup in next run.
+            has been created successfully. This will be picked up in the next
+            run.
           </span>
         </span>
       );
@@ -268,7 +272,14 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           data={
             addIngestion
               ? INGESTION_DATA
-              : TEST_FORM_DATA[activeServiceStep - 1]
+              : addTestSuiteRightPanel(
+                  activeServiceStep,
+                  selectedTestSuite?.isNewTestSuite,
+                  {
+                    testCase: testCaseData?.name || '',
+                    testSuite: testSuiteData?.name || '',
+                  }
+                )
           }
         />
       }>
@@ -284,9 +295,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       ) : (
         <Row className="tw-form-container" gutter={[16, 16]}>
           <Col span={24}>
-            <h6 className="tw-heading tw-text-base" data-testid="header">
+            <Typography.Paragraph
+              className="tw-heading tw-text-base"
+              data-testid="header">
               {`Add ${isColumnFqn ? 'Column' : 'Table'} Test`}
-            </h6>
+            </Typography.Paragraph>
           </Col>
           <Col span={24}>
             <IngestionStepper

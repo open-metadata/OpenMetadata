@@ -13,6 +13,8 @@
 
 import { uuid } from '../common/common';
 
+const id = uuid();
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -53,31 +55,27 @@ export const SEARCH_ENTITY_DASHBOARD = {
 
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
-    term: 'Snowflake ETL',
+    term: 'Snowflake',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_2: {
-    term: 'Hive ETL',
+    term: 'Hive',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_3: {
-    term: 'Trino ETL',
+    term: 'Trino',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
 };
 
 export const DELETE_ENTITY = {
   table: {
-    term: 'fact_line_item',
+    term: 'fact_sale',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
   },
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
-  },
-  pipeline: {
-    term: 'Presto ETL',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
 };
 
@@ -85,6 +83,7 @@ export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
+export const TEAM_ENTITY = 'team_entity';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';
@@ -94,6 +93,25 @@ export const TEAMS = {
   Cloud_Infra: { name: 'Cloud_Infra', users: 15 },
   Customer_Support: { name: 'Customer_Support', users: 20 },
   Data_Platform: { name: 'Data_Platform', users: 16 },
+};
+
+export const NEW_TEST_SUITE = {
+  name: `mysql_matrix`,
+  description: 'mysql critical matrix',
+};
+
+export const NEW_TABLE_TEST_CASE = {
+  type: 'tableColumnNameToExist',
+  field: 'id',
+  description: 'New table test case for TableColumnNameToExist',
+};
+
+export const NEW_COLUMN_TEST_CASE = {
+  column: 'id',
+  type: 'columnValueLengthsToBeBetween',
+  min: 3,
+  max: 6,
+  description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
 export const NEW_TEAM = {
@@ -108,7 +126,7 @@ export const NEW_TEAM = {
     description: 'Service department',
   },
 };
-const id = uuid();
+
 export const NEW_USER = {
   email: `test_${id}@gmail.com`,
   display_name: `Test user ${id}`,
@@ -151,7 +169,7 @@ export const service = {
   name: 'Glue',
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
-  Owner: 'Cloud_Infra',
+  Owner: 'Aaron Johnson',
 };
 
 export const SERVICE_TYPE = {
@@ -191,5 +209,4 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
   },
-
 };
