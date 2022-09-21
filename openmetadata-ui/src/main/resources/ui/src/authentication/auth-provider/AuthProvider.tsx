@@ -494,7 +494,7 @@ export const AuthProvider = ({
       case AuthTypes.NO_AUTH:
       case AuthTypes.BASIC: {
         return (
-          <BasicAuthProvider>
+          <BasicAuthProvider onLoginSuccess={handleSuccessfulLogin}>
             <BasicAuthAuthenticator ref={authenticatorRef}>
               {children}
             </BasicAuthAuthenticator>

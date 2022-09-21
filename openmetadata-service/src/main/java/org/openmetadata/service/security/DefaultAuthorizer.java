@@ -25,8 +25,10 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
@@ -40,6 +42,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ConfigurationHolder;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -67,9 +70,14 @@ public class DefaultAuthorizer implements Authorizer {
   private void initializeUsers() {
     LOG.debug("Checking user entries for admin users");
     String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
-    for (String adminUser : adminUsers) {
-      User user = user(adminUser, domain, adminUser).withIsAdmin(true);
-      addOrUpdateUser(user);
+    if (!ConfigurationHolder.getInstance()
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getProvider()
+        .equals(SSOAuthMechanism.SsoServiceType.basic.toString())) {
+      for (String adminUser : adminUsers) {
+        User user = user(adminUser, domain, adminUser).withIsAdmin(true);
+        addOrUpdateUser(user);
+      }
     }
 
     LOG.debug("Checking user entries for bot users");

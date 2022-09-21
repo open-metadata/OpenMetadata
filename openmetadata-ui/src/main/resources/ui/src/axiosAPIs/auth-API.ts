@@ -10,6 +10,7 @@ interface AccessTokenResponse {
   refreshToken: string;
   tokenType: string;
   expiryDuration: number;
+  email: string;
 }
 
 const apiPath = '/users';

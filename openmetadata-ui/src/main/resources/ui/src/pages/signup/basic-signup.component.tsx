@@ -7,7 +7,6 @@ import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.prov
 import AuthCommonCard from '../../components/common/auth-common-card/auth-common-card.component';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
-import './basic-signup.style.less';
 
 interface SignUpFormData {
   firstName: string;

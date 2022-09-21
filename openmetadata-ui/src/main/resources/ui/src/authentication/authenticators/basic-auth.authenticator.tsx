@@ -18,13 +18,11 @@ const BasicAuthenticator = forwardRef(
   ({ children }: BasicAuthenticatorInterface, ref) => {
     const { handleLogout } = useBasicAuth();
     const { setIsAuthenticated, authConfig } = useAuthContext();
-
     useImperativeHandle(ref, () => ({
       invokeLogout() {
         handleLogout();
         setIsAuthenticated(false);
       },
-
       renewIdToken() {
         let idToken = '';
         const refreshToken = localState.getRefreshToken();

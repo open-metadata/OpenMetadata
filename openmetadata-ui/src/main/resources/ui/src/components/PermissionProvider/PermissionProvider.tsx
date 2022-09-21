@@ -145,7 +145,9 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    fetchLoggedInUserPermissions();
+    if (currentUser?.email) {
+      fetchLoggedInUserPermissions();
+    }
   }, [currentUser]);
 
   return (

@@ -2,7 +2,6 @@ import { AxiosError } from 'axios';
 import { JwtPayload } from 'jwt-decode';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import appState from '../../AppState';
 import {
   basicAuthRegister,
   basicAuthSignIn,
@@ -10,13 +9,11 @@ import {
   generatePasswordResetLink,
   resetPassword,
 } from '../../axiosAPIs/auth-API';
-import { getUserByName } from '../../axiosAPIs/userAPI';
 import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../generated/auth/registrationRequest';
 import jsonData from '../../jsons/en';
-import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import localState from '../../utils/LocalStorageUtils';
 import {
   showErrorToast,
@@ -24,6 +21,7 @@ import {
   showSuccessToast,
 } from '../../utils/ToastUtils';
 import { useAuthContext } from './AuthProvider';
+import { OidcUser } from './AuthProvider.interface';
 
 export interface JWTPayloadV1 extends JwtPayload {
   isBot?: false;
@@ -32,6 +30,7 @@ export interface JWTPayloadV1 extends JwtPayload {
 
 interface BasicAuthProps {
   children: ReactNode;
+  onLoginSuccess: (user: OidcUser) => void;
 }
 
 interface InitialContext {
@@ -63,19 +62,12 @@ const initialContext = {
   isResetTokenExpired: false,
 };
 
-const userAPIQueryFields = 'profile,teams,roles';
-
-const BasicAuthProvider = ({ children }: BasicAuthProps) => {
+const BasicAuthProvider = ({ children, onLoginSuccess }: BasicAuthProps) => {
   const [isPasswordResetLinkSent, setIsPasswordResetLinkSent] = useState(false);
   const [isUserCreated, setIsUserCreated] = useState(false);
   const [isResetTokenExpired, setIsResetTokenExpired] = useState(false);
 
-  const {
-    setIsAuthenticated,
-    setIsAuthDisabled,
-    setLoadingIndicator,
-    setIsSigningIn,
-  } = useAuthContext();
+  const { setIsAuthDisabled, setLoadingIndicator } = useAuthContext();
 
   const history = useHistory();
 
@@ -90,16 +82,16 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
           localState.setRefreshToken(response.refreshToken);
           localState.setOidcToken(response.accessToken);
 
-          const userProfile = await getUserByName(
-            getNameFromEmail(email),
-            userAPIQueryFields
-          );
-
-          if (userProfile) {
-            setIsAuthenticated(true);
-            appState.updateUserDetails(userProfile);
-            setIsSigningIn(true);
-          }
+          onLoginSuccess({
+            // eslint-disable-next-line @typescript-eslint/camelcase
+            id_token: response.accessToken,
+            profile: {
+              email,
+              name: '',
+              picture: '',
+            },
+            scope: '',
+          });
         }
       } else {
         showErrorToast(jsonData['api-error-messages']['email-not-found']);
