@@ -1978,7 +1978,7 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = findEntityByName(parentTeam);
+        Team team = findEntityByName(parentTeam, filter.getInclude());
         if (ORGANIZATION_NAME.equals(team.getName())) {
           // All the teams without parents should come under "organization" team
           condition =
@@ -2044,7 +2044,7 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = findEntityByName(parentTeam);
+        Team team = findEntityByName(parentTeam, filter.getInclude());
         if (ORGANIZATION_NAME.equals(team.getName())) {
           // All the parentless teams should come under "organization" team
           condition =
