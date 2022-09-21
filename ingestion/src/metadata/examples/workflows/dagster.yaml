@@ -4,14 +4,8 @@ source:
   serviceConnection:
     config:
       type: Dagster
-      hostPort: http://localhost:8080
+      hostPort: https://localhost:3000
       numberOfStatus: 10
-      dbConnection:
-        type: Mysql
-        username: dagster_user
-        password: dagter_pass
-        databaseSchema: dagster_db
-        hostPort: localhost:3306
   sourceConfig:
     config:
       type: PipelineMetadata

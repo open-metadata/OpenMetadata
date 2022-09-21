@@ -49,7 +49,7 @@ mock_dagster_config = {
         "serviceConnection": {
             "config": {
                 "type": "Dagster",
-                "hostPort": "http://localhost:3000",
+                "hostPort": "http://lolhost:3000",
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
@@ -169,12 +169,11 @@ MOCK_PIPELINE = Pipeline(
 
 class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("dagster_graphql.DagsterGraphQLClient")
+    def __init__(self, methodName, graphql_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-
         config = OpenMetadataWorkflowConfig.parse_obj(mock_dagster_config)
-
         self.dagster = DagsterSource.create(
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,

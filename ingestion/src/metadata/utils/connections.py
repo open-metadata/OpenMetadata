@@ -882,12 +882,11 @@ def _(_: BackendConnection, verbose: bool = False):
 @get_connection.register
 def _(connection: DagsterConnection) -> None:
     from dagster_graphql import DagsterGraphQLClient
-
+    from urllib.parse import urlparse
     try:
         host_port = connection.hostPort
-        host_port = host_port.replace("https://", "").replace("http://", "")
-        host, port = host_port.split(":")
-        connection = DagsterGraphQLClient(hostname=host, port_number=int(port))
+        host_port = urlparse(host_port)
+        connection = DagsterGraphQLClient(hostname=host_port.hostname, port_number=host_port.port)
         return DagsterClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
