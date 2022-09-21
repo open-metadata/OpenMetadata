@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-tests-3.7
+name: py-tests
 on:
   push:
     branches: [main]
@@ -26,6 +26,9 @@ on:
 jobs:
   py-run-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py-version: ['3.7', '3.8', '3.9', '3.10']
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -38,10 +41,10 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
-    - name: Set up Python 3.7
+    - name: Set up Python ${{ matrix.py-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: 3.7
+        python-version:  ${{ matrix.py-version }}
 
     - name: Install Ubuntu dependencies
       run: |
