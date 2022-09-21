@@ -1,4 +1,4 @@
-package org.openmetadata.catalog.security.saml;
+package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.servlet.ServletUtils;
@@ -10,8 +10,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
-import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @WebServlet("/api/v1/saml/acs")
 @Slf4j

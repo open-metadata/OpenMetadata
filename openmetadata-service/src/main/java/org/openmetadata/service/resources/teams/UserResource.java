@@ -33,7 +33,10 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -70,6 +73,7 @@ import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.LoginRequest;
+import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
@@ -97,6 +101,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.ConfigurationHolder;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -606,6 +611,29 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
+  }
+
+  @POST
+  @Path("/logout")
+  @Operation(
+      operationId = "logoutUser",
+      summary = "Logout a User(Only called for saml and basic Auth)",
+      tags = "users",
+      description = "Logout a User(Only called for saml and basic Auth)",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The user "),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response logoutUser(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LogoutRequest request) {
+    Date logoutTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
+    JwtTokenCacheManager.getInstance()
+        .markLogoutEventForToken(
+            new LogoutRequest()
+                .withUsername(securityContext.getUserPrincipal().getName())
+                .withToken(request.getToken())
+                .withLogoutTime(logoutTime));
+    return Response.status(200).entity("Logout Successful").build();
   }
 
   @POST

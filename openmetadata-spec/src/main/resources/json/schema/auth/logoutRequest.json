@@ -4,7 +4,7 @@
   "title": "LogoutRequest",
   "description": "This schema defines Logout Request.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.auth.LogoutRequest",
+  "javaType": "org.openmetadata.schema.auth.LogoutRequest",
   "properties": {
     "username": {
       "description": "Logout Username",

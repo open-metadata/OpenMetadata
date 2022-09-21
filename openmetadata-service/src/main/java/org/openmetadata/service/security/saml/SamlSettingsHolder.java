@@ -1,14 +1,14 @@
-package org.openmetadata.catalog.security.saml;
+package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
 import java.util.HashMap;
 import java.util.Map;
-import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
-import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
-import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
-import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 public class SamlSettingsHolder {
   private static SamlSettingsHolder INSTANCE;
@@ -31,7 +31,7 @@ public class SamlSettingsHolder {
     return INSTANCE;
   }
 
-  public void initDefaultSettings(CatalogApplicationConfig catalogApplicationConfig) {
+  public void initDefaultSettings(OpenMetadataApplicationConfig catalogApplicationConfig) {
     samlConfig = catalogApplicationConfig.getAuthenticationConfiguration().getSamlConfiguration();
     jwtTokenConfiguration = catalogApplicationConfig.getJwtTokenConfiguration();
     tokenValidity = JWTTokenExpiry.fromValue(samlConfig.getSp().getTokenValidity());

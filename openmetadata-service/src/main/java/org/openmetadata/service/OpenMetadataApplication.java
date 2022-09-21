@@ -63,6 +63,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
@@ -82,6 +83,10 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.saml.SamlLogoutServlet;
+import org.openmetadata.service.security.saml.SamlRedirectServlet;
+import org.openmetadata.service.security.saml.SamlResponseServlet;
+import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -166,7 +171,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
   }
 
-  private void registerSamlHandlers(CatalogApplicationConfig catalogConfig, Environment environment) {
+  private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     if (catalogConfig.getAuthenticationConfiguration() != null
         && catalogConfig
             .getAuthenticationConfiguration()

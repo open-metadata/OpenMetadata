@@ -1,12 +1,12 @@
-package org.openmetadata.catalog.security.saml;
+package org.openmetadata.service.security.saml;
 
 import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.expiringmap.ExpiringMap;
-import org.openmetadata.catalog.auth.LogoutRequest;
-import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.schema.auth.LogoutRequest;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
 public class JwtTokenCacheManager {

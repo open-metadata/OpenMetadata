@@ -1,4 +1,4 @@
-package org.openmetadata.catalog.security.saml;
+package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.Auth;
 import javax.servlet.annotation.WebServlet;
