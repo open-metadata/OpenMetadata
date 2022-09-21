@@ -203,12 +203,14 @@ export const getNameFromEmail = (email: string) => {
 
 export const isProtectedRoute = (pathname: string) => {
   return (
-    pathname !== ROUTES.SIGNUP &&
-    pathname !== ROUTES.SIGNIN &&
-    pathname !== ROUTES.FORGOT_PASSWORD &&
-    pathname !== ROUTES.CALLBACK &&
-    pathname !== ROUTES.SILENT_CALLBACK &&
-    pathname !== ROUTES.REGISTER
+    [
+      ROUTES.SIGNUP,
+      ROUTES.SIGNIN,
+      ROUTES.FORGOT_PASSWORD,
+      ROUTES.CALLBACK,
+      ROUTES.SILENT_CALLBACK,
+      ROUTES.REGISTER,
+    ].indexOf(pathname) !== -1
   );
 };
 

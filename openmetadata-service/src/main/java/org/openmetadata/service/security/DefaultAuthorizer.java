@@ -16,6 +16,7 @@ package org.openmetadata.service.security;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
@@ -27,7 +28,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Permission.Access;
@@ -76,6 +79,19 @@ public class DefaultAuthorizer implements Authorizer {
         .equals(SSOAuthMechanism.SsoServiceType.basic.toString())) {
       for (String adminUser : adminUsers) {
         User user = user(adminUser, domain, adminUser).withIsAdmin(true);
+        addOrUpdateUser(user);
+      }
+    } else {
+      for (String adminUser : adminUsers) {
+        String[] tokens = adminUser.split(":");
+        String username = tokens[0];
+        String pwd = tokens[1];
+        String hashedPwd = BCrypt.withDefaults().hashToString(12, pwd.toCharArray());
+        User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
+        user.setAuthenticationMechanism(
+            new AuthenticationMechanism()
+                .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+                .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
         addOrUpdateUser(user);
       }
     }
