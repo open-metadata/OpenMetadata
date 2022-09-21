@@ -219,26 +219,21 @@ class ProfilerWorkflow:
             return entity_config.partitionConfig
 
         if entity.tablePartition:
-            if entity.tablePartition.intervalType in {
-                IntervalType.TIME_UNIT,
-                IntervalType.INGESTION_TIME,
-            }:
-                try:
+            try:
+                if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
                     partition_field = entity.tablePartition.columns[0]
-                except Exception:
-                    raise TypeError(
-                        "Unsupported ingestion based partition type. Skipping table"
-                    )
-
+                elif entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
+                    if entity.tablePartition.interval == "DAY":
+                        partition_field = "_PARTITIONDATE"
+                    else:
+                        partition_field = "_PARTITIONTIME"
                 return TablePartitionConfig(
                     partitionField=partition_field,
                 )
-
-            raise TypeError(
-                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
-            )
-
-        return None
+            except Exception:
+                raise TypeError(
+                    f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
+                )
 
     def create_profiler_interface(
         self,
@@ -467,7 +462,12 @@ class ProfilerWorkflow:
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
             return 1
-        else:
+        if (
+            self.source_status.warnings
+            or self.status.failures
+            or (hasattr(self, "sink") and self.sink.get_status().warnings)
+        ):
+            click.secho("Workflow finished with warnings", fg="yellow", bold=True)
             return 0
 
     def raise_from_status(self, raise_warnings=False):
