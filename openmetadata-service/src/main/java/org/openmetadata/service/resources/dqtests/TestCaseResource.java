@@ -33,6 +33,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
@@ -469,11 +471,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(
               description = "Filter testCase results after the given start timestamp",
               schema = @Schema(type = "number"))
+          @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter testCase results before the given end timestamp",
               schema = @Schema(type = "number"))
+          @NonNull
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
