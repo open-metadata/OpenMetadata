@@ -117,7 +117,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
       return {
         ...tags,
         label: isEmpty(containQuotes)
-          ? tags.key.split('.').at(-1)
+          ? tags.key.split('.').pop()
           : containQuotes,
       };
     });
