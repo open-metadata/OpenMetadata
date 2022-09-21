@@ -31,3 +31,7 @@ SET json = JSON_INSERT(
     )
 where serviceType = 'DeltaLake'
   and JSON_EXTRACT(json, '$.connection.config.metastoreFilePath') is not null;
+
+
+ALTER TABLE test_definition 
+ADD COLUMN supported_data_types JSON GENERATED ALWAYS AS (json -> '$.supportedDataTypes');

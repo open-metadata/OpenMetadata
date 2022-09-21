@@ -39,3 +39,6 @@ WHERE serviceType = 'DeltaLake'
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,metastoreFilePath}'
 WHERE serviceType = 'DeltaLake';
+
+ALTER TABLE test_definition 
+ADD supported_data_types JSONB GENERATED ALWAYS AS (json -> 'supportedDataTypes') STORED;
