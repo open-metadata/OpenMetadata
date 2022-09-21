@@ -122,13 +122,7 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
-      const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
-      if (urlPathname) {
-        cookieStorage.removeItem(REDIRECT_PATHNAME);
-        history.push(urlPathname);
-      } else {
-        history.push(ROUTES.HOME);
-      }
+      history.push(ROUTES.HOME);
     }
   };
 
@@ -139,15 +133,19 @@ export const AuthProvider = ({
   /**
    * Stores redirect URL for successful login
    */
-  function storeRedirectPath() {
+  function storeRedirectPath(pathname?: string) {
     const redirectPathExists = Boolean(
       cookieStorage.getItem(REDIRECT_PATHNAME)
     );
     if (!redirectPathExists) {
-      cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
-        expires: getUrlPathnameExpiry(),
-        path: '/',
-      });
+      cookieStorage.setItem(
+        REDIRECT_PATHNAME,
+        pathname || appState.getUrlPathname(),
+        {
+          expires: getUrlPathnameExpiry(),
+          path: '/',
+        }
+      );
     }
   }
 
@@ -447,7 +445,7 @@ export const AuthProvider = ({
             updateAuthInstance(configJson);
             if (!oidcUserToken) {
               if (isProtectedRoute(location.pathname)) {
-                storeRedirectPath();
+                storeRedirectPath(location.pathname);
               }
               setLoading(false);
             } else {
