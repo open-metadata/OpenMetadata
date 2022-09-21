@@ -881,12 +881,16 @@ def _(_: BackendConnection, verbose: bool = False):
 
 @get_connection.register
 def _(connection: DagsterConnection) -> None:
-    from dagster_graphql import DagsterGraphQLClient
     from urllib.parse import urlparse
+
+    from dagster_graphql import DagsterGraphQLClient
+
     try:
         host_port = connection.hostPort
         host_port = urlparse(host_port)
-        connection = DagsterGraphQLClient(hostname=host_port.hostname, port_number=host_port.port)
+        connection = DagsterGraphQLClient(
+            hostname=host_port.hostname, port_number=host_port.port
+        )
         return DagsterClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
