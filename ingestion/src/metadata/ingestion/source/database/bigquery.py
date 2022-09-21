@@ -19,6 +19,7 @@ from google import auth
 from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
+from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._struct import STRUCT
@@ -91,6 +92,22 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
+@reflection.cache
+def get_table_names(self, connection, schema=None, **kw):
+    _, project_id = auth.default()
+    query = (
+        f"SELECT table_name FROM {project_id}.{schema}.INFORMATION_SCHEMA.PARTITIONS"
+    )
+    try:
+        result = connection.execute(query)
+        result_list = [res["table_name"] for res in result.fetchall()]
+        return result_list
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Unexpected exception fetching tables with [{query}]: {exc}")
+        return []
+
+
 @staticmethod
 def _build_formatted_table_id(table):
     """We overide the methid as it returns both schema and table name if dataset_id is None. From our
@@ -101,6 +118,8 @@ def _build_formatted_table_id(table):
 
 
 BigQueryDialect._build_formatted_table_id = _build_formatted_table_id
+
+BigQueryDialect.get_table_names = get_table_names
 
 
 class BigquerySource(CommonDbSourceService):
