@@ -501,7 +501,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
       if (response) {
         const { description, version } = response;
         setCurrentVersion(version + '');
-        setTableDetails(response);
+        setTableDetails((previous) => ({ ...previous, description, version }));
+
         setDescription(description ?? '');
         getEntityFeedCount();
       } else {
@@ -533,7 +534,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     saveUpdatedTableData(updatedTable)
       .then((res) => {
         if (res) {
-          setTableDetails(res);
+          setTableDetails((previous) => ({ ...previous, tags: res.tags }));
           setTier(getTierTags(res.tags ?? []));
           setCurrentVersion(res.version + '');
           setTableTags(getTagsWithoutTier(res.tags ?? []));
@@ -557,7 +558,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
           if (res) {
             const { version, owner, tags = [] } = res;
             setCurrentVersion(version + '');
-            setTableDetails(res);
+            setTableDetails((previous) => ({
+              ...previous,
+              owner,
+              version,
+              tags,
+            }));
             setOwner(owner);
             setTier(getTierTags(tags));
             getEntityFeedCount();
@@ -771,9 +777,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
     try {
       const response = await saveUpdatedTableData(updatedTable);
       if (response) {
-        const { version, owner: ownerValue, tags } = response;
+        const { version, owner: ownerValue, tags, extension } = response;
         setCurrentVersion(version?.toString());
-        setTableDetails(response);
+        setTableDetails((previous) => ({
+          ...previous,
+          version,
+          owner,
+          tags,
+          extension,
+        }));
         setOwner(ownerValue);
         setTier(getTierTags(tags ?? []));
       } else {

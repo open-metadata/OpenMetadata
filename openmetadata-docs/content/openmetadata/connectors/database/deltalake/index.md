@@ -34,7 +34,7 @@ the following docs to connect using Airflow SDK or with the CLI.
 
 ## Requirements
 
-<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
+<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12.1 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
 
@@ -130,9 +130,12 @@ the changes.
 
 #### Connection Options
 
-
-- **Metastore Host Port**: Enter the Host & Port of Hive Metastore to configure the Spark Session. Either of `metastoreHostPort` or `metastoreFilePath` is required.
-- **Metastore File Path**: Enter the file path to local Metastore in case Spark cluster is running locally. Either of `metastoreHostPort` or `metastoreFilePath` is required.
+- **Metastore Host Port**: Enter the Host & Port of Hive Metastore Service to configure the Spark Session. Either
+  of `metastoreHostPort`, `metastoreDb` or `metastoreFilePath` is required.
+- **Metastore File Path**: Enter the file path to local Metastore in case Spark cluster is running locally. Either
+  of `metastoreHostPort`, `metastoreDb` or `metastoreFilePath` is required.
+- **Metastore DB**: The JDBC connection to the underlying Hive metastore DB. Either
+  of `metastoreHostPort`, `metastoreDb` or `metastoreFilePath` is required.
 - **appName (Optional)**: Enter the app name of spark session.
 - **Connection Arguments (Optional)**: Key-Value pairs that will be used to pass extra `config` elements to the Spark Session builder.
 

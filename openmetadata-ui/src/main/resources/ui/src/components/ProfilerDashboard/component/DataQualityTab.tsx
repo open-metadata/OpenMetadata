@@ -19,9 +19,11 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
 import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
+import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -37,10 +39,13 @@ import TestSummary from './TestSummary';
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   testCases,
   onTestUpdate,
-  hasAccess,
 }) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
   const [editTestCase, setEditTestCase] = useState<TestCase>();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
+
+  const hasAccess = isAdminUser || isAuthDisabled;
 
   const columns: ColumnsType<TestCase> = useMemo(() => {
     return [
@@ -141,28 +146,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           return (
             <Row align="middle">
               <Tooltip
-                placement="bottomLeft"
-                title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
-                <Button
-                  className="flex-center"
-                  data-testid={`delete-${record.name}`}
-                  disabled={!hasAccess}
-                  icon={
-                    <SVGIcons
-                      alt="Delete"
-                      className="tw-h-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
-                  type="text"
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of delete button
-                    e.stopPropagation();
-                    setSelectedTestCase(record);
-                  }}
-                />
-              </Tooltip>
-              <Tooltip
                 placement="bottomRight"
                 title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
                 <Button
@@ -182,6 +165,28 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     // preventing expand/collapse on click of edit button
                     e.stopPropagation();
                     setEditTestCase(record);
+                  }}
+                />
+              </Tooltip>
+              <Tooltip
+                placement="bottomLeft"
+                title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+                <Button
+                  className="flex-center"
+                  data-testid={`delete-${record.name}`}
+                  disabled={!hasAccess}
+                  icon={
+                    <SVGIcons
+                      alt="Delete"
+                      className="tw-h-4"
+                      icon={Icons.DELETE}
+                    />
+                  }
+                  type="text"
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of delete button
+                    e.stopPropagation();
+                    setSelectedTestCase(record);
                   }}
                 />
               </Tooltip>

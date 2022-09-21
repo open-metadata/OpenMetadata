@@ -237,7 +237,9 @@ const BotDetails: FC<BotsDetailProp> = ({
         ) : (
           <Fragment>
             {displayName ? (
-              <span className="tw-text-base tw-font-medium tw-mr-2">
+              <span
+                className="tw-text-base tw-font-medium tw-mr-2"
+                data-testid="bot-displayName">
                 {displayName}
               </span>
             ) : (

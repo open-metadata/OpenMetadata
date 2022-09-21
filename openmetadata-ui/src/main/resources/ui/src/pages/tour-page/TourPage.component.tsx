@@ -18,7 +18,6 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
 import Explore from '../../components/Explore/Explore.component';
-import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
 import { MyDataProps } from '../../components/MyData/MyData.interface';
 import NavBar from '../../components/nav-bar/NavBar';
@@ -27,7 +26,6 @@ import { ROUTES, TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
   mockDatasetData,
   mockFeedData,
-  mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
@@ -58,8 +56,6 @@ const TourPage = () => {
     AppState.currentTourPage
   );
   const [myDataSearchResult, setMyDataSearchResult] = useState(mockFeedData);
-  const [exploreSearchResult, setExploreSearchResult] =
-    useState(exploreSearchData);
   const [datasetActiveTab, setdatasetActiveTab] = useState(
     AppState.activeTabforTourDatasetPage
   );
@@ -159,15 +155,11 @@ const TourPage = () => {
         return (
           <Explore
             isFilterSelected
-            error=""
             fetchCount={handleCountChange}
-            fetchData={() => setExploreSearchResult(exploreSearchData)}
             handleFilterChange={handleFilterChange}
             handlePathChange={handleCountChange}
-            handleSearchText={() => setExploreSearchResult(exploreSearchData)}
             handleTabCounts={handleCountChange}
             searchQuery=""
-            searchResult={exploreSearchResult as unknown as ExploreSearchData}
             searchText=""
             showDeleted={false}
             sortValue=""

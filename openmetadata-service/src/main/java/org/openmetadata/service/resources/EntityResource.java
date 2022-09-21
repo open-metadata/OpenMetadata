@@ -185,7 +185,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean allowBots)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), allowBots);
     DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -200,7 +200,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean allowBots)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name), allowBots);
     DeleteResponse<T> response =
         dao.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());

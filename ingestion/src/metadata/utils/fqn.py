@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -304,6 +305,36 @@ def _(
         fqn_search_string=fqn_search_string,
     )
     entity: Optional[Union[User, List[User]]] = get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+    if not entity:
+        return None
+    if fetch_multiple_entities:
+        return [str(user.fullyQualifiedName.__root__) for user in entity]
+    return str(entity.fullyQualifiedName.__root__)
+
+
+@fqn_build_registry.add(Team)
+def _(
+    metadata: OpenMetadata,
+    *,
+    team_name: str,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
+    """
+    Building logic for Team
+    :param metadata: OMeta client
+    :param team_name: Team name
+    :return:
+    """
+
+    fqn_search_string = _build(team_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Team,
+        fqn_search_string=fqn_search_string,
+    )
+    entity: Optional[Union[Team, List[Team]]] = get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
     if not entity:

@@ -1,6 +1,8 @@
 import { Space, Tooltip } from 'antd';
 import React from 'react';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { useAuth } from '../../hooks/authHooks';
 import { IcDeleteColored } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -20,8 +22,12 @@ const TestSuiteDetails = ({
   testSuiteDescription,
   descriptionHandler,
   handleDescriptionUpdate,
-  permissions,
 }: TestSuiteDetailsProps) => {
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
+
+  const hasAccess = isAdminUser || isAuthDisabled;
+
   return (
     <>
       <Space
@@ -32,11 +38,10 @@ const TestSuiteDetails = ({
           data-testid="test-suite-breadcrumb"
           titleLinks={slashedBreadCrumb}
         />
-        <Tooltip
-          title={permissions.Delete ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+        <Tooltip title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
           <Button
             data-testid="test-suite-delete"
-            disabled={!permissions.Delete}
+            disabled={!hasAccess}
             size="small"
             theme="primary"
             variant="outlined"
@@ -66,11 +71,7 @@ const TestSuiteDetails = ({
           <span className="tw-flex" key={index}>
             <EntitySummaryDetails
               data={info}
-              updateOwner={
-                permissions.EditAll || permissions.EditOwner
-                  ? handleUpdateOwner
-                  : undefined
-              }
+              updateOwner={hasAccess ? handleUpdateOwner : undefined}
             />
           </span>
         ))}
@@ -81,7 +82,7 @@ const TestSuiteDetails = ({
           className="test-suite-description"
           description={testSuiteDescription || ''}
           entityName={testSuite?.displayName ?? testSuite?.name}
-          hasEditAccess={permissions.EditDescription || permissions.EditAll}
+          hasEditAccess={hasAccess}
           isEdit={isDescriptionEditable}
           onCancel={() => descriptionHandler(false)}
           onDescriptionEdit={() => descriptionHandler(true)}

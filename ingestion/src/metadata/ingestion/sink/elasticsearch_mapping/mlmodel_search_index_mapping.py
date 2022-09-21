@@ -128,7 +128,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -178,7 +178,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -215,7 +215,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                "type": "text"
              },
              "deleted": {
-              "type": "boolean"
+              "type": "text"
              },
              "href": {
               "type": "text"
@@ -257,7 +257,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                }
             },
            "deleted": {
-              "type": "boolean"
+              "type": "text"
             },
             "followers": {
               "type": "keyword"
@@ -307,7 +307,14 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "suggest": {
-              "type": "completion"
+              "type": "completion",
+              "contexts": [
+                {
+                    "name": "deleted",
+                    "type": "category",
+                    "path": "deleted"
+                }
+             ]
             },
             "service_suggest": {
               "type": "completion"

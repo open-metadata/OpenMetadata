@@ -14,9 +14,11 @@
 import classNames from 'classnames';
 import { isNil, isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { SIZE } from '../../enums/common.enum';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getTopPosition } from '../../utils/DropDownUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { UserTag } from '../common/UserTag/UserTag.component';
 import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
@@ -76,9 +78,11 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <div
         className="tw-text-grey-muted tw-px-4 tw-py-2"
         data-testid="empty-list">
-        <p className={widthClass}>
-          {searchText ? 'No match found' : 'No data available'}
-        </p>
+        <div className={widthClass}>
+          <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.SMALL}>
+            {searchText ? 'No match found' : 'No data available'}
+          </ErrorPlaceHolder>
+        </div>
       </div>
     );
   };

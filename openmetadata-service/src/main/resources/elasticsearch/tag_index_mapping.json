@@ -59,10 +59,17 @@
         "type": "text"
       },
       "deleted": {
-        "type": "boolean"
+        "type": "text"
       },
       "suggest": {
-        "type": "completion"
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       }
     }
   }

@@ -1,5 +1,6 @@
 package org.openmetadata.service.elasticsearch;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -177,6 +178,7 @@ public class ElasticSearchIndexDefinition {
   }
 }
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Jacksonized
 @Getter
 @Builder

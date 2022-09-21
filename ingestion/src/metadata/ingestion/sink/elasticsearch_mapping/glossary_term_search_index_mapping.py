@@ -78,7 +78,7 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -115,7 +115,7 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -152,7 +152,7 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -189,7 +189,7 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 "type": "text"
               },
               "deleted": {
-               "type": "boolean"
+               "type": "text"
               },
               "href": {
                "type": "text"
@@ -219,13 +219,20 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                       }
             },
             "deleted": {
-              "type": "boolean"
+              "type": "text"
             },
             "status": {
               "type": "text"
             },
             "suggest": {
-              "type": "completion"
+              "type": "completion",
+              "contexts": [
+                {
+                    "name": "deleted",
+                    "type": "category",
+                    "path": "deleted"
+                }
+             ]
             }
          }
       }
