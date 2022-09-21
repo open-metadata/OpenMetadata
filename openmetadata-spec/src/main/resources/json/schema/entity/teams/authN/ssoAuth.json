@@ -9,7 +9,7 @@
     "ssoServiceType": {
       "description": "Type of database service such as Amundsen, Atlas...",
       "type": "string",
-      "enum": ["Google", "Okta", "CustomOIDC", "Auth0", "Azure", "saml", "basic"],
+      "enum": ["Google", "Okta", "CustomOIDC", "Auth0", "Azure"],
       "javaEnums": [
         {
           "name": "Google"
@@ -25,12 +25,32 @@
         },
         {
           "name": "Azure"
+        }
+      ]
+    },
+    "authConfig": {
+      "description": "The authentication configuration used by the SSO",
+      "type": "object",
+      "oneOf": [
+        {
+          "description": "Google SSO Configuration",
+          "$ref": "../../../security/client/googleSSOClientConfig.json"
         },
         {
-          "name": "saml"
+          "description": "Okta SSO Configuration",
+          "$ref": "../../../security/client/oktaSSOClientConfig.json"
         },
         {
-          "name": "basic"
+          "description": "Auth0 SSO Configuration",
+          "$ref": "../../../security/client/auth0SSOClientConfig.json"
+        },
+        {
+          "description": "Azure SSO Configuration",
+          "$ref": "../../../security/client/azureSSOClientConfig.json"
+        },
+        {
+          "description": "Custom OIDC SSO Configuration",
+          "$ref": "../../../security/client/customOidcSSOClientConfig.json"
         }
       ]
     }
