@@ -2657,36 +2657,152 @@ public interface CollectionDAO {
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String entityType = filter.getQueryParam("entityType");
+      String testPlatform = filter.getQueryParam("testPlatform");
       String condition = filter.getCondition();
 
-      if (entityType == null) {
+      if (entityType == null && testPlatform == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
-      condition = String.format("%s AND entityType='%s' ", condition, entityType);
-      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
+
+      if (entityType == null) {
+        String mysqlCondition =
+            String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
+        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
+        return listBefore(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, before);
+      }
+
+      if (testPlatform == null) {
+        condition = String.format("%s AND entityType='%s' ", condition, entityType);
+        return listBefore(getTableName(), getNameColumn(), condition, condition, limit, before);
+      }
+
+      String mysqlCondition =
+          String.format(
+              "%s AND entityType='%s' AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ",
+              condition, entityType, testPlatform);
+      String psqlCondition =
+          String.format(
+              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
+      return listBefore(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, before);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String entityType = filter.getQueryParam("entityType");
+      String testPlatform = filter.getQueryParam("testPlatform");
       String condition = filter.getCondition();
-      if (entityType == null) {
+      if (entityType == null && testPlatform == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
-      condition = String.format("%s AND entityType='%s' ", condition, entityType);
-      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
+
+      if (entityType == null) {
+        String mysqlCondition =
+            String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
+        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
+        return listAfter(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, after);
+      }
+
+      if (testPlatform == null) {
+        condition = String.format("%s AND entityType='%s' ", condition, entityType);
+        return listAfter(getTableName(), getNameColumn(), condition, condition, limit, after);
+      }
+
+      String mysqlCondition =
+          String.format(
+              "%s AND entityType='%s' AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ",
+              condition, entityType, testPlatform);
+      String psqlCondition =
+          String.format(
+              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
+      return listAfter(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, after);
     }
 
     @Override
     default int listCount(ListFilter filter) {
       String entityType = filter.getQueryParam("entityType");
+      String testPlatform = filter.getQueryParam("testPlatform");
       String condition = filter.getCondition();
-      if (entityType == null) {
+      if (entityType == null && testPlatform == null) {
         return EntityDAO.super.listCount(filter);
       }
-      condition = String.format("%s AND entityType='%s' ", condition, entityType);
-      return listCount(getTableName(), getNameColumn(), condition);
+
+      if (entityType == null) {
+        String mysqlCondition =
+            String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
+        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
+        return listCount(getTableName(), getNameColumn(), mysqlCondition, psqlCondition);
+      }
+
+      if (testPlatform == null) {
+        condition = String.format("%s AND entityType='%s' ", condition, entityType);
+        return listCount(getTableName(), getNameColumn(), condition, condition);
+      }
+
+      String mysqlCondition =
+          String.format(
+              "%s AND entityType='%s' AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ",
+              condition, entityType, testPlatform);
+      String psqlCondition =
+          String.format(
+              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
+      return listCount(getTableName(), getNameColumn(), mysqlCondition, psqlCondition);
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <psqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = POSTGRES)
+    List<String> listBefore(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <psqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listAfter(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
+
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <psqlCond>", connectionType = POSTGRES)
+    int listCount(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
   }
 
   interface TestSuiteDAO extends EntityDAO<TestSuite> {
