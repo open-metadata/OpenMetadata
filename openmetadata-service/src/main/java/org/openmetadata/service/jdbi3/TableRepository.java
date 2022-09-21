@@ -754,82 +754,26 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public ResultList<TableProfile> getTableProfiles(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) throws IOException {
     List<TableProfile> tableProfiles;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
-
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      tableProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), TableProfile.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      tableProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), TableProfile.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (tableProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        tableProfiles.remove(0);
-        beforeCursor = tableProfiles.get(0).getTimestamp().toString();
-      }
-      afterCursor = tableProfiles.get(tableProfiles.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : tableProfiles.get(0).getTimestamp().toString();
-      if (tableProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        tableProfiles.remove(limit);
-        afterCursor = tableProfiles.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(tableProfiles, beforeCursor, afterCursor, total);
+    tableProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, "table.tableProfile", startTs, endTs),
+            TableProfile.class);
+    return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
-  public ResultList<ColumnProfile> getColumnProfiles(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) throws IOException {
     List<ColumnProfile> columnProfiles;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
-
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      columnProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), ColumnProfile.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      columnProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), ColumnProfile.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (columnProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        columnProfiles.remove(0);
-        beforeCursor = columnProfiles.get(0).getTimestamp().toString();
-      }
-      afterCursor = columnProfiles.get(columnProfiles.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : columnProfiles.get(0).getTimestamp().toString();
-      if (columnProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        columnProfiles.remove(limit);
-        afterCursor = columnProfiles.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(columnProfiles, beforeCursor, afterCursor, total);
+    columnProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, "table.columnProfile", startTs, endTs),
+            ColumnProfile.class);
+    return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
   /**

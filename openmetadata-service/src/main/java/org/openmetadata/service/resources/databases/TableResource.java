@@ -29,6 +29,7 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -70,7 +71,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
@@ -596,35 +596,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               description = "Filter table/column profiles before the given end timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(
-              description = "Returns list of table/column profiles before this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(
-              description = "Returns list of table/column profiles after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
 
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.tableProfile");
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getTableProfiles(filter, before, after, limitParam);
+    return dao.getTableProfiles(fqn, startTs, endTs);
   }
 
   @GET
@@ -650,41 +625,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(
               description = "Filter table/column profiles after the given start timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter table/column profiles before the given end timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(
-              description = "Returns list of table/column profiles before this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(
-              description = "Returns list of table/column profiles after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.columnProfile");
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getColumnProfiles(filter, before, after, limitParam);
+    return dao.getColumnProfiles(fqn, startTs, endTs);
   }
 
   @PUT
