@@ -462,12 +462,7 @@ class ProfilerWorkflow:
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
             return 1
-        if (
-            self.source_status.warnings
-            or self.status.failures
-            or (hasattr(self, "sink") and self.sink.get_status().warnings)
-        ):
-            click.secho("Workflow finished with warnings", fg="yellow", bold=True)
+        else:
             return 0
 
     def raise_from_status(self, raise_warnings=False):
