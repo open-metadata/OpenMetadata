@@ -1,4 +1,3 @@
-
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -10,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-tests-3.10
+name: py-tests
 on:
   push:
     branches: [main]
@@ -26,6 +25,9 @@ on:
 jobs:
   py-run-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py-version: ['3.7', '3.8', '3.9', '3.10']
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -38,15 +40,15 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
-    - name: Set up Python 3.10
+    - name: Set up Python ${{ matrix.py-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: "3.10"
+        python-version:  ${{ matrix.py-version }}
 
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        unixodbc-dev libevent-dev python3-dev
+        librdkafka-dev unixodbc-dev libevent-dev
 
     - name: Generate models
       run: |
@@ -66,7 +68,7 @@ jobs:
       run: ./docker/run_local_docker.sh -m no-ui
       timeout-minutes: 30
 
-    - name: Run Python Tests & record coverage
+    - name: Run Python Tests
       run: |
         source env/bin/activate
-        make coverage
+        make run_python_tests
