@@ -37,5 +37,5 @@ export type FilterContainerProp = {
   isSelected: boolean;
   type?: keyof FilterObject;
   isDisabled?: boolean;
-  label: string | undefined;
+  label?: string;
 };
