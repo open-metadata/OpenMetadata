@@ -684,6 +684,7 @@ class ElasticsearchSink(Sink[Entity]):
             name=team.name.__root__,
             displayName=team.displayName if team.displayName else team.name.__root__,
             description=team.description.__root__ if team.description else "",
+            teamType=team.teamType.name,
             fullyQualifiedName=team.fullyQualifiedName.__root__,
             version=team.version.__root__,
             updatedAt=team.updatedAt.__root__,
@@ -693,6 +694,7 @@ class ElasticsearchSink(Sink[Entity]):
             suggest=suggest,
             users=team.users if team.users else [],
             defaultRoles=team.defaultRoles if team.defaultRoles else [],
+            parents=team.parents if team.parents else [],
             isJoinable=team.isJoinable,
         )
 

@@ -235,6 +235,7 @@ class TeamESDocument(BaseModel):
     fullyQualifiedName: str
     displayName: str
     description: str
+    teamType: str
     version: float
     updatedAt: Optional[int]
     updatedBy: Optional[str]
