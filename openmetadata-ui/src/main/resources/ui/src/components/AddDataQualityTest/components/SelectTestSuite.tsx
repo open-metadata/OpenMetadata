@@ -155,7 +155,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
           {isNewTestSuite ? (
             <>
               <Typography.Paragraph
-                className="tw-text-base tw-mt-5"
+                className="text-base m-t-lg"
                 data-testid="new-test-title">
                 New Test Suite
               </Typography.Paragraph>
@@ -213,13 +213,13 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
               </Form.Item>
             </>
           ) : (
-            <Row className="tw-mb-10" justify="center">
+            <Row className="m-b-xlg" justify="center">
               <Button
                 data-testid="create-new-test-suite"
                 icon={
                   <SVGIcons
                     alt="plus"
-                    className="tw-w-4 tw-mr-1"
+                    className="w-4 m-r-xss"
                     icon={Icons.ICON_PLUS_PRIMERY}
                   />
                 }
