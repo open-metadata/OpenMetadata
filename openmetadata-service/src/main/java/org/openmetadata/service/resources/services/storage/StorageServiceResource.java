@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.services.storage;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
