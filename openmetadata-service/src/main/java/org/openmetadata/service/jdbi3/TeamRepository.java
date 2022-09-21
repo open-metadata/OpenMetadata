@@ -40,7 +40,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
@@ -217,9 +216,11 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getParentsForInheritedRoles(Team team) throws IOException {
     List<EntityRelationshipRecord> relationshipRecords = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
-    //filter out any deleted teams
-    List<EntityReference> parents = EntityUtil.populateEntityReferences(relationshipRecords, TEAM).stream().filter(
-        e -> !e.getDeleted()).collect(Collectors.toList());
+    // filter out any deleted teams
+    List<EntityReference> parents =
+        EntityUtil.populateEntityReferences(relationshipRecords, TEAM).stream()
+            .filter(e -> !e.getDeleted())
+            .collect(Collectors.toList());
     if (organization != null && listOrEmpty(parents).isEmpty() && !team.getId().equals(organization.getId())) {
       return new ArrayList<>(List.of(organization.getEntityReference()));
     }
