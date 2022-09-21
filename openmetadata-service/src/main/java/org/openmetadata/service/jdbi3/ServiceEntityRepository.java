@@ -15,9 +15,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.util.EntityUtil.objectMatch;
-
 import java.io.IOException;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
