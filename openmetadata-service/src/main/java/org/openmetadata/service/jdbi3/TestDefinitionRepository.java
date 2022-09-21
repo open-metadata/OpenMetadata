@@ -55,6 +55,11 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     storeOwner(entity, entity.getOwner());
   }
 
+  @Override
+  public EntityUpdater getUpdater(TestDefinition original, TestDefinition updated, Operation operation) {
+    return new TestDefinitionUpdater(original, updated, operation);
+  }
+
   public class TestDefinitionUpdater extends EntityUpdater {
     public TestDefinitionUpdater(TestDefinition original, TestDefinition updated, Operation operation) {
       super(original, updated, operation);
@@ -63,6 +68,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
+      recordChange("supportedDataTypes", original.getSupportedDataTypes(), updated.getSupportedDataTypes());
       recordChange("parameterDefinition", original.getParameterDefinition(), updated.getParameterDefinition());
     }
   }
