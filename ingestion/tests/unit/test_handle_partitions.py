@@ -14,6 +14,7 @@ import unittest
 from typing import Optional
 from unittest import TestCase
 from unittest.mock import patch
+from unittest.mock import Mock
 
 from google.cloud.bigquery import (
     Client,
@@ -93,9 +94,15 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 
 class BigqueryUnitTest(TestCase):
+    @patch("google.cloud.bigquery.Client")
+    @patch("metadata.utils.connections.create_generic_connection")
+    @patch("metadata.ingestion.source.database.bigquery.BigquerySource.set_project_id")
     @patch("metadata.ingestion.source.database.common_db_source.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection, set_project_id, create_generic_connection, client) -> None:
         super().__init__(methodName)
+        client.return_value = Mock()
+        create_generic_connection.return_value = Mock()
+        set_project_id.return_value = Mock()
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bigquery_config)
         self.bigquery_source = BigquerySource.create(
@@ -103,7 +110,7 @@ class BigqueryUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.bigquery_source.context.__dict__["database"] = MOCK_DATABASE
-        self.bigquery_source.client = Client()
+        self.bigquery_source.client = client
         self.inspector = types.SimpleNamespace()
 
         unittest.mock.patch.object(Table, "object")
