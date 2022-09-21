@@ -6,7 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.Bot",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-
   "properties": {
     "id": {
       "description": "Unique identifier of a bot instance.",

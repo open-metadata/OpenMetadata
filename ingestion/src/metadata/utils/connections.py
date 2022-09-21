@@ -297,7 +297,7 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
     from delta import configure_spark_with_delta_pip
 
     builder = (
-        pyspark.sql.SparkSession.builder.appName("random")
+        pyspark.sql.SparkSession.builder.appName(connection.appName or "OpenMetadata")
         .enableHiveSupport()
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
@@ -307,19 +307,37 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
         # Download delta-core jars when creating the SparkSession
         .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
     )
-    if connection.metastoreHostPort:
+
+    # Check that the attribute exists and is properly informed
+    if (
+        hasattr(connection.metastoreConnection, "metastoreHostPort")
+        and connection.metastoreConnection.metastoreHostPort
+    ):
         builder.config(
             "hive.metastore.uris",
-            f"thrift://{connection.metastoreHostPort}",
+            f"thrift://{connection.metastoreConnection.metastoreHostPort}",
         )
-    elif connection.metastoreFilePath:
+
+    if (
+        hasattr(connection.metastoreConnection, "metastoreDb")
+        and connection.metastoreConnection.metastoreDb
+    ):
+        builder.config(
+            "spark.hadoop.javax.jdo.option.ConnectionURL",
+            connection.metastoreConnection.metastoreDb,
+        )
+
+    if (
+        hasattr(connection.metastoreConnection, "metastoreFilePath")
+        and connection.metastoreConnection.metastoreFilePath
+    ):
         # From https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell
         # derby.system.home is the one in charge of the path for `metastore_db` dir and `derby.log`
         # We can use this option to control testing, as well as to properly point to the right
         # local database when ingesting data
         builder.config(
             "spark.driver.extraJavaOptions",
-            f"-Dderby.system.home={connection.metastoreFilePath}",
+            f"-Dderby.system.home={connection.metastoreConnection.metastoreFilePath}",
         )
 
     if connection.connectionArguments:

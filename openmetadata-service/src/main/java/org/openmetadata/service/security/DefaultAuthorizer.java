@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Permission.Access;
@@ -75,7 +76,11 @@ public class DefaultAuthorizer implements Authorizer {
     LOG.debug("Checking user entries for bot users");
     for (String botUser : botUsers) {
       User user = user(botUser, domain, botUser).withIsBot(true);
-      addOrUpdateUser(user);
+      user = addOrUpdateUser(user);
+      if (user != null) {
+        Bot bot = bot(user).withBotUser(user.getEntityReference());
+        addOrUpdateBot(bot);
+      }
     }
 
     LOG.debug("Checking user entries for test users");
@@ -93,6 +98,16 @@ public class DefaultAuthorizer implements Authorizer {
         .withEmail(name + "@" + domain)
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  private Bot bot(User user) {
+    return new Bot()
+        .withId(UUID.randomUUID())
+        .withName(user.getName())
+        .withFullyQualifiedName(user.getName())
+        .withUpdatedBy(user.getUpdatedBy())
+        .withUpdatedAt(System.currentTimeMillis())
+        .withDisplayName(user.getName());
   }
 
   @Override
@@ -168,15 +183,29 @@ public class DefaultAuthorizer implements Authorizer {
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
   }
 
-  private void addOrUpdateUser(User user) {
+  private User addOrUpdateUser(User user) {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added user entry: {}", addedUser);
+      return addedUser.getEntity();
     } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("User entry: {} already exists.", user);
+    }
+    return null;
+  }
+
+  private void addOrUpdateBot(Bot bot) {
+    EntityRepository<Bot> botRepository = Entity.getEntityRepository(Entity.BOT);
+    try {
+      RestUtil.PutResponse<Bot> addedBot = botRepository.createOrUpdate(null, bot);
+      LOG.debug("Added bot entry: {}", addedBot);
+    } catch (Exception exception) {
+      // In HA set up the other server may have already added the bot.
+      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Bot entry: {} already exists.", bot);
     }
   }
 

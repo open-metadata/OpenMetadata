@@ -230,6 +230,10 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)
 
+    # Initialize DBT structures for all Databases
+    data_models = {}
+    dbt_tests = {}
+
     def __init__(self):
         if hasattr(self.source_config.dbtConfigSource, "dbtSecurityConfig"):
             if self.source_config.dbtConfigSource.dbtSecurityConfig is None:

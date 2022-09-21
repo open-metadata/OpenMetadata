@@ -30,6 +30,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Scanner;
 import java.util.UUID;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
@@ -135,9 +136,26 @@ public final class TablesInitializer {
 
     if (!isSchemaMigrationOptionSpecified) {
       printToConsoleMandatory(
-          "One of the option 'create', ',migrate', 'validate', 'info', 'drop', 'repair', "
+          "One of the option 'create', 'migrate', 'validate', 'info', 'drop', 'repair', "
               + "'check-connection' must be specified to execute.");
       System.exit(1);
+    }
+
+    if (commandLine.hasOption(SchemaMigrationOption.DROP.toString())) {
+      printToConsoleMandatory(
+          "You are about drop all the data in the database. ALL METADATA WILL BE DELETED. \nThis is"
+              + " not recommended for a Production setup or any deployment where you have collected \na lot of "
+              + "information from the users, such as descriptions, tags, etc.\n");
+      String input = "";
+      Scanner scanner = new Scanner(System.in);
+      while (!input.equals("DELETE")) {
+        printToConsoleMandatory("Enter QUIT to quit. If you still want to continue, please enter DELETE: ");
+        input = scanner.next();
+        if (input.equals("QUIT")) {
+          printToConsoleMandatory("\nExiting without deleting data");
+          System.exit(1);
+        }
+      }
     }
 
     String confFilePath = commandLine.getOptionValue(OPTION_CONFIG_FILE_PATH);

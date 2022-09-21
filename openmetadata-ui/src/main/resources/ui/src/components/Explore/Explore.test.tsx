@@ -12,10 +12,8 @@
  */
 
 import { findAllByTestId, findByTestId, render } from '@testing-library/react';
-import { SearchResponse } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import { mockResponse } from './exlore.mock';
 import Explore from './Explore.component';
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
@@ -55,6 +53,10 @@ jest.mock('../../components/common/facetfilter/FacetFilter', () =>
   jest.fn().mockImplementation(() => <div>FacetFilter</div>)
 );
 
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  searchData: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
 jest.mock(
   '../containers/PageLayoutV1',
   () =>
@@ -78,30 +80,17 @@ jest.mock(
 
 const mockFunction = jest.fn();
 
-const mockSearchResult = {
-  resSearchResults: mockResponse as unknown as SearchResponse,
-  resAggServiceType: mockResponse as unknown as SearchResponse,
-  resAggTier: mockResponse as unknown as SearchResponse,
-  resAggTag: mockResponse as unknown as SearchResponse,
-  resAggDatabase: mockResponse as unknown as SearchResponse,
-  resAggDatabaseSchema: mockResponse as unknown as SearchResponse,
-  resAggServiceName: mockResponse as unknown as SearchResponse,
-};
-
 describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <Explore
         isFilterSelected
-        error=""
         fetchCount={mockFunction}
-        fetchData={mockFunction}
         handleFilterChange={mockFunction}
         handlePathChange={mockFunction}
         handleSearchText={mockFunction}
         handleTabCounts={mockFunction}
         searchQuery=""
-        searchResult={mockSearchResult}
         searchText=""
         showDeleted={false}
         sortValue=""

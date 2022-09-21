@@ -39,5 +39,7 @@ airflow users create \
 
 (sleep 5; airflow db upgrade)
 (sleep 5; airflow db upgrade)
+# we need to this in case the container is restarted and the scheduler exited without tidying up its lock file
+rm -f /opt/airflow/airflow-webserver-monitor.pid
 airflow webserver --port 8080 -D &
 airflow scheduler

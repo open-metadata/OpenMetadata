@@ -364,6 +364,9 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@Bind("id") String id, @Bind("extension") String extension);
 
+    @SqlUpdate("DELETE FROM entity_extension WHERE extension = :extension")
+    void deleteExtension(@Bind("extension") String extension);
+
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
     void deleteAll(@Bind("id") String id);
   }
