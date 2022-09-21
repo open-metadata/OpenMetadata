@@ -46,7 +46,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
 
         # Snowflake does not allow retrieval of data older than 7 days
         # Update start and end based on this
-        duration = min(self.source_config.queryLogDuration, 6)
+        duration = self.source_config.queryLogDuration
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
