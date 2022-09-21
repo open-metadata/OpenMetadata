@@ -649,12 +649,12 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
     .should('exist')
     .should('be.visible')
     .click();
-  cy.get('[data-testid="table-body"]').should('contain', propertyName);
+  cy.get('tbody').should('contain', propertyName);
 
   //Adding value for the custom property
 
   //Navigating through the created custom property for adding value
-  cy.get('[data-testid="data-row"]')
+  cy.get('tbody')
     .contains(propertyName)
     .scrollIntoView()
     .next('td')
@@ -684,13 +684,16 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   });
 
   //Checking the added value to the property
-  cy.get('[data-testid="data-row"]')
+  cy.get('tbody')
     .contains(propertyName)
     .scrollIntoView()
     .next('td')
     .as('value');
 
-  cy.get('@value').should('contain', value);
+    cy.get('tbody')
+    .contains(propertyName)
+    .scrollIntoView()
+    .next('td').should('contain', value);
 
   //returning the property name since it needs to be deleted and updated
   return propertyName;
@@ -698,7 +701,7 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
 
 export const editCreatedProperty = (propertyName) => {
   //Fetching for edit button
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .scrollIntoView()
@@ -731,7 +734,7 @@ export const editCreatedProperty = (propertyName) => {
 export const deleteCreatedProperty = (propertyName) => {
   //Fetching for delete button
 
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .nextUntil('button')
