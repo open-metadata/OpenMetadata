@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.teams;
 import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
 import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
+import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -78,9 +79,9 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
-import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -401,6 +402,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext, true);
     }
+    if (create.getIsBot()) {
+      addAuthMechanismToBot(user, create);
+    }
     // TODO do we need to authenticate user is creating himself?
     addHref(uriInfo, dao.create(uriInfo, user));
     return Response.created(user.getHref()).entity(user).build();
@@ -428,45 +432,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
       authorizer.authorize(securityContext, createOperationContext, getResourceContextByName(user.getName()), true);
     }
+    if (create.getIsBot()) {
+      addAuthMechanismToBot(user, create);
+    }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
-  }
-
-  @PUT
-  @Path("/generateToken/{id}")
-  @Operation(
-      operationId = "generateJWTTokenForBotUser",
-      summary = "Generate JWT Token for a Bot User",
-      tags = "users",
-      description = "Generate JWT Token for a Bot User.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public JWTAuthMechanism generateToken(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
-      @Valid GenerateTokenRequest generateTokenRequest)
-      throws IOException {
-
-    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    authorizeGenerateJWT(user);
-    authorizer.authorizeAdmin(securityContext, false);
-    JWTAuthMechanism jwtAuthMechanism =
-        jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
-    AuthenticationMechanism authenticationMechanism =
-        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
-    user.setAuthenticationMechanism(authenticationMechanism);
-    User updatedUser = dao.createOrUpdate(uriInfo, user).getEntity();
-    jwtAuthMechanism =
-        JsonUtils.convertValue(updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
-    return jwtAuthMechanism;
   }
 
   @PUT
@@ -492,7 +463,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     authorizer.authorizeAdmin(securityContext, false);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
-        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
+        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
@@ -525,7 +496,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null
         && authenticationMechanism.getConfig() != null
-        && authenticationMechanism.getAuthType() == AuthenticationMechanism.AuthType.JWT) {
+        && authenticationMechanism.getAuthType() == JWT) {
       return JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
     }
     return new JWTAuthMechanism();
@@ -1108,7 +1079,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return newRefreshToken;
   }
 
-  public void verifyPasswordResetTokenExpiry(PasswordResetToken token) throws IOException {
+  public void verifyPasswordResetTokenExpiry(PasswordResetToken token) {
     if (token.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new RuntimeException(
           "Password Reset Token" + token.getToken() + "Expired token. Please issue a new request");
@@ -1163,5 +1134,63 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (dao.checkEmailAlreadyExists(email)) {
       throw new RuntimeException("User with Email Already Exists");
     }
+  }
+
+  private void addAuthMechanismToBot(User user, @Valid CreateUser create) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
+    }
+    if (isValidAuthenticationMechanism(create)) {
+      AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
+      AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
+      switch (authType) {
+        case JWT:
+          if (!hasAJWTAuthMechanism(user)) {
+            JWTAuthMechanism jwtAuthMechanism =
+                JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+            authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
+          } else {
+            authMechanism = user.getAuthenticationMechanism();
+          }
+          break;
+        case SSO:
+          SSOAuthMechanism ssoAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
+          authMechanism.setConfig(ssoAuthMechanism);
+          break;
+        case BASIC:
+          BasicAuthMechanism basicAuthMechanism =
+              JsonUtils.convertValue(authMechanism.getConfig(), BasicAuthMechanism.class);
+          authMechanism.setConfig(basicAuthMechanism);
+          break;
+        default:
+          throw new IllegalArgumentException(
+              String.format("Unexpected authentication mechanism type: [%s]", authType.value()));
+      }
+      user.setAuthenticationMechanism(authMechanism);
+    } else {
+      throw new IllegalArgumentException(
+          String.format("Authentication mechanism is empty bot user: [%s]", user.getName()));
+    }
+  }
+
+  private boolean hasAJWTAuthMechanism(User user) {
+    AuthenticationMechanism authMechanism = user.getAuthenticationMechanism();
+    if (authMechanism != null && JWT.equals(authMechanism.getAuthType())) {
+      JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
+      return jwtAuthMechanism.getJWTToken() != null && !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken());
+    }
+    return false;
+  }
+
+  private boolean isValidAuthenticationMechanism(CreateUser create) {
+    if (create.getAuthenticationMechanism() == null) {
+      return false;
+    }
+    if (create.getAuthenticationMechanism().getConfig() != null
+        & create.getAuthenticationMechanism().getAuthType() != null) {
+      return true;
+    }
+    throw new IllegalArgumentException(
+        String.format("Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
   }
 }
