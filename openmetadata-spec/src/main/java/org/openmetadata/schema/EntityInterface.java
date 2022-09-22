@@ -27,7 +27,7 @@ import org.openmetadata.schema.type.TagLabel;
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
 public interface EntityInterface {
   // Lower case entity name to canonical entity name map
-  static final Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
+  Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
 
   UUID getId();
 

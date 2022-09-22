@@ -234,9 +234,10 @@ public class DatabaseServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    EntityHistory entityHistory = dao.listVersions(id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+
     List<Object> versions =
         entityHistory.getVersions().stream()
             .map(
@@ -280,7 +281,7 @@ public class DatabaseServiceResource
           @PathParam("version")
           String version)
       throws IOException {
-    DatabaseService databaseService = dao.getVersion(id, version);
+    DatabaseService databaseService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, databaseService);
   }
 

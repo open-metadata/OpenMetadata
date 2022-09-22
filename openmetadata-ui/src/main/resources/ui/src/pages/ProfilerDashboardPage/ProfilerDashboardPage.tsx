@@ -88,7 +88,6 @@ const ProfilerDashboardPage = () => {
       const { data } = await getColumnProfilerList(fqn, {
         startTs,
         endTs,
-        limit: API_RES_MAX_SIZE,
       });
       setProfilerData(data || []);
     } catch (error) {
