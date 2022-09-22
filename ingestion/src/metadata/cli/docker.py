@@ -58,7 +58,7 @@ def docker_volume():
     
     #create a main directory
     maindir="docker-volume"
-    if not os.path.exists('maindir'):
+    if not os.path.exists(maindir):
         os.mkdir(maindir)
         db="db-data"
         dag_airflow="ingestion-volume-dag-airflow"
