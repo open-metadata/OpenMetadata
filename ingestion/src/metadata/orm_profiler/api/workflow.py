@@ -218,15 +218,13 @@ class ProfilerWorkflow:
         if hasattr(entity, "tablePartition") and entity.tablePartition:
             try:
                 if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
-                    partition_field = entity.tablePartition.columns[0]
+                    return TablePartitionConfig(
+                        partitionField=entity.tablePartition.columns[0]
+                    )
                 elif entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
                     if entity.tablePartition.interval == "DAY":
-                        partition_field = "_PARTITIONDATE"
-                    else:
-                        partition_field = "_PARTITIONTIME"
-                return TablePartitionConfig(
-                    partitionField=partition_field,
-                )
+                        return TablePartitionConfig(partitionField="_PARTITIONDATE")
+                    return TablePartitionConfig(partitionField="_PARTITIONTIME")
             except Exception:
                 raise TypeError(
                     f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
