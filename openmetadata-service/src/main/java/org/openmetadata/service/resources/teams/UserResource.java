@@ -674,10 +674,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response resendRegistrationToken(
       @Context UriInfo uriInfo,
       @Parameter(description = "Token sent for Email Confirmation Earlier", schema = @Schema(type = "string"))
-          @QueryParam("token")
-          String token)
+          @QueryParam("user")
+          String user)
       throws IOException {
-    User registeredUser = extendRegistrationToken(uriInfo, token);
+    User registeredUser = dao.getByName(uriInfo, user, getFields("isEmailVerified"));
+    if (registeredUser.getIsEmailVerified()) {
+      // no need to do anything
+      return Response.status(Response.Status.OK).entity("Email Already Verified For User.").build();
+    }
+    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
     try {
       sendEmailVerification(uriInfo, registeredUser);
     } catch (Exception e) {
@@ -716,7 +721,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           .build();
     }
 
-    return Response.status(Response.Status.OK).build();
+    return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
   }
 
   @POST
@@ -1048,8 +1053,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     String emailVerificationLink =
         String.format(
-            "%s://%s/users/registrationConfirmation?token=%s",
-            uriInfo.getRequestUri().getScheme(), uriInfo.getRequestUri().getHost(), mailVerificationToken);
+            "%s://%s/users/registrationConfirmation?user=%s&token=%s",
+            uriInfo.getRequestUri().getScheme(),
+            uriInfo.getRequestUri().getHost(),
+            user.getFullyQualifiedName(),
+            mailVerificationToken);
     Map<String, String> templatePopulator = new HashMap<>();
 
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
@@ -1096,7 +1104,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             user.getEmail(),
             EmailUtil.EMAILTEMPLATEBASEPATH,
             EmailUtil.PASSWORDRESETTEMPLATEFILE);
-
+    // don't persist tokens delete existing
+    tokenRepository.deleteTokenByUserAndType(user.getId().toString(), PASSWORD_RESET.toString());
     tokenRepository.insertToken(resetToken);
   }
 

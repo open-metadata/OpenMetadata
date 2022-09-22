@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -131,8 +132,9 @@ public class DefaultAuthorizer implements Authorizer {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     User originalUser;
     try {
-      originalUser =
-          userRepository.getByName(null, username, new EntityUtil.Fields(List.of("authenticationMechanism")));
+      List<String> fields = userRepository.getAllowedFields();
+      fields.add(USER_PROTECTED_FIELDS);
+      originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fields, String.join(",", fields)));
       if (originalUser.getAuthenticationMechanism() == null) {
         updateUserWithHashedPwd(originalUser, pwd);
       }
@@ -272,12 +274,14 @@ public class DefaultAuthorizer implements Authorizer {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
-      LOG.debug("Added user entry: {}", addedUser);
+      // should not log the user auth details in LOGS
+      LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
     } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("User entry: {} already exists.", user);
+      user.setAuthenticationMechanism(null);
+      LOG.debug("User entry: {} already exists.", user.getName());
     }
     return null;
   }
@@ -286,11 +290,11 @@ public class DefaultAuthorizer implements Authorizer {
     EntityRepository<Bot> botRepository = Entity.getEntityRepository(Entity.BOT);
     try {
       RestUtil.PutResponse<Bot> addedBot = botRepository.createOrUpdate(null, bot);
-      LOG.debug("Added bot entry: {}", addedBot);
+      LOG.debug("Added bot entry: {}", addedBot.getEntity().getName());
     } catch (Exception exception) {
       // In HA set up the other server may have already added the bot.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("Bot entry: {} already exists.", bot);
+      LOG.debug("Bot entry: {} already exists.", bot.getName());
     }
   }
 
