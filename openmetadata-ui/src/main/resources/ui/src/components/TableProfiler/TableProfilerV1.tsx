@@ -103,8 +103,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
     return testCaseStatus;
   }, []);
 
-  const viewTest = permissions.ViewAll || permissions.ViewTests;
-  const viewProfiler = permissions.ViewAll || permissions.ViewDataProfile;
+  const viewTest =
+    permissions.ViewAll || permissions.ViewBasic || permissions.ViewTests;
+  const viewProfiler =
+    permissions.ViewAll || permissions.ViewBasic || permissions.ViewDataProfile;
   const editTest = permissions.EditAll || permissions.EditTests;
 
   const handleSettingModal = (value: boolean) => {

@@ -431,7 +431,7 @@ const MlModelPage = () => {
   }, [activeTab, mlModelDetail]);
 
   useEffect(() => {
-    if (mlModelPermissions.ViewAll) {
+    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
       fetchMlModelDetails(mlModelFqn);
     }
   }, [mlModelPermissions, mlModelFqn]);
@@ -446,7 +446,7 @@ const MlModelPage = () => {
         <Loader />
       ) : (
         <>
-          {mlModelPermissions.ViewAll ? (
+          {mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic ? (
             getMlModelDetail()
           ) : (
             <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>

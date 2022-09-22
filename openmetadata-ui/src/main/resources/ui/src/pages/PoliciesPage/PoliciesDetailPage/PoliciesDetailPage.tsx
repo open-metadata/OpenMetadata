@@ -420,7 +420,7 @@ const PoliciesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (policyPermission.ViewAll) {
+    if (policyPermission.ViewAll || policyPermission.ViewBasic) {
       fetchPolicy();
     }
   }, [policyPermission, fqn]);
@@ -432,7 +432,7 @@ const PoliciesDetailPage = () => {
   return (
     <div data-testid="policy-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {policyPermission.ViewAll ? (
+      {policyPermission.ViewAll || policyPermission.ViewBasic ? (
         <>
           {isEmpty(policy) ? (
             <Empty description={`No policy found for ${fqn}`}>

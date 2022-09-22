@@ -19,11 +19,10 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
-import { Operation } from '../generated/entity/policies/policy';
 import { TeamType } from '../generated/entity/teams/team';
 import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
-import { checkPermission } from '../utils/PermissionsUtils';
+import { userPermissions } from '../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
   getSettingPath,
@@ -107,8 +106,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={TestSuitePage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.TEST_SUITE,
           permissions
         )}
@@ -123,8 +121,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={RolesListPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.ROLE,
           permissions
         )}
@@ -150,8 +147,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={PoliciesListPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.POLICY,
           permissions
         )}
@@ -172,8 +168,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={UserListPageV1}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.USER,
           permissions
         )}
@@ -183,8 +178,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={WebhooksPageV1}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.WEBHOOK,
           permissions
         )}
@@ -196,8 +190,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.BOT,
           permissions
         )}
@@ -210,8 +203,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={SlackSettingsPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.WEBHOOK,
           permissions
         )}
@@ -225,8 +217,7 @@ const GlobalSettingRouter = () => {
         // Currently we don't have any permission related to ActivityFeed settings page
         // update below once we have it
         component={ActivityFeedSettingsPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.FEED,
           permissions
         )}
@@ -238,8 +229,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={MsTeamsPage}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.WEBHOOK,
           permissions
         )}
@@ -258,8 +248,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
-        hasPermission={checkPermission(
-          Operation.ViewAll,
+        hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.TYPE,
           permissions
         )}

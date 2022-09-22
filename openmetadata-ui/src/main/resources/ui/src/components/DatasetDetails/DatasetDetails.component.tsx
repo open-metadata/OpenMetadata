@@ -240,7 +240,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'sample-data-color',
       },
       isProtected: false,
-      isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewSampleData),
+      isHidden: !(
+        tablePermissions.ViewAll ||
+        tablePermissions.ViewBasic ||
+        tablePermissions.ViewSampleData
+      ),
       position: 3,
     },
     {
@@ -252,7 +256,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: '',
       },
       isProtected: false,
-      isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewQueries),
+      isHidden: !(
+        tablePermissions.ViewAll ||
+        tablePermissions.ViewBasic ||
+        tablePermissions.ViewQueries
+      ),
       position: 4,
     },
     {
@@ -266,6 +274,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       isHidden: !(
         tablePermissions.ViewAll ||
+        tablePermissions.ViewBasic ||
         tablePermissions.ViewDataProfile ||
         tablePermissions.ViewTests
       ),
