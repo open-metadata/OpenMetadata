@@ -22,17 +22,20 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { getListTestSuites } from '../../../axiosAPIs/testAPI';
 import {
   API_RES_MAX_SIZE,
   getTableTabPath,
 } from '../../../constants/constants';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { useAuth } from '../../../hooks/authHooks';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -46,7 +49,18 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
   initialValue,
 }) => {
   const { entityTypeFQN } = useParams<Record<string, string>>();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
+  const [form] = useForm();
+  const hasAccess = isAdminUser || isAuthDisabled;
   const history = useHistory();
+  const [formData, setFormData] = useState<{
+    testSuiteId: string;
+    testSuiteName: string;
+  }>({
+    testSuiteId: initialValue?.data?.id || '',
+    testSuiteName: initialValue?.name || '',
+  });
   const [isNewTestSuite, setIsNewTestSuite] = useState(
     initialValue?.isNewTestSuite ?? false
   );
@@ -69,6 +83,10 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
     return markdownRef.current?.getEditorContent() || '';
   };
 
+  const resetSelectedId = () => {
+    form.setFieldsValue({ testSuiteId: undefined });
+  };
+
   const handleCancelClick = () => {
     history.push(getTableTabPath(entityTypeFQN, 'profiler'));
   };
@@ -78,7 +96,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
       name: value.testSuiteName,
       description: getDescription(),
       data: testSuites.find((suite) => suite.id === value.testSuiteId),
-      isNewTestSuite,
+      isNewTestSuite: isEmpty(formData.testSuiteId),
     };
 
     onSubmit(data);
@@ -92,21 +110,37 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
 
   return (
     <Form
+      form={form}
       initialValues={{
         testSuiteId: initialValue?.data?.id,
         testSuiteName: initialValue?.name,
       }}
       layout="vertical"
       name="selectTestSuite"
-      onFinish={handleFormSubmit}>
+      onFinish={handleFormSubmit}
+      onValuesChange={(value, values) => {
+        setFormData(values);
+        if (value.testSuiteId) {
+          markdownRef?.current?.clearEditorContent();
+          form.setFieldsValue({
+            ...values,
+            testSuiteName: '',
+          });
+        } else if (value.testSuiteName) {
+          resetSelectedId();
+        }
+      }}>
       <Form.Item
         label="Test Suite:"
         name="testSuiteId"
         rules={[
-          { required: !isNewTestSuite, message: 'Test suite is required' },
+          {
+            required:
+              !isNewTestSuite || !isEmpty(form.getFieldValue('testSuiteId')),
+            message: 'Test suite is required',
+          },
         ]}>
         <Select
-          disabled={isNewTestSuite}
           options={testSuites.map((suite) => ({
             label: suite.name,
             value: suite.id,
@@ -114,77 +148,87 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
           placeholder="Select test suite"
         />
       </Form.Item>
-      <Divider plain>OR</Divider>
-
-      {isNewTestSuite ? (
+      {hasAccess && (
         <>
-          <Typography.Paragraph
-            className="tw-text-base tw-mt-5"
-            data-testid="new-test-title">
-            New Test Suite
-          </Typography.Paragraph>
-          <Form.Item
-            label="Name:"
-            name="testSuiteName"
-            rules={[
-              {
-                required: isNewTestSuite,
-                message: 'Name is required!',
-              },
-              {
-                validator: (_, value) => {
-                  if (testSuites.some((suite) => suite.name === value)) {
-                    return Promise.reject('Name already exist!');
-                  }
+          <Divider plain>OR</Divider>
 
-                  return Promise.resolve();
-                },
-              },
-            ]}>
-            <Input
-              data-testid="test-suite-name"
-              placeholder="Enter test suite name"
-            />
-          </Form.Item>
-          <Form.Item
-            label="Description:"
-            name="description"
-            rules={[
-              {
-                required: true,
-                validator: () => {
-                  if (isEmpty(getDescription())) {
-                    return Promise.reject('Description is required!');
-                  }
+          {isNewTestSuite ? (
+            <>
+              <Typography.Paragraph
+                className="text-base m-t-lg"
+                data-testid="new-test-title">
+                New Test Suite
+              </Typography.Paragraph>
+              <Form.Item
+                label="Name:"
+                name="testSuiteName"
+                rules={[
+                  {
+                    required: isEmpty(form.getFieldValue('testSuiteId')),
+                    message: 'Name is required!',
+                  },
+                  {
+                    validator: (_, value) => {
+                      if (testSuites.some((suite) => suite.name === value)) {
+                        return Promise.reject('Name already exist!');
+                      }
 
-                  return Promise.resolve();
-                },
-              },
-            ]}>
-            <RichTextEditor
-              initialValue={initialValue?.description || ''}
-              ref={markdownRef}
-              style={{
-                margin: 0,
-              }}
-            />
-          </Form.Item>
+                      return Promise.resolve();
+                    },
+                  },
+                ]}>
+                <Input
+                  data-testid="test-suite-name"
+                  placeholder="Enter test suite name"
+                />
+              </Form.Item>
+              <Form.Item
+                label="Description:"
+                name="description"
+                rules={[
+                  {
+                    required: isEmpty(form.getFieldValue('testSuiteId')),
+                    validator: () => {
+                      if (
+                        isEmpty(getDescription()) &&
+                        isEmpty(form.getFieldValue('testSuiteId'))
+                      ) {
+                        return Promise.reject('Description is required!');
+                      }
+
+                      return Promise.resolve();
+                    },
+                  },
+                ]}>
+                <RichTextEditor
+                  initialValue={initialValue?.description || ''}
+                  ref={markdownRef}
+                  style={{
+                    margin: 0,
+                  }}
+                  onTextChange={() => {
+                    resetSelectedId();
+                  }}
+                />
+              </Form.Item>
+            </>
+          ) : (
+            <Row className="m-b-xlg" justify="center">
+              <Button
+                data-testid="create-new-test-suite"
+                icon={
+                  <SVGIcons
+                    alt="plus"
+                    className="w-4 m-r-xss"
+                    icon={Icons.ICON_PLUS_PRIMERY}
+                  />
+                }
+                onClick={() => setIsNewTestSuite(true)}>
+                <span className="tw-text-primary">Create new test suite</span>
+              </Button>
+            </Row>
+          )}
         </>
-      ) : (
-        <Row className="tw-mb-10" justify="center">
-          <Button
-            data-testid="create-new-test-suite"
-            icon={
-              <SVGIcons
-                alt="plus"
-                className="tw-w-4 tw-mr-1"
-                icon={Icons.ICON_PLUS_PRIMERY}
-              />
-            }
-            onClick={() => setIsNewTestSuite(true)}>
-            <span className="tw-text-primary">Create new test suite</span>
-          </Button>
-        </Row>
       )}
 
       <Form.Item noStyle>
