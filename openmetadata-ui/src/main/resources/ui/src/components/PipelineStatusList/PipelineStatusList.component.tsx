@@ -14,6 +14,7 @@
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
+import moment from 'moment';
 import React, {
   FC,
   Fragment,
@@ -24,6 +25,7 @@ import React, {
 } from 'react';
 import Select, { SingleValue } from 'react-select';
 import { getPipelineStatus } from '../../axiosAPIs/pipelineAPI';
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { Pipeline, PipelineStatus } from '../../generated/entity/data/pipeline';
 import jsonData from '../../jsons/en';
 import { STATUS_OPTIONS } from '../../utils/PipelineDetailsUtils';
@@ -73,7 +75,15 @@ const PipelineStatusList: FC<Prop> = ({
 
   const fetchPipelineStatus = async () => {
     try {
-      const response = await getPipelineStatus(pipelineFQN);
+      const startTs = moment()
+        .subtract(PROFILER_FILTER_RANGE.last60days.days, 'days')
+        .unix();
+      const endTs = moment().unix();
+
+      const response = await getPipelineStatus(pipelineFQN, {
+        startTs,
+        endTs,
+      });
       setExecutions(response.data);
     } catch (error) {
       showErrorToast(
