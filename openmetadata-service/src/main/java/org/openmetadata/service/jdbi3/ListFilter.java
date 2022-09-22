@@ -32,6 +32,10 @@ public class ListFilter {
     return queryParams.get(name);
   }
 
+  public Include getInclude() {
+    return include;
+  }
+
   public String getCondition() {
     return getCondition(null);
   }

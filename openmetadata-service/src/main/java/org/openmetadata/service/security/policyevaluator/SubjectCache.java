@@ -87,7 +87,7 @@ public class SubjectCache {
     try {
       return TEAM_CACHE.get(teamId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      return null;
     }
   }
 
@@ -122,8 +122,10 @@ public class SubjectCache {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
       Team team = getTeam(teamRef.getId());
-      roles.addAll(team.getDefaultRoles());
-      roles.addAll(getRolesForTeams(team.getParents()));
+      if (team != null) {
+        roles.addAll(team.getDefaultRoles());
+        roles.addAll(getRolesForTeams(team.getParents()));
+      }
     }
     return roles.stream().distinct().collect(Collectors.toList());
   }

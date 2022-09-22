@@ -229,9 +229,10 @@ public class PipelineServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "pipeline service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "pipeline service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    EntityHistory entityHistory = dao.listVersions(id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+
     List<Object> versions =
         entityHistory.getVersions().stream()
             .map(
@@ -275,7 +276,7 @@ public class PipelineServiceResource
           @PathParam("version")
           String version)
       throws IOException {
-    PipelineService pipelineService = dao.getVersion(id, version);
+    PipelineService pipelineService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, pipelineService);
   }
 

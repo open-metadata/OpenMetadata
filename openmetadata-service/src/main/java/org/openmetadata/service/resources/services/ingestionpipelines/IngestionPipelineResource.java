@@ -198,9 +198,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "IngestionPipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "IngestionPipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -268,7 +268,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @GET
