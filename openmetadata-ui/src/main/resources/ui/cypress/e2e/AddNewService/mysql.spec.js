@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, mySqlConnectionInput, testServiceCreationAndIngestion, uuid } from '../../common/common';
 import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Mysql';
@@ -20,23 +20,17 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
-    const connectionInput = () => {
-      cy.get('#root_username').type('openmetadata_user');
-      cy.get('#root_password').type('openmetadata_password');
-      cy.get('#root_hostPort').type('mysql:3306');
-      cy.get('#root_databaseSchema').type('openmetadata_db');
-    };
 
     const addIngestionInput = () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
-        .type('openmetadata_db');
+        .type(Cypress.env('mysqlDatabaseSchema'));
     };
 
     testServiceCreationAndIngestion(
       serviceType,
-      connectionInput,
+      mySqlConnectionInput,
       addIngestionInput,
       serviceName
     );

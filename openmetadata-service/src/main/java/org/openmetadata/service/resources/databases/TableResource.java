@@ -23,12 +23,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -70,7 +72,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
@@ -90,6 +91,27 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     Entity.withHref(uriInfo, table.getOwner());
     Entity.withHref(uriInfo, table.getFollowers());
     return table;
+  }
+
+  @Override
+  protected MetadataOperation[] getViewOperations(Fields fields) {
+    List<MetadataOperation> operations = new ArrayList<>(List.of(MetadataOperation.VIEW_BASIC));
+    if (fields.contains("tests")) {
+      operations.add(MetadataOperation.VIEW_TESTS);
+    }
+    if (fields.contains("tableQueries")) {
+      operations.add(MetadataOperation.VIEW_QUERIES);
+    }
+    if (fields.contains("profile")) {
+      operations.add(MetadataOperation.VIEW_DATA_PROFILE);
+    }
+    if (fields.contains("sampleData")) {
+      operations.add(MetadataOperation.VIEW_SAMPLE_DATA);
+    }
+    if (operations.size() == 5) {
+      return EntityResource.VIEW_ALL_OPERATIONS; // All view operations are requested
+    }
+    return operations.toArray(new MetadataOperation[0]);
   }
 
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
@@ -270,9 +292,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -301,7 +323,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -596,35 +618,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               description = "Filter table/column profiles before the given end timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(
-              description = "Returns list of table/column profiles before this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(
-              description = "Returns list of table/column profiles after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
 
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.tableProfile");
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getTableProfiles(filter, before, after, limitParam);
+    return dao.getTableProfiles(fqn, startTs, endTs);
   }
 
   @GET
@@ -650,41 +647,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(
               description = "Filter table/column profiles after the given start timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter table/column profiles before the given end timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(
-              description = "Returns list of table/column profiles before this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(
-              description = "Returns list of table/column profiles after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.columnProfile");
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getColumnProfiles(filter, before, after, limitParam);
+    return dao.getColumnProfiles(fqn, startTs, endTs);
   }
 
   @PUT

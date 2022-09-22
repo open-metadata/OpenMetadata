@@ -23,6 +23,7 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_LINEAGE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_OWNER;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_DATA_PROFILE;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_QUERIES;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_SAMPLE_DATA;
@@ -213,9 +214,11 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     List<MetadataOperation> allowed =
         List.of(
             VIEW_ALL,
+            VIEW_BASIC,
             VIEW_USAGE,
             VIEW_DATA_PROFILE,
             VIEW_SAMPLE_DATA,
+            VIEW_BASIC,
             VIEW_TESTS,
             VIEW_QUERIES,
             EDIT_DESCRIPTION,
@@ -248,6 +251,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     List<MetadataOperation> allowed =
         List.of(
             VIEW_ALL,
+            VIEW_BASIC,
             VIEW_USAGE,
             VIEW_DATA_PROFILE,
             VIEW_SAMPLE_DATA,
