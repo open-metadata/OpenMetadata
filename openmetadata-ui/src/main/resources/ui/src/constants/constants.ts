@@ -280,7 +280,7 @@ export const getVersionPath = (
 export const getTableTabPath = (tableFQN: string, tab = 'schema') => {
   let path = ROUTES.TABLE_DETAILS_WITH_TAB;
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, encodeURIComponent(tableFQN))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;

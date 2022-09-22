@@ -304,7 +304,7 @@ export const getProfilerDashboardWithFqnPath = (
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, encodeURIComponent(entityTypeFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -349,7 +349,7 @@ export const getAddDataQualityTableTestPath = (
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, encodeURIComponent(fqn));
 
   return path;
 };
