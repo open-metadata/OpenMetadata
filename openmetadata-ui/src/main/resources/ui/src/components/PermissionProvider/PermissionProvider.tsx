@@ -80,7 +80,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     return AppState.getCurrentUserDetails();
   }, [AppState.userDetails, AppState.nonSecureUserDetails]);
 
-  const handledVerifiedUser = () => {
+  const redirectToStoredPath = () => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
       cookieStorage.removeItem(REDIRECT_PATHNAME);
@@ -95,7 +95,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     try {
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
-      handledVerifiedUser();
+      redirectToStoredPath();
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
