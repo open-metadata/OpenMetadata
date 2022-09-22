@@ -36,7 +36,7 @@ where serviceType = 'DeltaLake'
 ALTER TABLE test_definition 
 ADD COLUMN supported_data_types JSON GENERATED ALWAYS AS (json -> '$.supportedDataTypes');
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.name'),
 	'$.name',
@@ -44,7 +44,7 @@ SET json = JSON_INSERT(
 )
 WHERE BINARY name = 'TableColumnCountToEqual';
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.fullyQualifiedName'),
 	'$.fullyQualifiedName',
@@ -53,7 +53,7 @@ SET json = JSON_INSERT(
 WHERE BINARY JSON_CONTAINS(json, '"TableColumnCountToEqual"', '$.fullyQualifiedName');
 
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.name'),
 	'$.name',
@@ -61,7 +61,7 @@ SET json = JSON_INSERT(
 )
 WHERE BINARY name = 'TableColumnToMatchSet';
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.fullyQualifiedName'),
 	'$.fullyQualifiedName',
@@ -70,7 +70,7 @@ SET json = JSON_INSERT(
 WHERE BINARY JSON_CONTAINS(json, '"TableColumnToMatchSet"', '$.fullyQualifiedName');
 
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.name'),
 	'$.name',
@@ -78,7 +78,7 @@ SET json = JSON_INSERT(
 )
 WHERE BINARY name = 'TableColumnNameToExist';
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.fullyQualifiedName'),
 	'$.fullyQualifiedName',
@@ -87,7 +87,7 @@ SET json = JSON_INSERT(
 WHERE BINARY JSON_CONTAINS(json, '"TableColumnNameToExist"', '$.fullyQualifiedName');
 
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.name'),
 	'$.name',
@@ -95,7 +95,7 @@ SET json = JSON_INSERT(
 )
 WHERE BINARY name = 'TableRowCountToBeBetween';
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.fullyQualifiedName'),
 	'$.fullyQualifiedName',
@@ -104,7 +104,7 @@ SET json = JSON_INSERT(
 WHERE BINARY JSON_CONTAINS(json, '"TableRowCountToBeBetween"', '$.fullyQualifiedName');
 
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.name'),
 	'$.name',
@@ -112,7 +112,7 @@ SET json = JSON_INSERT(
 )
 WHERE BINARY name = 'TableColumnCountToBeBetween';
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.fullyQualifiedName'),
 	'$.fullyQualifiedName',
@@ -121,7 +121,7 @@ SET json = JSON_INSERT(
 WHERE BINARY JSON_CONTAINS(json, '"TableColumnCountToBeBetween"', '$.fullyQualifiedName');
 
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.name'),
 	'$.name',
@@ -129,7 +129,7 @@ SET json = JSON_INSERT(
 )
 WHERE BINARY name = 'ColumnValuesToBeInSet';
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.fullyQualifiedName'),
 	'$.fullyQualifiedName',
@@ -138,7 +138,7 @@ SET json = JSON_INSERT(
 WHERE BINARY JSON_CONTAINS(json, '"ColumnValuesToBeInSet"', '$.fullyQualifiedName');
 
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.name'),
 	'$.name',
@@ -146,7 +146,7 @@ SET json = JSON_INSERT(
 )
 WHERE BINARY name = 'TableRowCountToEqual';
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	JSON_REMOVE(json, '$.fullyQualifiedName'),
 	'$.fullyQualifiedName',
@@ -156,7 +156,7 @@ WHERE BINARY JSON_CONTAINS(json, '"TableRowCountToEqual"', '$.fullyQualifiedName
 
 
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -165,7 +165,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValueMaxToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -174,7 +174,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValueMeanToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -183,7 +183,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValueMedianToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -192,7 +192,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValueMinToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -201,7 +201,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValueLengthsToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -210,7 +210,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesMissingCount'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -219,7 +219,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesSumToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -228,7 +228,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValueStdDevToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -237,7 +237,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesToBeBetween'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -246,7 +246,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesToBeInSet'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -255,7 +255,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesToBeNotInSet'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -264,7 +264,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesToBeNotNull'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -273,7 +273,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesToBeUnique'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
@@ -282,7 +282,7 @@ SET json = JSON_INSERT(
 WHERE name = 'columnValuesToMatchRegex'
 AND supported_data_types IS NULL;
 
-UPDATE openmetadata_db.test_definition 
+UPDATE test_definition 
 SET json = JSON_INSERT(
 	json,
 	'$.supportedDataTypes',
