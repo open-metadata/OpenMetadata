@@ -12,7 +12,14 @@
  */
 
 export const NO_AUTH = 'no-auth';
-export const NOOP_FILTER = 'org.openmetadata.catalog.security.NoopFilter';
+
+export const VALIDATION_MESSAGES = {
+  required: '${label} is required',
+  types: {
+    email: '${label} is not valid',
+  },
+  whitespace: '${label} is required',
+};
 
 export const HTTP_STATUS_CODE = {
   BAD_REQUEST: 400, // The request cannot be fulfilled due to bad syntax

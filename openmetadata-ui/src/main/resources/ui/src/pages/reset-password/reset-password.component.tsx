@@ -1,12 +1,12 @@
-import { Alert, Button, Col, Form, Input, Row, Typography } from 'antd';
-import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
+import React, { useEffect, useMemo } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
-import AuthCommonCard from '../../components/common/auth-common-card/auth-common-card.component';
+import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './reset-password.style.less';
 import { getUserNameAndToken } from './reset-password.utils';
 
@@ -19,7 +19,11 @@ const ResetPassword = () => {
   const [form] = Form.useForm();
   const location = useLocation();
 
-  const { handleResetPassword, isResetTokenExpired } = useBasicAuth();
+  const { handleResetPassword } = useBasicAuth();
+  const tokenValid = false;
+  useEffect(() => {
+    // check for token validity
+  }, []);
 
   const history = useHistory();
 
@@ -41,94 +45,106 @@ const ResetPassword = () => {
     handleResetPassword(ResetRequest);
   };
 
-  const validationMessages = {
-    required: '${label} is required',
-    types: {
-      email: '${label} is not valid',
-    },
-    whitespace: '${label} should not contain white space',
-  };
-
   const handleReVerify = () => history.push(ROUTES.FORGOT_PASSWORD);
 
-  return isResetTokenExpired ? (
-    <AuthCommonCard classNames="">
-      <>
-        <div className="mt-24">
-          <Alert
-            showIcon
-            description="Please re-initiate email verification process"
-            message="Email Verification Token Expired"
-            type="error"
-          />
-        </div>
+  return (
+    <div className="h-full tw-py-36">
+      {tokenValid ? (
+        <Card
+          bodyStyle={{ padding: '48px' }}
+          className="m-auto p-x-lg"
+          style={{ maxWidth: '450px' }}>
+          <div className="mt-24">
+            <Alert
+              showIcon
+              description="Please re-initiate email verification process"
+              message="Email Verification Token Expired"
+              type="error"
+            />
+          </div>
 
-        <div className="mt-20 flex-center">
-          <Typography.Link underline onClick={handleReVerify}>
-            Re verify
-          </Typography.Link>
-        </div>
-      </>
-    </AuthCommonCard>
-  ) : (
-    <AuthCommonCard classNames="">
-      <Row gutter={[16, 18]}>
-        <Col className="mt-12 reset-password-text" span={24}>
-          <Typography.Text strong>Reset Password</Typography.Text>
-        </Col>
+          <div className="mt-20 flex-center">
+            <Typography.Link underline onClick={handleReVerify}>
+              Re verify
+            </Typography.Link>
+          </div>
+        </Card>
+      ) : (
+        <Card
+          bodyStyle={{ padding: '48px' }}
+          className="m-auto p-x-lg"
+          style={{ maxWidth: '450px' }}>
+          <Row gutter={[16, 24]}>
+            <Col className="text-center" span={24}>
+              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            </Col>
 
-        <Col span={24}>
-          <Form
-            className="w-full"
-            form={form}
-            layout="vertical"
-            validateMessages={validationMessages}
-            onFinish={handleSubmit}>
-            <Form.Item
-              label="New Password"
-              name="password"
-              rules={[
-                {
-                  pattern: passwordRegex,
-                  message:
-                    'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character',
-                },
-              ]}>
-              <Input.Password
+            <Col className="mt-12 text-center" span={24}>
+              <Typography.Title level={5}>Reset your Password</Typography.Title>
+            </Col>
+
+            <Col span={24}>
+              <Form
                 className="w-full"
-                placeholder="Enter new password"
-              />
-            </Form.Item>
-            <Form.Item
-              label="Confirm New Password"
-              name="confirmPassword"
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (isEmpty(password)) {
-                      return Promise.reject('Please type password first');
-                    }
-                    if (value !== password) {
-                      return Promise.reject("Password doesn't match");
-                    }
+                form={form}
+                layout="vertical"
+                validateMessages={VALIDATION_MESSAGES}
+                onFinish={handleSubmit}>
+                <Form.Item
+                  label="New Password"
+                  name="password"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Password is required',
+                    },
+                    {
+                      pattern: passwordRegex,
+                      message:
+                        'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character',
+                    },
+                  ]}>
+                  <Input.Password
+                    className="w-full"
+                    placeholder="Enter new password"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="Confirm New Password"
+                  name="confirmPassword"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Confirm password is required',
+                    },
+                    {
+                      validator: (_, value) => {
+                        if (password === value) {
+                          return Promise.resolve();
+                        }
 
-                    return Promise.resolve();
-                  },
-                },
-              ]}>
-              <Input.Password
-                className="w-full"
-                placeholder="Re-enter New Password"
-              />
-            </Form.Item>
+                        return Promise.reject("Password doesn't match");
+                      },
+                    },
+                  ]}>
+                  <Input.Password
+                    className="w-full"
+                    placeholder="Re-enter New Password"
+                  />
+                </Form.Item>
 
-            <Button className="w-full" htmlType="submit" type="primary">
-              Submit
-            </Button>
-          </Form>
-        </Col>
-      </Row>
-    </AuthCommonCard>
+                <Button
+                  className="w-full m-t-lg"
+                  htmlType="submit"
+                  type="primary">
+                  Submit
+                </Button>
+              </Form>
+            </Col>
+          </Row>
+        </Card>
+      )}
+    </div>
   );
 };
 

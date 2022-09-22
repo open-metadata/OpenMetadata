@@ -1,10 +1,9 @@
-import { Alert, Space, Typography } from 'antd';
+import { Alert, Card, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { confirmRegistration } from '../../axiosAPIs/auth-API';
-import AuthCommonCard from '../../components/common/auth-common-card/auth-common-card.component';
 import { ROUTES } from '../../constants/constants';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -37,7 +36,7 @@ const AccountActivationConfirmation = () => {
   }, []);
 
   return (
-    <AuthCommonCard>
+    <Card>
       <>
         {isAccountVerified ? (
           <div className="mt-12 w-16">
@@ -65,7 +64,7 @@ const AccountActivationConfirmation = () => {
           </div>
         )}
       </>
-    </AuthCommonCard>
+    </Card>
   );
 };
 

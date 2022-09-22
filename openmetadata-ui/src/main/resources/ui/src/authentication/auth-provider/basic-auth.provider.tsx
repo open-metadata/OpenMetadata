@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios';
 import { JwtPayload } from 'jwt-decode';
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import React, { createContext, ReactNode, useContext } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   basicAuthRegister,
@@ -23,7 +23,7 @@ import {
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
-export interface JWTPayloadV1 extends JwtPayload {
+export interface BasicAuthJWTPayload extends JwtPayload {
   isBot?: false;
   email?: string;
 }
@@ -37,11 +37,9 @@ interface BasicAuthProps {
 interface InitialContext {
   handleLogin: (email: string, password: string) => void;
   handleRegister: (payload: RegistrationRequest) => void;
-  handleForgotPassword: (email: string) => void;
+  handleForgotPassword: (email: string) => Promise<void>;
   handleResetPassword: (payload: PasswordResetRequest) => void;
   handleLogout: () => void;
-  isPasswordResetLinkSent: boolean;
-  isResetTokenExpired: boolean;
 }
 
 /**
@@ -58,8 +56,6 @@ const initialContext = {
   handleResetPassword: stub,
   handleLogout: stub,
   handleUserCreated: stub,
-  isPasswordResetLinkSent: false,
-  isResetTokenExpired: false,
 };
 
 const BasicAuthProvider = ({
@@ -67,9 +63,6 @@ const BasicAuthProvider = ({
   onLoginSuccess,
   onLoginFailure,
 }: BasicAuthProps) => {
-  const [isPasswordResetLinkSent, setIsPasswordResetLinkSent] = useState(false);
-  const [isResetTokenExpired, setIsResetTokenExpired] = useState(false);
-
   const { setLoadingIndicator } = useAuthContext();
 
   const history = useHistory();
@@ -152,13 +145,8 @@ const BasicAuthProvider = ({
   const handleForgotPassword = async (email: string) => {
     try {
       setLoadingIndicator(true);
-      const response = await generatePasswordResetLink(email);
-
-      if (response === HTTP_STATUS_CODE.SUCCESS) {
-        setIsPasswordResetLinkSent(true);
-      }
+      await generatePasswordResetLink(email);
     } catch (err) {
-      setIsPasswordResetLinkSent(false);
       showErrorToast(jsonData['api-error-messages']['email-not-found']);
     } finally {
       setLoadingIndicator(false);
@@ -176,7 +164,6 @@ const BasicAuthProvider = ({
         );
       }
     } catch (err) {
-      setIsResetTokenExpired(true);
       showErrorToast(
         err as AxiosError,
         jsonData['api-error-messages']['unexpected-server-response']
@@ -197,8 +184,6 @@ const BasicAuthProvider = ({
     handleForgotPassword,
     handleResetPassword,
     handleLogout,
-    isResetTokenExpired,
-    isPasswordResetLinkSent,
   };
 
   return (

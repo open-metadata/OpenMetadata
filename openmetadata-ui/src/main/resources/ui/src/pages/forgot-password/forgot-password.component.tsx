@@ -1,34 +1,38 @@
 import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
-  const { isPasswordResetLinkSent, handleForgotPassword } = useBasicAuth();
-  const [hasError, setHasError] = useState(false);
-  const handleSubmit = (data: { email: string }) => {
-    handleForgotPassword && handleForgotPassword(data.email);
-  };
+  const { handleForgotPassword } = useBasicAuth();
+  const history = useHistory();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onError = (errors: any) => {
-    setHasError(errors.email);
+  const [showResetLinkSentAlert, setShowResetLinkSentAlert] = useState(false);
+
+  const handleSubmit = async (data: { email: string }) => {
+    try {
+      handleForgotPassword && (await handleForgotPassword(data.email));
+      setShowResetLinkSentAlert(true);
+    } catch (error) {
+      setShowResetLinkSentAlert(false);
+    }
   };
 
   return (
     <div className="h-full tw-py-36">
       <Card
         bodyStyle={{ padding: '48px' }}
-        className=" m-y-lg m-auto p-x-lg"
+        className="m-auto p-x-lg"
         style={{ maxWidth: '450px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
-            <Typography.Text strong className="text-reset-info">
+            <Typography.Text strong>
               Enter your registered email to receive password reset link
             </Typography.Text>
           </Col>
@@ -36,17 +40,16 @@ const ForgotPassword = () => {
           <Form
             className="w-full"
             labelCol={{ span: 24 }}
-            onFinish={handleSubmit}
-            onFinishFailed={onError}>
+            onFinish={handleSubmit}>
             <Col span={24}>
               <Form.Item
-                hasFeedback={hasError}
                 label="Email"
                 name="email"
                 rules={[
                   {
                     required: true,
-                    message: 'Email is required!',
+                    type: 'email',
+                    message: 'Email is invalid',
                   },
                 ]}>
                 <Input type="email" />
@@ -59,7 +62,7 @@ const ForgotPassword = () => {
             </Col>
           </Form>
 
-          {isPasswordResetLinkSent && (
+          {showResetLinkSentAlert && (
             <Col span={24}>
               <div
                 className="tw-flex tw-flex-col tw-px-1"
@@ -86,8 +89,8 @@ const ForgotPassword = () => {
             <Button
               ghost
               className="w-full"
-              href={ROUTES.SIGNIN}
-              type="primary">
+              type="primary"
+              onClick={() => history.push(ROUTES.SIGNIN)}>
               Go back to Login page
             </Button>
           </Col>

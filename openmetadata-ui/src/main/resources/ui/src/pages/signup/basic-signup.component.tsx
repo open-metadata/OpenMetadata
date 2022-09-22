@@ -1,13 +1,4 @@
-import {
-  Button,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -157,19 +148,18 @@ const BasicSignUp = () => {
                           <Typography.Text type="secondary">or</Typography.Text>
                         </Divider>
 
-                        <Space
-                          className="w-full flex-center text-center"
-                          direction="vertical">
-                          <Typography.Text strong>
-                            Already have an account?
+                        <div className="mt-4 flex flex-center">
+                          <Typography.Text className="mr-4">
+                            Already a user?
                           </Typography.Text>
                           <Button
-                            className="w-full"
-                            type="primary"
+                            ghost
+                            data-testid="login"
+                            type="link"
                             onClick={handleLogin}>
                             Login
                           </Button>
-                        </Space>
+                        </div>
                       </Form>
                     </>
                   </Col>

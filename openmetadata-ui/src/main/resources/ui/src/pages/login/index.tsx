@@ -21,6 +21,7 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import Loader from '../../components/Loader/Loader';
 import LoginButton from '../../components/LoginButton/LoginButton';
+import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import localState from '../../utils/LocalStorageUtils';
@@ -151,21 +152,19 @@ const SigninPage = () => {
     return <Loader />;
   }
 
-  const handleSubmit = async (data: { email: string; password: string }) => {
-    handleLogin(data.email, data.password);
+  const handleSubmit = async ({
+    email,
+    password,
+  }: {
+    email: string;
+    password: string;
+  }) => {
+    handleLogin(email, password);
   };
 
   const onClickSignUp = () => history.push(ROUTES.REGISTER);
 
   const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
-
-  const validationMessages = {
-    required: '${label} is required',
-    types: {
-      email: '${label} is not valid',
-    },
-    whitespace: '${label} is required',
-  };
 
   return (
     <div className="tw-flex tw-flex-col tw-h-full">
@@ -186,29 +185,37 @@ const SigninPage = () => {
                   className="w-full"
                   form={form}
                   layout="vertical"
-                  validateMessages={validationMessages}
+                  validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSubmit}>
                   <Form.Item
+                    data-testid="email"
                     label="Email"
                     name="email"
                     requiredMark={false}
-                    rules={[{ type: 'email', required: true }]}>
-                    <Input placeholder="Enter email" />
+                    rules={[{ required: true }]}>
+                    <Input placeholder="Email or Username" />
                   </Form.Item>
                   <Form.Item
+                    data-testid="password"
                     label="Password"
                     name="password"
                     requiredMark={false}
                     rules={[{ required: true }]}>
-                    <Input.Password placeholder="Enter password" />
+                    <Input.Password placeholder="Password" />
                   </Form.Item>
 
-                  <Button className="w-full" htmlType="submit" type="primary">
+                  <Button
+                    className="w-full"
+                    data-testid="login"
+                    htmlType="submit"
+                    type="primary">
                     Login
                   </Button>
                 </Form>
                 <div className="mt-8" onClick={onClickForgotPassword}>
-                  <Typography.Link underline>Forgot Password</Typography.Link>
+                  <Typography.Link underline data-testid="forgot-password">
+                    Forgot Password
+                  </Typography.Link>
                 </div>
 
                 <Divider className="w-min-0 mt-8 mb-12 justify-center">
@@ -216,19 +223,21 @@ const SigninPage = () => {
                 </Divider>
 
                 <div className="mt-4 flex flex-center">
-                  <Typography.Text strong className="mr-8">
-                    Not loggedIn user?
+                  <Typography.Text className="mr-4">
+                    New on the platform?
                   </Typography.Text>
-                  <Button type="primary" onClick={onClickSignUp}>
-                    Sign Up
+                  <Button
+                    ghost
+                    data-testid="signup"
+                    type="link"
+                    onClick={onClickSignUp}>
+                    Create Account
                   </Button>
                 </div>
               </div>
-            ) : null}
-
-            {!isAuthProviderBasic ? (
+            ) : (
               <div className="">{getSignInButton()}</div>
-            ) : null}
+            )}
           </div>
         </div>
         <div className="tw-w-7/12 tw-relative">

@@ -43,7 +43,7 @@ import { NO_AUTH } from '../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { AuthTypes } from '../../enums/signin.enum';
-import { User } from '../../generated/entity/teams/user';
+import { AuthType, User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
   EXPIRY_THRESHOLD_MILLES,
@@ -81,7 +81,9 @@ interface AuthProviderProps {
 
 const cookieStorage = new CookieStorage();
 
-const userAPIQueryFields = 'profile,teams,roles,isEmailVerified';
+const userAPIQueryFields = 'profile,teams,roles';
+
+const isEmailVerifyField = 'isEmailVerified';
 
 export const AuthProvider = ({
   childComponentType,
@@ -340,7 +342,11 @@ export const AuthProvider = ({
   const handleSuccessfulLogin = (user: OidcUser) => {
     setLoading(true);
     setIsUserAuthenticated(true);
-    getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
+    const fields =
+      authConfig?.provider === AuthType.Basic
+        ? userAPIQueryFields + ',' + isEmailVerifyField
+        : userAPIQueryFields;
+    getUserByName(getNameFromEmail(user.profile.email), fields)
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
@@ -395,7 +401,7 @@ export const AuthProvider = ({
   const initializeAxiosInterceptors = () => {
     // Axios Request interceptor to add Bearer tokens in Header
     axiosClient.interceptors.request.use(async function (config) {
-      const token: string | void = localState.getOidcToken() || '';
+      const token: string = localState.getOidcToken() || '';
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;
