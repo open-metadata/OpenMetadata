@@ -215,7 +215,7 @@ class ProfilerWorkflow:
         if entity_config:
             return entity_config.partitionConfig
 
-        if hasattr(entity, "tablePartition"):
+        if hasattr(entity, "tablePartition") and entity.tablePartition:
             try:
                 if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
                     partition_field = entity.tablePartition.columns[0]
