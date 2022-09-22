@@ -265,6 +265,7 @@ export const AuthProvider = ({
    */
   const trySilentSignIn = () => {
     const pathName = location.pathname;
+    storeRedirectPath(pathName);
     // Do not try silent sign in for SignIn or SignUp route
     if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
       // Try to renew token
