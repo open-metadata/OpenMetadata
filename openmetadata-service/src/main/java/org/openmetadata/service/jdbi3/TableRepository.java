@@ -467,30 +467,11 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityById(tableId);
     table.withDataModel(dataModel);
 
-    // Carry forward the table description from the model to table entity, if empty
-    if (nullOrEmpty(table.getDescription())) {
-      table.setDescription(dataModel.getDescription());
-    }
-
     // Carry forward the table owner from the model to table entity, if empty
     if (table.getOwner() == null) {
       storeOwner(table, dataModel.getOwner());
     }
 
-    // Carry forward the column description from the model to table columns, if empty
-    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
-      Column stored =
-          table.getColumns().stream()
-              .filter(c -> EntityUtil.columnNameMatch.test(c, modelColumn))
-              .findAny()
-              .orElse(null);
-      if (stored == null) {
-        continue;
-      }
-      if (nullOrEmpty(stored.getDescription())) {
-        stored.setDescription(modelColumn.getDescription());
-      }
-    }
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
 
     setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
