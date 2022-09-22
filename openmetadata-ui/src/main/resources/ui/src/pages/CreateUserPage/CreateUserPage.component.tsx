@@ -16,11 +16,12 @@ import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { createBot } from '../../axiosAPIs/botsAPI';
+import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { createUser } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -116,9 +117,28 @@ const CreateUserPage = () => {
       });
   };
 
+  const fetchRoles = async () => {
+    try {
+      const response = await getRoles(
+        '',
+        undefined,
+        undefined,
+        false,
+        PAGE_SIZE_LARGE
+      );
+      setRoles(response.data);
+    } catch (err) {
+      setRoles([]);
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['fetch-roles-error']
+      );
+    }
+  };
+
   useEffect(() => {
-    setRoles(AppState.userRoles);
-  }, [AppState.userRoles]);
+    fetchRoles();
+  }, []);
 
   return (
     <PageContainerV1>
