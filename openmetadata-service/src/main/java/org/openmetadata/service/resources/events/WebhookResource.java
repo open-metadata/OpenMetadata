@@ -222,9 +222,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -253,7 +253,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST

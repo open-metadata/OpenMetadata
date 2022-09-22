@@ -62,7 +62,8 @@ module.exports = (on, config) => {
   // Kafka
   config.env.kafkaBootstrapServers =
     process.env.CYPRESS_KAFKA_BOOTSTRAP_SERVERS;
-  config.env.kafkaSchemaRegistryUrl = process.env.CYPRESS_KAFKA_SCHEMA_REGISTRY_URL;
+  config.env.kafkaSchemaRegistryUrl =
+    process.env.CYPRESS_KAFKA_SCHEMA_REGISTRY_URL;
 
   // Glue
   config.env.glueAwsAccessKeyId = process.env.CYPRESS_GLUE_ACCESS_KEY;
@@ -72,6 +73,12 @@ module.exports = (on, config) => {
   config.env.glueStorageServiceName = process.env.CYPRESS_GLUE_STORAGE_SERVICE;
   config.env.gluePipelineServiceName =
     process.env.CYPRESS_GLUE_PIPELINE_SERVICE;
+
+  // Mysql
+  config.env.mysqlUsername = process.env.CYPRESS_MYSQL_USERNAME;
+  config.env.mysqlPassword = process.env.CYPRESS_MYSQL_PASSWORD;
+  config.env.mysqlHostPort = process.env.CYPRESS_MYSQL_HOST_PORT;
+  config.env.mysqlDatabaseSchema = process.env.CYPRESS_MYSQL_DATABASE_SCHEMA;
 
   return config;
 };
