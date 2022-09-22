@@ -135,7 +135,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 
 - The private-key/service-account JSON file will be downloaded.
 
-After the applying these steps, you can update the configuration of your deployment:
+After applying these steps, you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout

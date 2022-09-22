@@ -26,12 +26,13 @@ Admin permissions are required to register the application on the Azure portal.
 
 <Image src="/images/deployment/security/azure/create-app-1.png" alt="create-app"/>
 
-- Click on `New Registration`. This step is for registering the OpenMetadata UI.
+- Click on `New Registration`. This step is for registering a new App for the OpenMetadata UI.
 
 <Image src="/images/deployment/security/azure/create-app-2.png" alt="create-app"/>
 
 - Provide an Application Name for registration.
-- Provide a redirect URL as a `Single Page Application`.
+- Choose the type of accounts you want to give access to OpenMetadata UI.
+- Select `Single-page application (SPA)` for `Redirect URI` and provide the redirect URL as `http(s)://<OpenMetadataHost>:<Port>/callback`.
 - Click on `Register`.
 
 <Image src="/images/deployment/security/azure/create-app-3.png" alt="create-app"/>
@@ -42,14 +43,21 @@ Admin permissions are required to register the application on the Azure portal.
 
 <Image src="/images/deployment/security/azure/where-to-find-credentials.png" alt="create-app"/>
 
-- When passing the details for `authority`, the `Tenant ID` is added to the URL as shown in the example
-  below. `https://login.microsoftonline.com/TenantID`
+- When passing the details for `authority` under OpenMetadata `authenticationConfiguration` section, the `Tenant ID` is added to the URL as shown in the example
+  below. `https://login.microsoftonline.com/<TenantID>`
 
 ```commandline
-"authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
+"authority": "https://login.microsoftonline.com/196771cf-c6bb-484a-b0a3-a6d544a48524"
 ```
 
-## Create Service Application
+## Create Service Application (Optional)
+
+<Note>
+
+OpenMetadata supports JWT Token based authentication for Ingestion Bots. You can
+skip this step and refer to the documentation [here](deployment/security/enable-jwt-tokens) to generate a JWT token for Ingestion.
+
+</Note>
 
 ### Step 1: Access Tokens and ID Tokens
 
@@ -82,7 +90,7 @@ Admin permissions are required to register the application on the Azure portal.
 ### Step 4: Register Another Azure Application
 
 Another Azure Application must be registered for Service ingestion.
-- 
+
 - Provide an application name.
 - Create a `public client redirect URI`.
 - Click on Register.
@@ -156,7 +164,7 @@ This information is required to configure Airflow.
 
 <Image src="/images/deployment/security/azure/client-id-and-authority.png" alt="client-id-authority"/>
 
-After the applying these steps, you can update the configuration of your deployment:
+After applying these steps, you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout

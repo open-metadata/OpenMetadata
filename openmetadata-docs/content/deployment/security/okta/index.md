@@ -197,7 +197,7 @@ curl --location --request POST '<domain-url>/oauth2/v1/clients' \
 
 - To get more information on the Scopes. Visit the [Doc](https://developer.okta.com/docs/guides/implement-oauth-for-okta/scopes/).
 
-After the applying these steps, you can update the configuration of your deployment:
+After applying these steps, you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout

@@ -17,7 +17,7 @@ Follow the sections in this guide to set up Custom OIDC SSO.
 - Navigate to your preferred OIDC provider console and create an OIDC client application.
 - Generate client ID and secret key in JSON format.
 
-After the applying these steps, you can update the configuration of your deployment:
+After applying these steps, you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout

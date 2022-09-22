@@ -52,7 +52,7 @@ Follow the sections in this guide to set up OneLogin SSO.
 
 <Image src="/images/deployment/security/one-login/create-service-account.png" alt="create-account"/>
 
-After the applying these steps, you can update the configuration of your deployment:
+After applying these steps, you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout

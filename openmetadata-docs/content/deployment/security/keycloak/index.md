@@ -57,7 +57,7 @@ Follow the sections in this guide to set up Keycloak SSO.
 
 <Image src="/images/deployment/security/keycloak/7-client-service-account.png" alt="client-service-account.png"/>
 
-After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
+After applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout

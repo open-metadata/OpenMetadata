@@ -54,7 +54,7 @@ Follow the sections in this guide to set up Amazon Cognito SSO.
 
 <Image src="/images/deployment/security/amazon-cognito-sso/create-server-credentials-8.png" alt="create-account" caption="Client ID"/>
 
-After the applying these steps, you can update the configuration of your deployment:
+After applying these steps, you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout

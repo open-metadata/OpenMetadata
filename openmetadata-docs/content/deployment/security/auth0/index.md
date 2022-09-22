@@ -107,7 +107,7 @@ This section will guide to create the Ingestion Bot service account.
 
 <Image src="/images/deployment/security/auth0/authorize-api-6.png" alt="auth"/>
 
-After the applying these steps, you can update the configuration of your deployment:
+After applying these steps, you can update the configuration of your deployment:
 
 <InlineCalloutContainer>
   <InlineCallout
