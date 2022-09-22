@@ -695,7 +695,7 @@ const PipelineDetailsPage = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    if (pipelinePermissions.ViewAll) {
+    if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
       fetchPipelineDetail(pipelineFQN);
       setEntityLineage({} as EntityLineage);
       getEntityFeedCount();
@@ -723,7 +723,7 @@ const PipelineDetailsPage = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {pipelinePermissions.ViewAll ? (
+          {pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic ? (
             <PipelineDetails
               activeTab={activeTab}
               addLineageHandler={addLineageHandler}

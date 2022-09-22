@@ -468,7 +468,7 @@ const TeamsPage = () => {
   };
 
   useEffect(() => {
-    if (entityPermissions.ViewAll) {
+    if (entityPermissions.ViewAll || entityPermissions.ViewBasic) {
       if (fqn) {
         fetchTeamByFqn(fqn);
       }
@@ -486,7 +486,7 @@ const TeamsPage = () => {
 
   return (
     <>
-      {entityPermissions.ViewAll ? (
+      {entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
         <>
           {isUndefined(fqn) ? (
             <Teams

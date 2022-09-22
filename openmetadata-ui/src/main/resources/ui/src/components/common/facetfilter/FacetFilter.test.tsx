@@ -79,14 +79,17 @@ const aggregations = [
       {
         key: 'PII.Sensitive',
         doc_count: 1,
+        label: 'Sensitive',
       },
       {
         key: 'PersonalData.Personal',
         doc_count: 1,
+        label: 'Personal',
       },
       {
         key: 'User.Address',
         doc_count: 1,
+        label: 'Address',
       },
     ],
   },

@@ -556,7 +556,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [appState.inPageSearchText]);
 
   useEffect(() => {
-    if (databasePermission.ViewAll) {
+    if (databasePermission.ViewAll || databasePermission.ViewBasic) {
       const currentTab = getCurrentDatabaseDetailsTab(tab);
       const currentTabIndex = currentTab - 1;
 
@@ -599,7 +599,7 @@ const DatabaseDetails: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {databasePermission.ViewAll ? (
+          {databasePermission.ViewAll || databasePermission.ViewBasic ? (
             <PageContainer>
               <div
                 className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"

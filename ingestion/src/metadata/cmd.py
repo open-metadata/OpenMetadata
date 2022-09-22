@@ -23,6 +23,9 @@ from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import run_backup
 from metadata.cli.docker import BACKEND_DATABASES, run_docker
 from metadata.cli.ingest import run_ingest
+from metadata.cli.openmetadata_imports_migration import (
+    run_openmetadata_imports_migration,
+)
 from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
@@ -322,6 +325,22 @@ def backup(
     run_backup(
         host, user, password, database, port, output, upload, options, arguments, schema
     )
+
+
+@metadata.command()
+@click.option("-d", "--dir-path", default="/ingestion/examples/airflow/dags")
+def openmetadata_imports_migration(
+    dir_path: str,
+) -> None:
+    """Update DAG files generated after creating workflow in 0.11 and before.
+
+    In 0.12 the airflow managed API package name changed from `openmetadata` to `openmetadata_managed_apis`
+    hence breaking existing DAGs
+
+    Args:
+        dir_path (str): _description_
+    """
+    run_openmetadata_imports_migration(dir_path)
 
 
 metadata.add_command(check)

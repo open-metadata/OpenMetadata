@@ -138,7 +138,7 @@ const BotDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (botPermission.ViewAll) {
+    if (botPermission.ViewAll || botPermission.ViewBasic) {
       fetchBotsData();
     }
   }, [botPermission, botsName]);
@@ -153,7 +153,7 @@ const BotDetailsPage = () => {
         <Loader />
       ) : (
         <>
-          {botPermission.ViewAll ? (
+          {botPermission.ViewAll || botPermission.ViewBasic ? (
             getBotsDetailComponent()
           ) : (
             <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>

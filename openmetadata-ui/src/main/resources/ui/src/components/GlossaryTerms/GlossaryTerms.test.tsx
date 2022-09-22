@@ -56,6 +56,9 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
+  userPermissions: {
+    hasViewPermissions: jest.fn(),
+  },
 }));
 
 jest.mock('react-router-dom', () => ({

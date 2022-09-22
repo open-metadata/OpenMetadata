@@ -15,7 +15,6 @@ from typing import Tuple
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 
-from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )

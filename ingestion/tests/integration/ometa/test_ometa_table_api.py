@@ -17,8 +17,6 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from unittest import TestCase
 
-import pytest
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,

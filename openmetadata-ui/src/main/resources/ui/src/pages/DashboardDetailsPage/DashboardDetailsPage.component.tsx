@@ -753,7 +753,7 @@ const DashboardDetailsPage = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    if (dashboardPermissions.ViewAll) {
+    if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
       setEntityLineage({} as EntityLineage);
       getEntityFeedCount();
@@ -781,7 +781,7 @@ const DashboardDetailsPage = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {dashboardPermissions.ViewAll ? (
+          {dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic ? (
             <DashboardDetails
               activeTab={activeTab}
               addLineageHandler={addLineageHandler}

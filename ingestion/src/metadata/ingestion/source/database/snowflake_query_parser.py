@@ -44,9 +44,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
 
-        # Snowflake does not allow retrieval of data older than 7 days
-        # Update start and end based on this
-        duration = min(self.source_config.queryLogDuration, 6)
+        duration = self.source_config.queryLogDuration
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod

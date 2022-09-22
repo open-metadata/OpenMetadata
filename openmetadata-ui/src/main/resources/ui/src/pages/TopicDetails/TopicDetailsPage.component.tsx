@@ -695,7 +695,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [topicFQN]);
 
   useEffect(() => {
-    if (topicPermissions.ViewAll) {
+    if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
       fetchTopicDetail(topicFQN);
       getEntityFeedCount();
     }
@@ -711,7 +711,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {topicPermissions.ViewAll ? (
+          {topicPermissions.ViewAll || topicPermissions.ViewBasic ? (
             <TopicDetails
               activeTab={activeTab}
               cleanupPolicies={cleanupPolicies}

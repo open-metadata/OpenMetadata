@@ -103,8 +103,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
     return testCaseStatus;
   }, []);
 
-  const viewTest = permissions.ViewAll || permissions.ViewTests;
-  const viewProfiler = permissions.ViewAll || permissions.ViewDataProfile;
+  const viewTest =
+    permissions.ViewAll || permissions.ViewBasic || permissions.ViewTests;
+  const viewProfiler =
+    permissions.ViewAll || permissions.ViewBasic || permissions.ViewDataProfile;
   const editTest = permissions.EditAll || permissions.EditTests;
 
   const handleSettingModal = (value: boolean) => {
@@ -247,14 +249,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
         <Space>
           {isDataQuality && (
             <>
-              <Form.Item className="mb-0 w-40" label="Type">
+              <Form.Item className="m-0 w-40" label="Type">
                 <Select
                   options={testCaseTypeOption}
                   value={selectedTestType}
                   onChange={handleTestCaseTypeChange}
                 />
               </Form.Item>
-              <Form.Item className="mb-0 w-40" label="Status">
+              <Form.Item className="m-0 w-40" label="Status">
                 <Select
                   options={testCaseStatusOption}
                   value={selectedTestCaseStatus}

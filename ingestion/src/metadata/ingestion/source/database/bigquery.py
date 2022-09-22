@@ -49,7 +49,6 @@ from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -134,24 +133,28 @@ class BigquerySource(CommonDbSourceService):
         :param _:
         :return:
         """
-        taxonomies = PolicyTagManagerClient().list_taxonomies(
-            parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
-        )
-        for taxonomy in taxonomies:
-            policiy_tags = PolicyTagManagerClient().list_policy_tags(
-                parent=taxonomy.name
+        try:
+            taxonomies = PolicyTagManagerClient().list_taxonomies(
+                parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
             )
-            for tag in policiy_tags:
-                yield OMetaTagAndCategory(
-                    category_name=CreateTagCategoryRequest(
-                        name=self.service_connection.tagCategoryName,
-                        description="",
-                        categoryType="Classification",
-                    ),
-                    category_details=CreateTagRequest(
-                        name=tag.display_name, description="Bigquery Policy Tag"
-                    ),
+            for taxonomy in taxonomies:
+                policiy_tags = PolicyTagManagerClient().list_policy_tags(
+                    parent=taxonomy.name
                 )
+                for tag in policiy_tags:
+                    yield OMetaTagAndCategory(
+                        category_name=CreateTagCategoryRequest(
+                            name=self.service_connection.tagCategoryName,
+                            description="",
+                            categoryType="Classification",
+                        ),
+                        category_details=CreateTagRequest(
+                            name=tag.display_name, description="Bigquery Policy Tag"
+                        ),
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Skipping Policy Tag: {exc}")
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
