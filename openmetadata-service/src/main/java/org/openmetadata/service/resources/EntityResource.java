@@ -12,6 +12,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -68,11 +69,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after)
       throws IOException {
-    OperationContext listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    Fields fields = getFields(fieldsParam);
+    OperationContext listOperationContext = new OperationContext(entityType, getViewOperations(fields));
     return listInternal(
         uriInfo,
         securityContext,
-        fieldsParam,
+        fields,
         filter,
         limitParam,
         before,
@@ -84,7 +86,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public ResultList<T> listInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
-      String fieldsParam,
+      Fields fields,
       ListFilter filter,
       int limitParam,
       String before,
@@ -94,7 +96,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       throws IOException {
     RestUtil.validateCursors(before, after);
     authorizer.authorize(securityContext, operationContext, resourceContext, true);
-    Fields fields = getFields(fieldsParam);
 
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
@@ -107,44 +108,74 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include)
       throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    return getInternal(
-        uriInfo, securityContext, id, fieldsParam, include, operationContext, getResourceContextById(id));
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    return getInternal(uriInfo, securityContext, id, fields, include, operationContext, getResourceContextById(id));
   }
 
   public T getInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
       UUID id,
-      String fieldsParam,
+      Fields fields,
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext, true);
-    Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+  }
+
+  public T getVersionInternal(SecurityContext securityContext, UUID id, String version) throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    return getVersionInternal(securityContext, id, version, operationContext, getResourceContextById(id));
+  }
+
+  public T getVersionInternal(
+      SecurityContext securityContext,
+      UUID id,
+      String version,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    return dao.getVersion(id, version);
+  }
+
+  protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
+  }
+
+  protected EntityHistory listVersionsInternal(
+      SecurityContext securityContext,
+      UUID id,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    return dao.listVersions(id);
   }
 
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     return getByNameInternal(
-        uriInfo, securityContext, name, fieldsParam, include, operationContext, getResourceContextByName(name));
+        uriInfo, securityContext, name, fields, include, operationContext, getResourceContextByName(name));
   }
 
   public T getByNameInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String name,
-      String fieldsParam,
+      Fields fields,
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext, true);
-    Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 
@@ -230,5 +261,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   protected ResourceContext getResourceContextByName(String name) {
     return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).build();
+  }
+
+  public static MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+
+  protected MetadataOperation[] getViewOperations(Fields fields) {
+    return VIEW_ALL_OPERATIONS;
   }
 }

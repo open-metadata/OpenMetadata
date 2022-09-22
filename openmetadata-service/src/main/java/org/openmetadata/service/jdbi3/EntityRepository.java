@@ -367,10 +367,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public EntityHistory listVersions(String id) throws IOException {
-    T latest = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
+  public EntityHistory listVersions(UUID id) throws IOException {
+    T latest = setFields(dao.findEntityById(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
-    List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
+    List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id.toString(), extensionPrefix);
     List<EntityVersionPair> oldVersions = new ArrayList<>();
     records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
     oldVersions.sort(EntityUtil.compareVersion.reversed());

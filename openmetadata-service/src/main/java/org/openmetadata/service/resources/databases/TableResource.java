@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -90,6 +91,27 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     Entity.withHref(uriInfo, table.getOwner());
     Entity.withHref(uriInfo, table.getFollowers());
     return table;
+  }
+
+  @Override
+  protected MetadataOperation[] getViewOperations(Fields fields) {
+    List<MetadataOperation> operations = new ArrayList<>(List.of(MetadataOperation.VIEW_BASIC));
+    if (fields.contains("tests")) {
+      operations.add(MetadataOperation.VIEW_TESTS);
+    }
+    if (fields.contains("tableQueries")) {
+      operations.add(MetadataOperation.VIEW_QUERIES);
+    }
+    if (fields.contains("profile")) {
+      operations.add(MetadataOperation.VIEW_DATA_PROFILE);
+    }
+    if (fields.contains("sampleData")) {
+      operations.add(MetadataOperation.VIEW_SAMPLE_DATA);
+    }
+    if (operations.size() == 5) {
+      return EntityResource.VIEW_ALL_OPERATIONS; // All view operations are requested
+    }
+    return operations.toArray(new MetadataOperation[0]);
   }
 
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
@@ -270,9 +292,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -301,7 +323,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
