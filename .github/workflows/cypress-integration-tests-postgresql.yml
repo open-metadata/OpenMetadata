@@ -12,7 +12,7 @@
 # This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
-name: Cypress Integration Tests
+name: PostgreSQL Cypress Integration Tests
 
 on:
   push:
@@ -33,7 +33,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        database: [mysql, postgresql]
         job: [0, 1]
     environment: cypress
     steps:
@@ -56,7 +55,7 @@ jobs:
       - name: Start Server and Ingest Sample Data
         env:
           INGESTION_DEPENDENCY: "all"
-        run: ./docker/run_local_docker.sh -d ${{ matrix.database }}
+        run: ./docker/run_local_docker.sh -d postgresql
         timeout-minutes: 30
 
       - name: Run Cypress Tests
@@ -67,7 +66,6 @@ jobs:
           parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
-          group: Tests with database ${{ matrix.database }}
           browser: chrome
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
