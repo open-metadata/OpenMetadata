@@ -19,26 +19,12 @@ from typing import Type, TypeVar
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.entity.services.messagingService import (
-    MessagingConnection,
-)
-from metadata.generated.schema.entity.services.metadataService import MetadataConnection
-from metadata.generated.schema.entity.services.mlmodelService import MlModelConnection
-from metadata.generated.schema.entity.services.pipelineService import PipelineConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     Processor as WorkflowProcessor,
 )
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
 
 logger = logging.getLogger("Config")
 
