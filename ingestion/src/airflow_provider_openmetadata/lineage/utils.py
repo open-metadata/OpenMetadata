@@ -69,11 +69,11 @@ def is_airflow_version_1() -> bool:
     # pylint: disable=unused-import,import-outside-toplevel
     try:
         from airflow.hooks.base import BaseHook
-        
+
         return False
     except ModuleNotFoundError:
         from airflow.hooks.base_hook import BaseHook
-        
+
         return True
 
 
