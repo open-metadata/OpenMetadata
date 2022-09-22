@@ -1,55 +1,101 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Button, Space, Tooltip, Typography } from 'antd';
-import { isString, isUndefined, kebabCase } from 'lodash';
-import { FormattedGlossaryTermData } from 'Models';
+import { kebabCase } from 'lodash';
 import React from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { TermReference } from '../../generated/entity/data/glossaryTerm';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 interface SummaryDetailsProps {
   title: string;
   children: React.ReactElement;
   hasAccess: boolean;
+  showIcon?: boolean;
+  showAddIcon?: boolean;
   setShow?: (value: React.SetStateAction<boolean>) => void;
-  data?: FormattedGlossaryTermData[] | TermReference[] | string;
+  onSave?: () => void;
+  onAddClick?: () => void;
 }
 
 const SummaryDetail = ({
   title,
   children,
   setShow,
-  data,
+  showIcon,
+  showAddIcon = false,
   hasAccess,
+  onSave,
+  onAddClick,
   ...props
 }: SummaryDetailsProps) => {
   return (
-    <Space direction="vertical" {...props}>
-      <Space>
-        <Typography.Text type="secondary">{title}</Typography.Text>
-        <div data-testid={`section-${kebabCase(title)}`}>
-          <Tooltip title={hasAccess ? 'Add' : NO_PERMISSION_FOR_ACTION}>
-            <Button
-              className="tw-cursor-pointer"
-              data-testid="add-button"
-              disabled={!hasAccess}
-              size="small"
-              type="text"
-              onClick={() => setShow && setShow(true)}>
-              <SVGIcons
-                alt="icon-plus-primary"
-                icon="icon-plus-primary-outlined"
+    <Space className="w-full" direction="vertical" {...props}>
+      <Space className="w-full justify-between">
+        <div
+          className="flex-center"
+          data-testid={`section-${kebabCase(title)}`}>
+          <Typography.Text type="secondary">{title}</Typography.Text>
+          {showIcon ? (
+            <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+              <Button
+                className="cursor-pointer m--t-xss"
+                data-testid="edit-button"
+                disabled={!hasAccess}
+                icon={
+                  <SVGIcons
+                    alt="edit"
+                    icon={Icons.IC_EDIT_PRIMARY}
+                    title="Edit"
+                    width="16px"
+                  />
+                }
+                size="small"
+                type="text"
+                onClick={() => setShow && setShow(true)}
               />
-            </Button>
-          </Tooltip>
+            </Tooltip>
+          ) : (
+            showAddIcon && (
+              <Button
+                className="cursor-pointer m--t-xss"
+                data-testid="add-button"
+                disabled={!hasAccess}
+                icon={
+                  <SVGIcons
+                    alt="icon-plus-primary"
+                    icon="icon-plus-primary-outlined"
+                    width="16px"
+                  />
+                }
+                size="small"
+                type="text"
+                onClick={onAddClick}
+              />
+            )
+          )}
         </div>
+        {!showIcon && (
+          <Button
+            data-testid="save-btn"
+            size="small"
+            type="link"
+            onClick={onSave}>
+            Save
+          </Button>
+        )}
       </Space>
-      {!isString(data) && !isUndefined(data) && data.length > 0 ? (
-        <div className="tw-flex" data-testid={`${kebabCase(title)}-container`}>
-          {children}
-        </div>
-      ) : (
-        <div data-testid={`${kebabCase(title)}-container`}>{children}</div>
-      )}
+      {children}
     </Space>
   );
 };
