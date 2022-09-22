@@ -211,14 +211,11 @@ class ProfilerWorkflow:
         Args:
             entity: table entity
         """
-        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
-        if entity.serviceType != DatabaseServiceType.BigQuery:
-            return None
         entity_config: TableConfig = self.get_config_for_entity(entity)
         if entity_config:
             return entity_config.partitionConfig
 
-        if entity.tablePartition:
+        if hasattr(entity, "tablePartition"):
             try:
                 if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
                     partition_field = entity.tablePartition.columns[0]
