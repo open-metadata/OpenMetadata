@@ -133,10 +133,24 @@ const BasicAuthProvider = ({
         return showErrorToast(jsonData['api-error-messages']['email-found']);
       }
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      if (
+        (err as AxiosError).response?.status ===
+        HTTP_STATUS_CODE.FAILED_DEPENDENCY
+      ) {
+        showSuccessToast(
+          jsonData['api-success-messages']['create-user-account']
+        );
+        showErrorToast(
+          err as AxiosError,
+          jsonData['api-error-messages']['email-verification-err']
+        );
+        history.push(ROUTES.SIGNIN);
+      } else {
+        showErrorToast(
+          err as AxiosError,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+      }
     } finally {
       setLoadingIndicator(false);
     }
@@ -147,7 +161,16 @@ const BasicAuthProvider = ({
       setLoadingIndicator(true);
       await generatePasswordResetLink(email);
     } catch (err) {
-      showErrorToast(jsonData['api-error-messages']['email-not-found']);
+      if (
+        (err as AxiosError).response?.status ===
+        HTTP_STATUS_CODE.FAILED_DEPENDENCY
+      ) {
+        showErrorToast(
+          jsonData['api-error-messages']['forgot-password-email-err']
+        );
+      } else {
+        showErrorToast(jsonData['api-error-messages']['email-not-found']);
+      }
     } finally {
       setLoadingIndicator(false);
     }

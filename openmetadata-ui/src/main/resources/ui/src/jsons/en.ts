@@ -49,6 +49,12 @@ const jsonData = {
     'delete-tag-category-error': 'Error while deleting tag category!',
     'delete-tag-error': 'Error while deleting tag!',
 
+    'email-verification-err':
+      'An email could not be sent for verification. Please contact your Administrator.',
+
+    'forgot-password-email-err':
+      'There is some issue in sending the mail. Please contact your Administrator.',
+
     'unexpected-error': 'Oops! An unexpected error occurred.',
 
     'forbidden-error': 'You do not have permissions to perform this action!',
@@ -151,8 +157,8 @@ const jsonData = {
     'update-test-suite-error': 'Error while updating test suite',
 
     'fetch-settings': 'Error while fetching settings',
-    'email-not-found': 'Email is not exist with us!',
-    'email-found': 'Email is exist with us!',
+    'email-not-found': 'User with the given email address does not exist!',
+    'email-found': 'User with the given email address already exists!',
     'unauthorized-user': 'UnAuthorized user! please check email or password',
   },
   'api-success-messages': {
