@@ -57,6 +57,11 @@
     "enableSecureSocketConnection": {
       "description": "Enable Secure Socket Connection",
       "type": "boolean"
+    },
+    "enableSelfSignup": {
+      "description": "Enable Self Sign Up",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["className", "containerRequestFilter", "adminPrincipals", "botPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],

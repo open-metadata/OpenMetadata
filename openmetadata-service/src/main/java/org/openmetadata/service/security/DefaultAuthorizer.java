@@ -18,8 +18,10 @@ import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_D
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
@@ -47,10 +49,15 @@ import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ConfigurationHolder;
+import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
+  private final String COLONDELIMETER = ":";
+  private final String DEFAULT_ADMIN = "admin";
   private Set<String> adminUsers;
   private Set<String> botUsers;
   private Set<String> testUsers;
@@ -83,17 +90,10 @@ public class DefaultAuthorizer implements Authorizer {
         addOrUpdateUser(user);
       }
     } else {
-      for (String adminUser : adminUsers) {
-        String[] tokens = adminUser.split(":");
-        String username = tokens[0];
-        String pwd = tokens[1];
-        String hashedPwd = BCrypt.withDefaults().hashToString(12, pwd.toCharArray());
-        User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
-        user.setAuthenticationMechanism(
-            new AuthenticationMechanism()
-                .withAuthType(AuthenticationMechanism.AuthType.BASIC)
-                .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
-        addOrUpdateUser(user);
+      try {
+        handleBasicAuth(adminUsers, domain);
+      } catch (IOException e) {
+        LOG.error("Failed in Basic Auth Setup. Reason : {}", e.getMessage());
       }
     }
 
@@ -112,6 +112,67 @@ public class DefaultAuthorizer implements Authorizer {
       User user = user(testUser, domain, testUser);
       addOrUpdateUser(user);
     }
+  }
+
+  private void handleBasicAuth(Set<String> adminUsers, String domain) throws IOException {
+    for (String adminUser : adminUsers) {
+      if (adminUser.contains(COLONDELIMETER)) {
+        String[] tokens = adminUser.split(COLONDELIMETER);
+        addUserForBasicAuth(tokens[0], tokens[1], domain);
+      } else {
+        boolean isDefaultAdmin = adminUser.equals(DEFAULT_ADMIN);
+        String token = isDefaultAdmin ? DEFAULT_ADMIN : PasswordUtil.generateRandomPassword();
+        addUserForBasicAuth(adminUser, token, domain);
+      }
+    }
+  }
+
+  private User addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
+    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    User originalUser;
+    try {
+      originalUser =
+          userRepository.getByName(null, username, new EntityUtil.Fields(List.of("authenticationMechanism")));
+      if (originalUser.getAuthenticationMechanism() == null) {
+        updateUserWithHashedPwd(originalUser, pwd);
+      }
+      return addOrUpdateUser(originalUser);
+    } catch (EntityNotFoundException e) {
+      // TODO: Not the best way ! :(
+      User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
+      updateUserWithHashedPwd(user, pwd);
+      addOrUpdateUser(user);
+      sendInviteMailToAdmin(user, pwd);
+      return user;
+    }
+  }
+
+  private void sendInviteMailToAdmin(User user, String pwd) {
+    Map<String, String> templatePopulator = new HashMap<>();
+    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.USERNAME, user.getName());
+    templatePopulator.put(EmailUtil.PASSWORD, pwd);
+    templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
+    try {
+      EmailUtil.getInstance()
+          .sendMail(
+              EmailUtil.getInstance().getEmailInviteSubject(),
+              templatePopulator,
+              user.getEmail(),
+              EmailUtil.EMAILTEMPLATEBASEPATH,
+              EmailUtil.INVITE_RANDOM_PWD);
+    } catch (Exception ex) {
+      LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
+    }
+  }
+
+  private void updateUserWithHashedPwd(User user, String pwd) {
+    String hashedPwd = BCrypt.withDefaults().hashToString(12, pwd.toCharArray());
+    user.setAuthenticationMechanism(
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+            .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
   }
 
   private User user(String name, String domain, String updatedBy) {
