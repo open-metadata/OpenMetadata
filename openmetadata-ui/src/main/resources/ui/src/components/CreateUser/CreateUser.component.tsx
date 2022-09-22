@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Select } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
@@ -21,8 +22,16 @@ import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import {
+  AuthType,
+  EntityReference as UserTeams,
+  JWTTokenExpiry,
+} from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
+import {
+  getAuthMechanismTypeOptions,
+  getJWTTokenExpiryOptions,
+} from '../../utils/BotsUtils';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
@@ -34,6 +43,8 @@ import { Field } from '../Field/Field';
 import Loader from '../Loader/Loader';
 import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
+
+const { Option } = Select;
 
 const CreateUser = ({
   roles,
@@ -53,6 +64,10 @@ const CreateUser = ({
   );
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
     []
+  );
+  const [authMechanism, setAuthMechanism] = useState<AuthType>(AuthType.Jwt);
+  const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
+    JWTTokenExpiry.OneHour
   );
   const [showErrorMsg, setShowErrorMsg] = useState({
     email: false,
@@ -173,6 +188,16 @@ const CreateUser = ({
         email: email,
         isAdmin: isAdmin,
         isBot: isBot,
+        ...(forceBot
+          ? {
+              authenticationMechanism: {
+                authType: authMechanism,
+                config: {
+                  JWTTokenExpiry: tokenExpiry,
+                },
+              },
+            }
+          : {}),
       };
       onSave(userProfile);
     }
@@ -265,6 +290,44 @@ const CreateUser = ({
             onChange={handleValidation}
           />
         </Field>
+        {forceBot && (
+          <>
+            <Field>
+              <label
+                className="tw-block tw-form-label tw-mb-0"
+                htmlFor="auth-mechanism">
+                {requiredField('Auth Mechanism')}
+              </label>
+              <Select
+                className="w-full"
+                data-testid="auth-mechanism"
+                defaultValue={authMechanism}
+                placeholder="Select Auth Mechanism"
+                onChange={(value) => setAuthMechanism(value)}>
+                {getAuthMechanismTypeOptions().map((option) => (
+                  <Option key={option.value}>{option.label}</Option>
+                ))}
+              </Select>
+            </Field>
+            <Field>
+              <label
+                className="tw-block tw-form-label tw-mb-0"
+                htmlFor="token-expiry">
+                {requiredField('Token Expiration')}
+              </label>
+              <Select
+                className="w-full"
+                data-testid="token-expiry"
+                defaultValue={tokenExpiry}
+                placeholder="Select Token Expiration"
+                onChange={(value) => setTokenExpiry(value)}>
+                {getJWTTokenExpiryOptions().map((option) => (
+                  <Option key={option.value}>{option.label}</Option>
+                ))}
+              </Select>
+            </Field>
+          </>
+        )}
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-0"
