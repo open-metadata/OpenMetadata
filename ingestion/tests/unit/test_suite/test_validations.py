@@ -46,6 +46,7 @@ TABLE = Table(
     columns=[
         Column(name="id", dataType=DataType.INT),
         Column(name="name", dataType=DataType.STRING),
+        Column(name="first name", dataType=DataType.STRING),
         Column(name="fullname", dataType=DataType.STRING),
         Column(name="nickname", dataType=DataType.STRING),
         Column(name="age", dataType=DataType.INT),
@@ -60,6 +61,7 @@ class User(Base):
     __tablename__ = "users"
     id = sqa.Column(sqa.Integer, primary_key=True)
     name = sqa.Column(sqa.String(256))
+    first_name = sqa.Column("first name", sqa.String(256))
     fullname = sqa.Column(sqa.String(256))
     nickname = sqa.Column(sqa.String(256))
     age = sqa.Column(sqa.Integer)
@@ -96,18 +98,21 @@ class testSuiteValidation(unittest.TestCase):
             data = [
                 User(
                     name="John",
+                    first_name="Jo",
                     fullname="John Doe",
                     nickname="johnny b goode",
                     age=30,
                 ),
                 User(
                     name="Jane",
+                    first_name="Ja",
                     fullname="Jone Doe",
                     nickname="Johnny d",
                     age=31,
                 ),
                 User(
                     name="John",
+                    first_name="Joh",
                     fullname="John Doe",
                     nickname=None,
                     age=None,
@@ -142,6 +147,28 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "8"
         assert res.testResultValue[1].value == "14"
+
+        test_case = TestCase(
+            name="my_test_case",
+            entityLink="<#E::table::service.db.users::columns::first+name>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="minLength", value="1"),
+                TestCaseParameterValue(name="maxLength", value="10"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
+        assert res.testResultValue[0].value == "2"
+        assert res.testResultValue[1].value == "3"
 
     def test_column_value_max_to_be_between(self):
         """test column value max to be between"""
@@ -492,7 +519,7 @@ class testSuiteValidation(unittest.TestCase):
 
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
-        assert res.testResultValue[0].value == "5"
+        assert res.testResultValue[0].value == "6"
 
     def test_table_column_count_to_equal(self):
         """test column value to be equal"""
@@ -501,7 +528,7 @@ class testSuiteValidation(unittest.TestCase):
             entityLink="<#E::table::service.db.users>",
             testSuite=EntityReference(id=uuid4(), type="TestSuite"),
             testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
-            parameterValues=[TestCaseParameterValue(name="columnCount", value="6")],
+            parameterValues=[TestCaseParameterValue(name="columnCount", value="7")],
         )
 
         res = validation_enum_registry.registry["tableColumnCountToEqual"](
@@ -512,7 +539,7 @@ class testSuiteValidation(unittest.TestCase):
 
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
-        assert res.testResultValue[0].value == "5"
+        assert res.testResultValue[0].value == "6"
 
     def test_table_column_name_to_exist(self):
         """test column name to exist"""
@@ -556,7 +583,7 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert (
             res.testResultValue[0].value
-            == "['id', 'name', 'fullname', 'nickname', 'age']"
+            == "['first name', 'id', 'name', 'fullname', 'nickname', 'age']"
         )
 
         test_case = TestCase(
@@ -577,7 +604,7 @@ class testSuiteValidation(unittest.TestCase):
             runner=self.runner,
         )
 
-        assert res.testCaseStatus == TestCaseStatus.Success
+        assert res.testCaseStatus == TestCaseStatus.Failed
 
         test_case = TestCase(
             name="my_test_case",
