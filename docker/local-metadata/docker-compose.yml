@@ -125,6 +125,8 @@ services:
       RSA_PRIVATE_KEY_FILE_PATH: ${RSA_PRIVATE_KEY_FILE_PATH:-""}
       JWT_ISSUER: ${JWT_ISSUER:-"open-metadata.org"}
       JWT_KEY_ID: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
+      OM_AUTH_JWT_TOKEN: ${OM_AUTH_JWT_TOKEN:-""}
+
     expose:
       - 8585
       - 8586
