@@ -11,10 +11,9 @@
 """
 Docker functions for CLI
 """
-import os
 import json
+import os
 import pathlib
-import secrets
 import sys
 import tempfile
 import time
@@ -37,13 +36,13 @@ from metadata.utils.logger import cli_logger, ometa_logger
 logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
-#directory = "mysql-data"
-# Parent Directories 
-#parent_dir = "/RELEASE/OpenMetadata"        
-# Path 
-#path = os.path.join(parent_dir, directory)         
-# Create the directory 
-#os.mkdir(directory)
+# directory = "mysql-data"
+# Parent Directories
+# parent_dir = "/RELEASE/OpenMetadata"
+# Path
+# path = os.path.join(parent_dir, directory)
+# Create the directory
+# os.mkdir(directory)
 
 RELEASE_BRANCH_VERSION = get_client_version()
 
@@ -54,27 +53,30 @@ BACKEND_DATABASES = {
     "mysql": DEFAULT_COMPOSE_FILE,
     "postgres": "docker-compose-postgres.yml",
 }
+
+
 def docker_volume():
-    
-    #create a main directory
-    maindir="docker-volume"
+
+    # create a main directory
+    maindir = "docker-volume"
     if not os.path.exists(maindir):
         os.mkdir(maindir)
-        db="db-data"
-        dag_airflow="ingestion-volume-dag-airflow"
-        dags="ingestion-volume-dags"
-        tmp="secrets"
-        om_server="om-server"
+        db = "db-data"
+        dag_airflow = "ingestion-volume-dag-airflow"
+        dags = "ingestion-volume-dags"
+        tmp = "secrets"
+        om_server = "om-server"
         final_db_path = os.path.join(maindir, db)
         final_dag_airflow_path = os.path.join(maindir, dag_airflow)
         final_dags_path = os.path.join(maindir, dags)
         final_tmp_path = os.path.join(maindir, tmp)
-        final_om_server= os.path.join(maindir,om_server)
+        final_om_server = os.path.join(maindir, om_server)
         os.makedirs(final_db_path, exist_ok=True)
         os.makedirs(final_dag_airflow_path, exist_ok=True)
         os.makedirs(final_dags_path, exist_ok=True)
         os.makedirs(final_tmp_path, exist_ok=True)
         os.makedirs(final_om_server, exist_ok=True)
+
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     docker_volume()
