@@ -41,7 +41,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.5",
+    "sqllineage==1.3.6",
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
@@ -85,7 +85,7 @@ plugins: Dict[str, Set[str]] = {
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
     "hive": {
-        "pyhive~=0.6.3",
+        "pyhive~=0.6.5",
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
@@ -171,6 +171,7 @@ setup(
     python_requires=">=3.7",
     options={"build_exe": build_options},
     package_dir={"": "src"},
+    package_data={"metadata.examples": ["workflows/*.yaml"]},
     zip_safe=False,
     dependency_links=[],
     project_urls={

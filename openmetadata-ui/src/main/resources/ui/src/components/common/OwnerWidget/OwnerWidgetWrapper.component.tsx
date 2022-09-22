@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import { debounce, isEqual } from 'lodash';
+import { debounce, isEqual, lowerCase } from 'lodash';
 import { Status } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { default as AppState, default as appState } from '../../../AppState';
@@ -66,6 +66,9 @@ const OwnerWidgetWrapper = ({
     ];
   }, [appState.users, appState.userDetails]);
 
+  const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
+  const [totalTeamsCount, setTotalTeamsCount] = useState<number>(0);
+
   const fetchGroupTypeTeams = async () => {
     try {
       if (listOwners.length === 0) {
@@ -76,6 +79,8 @@ const OwnerWidgetWrapper = ({
           group: 'Teams',
           type: 'team',
         }));
+        // set team count for logged in user
+        setTotalTeamsCount(data.length);
         setListOwners([...updatedData, ...userDetails]);
       }
     } catch (error) {
@@ -90,7 +95,10 @@ const OwnerWidgetWrapper = ({
       setIsUserLoading(true);
       searchFormattedUsersAndTeams(searchQuery, from)
         .then((res) => {
-          const { users, teams } = res;
+          const { users, teams, teamsTotal, usersTotal } = res;
+          // set team and user count for admin user
+          setTotalTeamsCount(teamsTotal ?? 0);
+          setTotalUsersCount(usersTotal ?? 0);
           setListOwners(getOwnerList(users, teams));
         })
         .catch(() => {
@@ -149,6 +157,22 @@ const OwnerWidgetWrapper = ({
     debounceOnSearch(text);
   };
 
+  /**
+   *
+   * @param groupName users|teams
+   * @returns total count for respective group
+   */
+  const handleTotalCountForGroup = (groupName: string) => {
+    if (lowerCase(groupName) === 'users') {
+      // if user is admin return total user count otherwise return 1
+      return isAdminUser ? totalUsersCount : 1;
+    } else if (lowerCase(groupName) === 'teams') {
+      return totalTeamsCount;
+    } else {
+      return 0;
+    }
+  };
+
   useEffect(() => {
     if (visible) {
       if (isAuthDisabled || !isAdminUser) {
@@ -186,8 +210,11 @@ const OwnerWidgetWrapper = ({
 
   return visible ? (
     <DropDownList
+      showEmptyList
       className="edit-owner-dropdown"
+      controlledSearchStr={searchText}
       dropDownList={listOwners}
+      getTotalCountForGroup={handleTotalCountForGroup}
       groupType="tab"
       isLoading={isUserLoading}
       listGroups={getOwnerGroup()}

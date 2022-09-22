@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -53,6 +54,7 @@ import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
+import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
 import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 
@@ -225,11 +227,17 @@ public class SearchResource {
           @javax.ws.rs.QueryParam("q")
           String query,
       @DefaultValue("table_search_index") @javax.ws.rs.QueryParam("index") String index,
-      @DefaultValue("suggest") @javax.ws.rs.QueryParam("field") String fieldName)
+      @DefaultValue("suggest") @javax.ws.rs.QueryParam("field") String fieldName,
+      @DefaultValue("false") @javax.ws.rs.QueryParam("deleted") String deleted)
       throws IOException {
     SearchRequest searchRequest = new SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion(fieldName).prefix(query);
+    if (fieldName.equalsIgnoreCase("suggest")) {
+      suggestionBuilder.contexts(
+          Collections.singletonMap(
+              "deleted", Collections.singletonList(CategoryQueryContext.builder().setCategory(deleted).build())));
+    }
     SuggestBuilder suggestBuilder = new SuggestBuilder();
     suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
     searchSourceBuilder.suggest(suggestBuilder);
@@ -358,8 +366,7 @@ public class SearchResource {
 
   private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
-        .aggregation(AggregationBuilders.terms("Service").field("serviceType"))
-        .size(MAX_AGGREGATE_SIZE)
+        .aggregation(AggregationBuilders.terms("Service").field("serviceType").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("ServiceName").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("ServiceCategory").field("service.type").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entityType").size(MAX_AGGREGATE_SIZE))

@@ -50,6 +50,7 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
@@ -103,6 +104,23 @@ public final class TestUtils {
   public static MlModelConnection MLFLOW_CONNECTION;
 
   public static URI PIPELINE_URL;
+
+  public static void assertCustomProperties(List<CustomProperty> expected, List<CustomProperty> actual) {
+    if (expected == actual) { // Take care of both being null
+      return;
+    }
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      expected.sort(EntityUtil.compareCustomProperty);
+      actual.sort(EntityUtil.compareCustomProperty);
+      assertEquals(expected.size(), actual.size());
+      for (int i = 0; i < expected.size(); i++) {
+        assertEquals(expected.get(i).getName(), actual.get(i).getName());
+        assertEquals(expected.get(i).getPropertyType().getId(), actual.get(i).getPropertyType().getId());
+        assertEquals(expected.get(i).getPropertyType().getType(), actual.get(i).getPropertyType().getType());
+      }
+    }
+  }
 
   public enum UpdateType {
     CREATED, // Not updated instead entity was created

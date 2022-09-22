@@ -28,6 +28,9 @@ import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('antd', () => ({
+  Typography: {
+    Text: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  },
   Button: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (

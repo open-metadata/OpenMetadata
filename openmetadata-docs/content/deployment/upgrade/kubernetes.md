@@ -95,7 +95,7 @@ release is backward incompatible.
 ```commandline
 [I/O dispatcher 1] DEBUG org.apache.http.impl.nio.client.InternalIODispatch - http-outgoing-0 [ACTIVE] [content length: 263; pos: 263; completed: true]
 [main] DEBUG org.elasticsearch.client.RestClient - request [PUT http://elasticsearch:9200/glossary_search_index/_mapping?master_timeout=30s&ignore_unavailable=false&expand_wildcards=open%2Cclosed&allow_no_indices=false&ignore_throttled=false&timeout=30s] returned [HTTP/1.1 400 Bad Request]
-[main] ERROR org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition - Failed to update Elastic Search indexes due to
+[main] ERROR org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition - Failed to update Elastic Search indexes due to
 org.elasticsearch.ElasticsearchStatusException: Elasticsearch exception [type=illegal_argument_exception, reason=can't merge a non object mapping [owner] with an object mapping]
     at org.elasticsearch.rest.BytesRestResponse.errorFromXContent(BytesRestResponse.java:176)
     at org.elasticsearch.client.RestHighLevelClient.parseEntity(RestHighLevelClient.java:1933)
@@ -104,10 +104,10 @@ org.elasticsearch.ElasticsearchStatusException: Elasticsearch exception [type=il
     at org.elasticsearch.client.RestHighLevelClient.performRequest(RestHighLevelClient.java:1639)
     at org.elasticsearch.client.RestHighLevelClient.performRequestAndParseEntity(RestHighLevelClient.java:1606)
     at org.elasticsearch.client.IndicesClient.putMapping(IndicesClient.java:342)
-    at org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.updateIndex(ElasticSearchIndexDefinition.java:139)
-    at org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.updateIndexes(ElasticSearchIndexDefinition.java:91)
-    at org.openmetadata.service.util.TablesInitializer.execute(TablesInitializer.java:227)
-    at org.openmetadata.service.util.TablesInitializer.main(TablesInitializer.java:149)
+    at org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.updateIndex(ElasticSearchIndexDefinition.java:139)
+    at org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.updateIndexes(ElasticSearchIndexDefinition.java:91)
+    at org.openmetadata.catalog.util.TablesInitializer.execute(TablesInitializer.java:227)
+    at org.openmetadata.catalog.util.TablesInitializer.main(TablesInitializer.java:149)
     Suppressed: org.elasticsearch.client.ResponseException: method [PUT], host [http://elasticsearch:9200], URI [/glossary_search_index/_mapping?master_timeout=30s&ignore_unavailable=false&expand_wildcards=open%2Cclosed&allow_no_indices=false&ignore_throttled=false&timeout=30s], status line [HTTP/1.1 400 Bad Request]
 {"error":{"root_cause":[{"type":"illegal_argument_exception","reason":"can't merge a non object mapping [owner] with an object mapping"}],"type":"illegal_argument_exception","reason":"can't merge a non object mapping [owner] with an object mapping"},"status":400}
         at org.elasticsearch.client.RestClient.convertResponse(RestClient.java:326)

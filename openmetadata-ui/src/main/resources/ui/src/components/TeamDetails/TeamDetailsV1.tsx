@@ -328,7 +328,7 @@ const TeamDetailsV1 = ({
         ...currentTeam,
         isJoinable: !currentTeam.isJoinable,
       };
-      updateTeamHandler(updatedData);
+      updateTeamHandler(updatedData, false);
     }
   };
 
@@ -572,7 +572,7 @@ const TeamDetailsV1 = ({
               <Row className="tw-mb-1" justify="space-between">
                 <Col>
                   <p className="tw-font-medium" data-testid="open-group-label">
-                    Open Group
+                    {`${currentTeam.isJoinable ? 'Close' : 'Open'} Group`}
                   </p>
                 </Col>
                 <Col>

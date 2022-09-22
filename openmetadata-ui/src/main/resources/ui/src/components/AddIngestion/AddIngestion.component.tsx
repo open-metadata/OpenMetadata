@@ -36,7 +36,10 @@ import {
   DatabaseServiceMetadataPipelineClass,
   DbtConfigSource,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getIngestionFrequency,
+} from '../../utils/CommonUtils';
 import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
 import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
@@ -96,7 +99,7 @@ const AddIngestion = ({
   );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
-    data?.airflowConfig.scheduleInterval ?? ''
+    data?.airflowConfig.scheduleInterval ?? getIngestionFrequency(pipelineType)
   );
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(

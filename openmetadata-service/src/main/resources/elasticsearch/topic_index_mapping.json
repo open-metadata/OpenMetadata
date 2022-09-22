@@ -103,7 +103,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -140,7 +140,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -148,7 +148,7 @@
         }
       },
       "deleted": {
-        "type": "boolean"
+        "type": "text"
       },
       "followers": {
         "type": "keyword"
@@ -182,7 +182,14 @@
         "type": "keyword"
       },
       "suggest": {
-        "type": "completion"
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "service_suggest": {
         "type": "completion"

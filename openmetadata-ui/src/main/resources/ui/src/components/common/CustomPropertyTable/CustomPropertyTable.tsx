@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, uniqueId } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
-import { Type } from '../../../generated/entity/type';
-import { isEven } from '../../../utils/CommonUtils';
+import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
 import { CustomPropertyProps } from './CustomPropertyTable.interface';
@@ -38,10 +38,6 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
-  const customProperties = entityTypeDetail.customProperties || [];
-
-  const extension = entityDetails.extension;
-
   const onExtensionUpdate = async (
     updatedExtension: CustomPropertyProps['entityDetails']['extension']
   ) => {
@@ -51,57 +47,47 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
     });
   };
 
+  const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
+    return [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+        width: '50%',
+      },
+      {
+        title: 'Value',
+        dataIndex: 'value',
+        key: 'value',
+        width: '50%',
+        render: (_, record) => (
+          <PropertyValue
+            extension={entityDetails.extension}
+            propertyName={record.name}
+            propertyType={record.propertyType}
+            onExtensionUpdate={onExtensionUpdate}
+          />
+        ),
+      },
+    ];
+  }, [entityDetails.extension]);
+
   useEffect(() => {
     fetchTypeDetail();
   }, []);
 
   return (
     <>
-      {isEmpty(customProperties) ? (
+      {isEmpty(entityTypeDetail.customProperties) ? (
         <ErrorPlaceHolder heading="Custom Properties" />
       ) : (
-        <div className="tw-table-container">
-          <table className="tw-w-full" data-testid="custom-properties-table">
-            <thead data-testid="table-header">
-              <tr className="tableHead-row">
-                <th
-                  className="tableHead-cell tw-w-2/4"
-                  data-testid="property-name">
-                  Name
-                </th>
-                <th
-                  className="tableHead-cell tw-w-2/4"
-                  data-testid="property-value">
-                  Value
-                </th>
-              </tr>
-            </thead>
-            <tbody data-testid="table-body">
-              {customProperties.map((property, index) => (
-                <tr
-                  className={classNames(
-                    `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                    {
-                      'tw-border-b-0': index === customProperties.length - 1,
-                    }
-                  )}
-                  data-testid="data-row"
-                  key={uniqueId()}>
-                  <td className="tableBody-cell">{property.name}</td>
-
-                  <td className="tableBody-cell">
-                    <PropertyValue
-                      extension={extension}
-                      propertyName={property.name}
-                      propertyType={property.propertyType}
-                      onExtensionUpdate={onExtensionUpdate}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={tableColumn}
+          data-testid="custom-properties-table"
+          dataSource={entityTypeDetail.customProperties || []}
+          pagination={false}
+          size="small"
+        />
       )}
     </>
   );

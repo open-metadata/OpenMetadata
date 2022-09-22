@@ -389,7 +389,10 @@ class ElasticsearchSink(Sink[Entity]):
         service_suggest.append({"input": [table.service.name], "weight": 5})
         database_suggest.append({"input": [database_entity.name.__root__], "weight": 5})
         schema_suggest.append(
-            {"input": [database_schema_entity.name.__root__], "weight": 5}
+            {
+                "input": [database_schema_entity.name.__root__],
+                "weight": 5,
+            }
         )
         self._parse_columns(
             table.columns, None, column_names, column_descriptions, tags
@@ -681,6 +684,7 @@ class ElasticsearchSink(Sink[Entity]):
             name=team.name.__root__,
             displayName=team.displayName if team.displayName else team.name.__root__,
             description=team.description.__root__ if team.description else "",
+            teamType=team.teamType.name,
             fullyQualifiedName=team.fullyQualifiedName.__root__,
             version=team.version.__root__,
             updatedAt=team.updatedAt.__root__,
@@ -690,6 +694,7 @@ class ElasticsearchSink(Sink[Entity]):
             suggest=suggest,
             users=team.users if team.users else [],
             defaultRoles=team.defaultRoles if team.defaultRoles else [],
+            parents=team.parents if team.parents else [],
             isJoinable=team.isJoinable,
         )
 

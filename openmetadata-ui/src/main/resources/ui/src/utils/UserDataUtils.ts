@@ -171,7 +171,15 @@ export const searchFormattedUsersAndTeams = (
             resTeams.status === SettledStatus.FULFILLED
               ? formatTeamsResponse(resTeams.value.data.hits.hits)
               : [];
-          resolve({ users, teams });
+          const usersTotal =
+            resUsers.status === SettledStatus.FULFILLED
+              ? resUsers.value.data.hits.total.value
+              : 0;
+          const teamsTotal =
+            resTeams.status === SettledStatus.FULFILLED
+              ? resTeams.value.data.hits.total.value
+              : 0;
+          resolve({ users, teams, usersTotal, teamsTotal });
         }
       )
       .catch((err: AxiosError) => {

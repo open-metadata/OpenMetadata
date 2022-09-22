@@ -46,7 +46,9 @@ MOCK_DELTA_CONFIG = {
         "serviceConnection": {
             "config": {
                 "type": "DeltaLake",
-                "metastoreFilePath": METASTORE_PATH,
+                "metastoreConnection": {
+                    "metastoreFilePath": METASTORE_PATH,
+                },
                 "connectionArguments": {
                     "spark.sql.warehouse.dir": SPARK_SQL_WAREHOUSE,
                 },

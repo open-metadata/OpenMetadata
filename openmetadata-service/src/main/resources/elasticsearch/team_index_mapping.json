@@ -22,6 +22,9 @@
       "description": {
         "type": "text"
       },
+      "teamType": { 
+        "type": "text"
+      },
       "version": {
         "type": "float"
       },
@@ -65,7 +68,44 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "parents": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -102,7 +142,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "boolean"
+            "type": "text"
           },
           "href": {
             "type": "text"
@@ -113,13 +153,20 @@
         "type": "text"
       },
       "deleted": {
-        "type": "boolean"
+        "type": "text"
       },
       "entityType": {
         "type": "keyword"
       },
       "suggest": {
-        "type": "completion"
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       }
     }
   }
