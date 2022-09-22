@@ -44,7 +44,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
 
   const updateDbtConfig = (
     key: keyof DbtConfigSource,
-    val?: string | SCredentials | DBTBucketDetails
+    val?: string | boolean | SCredentials | DBTBucketDetails
   ) => {
     setDbtConfig((pre) => {
       return { ...pre, [key]: val };
@@ -57,11 +57,15 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtCloudAccountId={dbtConfig.dbtCloudAccountId}
         dbtCloudAuthToken={dbtConfig.dbtCloudAuthToken}
+        dbtUpdateDescriptions={dbtConfig.dbtUpdateDescriptions}
         handleCloudAccountIdChange={(val) => {
           updateDbtConfig('dbtCloudAccountId', val);
         }}
         handleCloudAuthTokenChange={(val) => {
           updateDbtConfig('dbtCloudAuthToken', val);
+        }}
+        handleUpdateDescriptions={(val) => {
+          updateDbtConfig('dbtUpdateDescriptions', val);
         }}
         okText={okText}
         onCancel={onCancel}
@@ -77,6 +81,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtCatalogFilePath={dbtConfig.dbtCatalogFilePath}
         dbtManifestFilePath={dbtConfig.dbtManifestFilePath}
         dbtRunResultsFilePath={dbtConfig.dbtRunResultsFilePath}
+        dbtUpdateDescriptions={dbtConfig.dbtUpdateDescriptions}
         handleCatalogFilePathChange={(val) => {
           updateDbtConfig('dbtCatalogFilePath', val);
         }}
@@ -85,6 +90,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleRunResultsFilePathChange={(val) => {
           updateDbtConfig('dbtRunResultsFilePath', val);
+        }}
+        handleUpdateDescriptions={(val) => {
+          updateDbtConfig('dbtUpdateDescriptions', val);
         }}
         okText={okText}
         onCancel={onCancel}
@@ -100,6 +108,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtCatalogHttpPath={dbtConfig.dbtCatalogHttpPath}
         dbtManifestHttpPath={dbtConfig.dbtManifestHttpPath}
         dbtRunResultsHttpPath={dbtConfig.dbtRunResultsHttpPath}
+        dbtUpdateDescriptions={dbtConfig.dbtUpdateDescriptions}
         handleCatalogHttpPathChange={(val) => {
           updateDbtConfig('dbtCatalogHttpPath', val);
         }}
@@ -108,6 +117,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleRunResultsHttpPathChange={(val) => {
           updateDbtConfig('dbtRunResultsHttpPath', val);
+        }}
+        handleUpdateDescriptions={(val) => {
+          updateDbtConfig('dbtUpdateDescriptions', val);
         }}
         okText={okText}
         onCancel={onCancel}
@@ -122,11 +134,15 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtPrefixConfig={dbtConfig.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
+        dbtUpdateDescriptions={dbtConfig.dbtUpdateDescriptions}
         handlePrefixConfigChange={(val) => {
           updateDbtConfig('dbtPrefixConfig', val);
         }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
+        }}
+        handleUpdateDescriptions={(val) => {
+          updateDbtConfig('dbtUpdateDescriptions', val);
         }}
         okText={okText}
         onCancel={onCancel}
@@ -141,6 +157,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtPrefixConfig={dbtConfig.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
+        dbtUpdateDescriptions={dbtConfig.dbtUpdateDescriptions}
         gcsType={gcsType}
         handleGcsTypeChange={(type) => {
           handleGcsTypeChange && handleGcsTypeChange(type);
@@ -150,6 +167,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
+        }}
+        handleUpdateDescriptions={(val) => {
+          updateDbtConfig('dbtUpdateDescriptions', val);
         }}
         okText={okText}
         onCancel={onCancel}

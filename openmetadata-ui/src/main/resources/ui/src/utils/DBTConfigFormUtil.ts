@@ -14,6 +14,7 @@
 import { isEmpty, isNil, isString } from 'lodash';
 import {
   DbtConfigCloud,
+  DbtConfigCloudReq,
   DbtConfigHttp,
   DbtConfigLocal,
   DbtGCSCreds,
@@ -55,7 +56,7 @@ export const validateDbtCloudConfig = (
   let isValid = true;
   const errors = {} as ErrorDbtCloud;
   for (const field of Object.keys(requiredFields) as Array<
-    keyof DbtConfigCloud
+    keyof DbtConfigCloudReq
   >) {
     if (isEmpty(data[field])) {
       isValid = false;
