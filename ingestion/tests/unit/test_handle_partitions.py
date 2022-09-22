@@ -13,17 +13,11 @@ import types
 import unittest
 from typing import Optional
 from unittest import TestCase
-from unittest.mock import patch
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
-from google.cloud.bigquery import (
-    Client,
-    PartitionRange,
-    RangePartitioning,
-    TimePartitioning,
-)
+from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartitioning
 from google.cloud.bigquery.table import Table
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType
@@ -98,7 +92,14 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.utils.connections.create_generic_connection")
     @patch("metadata.ingestion.source.database.bigquery.BigquerySource.set_project_id")
     @patch("metadata.ingestion.source.database.common_db_source.test_connection")
-    def __init__(self, methodName, test_connection, set_project_id, create_generic_connection, client) -> None:
+    def __init__(
+        self,
+        methodName,
+        test_connection,
+        set_project_id,
+        create_generic_connection,
+        client,
+    ) -> None:
         super().__init__(methodName)
         client.return_value = Mock()
         create_generic_connection.return_value = Mock()

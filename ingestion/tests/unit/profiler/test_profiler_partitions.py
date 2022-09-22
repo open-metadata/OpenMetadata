@@ -17,10 +17,9 @@ from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartiti
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-
-from metadata.generated.schema.entity.data.table import TablePartition, IntervalType
 
 """
 Check Partitioned Table in Profiler Workflow
@@ -92,7 +91,7 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 
 class ProfilerPartitionUnitTest(TestCase):
-    @patch('metadata.orm_profiler.api.workflow.ProfilerWorkflow._validate_service_name')
+    @patch("metadata.orm_profiler.api.workflow.ProfilerWorkflow._validate_service_name")
     def __init__(self, methodName, validate_service_name):
         super().__init__(methodName)
         validate_service_name.return_value = True
@@ -100,28 +99,36 @@ class ProfilerPartitionUnitTest(TestCase):
 
     def test_partition_details_time_unit(self):
         table_entity = MockTable(
-            tablePartition=TablePartition(columns=['e'], intervalType=IntervalType.TIME_UNIT, interval='DAY'))
+            tablePartition=TablePartition(
+                columns=["e"], intervalType=IntervalType.TIME_UNIT, interval="DAY"
+            )
+        )
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.partitionField == 'e'
+        assert resp.partitionField == "e"
         assert resp.partitionQueryDuration == 30
         assert not resp.partitionValues
 
     def test_partition_details_ingestion_time_date(self):
         table_entity = MockTable(
-            tablePartition=TablePartition(columns=['e'], intervalType=IntervalType.INGESTION_TIME, interval='DAY'))
+            tablePartition=TablePartition(
+                columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="DAY"
+            )
+        )
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.partitionField == '_PARTITIONDATE'
+        assert resp.partitionField == "_PARTITIONDATE"
         assert resp.partitionQueryDuration == 30
         assert not resp.partitionValues
 
-
     def test_partition_details_ingestion_time_hour(self):
         table_entity = MockTable(
-            tablePartition=TablePartition(columns=['e'], intervalType=IntervalType.INGESTION_TIME, interval='HOUR'))
+            tablePartition=TablePartition(
+                columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="HOUR"
+            )
+        )
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.partitionField == '_PARTITIONTIME'
+        assert resp.partitionField == "_PARTITIONTIME"
         assert resp.partitionQueryDuration == 30
         assert not resp.partitionValues
