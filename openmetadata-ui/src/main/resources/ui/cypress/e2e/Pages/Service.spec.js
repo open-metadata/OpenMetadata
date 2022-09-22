@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, verifyResponseStatusCode } from '../../common/common';
-import { service } from '../../constants/constants';
+import { descriptionBox, interceptURL, login, verifyResponseStatusCode } from '../../common/common';
+import { LOGIN, service } from '../../constants/constants';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     //redirecting to services page
 

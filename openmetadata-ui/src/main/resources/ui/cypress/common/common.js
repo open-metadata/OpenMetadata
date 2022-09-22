@@ -12,6 +12,7 @@
  */
 
 /// <reference types="cypress" />
+
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
@@ -190,8 +191,6 @@ export const testServiceCreationAndIngestion = (
 };
 
 export const deleteCreatedService = (typeOfService, service_Name) => {
-  cy.goToHomePage();
-
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -265,8 +264,6 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 };
 
 export const editOwnerforCreatedService = (service_type, service_Name) => {
-  cy.goToHomePage();
-
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -321,10 +318,6 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
 };
 
 export const goToAddNewServicePage = (service_type) => {
-  cy.visit('/');
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
-  cy.get('[data-testid="closeWhatsNew"]').click();
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
   cy.get('[data-testid="tables"]').should('be.visible');
 
   //Click on settings page
@@ -788,4 +781,11 @@ export const mySqlConnectionInput = () => {
   cy.get('#root_password').type(Cypress.env('mysqlPassword'));
   cy.get('#root_hostPort').type(Cypress.env('mysqlHostPort'));
   cy.get('#root_databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
+};
+
+export const login = (username, password) => {
+  cy.visit('/');
+  cy.get('[id="email"]').should('be.visible').clear().type(username);
+  cy.get('[id="password"]').should('be.visible').clear().type(password);
+  cy.get('.ant-btn').contains('Login').should('be.visible').click();
 };
