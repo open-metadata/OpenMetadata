@@ -456,7 +456,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                             className="tw-mr-2"
                             data-testid="airflow-tree-view"
                             disabled={
-                              !permissions.ViewAll || !permissions.ViewBasic
+                              !(permissions.ViewAll || permissions.ViewBasic)
                             }
                             href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
                             rel="noopener noreferrer"

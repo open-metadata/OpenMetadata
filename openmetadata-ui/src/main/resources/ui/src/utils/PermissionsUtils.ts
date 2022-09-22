@@ -119,8 +119,8 @@ export const getUIPermission = (
   }, {} as UIPermission);
 };
 
-/* A util function's that checks if the user has permission to view the resource. */
 export const userPermissions = {
+  /* A util function's that checks if the user has permission to view the resource. */
   hasViewPermissions: (
     resourceEntityType: ResourceEntity,
     permissions: UIPermission
