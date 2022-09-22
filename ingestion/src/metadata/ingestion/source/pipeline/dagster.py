@@ -40,9 +40,9 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.graphql_queries import DAGSTER_PIPELINE_DETAILS_GRAPHQL
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import DAGSTER_PIPELINE_DETAILS_GRAPHQL
 
 logger = ingestion_logger()
 
@@ -83,7 +83,6 @@ class DagsterSource(PipelineServiceSource):
 
     def get_run_list(self):
         try:
-            # client = DagsterGraphQLClient(hostname=host, port_number=int(port))
             result = self.client.client._execute(DAGSTER_PIPELINE_DETAILS_GRAPHQL)
         except ConnectionError as conerr:
             logger.error("Cannot connect to dagster client", conerr)

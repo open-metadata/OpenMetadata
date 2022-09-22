@@ -899,7 +899,7 @@ def _(connection: DagsterConnection) -> None:
 
 @test_connection.register
 def _(connection: DagsterClient) -> None:
-    from metadata.utils.sql_queries import TEST_QUERY_GRAPHQL
+    from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
 
     try:
         connection.client._execute(TEST_QUERY_GRAPHQL)
