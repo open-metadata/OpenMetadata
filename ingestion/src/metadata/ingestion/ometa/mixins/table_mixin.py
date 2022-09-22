@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
     TableJoins,
-    TableProfile,
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.usageRequest import UsageRequest
