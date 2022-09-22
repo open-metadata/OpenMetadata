@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, toLower } from 'lodash';
+import { toLower } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
 import PropTypes from 'prop-types';
 import React, { Fragment, FunctionComponent, useState } from 'react';
@@ -21,6 +21,7 @@ import {
   LIST_SIZE,
 } from '../../../constants/constants';
 import { checkSelected } from '../../../utils/FilterUtils';
+import { getTagsWithLabel } from '../../../utils/TagsUtils';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
 
@@ -108,19 +109,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
       default:
         return null;
     }
-  };
-
-  const getTagsWithLabel = (sortedTags: Array<Bucket>) => {
-    return sortedTags.map((tags) => {
-      const containQuotes = tags.key.split('"')[1];
-
-      return {
-        ...tags,
-        label: isEmpty(containQuotes)
-          ? tags.key.split('.').pop()
-          : containQuotes,
-      };
-    });
   };
 
   const getBucketsByTitle = (title: string, buckets: Array<Bucket>) => {
