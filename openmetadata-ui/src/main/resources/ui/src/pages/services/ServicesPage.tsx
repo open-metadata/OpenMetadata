@@ -25,11 +25,10 @@ import { pagingObject } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SERVICE_CATEGORY } from '../../constants/services.const';
 import { ServiceCategory as Category } from '../../enums/service.enum';
-import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -49,8 +48,7 @@ const ServicesPage = () => {
   const viewAllPermission = useMemo(() => {
     return (
       !isEmpty(permissions) &&
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         getResourceEntityFromServiceCategory(tab),
         permissions
       )

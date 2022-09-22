@@ -342,7 +342,7 @@ const RolesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (rolePermission.ViewAll) {
+    if (rolePermission.ViewAll || rolePermission.ViewBasic) {
       fetchRole();
     }
   }, [rolePermission, fqn]);
@@ -354,7 +354,7 @@ const RolesDetailPage = () => {
   return (
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {rolePermission.ViewAll ? (
+      {rolePermission.ViewAll || rolePermission.ViewBasic ? (
         <>
           {isEmpty(role) ? (
             <Empty

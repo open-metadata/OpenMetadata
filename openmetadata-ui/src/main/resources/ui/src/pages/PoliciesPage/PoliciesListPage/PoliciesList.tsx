@@ -28,7 +28,11 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { checkPermission, LIST_CAP } from '../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  LIST_CAP,
+  userPermissions,
+} from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -55,7 +59,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
   const viewRolePermission = useMemo(() => {
     return (
       !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.ROLE, permissions)
+      userPermissions.hasViewPermissions(ResourceEntity.ROLE, permissions)
     );
   }, [permissions]);
 

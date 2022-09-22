@@ -333,12 +333,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       return;
     } else if (
       ProfilerDashboardTab.DATA_QUALITY === value &&
-      (tablePermissions.ViewAll || tablePermissions.ViewTests)
+      (tablePermissions.ViewAll ||
+        tablePermissions.ViewBasic ||
+        tablePermissions.ViewTests)
     ) {
       fetchTestCases(generateEntityLink(entityTypeFQN, true));
     } else if (
       ProfilerDashboardTab.PROFILER === value &&
-      (tablePermissions.ViewAll || tablePermissions.ViewDataProfile)
+      (tablePermissions.ViewAll ||
+        tablePermissions.ViewBasic ||
+        tablePermissions.ViewDataProfile)
     ) {
       fetchProfilerData(entityTypeFQN);
     }
