@@ -28,6 +28,7 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../axiosAPIs/permissionAPI';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -145,7 +146,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    if (currentUser?.email) {
+    if (isProtectedRoute(location.pathname)) {
       fetchLoggedInUserPermissions();
     }
   }, [currentUser]);

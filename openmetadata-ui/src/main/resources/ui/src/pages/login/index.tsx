@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { Alert, Button, Divider, Form, Input, Typography } from 'antd';
+import { Button, Divider, Form, Input, Typography } from 'antd';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import AppState from '../../AppState';
 import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
@@ -133,13 +131,6 @@ const SigninPage = () => {
     );
   };
 
-  const currentUser = AppState.getCurrentUserDetails();
-
-  const isEmailVerified = useMemo(
-    () => isEmpty(currentUser) || currentUser?.isEmailVerified,
-    [currentUser]
-  );
-
   // If user is neither logged in or nor security is disabled
   // invoke logout handler to clean-up any slug storage
   useEffect(() => {
@@ -183,15 +174,6 @@ const SigninPage = () => {
         data-testid="signin-page">
         <div className="tw-w-5/12">
           <div className="mt-24 tw-text-center flex-center flex-col">
-            {isAuthProviderBasic && currentUser && !isEmailVerified ? (
-              <Alert
-                closable
-                showIcon
-                description="Please verify your mail, confirmation mail has been sent to your email"
-                message="Email Confirmation"
-                type="warning"
-              />
-            ) : null}
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
             <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
               Centralized Metadata Store, Discover, <br />
@@ -199,7 +181,7 @@ const SigninPage = () => {
             </Typography.Text>
 
             {isAuthProviderBasic ? (
-              <div className="w-60 login-form ">
+              <div className="login-form ">
                 <Form
                   className="w-full"
                   form={form}

@@ -193,7 +193,7 @@ export const ROUTES = {
   REGISTER: '/register',
   SIGNIN: '/signin',
   FORGOT_PASSWORD: '/forgot-password',
-  RESET_PASSWORD: '/password/reset',
+  RESET_PASSWORD: '/users/password/reset',
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,

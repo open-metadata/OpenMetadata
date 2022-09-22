@@ -31,6 +31,7 @@ export interface JWTPayloadV1 extends JwtPayload {
 interface BasicAuthProps {
   children: ReactNode;
   onLoginSuccess: (user: OidcUser) => void;
+  onLoginFailure: () => void;
 }
 
 interface InitialContext {
@@ -56,16 +57,20 @@ const initialContext = {
   handleForgotPassword: stub,
   handleResetPassword: stub,
   handleLogout: stub,
+  handleUserCreated: stub,
   isPasswordResetLinkSent: false,
   isResetTokenExpired: false,
 };
 
-const BasicAuthProvider = ({ children, onLoginSuccess }: BasicAuthProps) => {
+const BasicAuthProvider = ({
+  children,
+  onLoginSuccess,
+  onLoginFailure,
+}: BasicAuthProps) => {
   const [isPasswordResetLinkSent, setIsPasswordResetLinkSent] = useState(false);
-
   const [isResetTokenExpired, setIsResetTokenExpired] = useState(false);
 
-  const { setIsAuthDisabled, setLoadingIndicator } = useAuthContext();
+  const { setLoadingIndicator } = useAuthContext();
 
   const history = useHistory();
 
@@ -74,28 +79,36 @@ const BasicAuthProvider = ({ children, onLoginSuccess }: BasicAuthProps) => {
       setLoadingIndicator(true);
       const isEmailAlreadyExists = await checkEmailInUse(email);
       if (isEmailAlreadyExists) {
-        const response = await basicAuthSignIn({ email, password });
+        try {
+          const response = await basicAuthSignIn({ email, password });
 
-        if (response.accessToken) {
-          localState.setRefreshToken(response.refreshToken);
-          localState.setOidcToken(response.accessToken);
+          if (response.accessToken) {
+            localState.setRefreshToken(response.refreshToken);
+            localState.setOidcToken(response.accessToken);
 
-          onLoginSuccess({
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            id_token: response.accessToken,
-            profile: {
-              email,
-              name: '',
-              picture: '',
-            },
-            scope: '',
-          });
+            onLoginSuccess({
+              // eslint-disable-next-line @typescript-eslint/camelcase
+              id_token: response.accessToken,
+              profile: {
+                email,
+                name: '',
+                picture: '',
+              },
+              scope: '',
+            });
+          }
+        } catch (error) {
+          showErrorToast(
+            error as AxiosError,
+            jsonData['api-error-messages']['unauthorized-user']
+          );
+          onLoginFailure();
         }
       } else {
         showErrorToast(jsonData['api-error-messages']['email-not-found']);
+        onLoginFailure();
       }
     } catch (err) {
-      setIsAuthDisabled(true);
       showErrorToast(
         err as AxiosError,
         jsonData['api-error-messages']['unauthorized-user']
@@ -175,7 +188,6 @@ const BasicAuthProvider = ({ children, onLoginSuccess }: BasicAuthProps) => {
 
   const handleLogout = async () => {
     localState.removeOidcToken();
-
     history.push(ROUTES.SIGNIN);
   };
 

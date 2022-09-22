@@ -1,6 +1,5 @@
 import {
   Button,
-  Card,
   Col,
   Divider,
   Form,
@@ -12,10 +11,14 @@ import {
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
+import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import LoginCarousel from '../login/LoginCarousel';
+import './../login/login.style.less';
 
 interface SignUpFormData {
   firstName: string;
@@ -57,95 +60,142 @@ const BasicSignUp = () => {
     whitespace: '${label} should not contain white space',
   };
 
-  return isAuthProviderBasic ? (
-    <Row>
-      <Col offset={6} span={12}>
-        <Card>
-          <Form
-            autoComplete="off"
-            className="mt-20"
-            form={form}
-            layout="vertical"
-            validateMessages={validationMessages}
-            onFinish={handleSubmit}>
-            <Form.Item
-              label="First Name"
-              name="firstName"
-              rules={[{ whitespace: true, required: true }]}>
-              <Input placeholder="Enter first name" />
-            </Form.Item>
-            <Form.Item
-              label="Last Name"
-              name="lastName"
-              rules={[{ whitespace: true, required: true }]}>
-              <Input placeholder="Enter last name" />
-            </Form.Item>
-            <Form.Item
-              label="Email"
-              name="email"
-              rules={[{ type: 'email', required: true }]}>
-              <Input placeholder="Enter email" />
-            </Form.Item>
-            <Form.Item
-              label="Password"
-              name="password"
-              rules={[
-                { required: true },
-                {
-                  validator: (_, value) => {
-                    if (value < 8 && value > 16) {
-                      return Promise.reject(
-                        'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character'
-                      );
-                    }
+  return (
+    <div className="tw-flex tw-flex-col tw-h-full">
+      <div
+        className="tw-flex tw-bg-body-main tw-flex-grow"
+        data-testid="signin-page">
+        <div className="tw-w-5/12">
+          <div className="mt-4 tw-text-center flex-center flex-col">
+            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
+              Centralized Metadata Store, Discover, <br />
+              Collaborate and get your Data Right
+            </Typography.Text>
 
-                    return Promise.resolve();
-                  },
-                },
-              ]}>
-              <Input.Password placeholder="Enter password" />
-            </Form.Item>
-            <Form.Item
-              label="Confirm Password"
-              name="confirmPassword"
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (isEmpty(password)) {
-                      return Promise.reject('Please type password first');
-                    }
-                    if (value !== password) {
-                      return Promise.reject("Password doesn't match");
-                    }
+            {isAuthProviderBasic ? (
+              <div className="m-t-lg" style={{ width: '60%' }}>
+                <Row>
+                  <Col span={24}>
+                    <>
+                      <Form
+                        autoComplete="off"
+                        className="mt-20"
+                        form={form}
+                        layout="vertical"
+                        validateMessages={validationMessages}
+                        onFinish={handleSubmit}>
+                        <Form.Item
+                          label="First Name"
+                          name="firstName"
+                          rules={[{ whitespace: true, required: true }]}>
+                          <Input placeholder="Enter first name" />
+                        </Form.Item>
+                        <Form.Item
+                          label="Last Name"
+                          name="lastName"
+                          rules={[{ whitespace: true, required: true }]}>
+                          <Input placeholder="Enter last name" />
+                        </Form.Item>
+                        <Form.Item
+                          label="Email"
+                          name="email"
+                          rules={[{ type: 'email', required: true }]}>
+                          <Input placeholder="Enter email" />
+                        </Form.Item>
+                        <Form.Item
+                          label="Password"
+                          name="password"
+                          rules={[
+                            { required: true },
+                            {
+                              validator: (_, value) => {
+                                if (value < 8 && value > 16) {
+                                  return Promise.reject(
+                                    'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character'
+                                  );
+                                }
 
-                    return Promise.resolve();
-                  },
-                },
-              ]}>
-              <Input.Password placeholder="Confirm your password" />
-            </Form.Item>
+                                return Promise.resolve();
+                              },
+                            },
+                          ]}>
+                          <Input.Password placeholder="Enter password" />
+                        </Form.Item>
+                        <Form.Item
+                          label="Confirm Password"
+                          name="confirmPassword"
+                          rules={[
+                            {
+                              validator: (_, value) => {
+                                if (isEmpty(password)) {
+                                  return Promise.reject(
+                                    'Please type password first'
+                                  );
+                                }
+                                if (value !== password) {
+                                  return Promise.reject(
+                                    "Password doesn't match"
+                                  );
+                                }
 
-            <Button className="w-full" htmlType="submit" type="primary">
-              Create Account
-            </Button>
+                                return Promise.resolve();
+                              },
+                            },
+                          ]}>
+                          <Input.Password placeholder="Confirm your password" />
+                        </Form.Item>
 
-            <Divider className="w-min-0 w-max-200 mt-8 mb-12 justify-center">
-              <Typography.Text type="secondary">or</Typography.Text>
-            </Divider>
+                        <Button
+                          className="w-full"
+                          htmlType="submit"
+                          type="primary">
+                          Create Account
+                        </Button>
 
-            <Space
-              className="w-full flex-center text-center"
-              direction="vertical">
-              <Typography.Text strong>Already have an account?</Typography.Text>
-              <Button className="w-full" type="primary" onClick={handleLogin}>
-                Login
-              </Button>
-            </Space>
-          </Form>
-        </Card>
-      </Col>
-    </Row>
-  ) : null;
+                        <Divider className="w-min-0 w-max-200 mt-8 mb-12 justify-center">
+                          <Typography.Text type="secondary">or</Typography.Text>
+                        </Divider>
+
+                        <Space
+                          className="w-full flex-center text-center"
+                          direction="vertical">
+                          <Typography.Text strong>
+                            Already have an account?
+                          </Typography.Text>
+                          <Button
+                            className="w-full"
+                            type="primary"
+                            onClick={handleLogin}>
+                            Login
+                          </Button>
+                        </Space>
+                      </Form>
+                    </>
+                  </Col>
+                </Row>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="tw-w-7/12 tw-relative">
+          <div className="tw-absolute tw-inset-0">
+            <img
+              alt="bg-image"
+              className="tw-w-full tw-h-full"
+              data-testid="bg-image"
+              src={loginBG}
+            />
+          </div>
+          <div className="tw-relative">
+            <div className="tw-flex tw-justify-center tw-mt-44 tw-mb-10">
+              <LoginCarousel />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default BasicSignUp;

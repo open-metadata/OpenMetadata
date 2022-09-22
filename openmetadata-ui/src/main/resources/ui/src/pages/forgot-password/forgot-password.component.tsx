@@ -1,63 +1,66 @@
-import { Button, Col, Input, Row, Typography } from 'antd';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
+import React, { useState } from 'react';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
-import AuthCommonCard from '../../components/common/auth-common-card/auth-common-card.component';
-import { validEmailRegEx } from '../../constants/regex.constants';
+import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState<string>('');
-
-  const { isError } = useMemo(() => {
-    const isEmailValid = !isEmpty(email)
-      ? validEmailRegEx.test(email)
-      : undefined;
-
-    return {
-      isError: !isUndefined(isEmailValid) && !isEmailValid,
-    };
-  }, [email]);
-
   const { isPasswordResetLinkSent, handleForgotPassword } = useBasicAuth();
+  const [hasError, setHasError] = useState(false);
+  const handleSubmit = (data: { email: string }) => {
+    handleForgotPassword && handleForgotPassword(data.email);
+  };
 
-  const handleSubmit = () => {
-    if (!isError) {
-      handleForgotPassword && handleForgotPassword(email);
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onError = (errors: any) => {
+    setHasError(errors.email);
   };
 
   return (
-    <AuthCommonCard classNames="">
-      <>
-        <Row gutter={[16, 48]}>
+    <div className="h-full tw-py-36">
+      <Card
+        bodyStyle={{ padding: '48px' }}
+        className=" m-y-lg m-auto p-x-lg"
+        style={{ maxWidth: '450px' }}>
+        <Row gutter={[16, 24]}>
+          <Col className="text-center" span={24}>
+            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+          </Col>
           <Col className="flex-center text-center mt-8" span={24}>
             <Typography.Text strong className="text-reset-info">
               Enter your registered email to receive password reset link
             </Typography.Text>
           </Col>
 
-          <Col span={24}>
-            <label>Email</label>
-            <Input
-              className={`w-full ${isError ? 'forgot-email-input' : ''}`}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            {isError ? (
-              <span className="error-text">Email is not Valid</span>
-            ) : null}
-          </Col>
+          <Form
+            className="w-full"
+            labelCol={{ span: 24 }}
+            onFinish={handleSubmit}
+            onFinishFailed={onError}>
+            <Col span={24}>
+              <Form.Item
+                hasFeedback={hasError}
+                label="Email"
+                name="email"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Email is required!',
+                  },
+                ]}>
+                <Input type="email" />
+              </Form.Item>
+            </Col>
+            <Col className="m-t-md" span={24}>
+              <Button className="w-full" htmlType="submit" type="primary">
+                Submit
+              </Button>
+            </Col>
+          </Form>
 
-          <Col span={24}>
-            <Button className="w-full" type="primary" onClick={handleSubmit}>
-              Submit
-            </Button>
-          </Col>
-          <Col span={24}>
-            {isPasswordResetLinkSent && (
+          {isPasswordResetLinkSent && (
+            <Col span={24}>
               <div
                 className="tw-flex tw-flex-col tw-px-1"
                 data-testid="success-screen-container">
@@ -77,16 +80,20 @@ const ForgotPassword = () => {
                   </p>
                 </div>
               </div>
-            )}
-          </Col>
-          <Col span={24}>
-            <Button ghost className="w-full" href="/signin" type="primary">
+            </Col>
+          )}
+          <Col className="m-t-md" span={24}>
+            <Button
+              ghost
+              className="w-full"
+              href={ROUTES.SIGNIN}
+              type="primary">
               Go back to Login page
             </Button>
           </Col>
         </Row>
-      </>
-    </AuthCommonCard>
+      </Card>
+    </div>
   );
 };
 

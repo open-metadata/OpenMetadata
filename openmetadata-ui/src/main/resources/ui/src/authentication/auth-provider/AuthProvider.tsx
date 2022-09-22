@@ -102,8 +102,11 @@ export const AuthProvider = ({
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isUserCreated, setIsUserCreated] = useState(false);
 
   let silentSignInRetries = 0;
+
+  const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
 
   const onLoginHandler = () => {
     setLoading(true);
@@ -493,7 +496,9 @@ export const AuthProvider = ({
     switch (authConfig?.provider) {
       case AuthTypes.BASIC: {
         return (
-          <BasicAuthProvider onLoginSuccess={handleSuccessfulLogin}>
+          <BasicAuthProvider
+            onLoginFailure={handleFailedLogin}
+            onLoginSuccess={handleSuccessfulLogin}>
             <BasicAuthAuthenticator ref={authenticatorRef}>
               {children}
             </BasicAuthAuthenticator>
@@ -604,6 +609,7 @@ export const AuthProvider = ({
     isAuthenticated: isUserAuthenticated,
     setIsAuthenticated: setIsUserAuthenticated,
     isAuthDisabled,
+    isUserCreated,
     setIsAuthDisabled,
     authConfig,
     setAuthConfig,
@@ -617,6 +623,7 @@ export const AuthProvider = ({
     loading,
     setLoadingIndicator,
     handleSuccessfulLogin,
+    handleUserCreated,
   };
 
   return (

@@ -210,7 +210,8 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.CALLBACK,
       ROUTES.SILENT_CALLBACK,
       ROUTES.REGISTER,
-    ].indexOf(pathname) !== -1
+      ROUTES.RESET_PASSWORD,
+    ].indexOf(pathname) === -1
   );
 };
 

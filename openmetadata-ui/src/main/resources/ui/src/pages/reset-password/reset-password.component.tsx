@@ -5,6 +5,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import AuthCommonCard from '../../components/common/auth-common-card/auth-common-card.component';
 import { ROUTES } from '../../constants/constants';
+import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
 import './reset-password.style.less';
 import { getUserNameAndToken } from './reset-password.utils';
@@ -88,21 +89,14 @@ const ResetPassword = () => {
               name="password"
               rules={[
                 {
-                  validator: (_, value) => {
-                    if (value < 8) {
-                      return Promise.reject(
-                        'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character'
-                      );
-                    }
-
-                    return Promise.resolve();
-                  },
+                  pattern: passwordRegex,
+                  message:
+                    'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character',
                 },
               ]}>
-              <Input
+              <Input.Password
                 className="w-full"
                 placeholder="Enter new password"
-                type="password"
               />
             </Form.Item>
             <Form.Item
@@ -122,10 +116,9 @@ const ResetPassword = () => {
                   },
                 },
               ]}>
-              <Input
+              <Input.Password
                 className="w-full"
                 placeholder="Re-enter New Password"
-                type="password"
               />
             </Form.Item>
 
