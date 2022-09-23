@@ -33,6 +33,7 @@ import {
   getAddDataQualityTableTestPath,
   getProfilerDashboardWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
@@ -140,7 +141,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               record.fullyQualifiedName || '',
               ProfilerDashboardTab.DATA_QUALITY
             )}>
-            {columnTestSummary?.[record.fullyQualifiedName || '']?.count || 0}
+            {columnTestSummary?.[
+              getEncodedFqn(record.fullyQualifiedName || '', true)
+            ]?.count || 0}
           </Link>
         ),
       },
@@ -150,7 +153,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         key: 'dataQualityTest',
         render: (_, record) => {
           const summary =
-            columnTestSummary?.[record.fullyQualifiedName || '']?.results;
+            columnTestSummary?.[
+              getEncodedFqn(record.fullyQualifiedName || '', true)
+            ]?.results;
           const currentResult = summary
             ? Object.entries(summary).map(([key, value]) => ({
                 value,
