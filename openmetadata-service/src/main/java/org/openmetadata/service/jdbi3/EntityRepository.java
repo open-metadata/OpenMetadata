@@ -29,6 +29,7 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
@@ -53,6 +54,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -77,6 +79,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -700,6 +703,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
       }
+    }
+  }
+
+  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+    return new ChangeEvent()
+        .withEventType(eventType)
+        .withEntityId(entityInterface.getId())
+        .withEntityType(entityType)
+        .withUserName(entityInterface.getUpdatedBy())
+        .withTimestamp(entityInterface.getUpdatedAt())
+        .withChangeDescription(entityInterface.getChangeDescription())
+        .withCurrentVersion(entityInterface.getVersion())
+        .withEntity(entityInterface);
+  }
+
+  public void setOwnerToChildren(JsonPatch patch, T entity, SecurityContext securityContext) throws IOException {
+    List<EntityRelationshipRecord> records =
+        daoCollection
+            .relationshipDAO()
+            .findTo(entity.getId().toString(), entity.getEntityReference().getType(), Relationship.CONTAINS.ordinal());
+    List<EntityReference> entityReferences = getEntityReferences(records);
+    for (EntityReference entityReference : entityReferences) {
+      EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(entityReference.getType());
+      PatchResponse<EntityInterface> patchResponse =
+          entityRepository.patch(null, entityReference.getId(), securityContext.getUserPrincipal().getName(), patch);
+      EventPubSub.publish(
+          getChangeEvent(EventType.ENTITY_UPDATED, entityReference.getType(), patchResponse.getEntity()));
     }
   }
 
