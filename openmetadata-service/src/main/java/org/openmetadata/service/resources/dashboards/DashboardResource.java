@@ -90,7 +90,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     }
   }
 
-  static final String FIELDS = "owner,charts,followers,tags,usageSummary";
+  static final String FIELDS = "owner,charts,followers,tags,usageSummary,extension";
 
   @GET
   @Valid

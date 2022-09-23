@@ -19,4 +19,6 @@ export enum AuthTypes {
   AZURE = 'azure',
   CUSTOM_OIDC = 'custom-oidc',
   AWS_COGNITO = 'aws-cognito',
+  BASIC = 'basic',
+  NO_AUTH = 'no-auth',
 }

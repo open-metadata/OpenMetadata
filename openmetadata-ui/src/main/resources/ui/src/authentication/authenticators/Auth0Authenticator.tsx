@@ -18,8 +18,8 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { oidcTokenKey } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import localState from '../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 
@@ -59,7 +59,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
                     .then((token) => {
                       if (token !== undefined) {
                         idToken = token.__raw;
-                        localStorage.setItem(oidcTokenKey, idToken);
+                        localState.setOidcToken(idToken);
                         resolve(idToken);
                       }
                     })

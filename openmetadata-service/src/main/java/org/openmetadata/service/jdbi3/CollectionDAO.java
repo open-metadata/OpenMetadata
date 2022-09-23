@@ -2658,94 +2658,109 @@ public interface CollectionDAO {
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
+      String supportedDataType = filter.getQueryParam("supportedDataType");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null) {
+      if (entityType == null && testPlatform == null && supportedDataType == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
 
-      if (entityType == null) {
-        String mysqlCondition =
-            String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
-        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
-        return listBefore(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, before);
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+
+      mysqlCondition.append(String.format("%s ", condition));
+      psqlCondition.append(String.format("%s ", condition));
+
+      if (testPlatform != null) {
+        mysqlCondition.append(String.format("AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", testPlatform));
+        psqlCondition.append(String.format("AND json->>'testPlatforms' LIKE '%%%s%%' ", testPlatform));
       }
 
-      if (testPlatform == null) {
-        condition = String.format("%s AND entityType='%s' ", condition, entityType);
-        return listBefore(getTableName(), getNameColumn(), condition, condition, limit, before);
+      if (entityType != null) {
+        mysqlCondition.append(String.format("AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format("AND entityType='%s' ", entityType));
       }
 
-      String mysqlCondition =
-          String.format(
-              "%s AND entityType='%s' AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ",
-              condition, entityType, testPlatform);
-      String psqlCondition =
-          String.format(
-              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
-      return listBefore(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, before);
+      if (supportedDataType != null) {
+        mysqlCondition.append(String.format("AND supported_data_types LIKE '%%%s%%' ", supportedDataType));
+        String psqlStr = String.format("AND supported_data_types @> '`%s`' ", supportedDataType);
+        psqlCondition.append(psqlStr.replace('`', '"'));
+      }
+
+      return listBefore(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, before);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
+      String supportedDataType = filter.getQueryParam("supportedDataType");
       String condition = filter.getCondition();
-      if (entityType == null && testPlatform == null) {
+
+      if (entityType == null && testPlatform == null && supportedDataType == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
 
-      if (entityType == null) {
-        String mysqlCondition =
-            String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
-        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
-        return listAfter(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, after);
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+
+      mysqlCondition.append(String.format("%s ", condition));
+      psqlCondition.append(String.format("%s ", condition));
+
+      if (testPlatform != null) {
+        mysqlCondition.append(String.format("AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", testPlatform));
+        psqlCondition.append(String.format("AND json->>'testPlatforms' LIKE '%%%s%%' ", testPlatform));
       }
 
-      if (testPlatform == null) {
-        condition = String.format("%s AND entityType='%s' ", condition, entityType);
-        return listAfter(getTableName(), getNameColumn(), condition, condition, limit, after);
+      if (entityType != null) {
+        mysqlCondition.append(String.format("AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format("AND entityType='%s' ", entityType));
       }
 
-      String mysqlCondition =
-          String.format(
-              "%s AND entityType='%s' AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ",
-              condition, entityType, testPlatform);
-      String psqlCondition =
-          String.format(
-              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
-      return listAfter(getTableName(), getNameColumn(), mysqlCondition, psqlCondition, limit, after);
+      if (supportedDataType != null) {
+        mysqlCondition.append(String.format("AND supported_data_types LIKE '%%%s%%' ", supportedDataType));
+        String psqlStr = String.format("AND supported_data_types @> '`%s`' ", supportedDataType);
+        psqlCondition.append(psqlStr.replace('`', '"'));
+      }
+
+      return listAfter(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, after);
     }
 
     @Override
     default int listCount(ListFilter filter) {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
+      String supportedDataType = filter.getQueryParam("supportedDataType");
       String condition = filter.getCondition();
-      if (entityType == null && testPlatform == null) {
+
+      if (entityType == null && testPlatform == null && supportedDataType == null) {
         return EntityDAO.super.listCount(filter);
       }
 
-      if (entityType == null) {
-        String mysqlCondition =
-            String.format("%s AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", condition, testPlatform);
-        String psqlCondition = String.format("%s AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, testPlatform);
-        return listCount(getTableName(), getNameColumn(), mysqlCondition, psqlCondition);
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+
+      mysqlCondition.append(String.format("%s ", condition));
+      psqlCondition.append(String.format("%s ", condition));
+
+      if (testPlatform != null) {
+        mysqlCondition.append(String.format("AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", testPlatform));
+        psqlCondition.append(String.format("AND json->>'testPlatforms' LIKE '%%%s%%' ", testPlatform));
       }
 
-      if (testPlatform == null) {
-        condition = String.format("%s AND entityType='%s' ", condition, entityType);
-        return listCount(getTableName(), getNameColumn(), condition, condition);
+      if (entityType != null) {
+        mysqlCondition.append(String.format("AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format("AND entityType='%s' ", entityType));
       }
 
-      String mysqlCondition =
-          String.format(
-              "%s AND entityType='%s' AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ",
-              condition, entityType, testPlatform);
-      String psqlCondition =
-          String.format(
-              "%s AND entityType='%s' AND json->>'testPlatforms' LIKE '%%%s%%' ", condition, entityType, testPlatform);
-      return listCount(getTableName(), getNameColumn(), mysqlCondition, psqlCondition);
+      if (supportedDataType != null) {
+        mysqlCondition.append(String.format("AND supported_data_types LIKE '%%%s%%' ", supportedDataType));
+        String psqlStr = String.format("AND supported_data_types @> '`%s`' ", supportedDataType);
+        psqlCondition.append(psqlStr.replace('`', '"'));
+      }
+      return listCount(getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString());
     }
 
     @ConnectionAwareSqlQuery(

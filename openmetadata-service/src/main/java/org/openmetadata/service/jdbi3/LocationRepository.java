@@ -14,8 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 
 import java.io.IOException;
@@ -59,9 +57,7 @@ public class LocationRepository extends EntityRepository<Location> {
   public Location setFields(Location location, Fields fields) throws IOException {
     location.setService(getContainer(location.getId()));
     location.setPath(location.getPath());
-    location.setOwner(fields.contains(FIELD_OWNER) ? getOwner(location) : null);
     location.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
-    location.setTags(fields.contains(FIELD_TAGS) ? getTags(location.getFullyQualifiedName()) : null);
     return location;
   }
 
@@ -93,7 +89,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
     List<Location> entities = new ArrayList<>();
     for (String json : jsons) {
-      entities.add(setFields(JsonUtils.readValue(json, Location.class), fields));
+      entities.add(setFieldsInternal(JsonUtils.readValue(json, Location.class), fields));
     }
     int total =
         daoCollection
@@ -129,7 +125,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
     List<Location> entities = new ArrayList<>();
     for (String json : jsons) {
-      entities.add(setFields(JsonUtils.readValue(json, Location.class), fields));
+      entities.add(setFieldsInternal(JsonUtils.readValue(json, Location.class), fields));
     }
     int total =
         daoCollection
