@@ -63,6 +63,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -95,6 +96,8 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -122,6 +125,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private final TokenRepository tokenRepository;
 
+  @Getter private final UserRepository userRepository;
+
+  private final SecretsManager secretsManager;
+
   @Override
   public User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
@@ -132,11 +139,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer) {
-    super(User.class, new UserRepository(dao), authorizer);
+  public UserResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(User.class, new UserRepository(dao, secretsManager), authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
+    userRepository = new UserRepository(dao, secretsManager);
+    this.secretsManager = secretsManager;
   }
 
   public static class UserList extends ResultList<User> {
@@ -209,7 +218,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isBot != null) {
       filter.addQueryParam("isBot", String.valueOf(isBot));
     }
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<User> users = listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    users.getData().forEach(user -> decryptOrNullify(securityContext, user));
+    return users;
   }
 
   @GET
@@ -264,7 +275,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
   @GET
@@ -298,7 +309,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
   @GET
@@ -404,11 +415,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       authorizer.authorizeAdmin(securityContext, true);
     }
     if (create.getIsBot()) {
-      addAuthMechanismToBot(user, create);
+      addAuthMechanismToBot(user, create, uriInfo);
     }
     // TODO do we need to authenticate user is creating himself?
     addHref(uriInfo, dao.create(uriInfo, user));
-    return Response.created(user.getHref()).entity(user).build();
+    Response response = Response.created(user.getHref()).entity(user).build();
+    decryptOrNullify(securityContext, (User) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -437,10 +450,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
     }
     if (create.getIsBot()) {
-      addAuthMechanismToBot(user, create);
+      addAuthMechanismToBot(user, create, uriInfo);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
+    decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
 
@@ -580,7 +594,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    decryptOrNullify(securityContext, (User) response.getEntity());
+    return response;
   }
 
   @POST
@@ -1140,7 +1156,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private void addAuthMechanismToBot(User user, @Valid CreateUser create) {
+  private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
     }
@@ -1149,26 +1165,30 @@ public class UserResource extends EntityResource<User, UserRepository> {
       AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
       switch (authType) {
         case JWT:
-          if (!hasAJWTAuthMechanism(user)) {
+          User original;
+          try {
+            original =
+                dao.getByName(
+                    uriInfo, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
+          } catch (EntityNotFoundException | IOException exc) {
+            LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
+            original = null;
+          }
+          if (original == null || !hasAJWTAuthMechanism(original)) {
             JWTAuthMechanism jwtAuthMechanism =
                 JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
             authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
           } else {
-            authMechanism = user.getAuthenticationMechanism();
+            authMechanism = original.getAuthenticationMechanism();
           }
           break;
         case SSO:
           SSOAuthMechanism ssoAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
           authMechanism.setConfig(ssoAuthMechanism);
           break;
-        case BASIC:
-          BasicAuthMechanism basicAuthMechanism =
-              JsonUtils.convertValue(authMechanism.getConfig(), BasicAuthMechanism.class);
-          authMechanism.setConfig(basicAuthMechanism);
-          break;
         default:
           throw new IllegalArgumentException(
-              String.format("Unexpected authentication mechanism type: [%s]", authType.value()));
+              String.format("Not supported authentication mechanism type: [%s]", authType.value()));
       }
       user.setAuthenticationMechanism(authMechanism);
     } else {
@@ -1180,7 +1200,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean hasAJWTAuthMechanism(User user) {
     AuthenticationMechanism authMechanism = user.getAuthenticationMechanism();
     if (authMechanism != null && JWT.equals(authMechanism.getAuthType())) {
-      JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
+      JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
       return jwtAuthMechanism.getJWTToken() != null && !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken());
     }
     return false;
@@ -1196,5 +1216,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     throw new IllegalArgumentException(
         String.format("Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
+  }
+
+  private User decryptOrNullify(SecurityContext securityContext, User user) {
+    if (user.getIsBot() != null && user.getIsBot() && user.getAuthenticationMechanism() != null) {
+      try {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+            getResourceContextById(user.getId()),
+            secretsManager.isLocal());
+      } catch (AuthorizationException | IOException e) {
+        user.getAuthenticationMechanism().setConfig(null);
+        return user;
+      }
+      user.getAuthenticationMechanism()
+          .setConfig(
+              secretsManager.encryptOrDecryptIngestionBotCredentials(
+                  user.getName(), user.getAuthenticationMechanism().getConfig(), false));
+      return user;
+    }
+    return user;
   }
 }

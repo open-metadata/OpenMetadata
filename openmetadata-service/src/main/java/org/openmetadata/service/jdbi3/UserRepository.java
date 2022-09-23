@@ -31,7 +31,6 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -39,6 +38,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -47,10 +47,11 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
   static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams,isEmailVerified";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   private final EntityReference organization;
+  private SecretsManager secretsManager = null;
 
-  public UserRepository(CollectionDAO dao) {
+  public UserRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
         UserResource.COLLECTION_PATH,
         Entity.USER,
@@ -60,6 +61,11 @@ public class UserRepository extends EntityRepository<User> {
         USER_PATCH_FIELDS,
         USER_UPDATE_FIELDS);
     organization = dao.teamDAO().findEntityReferenceByName(Entity.ORGANIZATION_NAME, Include.ALL);
+    this.secretsManager = secretsManager;
+  }
+
+  public UserRepository(CollectionDAO dao) {
+    this(dao, null);
   }
 
   @Override
@@ -96,10 +102,19 @@ public class UserRepository extends EntityRepository<User> {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> roles = user.getRoles();
     List<EntityReference> teams = user.getTeams();
-    List<EntityReference> inheritedRoles = user.getInheritedRoles();
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
+
+    if (secretsManager != null
+        && user.getIsBot() != null
+        && user.getIsBot()
+        && user.getAuthenticationMechanism() != null) {
+      user.getAuthenticationMechanism()
+          .setConfig(
+              secretsManager.encryptOrDecryptIngestionBotCredentials(
+                  user.getName(), user.getAuthenticationMechanism().getConfig(), true));
+    }
 
     store(user.getId(), user, update);
 
@@ -322,19 +337,16 @@ public class UserRepository extends EntityRepository<User> {
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange(
             "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
-      } else if (origAuthMechanism != null
-          && updatedAuthMechanism != null
-          && origAuthMechanism.getConfig() != null
-          && updatedAuthMechanism.getConfig() != null) {
-        JWTAuthMechanism origJwtAuthMechanism =
-            JsonUtils.convertValue(origAuthMechanism.getConfig(), JWTAuthMechanism.class);
-        JWTAuthMechanism updatedJwtAuthMechanism =
-            JsonUtils.convertValue(updatedAuthMechanism.getConfig(), JWTAuthMechanism.class);
-        if (!origJwtAuthMechanism.getJWTToken().equals(updatedJwtAuthMechanism.getJWTToken())) {
+      } else if (hasConfig(origAuthMechanism) && hasConfig(updatedAuthMechanism)) {
+        if (!JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
           recordChange(
               "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
         }
       }
+    }
+
+    private boolean hasConfig(AuthenticationMechanism authenticationMechanism) {
+      return authenticationMechanism != null && authenticationMechanism.getConfig() != null;
     }
   }
 }

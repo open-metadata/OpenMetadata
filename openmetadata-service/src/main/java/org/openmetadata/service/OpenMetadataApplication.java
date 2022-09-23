@@ -105,8 +105,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         SecretsManagerFactory.createSecretsManager(
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
-    secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
-
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
