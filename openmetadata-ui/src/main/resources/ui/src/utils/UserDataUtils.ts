@@ -53,7 +53,10 @@ export const getUserDataFromOidc = (
     ? getImages(oidcUser.profile.picture)
     : undefined;
   const profileEmail = oidcUser.profile.email;
-  const email = profileEmail ? profileEmail : userData.email;
+  const email =
+    profileEmail && profileEmail.indexOf('@') !== -1
+      ? profileEmail
+      : userData.email;
 
   return {
     ...userData,
