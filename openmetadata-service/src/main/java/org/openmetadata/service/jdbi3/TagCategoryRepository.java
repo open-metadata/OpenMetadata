@@ -69,7 +69,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
     List<Tag> tagList = new ArrayList<>();
     for (String json : groupJsons) {
-      Tag tag = tagRepository.setFields(JsonUtils.readValue(json, Tag.class), fields);
+      Tag tag = tagRepository.setFieldsInternal(JsonUtils.readValue(json, Tag.class), fields);
       tagList.add(tagRepository.populateChildrenTags(tag, fields));
     }
     category.withChildren(tagList.isEmpty() ? null : tagList);

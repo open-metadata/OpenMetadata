@@ -105,7 +105,7 @@ public class TypeRepository extends EntityRepository<Type> {
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException("Only entity types can be extended and field types can't be extended");
     }
-    setFields(type, putFields);
+    setFieldsInternal(type, putFields);
 
     dao.findEntityById(property.getPropertyType().getId()); // Validate customProperty type exists
 
@@ -196,7 +196,7 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
       }
 
-      // Record changes to updated custome properties (only description can be updated)
+      // Record changes to updated custom properties (only description can be updated)
       for (CustomProperty updated : updatedFields) {
         // Find property that matches name and type
         CustomProperty stored =

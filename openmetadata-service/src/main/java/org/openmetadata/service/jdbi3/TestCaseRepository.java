@@ -151,9 +151,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               TESTCASE_RESULT_EXTENSION,
               "testCaseResult",
               JsonUtils.pojoToJson(testCaseResult));
-      setFields(testCase, EntityUtil.Fields.EMPTY_FIELDS);
     }
-    setFields(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
+    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
