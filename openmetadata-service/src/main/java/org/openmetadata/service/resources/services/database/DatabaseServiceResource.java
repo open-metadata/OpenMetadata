@@ -350,11 +350,11 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @Parameter(
-          description = "Filter to apply patch to child entities",
-          schema = @Schema(type = "boolean", example = "false"))
-        @QueryParam("applyPatch")
-        @DefaultValue("false")
-        Boolean applyPatch,
+              description = "Filter to apply patch to child entities",
+              schema = @Schema(type = "boolean", example = "false"))
+          @QueryParam("applyPatch")
+          @DefaultValue("false")
+          Boolean applyPatch,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
