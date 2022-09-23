@@ -48,6 +48,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   initialValue,
   onSubmit,
   onCancel,
+  table,
 }) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
@@ -69,6 +70,11 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         limit: API_RES_MAX_SIZE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
         testPlatform: TestPlatform.OpenMetadata,
+        supportedDataType: isColumnFqn
+          ? table.columns.find(
+              (column) => column.fullyQualifiedName === entityTypeFQN
+            )?.dataType
+          : undefined,
       });
 
       setTestDefinitions(data);
