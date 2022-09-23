@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Input, Select } from 'antd';
+import { Card, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -125,9 +125,10 @@ const BotDetails: FC<BotsDetailProp> = ({
   const fetchBotsToken = () => {
     getUserToken(botsData.id)
       .then((res) => {
-        const { JWTToken, JWTTokenExpiresAt } = res;
+        const { JWTToken, JWTTokenExpiresAt, JWTTokenExpiry } = res;
         setBotsToken(JWTToken);
         setBotsTokenExpiry(JWTTokenExpiresAt);
+        setTokenExpiry(JWTTokenExpiry);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -481,14 +482,24 @@ const BotDetails: FC<BotsDetailProp> = ({
           {!generateToken && editAllPermission ? (
             <>
               {botsToken ? (
-                <Button
-                  className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
-                  data-testid="revoke-button"
-                  size="custom"
-                  variant="outlined"
-                  onClick={() => setIsRevokingToken(true)}>
-                  Revoke token
-                </Button>
+                <Space>
+                  <Button
+                    data-testid="edit-button"
+                    size="small"
+                    theme="primary"
+                    variant="outlined"
+                    onClick={handleTokenGeneration}>
+                    Edit
+                  </Button>
+                  <Button
+                    className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
+                    data-testid="revoke-button"
+                    size="custom"
+                    variant="outlined"
+                    onClick={() => setIsRevokingToken(true)}>
+                    Revoke token
+                  </Button>
+                </Space>
               ) : (
                 <Button
                   data-testid="generate-token"
