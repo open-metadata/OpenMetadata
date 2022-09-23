@@ -78,3 +78,10 @@ export const getTokenExpiryText = (expiry: string) => {
 export const getTokenExpiryDate = (expiry: number) => {
   return moment(expiry).format('ddd Do MMMM, YYYY,hh:mm A');
 };
+
+export const DEFAULT_GOOGLE_SSO_CLIENT_CONFIG = {
+  secretKey: '',
+  audience: 'https://www.googleapis.com/oauth2/v4/token',
+};
+
+export const SECRET_KEY_ERROR_MSG = 'SecretKey is required!';

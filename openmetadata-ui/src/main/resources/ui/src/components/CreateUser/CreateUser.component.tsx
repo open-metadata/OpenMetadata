@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Select } from 'antd';
+import { Input, Select } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
@@ -22,6 +22,7 @@ import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
+import { GoogleSSOClientConfig } from '../../generated/configuration/airflowConfiguration';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthType,
@@ -31,8 +32,10 @@ import {
 } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
+  DEFAULT_GOOGLE_SSO_CLIENT_CONFIG,
   getAuthMechanismTypeOptions,
   getJWTTokenExpiryOptions,
+  SECRET_KEY_ERROR_MSG,
 } from '../../utils/BotsUtils';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -72,10 +75,15 @@ const CreateUser = ({
   const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
     JWTTokenExpiry.OneHour
   );
+
+  const [googleSSOClientConfig, setGoogleSSOClientConfig] =
+    useState<GoogleSSOClientConfig>(DEFAULT_GOOGLE_SSO_CLIENT_CONFIG);
+
   const [showErrorMsg, setShowErrorMsg] = useState({
     email: false,
     displayName: false,
     validEmail: false,
+    secretKey: false,
   });
 
   const slashedBreadcrumbList = [
@@ -111,6 +119,21 @@ const CreateUser = ({
       case 'displayName':
         setDisplayName(value);
         setShowErrorMsg({ ...showErrorMsg, displayName: false });
+
+        break;
+      case 'secretKey':
+        setGoogleSSOClientConfig((previous) => ({
+          ...previous,
+          secretKey: value,
+        }));
+        setShowErrorMsg({ ...showErrorMsg, secretKey: false });
+
+        break;
+      case 'audience':
+        setGoogleSSOClientConfig((previous) => ({
+          ...previous,
+          audience: value,
+        }));
 
         break;
 
@@ -166,6 +189,9 @@ const CreateUser = ({
     } else {
       errMsg.validEmail = !validEmailRegEx.test(email);
     }
+    if (isEmpty(googleSSOClientConfig.secretKey)) {
+      errMsg.secretKey = true;
+    }
     setShowErrorMsg(errMsg);
 
     return !Object.values(errMsg).includes(true);
@@ -202,7 +228,10 @@ const CreateUser = ({
                       }
                     : {
                         ssoServiceType: SsoServiceType.Google,
-                        authConfig: {},
+                        authConfig: {
+                          secretKey: googleSSOClientConfig.secretKey,
+                          audience: googleSSOClientConfig.audience,
+                        },
                       },
               },
             }
@@ -318,23 +347,60 @@ const CreateUser = ({
                 ))}
               </Select>
             </Field>
-            <Field>
-              <label
-                className="tw-block tw-form-label tw-mb-0"
-                htmlFor="token-expiry">
-                {requiredField('Token Expiration')}
-              </label>
-              <Select
-                className="w-full"
-                data-testid="token-expiry"
-                defaultValue={tokenExpiry}
-                placeholder="Select Token Expiration"
-                onChange={(value) => setTokenExpiry(value)}>
-                {getJWTTokenExpiryOptions().map((option) => (
-                  <Option key={option.value}>{option.label}</Option>
-                ))}
-              </Select>
-            </Field>
+            {authMechanism === AuthType.Jwt && (
+              <Field>
+                <label
+                  className="tw-block tw-form-label tw-mb-0"
+                  htmlFor="token-expiry">
+                  {requiredField('Token Expiration')}
+                </label>
+                <Select
+                  className="w-full"
+                  data-testid="token-expiry"
+                  defaultValue={tokenExpiry}
+                  placeholder="Select Token Expiration"
+                  onChange={(value) => setTokenExpiry(value)}>
+                  {getJWTTokenExpiryOptions().map((option) => (
+                    <Option key={option.value}>{option.label}</Option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+            {authMechanism === AuthType.Sso && (
+              <>
+                <Field>
+                  <label
+                    className="tw-block tw-form-label tw-mb-0"
+                    htmlFor="secretKey">
+                    {requiredField('SecretKey')}
+                  </label>
+                  <Input.Password
+                    data-testid="secretKey"
+                    id="secretKey"
+                    name="secretKey"
+                    placeholder="secretKey"
+                    value={googleSSOClientConfig.secretKey}
+                    onChange={handleValidation}
+                  />
+                  {showErrorMsg.secretKey && errorMsg(SECRET_KEY_ERROR_MSG)}
+                </Field>
+                <Field>
+                  <label
+                    className="tw-block tw-form-label tw-mb-0"
+                    htmlFor="audience">
+                    Audience
+                  </label>
+                  <Input
+                    data-testid="audience"
+                    id="audience"
+                    name="audience"
+                    placeholder="audience"
+                    value={googleSSOClientConfig.audience}
+                    onChange={handleValidation}
+                  />
+                </Field>
+              </>
+            )}
           </>
         )}
         <Field>
