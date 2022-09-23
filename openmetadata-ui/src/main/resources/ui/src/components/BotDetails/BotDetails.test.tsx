@@ -97,9 +97,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
-    generateUserToken: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(mockToken)),
+    updateUser: jest.fn().mockImplementation(() => Promise.resolve(botsData)),
     getUserToken: jest
       .fn()
       .mockImplementation(() => Promise.resolve(mockToken)),

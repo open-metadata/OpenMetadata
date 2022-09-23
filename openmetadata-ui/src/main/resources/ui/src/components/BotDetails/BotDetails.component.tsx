@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
+import { getUserToken, updateUser } from '../../axiosAPIs/userAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -52,6 +52,7 @@ import Description from '../common/description/Description';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { Field } from '../Field/Field';
+import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
@@ -92,6 +93,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
     JWTTokenExpiry.OneHour
   );
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   const editAllPermission = useMemo(
     () => botPermission.EditAll,
@@ -131,26 +133,52 @@ const BotDetails: FC<BotsDetailProp> = ({
       });
   };
 
-  const generateBotsToken = (data: string) => {
-    generateUserToken(botsData.id, data)
-      .then((res) => {
-        const { JWTToken, JWTTokenExpiresAt } = res;
-        setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      })
-      .finally(() => {
-        setGenerateToken(false);
-      });
+  const handleBotTokenDetailUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      const {
+        isAdmin,
+        teams,
+        timezone,
+        name,
+        description,
+        displayName,
+        profile,
+        email,
+        isBot,
+        roles,
+      } = botsData;
+      const response = await updateUser({
+        isAdmin,
+        teams,
+        timezone,
+        name,
+        description,
+        displayName,
+        profile,
+        email,
+        isBot,
+        roles,
+        authenticationMechanism: {
+          ...botsData.authenticationMechanism,
+          authType: authMechanism,
+          config: {
+            JWTTokenExpiry: tokenExpiry,
+          },
+        },
+      } as User);
+      if (response.data) {
+        fetchBotsToken();
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+      setGenerateToken(false);
+    }
   };
 
   const handleTokenGeneration = () => setGenerateToken(true);
-
-  const handleGenerate = () => {
-    generateBotsToken(tokenExpiry);
-  };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -400,8 +428,8 @@ const BotDetails: FC<BotsDetailProp> = ({
               theme="primary"
               type="submit"
               variant="contained"
-              onClick={handleGenerate}>
-              Save
+              onClick={handleBotTokenDetailUpdate}>
+              {isUpdating ? <Loader size="small" /> : 'Save'}
             </Button>
           </div>
         </div>
@@ -515,6 +543,7 @@ const BotDetails: FC<BotsDetailProp> = ({
           onConfirm={() => {
             revokeTokenHandler();
             setIsRevokingToken(false);
+            handleTokenGeneration();
           }}
         />
       ) : null}
