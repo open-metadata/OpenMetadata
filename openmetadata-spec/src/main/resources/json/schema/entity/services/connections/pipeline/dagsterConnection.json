@@ -31,26 +31,11 @@
       "type": "integer",
       "default": "10"
     },
-    "dbConnection": {
-      "title": "Metadata Database Connection",
-      "description": "Underlying database connection. See https://docs.dagster.io/getting-started for supported backends.",
-      "oneOf": [
-        {
-          "$ref": "../database/mysqlConnection.json"
-        },
-        {
-          "$ref": "../database/postgresConnection.json"
-        },
-        {
-          "$ref": "../database/sqliteConnection.json"
-        }
-      ]
-    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "dbConnection"]
+  "required": ["hostPort"]
 }
