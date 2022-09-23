@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     StatusType,
     TaskStatus,
+    Task
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
