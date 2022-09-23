@@ -24,8 +24,8 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     StatusType,
+    Task,
     TaskStatus,
-    Task
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
