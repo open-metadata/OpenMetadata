@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
-import { DELETE_TERM } from '../../constants/constants';
+import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
+import { DELETE_TERM, LOGIN } from '../../constants/constants';
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
@@ -32,8 +32,8 @@ const getCreatedBot = () => {
 
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')

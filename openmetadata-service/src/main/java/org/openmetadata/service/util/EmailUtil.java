@@ -36,12 +36,20 @@ public class EmailUtil {
   public static final String PASSWORDRESETLINKKEY = "userResetPasswordLink";
   public static final String EXPIRATIONTIMEKEY = "expirationTime";
   public static final String DEFAULTEXPIRATIONTIME = "60";
+  public static final String PASSWORD = "password";
+  public static final String APPLICATION_LOGIN_LINK = "applicationLoginLink";
+
   public static final String PASSWORDRESETTEMPLATEFILE = "reset-link.ftl";
   // Account Change Status
   private final String ACCOUNTSTATUSSUBJECT = "%s: Change in Account Status";
   public static final String ACTIONKEY = "action";
   public static final String ACTIONSTATUSKEY = "actionStatus";
   public static final String ACCOUNTSTATUSTEMPLATEFILE = "account-activity-change.ftl";
+
+  private final String INVITE_SUBJECT = "Welcome to %s";
+
+  public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
+  public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
 
   private static EmailUtil INSTANCE = null;
   private SmtpSettings defaultSmtpSettings = null;
@@ -279,11 +287,19 @@ public class EmailUtil {
     return String.format(ACCOUNTSTATUSSUBJECT, defaultSmtpSettings.getEmailingEntity());
   }
 
+  public String getEmailInviteSubject() {
+    return String.format(INVITE_SUBJECT, defaultSmtpSettings.getEmailingEntity());
+  }
+
   public String getEmailingEntity() {
     return defaultSmtpSettings.getEmailingEntity();
   }
 
   public String getSupportUrl() {
     return defaultSmtpSettings.getSupportUrl();
+  }
+
+  public String getOMUrl() {
+    return defaultSmtpSettings.getOpenMetadataUrl();
   }
 }

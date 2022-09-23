@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -170,7 +172,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);
-      filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
+      filter.addQueryParam(
+          "entityFQN", URLEncoder.encode(entityLinkParsed.getFullyQualifiedFieldValue(), StandardCharsets.UTF_8));
       resourceContext = TestCaseResourceContext.builder().entityLink(entityLinkParsed).build();
     } else {
       resourceContext = TestCaseResourceContext.builder().build();

@@ -28,6 +28,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -59,7 +60,7 @@ def column_values_not_in_set(
     set_count = add_props(values=forbidden_value)(Metrics.COUNT_IN_SET.value)
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
+        column_name = get_decoded_column(test_case.entityLink.__root__)
         col = next(
             (col for col in inspect(runner.table).c if col.name == column_name),
             None,
