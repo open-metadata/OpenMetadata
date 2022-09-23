@@ -32,6 +32,7 @@ import {
 import {
   AuthType,
   JWTTokenExpiry,
+  SsoServiceType,
   User,
 } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -162,9 +163,15 @@ const BotDetails: FC<BotsDetailProp> = ({
         authenticationMechanism: {
           ...botsData.authenticationMechanism,
           authType: authMechanism,
-          config: {
-            JWTTokenExpiry: tokenExpiry,
-          },
+          config:
+            authMechanism === AuthType.Jwt
+              ? {
+                  JWTTokenExpiry: tokenExpiry,
+                }
+              : {
+                  ssoServiceType: SsoServiceType.Google,
+                  authConfig: {},
+                },
         },
       } as User);
       if (response.data) {

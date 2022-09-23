@@ -27,6 +27,7 @@ import {
   AuthType,
   EntityReference as UserTeams,
   JWTTokenExpiry,
+  SsoServiceType,
 } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
@@ -194,9 +195,15 @@ const CreateUser = ({
           ? {
               authenticationMechanism: {
                 authType: authMechanism,
-                config: {
-                  JWTTokenExpiry: tokenExpiry,
-                },
+                config:
+                  authMechanism === AuthType.Jwt
+                    ? {
+                        JWTTokenExpiry: tokenExpiry,
+                      }
+                    : {
+                        ssoServiceType: SsoServiceType.Google,
+                        authConfig: {},
+                      },
               },
             }
           : {}),
