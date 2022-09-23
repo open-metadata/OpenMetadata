@@ -53,6 +53,11 @@ export const getAuthMechanismTypeOptions = (
   }
 };
 
+/**
+ *
+ * @param expiry expiry value like "7" "30"
+ * @returns expiry text like "The Token will expire on date"
+ */
 export const getTokenExpiryText = (expiry: string) => {
   if (expiry === JWTTokenExpiry.Unlimited) {
     return 'The token will never expire!';
@@ -63,4 +68,13 @@ export const getTokenExpiryText = (expiry: string) => {
       .add(expiry, 'days')
       .format('ddd Do MMMM, YYYY')}`;
   }
+};
+
+/**
+ *
+ * @param expiry expiry timestamp
+ * @returns date like "Fri 23rd September, 2022,02:26 PM."
+ */
+export const getTokenExpiryDate = (expiry: number) => {
+  return moment(expiry).format('ddd Do MMMM, YYYY,hh:mm A');
 };

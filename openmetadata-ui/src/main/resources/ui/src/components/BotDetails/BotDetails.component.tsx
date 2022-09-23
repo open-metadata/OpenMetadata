@@ -12,10 +12,9 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Select } from 'antd';
+import { Card, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import moment from 'moment';
 import React, {
   FC,
   Fragment,
@@ -39,6 +38,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import {
   getAuthMechanismTypeOptions,
   getJWTTokenExpiryOptions,
+  getTokenExpiryDate,
   getTokenExpiryText,
 } from '../../utils/BotsUtils';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
@@ -82,7 +82,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [botsToken, setBotsToken] = useState<string>('');
-  const [botsTokenExpiry, setBotsTokenExpiry] = useState<string>();
+  const [botsTokenExpiry, setBotsTokenExpiry] = useState<number>();
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [botPermission, setBotPermission] = useState<OperationPermission>(
@@ -124,7 +124,7 @@ const BotDetails: FC<BotsDetailProp> = ({
       .then((res) => {
         const { JWTToken, JWTTokenExpiresAt } = res;
         setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
+        setBotsTokenExpiry(JWTTokenExpiresAt);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -136,7 +136,7 @@ const BotDetails: FC<BotsDetailProp> = ({
       .then((res) => {
         const { JWTToken, JWTTokenExpiresAt } = res;
         setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
+        setBotsTokenExpiry(JWTTokenExpiresAt);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -315,11 +315,10 @@ const BotDetails: FC<BotsDetailProp> = ({
       // get the current date timestamp
       const currentTimeStamp = Date.now();
 
-      const isTokenExpired = currentTimeStamp >= Number(botsTokenExpiry);
+      const isTokenExpired = currentTimeStamp >= botsTokenExpiry;
 
       // get the token expiry date
-      const tokenExpiryDate =
-        moment(botsTokenExpiry).format('ddd Do MMMM, YYYY');
+      const tokenExpiryDate = getTokenExpiryDate(botsTokenExpiry);
 
       return (
         <p
@@ -412,12 +411,10 @@ const BotDetails: FC<BotsDetailProp> = ({
         return (
           <Fragment>
             <div className="tw-flex tw-justify-between tw-items-center tw-mt-4">
-              <input
-                disabled
-                className="tw-form-inputs tw-p-1.5"
+              <Input.Password
+                contentEditable={false}
                 data-testid="token"
                 placeholder="Generate new token..."
-                type="password"
                 value={botsToken}
               />
               {getCopyComponent()}
