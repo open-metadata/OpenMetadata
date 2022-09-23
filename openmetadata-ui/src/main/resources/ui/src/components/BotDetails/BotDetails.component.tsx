@@ -24,6 +24,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
 import {
   GlobalSettingOptions,
@@ -75,6 +76,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   updateBotsDetails,
   revokeTokenHandler,
 }) => {
+  const { authConfig } = useAuthContext();
   const { getEntityPermission } = usePermissionProvider();
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
@@ -359,7 +361,7 @@ const BotDetails: FC<BotsDetailProp> = ({
               defaultValue={authMechanism}
               placeholder="Select Auth Mechanism"
               onChange={(value) => setAuthMechanism(value)}>
-              {getAuthMechanismTypeOptions().map((option) => (
+              {getAuthMechanismTypeOptions(authConfig).map((option) => (
                 <Option key={option.value}>{option.label}</Option>
               ))}
             </Select>
