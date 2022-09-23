@@ -41,6 +41,7 @@ def _(*_, **__):
     return "ABS(RANDOM()) * 100"
 
 
+@compiles(RandomNumFn, Dialects.Hive)
 @compiles(RandomNumFn, Dialects.MySQL)
 def _(*_, **__):
     return "ABS(RAND()) * 100"
