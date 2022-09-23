@@ -59,10 +59,15 @@ const BotListV1 = ({
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
 
-  const createPermission = checkPermission(
-    Operation.Create,
-    ResourceEntity.BOT,
-    permissions
+  /**
+   * Bot creation is two step process so here we should check for
+   * Create User and Create Bot both permissions
+   */
+  const createPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.BOT, permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.USER, permissions),
+    [permissions]
   );
 
   const deletePermission = useMemo(

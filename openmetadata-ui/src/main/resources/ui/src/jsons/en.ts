@@ -25,6 +25,7 @@ const jsonData = {
 
     'check-status-airflow': 'Error while connecting to Airflow instance!',
     'create-user-error': 'Error while creating user!',
+    'create-bot-error': 'Error while creating bot!',
     'create-conversation-error': 'Error while creating conversation!',
     'create-message-error': 'Error while creating message!',
     'create-role-error': 'Error While creating role!',

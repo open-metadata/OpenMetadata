@@ -87,15 +87,22 @@ const CreateUserPage = () => {
               name: res.name,
               displayName: res.displayName,
               description: res.description,
-            } as Bot).then((res) => {
-              setStatus('success');
-              res && showSuccessToast(`Bot created successfully`);
-              setTimeout(() => {
-                setStatus('initial');
+            } as Bot)
+              .then((res) => {
+                setStatus('success');
+                res && showSuccessToast(`Bot created successfully`);
+                setTimeout(() => {
+                  setStatus('initial');
 
-                goToUserListPage();
-              }, 500);
-            });
+                  goToUserListPage();
+                }, 500);
+              })
+              .catch((err: AxiosError) => {
+                handleSaveFailure(
+                  err,
+                  jsonData['api-error-messages']['create-bot-error']
+                );
+              });
           } else {
             setStatus('success');
             setTimeout(() => {

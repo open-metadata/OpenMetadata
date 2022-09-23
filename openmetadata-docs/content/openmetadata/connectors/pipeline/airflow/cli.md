@@ -22,10 +22,10 @@ custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Airbyte ingestion, you will need to install:
+To run the Airflow ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[airbyte]"
+pip3 install "openmetadata-ingestion[airflow]"
 ```
 
 Note that this installs the same Airflow version that we ship in the Ingestion Container, which is

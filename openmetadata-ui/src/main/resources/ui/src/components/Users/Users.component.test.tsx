@@ -105,6 +105,32 @@ const mockUserData = {
   ],
 };
 
+const mockUserRole = {
+  data: [
+    {
+      id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+      name: 'DataConsumer',
+      fullyQualifiedName: 'DataConsumer',
+      displayName: 'Data Consumer',
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      version: 0.1,
+      updatedAt: 1663825430544,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+      allowDelete: false,
+      deleted: false,
+    },
+  ],
+  paging: {
+    total: 1,
+  },
+};
+
+jest.mock('../../axiosAPIs/rolesAPIV1.ts', () => ({
+  getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
+}));
+
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
