@@ -221,10 +221,6 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
-  private boolean isValidAuthConfig(AuthenticationMechanism authMechanism) {
-    return authMechanism != null && authMechanism.getConfig() != null;
-  }
-
   private void addOrUpdateBot(Bot bot) {
     EntityRepository<Bot> botRepository = Entity.getEntityRepository(Entity.BOT);
     try {
