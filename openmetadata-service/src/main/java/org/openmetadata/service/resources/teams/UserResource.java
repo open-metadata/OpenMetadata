@@ -414,7 +414,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext, true);
     }
-    if (create.getIsBot()) {
+    if (Boolean.TRUE.equals(create.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
     // TODO do we need to authenticate user is creating himself?
@@ -449,7 +449,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       ResourceContext resourceContext = getResourceContextByName(user.getName());
       authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
     }
-    if (create.getIsBot()) {
+    if (Boolean.TRUE.equals(create.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -510,6 +510,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
+    decryptOrNullify(securityContext, user);
     authorizer.authorizeAdmin(securityContext, false);
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null
@@ -518,6 +519,35 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
     }
     return new JWTAuthMechanism();
+  }
+
+  @GET
+  @Path("/auth-mechanism/{id}")
+  @Operation(
+      operationId = "getAuthenticationMechanismBotUser",
+      summary = "Get Authentication Mechanism for a Bot User",
+      tags = "users",
+      description = "Get Authentication Mechanism for a Bot User.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthenticationMechanism.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public AuthenticationMechanism getAuthenticationMechanism(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
+
+    User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException("JWT token is only supported for bot users");
+    }
+    decryptOrNullify(securityContext, user);
+    authorizer.authorizeAdmin(securityContext, false);
+    return user.getAuthenticationMechanism();
   }
 
   @PATCH
@@ -1174,7 +1204,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
             LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
             original = null;
           }
-          if (original == null || !hasAJWTAuthMechanism(original)) {
+          if (original != null && !secretsManager.isLocal() && user.getAuthenticationMechanism() != null) {
+            original
+                .getAuthenticationMechanism()
+                .setConfig(
+                    secretsManager.encryptOrDecryptIngestionBotCredentials(
+                        user.getName(), authMechanism.getConfig(), false));
+          }
+          if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
             JWTAuthMechanism jwtAuthMechanism =
                 JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
             authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
@@ -1197,11 +1234,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private boolean hasAJWTAuthMechanism(User user) {
-    AuthenticationMechanism authMechanism = user.getAuthenticationMechanism();
+  private boolean hasAJWTAuthMechanism(AuthenticationMechanism authMechanism) {
     if (authMechanism != null && JWT.equals(authMechanism.getAuthType())) {
       JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-      return jwtAuthMechanism.getJWTToken() != null && !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken());
+      return jwtAuthMechanism != null
+          && jwtAuthMechanism.getJWTToken() != null
+          && !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken());
     }
     return false;
   }
@@ -1219,7 +1257,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private User decryptOrNullify(SecurityContext securityContext, User user) {
-    if (user.getIsBot() != null && user.getIsBot() && user.getAuthenticationMechanism() != null) {
+    if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(
             securityContext,

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.security;
 
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
@@ -30,7 +29,6 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
@@ -45,7 +43,6 @@ import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -210,22 +207,12 @@ public class DefaultAuthorizer implements Authorizer {
           userRepository.getByName(
               null, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
       AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
-      if (user.getIsBot() && (isValidJWTAuthMechanism(authMechanism) || isNotJWTAuth(authMechanism))) {
-        user.setAuthenticationMechanism(originalUser.getAuthenticationMechanism());
+      if (Boolean.TRUE.equals(user.getIsBot()) && authMechanism != null) {
+        user.setAuthenticationMechanism(authMechanism);
       }
     } catch (IOException | EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
     }
-  }
-
-  private boolean isNotJWTAuth(AuthenticationMechanism authMechanism) {
-    return isValidAuthConfig(authMechanism) && !JWT.equals(authMechanism.getAuthType());
-  }
-
-  private boolean isValidJWTAuthMechanism(AuthenticationMechanism authMechanism) {
-    return isValidAuthConfig(authMechanism)
-        && JWT.equals(authMechanism.getAuthType())
-        && JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class).getJWTToken() != null;
   }
 
   private boolean isValidAuthConfig(AuthenticationMechanism authMechanism) {

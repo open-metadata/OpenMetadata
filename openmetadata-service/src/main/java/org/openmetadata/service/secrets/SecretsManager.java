@@ -105,5 +105,5 @@ public abstract class SecretsManager {
   public abstract Object storeTestConnectionObject(TestServiceConnection testServiceConnection);
 
   public abstract Object encryptOrDecryptIngestionBotCredentials(
-      String ingestionBot, Object securityConfig, boolean encrypt);
+      String botName, Object securityConfig, boolean encrypt);
 }

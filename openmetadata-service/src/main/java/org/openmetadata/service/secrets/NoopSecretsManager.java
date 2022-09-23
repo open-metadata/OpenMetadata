@@ -65,7 +65,7 @@ public class NoopSecretsManager extends SecretsManager {
   }
 
   @Override
-  public Object encryptOrDecryptIngestionBotCredentials(String ingestionBot, Object securityConfig, boolean encrypt) {
+  public Object encryptOrDecryptIngestionBotCredentials(String botName, Object securityConfig, boolean encrypt) {
     return securityConfig;
   }
 

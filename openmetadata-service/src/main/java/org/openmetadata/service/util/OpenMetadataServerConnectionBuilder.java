@@ -29,7 +29,7 @@ public class OpenMetadataServerConnectionBuilder {
   private static final String INGESTION_BOT = "ingestion-bot";
 
   OpenMetadataServerConnection.AuthProvider authProvider;
-  String ingestionBot;
+  String bot;
   Object securityConfig;
   OpenMetadataServerConnection.VerifySSL verifySSL;
   String openMetadataURL;
@@ -38,12 +38,13 @@ public class OpenMetadataServerConnectionBuilder {
   Object airflowSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
+  SecretsManager secretsManager;
 
   public OpenMetadataServerConnectionBuilder(
       SecretsManager secretsManager,
       OpenMetadataApplicationConfig openMetadataApplicationConfig,
       CollectionDAO collectionDAO) {
-
+    this.secretsManager = secretsManager;
     authProvider =
         OpenMetadataServerConnection.AuthProvider.fromValue(
             openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
@@ -106,7 +107,7 @@ public class OpenMetadataServerConnectionBuilder {
         .withVerifySSL(verifySSL)
         .withClusterName(clusterName)
         .withSecretsManagerProvider(secretsManagerProvider)
-        .withIngestionBot(ingestionBot)
+        .withWorkflowBot(bot)
         .withSslConfig(airflowSSLConfig);
   }
 
@@ -136,31 +137,38 @@ public class OpenMetadataServerConnectionBuilder {
     }
     if (botUser == null) {
       throw new IllegalArgumentException(
-          "Please, create at least one bot that matches any of the names from 'authorizerConfiguration.botPrincipals' in the OpenMetadata configuration");
+          "Please, create at least one bot with valid authentication mechanism that matches any of the names from 'authorizerConfiguration.botPrincipals' in the OpenMetadata configuration");
     }
     return botUser;
   }
 
   private User retrieveIngestionBotUser(String botName) {
     try {
-      Bot ingestionBot = botRepository.getByName(null, botName, new EntityUtil.Fields(List.of("botUser")));
-      if (ingestionBot.getBotUser() == null) {
+      Bot bot = botRepository.getByName(null, botName, new EntityUtil.Fields(List.of("botUser")));
+      if (bot.getBotUser() == null) {
         return null;
       }
-      return userRepository.getByName(
-          null,
-          ingestionBot.getBotUser().getFullyQualifiedName(),
-          new EntityUtil.Fields(List.of("authenticationMechanism")));
+      User user =
+          userRepository.getByName(
+              null,
+              bot.getBotUser().getFullyQualifiedName(),
+              new EntityUtil.Fields(List.of("authenticationMechanism")));
+      if (user.getAuthenticationMechanism() != null) {
+        user.getAuthenticationMechanism()
+            .setConfig(
+                secretsManager.encryptOrDecryptIngestionBotCredentials(
+                    botName, user.getAuthenticationMechanism().getConfig(), false));
+      }
+      return user;
     } catch (IOException | EntityNotFoundException ex) {
-      LOG.debug(
-          (ingestionBot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
+      LOG.debug((bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
       return null;
     }
   }
 
-  private void addBotNameIfUserExists(User ingestionBotUser, String ingestionBot) {
-    if (ingestionBotUser != null) {
-      this.ingestionBot = ingestionBot;
+  private void addBotNameIfUserExists(User botUser, String bot) {
+    if (botUser != null) {
+      this.bot = bot;
     }
   }
 

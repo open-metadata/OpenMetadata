@@ -18,5 +18,7 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+  hostPort: http://localhost:8585/api
+  authProvider: openmetadata
+  securityConfig:
+     jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ0ZXN0LWF1dGgtb20iLCJpc0JvdCI6dHJ1ZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJleHAiOjE2NjQzNzI5MzYsImlhdCI6MTY2Mzc2ODEzNiwiZW1haWwiOiJ0ZXN0LWF1dGgtb21AZ2V0Y29sbGF0ZS5pbyJ9.bdFMcfeV8wnnqGQEsb6pkghARHk04AWfEbc8kXSvrUFTxUqt_Nk5A0vWMYq4dZhKnZyKTHxBf0V_fHwHoQrivXMXGl08wFkNqGYh4fcvx7dujPFKM_ljo9uzF-IP73f9QzUbEuGwXT9EBSXFuicOARcbBi0go6qSkGwIETZ2TwfL9f0noqk4U-baNr2UKCcZAIRi6fjKRP8wESbr_Gz1QfZT52iSWq-v7_2OOu1rHX3vin1asvFXs0mJjaIoISFR7XV1RW9JxjL2J3q7FSzKc_i_orH4oxD8U2LmpT3QmMYtVocdJE0NTU7nOiJMl1N6n9NREHIVAzNvmhg2pi5wag"

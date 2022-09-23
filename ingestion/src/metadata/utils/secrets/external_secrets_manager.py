@@ -29,7 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
-    AUTH_PROVIDER_SECRET_PREFIX,
+    BOT_PREFIX,
     DBT_SOURCE_CONFIG_SECRET_PREFIX,
     TEST_CONNECTION_TEMP_SECRET_PREFIX,
     SecretsManager,
@@ -84,14 +84,13 @@ class ExternalSecretsManager(SecretsManager, ABC):
         """
         Add the auth provider security config from the AWS client store to a given OpenMetadata connection object.
         :param config: OpenMetadataConnection object
+        :param bot_name: Bot name to retrieve credentials from
         """
         logger.debug(
             f"Adding auth provider security config using {self.provider} secrets' manager"
         )
         if config.authProvider != AuthProvider.no_auth:
-            secret_id = self.build_secret_id(
-                AUTH_PROVIDER_SECRET_PREFIX, config.authProvider.value.lower()
-            )
+            secret_id = self.build_secret_id(BOT_PREFIX, config.workflowBot)
             auth_config_json = self.get_string_value(secret_id)
             try:
                 config.securityConfig = AUTH_PROVIDER_MAPPING.get(

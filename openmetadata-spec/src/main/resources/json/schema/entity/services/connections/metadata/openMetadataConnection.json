@@ -96,7 +96,7 @@
         }
       ]
     },
-    "ingestionBot": {
+    "workflowBot": {
       "description": "OpenMetadata bot used for the ingestion",
       "type": "string",
       "default": "ingestion-bot"

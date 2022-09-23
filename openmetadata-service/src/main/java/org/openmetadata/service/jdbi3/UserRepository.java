@@ -106,10 +106,7 @@ public class UserRepository extends EntityRepository<User> {
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
 
-    if (secretsManager != null
-        && user.getIsBot() != null
-        && user.getIsBot()
-        && user.getAuthenticationMechanism() != null) {
+    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .setConfig(
               secretsManager.encryptOrDecryptIngestionBotCredentials(

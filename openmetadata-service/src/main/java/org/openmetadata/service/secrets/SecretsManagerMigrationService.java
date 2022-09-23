@@ -227,8 +227,7 @@ public class SecretsManagerMigrationService {
               ingestionPipelineRepository.dao.listCount(new ListFilter()),
               null)
           .getData().stream()
-          .filter(this::hasSecurityConfig)
-          .filter(this::hasDbtConfig)
+          .filter(ingestionPipeline -> hasSecurityConfig(ingestionPipeline) || hasDbtConfig(ingestionPipeline))
           .collect(Collectors.toList());
     } catch (IOException e) {
       throw new SecretsManagerMigrationException(e.getMessage(), e.getCause());
@@ -257,7 +256,7 @@ public class SecretsManagerMigrationService {
       return userRepository
           .listAfter(
               null,
-              EntityUtil.Fields.EMPTY_FIELDS,
+              new EntityUtil.Fields(List.of("authenticationMechanism")),
               new ListFilter(),
               userRepository.dao.listCount(new ListFilter()),
               null)
