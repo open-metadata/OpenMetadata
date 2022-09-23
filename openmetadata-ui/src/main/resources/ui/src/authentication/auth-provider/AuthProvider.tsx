@@ -143,7 +143,7 @@ export const AuthProvider = ({
       cookieStorage.getItem(REDIRECT_PATHNAME)
     );
 
-    if (!redirectPathExists && appState.getUrlPathname() !== '') {
+    if (!redirectPathExists) {
       cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
         expires: getUrlPathnameExpiry(),
         path: '/',
@@ -269,7 +269,6 @@ export const AuthProvider = ({
     const pathName = location.pathname;
     // Do not try silent sign in for SignIn or SignUp route
     if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
-      storeRedirectPath();
       // Try to renew token
       silentSignInRetries < 3
         ? renewIdToken()
