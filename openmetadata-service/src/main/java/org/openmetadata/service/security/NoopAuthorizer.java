@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -38,7 +39,7 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi jdbi) {
+  public void init(AuthorizerConfiguration config, Jdbi jdbi, SecretsManager secretsManager) {
     SubjectCache.initialize();
     addAnonymousUser();
   }

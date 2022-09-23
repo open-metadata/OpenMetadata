@@ -269,10 +269,9 @@ public class SecretsManagerMigrationService {
   }
 
   private boolean isBotWithCredentials(User user) {
-    return user.getIsBot() != null
-        && user.getIsBot()
+    return Boolean.TRUE.equals(user.getIsBot())
         && user.getAuthenticationMechanism() != null
-        && user.getAuthenticationMechanism().getAuthType() != null;
+        && user.getAuthenticationMechanism().getConfig() != null;
   }
 
   private boolean hasSecurityConfig(IngestionPipeline ingestionPipeline) {

@@ -35,6 +35,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -52,13 +53,16 @@ public class DefaultAuthorizer implements Authorizer {
   private Set<String> testUsers;
   private String principalDomain;
 
+  private SecretsManager secretsManager;
+
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi dbi) {
+  public void init(AuthorizerConfiguration config, Jdbi dbi, SecretsManager secretManager) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.testUsers = new HashSet<>(config.getTestPrincipals());
     this.principalDomain = config.getPrincipalDomain();
+    this.secretsManager = secretManager;
 
     SubjectCache.initialize();
     PolicyCache.initialize();
@@ -208,6 +212,8 @@ public class DefaultAuthorizer implements Authorizer {
               null, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
       AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
       if (Boolean.TRUE.equals(user.getIsBot()) && authMechanism != null) {
+        authMechanism.setConfig(
+            secretsManager.encryptOrDecryptIngestionBotCredentials(user.getName(), authMechanism.getConfig(), false));
         user.setAuthenticationMechanism(authMechanism);
       }
     } catch (IOException | EntityNotFoundException e) {
