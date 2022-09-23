@@ -169,7 +169,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
-      Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
+      Policy policy = setFieldsInternal(JsonUtils.readValue(json, Policy.class), fields);
       if (!Boolean.TRUE.equals(policy.getEnabled())) {
         continue;
       }

@@ -93,7 +93,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     }
   }
 
-  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary";
+  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension";
 
   @GET
   @Valid
