@@ -64,6 +64,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
@@ -625,7 +626,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
     if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZERCONFIG, AuthorizerConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
         .getEnableSelfSignup()) {
       User registeredUser = registerUser(uriInfo, create);
       try {

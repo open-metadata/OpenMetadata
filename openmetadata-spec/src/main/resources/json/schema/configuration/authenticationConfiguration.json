@@ -39,6 +39,11 @@
       "items": {
         "type": "string"
       }
+    },
+    "enableSelfSignup": {
+      "description": "Enable Self Sign Up",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],

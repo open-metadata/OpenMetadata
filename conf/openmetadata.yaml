@@ -138,7 +138,6 @@ authorizerConfiguration:
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
-  enableSelfSignup : ${AUTHORIZER_ENABLE_SELF_SIGNUP:-true}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
@@ -149,6 +148,7 @@ authenticationConfiguration:
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
