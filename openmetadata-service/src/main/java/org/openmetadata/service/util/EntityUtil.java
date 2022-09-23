@@ -388,11 +388,16 @@ public final class EntityUtil {
         : FullyQualifiedName.build("rules", rule.getName(), ruleField);
   }
 
-  /** Return customer property field name of format "extension".propertyName */
+  /** Return customer property field name of format "customProperties".propertyName */
   public static String getCustomField(CustomProperty property, String propertyFieldName) {
     return propertyFieldName == null
         ? FullyQualifiedName.build("customProperties", property.getName())
         : FullyQualifiedName.build("customProperties", property.getName(), propertyFieldName);
+  }
+
+  /** Return extension field name of format "extension".fieldName */
+  public static String getExtensionField(String key) {
+    return FullyQualifiedName.build("extension", key);
   }
 
   public static Double nextVersion(Double version) {

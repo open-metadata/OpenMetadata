@@ -106,7 +106,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     }
   }
 
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
 
   @GET
   @Valid
