@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.networknt.schema.JsonSchema;
@@ -428,5 +429,18 @@ public final class JsonUtils {
   public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
     String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
     return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
+  }
+
+  public static ObjectNode getObjectNode(String key, JsonNode value) {
+    ObjectNode objectNode = getObjectNode();
+    return objectNode.set(key, value);
+  }
+
+  public static ObjectNode getObjectNode() {
+    return OBJECT_MAPPER.createObjectNode();
+  }
+
+  public static JsonNode readTree(String extensionJson) throws JsonProcessingException {
+    return OBJECT_MAPPER.readTree(extensionJson);
   }
 }

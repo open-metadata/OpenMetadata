@@ -93,7 +93,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     }
   }
 
-  static final String FIELDS = "owner,followers,tags,sampleData";
+  static final String FIELDS = "owner,followers,tags,sampleData,extension";
 
   @GET
   @Operation(
@@ -162,9 +162,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -258,7 +258,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST

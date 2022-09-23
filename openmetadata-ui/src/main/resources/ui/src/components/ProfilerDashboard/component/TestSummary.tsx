@@ -28,7 +28,6 @@ import {
   YAxis,
 } from 'recharts';
 import { getListTestCaseResults } from '../../../axiosAPIs/testAPI';
-import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import {
   COLORS,
   PROFILER_FILTER_RANGE,
@@ -135,7 +134,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         {
           startTs,
           endTs,
-          limit: API_RES_MAX_SIZE,
         }
       );
       setResults(chartData);

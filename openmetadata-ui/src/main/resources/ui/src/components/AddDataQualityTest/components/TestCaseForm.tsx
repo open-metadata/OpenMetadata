@@ -35,6 +35,7 @@ import {
   EntityType,
   TestDataType,
   TestDefinition,
+  TestPlatform,
 } from '../../../generated/tests/testDefinition';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
@@ -67,6 +68,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       const { data } = await getListTestDefinitions({
         limit: API_RES_MAX_SIZE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
+        testPlatform: TestPlatform.OpenMetadata,
       });
 
       setTestDefinitions(data);

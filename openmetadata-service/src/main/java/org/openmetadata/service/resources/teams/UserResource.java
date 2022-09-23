@@ -98,6 +98,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ConfigurationHolder;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -227,9 +228,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -380,7 +381,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -428,9 +429,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     dao.prepare(user);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext, true);
-    } else {
+    } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
+      // doing authorization check outside of authorizer here. We are checking if the logged-in user same as the user
+      // we are trying to update. One option is to set users.owner as user, however thats not supported User entity.
       OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-      authorizer.authorize(securityContext, createOperationContext, getResourceContextByName(user.getName()), true);
+      ResourceContext resourceContext = getResourceContextByName(user.getName());
+      authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
     }
     if (create.getIsBot()) {
       addAuthMechanismToBot(user, create);

@@ -26,9 +26,13 @@ import React, {
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
-import AppState from '../../AppState';
+import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { getUserPath, TERM_ADMIN } from '../../constants/constants';
+import {
+  getUserPath,
+  PAGE_SIZE_LARGE,
+  TERM_ADMIN,
+} from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
   getUserCurrentTab,
@@ -767,16 +771,32 @@ const Users = ({
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const response = await getRoles(
+        '',
+        undefined,
+        undefined,
+        false,
+        PAGE_SIZE_LARGE
+      );
+      setRoles(response.data);
+    } catch (err) {
+      setRoles([]);
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['fetch-roles-error']
+      );
+    }
+  };
+
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
 
   useEffect(() => {
-    setRoles(AppState.userRoles);
-  }, [AppState.userRoles]);
-
-  useEffect(() => {
     fetchTeams();
+    fetchRoles();
   }, []);
 
   useEffect(() => {

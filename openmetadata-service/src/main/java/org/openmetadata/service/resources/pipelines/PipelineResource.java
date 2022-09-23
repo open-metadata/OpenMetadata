@@ -29,6 +29,7 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -105,7 +106,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     }
   }
 
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
 
   @GET
   @Valid
@@ -175,9 +176,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -272,7 +273,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -392,40 +393,17 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(
               description = "Filter pipeline statues after the given start timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter pipeline statues before the given end timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number of pipeline statues returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of pipeline statues before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of pipeline statues after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-
-    ListFilter filter =
-        new ListFilter(Include.ALL)
-            .addQueryParam("entityFQN", fqn)
-            .addQueryParam("extension", PipelineRepository.PIPELINE_STATUS_EXTENSION);
-
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getPipelineStatuses(filter, before, after, limitParam);
+    return dao.getPipelineStatuses(fqn, startTs, endTs);
   }
 
   @DELETE

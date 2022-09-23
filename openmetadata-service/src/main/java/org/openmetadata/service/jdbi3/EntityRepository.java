@@ -29,6 +29,7 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
@@ -36,7 +37,6 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
@@ -283,7 +283,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityById(id, include), fields));
+    return withHref(uriInfo, setFieldsInternal(dao.findEntityById(id, include), fields));
   }
 
   @Transaction
@@ -293,7 +293,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityByName(fqn, include), fields));
+    return withHref(uriInfo, setFieldsInternal(dao.findEntityByName(fqn, include), fields));
   }
 
   @Transaction
@@ -306,7 +306,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
 
       for (String json : jsons) {
-        T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+        T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
         entities.add(entity);
       }
 
@@ -332,7 +332,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
-      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+      T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
     int total = dao.listCount(filter);
@@ -358,7 +358,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFields(dao.findEntityById(id, ALL), putFields);
+    T entity = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
       return entity;
     }
@@ -367,10 +367,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public EntityHistory listVersions(String id) throws IOException {
-    T latest = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
+  public EntityHistory listVersions(UUID id) throws IOException {
+    T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
-    List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
+    List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id.toString(), extensionPrefix);
     List<EntityVersionPair> oldVersions = new ArrayList<>();
     records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
     oldVersions.sort(EntityUtil.compareVersion.reversed());
@@ -389,15 +389,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T createInternal(T entity) throws IOException {
+    prepareInternal(entity);
+    return createNewEntity(entity);
+  }
+
+  private void prepareInternal(T entity) throws IOException {
     prepare(entity);
     validateExtension(entity);
-    return createNewEntity(entity);
+  }
+
+  T setFieldsInternal(T entity, Fields fields) throws IOException {
+    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
+    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
+    entity.setExtension(fields.contains("extension") ? getExtension(entity) : null);
+    setFields(entity, fields);
+    return entity;
   }
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T original, T updated) throws IOException {
-    prepare(updated);
-    validateExtension(updated);
+    prepareInternal(updated);
     // Check if there is any original, deleted or not
     original = JsonUtils.readValue(dao.findJsonByFqn(original.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) {
@@ -418,7 +429,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) throws IOException {
-    validateExtension(updated);
     // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) {
@@ -440,7 +450,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) throws IOException {
     // Get all the fields in the original entity that can be updated during PUT operation
-    setFields(original, putFields);
+    setFieldsInternal(original, putFields);
 
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
@@ -457,16 +467,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFields(dao.findEntityById(id), patchFields);
+    T original = setFieldsInternal(dao.findEntityById(id), patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    prepare(updated);
+    prepareInternal(updated);
     populateOwner(updated.getOwner());
-    validateExtension(updated);
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -537,13 +546,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throws IOException {
     T original = JsonUtils.readValue(json, entityClass);
     preDelete(original);
-    setFields(original, putFields);
+    setFieldsInternal(original, putFields);
 
     deleteChildren(id, recursive, hardDelete, updatedBy);
 
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
-    setFields(updated, putFields); // we need service, database, databaseSchema to delete properly from ES.
+    setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -739,11 +748,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (records.isEmpty()) {
       return null;
     }
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode objectNode = mapper.createObjectNode();
+    ObjectNode objectNode = JsonUtils.getObjectNode();
     for (ExtensionRecord record : records) {
       String fieldName = TypeRegistry.getPropertyName(record.getExtensionName());
-      objectNode.set(fieldName, mapper.readTree(record.getExtensionJson()));
+      objectNode.set(fieldName, JsonUtils.readTree(record.getExtensionJson()));
     }
     return objectNode;
   }
@@ -1239,12 +1247,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateExtension() throws JsonProcessingException {
+      if (original.getExtension() == updated.getExtension()) {
+        return;
+      }
+
       if (updatedByBot()) {
         // Revert changes to extension field, if being updated by a bot
         updated.setExtension(original.getExtension());
         return;
       }
 
+      List<JsonNode> added = new ArrayList<>();
+      List<JsonNode> deleted = new ArrayList<>();
+      JsonNode origFields = JsonUtils.valueToTree(original.getExtension());
+      JsonNode updatedFields = JsonUtils.valueToTree(updated.getExtension());
+
+      // Check for updated and deleted fields
+      for (Iterator<Entry<String, JsonNode>> it = origFields.fields(); it.hasNext(); ) {
+        Entry<String, JsonNode> orig = it.next();
+        JsonNode updated = updatedFields.get(orig.getKey());
+        if (updated == null) {
+          deleted.add(JsonUtils.getObjectNode(orig.getKey(), orig.getValue()));
+        } else {
+          // TODO converting to a string is a hack for now because JsonNode equals issues
+          recordChange(getExtensionField(orig.getKey()), orig.getValue().toString(), updated.toString());
+        }
+      }
+
+      // Check for added fields
+      for (Iterator<Entry<String, JsonNode>> it = updatedFields.fields(); it.hasNext(); ) {
+        Entry<String, JsonNode> updated = it.next();
+        JsonNode orig = origFields.get(updated.getKey());
+        if (orig == null) {
+          added.add(JsonUtils.getObjectNode(updated.getKey(), updated.getValue()));
+        }
+      }
+      if (!added.isEmpty()) {
+        fieldAdded(changeDescription, "extension", JsonUtils.pojoToJson(added));
+      }
+      if (!deleted.isEmpty()) {
+        fieldDeleted(changeDescription, "extension", JsonUtils.pojoToJson(deleted));
+      }
       removeExtension(original);
       storeExtension(updated);
     }

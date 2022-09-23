@@ -586,7 +586,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
-    if (databaseSchemaPermission.ViewAll) {
+    if (
+      databaseSchemaPermission.ViewAll ||
+      databaseSchemaPermission.ViewBasic
+    ) {
       const currentTab = getCurrentDatabaseSchemaDetailsTab(tab);
       const currentTabIndex = currentTab - 1;
 
@@ -618,7 +621,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {databaseSchemaPermission.ViewAll ? (
+          {databaseSchemaPermission.ViewAll ||
+          databaseSchemaPermission.ViewBasic ? (
             <PageContainer>
               <div
                 className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"

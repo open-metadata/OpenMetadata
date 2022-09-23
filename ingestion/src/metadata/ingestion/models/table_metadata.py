@@ -235,6 +235,7 @@ class TeamESDocument(BaseModel):
     fullyQualifiedName: str
     displayName: str
     description: str
+    teamType: str
     version: float
     updatedAt: Optional[int]
     updatedBy: Optional[str]
@@ -242,6 +243,7 @@ class TeamESDocument(BaseModel):
     suggest: List[dict]
     users: EntityReferenceList
     defaultRoles: EntityReferenceList
+    parents: EntityReferenceList
     isJoinable: bool
     deleted: bool
     doc_as_upsert: bool = True

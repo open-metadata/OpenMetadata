@@ -13,8 +13,6 @@ Test Entity Link build behavior
 """
 from unittest import TestCase
 
-from antlr4.error.Errors import NoViableAltException, ParseCancellationException
-
 from metadata.utils import entity_link
 
 

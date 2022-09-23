@@ -1308,24 +1308,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     ObjectNode jsonNode = mapper.createObjectNode();
     jsonNode.set("intA", mapper.convertValue(1, JsonNode.class));
     K create = createRequest(test).withExtension(jsonNode);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // PUT and update the entity with extension field intA to a new value
-    // TODO to do change description for stored customProperties
-    jsonNode.set("intA", mapper.convertValue(2, JsonNode.class));
+    JsonNode intAValue = mapper.convertValue(2, JsonNode.class);
+    jsonNode.set("intA", intAValue);
     create = createRequest(test).withExtension(jsonNode);
-    T entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
-    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    change = getChangeDescription(entity.getVersion());
+    fieldUpdated(change, EntityUtil.getExtensionField("intA"), mapper.convertValue(1, JsonNode.class), intAValue);
+    entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // PATCH and update the entity with extension field stringB
-    // TODO to do change description for stored customProperties
     json = JsonUtils.pojoToJson(entity);
-    jsonNode.set("stringB", mapper.convertValue("stringB", JsonNode.class));
+    JsonNode stringBValue = mapper.convertValue("stringB", JsonNode.class);
+    jsonNode.set("stringB", stringBValue);
     entity.setExtension(jsonNode);
-    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    change = getChangeDescription(entity.getVersion());
+    fieldAdded(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
 
-    // PUT and remove field intA from the entity extension - for BOT this should be ignored
+    // PUT and remove field intA from the entity extension - *** for BOT this should be ignored ***
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
     create = createRequest(test).withExtension(jsonNode);
@@ -1333,17 +1336,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertNotEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
 
-    // PUT and remove field intA from the the entity extension
-    // TODO to do change description for stored customProperties
-    entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    // PUT and remove field intA from the entity extension (for non-bot this should succeed)
+    change = getChangeDescription(entity.getVersion());
+    fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("intA", intAValue)));
+    entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
-    // PATCH and remove field stringB from the the entity extension
-    // TODO to do change description for stored customProperties
+    // PATCH and remove field stringB from the entity extension
     json = JsonUtils.pojoToJson(entity);
     jsonNode.remove("stringB");
     entity.setExtension(jsonNode);
-    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    change = getChangeDescription(entity.getVersion());
+    fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
 
     // Now set the entity custom property to an invalid value
@@ -1982,6 +1987,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<TagLabel> expectedTags = (List<TagLabel>) expected;
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
       assertTrue(actualTags.containsAll(expectedTags));
+    } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
+      assertEquals(expected.toString(), actual.toString());
     } else {
       // All the other fields
       assertEquals(expected, actual, "Field name " + fieldName);

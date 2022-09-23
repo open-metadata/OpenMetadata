@@ -15,10 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
@@ -43,7 +40,6 @@ import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
@@ -74,14 +70,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
     pipeline.setStartDate(pipeline.getStartDate());
     pipeline.setConcurrency(pipeline.getConcurrency());
-    pipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(pipeline) : null);
     pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     if (!fields.contains("tasks")) {
       pipeline.withTasks(null);
     }
     pipeline.setPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
-    pipeline.setTags(fields.contains(FIELD_TAGS) ? getTags(pipeline.getFullyQualifiedName()) : null);
-    pipeline.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(pipeline) : null);
     return pipeline;
   }
 
@@ -150,43 +143,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         String.format("Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
-  public ResultList<PipelineStatus> getPipelineStatuses(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) throws IOException {
     List<PipelineStatus> pipelineStatuses;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
+    pipelineStatuses =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
+            PipelineStatus.class);
 
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      pipelineStatuses =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), PipelineStatus.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      pipelineStatuses =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), PipelineStatus.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (pipelineStatuses.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        pipelineStatuses.remove(0);
-        beforeCursor = pipelineStatuses.get(0).getTimestamp().toString();
-      }
-      afterCursor = pipelineStatuses.get(pipelineStatuses.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : pipelineStatuses.get(0).getTimestamp().toString();
-      if (pipelineStatuses.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        pipelineStatuses.remove(limit);
-        afterCursor = pipelineStatuses.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(pipelineStatuses, beforeCursor, afterCursor, total);
+    return new ResultList<>(pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
   }
 
   // Validate if a given task exists in the pipeline

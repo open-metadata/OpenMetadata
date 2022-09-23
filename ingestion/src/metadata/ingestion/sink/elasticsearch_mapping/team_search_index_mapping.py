@@ -29,6 +29,9 @@ TEAM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                 }
               }
             },
+            "teamType": {
+              "type": "text"
+            },
             "description": {
               "type": "text"
             },
@@ -82,6 +85,43 @@ TEAM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               }
              }
              },
+             "parents": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
             "defaultRoles": {
               "properties": {
                 "id": {

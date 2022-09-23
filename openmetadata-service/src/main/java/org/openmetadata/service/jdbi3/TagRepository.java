@@ -68,7 +68,7 @@ public class TagRepository extends EntityRepository<Tag> {
     // Get tags under the given tag
     List<Tag> tagList = new ArrayList<>();
     for (String json : listOrEmpty(tagJsons)) {
-      Tag childTag = setFields(JsonUtils.readValue(json, Tag.class), fields);
+      Tag childTag = setFieldsInternal(JsonUtils.readValue(json, Tag.class), fields);
       tagList.add(populateChildrenTags(childTag, fields));
     }
     return tag.withChildren(!tagList.isEmpty() ? tagList : null);

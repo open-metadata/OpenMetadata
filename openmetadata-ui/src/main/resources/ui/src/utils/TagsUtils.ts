@@ -12,10 +12,11 @@
  */
 
 import { AxiosError } from 'axios';
-import { flatten } from 'lodash';
-import { EntityTags, TableColumn, TagOption } from 'Models';
+import { flatten, isEmpty } from 'lodash';
+import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
 export const getTagCategories = async (fields?: Array<string> | string) => {
   try {
@@ -86,5 +87,28 @@ export const getTagOptionsFromFQN = (
 ): Array<TagOption> => {
   return tagFQNs.map((tag) => {
     return { fqn: tag, source: 'Tag' };
+  });
+};
+
+export const getTagOptions = (tags: Array<string>): Array<EntityTags> => {
+  return tags.map((tag) => {
+    return {
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+      tagFQN: tag,
+      source: TagSource.Tag,
+    };
+  });
+};
+
+// Will add a label of value in the data object without it's FQN
+export const getTagsWithLabel = (tags: Array<Bucket>) => {
+  return tags.map((tag) => {
+    const containQuotes = tag.key.split('"')[1];
+
+    return {
+      ...tag,
+      label: isEmpty(containQuotes) ? tag.key.split('.').pop() : containQuotes,
+    };
   });
 };

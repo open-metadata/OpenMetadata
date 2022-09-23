@@ -216,7 +216,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
 
     ResultList<TestCaseResult> testCaseResults =
-        getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+        getTestCaseResults(
+            testCase.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(testCaseResult), 1);
 
     // Add new date for TableCaseResult
@@ -227,7 +231,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
     putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult, ADMIN_AUTH_HEADERS);
 
-    testCaseResults = getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults =
+        getTestCaseResults(
+            testCase.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult, testCaseResult), 2);
 
     // Replace table profile for a date
@@ -240,7 +249,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     testCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
-    testCaseResults = getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults =
+        getTestCaseResults(
+            testCase.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult1, testCaseResult), 2);
 
     String dateStr = "2021-09-";
@@ -257,7 +271,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       testCaseResultList.add(testCaseResult);
     }
     testCaseResults =
-        getTestCaseResults(testCase.getFullyQualifiedName(), testCaseResultList.size(), ADMIN_AUTH_HEADERS);
+        getTestCaseResults(
+            testCase.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-20"),
+            ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCaseResultList, 12);
 
     // create another table and add profiles
@@ -275,12 +293,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       putTestCaseResult(testCase1.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
       testCase1ResultList.add(testCaseResult);
     }
-    testCaseResults = getTestCaseResults(testCase1.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults =
+        getTestCaseResults(
+            testCase1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 5);
     deleteTestCaseResult(
         testCase1.getFullyQualifiedName(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
     testCase1ResultList.remove(0);
-    testCaseResults = getTestCaseResults(testCase1.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults =
+        getTestCaseResults(
+            testCase1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
   }
 
@@ -414,9 +442,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   public static ResultList<TestCaseResult> getTestCaseResults(
-      String fqn, Integer limit, Map<String, String> authHeaders) throws HttpResponseException {
+      String fqn, Long start, Long end, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
-    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("startTs", start);
+    target = target.queryParam("endTs", end);
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
   }
 

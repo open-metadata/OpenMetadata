@@ -1137,11 +1137,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
     verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
 
-    ResultList<TableProfile> tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, authHeaders);
+    ResultList<TableProfile> tableProfiles =
+        getTableProfiles(table.getFullyQualifiedName(), timestamp, timestamp, authHeaders);
     verifyTableProfiles(tableProfiles, List.of(tableProfile), 1);
 
     ResultList<ColumnProfile> tableColumnProfiles =
-        getColumnProfiles(table.getFullyQualifiedName() + ".c1", null, authHeaders);
+        getColumnProfiles(
+            table.getFullyQualifiedName() + ".c1",
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyColumnProfiles(tableColumnProfiles, List.of(c1Profile), 1);
 
     timestamp = TestUtils.dateToTimestamp("2021-09-10");
@@ -1165,10 +1170,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
     verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
 
-    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile, tableProfile), 2);
 
-    tableColumnProfiles = getColumnProfiles(table.getFullyQualifiedName() + ".c1", null, authHeaders);
+    tableColumnProfiles =
+        getColumnProfiles(
+            table.getFullyQualifiedName() + ".c1",
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyColumnProfiles(tableColumnProfiles, columnProfileResults, 2);
 
     // Replace table profile for a date
@@ -1180,7 +1195,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table = getEntity(table.getId(), "profile", authHeaders);
     // first result should be the latest date
-    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile1, tableProfile), 2);
 
     String dateStr = "2021-09-";
@@ -1213,11 +1233,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       putTableProfileData(table.getId(), createTableProfile, authHeaders);
       tableProfileList.add(tableProfile);
     }
-    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), tableProfileList.size(), authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-20"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, tableProfileList, 12);
 
     tableColumnProfiles =
-        getColumnProfiles(table.getFullyQualifiedName() + ".c1", columnProfileResults.size(), authHeaders);
+        getColumnProfiles(
+            table.getFullyQualifiedName() + ".c1",
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-20"),
+            authHeaders);
     verifyColumnProfiles(tableColumnProfiles, columnProfileResults, 12);
 
     // Add profiles for table1
@@ -1249,11 +1278,21 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       putTableProfileData(table1.getId(), createTableProfile, authHeaders);
       table1ProfileList.add(tableProfile);
     }
-    tableProfiles = getTableProfiles(table1.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, table1ProfileList, 5);
     deleteTableProfile(table1.getFullyQualifiedName(), TABLE, TestUtils.dateToTimestamp("2021-10-11"), authHeaders);
     table1ProfileList.remove(0);
-    tableProfiles = getTableProfiles(table1.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, table1ProfileList, 4);
 
     table1 = getEntity(table1.getId(), "*", authHeaders);
@@ -1929,17 +1968,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.delete(target, authHeaders);
   }
 
-  public static ResultList<TableProfile> getTableProfiles(String fqn, Integer limit, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public static ResultList<TableProfile> getTableProfiles(
+      String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/tableProfile");
-    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.TableProfileList.class, authHeaders);
   }
 
-  public static ResultList<ColumnProfile> getColumnProfiles(String fqn, Integer limit, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public static ResultList<ColumnProfile> getColumnProfiles(
+      String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/columnProfile");
-    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 

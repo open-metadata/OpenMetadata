@@ -9,7 +9,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class TeamIndex implements ElasticSearchIndex {
   Team team;
-  final List<String> excludeFields = List.of("owns", "changeDescription");
+  final List<String> excludeFields = List.of("owns", "changeDescription", "roles", "inheritedRoles");
 
   public TeamIndex(Team team) {
     this.team = team;

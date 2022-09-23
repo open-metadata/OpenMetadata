@@ -72,7 +72,7 @@ const CustomEntityDetailV1 = () => {
   };
 
   const viewPermission = useMemo(
-    () => propertyPermission.ViewAll,
+    () => propertyPermission.ViewAll || propertyPermission.ViewBasic,
     [propertyPermission, tab]
   );
 

@@ -120,11 +120,9 @@ public class TableRepository extends EntityRepository<Table> {
   public Table setFields(Table table, Fields fields) throws IOException {
     setDefaultFields(table);
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setOwner(fields.contains(FIELD_OWNER) ? getOwner(table) : null);
     table.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(table) : null);
     table.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
-    table.setTags(fields.contains(FIELD_TAGS) ? getTags(table.getFullyQualifiedName()) : null);
     getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
@@ -135,7 +133,6 @@ public class TableRepository extends EntityRepository<Table> {
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
-    table.setExtension(fields.contains("extension") ? getExtension(table) : null);
     return table;
   }
 
@@ -215,7 +212,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
   }
 
@@ -251,7 +248,7 @@ public class TableRepository extends EntityRepository<Table> {
             TABLE_PROFILER_CONFIG_EXTENSION,
             "tableProfilerConfig",
             JsonUtils.pojoToJson(tableProfilerConfig));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
@@ -261,7 +258,7 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityById(tableId);
 
     daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_PROFILER_CONFIG_EXTENSION);
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
 
@@ -329,7 +326,7 @@ public class TableRepository extends EntityRepository<Table> {
                 JsonUtils.pojoToJson(columnProfile));
       }
     }
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withProfile(createTableProfile.getTableProfile());
   }
 
@@ -362,7 +359,7 @@ public class TableRepository extends EntityRepository<Table> {
     // A table has only one location.
     deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
     addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
   }
 
@@ -388,7 +385,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableQueries", "sqlQuery", JsonUtils.pojoToJson(updatedQueries));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
   }
 
@@ -420,7 +417,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     // return the newly created/updated custom metric only
     for (Column column : table.getColumns()) {
       if (column.getName().equals(columnName)) {
@@ -496,7 +493,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
 
-    setFields(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
 
     return table;
   }
@@ -754,82 +751,26 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public ResultList<TableProfile> getTableProfiles(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) throws IOException {
     List<TableProfile> tableProfiles;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
-
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      tableProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), TableProfile.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      tableProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), TableProfile.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (tableProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        tableProfiles.remove(0);
-        beforeCursor = tableProfiles.get(0).getTimestamp().toString();
-      }
-      afterCursor = tableProfiles.get(tableProfiles.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : tableProfiles.get(0).getTimestamp().toString();
-      if (tableProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        tableProfiles.remove(limit);
-        afterCursor = tableProfiles.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(tableProfiles, beforeCursor, afterCursor, total);
+    tableProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, "table.tableProfile", startTs, endTs),
+            TableProfile.class);
+    return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
-  public ResultList<ColumnProfile> getColumnProfiles(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) throws IOException {
     List<ColumnProfile> columnProfiles;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
-
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      columnProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), ColumnProfile.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      columnProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), ColumnProfile.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (columnProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        columnProfiles.remove(0);
-        beforeCursor = columnProfiles.get(0).getTimestamp().toString();
-      }
-      afterCursor = columnProfiles.get(columnProfiles.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : columnProfiles.get(0).getTimestamp().toString();
-      if (columnProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        columnProfiles.remove(limit);
-        afterCursor = columnProfiles.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(columnProfiles, beforeCursor, afterCursor, total);
+    columnProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, "table.columnProfile", startTs, endTs),
+            ColumnProfile.class);
+    return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
   /**

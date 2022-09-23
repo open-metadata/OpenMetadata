@@ -274,7 +274,7 @@ const TestSuiteDetailsPage = () => {
   );
 
   useEffect(() => {
-    if (testSuitePermissions.ViewAll) {
+    if (testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic) {
       fetchTestSuiteByName();
     }
   }, [testSuitePermissions, testSuiteFQN]);
@@ -289,7 +289,7 @@ const TestSuiteDetailsPage = () => {
 
   return (
     <>
-      {testSuitePermissions.ViewAll ? (
+      {testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic ? (
         <PageContainer>
           <Row className="tw-px-6 tw-w-full">
             <Col span={24}>

@@ -848,7 +848,8 @@ const TeamDetailsV1 = ({
     );
   };
 
-  const viewPermission = entityPermissions.ViewAll;
+  const viewPermission =
+    entityPermissions.ViewAll || entityPermissions.ViewBasic;
 
   return viewPermission ? (
     <div

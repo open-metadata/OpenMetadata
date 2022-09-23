@@ -230,9 +230,10 @@ public class MlModelServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "mlModel service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "mlModel service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    EntityHistory entityHistory = dao.listVersions(id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+
     List<Object> versions =
         entityHistory.getVersions().stream()
             .map(
@@ -276,7 +277,7 @@ public class MlModelServiceResource
           @PathParam("version")
           String version)
       throws IOException {
-    MlModelService mlModelService = dao.getVersion(id, version);
+    MlModelService mlModelService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, mlModelService);
   }
 
