@@ -47,6 +47,18 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
+from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 
 logger = ingestion_logger()
 
@@ -120,7 +132,27 @@ class DBTMixin:
                                 logger.warning(
                                     f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}"
                                 )
+                    
 
+                    dbt_table_tags = mnode.get("tags")
+                    if dbt_table_tags:
+                        dbt_table_tags_list = [
+                            TagLabel(
+                                tagFQN=fqn.build(
+                                    self.metadata,
+                                    entity_type=Tag,
+                                    tag_category_name="DBT Tag",
+                                    tag_name=tag,
+                                ),
+                                labelType=LabelType.Automated,
+                                state=State.Confirmed,
+                                source=TagSource.Tag,
+                            )
+                            for tag in dbt_table_tags
+                        ] or None
+                    
+                    print("*"*100)
+                    print(dbt_table_tags_list)
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=description if description else None,
@@ -130,6 +162,7 @@ class DBTMixin:
                         columns=columns,
                         upstream=upstream_nodes,
                         owner=owner,
+                        tags=dbt_table_tags_list
                     )
                     model_fqn = fqn.build(
                         self.metadata,
@@ -468,3 +501,34 @@ class DBTMixin:
 
     def unix_time_millis(self, dt):
         return int(self.unix_time(dt) * 1000)
+
+    
+    def create_dbt_tags(self)-> Iterable[OMetaTagAndCategory]:
+        """
+        After everything has been processed, create tags from DBT
+        """
+        #Create the tags from DBT
+        if (
+            self.source_config.dbtConfigSource
+            and self.dbt_manifest
+            and self.dbt_catalog
+        ):
+            logger.info("Processing DBT Tags")
+            for key, mnode in self.manifest_entities.items():
+                cnode = self.catalog_entities.get(key)
+                dbt_tags = mnode.get("tags")
+                print("*"*100)
+                print(dbt_tags)
+
+                if dbt_tags:
+                    for tag in dbt_tags:
+                        yield OMetaTagAndCategory(
+                            category_name=CreateTagCategoryRequest(
+                                name="DBT Tags",
+                                description="",
+                                categoryType="Classification",
+                            ),
+                            category_details=CreateTagRequest(
+                                name=tag, description="DBT Tag"
+                            ),
+                        )

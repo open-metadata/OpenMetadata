@@ -124,6 +124,7 @@ class DatabaseServiceTopology(ServiceTopology):
             "process_dbt_lineage_and_descriptions",
             "create_dbt_tests_suite_definition",
             "create_dbt_test_cases",
+            "create_dbt_tags",
             "yield_view_lineage",
         ],
     )
