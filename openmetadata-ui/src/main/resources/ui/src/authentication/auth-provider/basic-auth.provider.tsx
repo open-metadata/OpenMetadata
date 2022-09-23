@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { AxiosError } from 'axios';
 import { JwtPayload } from 'jwt-decode';
 import React, { createContext, ReactNode, useContext } from 'react';
@@ -38,7 +51,7 @@ interface InitialContext {
   handleLogin: (email: string, password: string) => void;
   handleRegister: (payload: RegistrationRequest) => void;
   handleForgotPassword: (email: string) => Promise<void>;
-  handleResetPassword: (payload: PasswordResetRequest) => void;
+  handleResetPassword: (payload: PasswordResetRequest) => Promise<void>;
   handleLogout: () => void;
 }
 
@@ -70,35 +83,29 @@ const BasicAuthProvider = ({
   const handleLogin = async (email: string, password: string) => {
     try {
       setLoadingIndicator(true);
-      const isEmailAlreadyExists = await checkEmailInUse(email);
-      if (isEmailAlreadyExists) {
-        try {
-          const response = await basicAuthSignIn({ email, password });
+      try {
+        const response = await basicAuthSignIn({ email, password });
 
-          if (response.accessToken) {
-            localState.setRefreshToken(response.refreshToken);
-            localState.setOidcToken(response.accessToken);
+        if (response.accessToken) {
+          localState.setRefreshToken(response.refreshToken);
+          localState.setOidcToken(response.accessToken);
 
-            onLoginSuccess({
-              // eslint-disable-next-line @typescript-eslint/camelcase
-              id_token: response.accessToken,
-              profile: {
-                email,
-                name: '',
-                picture: '',
-              },
-              scope: '',
-            });
-          }
-        } catch (error) {
-          showErrorToast(
-            error as AxiosError,
-            jsonData['api-error-messages']['unauthorized-user']
-          );
-          onLoginFailure();
+          onLoginSuccess({
+            // eslint-disable-next-line @typescript-eslint/camelcase
+            id_token: response.accessToken,
+            profile: {
+              email,
+              name: '',
+              picture: '',
+            },
+            scope: '',
+          });
         }
-      } else {
-        showErrorToast(jsonData['api-error-messages']['email-not-found']);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          jsonData['api-error-messages']['unauthorized-user']
+        );
         onLoginFailure();
       }
     } catch (err) {
@@ -177,23 +184,16 @@ const BasicAuthProvider = ({
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {
-    try {
-      setLoadingIndicator(true);
+    setLoadingIndicator(true);
 
-      const response = await resetPassword(payload);
-      if (response) {
-        showSuccessToast(
-          jsonData['api-success-messages']['reset-password-success']
-        );
-      }
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
+    const response = await resetPassword(payload);
+    if (response) {
+      showSuccessToast(
+        jsonData['api-success-messages']['reset-password-success']
       );
-    } finally {
-      setLoadingIndicator(false);
     }
+
+    setLoadingIndicator(false);
   };
 
   const handleLogout = async () => {
