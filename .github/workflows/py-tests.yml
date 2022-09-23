@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py-version: ['3.7', '3.8', '3.9', '3.10']
+        py-version: ['3.7', '3.8', '3.9']
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -48,7 +48,7 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        librdkafka-dev unixodbc-dev libevent-dev
+        unixodbc-dev libevent-dev python3-dev
 
     - name: Generate models
       run: |

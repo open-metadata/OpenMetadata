@@ -78,7 +78,7 @@ const Teams: FC<TeamsProps> = ({
     fetchPermissions();
   }, []);
 
-  return resourcePermissions.ViewAll ? (
+  return resourcePermissions.ViewAll || resourcePermissions.ViewBasic ? (
     <Row className="team-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>

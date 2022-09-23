@@ -34,8 +34,7 @@ import {
   ResourceEntity,
   UIPermission,
 } from '../components/PermissionProvider/PermissionProvider.interface';
-import { Operation } from '../generated/entity/policies/accessControl/rule';
-import { checkPermission } from '../utils/PermissionsUtils';
+import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {
   label: string;
@@ -56,17 +55,16 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Teams',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TEAM,
             permissions
           ),
+
           icon: <TeamsIcon className="side-panel-icons" />,
         },
         {
           label: 'Users',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.USER,
             permissions
           ),
@@ -74,8 +72,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Admins',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.USER,
             permissions
           ),
@@ -88,8 +85,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Roles',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.ROLE,
             permissions
           ),
@@ -97,8 +93,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Policies',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.POLICY,
             permissions
           ),
@@ -111,8 +106,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Databases',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.DATABASE_SERVICE,
             permissions
           ),
@@ -120,8 +114,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Messaging',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.MESSAGING_SERVICE,
             permissions
           ),
@@ -129,8 +122,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Dashboards',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.DASHBOARD_SERVICE,
             permissions
           ),
@@ -138,8 +130,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Pipelines',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.PIPELINE_SERVICE,
             permissions
           ),
@@ -147,8 +138,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'ML Models',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.ML_MODEL_SERVICE,
             permissions
           ),
@@ -161,8 +151,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Test Suite',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TEST_SUITE,
             permissions
           ),
@@ -175,8 +164,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Activity Feed',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.FEED,
             permissions
           ),
@@ -189,8 +177,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Tables',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TYPE,
             permissions
           ),
@@ -198,8 +185,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Topics',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TYPE,
             permissions
           ),
@@ -207,8 +193,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Dashboards',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TYPE,
             permissions
           ),
@@ -216,8 +201,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Pipelines',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TYPE,
             permissions
           ),
@@ -225,8 +209,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'ML Models',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TYPE,
             permissions
           ),
@@ -239,8 +222,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Webhook',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.WEBHOOK,
             permissions
           ),
@@ -248,8 +230,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Slack',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.WEBHOOK,
             permissions
           ),
@@ -257,8 +238,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'MS Teams',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.WEBHOOK,
             permissions
           ),
@@ -266,8 +246,7 @@ export const getGlobalSettingsMenuWithPermission = (
         },
         {
           label: 'Bots',
-          isProtected: checkPermission(
-            Operation.ViewAll,
+          isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.BOT,
             permissions
           ),

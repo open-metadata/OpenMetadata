@@ -13,10 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -93,11 +90,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getContainer(topic.getId()));
-    topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
-    topic.setTags(fields.contains(FIELD_TAGS) ? getTags(topic.getFullyQualifiedName()) : null);
     topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
-    topic.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(topic) : null);
     return topic;
   }
 
@@ -127,7 +121,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     daoCollection
         .entityExtensionDAO()
         .insert(topicId.toString(), "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
-    setFields(topic, Fields.EMPTY_FIELDS);
+    setFieldsInternal(topic, Fields.EMPTY_FIELDS);
     return topic.withSampleData(sampleData);
   }
 

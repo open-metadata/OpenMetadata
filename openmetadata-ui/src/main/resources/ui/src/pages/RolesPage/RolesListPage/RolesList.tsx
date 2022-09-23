@@ -29,7 +29,11 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { checkPermission, LIST_CAP } from '../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  LIST_CAP,
+  userPermissions,
+} from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -49,7 +53,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
   const viewPolicyPermission = useMemo(() => {
     return (
       !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.POLICY, permissions)
+      userPermissions.hasViewPermissions(ResourceEntity.POLICY, permissions)
     );
   }, [permissions]);
 

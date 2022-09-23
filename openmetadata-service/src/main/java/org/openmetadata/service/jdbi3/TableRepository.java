@@ -120,11 +120,9 @@ public class TableRepository extends EntityRepository<Table> {
   public Table setFields(Table table, Fields fields) throws IOException {
     setDefaultFields(table);
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setOwner(fields.contains(FIELD_OWNER) ? getOwner(table) : null);
     table.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(table) : null);
     table.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
-    table.setTags(fields.contains(FIELD_TAGS) ? getTags(table.getFullyQualifiedName()) : null);
     getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
@@ -135,7 +133,6 @@ public class TableRepository extends EntityRepository<Table> {
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
-    table.setExtension(fields.contains("extension") ? getExtension(table) : null);
     return table;
   }
 
@@ -215,7 +212,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
   }
 
@@ -251,7 +248,7 @@ public class TableRepository extends EntityRepository<Table> {
             TABLE_PROFILER_CONFIG_EXTENSION,
             "tableProfilerConfig",
             JsonUtils.pojoToJson(tableProfilerConfig));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
@@ -261,7 +258,7 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityById(tableId);
 
     daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_PROFILER_CONFIG_EXTENSION);
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
 
@@ -329,7 +326,7 @@ public class TableRepository extends EntityRepository<Table> {
                 JsonUtils.pojoToJson(columnProfile));
       }
     }
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withProfile(createTableProfile.getTableProfile());
   }
 
@@ -362,7 +359,7 @@ public class TableRepository extends EntityRepository<Table> {
     // A table has only one location.
     deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
     addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
   }
 
@@ -388,7 +385,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableQueries", "sqlQuery", JsonUtils.pojoToJson(updatedQueries));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
   }
 
@@ -420,7 +417,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     // return the newly created/updated custom metric only
     for (Column column : table.getColumns()) {
       if (column.getName().equals(columnName)) {
@@ -496,7 +493,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
 
-    setFields(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
 
     return table;
   }

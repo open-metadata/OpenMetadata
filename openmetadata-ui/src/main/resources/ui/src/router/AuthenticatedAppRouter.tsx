@@ -19,7 +19,7 @@ import { usePermissionProvider } from '../components/PermissionProvider/Permissi
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { Operation } from '../generated/entity/policies/policy';
-import { checkPermission } from '../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -214,27 +214,27 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   const glossaryPermission = useMemo(
     () =>
-      checkPermission(Operation.ViewAll, ResourceEntity.GLOSSARY, permissions),
+      userPermissions.hasViewPermissions(ResourceEntity.GLOSSARY, permissions),
     [permissions]
   );
 
   const glossaryTermPermission = useMemo(
     () =>
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         ResourceEntity.GLOSSARY_TERM,
         permissions
       ),
+
     [permissions]
   );
 
   const tagCategoryPermission = useMemo(
     () =>
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         ResourceEntity.TAG_CATEGORY,
         permissions
       ),
+
     [permissions]
   );
 

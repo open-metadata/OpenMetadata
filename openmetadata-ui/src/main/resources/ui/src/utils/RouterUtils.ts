@@ -38,6 +38,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
 import { ProfilerDashboardType } from '../enums/table.enum';
+import { getEncodedFqn } from './StringsUtils';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -304,7 +305,7 @@ export const getProfilerDashboardWithFqnPath = (
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(entityTypeFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -349,7 +350,7 @@ export const getAddDataQualityTableTestPath = (
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(fqn));
 
   return path;
 };

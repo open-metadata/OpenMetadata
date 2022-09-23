@@ -16,11 +16,7 @@ import traceback
 from typing import Iterable, List, Optional
 
 from requests.utils import urlparse
-from tableau_api_lib.utils.querying import (
-    get_views_dataframe,
-    get_workbook_connections_dataframe,
-    get_workbooks_dataframe,
-)
+from tableau_api_lib.utils.querying import get_views_dataframe, get_workbooks_dataframe
 from tableau_api_lib.utils.querying.users import get_all_user_fields
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest

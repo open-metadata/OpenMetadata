@@ -93,7 +93,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     }
   }
 
-  static final String FIELDS = "owner,followers,tags,sampleData";
+  static final String FIELDS = "owner,followers,tags,sampleData,extension";
 
   @GET
   @Operation(

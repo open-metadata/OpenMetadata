@@ -155,6 +155,7 @@ declare module 'Models' {
   export type Bucket = {
     key: string;
     doc_count: number;
+    label?: string;
   };
   type AggregationType = {
     title: string;
@@ -560,6 +561,7 @@ declare module 'Models' {
 
   export interface EditorContentRef {
     getEditorContent: () => string;
+    clearEditorContent: () => void;
   }
 
   // Feed interfaces and types
