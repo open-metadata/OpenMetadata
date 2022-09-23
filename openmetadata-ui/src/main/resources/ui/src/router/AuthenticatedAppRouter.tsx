@@ -238,6 +238,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
+  const createBotPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.USER, permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.BOT, permissions),
+    [permissions]
+  );
+
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
@@ -412,11 +419,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.BOT,
-          permissions
-        )}
+        hasPermission={createBotPermission}
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <Route exact component={BotDetailsPage} path={ROUTES.BOTS_PROFILE} />
