@@ -3,7 +3,8 @@
     "displayName": "Column Value Max. to be Between",
     "description": "This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.",
     "entityType": "COLUMN",
-    "testPlatforms": ["OpenMetadata"],
+    "testPlatforms": ["OpenMetadata", "DBT"],
+    "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT"],
     "parameterDefinition": [
     {
       "name": "minValueForMaxInCol",

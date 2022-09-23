@@ -214,6 +214,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       return (
         <TestCaseForm
           initialValue={testCaseData}
+          table={table}
           onCancel={handleTestCaseBack}
           onSubmit={handleFormSubmit}
         />

@@ -31,3 +31,262 @@ SET json = JSON_INSERT(
     )
 where serviceType = 'DeltaLake'
   and JSON_EXTRACT(json, '$.connection.config.metastoreFilePath') is not null;
+
+
+ALTER TABLE test_definition 
+ADD COLUMN supported_data_types JSON GENERATED ALWAYS AS (json -> '$.supportedDataTypes');
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.name'),
+	'$.name',
+	'tableColumnCountToEqual'
+)
+WHERE BINARY name = 'TableColumnCountToEqual';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.fullyQualifiedName'),
+	'$.fullyQualifiedName',
+	'tableColumnCountToEqual'
+)
+WHERE BINARY JSON_CONTAINS(json, '"TableColumnCountToEqual"', '$.fullyQualifiedName');
+
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.name'),
+	'$.name',
+	'tableColumnToMatchSet'
+)
+WHERE BINARY name = 'TableColumnToMatchSet';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.fullyQualifiedName'),
+	'$.fullyQualifiedName',
+	'tableColumnToMatchSet'
+)
+WHERE BINARY JSON_CONTAINS(json, '"TableColumnToMatchSet"', '$.fullyQualifiedName');
+
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.name'),
+	'$.name',
+	'tableColumnNameToExist'
+)
+WHERE BINARY name = 'TableColumnNameToExist';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.fullyQualifiedName'),
+	'$.fullyQualifiedName',
+	'tableColumnNameToExist'
+)
+WHERE BINARY JSON_CONTAINS(json, '"TableColumnNameToExist"', '$.fullyQualifiedName');
+
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.name'),
+	'$.name',
+	'tableRowCountToBeBetween'
+)
+WHERE BINARY name = 'TableRowCountToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.fullyQualifiedName'),
+	'$.fullyQualifiedName',
+	'tableRowCountToBeBetween'
+)
+WHERE BINARY JSON_CONTAINS(json, '"TableRowCountToBeBetween"', '$.fullyQualifiedName');
+
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.name'),
+	'$.name',
+	'tableColumnCountToBeBetween'
+)
+WHERE BINARY name = 'TableColumnCountToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.fullyQualifiedName'),
+	'$.fullyQualifiedName',
+	'tableColumnCountToBeBetween'
+)
+WHERE BINARY JSON_CONTAINS(json, '"TableColumnCountToBeBetween"', '$.fullyQualifiedName');
+
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.name'),
+	'$.name',
+	'columnValuesToBeInSet'
+)
+WHERE BINARY name = 'ColumnValuesToBeInSet';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.fullyQualifiedName'),
+	'$.fullyQualifiedName',
+	'columnValuesToBeInSet'
+)
+WHERE BINARY JSON_CONTAINS(json, '"ColumnValuesToBeInSet"', '$.fullyQualifiedName');
+
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.name'),
+	'$.name',
+	'tableRowCountToEqual'
+)
+WHERE BINARY name = 'TableRowCountToEqual';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.fullyQualifiedName'),
+	'$.fullyQualifiedName',
+	'tableRowCountToEqual'
+)
+WHERE BINARY JSON_CONTAINS(json, '"TableRowCountToEqual"', '$.fullyQualifiedName');
+
+
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT')
+)
+WHERE name = 'columnValueMaxToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT', 'ARRAY', 'SET')
+)
+WHERE name = 'columnValueMeanToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT')
+)
+WHERE name = 'columnValueMedianToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT')
+)
+WHERE name = 'columnValueMinToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR', 'ARRAY')
+)
+WHERE name = 'columnValueLengthsToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER','TINYINT','SMALLINT','INT','BIGINT','BYTEINT','BYTES','FLOAT','DOUBLE','DECIMAL','NUMERIC','TIMESTAMP','TIMESTAMPZ','TIME','DATE','DATETIME','INTERVAL','STRING','MEDIUMTEXT','TEXT','CHAR','VARCHAR','BOOLEAN','BINARY','VARBINARY','ARRAY','BLOB','LONGBLOB','MEDIUMBLOB','MAP','STRUCT','UNION','SET','GEOGRAPHY','ENUM','JSON','UUID','VARIANT','GEOMETRY','POINT','POLYGON')
+)
+WHERE name = 'columnValuesMissingCount'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT')
+)
+WHERE name = 'columnValuesSumToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT')
+)
+WHERE name = 'columnValueStdDevToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT')
+)
+WHERE name = 'columnValuesToBeBetween'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT', 'BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR')
+)
+WHERE name = 'columnValuesToBeInSet'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT', 'BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR')
+)
+WHERE name = 'columnValuesToBeNotInSet'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER','TINYINT','SMALLINT','INT','BIGINT','BYTEINT','BYTES','FLOAT','DOUBLE','DECIMAL','NUMERIC','TIMESTAMP','TIMESTAMPZ','TIME','DATE','DATETIME','INTERVAL','STRING','MEDIUMTEXT','TEXT','CHAR','VARCHAR','BOOLEAN','BINARY','VARBINARY','ARRAY','BLOB','LONGBLOB','MEDIUMBLOB','MAP','STRUCT','UNION','SET','GEOGRAPHY','ENUM','JSON','UUID','VARIANT','GEOMETRY','POINT','POLYGON')
+)
+WHERE name = 'columnValuesToBeNotNull'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER','TINYINT','SMALLINT','INT','BIGINT','BYTEINT','BYTES','FLOAT','DOUBLE','DECIMAL','NUMERIC','TIMESTAMP','TIMESTAMPZ','TIME','DATE','DATETIME','INTERVAL','STRING','MEDIUMTEXT','TEXT','CHAR','VARCHAR','BOOLEAN','BINARY','VARBINARY','ARRAY','BLOB','LONGBLOB','MEDIUMBLOB','MAP','STRUCT','UNION','SET','GEOGRAPHY','ENUM','JSON','UUID','VARIANT','GEOMETRY','POINT','POLYGON')
+)
+WHERE name = 'columnValuesToBeUnique'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR')
+)
+WHERE name = 'columnValuesToMatchRegex'
+AND supported_data_types IS NULL;
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	json,
+	'$.supportedDataTypes',
+	JSON_ARRAY('BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR')
+)
+WHERE name = 'columnValuesToNotMatchRegex'
+AND supported_data_types IS NULL;
