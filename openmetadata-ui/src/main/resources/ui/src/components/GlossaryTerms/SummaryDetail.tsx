@@ -41,51 +41,48 @@ const SummaryDetail = ({
 }: SummaryDetailsProps) => {
   return (
     <Space className="w-full" direction="vertical" {...props}>
-      <Space className="w-full justify-between">
-        <div
-          className="flex-center"
-          data-testid={`section-${kebabCase(title)}`}>
+      <Space
+        className="w-full justify-between"
+        data-testid={`section-${kebabCase(title)}`}>
+        <div className="flex-center">
           <Typography.Text type="secondary">{title}</Typography.Text>
-          {showIcon ? (
-            <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
-              <Button
-                className="cursor-pointer m--t-xss"
-                data-testid="edit-button"
-                disabled={!hasAccess}
-                icon={
-                  <SVGIcons
-                    alt="edit"
-                    icon={Icons.IC_EDIT_PRIMARY}
-                    title="Edit"
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={() => setShow && setShow(true)}
-              />
-            </Tooltip>
-          ) : (
-            showAddIcon && (
-              <Button
-                className="cursor-pointer m--t-xss"
-                data-testid="add-button"
-                disabled={!hasAccess}
-                icon={
-                  <SVGIcons
-                    alt="icon-plus-primary"
-                    icon="icon-plus-primary-outlined"
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={onAddClick}
-              />
-            )
+          {showAddIcon && (
+            <Button
+              className="cursor-pointer m--t-xss"
+              data-testid="add-button"
+              disabled={!hasAccess}
+              icon={
+                <SVGIcons
+                  alt="icon-plus-primary"
+                  icon="icon-plus-primary-outlined"
+                  width="16px"
+                />
+              }
+              size="small"
+              type="text"
+              onClick={onAddClick}
+            />
           )}
         </div>
-        {!showIcon && (
+        {showIcon ? (
+          <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className="cursor-pointer m--t-xss"
+              data-testid="edit-button"
+              disabled={!hasAccess}
+              icon={
+                <SVGIcons
+                  alt="edit"
+                  icon={Icons.IC_EDIT_PRIMARY}
+                  width="16px"
+                />
+              }
+              size="small"
+              type="text"
+              onClick={() => setShow && setShow(true)}
+            />
+          </Tooltip>
+        ) : (
           <Button
             data-testid="save-btn"
             size="small"

@@ -215,60 +215,17 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Updating data of glossary term should work properly', () => {
+    interceptURL('GET', '/api/v1/permissions/*/*', 'permissionApi');
+    interceptURL('GET', '/api/v1/search/query?*', 'glossaryAPI');
     const term = NEW_GLOSSARY_TERMS.term_1.name;
+    const term2 = NEW_GLOSSARY_TERMS.term_2.name;
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const newDescription = 'Updated description';
     cy.get('#left-panelV1').should('be.visible').contains(term).click();
     cy.wait(500);
-    cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
-
-    cy.get('[data-testid="section-synonyms"]')
-      .scrollIntoView()
-      .should('be.visible');
-
-    cy.get(
-      '[data-testid="section-synonyms"] > [data-testid="edit-button"] > [data-testid="image"]'
-    )
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    cy.get('.ant-select-selector').should('be.visible');
-    cy.get('.ant-select-clear > .anticon > svg')
-      .should('exist')
-      .click({ force: true });
-
-    cy.get('.ant-select-selection-overflow')
-      .should('exist')
-      .type(uSynonyms.join('{enter}'));
-
-    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'getGlossary');
-    cy.get('[data-testid="save-btn"]').should('be.visible').click();
-    verifyResponseStatusCode('@getGlossary', 200);
-
-    cy.get('[data-testid="synonyms-container"]')
-      .as('synonyms-container')
-      .should('be.visible');
-
-    uSynonyms.forEach((synonym) => {
-      cy.get('@synonyms-container').contains(synonym).should('be.visible');
-    });
-
-    // updating References
-    cy.get('[data-testid="section-references"] > [data-testid="edit-button"]')
-      .should('exist')
-      .click();
-
-    cy.get('[data-testid="add-button"]').should('be.visible').click();
-    cy.get('#references_1_name').should('be.visible').type(newRef.name);
-    cy.get('#references_1_endpoint').should('be.visible').type(newRef.url);
-    cy.get('[data-testid="save-btn"]').should('be.visible').click();
-    cy.get('[data-testid="references-container"]')
-      .contains(newRef.name)
-      .should('be.visible')
-      .invoke('attr', 'href')
-      .should('eq', newRef.url);
+    verifyResponseStatusCode('@permissionApi', 200);
+    verifyResponseStatusCode('@glossaryAPI', 200);
 
     // updating tags
     cy.get('[data-testid="tag-container"]')
@@ -300,31 +257,68 @@ describe('Glossary page should work properly', () => {
     cy.get('@description').clear();
     cy.get('@description').type(newDescription);
     cy.get('[data-testid="save"]').click();
-
     verifyResponseStatusCode('@saveData', 200);
-
     cy.get('.tw-modal-container').should('not.exist');
 
     cy.get('[data-testid="viewer-container"]')
       .contains(newDescription)
       .should('be.visible');
-  });
 
-  it('Relented Terms should work properly', () => {
-    const term = NEW_GLOSSARY_TERMS.term_1.name;
-    const term2 = NEW_GLOSSARY_TERMS.term_2.name;
-    cy.get('#left-panelV1').should('be.visible').contains(term).click();
-    cy.wait(500);
     cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
+
+    // updating synonyms
+    cy.get('[data-testid="section-synonyms"]')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('[data-testid="section-synonyms"] [data-testid="edit-button"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .should('not.be.disabled')
+      .click();
+
+    cy.get('.ant-select-selector').should('be.visible');
+    cy.get('.ant-select-clear > .anticon > svg')
+      .should('exist')
+      .click({ force: true });
+
+    cy.get('.ant-select-selection-overflow')
+      .should('exist')
+      .type(uSynonyms.join('{enter}'));
+
+    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'getGlossary');
+    cy.get('[data-testid="save-btn"]').should('be.visible').click();
+    verifyResponseStatusCode('@getGlossary', 200);
+
+    cy.get('[data-testid="synonyms-container"]')
+      .as('synonyms-container')
+      .should('be.visible');
+
+    uSynonyms.forEach((synonym) => {
+      cy.get('@synonyms-container').contains(synonym).should('be.visible');
+    });
+
+    // updating References
+    cy.get('[data-testid="section-references"] [data-testid="edit-button"]')
+      .should('exist')
+      .click();
+
+    cy.get('[data-testid="add-button"]').should('be.visible').click();
+    cy.get('#references_1_name').should('be.visible').type(newRef.name);
+    cy.get('#references_1_endpoint').should('be.visible').type(newRef.url);
+    cy.get('[data-testid="save-btn"]').should('be.visible').click();
+    verifyResponseStatusCode('@getGlossary', 200);
+    cy.get('[data-testid="references-container"]')
+      .contains(newRef.name)
+      .should('be.visible')
+      .invoke('attr', 'href')
+      .should('eq', newRef.url);
 
     // add relented term
     cy.get('[data-testid="section-related-terms"]')
       .scrollIntoView()
       .should('be.visible');
-
-    cy.get(
-      '[data-testid="section-related-terms"] > [data-testid="edit-button"] > [data-testid="image"]'
-    )
+    cy.get('[data-testid="section-related-terms"] [data-testid="edit-button"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -354,10 +348,8 @@ describe('Glossary page should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     goToAssetsTab(term);
-    cy.get('.tableBody-cell')
-      .contains('No assets available.')
-      .should('be.visible');
-
+    cy.contains('No assets available.').should('be.visible');
+    cy.get('[data-testid="no-data-image"]').should('be.visible');
     searchEntity(entity);
 
     interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
@@ -412,9 +404,7 @@ describe('Glossary page should work properly', () => {
       .click({ force: true });
 
     goToAssetsTab(term);
-    cy.get('[data-testid="column"] > :nth-child(1)')
-      .contains(entity)
-      .should('be.visible');
+    cy.get('[data-testid="table-link"]').contains(entity).should('be.visible');
   });
 
   it('Remove Glossary term from entity should work properly', () => {
@@ -427,7 +417,7 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@assetTab', 200);
 
     interceptURL('GET', '/api/v1/feed*', 'entityDetails');
-    cy.get('[data-testid="column"] > :nth-child(1) > a')
+    cy.get('[data-testid="table-link"]')
       .contains(entity)
       .should('be.visible')
       .click();
@@ -457,9 +447,8 @@ describe('Glossary page should work properly', () => {
 
     cy.wait(500);
     goToAssetsTab(term);
-    cy.get('.tableBody-cell')
-      .contains('No assets available.')
-      .should('be.visible');
+    cy.contains('No assets available.').should('be.visible');
+    cy.get('[data-testid="no-data-image"]').should('be.visible');
   });
 
   it('Delete glossary term should work properly', () => {
