@@ -14,11 +14,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TEAM;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
@@ -49,7 +50,7 @@ public class UserRepository extends EntityRepository<User> {
   static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   private final EntityReference organization;
-  private SecretsManager secretsManager = null;
+  private final SecretsManager secretsManager;
 
   public UserRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
@@ -202,17 +203,6 @@ public class UserRepository extends EntityRepository<User> {
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal()));
   }
 
-  public List<EntityReference> validateRolesByIds(List<UUID> roleIds) throws IOException {
-    if (roleIds == null) {
-      return Collections.emptyList(); // Return an empty roles list
-    }
-    List<EntityReference> validatedRoles = new ArrayList<>();
-    for (UUID roleId : roleIds) {
-      validatedRoles.add(daoCollection.roleDAO().findEntityReferenceById(roleId));
-    }
-    return validatedRoles;
-  }
-
   private List<EntityReference> getTeamChildren(UUID teamId) throws IOException {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
@@ -226,6 +216,18 @@ public class UserRepository extends EntityRepository<User> {
     User user = getByName(uriInfo, userName, Fields.EMPTY_FIELDS, Include.ALL);
     List<EntityReference> teams = getTeams(user);
     return getGroupTeams(teams);
+  }
+
+  @Transaction
+  public User getByNameWithSecretManager(String fqn, Fields fields) throws IOException {
+    User user = getByName(null, fqn, fields, NON_DELETED);
+    if (user.getAuthenticationMechanism() != null) {
+      user.getAuthenticationMechanism()
+          .withConfig(
+              this.secretsManager.encryptOrDecryptIngestionBotCredentials(
+                  user.getName(), user.getAuthenticationMechanism().getConfig(), false));
+    }
+    return user;
   }
 
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) throws IOException {

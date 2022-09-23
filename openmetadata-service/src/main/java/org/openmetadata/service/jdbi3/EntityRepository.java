@@ -1039,14 +1039,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void storeTags(T entity, EntityReference tag) {
-    if (supportsOwner && tag != null) {
-      // Add relationship owner --- owns ---> ownedEntity
-      LOG.info("Adding owner {}:{} for entity {}:{}", tag.getType(), tag.getId(), entityType, entity.getId());
-      addRelationship(tag.getId(), entity.getId(), tag.getType(), entityType, Relationship.HAS);
-    }
-  }
-
   /** Remove owner relationship for a given entity */
   private void removeOwner(T entity, EntityReference owner) {
     if (owner != null && owner.getId() != null) {

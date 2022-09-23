@@ -27,7 +27,6 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SecretsManagerMigrationException;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
@@ -41,7 +40,6 @@ import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 /**
  * Migration service from LocalSecretManager to configured one.
@@ -281,11 +279,7 @@ public class SecretsManagerMigrationService {
 
   private boolean hasDbtConfig(IngestionPipeline ingestionPipeline) {
     return ingestionPipeline.getService().getType().equals(Entity.DATABASE_SERVICE)
-        && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA)
-        && JsonUtils.convertValue(
-                    ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class)
-                .getDbtConfigSource()
-            != null;
+        && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA);
   }
 
   /** This method delete all the change events which could contain connection config parameters for services */
