@@ -16,7 +16,7 @@ OpenMetadata takes a schema-first approach to model metadata. We define entities
 We convert models defined using JSON Schema to [Plain Old Java Objects (POJOs)](https://www.jsonschema2pojo.org/) using the `jsonschema2pojo-maven-plugin` plugin as defined in [`pom.xml`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/pom.xml#L517). You can find the generated POJOs under `OpenMetadata/openmetadata-service/target/generated-sources/jsonschema2pojo`.
 
 ### Entities
-You can locate defined entities in the directory [`OpenMetadata/openmetadata-service/src/main/resources/json/schema/entity`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/entity). Currently, OpenMetadata supports the following entities:
+You can locate defined entities in the directory [`OpenMetadata/openmetadata-spec/src/main/resources/json/schema/entity`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/entity). Currently, OpenMetadata supports the following entities:
 
 - data
 - feed
@@ -26,10 +26,9 @@ You can locate defined entities in the directory [`OpenMetadata/openmetadata-ser
 - teams
 
 ### Types
-All OpenMetadata supported types are defined under [`OpenMetadata/openmetadata-service/src/main/resources/json/schema/type`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/type).
-
+All OpenMetadata supported types are defined under [`OpenMetadata/openmetadata-spec/src/main/resources/json/schema/type`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/type). 
 ### API request objects
-The API request objects are defined under [`OpenMetadata/openmetadata-service/src/main/resources/json/schema/api`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/api).
+The API request objects are defined under [`OpenMetadata/openmetadata-spec/src/main/resources/json/schema/api`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/api).
 
 ## API
 OpenMetadata uses the [Dropwizard](https://www.dropwizard.io/) Java framework to build REST APIs. You can locate defined APIs in the directory [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/catalog/resources`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/catalog/resources). OpenMetadata uses [Swagger](https://swagger.io/) to generate API documentation following OpenAPI standards.
