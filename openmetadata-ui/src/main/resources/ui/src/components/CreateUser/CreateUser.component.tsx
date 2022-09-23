@@ -22,7 +22,6 @@ import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
-import { GoogleSSOClientConfig } from '../../generated/configuration/airflowConfiguration';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthType,
@@ -30,6 +29,7 @@ import {
   JWTTokenExpiry,
   SsoServiceType,
 } from '../../generated/entity/teams/user';
+import { GoogleSSOClientConfig } from '../../generated/security/client/googleSSOClientConfig';
 import jsonData from '../../jsons/en';
 import {
   DEFAULT_GOOGLE_SSO_CLIENT_CONFIG,
