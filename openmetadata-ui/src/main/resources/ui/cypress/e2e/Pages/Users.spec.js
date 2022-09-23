@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { addUser, deleteSoftDeletedUser, restoreUser, softDeleteUser, uuid } from '../../common/common';
+import { addUser, deleteSoftDeletedUser, login, restoreUser, softDeleteUser, uuid } from '../../common/common';
+import { LOGIN } from '../../constants/constants';
+
 
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
@@ -21,6 +23,7 @@ const adminEmail = `${adminName}@gmail.com`;
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
 
     cy.get('[data-testid="appbar-item-settings"]')
@@ -65,6 +68,7 @@ describe('Users flow should work properly', () => {
 
 describe('Admin flow should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
 
     cy.get('[data-testid="appbar-item-settings"]')

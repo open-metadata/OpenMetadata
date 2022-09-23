@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, searchEntity, verifyResponseStatusCode } from '../../common/common';
-import { DELETE_TERM, NEW_GLOSSARY, NEW_GLOSSARY_TERMS, SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { descriptionBox, interceptURL, login, searchEntity, verifyResponseStatusCode } from '../../common/common';
+import { DELETE_TERM, LOGIN, NEW_GLOSSARY, NEW_GLOSSARY_TERMS, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
   cy.get('[data-testid="header"]')
@@ -96,6 +96,7 @@ const goToAssetsTab = (term) => {
 
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { addCustomPropertiesForEntity, deleteCreatedProperty, editCreatedProperty, interceptURL, verifyResponseStatusCode } from '../../common/common';
-import { ENTITIES } from '../../constants/constants';
+import { addCustomPropertiesForEntity, deleteCreatedProperty, editCreatedProperty, interceptURL, login, verifyResponseStatusCode } from '../../common/common';
+import { ENTITIES, LOGIN } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-
     interceptURL('GET', '/api/v1/users*', 'getTeams');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();

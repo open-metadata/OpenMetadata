@@ -210,3 +210,8 @@ export const ENTITIES = {
     markdownValue: 'This is markdown value',
   },
 };
+
+export const LOGIN = {
+  username: 'admin@openmetadata.org',
+  password: 'admin',
+};

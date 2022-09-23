@@ -44,7 +44,7 @@
                               <td class="tw-card-body" style="padding: 20px 35px; text-align: left; color: #6f6f6f; font-family: sans-serif; border-top: 0;">
                                 <h1 class="tw-h1" style="font-size: 24px; font-weight: bold; mso-line-height-rule: exactly; line-height: 32px; margin: 0 0 20px; color: #474747;"> Hello ${userName},</h1>
                                 <p class="" style="margin: 20px 0; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;">
-                                  <span style="font-weight: 400;">You’ve requested to reset your <strong>${entity}</strong> password.  Please click the link below to reset your password. This link is valid for <strong>${expirationTime}</strong> minutes only.</span>
+                                  <span style="font-weight: 400;">You have requested to reset your <strong>${entity}</strong> password.  Please click the link below to reset your password. This link is valid for <strong>${expirationTime}</strong> minutes only.</span>
                                   <br />
                                   <br />
                                   <span style="font-weight: 400;">

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { oidcTokenKey } from '../../constants/constants';
+import localState from '../../utils/LocalStorageUtils';
 
 export const refreshTokenSetup = (res) => {
   // Timing to renew access token
@@ -21,7 +21,7 @@ export const refreshTokenSetup = (res) => {
     try {
       const newAuthRes = await res.reloadAuthResponse();
       refreshTiming = (newAuthRes.expires_in || 3600 - 1 * 60) * 1000;
-      localStorage.setItem(oidcTokenKey, newAuthRes.id_token);
+      localState.setOidcToken(newAuthRes.id_token);
 
       // Setup the other timer after the first one
       setTimeout(refreshToken, refreshTiming);

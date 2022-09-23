@@ -49,6 +49,12 @@ const jsonData = {
     'delete-tag-category-error': 'Error while deleting tag category!',
     'delete-tag-error': 'Error while deleting tag!',
 
+    'email-verification-err':
+      'An email could not be sent for verification. Please contact your Administrator.',
+
+    'forgot-password-email-err':
+      'There is some issue in sending the mail. Please contact your Administrator.',
+
     'unexpected-error': 'Oops! An unexpected error occurred.',
 
     'forbidden-error': 'You do not have permissions to perform this action!',
@@ -151,6 +157,9 @@ const jsonData = {
     'update-test-suite-error': 'Error while updating test suite',
 
     'fetch-settings': 'Error while fetching settings',
+    'email-not-found': 'User with the given email address does not exist!',
+    'email-found': 'User with the given email address already exists!',
+    'unauthorized-user': 'UnAuthorized user! please check email or password',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
@@ -170,6 +179,8 @@ const jsonData = {
     'update-profile-congif-success': 'Profile config updated successfully!',
     'update-test-case-success': 'Test case updated successfully!',
     'update-webhook-success': 'Webhook updated successfully!',
+    'create-user-account': 'User account created successfully!',
+    'reset-password-success': 'Password reset successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
@@ -180,6 +191,8 @@ const jsonData = {
   label: {
     'delete-entity-text':
       'Once you delete this entity, it will be removed permanently.',
+    'email-confirmation':
+      'Please confirm your email, confirmation has been sent to your email',
   },
   message: {
     'no-services': 'No services',

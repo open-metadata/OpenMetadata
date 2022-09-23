@@ -22,7 +22,7 @@ import {
   useGoogleLogin,
   useGoogleLogout,
 } from 'react-google-login';
-import { oidcTokenKey } from '../../constants/constants';
+import localState from '../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,
@@ -57,7 +57,7 @@ const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
         // eslint-disable-next-line no-console
         console.log('Login Success: currentUser:', res);
         setIsAuthenticated(true);
-        localStorage.setItem(oidcTokenKey, tokenObj.id_token);
+        localState.setOidcToken(tokenObj.id_token);
         refreshTokenSetup(res);
         onLoginSuccess(user);
       },

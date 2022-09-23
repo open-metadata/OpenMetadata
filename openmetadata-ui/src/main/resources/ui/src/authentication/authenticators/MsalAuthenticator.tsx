@@ -26,8 +26,8 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useMutex } from 'react-context-mutex';
-import { oidcTokenKey } from '../../constants/constants';
 import { msalLoginRequest } from '../../utils/AuthProvider.util';
+import localState from '../../utils/LocalStorageUtils';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -87,7 +87,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         },
       };
 
-      localStorage.setItem(oidcTokenKey, idToken);
+      localState.setOidcToken(idToken);
 
       return user;
     };
@@ -128,7 +128,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     useEffect(() => {
-      const oidcUserToken = localStorage.getItem(oidcTokenKey);
+      const oidcUserToken = localState.getOidcToken();
       if (
         !oidcUserToken &&
         inProgress === InteractionStatus.None &&

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
+import { LOGIN } from '../../constants/constants';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -30,7 +31,7 @@ const ruleDetails = {
   operations: 'All',
   effect: 'Allow',
   condition: 'isOwner()',
-  inValidCondition:'isOwner('
+  inValidCondition: 'isOwner(',
 };
 
 const errorMessageValidation = {
@@ -78,7 +79,7 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
 
   cy.get('.ant-card-body').should('be.visible').click();
 
-  cy.get('[data-testid="condition-success"]').contains('✅ Valid condition')
+  cy.get('[data-testid="condition-success"]').contains('✅ Valid condition');
 
   cy.wait(500);
   //Submit
@@ -90,6 +91,7 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
 
 describe('Policy page should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
 
@@ -230,20 +232,28 @@ describe('Policy page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="resources"]').last().scrollIntoView()
-      .should("exist")
+    cy.get('[data-testid="resources"]')
+      .last()
+      .scrollIntoView()
+      .should('exist')
       .should('contain', ruleDetails.resources);
 
-    cy.get('[data-testid="operations"]').last().scrollIntoView()
-      .should("exist")
+    cy.get('[data-testid="operations"]')
+      .last()
+      .scrollIntoView()
+      .should('exist')
       .should('contain', ruleDetails.operations);
 
-    cy.get('[data-testid="effect"]').last().scrollIntoView()
-      .should("exist")
+    cy.get('[data-testid="effect"]')
+      .last()
+      .scrollIntoView()
+      .should('exist')
       .should('contain', ruleDetails.effect);
 
-    cy.get('[data-testid="condition"]').last().scrollIntoView()
-      .should("exist")
+    cy.get('[data-testid="condition"]')
+      .last()
+      .scrollIntoView()
+      .should('exist')
       .should('contain', ruleDetails.condition);
   });
 
