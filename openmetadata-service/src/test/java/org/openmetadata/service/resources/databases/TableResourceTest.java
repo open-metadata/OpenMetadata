@@ -1373,13 +1373,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void put_tableDataModel(TestInfo test) throws IOException {
     List<Column> columns =
-            Arrays.asList(
-                    getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL).withDescription(null),
-                    getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10).withDescription(null));
+        Arrays.asList(
+            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL).withDescription(null),
+            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10).withDescription(null));
     Table table =
-            createAndCheckEntity(createRequest(test).withColumns(columns).withDescription(null), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(createRequest(test).withColumns(columns).withDescription(null), ADMIN_AUTH_HEADERS);
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user = userResourceTest.createAndCheckEntity(userResourceTest.createRequest(test).withName("testName").withEmail("test1@gmail.com").withIsBot(false), ADMIN_AUTH_HEADERS);
+    User user =
+        userResourceTest.createAndCheckEntity(
+            userResourceTest.createRequest(test).withName("testName").withEmail("test1@gmail.com").withIsBot(false),
+            ADMIN_AUTH_HEADERS);
 
     //
     // Update the data model and validate the response.
@@ -1391,12 +1394,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String query = "select * from test;";
     EntityReference reference = new EntityReference().withId(user.getId()).withType("user");
     DataModel dataModel =
-            new DataModel()
-                    .withModelType(ModelType.DBT)
-                    .withSql(query)
-                    .withGeneratedAt(new Date())
-                    .withColumns(columns)
-                    .withOwner(reference);
+        new DataModel()
+            .withModelType(ModelType.DBT)
+            .withSql(query)
+            .withGeneratedAt(new Date())
+            .withColumns(columns)
+            .withOwner(reference);
     Table putResponse = putTableDataModel(table.getId(), dataModel, ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, putResponse.getDataModel());
 
