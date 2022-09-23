@@ -257,9 +257,10 @@ public class DashboardServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    EntityHistory entityHistory = dao.listVersions(id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+
     List<Object> versions =
         entityHistory.getVersions().stream()
             .map(
@@ -303,7 +304,7 @@ public class DashboardServiceResource
           @PathParam("version")
           String version)
       throws IOException {
-    DashboardService dashboardService = dao.getVersion(id, version);
+    DashboardService dashboardService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, dashboardService);
   }
 

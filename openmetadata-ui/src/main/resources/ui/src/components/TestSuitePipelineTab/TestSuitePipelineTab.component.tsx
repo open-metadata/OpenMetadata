@@ -35,7 +35,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
 import { getIngestionStatuses } from '../../utils/CommonUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -73,8 +73,7 @@ const TestSuitePipelineTab = () => {
 
   const viewPermission = useMemo(
     () =>
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         ResourceEntity.INGESTION_PIPELINE,
         permissions
       ),

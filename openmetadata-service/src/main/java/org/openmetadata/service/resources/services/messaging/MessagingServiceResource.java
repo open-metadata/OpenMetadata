@@ -260,9 +260,10 @@ public class MessagingServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    EntityHistory entityHistory = dao.listVersions(id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+
     List<Object> versions =
         entityHistory.getVersions().stream()
             .map(
@@ -306,7 +307,7 @@ public class MessagingServiceResource
           @PathParam("version")
           String version)
       throws IOException {
-    MessagingService messagingService = dao.getVersion(id, version);
+    MessagingService messagingService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, messagingService);
   }
 

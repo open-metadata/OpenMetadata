@@ -62,6 +62,9 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       getEditorContent() {
         return editorValue;
       },
+      clearEditorContent() {
+        richTextEditorRef.current?.getInstance().setMarkdown('');
+      },
     }));
 
     useEffect(() => {

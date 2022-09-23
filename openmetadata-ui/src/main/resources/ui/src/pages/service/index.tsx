@@ -690,7 +690,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll) {
+    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       setIsLoading(true);
       getServiceByFQN(serviceName, serviceFQN, 'owner')
         .then((resService) => {
@@ -738,7 +738,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceFQN, serviceName, servicePermission, serviceType]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll) {
+    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       const currentTab = getCurrentServiceTab(tab);
       const currentTabIndex = currentTab - 1;
 
@@ -915,7 +915,7 @@ const ServicePage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {servicePermission.ViewAll ? (
+          {servicePermission.ViewAll || servicePermission.ViewBasic ? (
             <Col span={24}>
               <div
                 className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"

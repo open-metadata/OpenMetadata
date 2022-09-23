@@ -243,6 +243,7 @@ class TeamESDocument(BaseModel):
     suggest: List[dict]
     users: EntityReferenceList
     defaultRoles: EntityReferenceList
+    parents: EntityReferenceList
     isJoinable: bool
     deleted: bool
     doc_as_upsert: bool = True

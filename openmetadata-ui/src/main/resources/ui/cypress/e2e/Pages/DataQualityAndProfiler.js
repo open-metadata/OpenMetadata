@@ -13,7 +13,7 @@
 
 /// <reference types="cypress" />
 
-import { descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
+import { deleteCreatedService, descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, mySqlConnectionInput, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_TERM, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
@@ -41,23 +41,17 @@ const goToProfilerTab = () => {
 describe('Data Quality and Profiler should work properly', () => {
   it('Add and ingest mysql data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
-    const connectionInput = () => {
-      cy.get('#root_username').type('openmetadata_user');
-      cy.get('#root_password').type('openmetadata_password');
-      cy.get('#root_hostPort').type('mysql:3306');
-      cy.get('#root_databaseSchema').type('openmetadata_db');
-    };
 
     const addIngestionInput = () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
-        .type('openmetadata_db');
+        .type(Cypress.env('mysqlDatabaseSchema'));
     };
 
     testServiceCreationAndIngestion(
       serviceType,
-      connectionInput,
+      mySqlConnectionInput,
       addIngestionInput,
       serviceName
     );
@@ -393,5 +387,9 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Test Suite deleted successfully!')
       .should('be.visible')
       .wait(200);
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
   });
 });

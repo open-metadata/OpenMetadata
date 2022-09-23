@@ -158,9 +158,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -255,7 +255,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST

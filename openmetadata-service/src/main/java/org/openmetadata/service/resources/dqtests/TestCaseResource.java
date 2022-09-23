@@ -33,6 +33,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
@@ -51,6 +52,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -176,8 +178,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    Fields fields = getFields(fieldsParam);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, operationContext, resourceContext);
+        uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
   }
 
   @GET
@@ -196,9 +199,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    return super.listVersionsInternal(securityContext, id, operationContext, resourceContext);
   }
 
   @GET
@@ -232,9 +239,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     // TODO fix hardcoded entity type
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include, operationContext, resourceContext);
+    return getInternal(uriInfo, securityContext, id, fields, include, operationContext, resourceContext);
   }
 
   @GET
@@ -269,9 +277,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     // TODO fix hardcoded entity type
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(name).build();
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, operationContext, resourceContext);
+    return getByNameInternal(uriInfo, securityContext, name, fields, include, operationContext, resourceContext);
   }
 
   @GET
@@ -300,7 +309,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+    return super.getVersionInternal(securityContext, id, version, operationContext, resourceContext);
   }
 
   @POST
@@ -465,44 +476,26 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public ResultList<TestCaseResult> listTestCaseResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Parameter(
               description = "Filter testCase results after the given start timestamp",
               schema = @Schema(type = "number"))
+          @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter testCase results before the given end timestamp",
               schema = @Schema(type = "number"))
+          @NonNull
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number of testCase results returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of testCase results before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of testCase results after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-
     ListFilter filter =
         new ListFilter(Include.ALL)
             .addQueryParam("entityFQN", fqn)
             .addQueryParam("extension", TestCaseRepository.TESTCASE_RESULT_EXTENSION);
 
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getTestCaseResults(filter, before, after, limitParam);
+    return dao.getTestCaseResults(fqn, startTs, endTs);
   }
 
   @DELETE

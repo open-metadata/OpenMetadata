@@ -14,6 +14,7 @@
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { WebhookType } from '../generated/api/events/createWebhook';
 import { getSettingPath } from '../utils/RouterUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
@@ -280,7 +281,7 @@ export const getVersionPath = (
 export const getTableTabPath = (tableFQN: string, tab = 'schema') => {
   let path = ROUTES.TABLE_DETAILS_WITH_TAB;
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;

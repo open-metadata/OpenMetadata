@@ -88,7 +88,6 @@ const ProfilerDashboardPage = () => {
       const { data } = await getColumnProfilerList(fqn, {
         startTs,
         endTs,
-        limit: API_RES_MAX_SIZE,
       });
       setProfilerData(data || []);
     } catch (error) {
@@ -158,10 +157,14 @@ const ProfilerDashboardPage = () => {
   const getProfilerDashboard = (permission: OperationPermission) => {
     if (
       tab === ProfilerDashboardTab.DATA_QUALITY &&
-      (permission.ViewAll || permission.ViewTests)
+      (permission.ViewAll || permission.ViewBasic || permission.ViewTests)
     ) {
       fetchTestCases(generateEntityLink(entityTypeFQN));
-    } else if (permission.ViewAll || permission.ViewDataProfile) {
+    } else if (
+      permission.ViewAll ||
+      permission.ViewBasic ||
+      permission.ViewDataProfile
+    ) {
       fetchProfilerData(entityTypeFQN);
     } else {
       setIsLoading(false);

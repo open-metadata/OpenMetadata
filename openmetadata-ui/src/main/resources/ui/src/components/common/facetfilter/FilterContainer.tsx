@@ -25,6 +25,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   isSelected,
   type = '',
   isDisabled = false,
+  label,
 }: FilterContainerProp) => {
   const getFilterName = (name = '') => {
     const formattedName = name.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
@@ -33,7 +34,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
 
     return (
       <PopOver position="top" title={formattedName} trigger="mouseenter">
-        <>{formattedName}</>
+        <>{label || formattedName}</>
       </PopOver>
     );
   };

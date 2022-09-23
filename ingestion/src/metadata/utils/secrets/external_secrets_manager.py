@@ -15,7 +15,6 @@ Abstract class for third party secrets' manager implementations
 import json
 from abc import ABC, abstractmethod
 
-from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
@@ -27,7 +26,6 @@ from metadata.generated.schema.entity.services.connections.serviceConnection imp
     ServiceConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,

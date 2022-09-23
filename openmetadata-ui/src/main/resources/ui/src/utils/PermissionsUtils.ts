@@ -119,6 +119,16 @@ export const getUIPermission = (
   }, {} as UIPermission);
 };
 
+export const userPermissions = {
+  /* A util function's that checks if the user has permission to view the resource. */
+  hasViewPermissions: (
+    resourceEntityType: ResourceEntity,
+    permissions: UIPermission
+  ) =>
+    checkPermission(Operation.ViewBasic, resourceEntityType, permissions) ||
+    checkPermission(Operation.ViewAll, resourceEntityType, permissions),
+};
+
 export const DEFAULT_ENTITY_PERMISSION = {
   Create: false,
   Delete: false,
@@ -135,6 +145,7 @@ export const DEFAULT_ENTITY_PERMISSION = {
   EditTests: false,
   EditTier: false,
   ViewAll: false,
+  ViewBasic: false,
   ViewDataProfile: false,
   ViewQueries: false,
   ViewSampleData: false,

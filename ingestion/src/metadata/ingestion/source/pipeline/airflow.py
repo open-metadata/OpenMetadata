@@ -15,12 +15,10 @@ import traceback
 from datetime import datetime
 from typing import Any, Iterable, List, Optional, cast
 
-import sqlalchemy
 from airflow.models import BaseOperator, DagRun, TaskInstance
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -46,7 +44,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.connections import create_and_bind_session, test_connection
+from metadata.utils.connections import create_and_bind_session
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
