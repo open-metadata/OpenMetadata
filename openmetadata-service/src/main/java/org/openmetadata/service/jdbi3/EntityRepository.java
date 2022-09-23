@@ -727,7 +727,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withEntity(entityInterface);
   }
 
-  public void setOwnerToChildren(JsonPatch patch, T entity, SecurityContext securityContext) throws IOException {
+  public void applyPatchToChildren(JsonPatch patch, T entity, SecurityContext securityContext) throws IOException {
     List<EntityRelationshipRecord> records =
         daoCollection
             .relationshipDAO()

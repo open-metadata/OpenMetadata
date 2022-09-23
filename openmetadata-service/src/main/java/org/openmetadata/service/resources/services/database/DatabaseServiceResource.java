@@ -349,6 +349,12 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
+      @Parameter(
+          description = "Filter to apply patch to child entities",
+          schema = @Schema(type = "boolean", example = "false"))
+        @QueryParam("applyPatch")
+        @DefaultValue("false")
+        Boolean applyPatch,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -359,7 +365,12 @@ public class DatabaseServiceResource
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    if (applyPatch) {
+      DatabaseService databaseService = getInternal(uriInfo, securityContext, id, FIELDS, Include.ALL);
+      dao.applyPatchToChildren(patch, databaseService, securityContext);
+    }
+    return response;
   }
 
   @DELETE

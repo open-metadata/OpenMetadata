@@ -261,42 +261,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @GET
-  @Path("/setOwner/{id}")
-  @Operation(
-      operationId = "setSchemaOwnerToTables",
-      summary = "Set schema owner to all tables",
-      tags = "databaseSchemas",
-      description = "Set the owner to table of databaseSchema by given `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "database schema",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
-        @ApiResponse(responseCode = "404", description = "Database schema for instance {id} is " + "not found")
-      })
-  public DatabaseSchema setOwner(
-      @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    DatabaseSchema databaseSchema = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    //    dao.setOwnerToTables(databaseSchema);
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
-  }
-
   @POST
   @Operation(
       operationId = "createDBSchema",
@@ -331,6 +295,12 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
+      @Parameter(
+              description = "Filter to apply patch to child entities",
+              schema = @Schema(type = "boolean", example = "false"))
+          @QueryParam("applyPatch")
+          @DefaultValue("false")
+          Boolean applyPatch,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -341,12 +311,12 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
                       }))
           JsonPatch patch)
       throws IOException {
-    DatabaseSchema databaseSchema = getInternal(uriInfo, securityContext, id, FIELDS, Include.ALL);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    dao.setOwnerToChildren(patch, databaseSchema, securityContext);
-    //    dao.setOwnerToTables(patch, databaseSchema, securityContext.getUserPrincipal().getName());
+    if (applyPatch) {
+      DatabaseSchema databaseSchema = getInternal(uriInfo, securityContext, id, FIELDS, Include.ALL);
+      dao.applyPatchToChildren(patch, databaseSchema, securityContext);
+    }
     return response;
-    //    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
