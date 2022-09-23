@@ -192,12 +192,18 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Update the user information using PUT
     String oldEmail = create.getEmail();
-    CreateUser update = create.withEmail("test1@email.com").withDisplayName("displayName1");
+    CreateUser update = create.withEmail("user.xyz@email.com").withDisplayName("displayName1");
 
     ChangeDescription change = getChangeDescription(user.getVersion());
     fieldAdded(change, "displayName", "displayName1");
-    fieldUpdated(change, "email", oldEmail, "test1@email.com");
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldUpdated(change, "email", oldEmail, "user.xyz@email.com");
+    user = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Update the user information using PUT as the logged-in user
+    update = create.withDisplayName("displayName2");
+    change = getChangeDescription(user.getVersion());
+    fieldUpdated(change, "displayName", "displayName1", "displayName2");
+    updateAndCheckEntity(update, OK, authHeaders("user.xyz@email.com"), MINOR_UPDATE, change);
   }
 
   @Test
