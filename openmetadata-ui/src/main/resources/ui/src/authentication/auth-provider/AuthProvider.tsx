@@ -138,19 +138,16 @@ export const AuthProvider = ({
   /**
    * Stores redirect URL for successful login
    */
-  function storeRedirectPath(pathname?: string) {
+  function storeRedirectPath() {
     const redirectPathExists = Boolean(
       cookieStorage.getItem(REDIRECT_PATHNAME)
     );
-    if (!redirectPathExists) {
-      cookieStorage.setItem(
-        REDIRECT_PATHNAME,
-        pathname || appState.getUrlPathname(),
-        {
-          expires: getUrlPathnameExpiry(),
-          path: '/',
-        }
-      );
+
+    if (!redirectPathExists && appState.getUrlPathname() !== '') {
+      cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
+        expires: getUrlPathnameExpiry(),
+        path: '/',
+      });
     }
   }
 
@@ -270,9 +267,9 @@ export const AuthProvider = ({
    */
   const trySilentSignIn = () => {
     const pathName = location.pathname;
-    storeRedirectPath(pathName);
     // Do not try silent sign in for SignIn or SignUp route
     if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
+      storeRedirectPath();
       // Try to renew token
       silentSignInRetries < 3
         ? renewIdToken()
@@ -455,7 +452,7 @@ export const AuthProvider = ({
             updateAuthInstance(configJson);
             if (!oidcUserToken) {
               if (isProtectedRoute(location.pathname)) {
-                storeRedirectPath(location.pathname);
+                storeRedirectPath();
               }
               setLoading(false);
             } else {
@@ -603,7 +600,9 @@ export const AuthProvider = ({
   }, [history]);
 
   useEffect(() => {
-    appState.updateUrlPathname(location.pathname);
+    if (isProtectedRoute(location.pathname)) {
+      appState.updateUrlPathname(location.pathname);
+    }
   }, [location.pathname]);
 
   const isLoading =
