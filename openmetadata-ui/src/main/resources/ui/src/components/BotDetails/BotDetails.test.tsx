@@ -20,6 +20,7 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getUserToken } from '../../axiosAPIs/userAPI';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
@@ -64,27 +65,7 @@ const botsData = {
 
 const mockProp = {
   botsData,
-  revokeTokenHandler,
-  updateBotsDetails,
-};
-
-jest.mock('../PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-  }),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-  DEFAULT_ENTITY_PERMISSION: {
+  botPermission: {
     Create: true,
     Delete: true,
     ViewAll: true,
@@ -92,7 +73,13 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     EditDescription: true,
     EditDisplayName: true,
     EditCustomFields: true,
-  },
+  } as OperationPermission,
+  revokeTokenHandler,
+  updateBotsDetails,
+};
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../axiosAPIs/userAPI', () => {

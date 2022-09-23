@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Input, Select, Space } from 'antd';
+import { Card, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -43,7 +43,6 @@ import {
   getTokenExpiryText,
 } from '../../utils/BotsUtils';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -55,15 +54,12 @@ import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { Field } from '../Field/Field';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../Users/Users.interface';
 const { Option } = Select;
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botsData: User;
+  botPermission: OperationPermission;
   updateBotsDetails: (data: UserDetails) => Promise<void>;
   revokeTokenHandler: () => void;
 }
@@ -77,9 +73,9 @@ const BotDetails: FC<BotsDetailProp> = ({
   botsData,
   updateBotsDetails,
   revokeTokenHandler,
+  botPermission,
 }) => {
   const { authConfig } = useAuthContext();
-  const { getEntityPermission } = usePermissionProvider();
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
@@ -87,9 +83,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [botsTokenExpiry, setBotsTokenExpiry] = useState<number>();
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
   const [generateToken, setGenerateToken] = useState<boolean>(false);
-  const [botPermission, setBotPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+
   const [authMechanism, setAuthMechanism] = useState<AuthType>(AuthType.Jwt);
   const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
     JWTTokenExpiry.OneHour
@@ -110,25 +104,13 @@ const BotDetails: FC<BotsDetailProp> = ({
     [botPermission]
   );
 
-  const fetchBotPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.BOT,
-        botsData.id
-      );
-      setBotPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const fetchBotsToken = () => {
     getUserToken(botsData.id)
       .then((res) => {
-        const { JWTToken, JWTTokenExpiresAt, JWTTokenExpiry } = res;
+        const { JWTToken, JWTTokenExpiresAt } = res;
         setBotsToken(JWTToken);
         setBotsTokenExpiry(JWTTokenExpiresAt);
-        setTokenExpiry(JWTTokenExpiry);
+        setTokenExpiry(res.JWTTokenExpiry ?? JWTTokenExpiry.OneHour);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -482,24 +464,14 @@ const BotDetails: FC<BotsDetailProp> = ({
           {!generateToken && editAllPermission ? (
             <>
               {botsToken ? (
-                <Space>
-                  <Button
-                    data-testid="edit-button"
-                    size="small"
-                    theme="primary"
-                    variant="outlined"
-                    onClick={handleTokenGeneration}>
-                    Edit
-                  </Button>
-                  <Button
-                    className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
-                    data-testid="revoke-button"
-                    size="custom"
-                    variant="outlined"
-                    onClick={() => setIsRevokingToken(true)}>
-                    Revoke token
-                  </Button>
-                </Space>
+                <Button
+                  className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
+                  data-testid="revoke-button"
+                  size="custom"
+                  variant="outlined"
+                  onClick={() => setIsRevokingToken(true)}>
+                  Revoke token
+                </Button>
               ) : (
                 <Button
                   data-testid="generate-token"
@@ -526,7 +498,6 @@ const BotDetails: FC<BotsDetailProp> = ({
   useEffect(() => {
     if (botsData.id) {
       fetchBotsToken();
-      fetchBotPermission();
     }
   }, [botsData]);
 
