@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useRef, useState } from 'react';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -53,6 +54,7 @@ const CreateUser = ({
   onSave,
   forceBot,
 }: CreateUserProps) => {
+  const { authConfig } = useAuthContext();
   const markdownRef = useRef<EditorContentRef>();
   const [description] = useState<string>('');
   const [email, setEmail] = useState('');
@@ -304,7 +306,7 @@ const CreateUser = ({
                 defaultValue={authMechanism}
                 placeholder="Select Auth Mechanism"
                 onChange={(value) => setAuthMechanism(value)}>
-                {getAuthMechanismTypeOptions().map((option) => (
+                {getAuthMechanismTypeOptions(authConfig).map((option) => (
                   <Option key={option.value}>{option.label}</Option>
                 ))}
               </Select>
