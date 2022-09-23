@@ -287,7 +287,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
                 continue
 
-            database_fqn = fqn.build(
+            dashboard__fqn = fqn.build(
                 self.metadata,
                 entity_type=Dashboard,
                 service_name=self.context.dashboard_service.name.__root__,
@@ -296,10 +296,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
-                database_fqn,
+                dashboard__fqn,
             ):
                 self.status.filter(
-                    database_fqn,
+                    dashboard__fqn,
                     "Dashboard Pattern not Allowed",
                 )
                 continue

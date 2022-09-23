@@ -219,7 +219,7 @@ class DatalakeSource(DatabaseServiceSource):
                     ):
 
                         self.status.filter(
-                            "{}".format(table_fqn),
+                            table_fqn,
                             "Object pattern not allowed",
                         )
                         continue

@@ -132,7 +132,7 @@ class AthenaSource(CommonDbSourceService):
                     self.source_config.tableFilterPattern, table_fqn=table_fqn
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{table_fqn}",
+                        table_fqn,
                         "Table pattern not allowed",
                     )
                     continue
@@ -153,7 +153,7 @@ class AthenaSource(CommonDbSourceService):
                     self.source_config.tableFilterPattern, table_fqn=view_fqn
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{view_fqn}",
+                        view_fqn,
                         "Table pattern not allowed for view",
                     )
                     continue
