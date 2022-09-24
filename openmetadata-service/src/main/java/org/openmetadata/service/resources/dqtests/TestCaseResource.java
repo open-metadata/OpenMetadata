@@ -22,6 +22,7 @@ import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
+import javax.ws.rs.Encoded;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -451,10 +452,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response addTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Encoded @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
+    // fqn = URLEncoder.encode(fqn, StandardCharsets.UTF_8).replaceAll("%2B", "+");
     return dao.addTestCaseResult(uriInfo, fqn, testCaseResult).toResponse();
   }
 
