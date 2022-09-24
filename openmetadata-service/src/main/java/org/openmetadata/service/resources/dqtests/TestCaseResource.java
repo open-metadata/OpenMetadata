@@ -457,7 +457,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Valid TestCaseResult testCaseResult)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    // fqn = URLEncoder.encode(fqn, StandardCharsets.UTF_8).replaceAll("%2B", "+");
     return dao.addTestCaseResult(uriInfo, fqn, testCaseResult).toResponse();
   }
 
