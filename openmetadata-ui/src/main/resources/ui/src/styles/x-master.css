@@ -257,6 +257,20 @@ pre {
   background-color: #e8e7e4;
 }
 
+/* google sso layout style  */
+.googlecontainer {
+  width: 100%;
+  height: 580px;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  flex-direction: column;
+}
+
+.googlecontainer span {
+  margin: 0;
+}
+
 /* Main Page */
 .min-h-100 {
   min-height: 100%;
