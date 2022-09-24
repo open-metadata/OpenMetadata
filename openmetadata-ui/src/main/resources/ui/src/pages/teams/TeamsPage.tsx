@@ -231,7 +231,6 @@ const TeamsPage = () => {
       const res = await createTeam(teamData);
       if (res) {
         const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
-        handleAddTeam(false);
         fetchAllTeams(true, parent);
         fetchTeamByFqn(selectedTeam.name);
       }
@@ -240,6 +239,8 @@ const TeamsPage = () => {
         error as AxiosError,
         jsonData['api-error-messages']['create-team-error']
       );
+    } finally {
+      handleAddTeam(false);
     }
   };
 
