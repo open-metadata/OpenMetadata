@@ -27,7 +27,7 @@ import {
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
-import { Column, ColumnProfile } from '../../../generated/entity/data/table';
+import { ColumnProfile } from '../../../generated/entity/data/table';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import {
   getAddDataQualityTableTestPath,
@@ -41,6 +41,7 @@ import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.
 import {
   ColumnProfileTableProps,
   columnTestResultType,
+  ModifiedColumn,
 } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
@@ -50,11 +51,11 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
-  const [data, setData] = useState<Column[]>(columns);
+  const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =
     useState<columnTestResultType>();
 
-  const tableColumn: ColumnsType<Column> = useMemo(() => {
+  const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
       {
         title: 'Name',
@@ -71,6 +72,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             </Link>
           );
         },
+        sorter: (col1, col2) => col1.name.localeCompare(col2.name),
       },
       {
         title: 'Data Type',
@@ -83,6 +85,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             </Ellipses>
           );
         },
+        sorter: (col1, col2) => col1.dataType.localeCompare(col2.dataType),
       },
       {
         title: 'Null %',
@@ -97,6 +100,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             />
           );
         },
+        sorter: (col1, col2) =>
+          (col1.profile?.nullProportion || 0) -
+          (col2.profile?.nullProportion || 0),
       },
       {
         title: 'Unique %',
@@ -109,6 +115,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             value={profile?.uniqueProportion || 0}
           />
         ),
+        sorter: (col1, col2) =>
+          (col1.profile?.uniqueProportion || 0) -
+          (col2.profile?.uniqueProportion || 0),
       },
       {
         title: 'Distinct %',
@@ -121,16 +130,21 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             value={profile?.distinctProportion || 0}
           />
         ),
+        sorter: (col1, col2) =>
+          (col1.profile?.distinctProportion || 0) -
+          (col2.profile?.distinctProportion || 0),
       },
       {
         title: 'Value Count',
         dataIndex: 'profile',
         key: 'valuesCount',
         render: (profile: ColumnProfile) => profile?.valuesCount || 0,
+        sorter: (col1, col2) =>
+          (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
       },
       {
         title: 'Tests',
-        dataIndex: 'Tests',
+        dataIndex: 'testCount',
         key: 'Tests',
         render: (_, record) => (
           <Link
@@ -140,9 +154,10 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               record.fullyQualifiedName || '',
               ProfilerDashboardTab.DATA_QUALITY
             )}>
-            {columnTestSummary?.[record.fullyQualifiedName || '']?.count || 0}
+            {record.testCount || 0}
           </Link>
         ),
+        sorter: (col1, col2) => (col1.testCount || 0) - (col2.testCount || 0),
       },
       {
         title: 'Status',
@@ -214,10 +229,6 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   };
 
   useEffect(() => {
-    setData(columns);
-  }, [columns]);
-
-  useEffect(() => {
     if (columnTests.length) {
       const colResult = columnTests.reduce((acc, curr) => {
         const fqn = curr.entityFQN || '';
@@ -232,9 +243,17 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
 
         return acc;
       }, {} as columnTestResultType);
+      setData(
+        columns.map((col) => ({
+          ...col,
+          testCount: colResult?.[col.fullyQualifiedName || '']?.count,
+        }))
+      );
       setColumnTestSummary(colResult);
+    } else {
+      setData(columns);
     }
-  }, [columnTests]);
+  }, [columnTests, columns]);
 
   return (
     <div data-testid="column-profile-table-container">
