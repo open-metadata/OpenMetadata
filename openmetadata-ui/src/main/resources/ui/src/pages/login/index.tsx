@@ -180,7 +180,7 @@ const SigninPage = () => {
         <div className="tw-w-5/12">
           <div
             className={classNames('mt-24 tw-text-center flex-center flex-col', {
-              googlecontainer: !isAuthProviderBasic,
+              'sso-container': !isAuthProviderBasic,
             })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
             <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
