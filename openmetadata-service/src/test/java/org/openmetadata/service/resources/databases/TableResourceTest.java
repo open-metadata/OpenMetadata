@@ -95,6 +95,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
@@ -128,6 +129,7 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -1376,6 +1378,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10).withDescription(null));
     Table table =
         createAndCheckEntity(createRequest(test).withColumns(columns).withDescription(null), ADMIN_AUTH_HEADERS);
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user =
+        userResourceTest.createAndCheckEntity(
+            userResourceTest.createRequest(test).withName("testName").withEmail("test1@gmail.com").withIsBot(false),
+            ADMIN_AUTH_HEADERS);
 
     //
     // Update the data model and validate the response.
@@ -1385,22 +1392,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.get(0).setDescription("updatedDescription");
     columns.get(1).setDescription("updatedDescription");
     String query = "select * from test;";
+    EntityReference reference = new EntityReference().withId(user.getId()).withType("user");
     DataModel dataModel =
         new DataModel()
-            .withDescription("updatedTableDescription")
             .withModelType(ModelType.DBT)
             .withSql(query)
             .withGeneratedAt(new Date())
-            .withColumns(columns);
+            .withColumns(columns)
+            .withOwner(reference);
     Table putResponse = putTableDataModel(table.getId(), dataModel, ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, putResponse.getDataModel());
-    assertEquals("updatedTableDescription", putResponse.getDescription()); // Table description updated
 
     // Get the table and validate the data model
     Table getResponse = getEntity(table.getId(), "dataModel,tags", ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, getResponse.getDataModel());
-    assertEquals("updatedTableDescription", getResponse.getDescription()); // Table description updated
-    assertColumns(columns, getResponse.getColumns()); // Column description updated
 
     //
     // Update again
