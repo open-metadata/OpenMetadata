@@ -100,10 +100,18 @@ export const getTokenExpiryText = (expiry: string) => {
 /**
  *
  * @param expiry expiry timestamp
- * @returns date like "Fri 23rd September, 2022,02:26 PM."
+ * @returns TokenExpiry
  */
-export const getTokenExpiryDate = (expiry: number) => {
-  return moment(expiry).format('ddd Do MMMM, YYYY,hh:mm A');
+export const getTokenExpiry = (expiry: number) => {
+  // get the current date timestamp
+  const currentTimeStamp = Date.now();
+
+  const isTokenExpired = currentTimeStamp >= expiry;
+
+  return {
+    tokenExpiryDate: moment(expiry).format('ddd Do MMMM, YYYY,hh:mm A'),
+    isTokenExpired,
+  };
 };
 
 export const DEFAULT_GOOGLE_SSO_CLIENT_CONFIG = {
