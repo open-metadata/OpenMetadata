@@ -272,13 +272,13 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
     // Use the database service tests utilities for the comparison
     // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || BOT_AUTH_HEADERS.equals(authHeaders)) {
+    if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
       DatabaseConnection actualDatabaseConnection =
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
       MysqlConnection actualMysqlConnection =
           JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
-    } else {
+    } else if (BOT_AUTH_HEADERS.equals(authHeaders)) {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
       assertNull(actualAirflowConnection.getConnection());
