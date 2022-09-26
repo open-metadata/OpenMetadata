@@ -37,7 +37,10 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/CommonUtils';
 import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -211,10 +214,11 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         )
       );
       // generating dynamic unique name based on entity_testCase_number
+      const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
+        testCount.length ? `_${testCount.length}` : ''
+      }`;
       form.setFieldsValue({
-        testName: `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
-          testCount.length ? `_${testCount.length}` : ''
-        }`,
+        testName: replaceAllSpacialCharWith_(name),
       });
     }
   };
@@ -227,7 +231,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       fetchAllTestCases();
     }
     form.setFieldsValue({
-      testName: initialValue?.name ?? getNameFromFQN(decodedEntityFQN),
+      testName: replaceAllSpacialCharWith_(
+        initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
+      ),
       testTypeId: initialValue?.testDefinition?.id,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
@@ -249,6 +255,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           {
             required: true,
             message: 'Name is required!',
+          },
+          {
+            pattern: /^[A-Za-z0-9_]*$/g,
+            message: 'Spacial character is not allowed!',
           },
           {
             validator: (_, value) => {
