@@ -55,22 +55,20 @@ else
     echo "Skipping Maven Build"
 fi
 
-# cd docker/local-metadata || exit
+cd docker/local-metadata || exit
 
 echo "Stopping any previous Local Docker Containers"
-docker compose -f docker/local-metadata/docker-compose-postgres.yml down
+docker compose -f docker-compose-postgres.yml down
 docker compose down
-rm -rf $PWD/docker-volume
-
 
 echo "Starting Local Docker Containers"
-mkdir docker-volume && mkdir docker-volume/db-data   && mkdir docker-volume/ingestion-volume-dag-airflow     && mkdir docker-volume/ingestion-volume-dags   && mkdir docker-volume/ingestion-volume-tmp     && mkdir docker-volume/om-server  
+
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
-    docker compose -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose-postgres.yml up -d
+    docker compose -f docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker-compose-postgres.yml up -d
 else
-    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up --build -d
+    docker compose build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose up --build -d
 fi
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
