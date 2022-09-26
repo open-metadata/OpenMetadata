@@ -130,6 +130,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public ResultList<TeamHierarchy> listHierarchy(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Limit the number of teams returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10000")
+          @Min(1000)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
       @Parameter(
               description = "Filter the results by whether the team can be joined by any user or not",
               schema = @Schema(type = "boolean"))
@@ -137,7 +143,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           Boolean isJoinable)
       throws IOException {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    return new ResultList<>(dao.listHierarchy(filter, isJoinable));
+    return new ResultList<>(dao.listHierarchy(filter, limitParam, isJoinable));
   }
 
   @GET

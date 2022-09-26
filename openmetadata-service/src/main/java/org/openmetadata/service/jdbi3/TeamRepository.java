@@ -238,10 +238,10 @@ public class TeamRepository extends EntityRepository<Team> {
     return team1;
   }
 
-  public List<TeamHierarchy> listHierarchy(ListFilter filter, Boolean isJoinable) throws IOException {
+  public List<TeamHierarchy> listHierarchy(ListFilter filter, int limit, Boolean isJoinable) throws IOException {
     Fields fields = getFields("parents");
     Map<UUID, TeamHierarchy> map = new HashMap<>();
-    ResultList<Team> resultList = listAfter(null, fields, filter, 10000, null);
+    ResultList<Team> resultList = listAfter(null, fields, filter, limit, null);
     List<Team> allTeams = resultList.getData();
     List<Team> joinableTeams =
         allTeams.stream()

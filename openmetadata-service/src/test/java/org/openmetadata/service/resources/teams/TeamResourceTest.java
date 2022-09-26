@@ -306,7 +306,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // bu1 -- has children --> [ bu11, div12, dep13]
     Team bu11 = createWithParents("bu11", BUSINESS_UNIT, bu1.getEntityReference());
     Team div12 = createWithParents("div12", DIVISION, bu1.getEntityReference());
-    Team dep13 = createWithParents("dep13", DEPARTMENT, bu1.getEntityReference());
+    Team dep13 = createWithParents("dep13", DEPARTMENT, false, bu1.getEntityReference());
 
     // Ensure parent has all the newly created children
     bu1 = getEntity(bu1.getId(), "children,parents", ADMIN_AUTH_HEADERS);
@@ -328,6 +328,20 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(dep13Id)));
+
+    Team div121 = createWithParents("div121", DIVISION, div12.getEntityReference());
+    // Ensure team hierarchy lists only the joinable child teams
+    hierarchyList = getTeamsHierarchy(true, ADMIN_AUTH_HEADERS);
+    bu1Hierarchy = hierarchyList.stream().filter(t -> t.getId().equals(bu1Id)).findAny().orElse(null);
+    assertNotNull(bu1Hierarchy);
+    assertEquals(2, bu1Hierarchy.getChildren().size());
+    children = bu1Hierarchy.getChildren();
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
+    TeamHierarchy div12Hierarchy = children.stream().filter(t -> t.getId().equals(div12Id)).findAny().get();
+    assertNotNull(div12Hierarchy);
+    assertEquals(1, div12Hierarchy.getChildren().size());
+    assertEquals(div121.getId(), div12Hierarchy.getChildren().get(0).getId());
 
     //
     // Create hierarchy of division, and department under division
@@ -728,9 +742,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   private Team createWithParents(String teamName, TeamType teamType, EntityReference... parents)
       throws HttpResponseException {
+    return createWithParents(teamName, teamType, true, parents);
+  }
+
+  private Team createWithParents(String teamName, TeamType teamType, Boolean isJoinable, EntityReference... parents)
+      throws HttpResponseException {
     List<EntityReference> parentList = List.of(parents);
     List<UUID> parentIds = EntityUtil.toIds(parentList);
-    Team team = createEntity(createRequest(teamName).withParents(parentIds).withTeamType(teamType), ADMIN_AUTH_HEADERS);
+    Team team =
+        createEntity(
+            createRequest(teamName).withParents(parentIds).withTeamType(teamType).withIsJoinable(isJoinable),
+            ADMIN_AUTH_HEADERS);
     assertParents(team, parentList);
     return team;
   }
