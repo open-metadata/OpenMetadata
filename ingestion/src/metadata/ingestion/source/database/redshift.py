@@ -28,8 +28,10 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
@@ -44,6 +46,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -484,11 +487,19 @@ class RedshiftSource(CommonDbSourceService):
         if self.source_config.includeTables:
             # table_type value for regular tables will be 'r' and for external tables will be 'e'
             for table_name, table_type in self.inspector.get_table_names(schema_name):
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table_name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table_name
+                    self.source_config.tableFilterPattern, table_fqn=table_fqn
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{table_name}",
+                        table_fqn,
                         "Table pattern not allowed",
                     )
                     continue
@@ -496,11 +507,19 @@ class RedshiftSource(CommonDbSourceService):
         if self.source_config.includeViews:
             # table_type value for views will be 'v'
             for view_name, table_type in self.inspector.get_view_names(schema_name):
+                view_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=view_name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=view_name
+                    self.source_config.tableFilterPattern, table_name=view_fqn
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{view_name}",
+                        view_fqn,
                         "Table pattern not allowed for view",
                     )
                     continue
@@ -516,11 +535,17 @@ class RedshiftSource(CommonDbSourceService):
             for res in results:
                 row = list(res)
                 new_database = row[0]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
 
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_name=new_database
+                    self.source_config.databaseFilterPattern, database_fqn=database_fqn
                 ):
-                    self.status.filter(new_database, "Database pattern not allowed")
+                    self.status.filter(database_fqn, "Database pattern not allowed")
                     continue
 
                 try:

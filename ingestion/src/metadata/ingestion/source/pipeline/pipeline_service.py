@@ -40,8 +40,9 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_dashboard
+from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -206,12 +207,18 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_pipeline(self) -> Any:
         for pipeline_detail in self.get_pipelines_list():
-            if filter_by_dashboard(
+            pipeline_fqn = fqn.build(
+                self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.pipeline_service.name.__root__,
+                mlmodel_name=self.get_pipeline_name(pipeline_detail),
+            )
+            if filter_by_pipeline(
                 self.source_config.pipelineFilterPattern,
-                self.get_pipeline_name(pipeline_detail),
+                pipeline_fqn,
             ):
                 self.status.filter(
-                    self.get_pipeline_name(pipeline_detail),
+                    pipeline_fqn,
                     "Pipeline Pattern not Allowed",
                 )
                 continue
