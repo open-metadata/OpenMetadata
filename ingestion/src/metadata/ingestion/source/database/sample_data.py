@@ -447,13 +447,20 @@ class SampleDataSource(Source[Entity]):
             if team["parent"] != None:
                 parent_list_id = []
                 for parent in team["parent"]:
-                    parent_fqn = fqn.build(
-                        metadata=self.metadata, entity_type=Team, team_name=parent
-                    )
+                    tries = 3
                     parent_object = self.metadata.get_by_name(
-                        entity=Team, fqn=parent_fqn
+                        entity=Team, fqn=parent
                     )
-                    parent_list_id.append(parent_object.id)
+                    while not parent_object and tries > 0:
+                        logger.info("Trying to GET {parent} Parent Team")
+                        parent_object = self.metadata.get_by_name(
+                            entity=Team,
+                            fqn=parent,
+                        )
+                        tries -= 1
+                    
+                    if parent_object:
+                        parent_list_id.append(parent_object.id)
 
                 team_to_ingest.parents = parent_list_id
 

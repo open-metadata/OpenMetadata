@@ -14,7 +14,7 @@
         "Group",
         "Department",
         "Division",
-        "Business Unit",
+        "BusinessUnit",
         "Organization"
       ],
       "default": "Group"

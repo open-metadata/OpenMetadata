@@ -2,13 +2,13 @@
     "teams": [
         {
             "name": "Engineering",
-            "teamType": "Business Unit",
+            "teamType": "BusinessUnit",
             "parent": null,
             "children": ["Infrastructure", "Applications", "Marketplace", "Payments"]
         },
         {
             "name": "Infrastructure",
-            "teamType": "Business Unit",
+            "teamType": "BusinessUnit",
             "parent": ["Engineering"],
             "children": ["Compute", "Data","DevOps"]
         },
@@ -50,7 +50,7 @@
         },
         {
             "name": "Finance",
-            "teamType":"Business Unit",
+            "teamType":"BusinessUnit",
             "parent": null,
             "children": ["Marketing", "Sales", "Accounting"]
         },
@@ -74,7 +74,7 @@
         },
         {
             "name": "Legal",
-            "teamType": "Business Unit",
+            "teamType": "BusinessUnit",
             "parent": null,
             "children": ["Merger & Acquisitions", "Legal Admin"]
         },
