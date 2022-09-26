@@ -67,7 +67,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.teams.team import TeamType
+from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -352,6 +352,9 @@ class SampleDataSource(Source[Entity]):
                 self.service_connection.sampleDataFolder + "/lineage/lineage.json", "r"
             )
         )
+        self.teams = json.load(
+            open(self.service_connection.sampleDataFolder + "/teams/teams.json", "r")
+        )
         self.users = json.load(
             open(self.service_connection.sampleDataFolder + "/users/users.json", "r")
         )
@@ -418,6 +421,7 @@ class SampleDataSource(Source[Entity]):
         pass
 
     def next_record(self) -> Iterable[Entity]:
+        yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_locations()
         yield from self.ingest_glue()
@@ -433,6 +437,32 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
+
+    def ingest_teams(self):
+        for team in self.teams["teams"]:
+
+            team_to_ingest = CreateTeamRequest(
+                name=team["name"], teamType=team["teamType"]
+            )
+            if team["parent"] != None:
+                parent_list_id = []
+                for parent in team["parent"]:
+                    tries = 3
+                    parent_object = self.metadata.get_by_name(entity=Team, fqn=parent)
+                    while not parent_object and tries > 0:
+                        logger.info(f"Trying to GET {parent} Parent Team")
+                        parent_object = self.metadata.get_by_name(
+                            entity=Team,
+                            fqn=parent,
+                        )
+                        tries -= 1
+
+                    if parent_object:
+                        parent_list_id.append(parent_object.id)
+
+                team_to_ingest.parents = parent_list_id
+
+            yield team_to_ingest
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
@@ -759,7 +789,7 @@ class SampleDataSource(Source[Entity]):
                         name=user["teams"],
                         displayName=user["teams"],
                         description=f"This is {user['teams']} description.",
-                        teamType=TeamType.Department,
+                        teamType=user["teamType"],
                     )
                 ]
                 if not self.list_policies:
