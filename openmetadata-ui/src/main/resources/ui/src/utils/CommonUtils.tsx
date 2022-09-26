@@ -711,6 +711,10 @@ export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
 };
 
+export const replaceAllSpacialCharWith_ = (text: string) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+};
+
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
