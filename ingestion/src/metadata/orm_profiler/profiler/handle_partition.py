@@ -182,10 +182,8 @@ class partition_filter_handler:
                 query_results = _self._build_query(*args, **kwargs).select_from(
                     _self._sample if self.sampled else _self.table
                 )
-                if partition_field in {"_PARTITIONDATE", "_PARTITIONTIME"}:
-                    if not self.sampled:
-                        query_results = query_results.where(partition_filter)
-                else:
+                # we don't have to add a filter if it has partition field as the query already has a filter
+                if not partition_field:
                     query_results = query_results.filter(partition_filter)
                 return query_results.first() if self.first else query_results.all()
             return func(_self, *args, **kwargs)
