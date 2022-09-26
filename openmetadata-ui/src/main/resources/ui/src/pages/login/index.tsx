@@ -41,6 +41,11 @@ const SigninPage = () => {
     isAuthenticated,
   } = useAuthContext();
 
+  const enableSelfSignUp = useMemo(
+    () => authConfig?.enableSelfSignup,
+    [authConfig]
+  );
+
   const { isAuthProviderBasic } = useMemo(() => {
     return {
       isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
@@ -218,22 +223,26 @@ const SigninPage = () => {
                   </Typography.Link>
                 </div>
 
-                <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                  <Typography.Text type="secondary">or</Typography.Text>
-                </Divider>
+                {enableSelfSignUp && (
+                  <>
+                    <Divider className="w-min-0 mt-8 mb-12 justify-center">
+                      <Typography.Text type="secondary">or</Typography.Text>
+                    </Divider>
 
-                <div className="mt-4 flex flex-center">
-                  <Typography.Text className="mr-4">
-                    New on the platform?
-                  </Typography.Text>
-                  <Button
-                    ghost
-                    data-testid="signup"
-                    type="link"
-                    onClick={onClickSignUp}>
-                    Create Account
-                  </Button>
-                </div>
+                    <div className="mt-4 flex flex-center">
+                      <Typography.Text className="mr-4">
+                        New on the platform?
+                      </Typography.Text>
+                      <Button
+                        ghost
+                        data-testid="signup"
+                        type="link"
+                        onClick={onClickSignUp}>
+                        Create Account
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="">{getSignInButton()}</div>

@@ -211,6 +211,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.SILENT_CALLBACK,
       ROUTES.REGISTER,
       ROUTES.RESET_PASSWORD,
+      ROUTES.ACCOUNT_ACTIVATION,
     ].indexOf(pathname) === -1
   );
 };

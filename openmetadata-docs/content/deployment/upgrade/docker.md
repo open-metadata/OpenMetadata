@@ -16,7 +16,7 @@ You can refresh these steps [here](/deployment/docker)
 
 Now,
 
-1. Visit [github.com/open-metadata/OpenMetadata/releases](github.com/open-metadata/OpenMetadata/releases). The
+1. Visit [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The
     latest release will be at the top of this page.
 2. Download the new `docker-compose.yml` file.
 3. Run the `docker compose up -d` command on the new compose file.

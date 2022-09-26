@@ -182,6 +182,7 @@ const jsonData = {
     'update-webhook-success': 'Webhook updated successfully!',
     'create-user-account': 'User account created successfully!',
     'reset-password-success': 'Password reset successfully!',
+    'account-verify-success': 'Email verified successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
