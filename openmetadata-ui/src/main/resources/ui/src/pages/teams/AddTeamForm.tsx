@@ -142,6 +142,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         </Form.Item>
         <Form.Item label="Team type" name="teamType">
           <Select
+            data-testid="team-selector"
             options={teamTypeOptions}
             placeholder="Please select a team type"
           />

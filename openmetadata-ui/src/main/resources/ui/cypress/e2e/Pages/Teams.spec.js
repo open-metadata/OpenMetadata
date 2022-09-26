@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, login, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
+import { addTeam, descriptionBox, interceptURL, login, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
 import { LOGIN } from '../../constants/constants';
-
 
 const updateddescription = 'This is updated description';
 
@@ -22,6 +21,7 @@ const TEAM_DETAILS = {
   name: teamName,
   displayName: teamName,
   updatedname: `${teamName}-updated`,
+  teamType: 'Department',
   description: `This is ${teamName} description`,
   ownername: 'Aaron Johnson',
   assetname: 'dim_address',
@@ -44,42 +44,7 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Add new team', () => {
-    interceptURL('GET', '/api/v1/teams*', 'addTeam');
-    //Fetching the add button and clicking on it
-    cy.get('button')
-      .find('span')
-      .contains('Add Team')
-      .should('be.visible')
-      .click();
-
-    verifyResponseStatusCode('@addTeam', 200);
-
-    //Entering team details
-    cy.get('[data-testid="name"]')
-      .should('exist')
-      .should('be.visible')
-      .type(TEAM_DETAILS.name);
-
-    cy.get('[data-testid="display-name"]')
-      .should('exist')
-      .should('be.visible')
-      .type(TEAM_DETAILS.displayName);
-
-    cy.get(descriptionBox)
-      .should('exist')
-      .should('be.visible')
-      .type(TEAM_DETAILS.description);
-    interceptURL('POST', '/api/v1/teams', 'saveTeam');
-    interceptURL('GET', '/api/v1/team*', 'createTeam');
-
-    //Saving the created team
-    cy.get('[form="add-team-form"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    verifyResponseStatusCode('@saveTeam', 201);
-    verifyResponseStatusCode('@createTeam', 200);
+    addTeam(TEAM_DETAILS);
 
     cy.reload();
 
@@ -315,7 +280,131 @@ describe('Teams flow should work properly', () => {
     cy.get('body').find('[data-testid="join-teams"]').should('exist');
   });
 
-  it('Delete created team', () => {
+  it('Permanently deleting soft deleted team should work properly', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
+      'getSelectedTeam'
+    );
+
+    //Click on created team
+    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+
+    verifyResponseStatusCode('@getSelectedTeam', 200);
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+
+    cy.get('[data-testid="delete-button-title"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.disabled');
+
+    cy.get('[data-testid="discard-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+
+    cy.get('[data-testid="delete-button-title"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    //Click on soft delete option
+    cy.get('[data-testid="soft-delete-option"]')
+      .should('contain', TEAM_DETAILS.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+
+    interceptURL('DELETE', '/api/v1/teams/*', 'softDeleteTeam');
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@softDeleteTeam', 200);
+
+    //Verify the toast message
+    toastNotification('Team deleted successfully!');
+
+    //Check if soft deleted team is shown when 'Deleted Teams' switch is on
+    cy.get('table').should('not.contain', TEAM_DETAILS.name);
+
+    cy.get('[data-testid="show-deleted-switch"').should('exist').click();
+
+    interceptURL(
+      'GET',
+      `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
+      'getSelectedTeam'
+    );
+
+    cy.get('table').should('contain', TEAM_DETAILS.name).click();
+
+    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+
+    verifyResponseStatusCode('@getSelectedTeam', 200);
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+
+    cy.get('[data-testid="delete-button-title"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    //Check if soft delete option is not present
+    cy.get('[data-testid="soft-delete-option"]').should('not.exist');
+
+    //Click on permanent delete option
+    cy.get('[data-testid="hard-delete-option"]')
+      .should('contain', TEAM_DETAILS.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+
+    interceptURL('DELETE', '/api/v1/teams/*', 'deleteTeam');
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@deleteTeam', 200);
+
+    //Verify the toast message
+    toastNotification('Team deleted successfully!');
+
+    //Validating the deleted team
+
+    cy.get('table').should('not.contain', TEAM_DETAILS.name);
+  });
+
+  it('Permanently deleting a team without soft deleting should work properly', () => {
+    //Add a new team
+    addTeam(TEAM_DETAILS);
+
     interceptURL(
       'GET',
       `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
@@ -337,6 +426,32 @@ describe('Teams flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.disabled');
+
+    cy.get('[data-testid="discard-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+
+    cy.get('[data-testid="delete-button-title"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    //Check if soft delete option is present
+    cy.get('[data-testid="soft-delete-option"]')
+      .should('contain', TEAM_DETAILS.name)
+      .should('be.visible');
 
     //Click on permanent delete option
     cy.get('[data-testid="hard-delete-option"]')
