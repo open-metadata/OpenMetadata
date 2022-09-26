@@ -23,6 +23,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 
@@ -48,7 +49,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 value={
                   tickFormatter
                     ? `${info.latestValue}${tickFormatter}`
-                    : info.latestValue
+                    : formatNumberWithComma(info.latestValue as number)
                 }
                 valueStyle={{ color: info.color }}
               />
@@ -68,7 +69,13 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     tickFormatter ? `${props}${tickFormatter}` : props
                   }
                 />
-                <Tooltip />
+                <Tooltip
+                  formatter={(value) =>
+                    tickFormatter
+                      ? `${(value as number).toFixed(2)}${tickFormatter}`
+                      : formatNumberWithComma(value as number)
+                  }
+                />
                 {information.map((info) => (
                   <Line
                     dataKey={info.dataKey}
