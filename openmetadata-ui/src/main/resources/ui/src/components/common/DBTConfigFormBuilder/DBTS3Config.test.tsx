@@ -19,15 +19,22 @@ const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
 const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
+const mockUpdateDescriptions = jest.fn();
 
 const mockProps = {
   okText: 'Next',
   cancelText: 'Back',
+  dbtUpdateDescriptions: false,
   onCancel: mockCancel,
   onSubmit: mockSubmit,
   handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
+  handleUpdateDescriptions: mockUpdateDescriptions,
 };
+
+jest.mock('./SwitchField.component', () =>
+  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+);
 
 describe('Test DBT S3 Config Form', () => {
   it('Fields should render', async () => {
