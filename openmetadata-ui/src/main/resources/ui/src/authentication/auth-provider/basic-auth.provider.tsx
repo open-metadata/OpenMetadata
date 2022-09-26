@@ -56,7 +56,7 @@ interface InitialContext {
   handleForgotPassword: (email: string) => Promise<void>;
   handleResetPassword: (payload: PasswordResetRequest) => Promise<void>;
   handleLogout: () => void;
-  loginError?: string;
+  loginError?: string | null;
 }
 
 /**
