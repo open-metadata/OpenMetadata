@@ -19,7 +19,17 @@ export const uuid = () => Cypress._.random(0, 1e6);
 
 const AARON_JOHNSON = 'Aaron Johnson';
 
+const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
+
 const isDatabaseService = (type) => type === 'database';
+
+const checkTeamTypeOptions = () => {
+  for (const teamType of TEAM_TYPES) {
+    cy.get(`.ant-select-dropdown [title="${teamType}"]`)
+      .should('exist')
+      .should('be.visible');
+  }
+};
 
 //intercepting URL with cy.intercept
 export const interceptURL = (method, url, alias) => {
@@ -816,10 +826,23 @@ export const addTeam = (TEAM_DETAILS) => {
     .should('be.visible')
     .type(TEAM_DETAILS.displayName);
 
+  cy.get('[data-testid="team-selector"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  checkTeamTypeOptions();
+
+  cy.get(`.ant-select-dropdown [title="${TEAM_DETAILS.teamType}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
   cy.get(descriptionBox)
     .should('exist')
     .should('be.visible')
     .type(TEAM_DETAILS.description);
+
   interceptURL('POST', '/api/v1/teams', 'saveTeam');
   interceptURL('GET', '/api/v1/team*', 'createTeam');
 

@@ -21,6 +21,7 @@ const TEAM_DETAILS = {
   name: teamName,
   displayName: teamName,
   updatedname: `${teamName}-updated`,
+  teamType: 'Department',
   description: `This is ${teamName} description`,
   ownername: 'Aaron Johnson',
   assetname: 'dim_address',
@@ -303,6 +304,27 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.disabled');
+
+    cy.get('[data-testid="discard-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+
+    cy.get('[data-testid="delete-button-title"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
     //Click on soft delete option
     cy.get('[data-testid="soft-delete-option"]')
       .should('contain', TEAM_DETAILS.name)
@@ -379,7 +401,7 @@ describe('Teams flow should work properly', () => {
     cy.get('table').should('not.contain', TEAM_DETAILS.name);
   });
 
-  it('Permanently delete team without soft delete should work properly', () => {
+  it('Permanently deleting a team without soft deleting should work properly', () => {
     //Add a new team
     addTeam(TEAM_DETAILS);
 
@@ -392,6 +414,27 @@ describe('Teams flow should work properly', () => {
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+
+    cy.get('[data-testid="delete-button-title"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.disabled');
+
+    cy.get('[data-testid="discard-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="manage-button"]')
       .should('exist')
