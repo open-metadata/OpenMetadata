@@ -223,7 +223,10 @@ public class ElasticSearchResource {
                 .withRunMode(EventPublisherJob.RunMode.BATCH)
                 .withStatus(EventPublisherJob.Status.RUNNING)
                 .withTimestamp(startTime)
-                .withStats(new Stats().withFailed(0).withSuccess(0));
+                .withStats(new Stats().withFailed(0).withSuccess(0).withTotal(0))
+                .withStartTime(startTime)
+                .withStartedBy(startedBy);
+
         dao.entityExtensionTimeSeriesDao()
             .insert(entityFQN, ELASTIC_SEARCH_EXTENSION, "eventPublisherJob", JsonUtils.pojoToJson(newJob));
 
@@ -265,8 +268,10 @@ public class ElasticSearchResource {
               .withRunMode(EventPublisherJob.RunMode.BATCH)
               .withStatus(EventPublisherJob.Status.RUNNING)
               .withTimestamp(startTime)
-              .withStats(new Stats().withFailed(0).withSuccess(0))
-              .withStartedBy(startedBy);
+              .withStats(new Stats().withFailed(0).withSuccess(0).withTotal(0))
+              .withStartedBy(startedBy)
+              .withStartTime(startTime);
+
       dao.entityExtensionTimeSeriesDao()
           .insert(entityFQN, ELASTIC_SEARCH_EXTENSION, "eventPublisherJob", JsonUtils.pojoToJson(newJob));
 
@@ -296,6 +301,8 @@ public class ElasticSearchResource {
   }
 
   private synchronized void updateEntity(UriInfo uriInfo, String entityType) throws IOException {
+    elasticSearchBulkProcessorListener.allowTotalRequestUpdate();
+
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     // Delete index
@@ -312,7 +319,7 @@ public class ElasticSearchResource {
       result =
           entityRepository.listAfter(
               uriInfo, new EntityUtil.Fields(allowedFields, fields), new ListFilter(Include.ALL), 20, after);
-      elasticSearchBulkProcessorListener.setTotalRequests(result.getPaging().getTotal());
+      elasticSearchBulkProcessorListener.addRequests(result.getPaging().getTotal());
       updateElasticSearchForEntity(entityType, result.getData());
       after = result.getPaging().getAfter();
     } while (after != null);
@@ -338,6 +345,7 @@ public class ElasticSearchResource {
   }
 
   static class BulkProcessorListener implements BulkProcessor.Listener {
+    private volatile boolean updateTotalRequest = true;
     private volatile int totalSuccessCount = 0;
     private volatile int totalFailedCount = 0;
     private volatile int totalRequests = 0;
@@ -345,6 +353,7 @@ public class ElasticSearchResource {
     private String entityFQN;
     private final CollectionDAO dao;
     private Long startTime;
+    private Long originalStartTime;
 
     public BulkProcessorListener(CollectionDAO dao) {
       this.dao = dao;
@@ -376,6 +385,7 @@ public class ElasticSearchResource {
         successCount = bulkResponse.getItems().length - failedCount;
         updateFailedAndSuccess(failedCount, successCount);
 
+        System.out.println("TOTAL : " + totalRequests + " SUCCESS : " + successCount + " FAILEWD : " + failedCount);
         // update stats in DB
         Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
         EventPublisherJob updateJob =
@@ -385,11 +395,14 @@ public class ElasticSearchResource {
                 .withRunMode(EventPublisherJob.RunMode.BATCH)
                 .withStatus(EventPublisherJob.Status.RUNNING)
                 .withTimestamp(time)
-                .withStats(new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount))
+                .withStats(
+                    new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount).withTotal(totalRequests))
                 .withStartedBy(requestIssuer)
-                .withFailureDetails(failureDetails);
+                .withFailureDetails(failureDetails)
+                .withStartTime(originalStartTime);
         if (totalRequests == totalFailedCount + totalSuccessCount) {
           updateJob.setStatus(EventPublisherJob.Status.SUCCESS);
+          updateJob.setEndTime(time);
         }
         dao.entityExtensionTimeSeriesDao()
             .update(entityFQN, ELASTIC_SEARCH_EXTENSION, JsonUtils.pojoToJson(updateJob), startTime);
@@ -417,14 +430,22 @@ public class ElasticSearchResource {
       this.entityFQN = entityFQN;
     }
 
-    public synchronized void setTotalRequests(int count) {
-      totalRequests = count;
+    public synchronized void addRequests(int count) {
+      if (updateTotalRequest) {
+        totalRequests += count;
+      }
+      updateTotalRequest = false;
+    }
+
+    public synchronized void allowTotalRequestUpdate() {
+      updateTotalRequest = true;
     }
 
     public synchronized void resetCounters() {
       totalRequests = 0;
       totalFailedCount = 0;
       totalSuccessCount = 0;
+      updateTotalRequest = true;
     }
 
     public synchronized void updateFailedAndSuccess(int failedCount, int successCount) {
@@ -434,6 +455,7 @@ public class ElasticSearchResource {
 
     public void setStartTime(Long time) {
       this.startTime = time;
+      this.originalStartTime = time;
     }
   }
 }

@@ -18,6 +18,11 @@
           "description": "Count of Failed Records",
           "type": "integer",
           "default": 0
+        },
+        "total": {
+          "description": "Count of Failed Records",
+          "type": "integer",
+          "default": 0
         }
       },
       "additionalProperties": false
@@ -49,6 +54,12 @@
       ]
     },
     "timestamp": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "startTime": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "endTime": {
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "status": {
