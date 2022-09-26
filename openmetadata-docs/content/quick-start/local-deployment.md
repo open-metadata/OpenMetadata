@@ -348,19 +348,6 @@ WARNING! This will remove all custom networks not used by at least one container
 
 So be careful if you want to keep up some (unused) networks from your laptop.
 
-### Error while Restarting the Containers
-
-If you encouter below scenario:
-
-```
-CONTAINER ID   IMAGE                                                  COMMAND                  CREATED         STATUS                            PORTS                                            NAMES
-54c1c4e68124   openmetadata_ingestion                                 "/bin/bash /opt/airf…"   3 minutes ago   Exited (137) About a minute ago                                                    openmetadata_ingestion
-d52229802122   openmetadata_openmetadata-server                       "./openmetadata-star…"   3 minutes ago   Up 8 seconds (health: starting)   0.0.0.0:8585-8586->8585-8586/tcp                 openmetadata_server
-6d5a3a779346   openmetadata_mysql                                     "/entrypoint.sh mysq…"   3 minutes ago   Up 24 seconds (healthy)           0.0.0.0:3306->3306/tcp, 33060-33061/tcp          openmetadata_mysql
-a7582b0862a6   docker.elastic.co/elasticsearch/elasticsearch:7.10.2   "/tini -- /usr/local…"   3 minutes ago   Up 25 seconds                     0.0.0.0:9200->9200/tcp, 0.0.0.0:9300->9300/tcp   openmetadata_elasticsearch
-```
-A solution is to run `metadata docker --clean` and then try again with `metadata docker --start`
-
 ### Connect to a Container from the Host
 
 Do you want to connect to a container from the host [Refer](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)
