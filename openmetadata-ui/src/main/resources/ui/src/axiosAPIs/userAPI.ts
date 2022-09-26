@@ -15,7 +15,10 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
-import { CreateUser } from '../generated/api/teams/createUser';
+import {
+  AuthenticationMechanism,
+  CreateUser,
+} from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/entity/teams/authN/jwtAuth';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
@@ -181,6 +184,14 @@ export const revokeUserToken = async (id: string) => {
 export const getGroupTypeTeams = async () => {
   const response = await APIClient.get<EntityReference[]>(
     `/users/loggedInUser/groupTeams`
+  );
+
+  return response.data;
+};
+
+export const getAuthMechanismForBotUser = async (botId: string) => {
+  const response = await APIClient.get<AuthenticationMechanism>(
+    `/users/auth-mechanism/${botId}`
   );
 
   return response.data;

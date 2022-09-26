@@ -23,6 +23,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 
@@ -48,7 +49,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 value={
                   tickFormatter
                     ? `${info.latestValue}${tickFormatter}`
-                    : info.latestValue
+                    : formatNumberWithComma(info.latestValue as number)
                 }
                 valueStyle={{ color: info.color }}
               />
@@ -58,17 +59,31 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         <Col span={20}>
           {data.length > 0 ? (
             <ResponsiveContainer minHeight={300}>
-              <LineChart className="tw-w-full" data={data}>
-                <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
+              <LineChart
+                className="tw-w-full"
+                data={data}
+                margin={{ left: 16 }}>
+                <XAxis
+                  dataKey="name"
+                  padding={{ left: 16, right: 16 }}
+                  tick={{ fontSize: 12 }}
+                />
 
                 <YAxis
                   allowDataOverflow
                   padding={{ top: 16, bottom: 16 }}
+                  tick={{ fontSize: 12 }}
                   tickFormatter={(props) =>
                     tickFormatter ? `${props}${tickFormatter}` : props
                   }
                 />
-                <Tooltip />
+                <Tooltip
+                  formatter={(value) =>
+                    tickFormatter
+                      ? `${(value as number).toFixed(2)}${tickFormatter}`
+                      : formatNumberWithComma(value as number)
+                  }
+                />
                 {information.map((info) => (
                   <Line
                     dataKey={info.dataKey}
