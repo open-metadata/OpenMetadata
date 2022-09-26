@@ -450,7 +450,7 @@ class SampleDataSource(Source[Entity]):
                     tries = 3
                     parent_object = self.metadata.get_by_name(entity=Team, fqn=parent)
                     while not parent_object and tries > 0:
-                        logger.info("Trying to GET {parent} Parent Team")
+                        logger.info(f"Trying to GET {parent} Parent Team")
                         parent_object = self.metadata.get_by_name(
                             entity=Team,
                             fqn=parent,
