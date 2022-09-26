@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -82,6 +84,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
+import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
 import org.openmetadata.service.resources.teams.TeamResource.TeamList;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -310,6 +313,21 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEntityReferences(
         new ArrayList<>(List.of(bu11.getEntityReference(), div12.getEntityReference(), dep13.getEntityReference())),
         bu1.getChildren());
+
+    // Ensure team hierarchy lists all the child teams
+    List<TeamHierarchy> hierarchyList = getTeamsHierarchy(false, ADMIN_AUTH_HEADERS);
+    // search for bu1 in the list
+    UUID bu1Id = bu1.getId();
+    UUID bu11Id = bu11.getId();
+    UUID div12Id = div12.getId();
+    UUID dep13Id = dep13.getId();
+    TeamHierarchy bu1Hierarchy = hierarchyList.stream().filter(t -> t.getId().equals(bu1Id)).findAny().orElse(null);
+    assertNotNull(bu1Hierarchy);
+    assertEquals(3, bu1Hierarchy.getChildren().size());
+    List<TeamHierarchy> children = bu1Hierarchy.getChildren();
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(dep13Id)));
 
     //
     // Create hierarchy of division, and department under division
@@ -789,5 +807,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       teams.add(createEntity(createRequest(getEntityName(test, i++)).withTeamType(type), ADMIN_AUTH_HEADERS));
     }
     return teams;
+  }
+
+  public List<TeamHierarchy> getTeamsHierarchy(Boolean isJoinable, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("teams/hierarchy");
+    target = target.queryParam("isJoinable", isJoinable);
+    ResultList<TeamHierarchy> result = TestUtils.get(target, TeamHierarchyList.class, authHeaders);
+    return result.getData();
   }
 }

@@ -16,6 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { isString } from 'lodash';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
+import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -41,6 +42,18 @@ export const getTeams = async (
 
   const response = await APIClient.get<{ data: Team[]; paging: Paging }>(url, {
     params: updatedParams,
+  });
+
+  return response.data;
+};
+
+export const getTeamsHierarchy = async (isJoinable = false) => {
+  const url = getURLWithQueryFields('/teams/hierarchy');
+
+  const response = await APIClient.get<{ data: TeamHierarchy[] }>(url, {
+    params: {
+      isJoinable,
+    },
   });
 
   return response.data;
