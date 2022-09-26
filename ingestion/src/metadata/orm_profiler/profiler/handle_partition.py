@@ -132,7 +132,8 @@ def build_partition_predicate(partition_details: dict, col):
             f"{partition_details['partition_field']} in "
             f"({format_partition_values(partition_details['partition_values'], col_type)})"
         )
-
+    if partition_details["partition_field"] == "_PARTITIONDATE":
+        col_type = "DATE"
     return text(
         f"{partition_details['partition_field']} BETWEEN "
         f"'{format_partition_datetime(partition_details['partition_start'], col_type)}' "
@@ -178,16 +179,13 @@ class partition_filter_handler:
                         .filter(partition_filter)
                         .cte(f"{_self.table.__tablename__}_rnd")
                     )
-
-                query_results = (
-                    _self._build_query(*args, **kwargs)
-                    .select_from(_self._sample if self.sampled else _self.table)
-                    .filter(partition_filter)
+                query_results = _self._build_query(*args, **kwargs).select_from(
+                    _self._sample if self.sampled else _self.table
                 )
-                if self.first:
-                    return query_results.first()
-                return query_results.all()
-
+                # we don't have to add a filter if it has partition field as the query already has a filter
+                if not partition_field:
+                    query_results = query_results.filter(partition_filter)
+                return query_results.first() if self.first else query_results.all()
             return func(_self, *args, **kwargs)
 
         return handle_and_execute
