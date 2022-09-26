@@ -66,6 +66,7 @@ public class OpenMetadataServerConnectionBuilder {
     openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerProvider = secretsManager.getSecretsManagerProvider();
+    verifySSL = OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     airflowSSLConfig =
         getAirflowSSLConfig(
             OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL()),
