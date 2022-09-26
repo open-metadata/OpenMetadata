@@ -59,12 +59,20 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         <Col span={20}>
           {data.length > 0 ? (
             <ResponsiveContainer minHeight={300}>
-              <LineChart className="tw-w-full" data={data}>
-                <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
+              <LineChart
+                className="tw-w-full"
+                data={data}
+                margin={{ left: 16 }}>
+                <XAxis
+                  dataKey="name"
+                  padding={{ left: 16, right: 16 }}
+                  tick={{ fontSize: 12 }}
+                />
 
                 <YAxis
                   allowDataOverflow
                   padding={{ top: 16, bottom: 16 }}
+                  tick={{ fontSize: 12 }}
                   tickFormatter={(props) =>
                     tickFormatter ? `${props}${tickFormatter}` : props
                   }
