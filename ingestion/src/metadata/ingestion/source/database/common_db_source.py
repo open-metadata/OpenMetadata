@@ -339,12 +339,12 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
-            is_partitioned, partiotion_details = self.get_table_partition_details(
+            is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
             if is_partitioned:
                 table_request.tableType = TableType.Partitioned.value
-                table_request.tablePartition = partiotion_details
+                table_request.tablePartition = partition_details
 
             if table_type == TableType.View or view_definition:
                 table_view = {

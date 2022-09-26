@@ -20,12 +20,12 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -38,7 +38,7 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi jdbi) {
+  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
     SubjectCache.initialize();
     addAnonymousUser();
   }

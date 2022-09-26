@@ -28,11 +28,13 @@ import {
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { ColumnProfile } from '../../../generated/entity/data/table';
+import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import {
   getAddDataQualityTableTestPath,
   getProfilerDashboardWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
@@ -138,7 +140,8 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Value Count',
         dataIndex: 'profile',
         key: 'valuesCount',
-        render: (profile: ColumnProfile) => profile?.valuesCount || 0,
+        render: (profile: ColumnProfile) =>
+          formatNumberWithComma(profile?.valuesCount || 0),
         sorter: (col1, col2) =>
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
       },
@@ -165,7 +168,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         key: 'dataQualityTest',
         render: (_, record) => {
           const summary =
-            columnTestSummary?.[record.fullyQualifiedName || '']?.results;
+            columnTestSummary?.[
+              getEncodedFqn(record.fullyQualifiedName || '', true)
+            ]?.results;
           const currentResult = summary
             ? Object.entries(summary).map(([key, value]) => ({
                 value,
@@ -246,7 +251,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
       setData(
         columns.map((col) => ({
           ...col,
-          testCount: colResult?.[col.fullyQualifiedName || '']?.count,
+          testCount:
+            colResult?.[getEncodedFqn(col.fullyQualifiedName || '', true)]
+              ?.count,
         }))
       );
       setColumnTestSummary(colResult);

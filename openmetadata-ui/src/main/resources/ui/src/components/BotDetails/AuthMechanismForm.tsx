@@ -11,85 +11,66 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Form, Input, Select, Space, Switch } from 'antd';
-import classNames from 'classnames';
-import { isUndefined } from 'lodash';
-import { EditorContentRef } from 'Models';
-import React, { useRef, useState } from 'react';
+import { Button, Form, Input, Select, Space } from 'antd';
+import React, { FC, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { validEmailRegEx } from '../../constants/regex.constants';
-import { PageLayoutType } from '../../enums/layout.enum';
-import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
-import { Role } from '../../generated/entity/teams/role';
+import { SsoServiceType } from '../../generated/entity/teams/authN/ssoAuth';
 import {
+  AuthenticationMechanism,
   AuthType,
-  EntityReference as UserTeams,
   JWTTokenExpiry,
-  SsoServiceType,
 } from '../../generated/entity/teams/user';
 import { Auth0SSOClientConfig } from '../../generated/security/client/auth0SSOClientConfig';
 import { AzureSSOClientConfig } from '../../generated/security/client/azureSSOClientConfig';
 import { CustomOidcSSOClientConfig } from '../../generated/security/client/customOidcSSOClientConfig';
 import { GoogleSSOClientConfig } from '../../generated/security/client/googleSSOClientConfig';
 import { OktaSSOClientConfig } from '../../generated/security/client/oktaSSOClientConfig';
-import jsonData from '../../jsons/en';
 import {
   getAuthMechanismTypeOptions,
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
-import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
-import DropDown from '../dropdown/DropDown';
-import { DropDownListItem } from '../dropdown/types';
+import { SSOClientConfig } from '../CreateUser/CreateUser.interface';
 import Loader from '../Loader/Loader';
-import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
-import { CreateUserProps, SSOClientConfig } from './CreateUser.interface';
 
 const { Option } = Select;
 
-const CreateUser = ({
-  roles,
-  saveState = 'initial',
-  onCancel,
+interface Props {
+  isUpdating: boolean;
+  authenticationMechanism: AuthenticationMechanism;
+  onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
+  onCancel: () => void;
+}
+
+const AuthMechanismForm: FC<Props> = ({
+  isUpdating,
   onSave,
-  forceBot,
-}: CreateUserProps) => {
+  onCancel,
+  authenticationMechanism,
+}) => {
   const { authConfig } = useAuthContext();
-  const markdownRef = useRef<EditorContentRef>();
-  const [description] = useState<string>('');
-  const [email, setEmail] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isBot, setIsBot] = useState(forceBot);
-  const [selectedRoles, setSelectedRoles] = useState<Array<string | undefined>>(
-    []
+
+  const [authMechanism, setAuthMechanism] = useState<AuthType>(
+    authenticationMechanism.authType ?? AuthType.Jwt
   );
-  const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
-    []
-  );
-  const [authMechanism, setAuthMechanism] = useState<AuthType>(AuthType.Jwt);
   const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
-    JWTTokenExpiry.OneHour
+    authenticationMechanism.config?.JWTTokenExpiry ?? JWTTokenExpiry.OneHour
   );
 
   const [ssoClientConfig, setSSOClientConfig] = useState<SSOClientConfig>(
-    {} as SSOClientConfig
+    (authenticationMechanism.config?.authConfig as SSOClientConfig) ??
+      ({} as SSOClientConfig)
   );
 
-  const slashedBreadcrumbList = [
-    {
-      name: forceBot ? 'Bots' : 'Users',
-      url: forceBot ? getBotsPagePath() : getUsersPagePath(),
-    },
-    {
-      name: `Create ${forceBot ? 'Bot' : 'User'}`,
-      url: '',
-      activeTitle: true,
-    },
-  ];
+  useEffect(() => {
+    const authType = authenticationMechanism.authType;
+    const authConfig = authenticationMechanism.config?.authConfig;
+    const JWTTokenExpiryValue = authenticationMechanism.config?.JWTTokenExpiry;
+    setAuthMechanism(authType ?? AuthType.Jwt);
+    setSSOClientConfig(
+      (authConfig as SSOClientConfig) ?? ({} as SSOClientConfig)
+    );
+    setTokenExpiry(JWTTokenExpiryValue ?? JWTTokenExpiry.OneHour);
+  }, [authenticationMechanism]);
 
   /**
    * Handle on change event
@@ -102,57 +83,22 @@ const CreateUser = ({
     const eleName = event.target.name;
 
     switch (eleName) {
-      case 'email':
-        setEmail(value);
-
-        break;
-
-      case 'displayName':
-        setDisplayName(value);
-
-        break;
       case 'secretKey':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          secretKey: value,
-        }));
-
-        break;
       case 'audience':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          audience: value,
-        }));
-
-        break;
       case 'clientId':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          clientId: value,
-        }));
-
-        break;
       case 'domain':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          domain: value,
-        }));
-
-        break;
       case 'clientSecret':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          clientSecret: value,
-        }));
-
-        break;
       case 'authority':
+      case 'privateKey':
+      case 'orgURL':
+      case 'tokenEndpoint':
         setSSOClientConfig((previous) => ({
           ...previous,
-          authority: value,
+          [eleName]: value,
         }));
 
         break;
+
       case 'scopes':
         setSSOClientConfig((previous) => ({
           ...previous,
@@ -160,31 +106,11 @@ const CreateUser = ({
         }));
 
         break;
-      case 'privateKey':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          privateKey: value,
-        }));
 
-        break;
-      case 'orgURL':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          orgURL: value,
-        }));
-
-        break;
       case 'oktaEmail':
         setSSOClientConfig((previous) => ({
           ...previous,
           email: value,
-        }));
-
-        break;
-      case 'tokenEndpoint':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          tokenEndpoint: value,
         }));
 
         break;
@@ -194,82 +120,23 @@ const CreateUser = ({
     }
   };
 
-  /**
-   * Generate DropdownListItem
-   * @param data Array containing object which must have name and id
-   * @returns DropdownListItem[]
-   */
-  const getDropdownOptions = (
-    data: Array<Role> | Array<UserTeams>
-  ): DropDownListItem[] => {
-    return [
-      ...data.map((option) => {
-        return {
-          name: option.displayName || option.name || '',
-          value: option.id,
-        };
-      }),
-    ];
-  };
-
-  /**
-   * Dropdown option selector
-   * @param id of selected option from dropdown
-   */
-  const selectedRolesHandler = (id?: string) => {
-    setSelectedRoles((prevState: Array<string | undefined>) => {
-      if (prevState.includes(id as string)) {
-        const selectedRole = [...prevState];
-        const index = selectedRole.indexOf(id as string);
-        selectedRole.splice(index, 1);
-
-        return selectedRole;
-      } else {
-        return [...prevState, id];
-      }
-    });
-  };
-
-  /**
-   * Form submit handler
-   */
   const handleSave = () => {
-    const validRole = selectedRoles.filter(
-      (id) => !isUndefined(id)
-    ) as string[];
-    const validTeam = selectedTeams.filter(
-      (id) => !isUndefined(id)
-    ) as string[];
-
-    const userProfile: CreateUserSchema = {
-      description: markdownRef.current?.getEditorContent() || undefined,
-      name: email.split('@')[0],
-      displayName,
-      roles: validRole.length ? validRole : undefined,
-      teams: validTeam.length ? validTeam : undefined,
-      email: email,
-      isAdmin: isAdmin,
-      isBot: isBot,
-      ...(forceBot
-        ? {
-            authenticationMechanism: {
-              authType: authMechanism,
-              config:
-                authMechanism === AuthType.Jwt
-                  ? {
-                      JWTTokenExpiry: tokenExpiry,
-                    }
-                  : {
-                      ssoServiceType: authConfig?.provider as SsoServiceType,
-                      authConfig: {
-                        ...ssoClientConfig,
-                      },
-                    },
+    const updatedAuthMechanism: AuthenticationMechanism = {
+      authType: authMechanism,
+      config:
+        authMechanism === AuthType.Jwt
+          ? {
+              JWTTokenExpiry: tokenExpiry,
+            }
+          : {
+              ssoServiceType: authConfig?.provider as SsoServiceType,
+              authConfig: {
+                ...ssoClientConfig,
+              },
             },
-          }
-        : {}),
     };
-    onSave(userProfile);
+
+    onSave(updatedAuthMechanism);
   };
 
   const getSSOConfig = () => {
@@ -437,7 +304,7 @@ const CreateUser = ({
                 data-testid="scopes"
                 name="scopes"
                 placeholder="Scopes value comma separated"
-                value={azureConfig.scopes}
+                value={azureConfig.scopes.join(',')}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -523,7 +390,7 @@ const CreateUser = ({
                 data-testid="scopes"
                 name="scopes"
                 placeholder="Scopes value comma separated"
-                value={oktaConfig.scopes}
+                value={oktaConfig.scopes?.join('')}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -596,171 +463,80 @@ const CreateUser = ({
   };
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
-      layout={PageLayoutType['2ColRTL']}>
-      <div className="tw-form-container">
-        <h6 className="tw-heading tw-text-base">
-          Create {forceBot ? 'Bot' : 'User'}
-        </h6>
-        <Form id="create-user-bot-form" layout="vertical" onFinish={handleSave}>
-          <Form.Item
-            label="Email"
-            name="email"
-            rules={[
-              {
-                required: true,
-                type: 'email',
-                message: jsonData['form-error-messages']['empty-email'],
+    <Form
+      id="update-auth-mechanism-form"
+      layout="vertical"
+      onFinish={handleSave}>
+      <Form.Item
+        label="Auth Mechanism"
+        name="auth-mechanism"
+        rules={[
+          {
+            required: true,
+            validator: () => {
+              if (!authMechanism) {
+                return Promise.reject('Auth Mechanism is required');
+              }
+
+              return Promise.resolve();
+            },
+          },
+        ]}>
+        <Select
+          className="w-full"
+          data-testid="auth-mechanism"
+          defaultValue={authMechanism}
+          placeholder="Select Auth Mechanism"
+          onChange={(value) => setAuthMechanism(value)}>
+          {getAuthMechanismTypeOptions(authConfig).map((option) => (
+            <Option key={option.value}>{option.label}</Option>
+          ))}
+        </Select>
+      </Form.Item>
+
+      {authMechanism === AuthType.Jwt && (
+        <Form.Item
+          label="Token Expiration"
+          name="token-expiration"
+          rules={[
+            {
+              required: true,
+              validator: () => {
+                if (!tokenExpiry) {
+                  return Promise.reject('Token Expiration is required');
+                }
+
+                return Promise.resolve();
               },
-              {
-                pattern: validEmailRegEx,
-                type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
-              },
-            ]}>
-            <Input
-              data-testid="email"
-              name="email"
-              placeholder="email"
-              value={email}
-              onChange={handleOnChange}
-            />
-          </Form.Item>
-          <Form.Item label="Display Name" name="displayName">
-            <Input
-              data-testid="displayName"
-              name="displayName"
-              placeholder="displayName"
-              value={displayName}
-              onChange={handleOnChange}
-            />
-          </Form.Item>
-          {forceBot && (
-            <>
-              <Form.Item
-                label="Auth Mechanism"
-                name="auth-mechanism"
-                rules={[
-                  {
-                    required: true,
-                    validator: () => {
-                      if (!authMechanism) {
-                        return Promise.reject('Auth Mechanism is required');
-                      }
-
-                      return Promise.resolve();
-                    },
-                  },
-                ]}>
-                <Select
-                  className="w-full"
-                  data-testid="auth-mechanism"
-                  defaultValue={authMechanism}
-                  placeholder="Select Auth Mechanism"
-                  onChange={(value) => setAuthMechanism(value)}>
-                  {getAuthMechanismTypeOptions(authConfig).map((option) => (
-                    <Option key={option.value}>{option.label}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              {authMechanism === AuthType.Jwt && (
-                <Form.Item
-                  label="Token Expiration"
-                  name="token-expiration"
-                  rules={[
-                    {
-                      required: true,
-                      validator: () => {
-                        if (!tokenExpiry) {
-                          return Promise.reject('Token Expiration is required');
-                        }
-
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}>
-                  <Select
-                    className="w-full"
-                    data-testid="token-expiry"
-                    defaultValue={tokenExpiry}
-                    placeholder="Select Token Expiration"
-                    onChange={(value) => setTokenExpiry(value)}>
-                    {getJWTTokenExpiryOptions().map((option) => (
-                      <Option key={option.value}>{option.label}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              )}
-              {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
-            </>
-          )}
-          <Form.Item label="Description" name="description">
-            <RichTextEditor initialValue={description} ref={markdownRef} />
-          </Form.Item>
-          {!forceBot && (
-            <>
-              <Form.Item label="Teams" name="teams">
-                <TeamsSelectable onSelectionChange={setSelectedTeams} />
-              </Form.Item>
-              <Form.Item label="Roles" name="roles">
-                <DropDown
-                  className={classNames('tw-bg-white', {
-                    'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
-                  })}
-                  dataTestId="roles-dropdown"
-                  dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-                  label="Roles"
-                  selectedItems={selectedRoles as Array<string>}
-                  type="checkbox"
-                  onSelect={(_e, value) => selectedRolesHandler(value)}
-                />
-              </Form.Item>
-
-              <Form.Item>
-                <Space>
-                  <span>Admin</span>
-                  <Switch
-                    checked={isAdmin}
-                    data-testid="admin"
-                    onChange={() => {
-                      setIsAdmin((prev) => !prev);
-                      setIsBot(false);
-                    }}
-                  />
-                </Space>
-              </Form.Item>
-            </>
-          )}
-          <Space className="w-full tw-justify-end" size={4}>
-            <Button data-testid="cancel-user" type="link" onClick={onCancel}>
-              Cancel
-            </Button>
-            <>
-              {saveState === 'waiting' ? (
-                <Button disabled type="primary">
-                  <Loader size="small" type="white" />
-                </Button>
-              ) : saveState === 'success' ? (
-                <Button disabled type="primary">
-                  <FontAwesomeIcon icon="check" />
-                </Button>
-              ) : (
-                <Button
-                  data-testid="save-user"
-                  form="create-user-bot-form"
-                  htmlType="submit"
-                  type="primary">
-                  Create
-                </Button>
-              )}
-            </>
-          </Space>
-        </Form>
-      </div>
-    </PageLayout>
+            },
+          ]}>
+          <Select
+            className="w-full"
+            data-testid="token-expiry"
+            defaultValue={tokenExpiry}
+            placeholder="Select Token Expiration"
+            onChange={(value) => setTokenExpiry(value)}>
+            {getJWTTokenExpiryOptions().map((option) => (
+              <Option key={option.value}>{option.label}</Option>
+            ))}
+          </Select>
+        </Form.Item>
+      )}
+      {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
+      <Space className="w-full tw-justify-end" size={4}>
+        <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          data-testid="save-edit"
+          form="update-auth-mechanism-form"
+          htmlType="submit"
+          type="primary">
+          {isUpdating ? <Loader size="small" /> : 'Save'}
+        </Button>
+      </Space>
+    </Form>
   );
 };
 
-export default CreateUser;
+export default AuthMechanismForm;
