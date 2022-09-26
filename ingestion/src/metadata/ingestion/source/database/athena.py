@@ -14,7 +14,7 @@ from typing import Iterable, Optional, Tuple
 from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -27,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -119,11 +120,19 @@ class AthenaSource(CommonDbSourceService):
         schema_name = self.context.database_schema.name.__root__
         if self.source_config.includeTables:
             for table_name in self.inspector.get_table_names(schema_name):
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table_name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table_name
+                    self.source_config.tableFilterPattern, table_fqn=table_fqn
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{table_name}",
+                        table_fqn,
                         "Table pattern not allowed",
                     )
                     continue
@@ -132,11 +141,19 @@ class AthenaSource(CommonDbSourceService):
 
         if self.source_config.includeViews:
             for view_name in self.inspector.get_view_names(schema_name):
+                view_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=view_name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=view_name
+                    self.source_config.tableFilterPattern, table_fqn=view_fqn
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{view_name}",
+                        view_fqn,
                         "Table pattern not allowed for view",
                     )
                     continue

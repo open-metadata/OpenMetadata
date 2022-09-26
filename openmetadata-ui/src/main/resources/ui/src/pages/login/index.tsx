@@ -12,6 +12,7 @@
  */
 
 import { Button, Divider, Form, Input, Typography } from 'antd';
+import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
@@ -177,7 +178,10 @@ const SigninPage = () => {
         className="tw-flex tw-bg-body-main tw-flex-grow"
         data-testid="signin-page">
         <div className="tw-w-5/12">
-          <div className="mt-24 tw-text-center flex-center flex-col">
+          <div
+            className={classNames('mt-24 tw-text-center flex-center flex-col', {
+              'sso-container': !isAuthProviderBasic,
+            })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
             <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
               Centralized Metadata Store, Discover, <br />

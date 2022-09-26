@@ -25,6 +25,7 @@ from looker_sdk.sdk.api40.models import (
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
@@ -252,11 +253,17 @@ class LookerSource(DashboardServiceSource):
             Iterable[DashboardElement], dashboard_details.dashboard_elements
         ):
             try:
+                chart_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    chart_name=chart.id,
+                    service_name=self.context.dashboard_service.name.__root__,
+                )
                 if filter_by_chart(
                     chart_filter_pattern=self.source_config.chartFilterPattern,
-                    chart_name=chart.id,
+                    chart_fqn=chart_fqn,
                 ):
-                    self.status.filter(chart.id, "Chart filtered out")
+                    self.status.filter(chart_fqn, "Chart filtered out")
                     continue
 
                 if not chart.id:

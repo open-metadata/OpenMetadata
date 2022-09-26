@@ -219,9 +219,10 @@ const AddGlossaryTerm = ({
     }));
 
     if (validateForm(updatedReference)) {
+      const updatedName = name.trim();
       const data: CreateGlossaryTerm = {
-        name,
-        displayName: name,
+        name: updatedName,
+        displayName: updatedName,
         description: getDescription(),
         reviewers: reviewer.map((r) => ({
           id: r.id,
