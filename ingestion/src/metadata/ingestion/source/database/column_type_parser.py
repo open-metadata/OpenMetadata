@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
+from sqlalchemy.dialects.postgresql import BYTEA
 
 from metadata.ingestion.source import sqa_types
 
@@ -59,6 +60,7 @@ class ColumnTypeParser:
         # Custom wrapper types enriching SQA type system
         sqa_types.SQAMap: "MAP",
         sqa_types.SQAStruct: "STRUCT",
+        BYTEA: "BYTEA",
     }
 
     _SOURCE_TYPE_TO_OM_TYPE = {
