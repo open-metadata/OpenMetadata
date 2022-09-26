@@ -32,7 +32,6 @@ from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -140,14 +139,6 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                 for row in rows:
                     row = dict(row)
                     try:
-                        if filter_by_database(
-                            self.source_config.databaseFilterPattern,
-                            self.get_database_name(row),
-                        ) or filter_by_schema(
-                            self.source_config.schemaFilterPattern,
-                            schema_name=row.get("schema_name"),
-                        ):
-                            continue
                         queries.append(
                             TableQuery(
                                 query=row["query_text"],

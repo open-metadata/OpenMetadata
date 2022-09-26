@@ -39,6 +39,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_topic
 
@@ -147,12 +148,18 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_topic(self) -> Any:
         for topic_details in self.get_topic_list():
+            topic_fqn = fqn.build(
+                self.metadata,
+                entity_type=Topic,
+                service_name=self.context.messaging_service.name.__root__,
+                mlmodel_name=self.get_topic_name(topic_details),
+            )
             if filter_by_topic(
                 self.source_config.topicFilterPattern,
-                self.get_topic_name(topic_details),
+                topic_fqn,
             ):
                 self.status.filter(
-                    self.get_topic_name(topic_details),
+                    topic_fqn,
                     "Topic Pattern not Allowed",
                 )
                 continue
