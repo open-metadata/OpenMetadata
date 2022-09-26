@@ -13,6 +13,7 @@ Docker functions for CLI
 """
 import json
 import os
+import shutil
 import pathlib
 import sys
 import tempfile
@@ -36,18 +37,9 @@ from metadata.utils.logger import cli_logger, ometa_logger
 logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
-# directory = "mysql-data"
-# Parent Directories
-# parent_dir = "/RELEASE/OpenMetadata"
-# Path
-# path = os.path.join(parent_dir, directory)
-# Create the directory
-# os.mkdir(directory)
-
+MAIN_DIR = "docker-volume"
 RELEASE_BRANCH_VERSION = get_client_version()
-
 DOCKER_URL_ROOT = f"https://raw.githubusercontent.com/open-metadata/OpenMetadata/{RELEASE_BRANCH_VERSION}/docker/metadata/"
-
 DEFAULT_COMPOSE_FILE = "docker-compose.yml"
 BACKEND_DATABASES = {
     "mysql": DEFAULT_COMPOSE_FILE,
@@ -56,29 +48,25 @@ BACKEND_DATABASES = {
 
 
 def docker_volume():
-
     # create a main directory
-    maindir = "docker-volume"
-    if not os.path.exists(maindir):
-        os.mkdir(maindir)
+    if not os.path.exists(MAIN_DIR):
+        os.mkdir(MAIN_DIR)
         db = "db-data"
         dag_airflow = "ingestion-volume-dag-airflow"
         dags = "ingestion-volume-dags"
-        tmp = "secrets"
+        tmp = "ingestion-volume-tmp"
         om_server = "om-server"
-        final_db_path = os.path.join(maindir, db)
-        final_dag_airflow_path = os.path.join(maindir, dag_airflow)
-        final_dags_path = os.path.join(maindir, dags)
-        final_tmp_path = os.path.join(maindir, tmp)
-        final_om_server = os.path.join(maindir, om_server)
-        os.makedirs(final_db_path, exist_ok=True)
-        os.makedirs(final_dag_airflow_path, exist_ok=True)
-        os.makedirs(final_dags_path, exist_ok=True)
-        os.makedirs(final_tmp_path, exist_ok=True)
-        os.makedirs(final_om_server, exist_ok=True)
+        path_to_join = [db,dag_airflow,dags,tmp,om_server]
+        final_path = []
+        for path in path_to_join:
+            temp_path = os.path.join(MAIN_DIR,path)
+            final_path.append(temp_path)
+        for path in final_path:
+            os.makedirs(path, exist_ok=True)
 
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
+    logger.info("Creating the docker volumes ..")
     docker_volume()
     logger.info("Running docker compose for OpenMetadata..")
     click.secho("It may take some time on the first run", fg="bright_yellow")
@@ -241,6 +229,10 @@ def run_docker(
             logger.info(
                 "Stopping docker compose for OpenMetadata and removing images, networks, volumes..."
             )
+            logger.info("Do you want to Delete the docker mounted volumes from host")
+            user_response = click.prompt("Please enter [y/N]", type=str)
+            if user_response == "y":
+                shutil.rmtree(MAIN_DIR)
             docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
             logger.info(
                 "Stopped docker compose for OpenMetadata and removing images, networks, volumes."
