@@ -45,9 +45,12 @@ public class OpenMetadataServerConnectionBuilder {
       OpenMetadataApplicationConfig openMetadataApplicationConfig,
       CollectionDAO collectionDAO) {
     this.secretsManager = secretsManager;
+    // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
     authProvider =
-        OpenMetadataServerConnection.AuthProvider.fromValue(
-            openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
+        "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
+            ? OpenMetadataServerConnection.AuthProvider.OPENMETADATA
+            : OpenMetadataServerConnection.AuthProvider.fromValue(
+                openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
 
     if (!OpenMetadataServerConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
       botRepository = new BotRepository(collectionDAO);

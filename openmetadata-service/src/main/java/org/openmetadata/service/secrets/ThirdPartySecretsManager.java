@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -37,17 +38,18 @@ public abstract class ThirdPartySecretsManager extends SecretsManager {
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
     String secretName = buildSecretId("service", serviceType.value(), connectionType, connectionName);
     try {
+      Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
       if (encrypt) {
-        String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
+        Object connectionConfigObj = JsonUtils.readValue(JsonUtils.pojoToJson(connectionConfig), clazz);
+        String connectionConfigJson = JsonUtils.pojoToJson(connectionConfigObj);
         if (connectionConfigJson != null) {
           upsertSecret(secretName, connectionConfigJson);
         }
         return null;
       } else {
-        Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
         return JsonUtils.readValue(getSecret(secretName), clazz);
       }
-    } catch (ClassNotFoundException ex) {
+    } catch (ClassNotFoundException | ValueInstantiationException exc) {
       throw InvalidServiceConnectionException.byMessage(
           connectionType, String.format("Failed to construct connection instance of %s", connectionType));
     } catch (Exception e) {
