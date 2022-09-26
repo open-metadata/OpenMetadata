@@ -145,7 +145,7 @@ public class ElasticSearchResource {
             .getLatestExtension(String.format(ELASTIC_ENTITY_FQN, "full"), ELASTIC_SEARCH_EXTENSION);
     if (record != null) {
       EventPublisherJob reindexRecord = JsonUtils.readValue(record, EventPublisherJob.class);
-      return Response.status(Response.Status.OK).entity(reindexRecord.getStatus()).build();
+      return Response.status(Response.Status.OK).entity(reindexRecord).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
   }
@@ -171,7 +171,7 @@ public class ElasticSearchResource {
     String record = dao.entityExtensionTimeSeriesDao().getLatestExtension(entityFqn, ELASTIC_SEARCH_EXTENSION);
     if (record != null) {
       EventPublisherJob reindexRecord = JsonUtils.readValue(record, EventPublisherJob.class);
-      return Response.status(Response.Status.OK).entity(reindexRecord.getStatus()).build();
+      return Response.status(Response.Status.OK).entity(reindexRecord).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
   }
