@@ -126,8 +126,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
 
-    create = createRequest(BOT_USER_NAME).withIsBot(true);
-    BOT_USER = createEntity(create, ADMIN_AUTH_HEADERS);
+    List<String> userFields = Entity.getEntityFields(User.class);
+    userFields.remove("authenticationMechanism");
+    BOT_USER = getEntityByName(BOT_USER_NAME, String.join(",", userFields), ADMIN_AUTH_HEADERS);
   }
 
   @Test

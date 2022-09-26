@@ -71,11 +71,7 @@ public abstract class ThirdPartySecretsManager extends SecretsManager {
   @Override
   public Object encryptOrDecryptIngestionBotCredentials(String botName, Object securityConfig, boolean encrypt) {
     String secretName = buildSecretId(BOT_PREFIX, botName);
-    try {
-      return encryptOrDecryptObject(securityConfig, encrypt, secretName);
-    } catch (SecretsManagerException exception) {
-      return null;
-    }
+    return encryptOrDecryptObject(securityConfig, encrypt, secretName);
   }
 
   @Override

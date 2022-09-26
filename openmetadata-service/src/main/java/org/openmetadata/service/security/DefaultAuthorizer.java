@@ -347,38 +347,39 @@ public class DefaultAuthorizer implements Authorizer {
       } else {
         // Otherwise, set auth mechanism from airflow configuration
         // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
-        switch (authConfig.getProvider()) {
-          case "no-auth":
-            break;
-          case "basic":
-            authMechanism =
-                buildAuthMechanism(
-                    JWT, JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited));
-            break;
-          case "azure":
-            authMechanism =
-                buildAuthMechanism(SSO, buildAuthMechanismConfig(AZURE, airflowConfig.getAuthConfig().getAzure()));
-            break;
-          case "google":
-            authMechanism =
-                buildAuthMechanism(SSO, buildAuthMechanismConfig(GOOGLE, airflowConfig.getAuthConfig().getGoogle()));
-            break;
-          case "okta":
-            authMechanism =
-                buildAuthMechanism(SSO, buildAuthMechanismConfig(OKTA, airflowConfig.getAuthConfig().getOkta()));
-            break;
-          case "auth0":
-            authMechanism =
-                buildAuthMechanism(SSO, buildAuthMechanismConfig(AUTH_0, airflowConfig.getAuthConfig().getAuth0()));
-            break;
-          case "custom-oidc":
-            authMechanism =
-                buildAuthMechanism(
-                    SSO, buildAuthMechanismConfig(CUSTOM_OIDC, airflowConfig.getAuthConfig().getCustomOidc()));
-            break;
-          default:
-            throw new IllegalArgumentException(
-                String.format("Unexpected auth provider [%s] for bot [%s]", authConfig.getProvider(), user.getName()));
+        if (airflowConfig.getAuthConfig() != null && !"basic".equals(authConfig.getProvider())) {
+          switch (authConfig.getProvider()) {
+            case "no-auth":
+              break;
+            case "azure":
+              authMechanism =
+                  buildAuthMechanism(SSO, buildAuthMechanismConfig(AZURE, airflowConfig.getAuthConfig().getAzure()));
+              break;
+            case "google":
+              authMechanism =
+                  buildAuthMechanism(SSO, buildAuthMechanismConfig(GOOGLE, airflowConfig.getAuthConfig().getGoogle()));
+              break;
+            case "okta":
+              authMechanism =
+                  buildAuthMechanism(SSO, buildAuthMechanismConfig(OKTA, airflowConfig.getAuthConfig().getOkta()));
+              break;
+            case "auth0":
+              authMechanism =
+                  buildAuthMechanism(SSO, buildAuthMechanismConfig(AUTH_0, airflowConfig.getAuthConfig().getAuth0()));
+              break;
+            case "custom-oidc":
+              authMechanism =
+                  buildAuthMechanism(
+                      SSO, buildAuthMechanismConfig(CUSTOM_OIDC, airflowConfig.getAuthConfig().getCustomOidc()));
+              break;
+            default:
+              throw new IllegalArgumentException(
+                  String.format(
+                      "Unexpected auth provider [%s] for bot [%s]", authConfig.getProvider(), user.getName()));
+          }
+        } else if ("basic".equals(authConfig.getProvider())) {
+          authMechanism =
+              buildAuthMechanism(JWT, JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited));
         }
       }
     }

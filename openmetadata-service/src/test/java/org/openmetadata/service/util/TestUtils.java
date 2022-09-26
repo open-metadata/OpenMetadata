@@ -83,7 +83,7 @@ public final class TestUtils {
 
   public static final String ADMIN_USER_NAME = "admin";
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
-  public static final String BOT_USER_NAME = "bot";
+  public static final String BOT_USER_NAME = "ingestion-bot";
   public static final Map<String, String> BOT_AUTH_HEADERS = authHeaders(BOT_USER_NAME + "@open-metadata.org");
   public static final String TEST_USER_NAME = "test";
   public static final Map<String, String> TEST_AUTH_HEADERS = authHeaders(TEST_USER_NAME + "@open-metadata.org");

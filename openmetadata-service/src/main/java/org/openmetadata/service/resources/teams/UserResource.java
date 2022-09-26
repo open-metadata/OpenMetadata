@@ -1221,7 +1221,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
             original = null;
           }
-          if (original != null && !secretsManager.isLocal() && user.getAuthenticationMechanism() != null) {
+          if (original != null && !secretsManager.isLocal() && authMechanism != null) {
             original
                 .getAuthenticationMechanism()
                 .setConfig(
