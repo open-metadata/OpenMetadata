@@ -20,7 +20,6 @@ from typing import Iterable, Optional
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -84,14 +83,6 @@ class UsageSource(QueryParserSource, ABC):
                         for row in rows:
                             row = dict(row)
                             try:
-                                if filter_by_database(
-                                    self.source_config.databaseFilterPattern,
-                                    self.get_database_name(row),
-                                ) or filter_by_schema(
-                                    self.source_config.schemaFilterPattern,
-                                    schema_name=row["schema_name"],
-                                ):
-                                    continue
                                 queries.append(
                                     TableQuery(
                                         query=row["query_text"],

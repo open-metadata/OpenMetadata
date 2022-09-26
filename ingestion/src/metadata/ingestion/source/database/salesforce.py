@@ -18,7 +18,12 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Column, Constraint, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
@@ -39,6 +44,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -138,15 +144,24 @@ class SalesforceSource(DatabaseServiceSource):
             else:
                 for salesforce_object in self.client.describe()["sobjects"]:
                     table_name = salesforce_object["name"]
+                    table_name = self.standardize_table_name(schema_name, table_name)
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
+                    )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, table_name
+                        self.config.sourceConfig.config.tableFilterPattern, table_fqn
                     ):
                         self.status.filter(
-                            "{}".format(table_name),
+                            table_fqn,
                             "Table pattern not allowed",
                         )
                         continue
-                    table_name = self.standardize_table_name(schema_name, table_name)
+
                     yield table_name, TableType.Regular
         except Exception as exc:
             logger.debug(traceback.format_exc())

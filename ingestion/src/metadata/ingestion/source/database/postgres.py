@@ -19,6 +19,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.sqltypes import String
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -31,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -109,11 +111,17 @@ class PostgresSource(CommonDbSourceService):
             for res in results:
                 row = list(res)
                 new_database = row[0]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
 
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_name=new_database
+                    self.source_config.databaseFilterPattern, database_fqn=database_fqn
                 ):
-                    self.status.filter(new_database, "Database pattern not allowed")
+                    self.status.filter(database_fqn, "Database pattern not allowed")
                     continue
 
                 try:

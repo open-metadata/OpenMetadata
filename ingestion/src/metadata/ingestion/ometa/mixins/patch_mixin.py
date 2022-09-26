@@ -75,12 +75,6 @@ class OMetaPatchMixin(Generic[T]):
             )
             return None
 
-        if instance.description and not force:
-            logger.warning(
-                f"The entity with id [{str(entity_id)}] already has a description. To overwrite it, set `force` to True."
-            )
-            return None
-
         return instance
 
     def patch_description(
@@ -106,6 +100,12 @@ class OMetaPatchMixin(Generic[T]):
             entity=entity, entity_id=entity_id, force=force
         )
         if not instance:
+            return None
+
+        if instance.description and not force:
+            logger.warning(
+                f"The entity with id [{str(entity_id)}] already has a description. To overwrite it, set `force` to True."
+            )
             return None
 
         try:
@@ -163,7 +163,7 @@ class OMetaPatchMixin(Generic[T]):
             None,
         )
 
-        if not col_index:
+        if col_index is None:
             logger.warning(f"Cannot find column {column_name} in Table.")
             return None
 
@@ -179,7 +179,7 @@ class OMetaPatchMixin(Generic[T]):
                 data=json.dumps(
                     [
                         {
-                            OPERATION: ADD if not table.description else REPLACE,
+                            OPERATION: ADD if not col.description else REPLACE,
                             PATH: COL_DESCRIPTION.format(index=col_index),
                             VALUE: description,
                         }

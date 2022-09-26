@@ -121,7 +121,7 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["database"],
         post_process=[
-            "create_dbt_lineage",
+            "process_dbt_lineage_and_descriptions",
             "create_dbt_tests_suite_definition",
             "create_dbt_test_cases",
             "yield_view_lineage",
