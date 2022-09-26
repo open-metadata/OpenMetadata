@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -194,11 +195,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     if (fieldName.equals("connection")) {
-      DashboardConnection expectedDashboardConnection = (DashboardConnection) expected;
-      DashboardConnection actualDashboardConnection = JsonUtils.readValue((String) actual, DashboardConnection.class);
-      actualDashboardConnection.setConfig(
-          JsonUtils.convertValue(actualDashboardConnection.getConfig(), SupersetConnection.class));
-      assertEquals(expectedDashboardConnection, actualDashboardConnection);
+      assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -221,11 +218,11 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         }
         assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
         assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
-        if (ADMIN_AUTH_HEADERS.equals(authHeaders) || BOT_AUTH_HEADERS.equals(authHeaders)) {
+        if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
           assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
           assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
           assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
-        } else {
+        } else if (BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertNull(actualSupersetConnection.getUsername());
           assertNull(actualSupersetConnection.getPassword());
         }
