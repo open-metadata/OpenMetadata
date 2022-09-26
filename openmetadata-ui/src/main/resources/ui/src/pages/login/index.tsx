@@ -230,9 +230,7 @@ const SigninPage = () => {
                         />
                       </div>
                       <p data-testid="success-line">
-                        <span>
-                          <span>{loginError}</span>
-                        </span>
+                        <span>{loginError}</span>
                       </p>
                     </div>
                   </div>
@@ -246,9 +244,7 @@ const SigninPage = () => {
                 {authConfig?.enableSelfSignUp && (
                   <>
                     <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                      <Typography.Text
-                        style={{ fontSize: '14px' }}
-                        type="secondary">
+                      <Typography.Text className="text-sm" type="secondary">
                         or
                       </Typography.Text>
                     </Divider>

@@ -90,16 +90,14 @@ const ForgotPassword = () => {
                     />
                   </div>
                   <p data-testid="success-line">
-                    <span>
-                      <span>Reset link has been sent to your email</span>
-                    </span>
+                    <span>Reset link has been sent to your email</span>
                   </p>
                 </div>
               </div>
             </Col>
           )}
           <Divider className="w-min-0 mt-8 mb-12 justify-center align-start p-x-xs">
-            <Typography.Text style={{ fontSize: '14px' }} type="secondary">
+            <Typography.Text className="text-sm" type="secondary">
               or
             </Typography.Text>
           </Divider>

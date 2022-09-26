@@ -432,10 +432,11 @@ export const AuthProvider = ({
       .then((authRes) => {
         const isSecureMode = !isNil(authRes) && authRes.provider !== NO_AUTH;
         if (isSecureMode) {
+          const provider = authRes?.provider;
           // show an error toast if provider is null or not supported
           if (
-            authRes?.provider &&
-            Object.values(AuthTypes).includes(authRes?.provider as AuthTypes)
+            provider &&
+            Object.values(AuthTypes).includes(provider as AuthTypes)
           ) {
             const configJson = getAuthConfig(authRes);
             initializeAxiosInterceptors();
