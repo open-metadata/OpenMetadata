@@ -1,0 +1,94 @@
+{
+    "teams": [
+        {
+            "name": "Engineering",
+            "teamType": "BusinessUnit",
+            "parent": null,
+            "children": ["Infrastructure", "Applications", "Marketplace", "Payments"]
+        },
+        {
+            "name": "Infrastructure",
+            "teamType": "BusinessUnit",
+            "parent": ["Engineering"],
+            "children": ["Compute", "Data","DevOps"]
+        },
+        {
+            "name": "Compute",
+            "teamType": "Group",
+            "parent": ["Infrastructure"],
+            "children": null
+        },
+        {
+            "name": "Data",
+            "teamType": "Group",
+            "parent": ["Infrastructure"],
+            "children": null
+        },
+        {
+            "name": "DevOps",
+            "teamType": "Group",
+            "parent": ["Infrastructure"],
+            "children": null
+        },
+        {
+            "name": "Applications",
+            "teamType": "Group",
+            "parent": ["Engineering"],
+            "children": null
+        },
+        {
+            "name": "Marketplace",
+            "teamType": "Group",
+            "parent": ["Engineering"],
+            "children": null
+        },
+        {
+            "name": "Payments",
+            "teamType": "Group",
+            "parent": ["Engineering"],
+            "children": null
+        },
+        {
+            "name": "Finance",
+            "teamType":"BusinessUnit",
+            "parent": null,
+            "children": ["Marketing", "Sales", "Accounting"]
+        },
+        {
+            "name": "Marketing",
+            "teamType": "Group",
+            "parent": ["Finance"],
+            "children": null
+        },
+        {
+            "name": "Accounting",
+            "teamType": "Group",
+            "parent": ["Finance"],
+            "children": null
+        },
+        {
+            "name": "Sales",
+            "teamType": "Group",
+            "parent": ["Finance"],
+            "children": null
+        },
+        {
+            "name": "Legal",
+            "teamType": "BusinessUnit",
+            "parent": null,
+            "children": ["Merger & Acquisitions", "Legal Admin"]
+        },
+        {
+            "name": "Merger & Acquisitions",
+            "teamType": "Group",
+            "parent": ["Legal"],
+            "children": null
+        },
+        {
+            "name": "Legal Admin",
+            "teamType": "Group",
+            "parent": ["Legal"],
+            "children": null
+        }
+    ]
+}

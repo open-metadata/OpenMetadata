@@ -76,7 +76,7 @@ public class IngestionPipelineRepositoryTest {
     assertEquals("databaseService", serviceCaptor.getValue().getType());
     assertEquals("serviceName", serviceCaptor.getValue().getName());
     assertEquals(
-        "{\"name\":\"testPipeline\",\"sourceConfig\":{\"config\":{\"type\":\"DatabaseMetadata\",\"markDeletedTables\":true,\"includeTables\":true,\"includeViews\":true,\"includeTags\":true,\"dbtConfigSource\":{}}},\"loggerLevel\":\"INFO\",\"enabled\":true,\"version\":0.1,\"deleted\":false}",
+        "{\"name\":\"testPipeline\",\"sourceConfig\":{\"config\":{\"type\":\"DatabaseMetadata\",\"markDeletedTables\":true,\"markDeletedTablesFromFilterOnly\":false,\"includeTables\":true,\"includeViews\":true,\"includeTags\":true,\"dbtConfigSource\":{}}},\"loggerLevel\":\"INFO\",\"enabled\":true,\"version\":0.1,\"deleted\":false}",
         ingestionPipelineStringCaptor.getValue());
   }
 
@@ -96,7 +96,7 @@ public class IngestionPipelineRepositoryTest {
     assertEquals("databaseService", serviceCaptor.getValue().getType());
     assertEquals("serviceName", serviceCaptor.getValue().getName());
     assertEquals(
-        "{\"name\":\"testPipeline\",\"sourceConfig\":{\"config\":{\"type\":\"DatabaseMetadata\",\"markDeletedTables\":true,\"includeTables\":true,\"includeViews\":true,\"includeTags\":true}},\"loggerLevel\":\"INFO\",\"enabled\":true,\"version\":0.1,\"deleted\":false}",
+        "{\"name\":\"testPipeline\",\"sourceConfig\":{\"config\":{\"type\":\"DatabaseMetadata\",\"markDeletedTables\":true,\"markDeletedTablesFromFilterOnly\":false,\"includeTables\":true,\"includeViews\":true,\"includeTags\":true}},\"loggerLevel\":\"INFO\",\"enabled\":true,\"version\":0.1,\"deleted\":false}",
         ingestionPipelineStringCaptor.getValue());
   }
 

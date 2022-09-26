@@ -12,11 +12,9 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Card, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
-import moment from 'moment';
 import React, {
   FC,
   Fragment,
@@ -25,35 +23,43 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import Select, { SingleValue } from 'react-select';
-import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { getUserToken, updateUser } from '../../axiosAPIs/userAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
-import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
+import {
+  AuthType,
+  JWTTokenExpiry,
+  SsoServiceType,
+  User,
+} from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
+import {
+  getAuthMechanismTypeOptions,
+  getJWTTokenExpiryOptions,
+  getTokenExpiryDate,
+  getTokenExpiryText,
+} from '../../utils/BotsUtils';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import Description from '../common/description/Description';
-import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { Field } from '../Field/Field';
+import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../Users/Users.interface';
-
+const { Option } = Select;
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botsData: User;
+  botPermission: OperationPermission;
   updateBotsDetails: (data: UserDetails) => Promise<void>;
   revokeTokenHandler: () => void;
 }
@@ -67,21 +73,22 @@ const BotDetails: FC<BotsDetailProp> = ({
   botsData,
   updateBotsDetails,
   revokeTokenHandler,
+  botPermission,
 }) => {
-  const { getEntityPermission } = usePermissionProvider();
+  const { authConfig } = useAuthContext();
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [botsToken, setBotsToken] = useState<string>('');
-  const [botsTokenExpiry, setBotsTokenExpiry] = useState<string>();
+  const [botsTokenExpiry, setBotsTokenExpiry] = useState<number>();
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
-  const [isRegeneratingToken, setIsRegeneratingToken] =
-    useState<boolean>(false);
   const [generateToken, setGenerateToken] = useState<boolean>(false);
-  const [selectedExpiry, setSelectedExpiry] = useState('7');
-  const [botPermission, setBotPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
+
+  const [authMechanism, setAuthMechanism] = useState<AuthType>(AuthType.Jwt);
+  const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
+    JWTTokenExpiry.OneHour
   );
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   const editAllPermission = useMemo(
     () => botPermission.EditAll,
@@ -97,89 +104,71 @@ const BotDetails: FC<BotsDetailProp> = ({
     [botPermission]
   );
 
-  const fetchBotPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.BOT,
-        botsData.id
-      );
-      setBotPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const getJWTTokenExpiryOptions = () => {
-    return Object.keys(JWTTokenExpiry).map((expiry) => {
-      const expiryValue = JWTTokenExpiry[expiry as keyof typeof JWTTokenExpiry];
-
-      return { label: `${expiryValue} days`, value: expiryValue };
-    });
-  };
-
-  const getExpiryDateText = () => {
-    if (selectedExpiry === JWTTokenExpiry.Unlimited) {
-      return <p className="tw-mt-2">The token will never expire!</p>;
-    } else {
-      return (
-        <p className="tw-mt-2">
-          The token will expire on{' '}
-          {moment().add(selectedExpiry, 'days').format('ddd Do MMMM, YYYY')}
-        </p>
-      );
-    }
-  };
-
-  const handleOnChange = (
-    value: SingleValue<unknown>,
-    { action }: { action: string }
-  ) => {
-    if (isNil(value) || action === 'clear') {
-      setSelectedExpiry('');
-    } else {
-      const selectedValue = value as Option;
-      setSelectedExpiry(selectedValue.value);
-    }
-  };
-
   const fetchBotsToken = () => {
     getUserToken(botsData.id)
       .then((res) => {
         const { JWTToken, JWTTokenExpiresAt } = res;
         setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
+        setBotsTokenExpiry(JWTTokenExpiresAt);
+        setTokenExpiry(res.JWTTokenExpiry ?? JWTTokenExpiry.OneHour);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
       });
   };
 
-  const generateBotsToken = (data: string) => {
-    generateUserToken(botsData.id, data)
-      .then((res) => {
-        const { JWTToken, JWTTokenExpiresAt } = res;
-        setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      })
-      .finally(() => {
-        setGenerateToken(false);
-      });
-  };
-
-  const handleTokenGeneration = () => {
-    if (botsToken) {
-      setIsRegeneratingToken(true);
-    } else {
-      setGenerateToken(true);
+  const handleBotTokenDetailUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      const {
+        isAdmin,
+        teams,
+        timezone,
+        name,
+        description,
+        displayName,
+        profile,
+        email,
+        isBot,
+        roles,
+      } = botsData;
+      const response = await updateUser({
+        isAdmin,
+        teams,
+        timezone,
+        name,
+        description,
+        displayName,
+        profile,
+        email,
+        isBot,
+        roles,
+        authenticationMechanism: {
+          ...botsData.authenticationMechanism,
+          authType: authMechanism,
+          config:
+            authMechanism === AuthType.Jwt
+              ? {
+                  JWTTokenExpiry: tokenExpiry,
+                }
+              : {
+                  ssoServiceType: SsoServiceType.Google,
+                  authConfig: {},
+                },
+        },
+      } as User);
+      if (response.data) {
+        fetchBotsToken();
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+      setGenerateToken(false);
     }
   };
 
-  const handleGenerate = () => {
-    generateBotsToken(selectedExpiry);
-  };
+  const handleTokenGeneration = () => setGenerateToken(true);
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -344,11 +333,10 @@ const BotDetails: FC<BotsDetailProp> = ({
       // get the current date timestamp
       const currentTimeStamp = Date.now();
 
-      const isTokenExpired = currentTimeStamp >= Number(botsTokenExpiry);
+      const isTokenExpired = currentTimeStamp >= botsTokenExpiry;
 
       // get the token expiry date
-      const tokenExpiryDate =
-        moment(botsTokenExpiry).format('ddd Do MMMM, YYYY');
+      const tokenExpiryDate = getTokenExpiryDate(botsTokenExpiry);
 
       return (
         <p
@@ -378,18 +366,42 @@ const BotDetails: FC<BotsDetailProp> = ({
     if (generateToken) {
       return (
         <div className="tw-mt-4" data-testid="generate-token-form">
-          <div data-testid="expiry-dropdown">
-            <label htmlFor="expiration">{requiredField('Expiration')}</label>
+          <Field>
+            <label
+              className="tw-block tw-form-label tw-mb-0"
+              htmlFor="auth-mechanism">
+              {requiredField('Auth Mechanism')}
+            </label>
             <Select
-              defaultValue={{ label: '7 days', value: '7' }}
-              id="expiration"
-              isSearchable={false}
-              options={getJWTTokenExpiryOptions()}
-              styles={reactSingleSelectCustomStyle}
-              onChange={handleOnChange}
-            />
-            {getExpiryDateText()}
-          </div>
+              className="w-full"
+              data-testid="auth-mechanism"
+              defaultValue={authMechanism}
+              placeholder="Select Auth Mechanism"
+              onChange={(value) => setAuthMechanism(value)}>
+              {getAuthMechanismTypeOptions(authConfig).map((option) => (
+                <Option key={option.value}>{option.label}</Option>
+              ))}
+            </Select>
+          </Field>
+          <Field>
+            <label
+              className="tw-block tw-form-label tw-mb-0"
+              htmlFor="token-expiry">
+              {requiredField('Token Expiration')}
+            </label>
+            <Select
+              className="w-full"
+              data-testid="token-expiry"
+              defaultValue={tokenExpiry}
+              placeholder="Select Token Expiration"
+              onChange={(value) => setTokenExpiry(value)}>
+              {getJWTTokenExpiryOptions().map((option) => (
+                <Option key={option.value}>{option.label}</Option>
+              ))}
+            </Select>
+            <p className="tw-mt-2">{getTokenExpiryText(tokenExpiry)}</p>
+          </Field>
+
           <div className="tw-flex tw-justify-end">
             <Button
               className={classNames('tw-mr-2')}
@@ -406,8 +418,8 @@ const BotDetails: FC<BotsDetailProp> = ({
               theme="primary"
               type="submit"
               variant="contained"
-              onClick={handleGenerate}>
-              Generate
+              onClick={handleBotTokenDetailUpdate}>
+              {isUpdating ? <Loader size="small" /> : 'Save'}
             </Button>
           </div>
         </div>
@@ -417,12 +429,10 @@ const BotDetails: FC<BotsDetailProp> = ({
         return (
           <Fragment>
             <div className="tw-flex tw-justify-between tw-items-center tw-mt-4">
-              <input
-                disabled
-                className="tw-form-inputs tw-p-1.5"
+              <Input.Password
+                contentEditable={false}
                 data-testid="token"
                 placeholder="Generate new token..."
-                type="password"
                 value={botsToken}
               />
               {getCopyComponent()}
@@ -452,15 +462,7 @@ const BotDetails: FC<BotsDetailProp> = ({
             {generateToken ? 'Generate JWT token' : 'JWT Token'}
           </h6>
           {!generateToken && editAllPermission ? (
-            <div className="tw-flex">
-              <Button
-                data-testid="generate-token"
-                size="small"
-                theme="primary"
-                variant="outlined"
-                onClick={() => handleTokenGeneration()}>
-                {botsToken ? 'Re-generate token' : 'Generate new token'}
-              </Button>
+            <>
               {botsToken ? (
                 <Button
                   className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
@@ -470,8 +472,17 @@ const BotDetails: FC<BotsDetailProp> = ({
                   onClick={() => setIsRevokingToken(true)}>
                   Revoke token
                 </Button>
-              ) : null}
-            </div>
+              ) : (
+                <Button
+                  data-testid="generate-token"
+                  size="small"
+                  theme="primary"
+                  variant="outlined"
+                  onClick={() => handleTokenGeneration()}>
+                  Generate new token
+                </Button>
+              )}
+            </>
           ) : null}
         </div>
         <hr className="tw-mt-2" />
@@ -487,7 +498,6 @@ const BotDetails: FC<BotsDetailProp> = ({
   useEffect(() => {
     if (botsData.id) {
       fetchBotsToken();
-      fetchBotPermission();
     }
   }, [botsData]);
 
@@ -522,19 +532,7 @@ const BotDetails: FC<BotsDetailProp> = ({
           onConfirm={() => {
             revokeTokenHandler();
             setIsRevokingToken(false);
-          }}
-        />
-      ) : null}
-      {isRegeneratingToken ? (
-        <ConfirmationModal
-          bodyText="Generating a new token will revoke the existing JWT token. Are you sure you want to proceed?"
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Are you sure?"
-          onCancel={() => setIsRegeneratingToken(false)}
-          onConfirm={() => {
-            setIsRegeneratingToken(false);
-            setGenerateToken(true);
+            handleTokenGeneration();
           }}
         />
       ) : null}
