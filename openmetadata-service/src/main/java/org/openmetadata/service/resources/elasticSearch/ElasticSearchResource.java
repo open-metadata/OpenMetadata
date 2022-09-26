@@ -10,6 +10,7 @@ import static org.openmetadata.service.Entity.USER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -20,12 +21,16 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -135,17 +140,24 @@ public class ElasticSearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
       })
-  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+  public Response reindexAllJobLastStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam)
       throws IOException {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext, false);
     // Check if there is a running job for reindex for requested entity
-    String record =
+    List<String> records =
         dao.entityExtensionTimeSeriesDao()
-            .getLatestExtension(String.format(ELASTIC_ENTITY_FQN, "full"), ELASTIC_SEARCH_EXTENSION);
-    if (record != null) {
-      EventPublisherJob reindexRecord = JsonUtils.readValue(record, EventPublisherJob.class);
-      return Response.status(Response.Status.OK).entity(reindexRecord).build();
+            .getLastLatestExtension(String.format(ELASTIC_ENTITY_FQN, "full"), ELASTIC_SEARCH_EXTENSION, limitParam);
+    if (records != null) {
+      return Response.status(Response.Status.OK).entity(records).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
   }
@@ -162,16 +174,24 @@ public class ElasticSearchResource {
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
       })
   public Response reindexEntityLastStatus(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("entityName") String entityName)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("entityName") String entityName,
+      @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam)
       throws IOException {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext, false);
     // Check if there is a running job for reindex for requested entity
     String entityFqn = String.format(ELASTIC_ENTITY_FQN, entityName);
-    String record = dao.entityExtensionTimeSeriesDao().getLatestExtension(entityFqn, ELASTIC_SEARCH_EXTENSION);
-    if (record != null) {
-      EventPublisherJob reindexRecord = JsonUtils.readValue(record, EventPublisherJob.class);
-      return Response.status(Response.Status.OK).entity(reindexRecord).build();
+    List<String> records =
+        dao.entityExtensionTimeSeriesDao().getLastLatestExtension(entityFqn, ELASTIC_SEARCH_EXTENSION, limitParam);
+    if (records != null) {
+      return Response.status(Response.Status.OK).entity(records).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
   }
@@ -319,6 +339,7 @@ public class ElasticSearchResource {
       result =
           entityRepository.listAfter(
               uriInfo, new EntityUtil.Fields(allowedFields, fields), new ListFilter(Include.ALL), 20, after);
+      System.out.println("Read Entities : " + result.getData().size());
       elasticSearchBulkProcessorListener.addRequests(result.getPaging().getTotal());
       updateElasticSearchForEntity(entityType, result.getData());
       after = result.getPaging().getAfter();
