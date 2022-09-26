@@ -14,6 +14,7 @@
 import { isUndefined } from 'lodash';
 import moment from 'moment';
 import { AuthTypes } from '../enums/signin.enum';
+import { SsoServiceType } from '../generated/entity/teams/authN/ssoAuth';
 import { AuthType, JWTTokenExpiry } from '../generated/entity/teams/user';
 
 export const getJWTTokenExpiryOptions = () => {
@@ -31,8 +32,7 @@ export const getJWTTokenExpiryOptions = () => {
 export const getAuthMechanismTypeOptions = (
   authConfig: Record<string, string | boolean> | undefined
 ) => {
-  const JWTOption = { label: 'Jwt', value: AuthType.Jwt };
-  const SSOOption = { label: 'Google SSO', value: AuthType.Sso };
+  const JWTOption = { label: 'OpenMetadata JWT', value: AuthType.Jwt };
   /**
    * If no auth is setup return the JWT option only
    */
@@ -40,12 +40,39 @@ export const getAuthMechanismTypeOptions = (
     return [JWTOption];
   } else {
     /**
-     * If provider is google then return JWT and SSO options
+     * If there is provider then return JWT and SSO options
      * Else return JWT option only
      */
     switch (authConfig?.provider) {
-      case AuthTypes.GOOGLE:
-        return [JWTOption, SSOOption];
+      case SsoServiceType.Google: {
+        const GoogleSSOOption = { label: 'Google SSO', value: AuthType.Sso };
+
+        return [JWTOption, GoogleSSOOption];
+      }
+      case SsoServiceType.Auth0: {
+        const Auth0SSOOption = { label: 'Auth0 SSO', value: AuthType.Sso };
+
+        return [JWTOption, Auth0SSOOption];
+      }
+      case SsoServiceType.Azure: {
+        const AzureSSOOption = { label: 'Azure SSO', value: AuthType.Sso };
+
+        return [JWTOption, AzureSSOOption];
+      }
+      case SsoServiceType.Okta: {
+        const OktaSSOOption = { label: 'Okta SSO', value: AuthType.Sso };
+
+        return [JWTOption, OktaSSOOption];
+      }
+      case SsoServiceType.CustomOidc: {
+        const CustomOidcSSOOption = {
+          label: 'CustomOidc SSO',
+          value: AuthType.Sso,
+        };
+
+        return [JWTOption, CustomOidcSSOOption];
+      }
+
       case AuthTypes.BASIC:
       default:
         return [JWTOption];
