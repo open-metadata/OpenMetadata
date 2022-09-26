@@ -84,47 +84,21 @@ const AuthMechanismForm: FC<Props> = ({
 
     switch (eleName) {
       case 'secretKey':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          secretKey: value,
-        }));
-
-        break;
       case 'audience':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          audience: value,
-        }));
-
-        break;
       case 'clientId':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          clientId: value,
-        }));
-
-        break;
       case 'domain':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          domain: value,
-        }));
-
-        break;
       case 'clientSecret':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          clientSecret: value,
-        }));
-
-        break;
       case 'authority':
+      case 'privateKey':
+      case 'orgURL':
+      case 'tokenEndpoint':
         setSSOClientConfig((previous) => ({
           ...previous,
-          authority: value,
+          [eleName]: value,
         }));
 
         break;
+
       case 'scopes':
         setSSOClientConfig((previous) => ({
           ...previous,
@@ -132,31 +106,11 @@ const AuthMechanismForm: FC<Props> = ({
         }));
 
         break;
-      case 'privateKey':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          privateKey: value,
-        }));
 
-        break;
-      case 'orgURL':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          orgURL: value,
-        }));
-
-        break;
       case 'oktaEmail':
         setSSOClientConfig((previous) => ({
           ...previous,
           email: value,
-        }));
-
-        break;
-      case 'tokenEndpoint':
-        setSSOClientConfig((previous) => ({
-          ...previous,
-          tokenEndpoint: value,
         }));
 
         break;

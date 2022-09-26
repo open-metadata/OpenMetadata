@@ -16,7 +16,7 @@ import { capitalize } from 'lodash';
 import React, { FC } from 'react';
 import { AuthType } from '../../generated/api/teams/createUser';
 import { AuthenticationMechanism } from '../../generated/entity/teams/user';
-import { getTokenExpiryDate } from '../../utils/BotsUtils';
+import { getTokenExpiry } from '../../utils/BotsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import './AuthMechanism.less';
@@ -39,13 +39,9 @@ const AuthMechanism: FC<Props> = ({
     const JWTTokenExpiresAt =
       authenticationMechanism.config?.JWTTokenExpiresAt ?? 0;
 
-    // get the current date timestamp
-    const currentTimeStamp = Date.now();
-
-    const isTokenExpired = currentTimeStamp >= JWTTokenExpiresAt;
-
     // get the token expiry date
-    const tokenExpiryDate = getTokenExpiryDate(JWTTokenExpiresAt);
+    const { tokenExpiryDate, isTokenExpired } =
+      getTokenExpiry(JWTTokenExpiresAt);
 
     return (
       <>
@@ -57,6 +53,7 @@ const AuthMechanism: FC<Props> = ({
             {JWTToken ? (
               <Button
                 danger
+                data-testid="revoke-button"
                 disabled={!hasPermission}
                 size="small"
                 type="default"
