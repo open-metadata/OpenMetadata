@@ -153,7 +153,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
-    authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi, secretsManager);
+    authorizer.init(catalogConfig, jdbi);
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");

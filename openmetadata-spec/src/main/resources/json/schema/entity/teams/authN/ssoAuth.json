@@ -13,7 +13,6 @@
     },
     "authConfig": {
       "description": "The authentication configuration used by the SSO",
-      "type": "object",
       "oneOf": [
         {
           "description": "Google SSO Configuration",
