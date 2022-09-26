@@ -15,6 +15,7 @@ import { TreeSelect } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { getTeamsHierarchy } from '../../axiosAPIs/teamsAPI';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
+import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -44,9 +45,7 @@ const TeamsSelectable = ({
 
   const loadOptions = () => {
     getTeamsHierarchy(filterJoinable)
-      // TODO: Improve type below
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then((res: any) => {
+      .then((res) => {
         const teams: TeamHierarchy[] = res.data;
         setTeams(teams);
         showTeamsAlert && setNoTeam(teams.length === 0);
@@ -61,7 +60,7 @@ const TeamsSelectable = ({
   }, []);
 
   const getTreeNodes = (team: TeamHierarchy) => {
-    const teamName = team.displayName || team.name;
+    const teamName = getEntityName(team);
     const value = team.id;
     const disabled = filterJoinable ? !team.isJoinable : false;
 

@@ -48,13 +48,14 @@ export const getTeams = async (
 };
 
 export const getTeamsHierarchy = async (isJoinable = false) => {
-  const url = getURLWithQueryFields('/teams/hierarchy');
-
-  const response = await APIClient.get<{ data: TeamHierarchy[] }>(url, {
-    params: {
-      isJoinable,
-    },
-  });
+  const response = await APIClient.get<{ data: TeamHierarchy[] }>(
+    '/teams/hierarchy',
+    {
+      params: {
+        isJoinable,
+      },
+    }
+  );
 
   return response.data;
 };
