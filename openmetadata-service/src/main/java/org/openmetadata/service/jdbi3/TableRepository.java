@@ -473,6 +473,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     table.setTags(dataModel.getTags());
+    applyTags(table);
 
     // Carry forward the column description from the model to table columns, if empty
     for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
@@ -484,10 +485,9 @@ public class TableRepository extends EntityRepository<Table> {
       if (stored == null) {
         continue;
       }
-      if (nullOrEmpty(stored.getDescription())) {
-        stored.setDescription(modelColumn.getDescription());
-      }
+      stored.setTags(modelColumn.getTags());
     }
+    applyTags(table.getColumns());
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
 
     setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
