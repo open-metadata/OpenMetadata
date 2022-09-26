@@ -15,7 +15,9 @@ name: Python Checkstyle
 # access to secrets
 on:
   pull_request_target:
-    branches: [ main ]
+    branches:
+      - main
+      - '0.[0-9]+.[0-9]+'
 
 concurrency: 
   group: py-checkstyle-${{ github.head_ref }}
