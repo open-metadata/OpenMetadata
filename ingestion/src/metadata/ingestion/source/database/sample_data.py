@@ -448,9 +448,7 @@ class SampleDataSource(Source[Entity]):
                 parent_list_id = []
                 for parent in team["parent"]:
                     tries = 3
-                    parent_object = self.metadata.get_by_name(
-                        entity=Team, fqn=parent
-                    )
+                    parent_object = self.metadata.get_by_name(entity=Team, fqn=parent)
                     while not parent_object and tries > 0:
                         logger.info("Trying to GET {parent} Parent Team")
                         parent_object = self.metadata.get_by_name(
@@ -458,7 +456,7 @@ class SampleDataSource(Source[Entity]):
                             fqn=parent,
                         )
                         tries -= 1
-                    
+
                     if parent_object:
                         parent_list_id.append(parent_object.id)
 
