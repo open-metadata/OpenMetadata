@@ -43,6 +43,7 @@ export type ListTestCaseParams = ListParams & {
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
   testPlatform: TestPlatform;
+  supportedDataType?: string;
 };
 
 export type ListTestCaseResultsParams = Omit<

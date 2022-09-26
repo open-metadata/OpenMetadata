@@ -31,6 +31,7 @@ from sqlalchemy.pool import QueuePool
 
 from metadata.clients.connection_clients import (
     AirByteClient,
+    DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
@@ -878,19 +879,30 @@ def _(_: BackendConnection, verbose: bool = False):
         return session.get_bind()
 
 
-@test_connection.register
+@get_connection.register
 def _(connection: DagsterConnection) -> None:
+    from urllib.parse import urlparse
+
+    from dagster_graphql import DagsterGraphQLClient
+
     try:
-        test_connection(connection.dbConnection)
+        host_port = connection.hostPort
+        host_port = urlparse(host_port)
+        connection = DagsterGraphQLClient(
+            hostname=host_port.hostname, port_number=host_port.port
+        )
+        return DagsterClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)
 
 
-@get_connection.register
-def _(connection: DagsterConnection) -> None:
+@test_connection.register
+def _(connection: DagsterClient) -> None:
+    from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
+
     try:
-        return get_connection(connection.dbConnection)
+        connection.client._execute(TEST_QUERY_GRAPHQL)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)

@@ -92,9 +92,9 @@ This setting allows you exclude or include specific column from the profiler. It
 
 ## YAML Configuration
 
-In the [connectors](/openmetadata/connectors) section we showcase how to run the metadata ingestion from a JSON file using  the Airflow SDK or the CLI via metadata ingest. Running a profiler workflow is also possible using a JSON configuration file. 
+In the [connectors](/openmetadata/connectors) section we showcase how to run the metadata ingestion from a JSON file using the Airflow SDK or the CLI via metadata ingest. Running a profiler workflow is also possible using a JSON configuration file.
 
-This is a good option if you which to execute your workflow via the Airflow SDK or using the CLI. The serviceConnection config will be specific to your connector (you can find more information in the [connectors](/openmetadata/connectors) section), though the sourceConfig for the profiler will be similar across all connectors.
+This is a good option if you which to execute your workflow via the Airflow SDK or using the CLI; if you use the CLI a profile workflow can be triggered with the command `metadata profile -c FILENAME.yaml`. The `serviceConnection` config will be specific to your connector (you can find more information in the [connectors](/openmetadata/connectors) section), though the sourceConfig for the profiler will be similar across all connectors.
 
 ```yaml
 

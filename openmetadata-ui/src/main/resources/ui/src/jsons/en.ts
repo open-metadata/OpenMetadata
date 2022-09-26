@@ -25,6 +25,7 @@ const jsonData = {
 
     'check-status-airflow': 'Error while connecting to Airflow instance!',
     'create-user-error': 'Error while creating user!',
+    'create-bot-error': 'Error while creating bot!',
     'create-conversation-error': 'Error while creating conversation!',
     'create-message-error': 'Error while creating message!',
     'create-role-error': 'Error While creating role!',
@@ -48,6 +49,12 @@ const jsonData = {
     'delete-user-error': 'Error while deleting user!',
     'delete-tag-category-error': 'Error while deleting tag category!',
     'delete-tag-error': 'Error while deleting tag!',
+
+    'email-verification-err':
+      'An email could not be sent for verification. Please contact your Administrator.',
+
+    'forgot-password-email-err':
+      'There is some issue in sending the mail. Please contact your Administrator.',
 
     'unexpected-error': 'Oops! An unexpected error occurred.',
 
@@ -151,6 +158,9 @@ const jsonData = {
     'update-test-suite-error': 'Error while updating test suite',
 
     'fetch-settings': 'Error while fetching settings',
+    'email-not-found': 'User with the given email address does not exist!',
+    'email-found': 'User with the given email address already exists!',
+    'unauthorized-user': 'UnAuthorized user! please check email or password',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
@@ -170,6 +180,9 @@ const jsonData = {
     'update-profile-congif-success': 'Profile config updated successfully!',
     'update-test-case-success': 'Test case updated successfully!',
     'update-webhook-success': 'Webhook updated successfully!',
+    'create-user-account': 'User account created successfully!',
+    'reset-password-success': 'Password reset successfully!',
+    'account-verify-success': 'Email verified successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
@@ -180,6 +193,8 @@ const jsonData = {
   label: {
     'delete-entity-text':
       'Once you delete this entity, it will be removed permanently.',
+    'email-confirmation':
+      'Please confirm your email, confirmation has been sent to your email',
   },
   message: {
     'no-services': 'No services',

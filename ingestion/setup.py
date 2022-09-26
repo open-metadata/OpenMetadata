@@ -69,7 +69,7 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
-    "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
+    "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2", "dagster_graphql"},
     "datalake": {
         "google-cloud-storage==1.43.0",
         "pandas==1.3.5",

@@ -64,6 +64,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
@@ -624,17 +625,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
-    User registeredUser = registerUser(uriInfo, create);
-    try {
-      sendEmailVerification(uriInfo, registeredUser);
-    } catch (Exception e) {
-      LOG.error("Error in sending mail to the User : {}", e.getMessage());
-      return Response.status(424)
-          .entity(
-              "User Registration Successful. Email for Verification couldn't be sent. Please contact your administrator")
-          .build();
+    if (ConfigurationHolder.getInstance()
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getEnableSelfSignup()) {
+      User registeredUser = registerUser(uriInfo, create);
+      try {
+        sendEmailVerification(uriInfo, registeredUser);
+      } catch (Exception e) {
+        LOG.error("Error in sending mail to the User : {}", e.getMessage());
+        return Response.status(424)
+            .entity(
+                "User Registration Successful. Email for Verification couldn't be sent. Please contact your administrator")
+            .build();
+      }
+      return Response.status(Response.Status.OK).entity("User Registration Successful.").build();
+    } else {
+      return Response.status(Response.Status.BAD_REQUEST).entity("Signup is not Available").build();
     }
-    return Response.status(Response.Status.OK).entity("User Registration Successful.").build();
   }
 
   @GET
@@ -672,10 +679,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response resendRegistrationToken(
       @Context UriInfo uriInfo,
       @Parameter(description = "Token sent for Email Confirmation Earlier", schema = @Schema(type = "string"))
-          @QueryParam("token")
-          String token)
+          @QueryParam("user")
+          String user)
       throws IOException {
-    User registeredUser = extendRegistrationToken(uriInfo, token);
+    User registeredUser = dao.getByName(uriInfo, user, getFields("isEmailVerified"));
+    if (registeredUser.getIsEmailVerified()) {
+      // no need to do anything
+      return Response.status(Response.Status.OK).entity("Email Already Verified For User.").build();
+    }
+    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
     try {
       sendEmailVerification(uriInfo, registeredUser);
     } catch (Exception e) {
@@ -714,7 +726,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           .build();
     }
 
-    return Response.status(Response.Status.OK).build();
+    return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
   }
 
   @POST
@@ -735,7 +747,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
     if (passwordResetToken == null) {
-      throw new EntityNotFoundException("Token not found for Password Reset. Please issue new Password Reset Request.");
+      throw new EntityNotFoundException("Invalid Password Request. Please issue a new request.");
     }
     User storedUser =
         dao.getByName(
@@ -882,7 +894,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException {
-    String userName = loginRequest.getEmail().split("@")[0];
+    String userName =
+        loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
     User storedUser =
         dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
@@ -1045,8 +1058,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     String emailVerificationLink =
         String.format(
-            "%s://%s/users/registrationConfirmation?token=%s",
-            uriInfo.getRequestUri().getScheme(), uriInfo.getRequestUri().getHost(), mailVerificationToken);
+            "%s://%s/users/registrationConfirmation?user=%s&token=%s",
+            uriInfo.getRequestUri().getScheme(),
+            uriInfo.getRequestUri().getHost(),
+            user.getFullyQualifiedName(),
+            mailVerificationToken);
     Map<String, String> templatePopulator = new HashMap<>();
 
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
@@ -1093,7 +1109,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             user.getEmail(),
             EmailUtil.EMAILTEMPLATEBASEPATH,
             EmailUtil.PASSWORDRESETTEMPLATEFILE);
-
+    // don't persist tokens delete existing
+    tokenRepository.deleteTokenByUserAndType(user.getId().toString(), PASSWORD_RESET.toString());
     tokenRepository.insertToken(resetToken);
   }
 

@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, login, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
+import { LOGIN } from '../../constants/constants';
+
 
 const updateddescription = 'This is updated description';
 
@@ -27,6 +29,7 @@ const TEAM_DETAILS = {
 
 describe('Teams flow should work properly', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();

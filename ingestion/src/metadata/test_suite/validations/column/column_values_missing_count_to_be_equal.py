@@ -28,6 +28,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -49,7 +50,7 @@ def column_values_missing_count_to_be_equal(
     :return: TestCaseResult with status and results
     """
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
+        column_name = get_decoded_column(test_case.entityLink.__root__)
         col = next(
             (col for col in inspect(runner.table).c if col.name == column_name),
             None,

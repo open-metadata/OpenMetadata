@@ -13,8 +13,8 @@
 
 /// <reference types="cypress" />
 
-import { interceptURL, searchEntity, verifyResponseStatusCode, visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import { interceptURL, login, searchEntity, verifyResponseStatusCode, visitEntityTab } from '../../common/common';
+import { FOLLOWING_TITLE, LOGIN, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tables = Object.values(SEARCH_ENTITY_TABLE);
 const topics = Object.values(SEARCH_ENTITY_TOPIC);
@@ -23,6 +23,7 @@ const pipelines = Object.values(SEARCH_ENTITY_PIPELINE);
 
 describe('MyData page should work', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
   });
 

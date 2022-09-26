@@ -47,6 +47,8 @@ export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
+export const refreshTokenKey = 'refreshToken';
+export const accessToken = 'accessToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -190,7 +192,11 @@ export const ROUTES = {
   TAGS: '/tags',
   TAG_DETAILS: `/tags/${PLACEHOLDER_TAG_NAME}`,
   SIGNUP: '/signup',
+  REGISTER: '/register',
   SIGNIN: '/signin',
+  FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/users/password/reset',
+  ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,

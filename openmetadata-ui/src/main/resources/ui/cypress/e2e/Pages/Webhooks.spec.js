@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
+import { LOGIN } from '../../constants/constants';
+
 
 const webhookName = `Webhook-ct-test-${uuid()}`;
 const updatedDescription = 'This is updated webhook description';
@@ -18,6 +20,7 @@ const endpointURL = 'http://localhost:8585';
 
 describe('Webooks Page', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
 
     cy.get('[data-testid="appbar-item-settings"]')

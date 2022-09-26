@@ -24,7 +24,7 @@ Create a new entry in the JSON schema definition of the Secrets Manager provider
 }
 ```
 
-You can find [this](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-core/src/main/resources/json/schema/entity/services/connections/metadata/secretsManagerProvider.json) file here in the repository.
+You can find [this](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/secretsManagerProvider.json) file here in the repository.
 
 ## 2. Update OM Server code
 

@@ -238,6 +238,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
+  const createBotPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.USER, permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.BOT, permissions),
+    [permissions]
+  );
+
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
@@ -276,6 +283,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
+
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <AdminProtectedRoute
         exact
@@ -411,11 +419,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.BOT,
-          permissions
-        )}
+        hasPermission={createBotPermission}
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <Route exact component={BotDetailsPage} path={ROUTES.BOTS_PROFILE} />
@@ -485,6 +489,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={TestSuiteIngestionPage}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
       />
+      <Route exact path={ROUTES.HOME}>
+        <Redirect to={ROUTES.MY_DATA} />
+      </Route>
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

@@ -12,11 +12,12 @@
  */
 
 import moment from 'moment';
-import { descriptionBox, interceptURL, searchEntity, verifyResponseStatusCode } from '../../common/common';
-import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
+import { descriptionBox, interceptURL, login, searchEntity, verifyResponseStatusCode } from '../../common/common';
+import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
   });
 
