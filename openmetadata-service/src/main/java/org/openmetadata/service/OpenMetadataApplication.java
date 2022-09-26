@@ -105,8 +105,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         SecretsManagerFactory.createSecretsManager(
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
-    secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
-
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
@@ -155,7 +153,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
-    authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
+    authorizer.init(catalogConfig, jdbi);
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");

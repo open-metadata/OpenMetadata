@@ -55,6 +55,11 @@
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
+    },
+    "authenticationMechanism": {
+      "description": "Authentication mechanism specified ",
+      "$ref": "../../entity/teams/user.json#/definitions/authenticationMechanism",
+      "default": null
     }
   },
   "required": ["name", "email"],

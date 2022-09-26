@@ -73,6 +73,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.OpenMetadataServerConnectionBuilder;
 import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.ResultList;
 
@@ -87,6 +88,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final SecretsManager secretsManager;
+  private CollectionDAO collectionDAO;
 
   @Getter private final IngestionPipelineRepository ingestionPipelineRepository;
 
@@ -99,6 +101,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao, secretsManager), authorizer);
+    this.collectionDAO = dao;
     this.secretsManager = secretsManager;
     this.ingestionPipelineRepository = new IngestionPipelineRepository(dao, secretsManager);
   }
@@ -586,9 +589,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
-        secretsManager.decryptServerConnection(openMetadataApplicationConfig.getAirflowConfiguration());
-    openMetadataServerConnection.setClusterName(openMetadataApplicationConfig.getClusterName());
-    openMetadataServerConnection.setSecretsManagerProvider(this.secretsManager.getSecretsManagerProvider());
+        new OpenMetadataServerConnectionBuilder(secretsManager, openMetadataApplicationConfig, collectionDAO).build();
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
