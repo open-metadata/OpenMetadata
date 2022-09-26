@@ -11,7 +11,8 @@ public class ConfigurationHolder {
   public enum ConfigurationType {
     AUTHORIZERCONFIG("authorizerConfiguration"),
     AUTHENTICATIONCONFIG("authenticationConfiguration"),
-    SMTPCONFIG("email");
+    SMTPCONFIG("email"),
+    ELASTICSEARCHCONFIG("elasticsearch");
     private String value;
 
     ConfigurationType(String value) {
@@ -57,8 +58,11 @@ public class ConfigurationHolder {
             case SMTPCONFIG:
               CONFIG_MAP.put(ConfigurationType.SMTPCONFIG, config.getSmtpSettings());
               break;
+            case ELASTICSEARCHCONFIG:
+              CONFIG_MAP.put(ConfigurationType.ELASTICSEARCHCONFIG, config.getElasticSearchConfiguration());
+              break;
             default:
-              LOG.info("Currently AuthorizerConfig, AuthenticatioConfig, and SMTP these can be added");
+              LOG.info("Currently AuthorizerConfig, AuthenticatioConfig, SMTP and ES these can be added");
           }
         }
       }

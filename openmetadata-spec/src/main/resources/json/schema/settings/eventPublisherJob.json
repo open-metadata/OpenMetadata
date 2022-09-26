@@ -1,0 +1,85 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/eventPublisherResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventPublisherResult",
+  "description": "This schema defines Event Publisher Run Result.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.settings.EventPublisherJob",
+  "definitions": {
+    "stats": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "description": "Count of Success Record",
+          "type": "integer",
+          "default": 0
+        },
+        "failed": {
+          "description": "Count of Failed Records",
+          "type": "integer",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of the result",
+      "type": "string"
+    },
+    "startedBy": {
+      "description": "Job started by",
+      "type": "string"
+    },
+    "publisherType": {
+      "description": "This schema event Publisher Types",
+      "type": "string",
+      "enum": [
+        "elasticSearch",
+        "kafka"
+      ]
+    },
+    "runMode": {
+      "description": "This schema publisher run modes.",
+      "type": "string",
+      "enum": [
+        "stream",
+        "batch"
+      ]
+    },
+    "timestamp": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "description": "This schema publisher run job status.",
+      "type": "string",
+      "enum": [
+        "Failed",
+        "Success",
+        "Aborted",
+        "Running"
+      ]
+    },
+    "failureDetails": {
+      "description": "Failure details are set only when `status` is not `success`.",
+      "type": "object",
+      "properties": {
+        "lastFailedAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "lastFailedReason": {
+          "description": "Last non-successful activity response reason received during callback.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stats": {
+      "$ref": "#/definitions/stats"
+    }
+  },
+  "required": ["name", "publisherType","runMode", "timestamp", "status"],
+  "additionalProperties": false
+}
