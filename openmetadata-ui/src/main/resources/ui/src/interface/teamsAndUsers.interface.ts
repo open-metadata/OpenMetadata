@@ -113,6 +113,8 @@ export interface TeamDetailsProp {
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   childTeams: Team[];
+  showDeletedTeam: boolean;
+  onShowDeletedTeamChange: (checked: boolean) => void;
   onTeamExpand: (
     isPageLoading?: boolean,
     parentTeam?: string,
