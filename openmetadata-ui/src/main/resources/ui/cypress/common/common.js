@@ -753,11 +753,15 @@ export const updateOwner = () => {
     .invoke('text')
     .then((text) => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
-      interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'getUser');
+      interceptURL(
+        'GET',
+        '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+        'getTeams'
+      );
       //Clicking on edit owner button
       cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-      verifyResponseStatusCode('@getUser', 200);
+      verifyResponseStatusCode('@getTeams', 200);
 
       //Clicking on users tab
       cy.get('button[data-testid="dropdown-tab"]')
@@ -788,4 +792,43 @@ export const login = (username, password) => {
   cy.get('[id="email"]').should('be.visible').clear().type(username);
   cy.get('[id="password"]').should('be.visible').clear().type(password);
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
+};
+
+export const addTeam = (TEAM_DETAILS) => {
+  interceptURL('GET', '/api/v1/teams*', 'addTeam');
+  //Fetching the add button and clicking on it
+  cy.get('button')
+    .find('span')
+    .contains('Add Team')
+    .should('be.visible')
+    .click();
+
+  verifyResponseStatusCode('@addTeam', 200);
+
+  //Entering team details
+  cy.get('[data-testid="name"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.name);
+
+  cy.get('[data-testid="display-name"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.displayName);
+
+  cy.get(descriptionBox)
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.description);
+  interceptURL('POST', '/api/v1/teams', 'saveTeam');
+  interceptURL('GET', '/api/v1/team*', 'createTeam');
+
+  //Saving the created team
+  cy.get('[form="add-team-form"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  verifyResponseStatusCode('@saveTeam', 201);
+  verifyResponseStatusCode('@createTeam', 200);
 };
