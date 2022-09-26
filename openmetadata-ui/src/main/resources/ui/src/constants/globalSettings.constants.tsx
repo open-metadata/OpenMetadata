@@ -49,6 +49,7 @@ export enum GlobalSettingOptions {
   MSTEAMS = 'msteams',
   TEST_SUITE = 'testSuite',
   ACTIVITY_FEED = 'activityFeed',
+  ELASTIC_SEARCH = 'elasticSearch',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

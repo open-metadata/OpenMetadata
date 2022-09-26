@@ -355,3 +355,20 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
       return '';
   }
 };
+
+export const getStatusResultBadgeIcon = (status: string) => {
+  switch (status) {
+    case TestCaseStatus.Success:
+      return Icons.SUCCESS_BADGE;
+
+    case TestCaseStatus.Failed:
+      return Icons.FAIL_BADGE;
+
+    case TestCaseStatus.Aborted:
+    case 'Running':
+      return Icons.PENDING_BADGE;
+
+    default:
+      return '';
+  }
+};

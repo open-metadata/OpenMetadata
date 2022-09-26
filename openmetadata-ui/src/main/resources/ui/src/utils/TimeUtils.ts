@@ -144,3 +144,6 @@ export const getTimeZone = (): string => {
 
   return abbreviation;
 };
+
+export const getDateTimeByDateWithZone = (date: Date) =>
+  `${moment(date).format('DD MMM YYYY, hh:mm')} ${getTimeZone()}`;
