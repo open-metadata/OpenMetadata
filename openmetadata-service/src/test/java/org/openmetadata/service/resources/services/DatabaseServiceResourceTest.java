@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -289,11 +290,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
       assertEquals(expectedSchedule, actualSchedule);
     } else if (fieldName.equals("connection")) {
-      DatabaseConnection expectedConnection = (DatabaseConnection) expected;
-      DatabaseConnection actualConnection = JsonUtils.readValue((String) actual, DatabaseConnection.class);
-      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), SnowflakeConnection.class));
-      // TODO remove this hardcoding
-      validateDatabaseConnection(expectedConnection, actualConnection, DatabaseServiceType.Snowflake);
+      assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }

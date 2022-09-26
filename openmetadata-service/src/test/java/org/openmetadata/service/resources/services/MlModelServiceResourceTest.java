@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -167,11 +168,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     if (fieldName.equals("connection")) {
-      MlModelConnection expectedMlModelConnection = (MlModelConnection) expected;
-      MlModelConnection actualMlModelConnection = JsonUtils.readValue((String) actual, MlModelConnection.class);
-      actualMlModelConnection.setConfig(
-          JsonUtils.convertValue(actualMlModelConnection.getConfig(), MlflowConnection.class));
-      assertEquals(expectedMlModelConnection, actualMlModelConnection);
+      assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }
