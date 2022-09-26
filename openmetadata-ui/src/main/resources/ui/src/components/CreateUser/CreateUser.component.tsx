@@ -723,6 +723,7 @@ const CreateUser = ({
                   <span>Admin</span>
                   <Switch
                     checked={isAdmin}
+                    data-testid="admin"
                     onChange={() => {
                       setIsAdmin((prev) => !prev);
                       setIsBot(false);
