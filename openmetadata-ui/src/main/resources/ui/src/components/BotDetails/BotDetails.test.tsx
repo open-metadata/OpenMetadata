@@ -19,7 +19,8 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
+import { getUserToken } from '../../axiosAPIs/userAPI';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
@@ -64,27 +65,7 @@ const botsData = {
 
 const mockProp = {
   botsData,
-  revokeTokenHandler,
-  updateBotsDetails,
-};
-
-jest.mock('../PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-  }),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-  DEFAULT_ENTITY_PERMISSION: {
+  botPermission: {
     Create: true,
     Delete: true,
     ViewAll: true,
@@ -92,14 +73,18 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     EditDescription: true,
     EditDisplayName: true,
     EditCustomFields: true,
-  },
+  } as OperationPermission,
+  revokeTokenHandler,
+  updateBotsDetails,
+};
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
-    generateUserToken: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(mockToken)),
+    updateUser: jest.fn().mockImplementation(() => Promise.resolve(botsData)),
     getUserToken: jest
       .fn()
       .mockImplementation(() => Promise.resolve(mockToken)),
@@ -186,47 +171,6 @@ describe('Test BotsDetail Component', () => {
 
     expect(generateButton).toBeInTheDocument();
     expect(discardButton).toBeInTheDocument();
-  });
-
-  it('Test Re-generate token flow', async () => {
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const generateToken = await findByTestId(container, 'generate-token');
-
-    expect(generateToken).toHaveTextContent('Re-generate token');
-
-    fireEvent.click(generateToken);
-
-    // should open confirmartion before re-generating token
-    const confirmationModal = await findByTestId(
-      container,
-      'confirmation-modal'
-    );
-
-    expect(confirmationModal).toBeInTheDocument();
-
-    const confirmButton = await findByTestId(confirmationModal, 'save-button');
-
-    expect(confirmButton).toBeInTheDocument();
-
-    fireEvent.click(confirmButton);
-
-    // render token form on confirmaton
-    const tokenForm = await findByTestId(container, 'generate-token-form');
-
-    expect(tokenForm).toBeInTheDocument();
-
-    const generateButton = await findByTestId(tokenForm, 'generate-button');
-    const discardButton = await findByTestId(tokenForm, 'discard-button');
-
-    expect(generateButton).toBeInTheDocument();
-    expect(discardButton).toBeInTheDocument();
-
-    fireEvent.click(generateButton);
-
-    expect(generateUserToken).toBeCalled();
   });
 
   it('Test Revoke token flow', async () => {

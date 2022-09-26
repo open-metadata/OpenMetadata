@@ -59,6 +59,7 @@ DATABASE_SERVICE = {
 AUTH_PROVIDER_CONFIG = {"secretKey": "/fake/path"}
 
 DBT_SOURCE_CONFIG = {
+    "dbtUpdateDescriptions": True,
     "dbtCatalogHttpPath": "/fake/path",
     "dbtManifestHttpPath": "/fake/path",
     "dbtRunResultsHttpPath": "/fake/path",

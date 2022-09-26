@@ -47,7 +47,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -66,7 +66,6 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "config",
-          "version",
           "signup",
           "registrationConfirmation",
           "resendRegistrationToken",
@@ -226,8 +225,9 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private void validateBotToken(String tokenFromHeader, String userName) throws IOException {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-    User user = userRepository.getByName(null, userName, new EntityUtil.Fields(List.of("authenticationMechanism")));
+    UserRepository userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
+    User user =
+        userRepository.getByNameWithSecretManager(userName, new EntityUtil.Fields(List.of("authenticationMechanism")));
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null) {
       JWTAuthMechanism jwtAuthMechanism =
