@@ -24,6 +24,7 @@ import { WebStorageStateStore } from 'oidc-client';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
+import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
@@ -71,10 +72,16 @@ export const getUserManagerConfig = (
 };
 
 export const getAuthConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthenticationConfiguration
 ): Record<string, string | boolean> => {
-  const { authority, clientId, callbackUrl, provider, providerName } =
-    authClient;
+  const {
+    authority,
+    clientId,
+    callbackUrl,
+    provider,
+    providerName,
+    enableSelfSignup,
+  } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
@@ -153,6 +160,7 @@ export const getAuthConfig = (
           cacheLocation: BrowserCacheLocation.LocalStorage,
         },
         provider,
+        enableSelfSignUp: enableSelfSignup,
       } as Configuration;
 
       break;
