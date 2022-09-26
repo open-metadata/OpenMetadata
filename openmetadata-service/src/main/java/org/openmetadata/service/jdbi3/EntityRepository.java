@@ -1061,6 +1061,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return allowedFields;
   }
 
+  public final List<String> getAllowedFieldsCopy() {
+    return new ArrayList<>(allowedFields);
+  }
+
   protected String getCustomPropertyFQNPrefix(String entityType) {
     return FullyQualifiedName.build(entityType, "customProperties");
   }

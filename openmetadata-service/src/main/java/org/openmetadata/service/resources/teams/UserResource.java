@@ -714,8 +714,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
     String userName = request.getEmail().split("@")[0];
-    User registeredUser =
-        dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+    User registeredUser;
+    try{
+        registeredUser = dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+    }catch(IOException ex){
+        throw new BadRequestException("Email is not valid.");
+    }
     // send a mail to the User with the Update
     try {
       sendPasswordResetLink(uriInfo, registeredUser);
@@ -749,9 +753,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (passwordResetToken == null) {
       throw new EntityNotFoundException("Invalid Password Request. Please issue a new request.");
     }
+    List<String> fields = dao.getAllowedFieldsCopy();
+    fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
         dao.getByName(
-            uriInfo, request.getUsername(), new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+            uriInfo, request.getUsername(), new Fields(fields, String.join(",", fields)));
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
       throw new RuntimeException("Token does not belong to the user.");
@@ -799,7 +805,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(response.getStatus()).entity("Password Changed Successfully").build();
   }
 
-  @POST
+  @PUT
   @Path("/changePassword/{id}")
   @Operation(
       operationId = "changeUserPassword",
@@ -820,9 +826,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
           String userId,
       @Valid ChangePasswordRequest request)
       throws IOException {
-    // validate Password
+    // passwords validity
+    if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+          throw new RuntimeException("Password and Confirm Password should match");
+    }
     PasswordUtil.validatePassword(request.getNewPassword());
-    User storedUser = dao.get(uriInfo, UUID.fromString(userId), getFields("*"));
+    List<String> fields = dao.getAllowedFieldsCopy();
+    fields.add(USER_PROTECTED_FIELDS);
+    User storedUser = dao.get(uriInfo, UUID.fromString(userId), new Fields(fields, String.join(",", fields)));
     BasicAuthMechanism storedBasicAuthMechanism =
         JsonUtils.convertValue(storedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class);
     String storedHashPassword = storedBasicAuthMechanism.getPassword();
@@ -896,11 +907,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
     String userName =
         loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
-    User storedUser =
-        dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-    if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
-      throw new IllegalArgumentException("User are only allowed to login");
+
+    User storedUser;
+    try {
+      storedUser = dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+    } catch (IOException ex) {
+      throw new BadRequestException("You have entered an invalid username or password.");
     }
+
+    if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
+      throw new IllegalArgumentException("You have entered an invalid username or password.");
+    }
+
     LinkedHashMap<String, String> storedData =
         (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
     String requestPassword = loginRequest.getPassword();
@@ -919,7 +937,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
       return Response.status(200).entity(response).build();
     } else {
-      return Response.status(403).entity("Please enter correct Password").build();
+      return Response.status(403).entity("You have entered an invalid username or password.").build();
     }
   }
 

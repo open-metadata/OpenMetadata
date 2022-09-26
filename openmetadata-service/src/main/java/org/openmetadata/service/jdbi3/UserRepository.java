@@ -31,7 +31,6 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -47,7 +46,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
   static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams,isEmailVerified";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   private final EntityReference organization;
 
   public UserRepository(CollectionDAO dao) {
@@ -321,19 +320,13 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange(
-            "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
+            "authenticationMechanism", original.getAuthenticationMechanism(), "new-encrypted-value");
       } else if (origAuthMechanism != null
           && updatedAuthMechanism != null
           && origAuthMechanism.getConfig() != null
           && updatedAuthMechanism.getConfig() != null) {
-        JWTAuthMechanism origJwtAuthMechanism =
-            JsonUtils.convertValue(origAuthMechanism.getConfig(), JWTAuthMechanism.class);
-        JWTAuthMechanism updatedJwtAuthMechanism =
-            JsonUtils.convertValue(updatedAuthMechanism.getConfig(), JWTAuthMechanism.class);
-        if (!origJwtAuthMechanism.getJWTToken().equals(updatedJwtAuthMechanism.getJWTToken())) {
-          recordChange(
-              "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
-        }
+        recordChange(
+                "authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
       }
     }
   }
