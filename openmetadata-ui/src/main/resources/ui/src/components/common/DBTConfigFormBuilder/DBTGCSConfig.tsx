@@ -44,17 +44,20 @@ import {
 } from './DBTConfigForm.interface';
 import { GCSCreds } from './DBTFormConstants';
 import { GCS_CONFIG } from './DBTFormEnum';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;
   handleSecurityConfigChange: (value?: SCredentials) => void;
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
+  handleUpdateDescriptions: (value: boolean) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtSecurityConfig,
   dbtPrefixConfig,
+  dbtUpdateDescriptions = false,
   gcsType = GCS_CONFIG.GCSValues,
   okText,
   cancelText,
@@ -63,6 +66,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleGcsTypeChange,
   handleSecurityConfigChange,
   handlePrefixConfigChange,
+  handleUpdateDescriptions,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
@@ -128,7 +132,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtSecurityConfig, dbtPrefixConfig };
+    const submitData = {
+      dbtSecurityConfig,
+      dbtPrefixConfig,
+      dbtUpdateDescriptions,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -447,6 +455,15 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
         />
       </Field>
+
+      {getSeparator('')}
+
+      <SwitchField
+        dbtUpdateDescriptions={dbtUpdateDescriptions}
+        handleUpdateDescriptions={handleUpdateDescriptions}
+        id="gcs-update-description"
+      />
+
       {getSeparator('')}
 
       <Field className="tw-flex tw-justify-end">

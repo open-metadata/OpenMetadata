@@ -18,11 +18,8 @@ import static org.openmetadata.schema.services.connections.metadata.SecretsManag
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import org.openmetadata.api.configuration.airflow.AuthConfiguration;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
@@ -63,36 +60,13 @@ public class NoopSecretsManager extends SecretsManager {
   }
 
   @Override
-  public AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration) {
-    return airflowConfiguration;
-  }
-
-  @Override
-  protected Object decryptAuthProviderConfig(
-      OpenMetadataServerConnection.AuthProvider authProvider, AuthConfiguration authConfig) {
-    switch (authProvider) {
-      case GOOGLE:
-        return authConfig.getGoogle();
-      case AUTH_0:
-        return authConfig.getAuth0();
-      case OKTA:
-        return authConfig.getOkta();
-      case AZURE:
-        return authConfig.getAzure();
-      case CUSTOM_OIDC:
-        return authConfig.getCustomOidc();
-      case OPENMETADATA:
-        return authConfig.getOpenmetadata();
-      case NO_AUTH:
-        return null;
-      default:
-        throw new IllegalArgumentException("OpenMetadata doesn't support auth provider type " + authProvider.value());
-    }
-  }
-
-  @Override
   public Object storeTestConnectionObject(TestServiceConnection testServiceConnection) {
     return testServiceConnection.getConnection();
+  }
+
+  @Override
+  public Object encryptOrDecryptIngestionBotCredentials(String botName, Object securityConfig, boolean encrypt) {
+    return securityConfig;
   }
 
   private void encryptOrDecryptField(Object connConfig, String field, Class<?> clazz, boolean encrypt)

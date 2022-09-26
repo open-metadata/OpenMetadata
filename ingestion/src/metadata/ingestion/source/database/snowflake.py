@@ -23,6 +23,7 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -129,7 +130,7 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 
 class SnowflakeSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
-        self.partiotion_details = {}
+        self.partition_details = {}
         super().__init__(config, metadata_config)
 
     @classmethod
@@ -153,12 +154,12 @@ class SnowflakeSource(CommonDbSourceService):
                 )
             )
 
-    def set_partiotion_details(self) -> None:
-        self.partiotion_details.clear()
+    def set_partition_details(self) -> None:
+        self.partition_details.clear()
         results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
         for row in results:
             if row.CLUSTERING_KEY:
-                self.partiotion_details[
+                self.partition_details[
                     f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
                 ] = row.CLUSTERING_KEY
 
@@ -167,24 +168,30 @@ class SnowflakeSource(CommonDbSourceService):
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()
-            self.set_partiotion_details()
+            self.set_partition_details()
             yield configured_db
         else:
             results = self.connection.execute("SHOW DATABASES")
             for res in results:
                 row = list(res)
                 new_database = row[1]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
 
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_name=new_database
+                    self.source_config.databaseFilterPattern, database_fqn=database_fqn
                 ):
-                    self.status.filter(new_database, "Database pattern not allowed")
+                    self.status.filter(database_fqn, "Database pattern not allowed")
                     continue
 
                 try:
                     self.set_inspector(database_name=new_database)
                     self.set_session_query_tag()
-                    self.set_partiotion_details()
+                    self.set_partition_details()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -242,7 +249,7 @@ class SnowflakeSource(CommonDbSourceService):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, TablePartition]:
-        cluster_key = self.partiotion_details.get(f"{schema_name}.{table_name}")
+        cluster_key = self.partition_details.get(f"{schema_name}.{table_name}")
         if cluster_key:
             partition_columns = self.parse_column_name_from_expr(cluster_key)
             partition_details = TablePartition(

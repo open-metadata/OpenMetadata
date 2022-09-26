@@ -23,7 +23,6 @@ import './fonts.css';
 import './modal.less';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
-import './spacing.less';
 import './tailwind.css';
 import './temp.css';
 import './x-custom/code-mirror.css';

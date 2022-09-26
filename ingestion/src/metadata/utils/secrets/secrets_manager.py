@@ -96,7 +96,7 @@ AUTH_PROVIDER_MAPPING: Dict[AuthProvider, AuthProviderClientType] = {
 
 DBT_SOURCE_CONFIG_SECRET_PREFIX: str = "database-metadata-pipeline"
 
-AUTH_PROVIDER_SECRET_PREFIX: str = "auth-provider"
+BOT_PREFIX: str = "bot"
 
 TEST_CONNECTION_TEMP_SECRET_PREFIX: str = "test-connection-temp"
 

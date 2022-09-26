@@ -16,10 +16,13 @@ package org.openmetadata.service.util;
 import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
@@ -38,6 +41,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -442,5 +446,27 @@ public final class JsonUtils {
 
   public static JsonNode readTree(String extensionJson) throws JsonProcessingException {
     return OBJECT_MAPPER.readTree(extensionJson);
+  }
+
+  /**
+   * Compared the canonicalized JSON representation of two object to check if they are equals or not
+   *
+   * @param obj1
+   * @param obj2
+   * @return True if the representations are equal, otherwise, false
+   * @throws JsonProcessingException if the Object mapper fails
+   */
+  public static boolean areEquals(Object obj1, Object obj2) throws JsonProcessingException {
+    ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
+    JsonNode obj1sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj1));
+    JsonNode obj2sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj2));
+    return OBJECT_MAPPER.writeValueAsString(obj1sorted).equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
+  }
+
+  static class SortedNodeFactory extends JsonNodeFactory {
+    @Override
+    public ObjectNode objectNode() {
+      return new ObjectNode(this, new TreeMap<>());
+    }
   }
 }
