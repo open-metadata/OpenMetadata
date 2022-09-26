@@ -222,12 +222,12 @@ class BigquerySource(CommonDbSourceService):
                     intervalType=IntervalType.TIME_UNIT.value,
                 )
                 table_partition.columns = [table.time_partitioning.field]
+                return True, table_partition
             else:
-                table_partition = TablePartition(
+                return True, TablePartition(
                     interval=str(table.time_partitioning.type_),
                     intervalType=IntervalType.INGESTION_TIME.value,
                 )
-            return True, table_partition
         elif table.range_partitioning:
             table_partition = TablePartition(
                 intervalType=IntervalType.INTEGER_RANGE.value,
