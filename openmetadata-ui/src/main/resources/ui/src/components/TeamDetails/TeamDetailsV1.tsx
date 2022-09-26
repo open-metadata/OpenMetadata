@@ -972,6 +972,7 @@ const TeamDetailsV1 = ({
                       <Space align="center">
                         <Switch
                           checked={showDeletedTeam}
+                          data-testid="show-deleted-switch"
                           onChange={onShowDeletedTeamChange}
                         />
                         <span>Deleted Teams</span>
