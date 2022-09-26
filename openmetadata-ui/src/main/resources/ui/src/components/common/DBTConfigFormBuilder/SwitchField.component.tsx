@@ -21,7 +21,7 @@ interface Props {
   handleUpdateDescriptions: (value: boolean) => void;
 }
 
-function DBTUpdateDescriptionField({
+function SwitchField({
   dbtUpdateDescriptions,
   id,
   handleUpdateDescriptions,
@@ -50,4 +50,4 @@ function DBTUpdateDescriptionField({
   );
 }
 
-export default DBTUpdateDescriptionField;
+export default SwitchField;

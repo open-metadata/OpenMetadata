@@ -26,7 +26,7 @@ import {
   DBTFormCommonProps,
   ErrorDbtCloud,
 } from './DBTConfigForm.interface';
-import DBTUpdateDescriptionField from './DBTUpdateDescriptionField.component';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAccountIdChange: (value: string) => void;
@@ -110,7 +110,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       </Field>
       {getSeparator('')}
 
-      <DBTUpdateDescriptionField
+      <SwitchField
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         handleUpdateDescriptions={handleUpdateDescriptions}
         id="cloud-update-description"

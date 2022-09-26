@@ -26,7 +26,7 @@ import {
   DBTFormCommonProps,
   ErrorDbtLocal,
 } from './DBTConfigForm.interface';
-import DBTUpdateDescriptionField from './DBTUpdateDescriptionField.component';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigLocal {
   handleCatalogFilePathChange: (value: string) => void;
@@ -136,7 +136,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       </Field>
       {getSeparator('')}
 
-      <DBTUpdateDescriptionField
+      <SwitchField
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         handleUpdateDescriptions={handleUpdateDescriptions}
         id="local-update-description"

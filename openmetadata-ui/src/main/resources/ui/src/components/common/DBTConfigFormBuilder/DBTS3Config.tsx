@@ -33,7 +33,7 @@ import {
   DBTFormCommonProps,
   ErrorDbtS3,
 } from './DBTConfigForm.interface';
-import DBTUpdateDescriptionField from './DBTUpdateDescriptionField.component';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
@@ -231,7 +231,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       </Field>
       {getSeparator('')}
 
-      <DBTUpdateDescriptionField
+      <SwitchField
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         handleUpdateDescriptions={handleUpdateDescriptions}
         id="s3-update-description"

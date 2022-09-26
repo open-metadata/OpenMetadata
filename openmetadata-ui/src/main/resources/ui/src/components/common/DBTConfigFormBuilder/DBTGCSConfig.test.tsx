@@ -56,7 +56,7 @@ const mockProps = {
   handleUpdateDescriptions: mockUpdateDescriptions,
 };
 
-jest.mock('./DBTUpdateDescriptionField.component', () =>
+jest.mock('./SwitchField.component', () =>
   jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
 );
 

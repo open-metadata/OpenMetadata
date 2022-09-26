@@ -26,7 +26,7 @@ import {
   DBTFormCommonProps,
   ErrorDbtHttp,
 } from './DBTConfigForm.interface';
-import DBTUpdateDescriptionField from './DBTUpdateDescriptionField.component';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleCatalogHttpPathChange: (value: string) => void;
@@ -133,7 +133,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       </Field>
       {getSeparator('')}
 
-      <DBTUpdateDescriptionField
+      <SwitchField
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         handleUpdateDescriptions={handleUpdateDescriptions}
         id="http-update-description"

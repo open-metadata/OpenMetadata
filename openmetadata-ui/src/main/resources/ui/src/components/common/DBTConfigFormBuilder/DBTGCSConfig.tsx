@@ -44,7 +44,7 @@ import {
 } from './DBTConfigForm.interface';
 import { GCSCreds } from './DBTFormConstants';
 import { GCS_CONFIG } from './DBTFormEnum';
-import DBTUpdateDescriptionField from './DBTUpdateDescriptionField.component';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
@@ -458,7 +458,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
 
       {getSeparator('')}
 
-      <DBTUpdateDescriptionField
+      <SwitchField
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         handleUpdateDescriptions={handleUpdateDescriptions}
         id="gcs-update-description"

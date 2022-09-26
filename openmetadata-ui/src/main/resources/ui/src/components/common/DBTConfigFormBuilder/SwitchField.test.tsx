@@ -13,7 +13,7 @@
 
 import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
-import DBTUpdateDescriptionField from './DBTUpdateDescriptionField.component';
+import SwitchField from './SwitchField.component';
 
 const mockProps = {
   dbtUpdateDescriptions: false,
@@ -28,9 +28,9 @@ jest.mock('antd', () => ({
     .mockImplementation(() => <div data-testid="switch">Switch</div>),
 }));
 
-describe('DBTUpdateDescriptionField', () => {
+describe('SwitchField', () => {
   it('Component should render properly', () => {
-    const { container } = render(<DBTUpdateDescriptionField {...mockProps} />);
+    const { container } = render(<SwitchField {...mockProps} />);
 
     const switchLabel = getByTestId(container, 'test-id');
     const switchButton = getByTestId(container, 'switch');
