@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class ElasticSearchResource {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
-  public static final String ELASTIC_ENTITY_FQN= "elasticSearchReindex:%s";
+  public static final String ELASTIC_ENTITY_FQN = "elasticSearchReindex:%s";
   private final RestHighLevelClient client;
   private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   private final CollectionDAO dao;
@@ -91,7 +91,8 @@ public class ElasticSearchResource {
     this.authorizer = authorizer;
     this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client);
     this.elasticSearchBulkProcessorListener = new BulkProcessorListener(dao);
-    BiConsumer<BulkRequest, ActionListener<BulkResponse>> bulkConsumer = (request, bulkListener) -> client.bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+    BiConsumer<BulkRequest, ActionListener<BulkResponse>> bulkConsumer =
+        (request, bulkListener) -> client.bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
     // Setup a bulk Processor
     BulkProcessor.Builder builder =
         BulkProcessor.builder(bulkConsumer, elasticSearchBulkProcessorListener, "es-reindex");
@@ -117,7 +118,7 @@ public class ElasticSearchResource {
       throws IOException {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext, false);
-    //Check if there is a running job for reindex for requested entity
+    // Check if there is a running job for reindex for requested entity
     String entityFqn = String.format(ELASTIC_ENTITY_FQN, "full");
     String startedBy = securityContext.getUserPrincipal().getName();
     return startFullReindexing(startedBy, entityFqn, uriInfo);
@@ -126,21 +127,23 @@ public class ElasticSearchResource {
   @GET
   @Path("/reindexAll/status")
   @Operation(
-          operationId = "getReindexAllLastJobStatus",
-          summary = "Get Last Run Reindex All Job Status",
-          tags = "elasticSearch",
-          description = "Reindex All job last status",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "Success"),
-                  @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
-          })
+      operationId = "getReindexAllLastJobStatus",
+      summary = "Get Last Run Reindex All Job Status",
+      tags = "elasticSearch",
+      description = "Reindex All job last status",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
   public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-          throws IOException {
+      throws IOException {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext, false);
-    //Check if there is a running job for reindex for requested entity
-    String record = dao.entityExtensionTimeSeriesDao().getLatestExtension(String.format(ELASTIC_ENTITY_FQN, "full"), ELASTIC_SEARCH_EXTENSION);
-    if(record != null){
+    // Check if there is a running job for reindex for requested entity
+    String record =
+        dao.entityExtensionTimeSeriesDao()
+            .getLatestExtension(String.format(ELASTIC_ENTITY_FQN, "full"), ELASTIC_SEARCH_EXTENSION);
+    if (record != null) {
       EventPublisherJob reindexRecord = JsonUtils.readValue(record, EventPublisherJob.class);
       return Response.status(Response.Status.OK).entity(reindexRecord.getStatus()).build();
     }
@@ -150,23 +153,23 @@ public class ElasticSearchResource {
   @GET
   @Path("/reindex/{entityName}/status")
   @Operation(
-          operationId = "reindexEntityLastStatus",
-          summary = "Reindex status for entity",
-          tags = "elasticSearch",
-          description = "Reindex Elastic Search by Entity status",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "Success"),
-                  @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
-          })
+      operationId = "reindexEntityLastStatus",
+      summary = "Reindex status for entity",
+      tags = "elasticSearch",
+      description = "Reindex Elastic Search by Entity status",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
   public Response reindexEntityLastStatus(
-          @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("entityName") String entityName)
-          throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("entityName") String entityName)
+      throws IOException {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext, false);
-    //Check if there is a running job for reindex for requested entity
+    // Check if there is a running job for reindex for requested entity
     String entityFqn = String.format(ELASTIC_ENTITY_FQN, entityName);
     String record = dao.entityExtensionTimeSeriesDao().getLatestExtension(entityFqn, ELASTIC_SEARCH_EXTENSION);
-    if(record != null){
+    if (record != null) {
       EventPublisherJob reindexRecord = JsonUtils.readValue(record, EventPublisherJob.class);
       return Response.status(Response.Status.OK).entity(reindexRecord.getStatus()).build();
     }
@@ -188,97 +191,111 @@ public class ElasticSearchResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("entityName") String entityName)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, false);
-    //Check if there is a running job for reindex for requested entity
+    // Check if there is a running job for reindex for requested entity
     String entityFqn = String.format(ELASTIC_ENTITY_FQN, entityName);
     return startReindexingForEntity(securityContext.getUserPrincipal().getName(), entityName, entityFqn, uriInfo);
   }
 
-  private synchronized Response startReindexingForEntity(String startedBy, String entityType, String entityFQN, UriInfo uriInfo) throws IOException {
+  private synchronized Response startReindexingForEntity(
+      String startedBy, String entityType, String entityFQN, UriInfo uriInfo) throws IOException {
     String fullReindexing = dao.entityExtensionTimeSeriesDao().getLatestExtension(entityFQN, ELASTIC_SEARCH_EXTENSION);
     EventPublisherJob fullReindexjob = JsonUtils.readValue(fullReindexing, EventPublisherJob.class);
-    if(fullReindexjob != null && fullReindexjob.getStatus() == EventPublisherJob.Status.RUNNING){
-      return Response.status(Response.Status.FORBIDDEN).entity("Full Reindexing is Running. Cannot issue new request.").build();
-    }else{
-      String elasticSearchJob = dao.entityExtensionTimeSeriesDao().getLatestExtension(entityFQN, ELASTIC_SEARCH_EXTENSION);
+    if (fullReindexjob != null && fullReindexjob.getStatus() == EventPublisherJob.Status.RUNNING) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity("Full Reindexing is Running. Cannot issue new request.")
+          .build();
+    } else {
+      String elasticSearchJob =
+          dao.entityExtensionTimeSeriesDao().getLatestExtension(entityFQN, ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob eventPublisherJob = JsonUtils.readValue(elasticSearchJob, EventPublisherJob.class);
-      if(eventPublisherJob != null && eventPublisherJob.getStatus() == EventPublisherJob.Status.RUNNING){
-        return Response.status(Response.Status.FORBIDDEN).entity("Reindexing is already in Process for the entity. Cannot issue new request.").build();
-      }else{
-        //create a new Job
+      if (eventPublisherJob != null && eventPublisherJob.getStatus() == EventPublisherJob.Status.RUNNING) {
+        return Response.status(Response.Status.FORBIDDEN)
+            .entity("Reindexing is already in Process for the entity. Cannot issue new request.")
+            .build();
+      } else {
+        // create a new Job
         Long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
 
-        EventPublisherJob newJob = new EventPublisherJob().withName(String.format("ElasticSearchReindexJob:%s", entityFQN))
+        EventPublisherJob newJob =
+            new EventPublisherJob()
+                .withName(String.format("ElasticSearchReindexJob:%s", entityFQN))
                 .withPublisherType(EventPublisherJob.PublisherType.ELASTIC_SEARCH)
                 .withRunMode(EventPublisherJob.RunMode.BATCH)
                 .withStatus(EventPublisherJob.Status.RUNNING)
                 .withTimestamp(startTime)
                 .withStats(new Stats().withFailed(0).withSuccess(0));
-        dao.entityExtensionTimeSeriesDao().insert(entityFQN, ELASTIC_SEARCH_EXTENSION, "eventPublisherJob", JsonUtils.pojoToJson(newJob));
+        dao.entityExtensionTimeSeriesDao()
+            .insert(entityFQN, ELASTIC_SEARCH_EXTENSION, "eventPublisherJob", JsonUtils.pojoToJson(newJob));
 
-        //Update Listener
+        // Update Listener
         elasticSearchBulkProcessorListener.setRequestIssuer(startedBy);
         elasticSearchBulkProcessorListener.setEntityFQN(entityFQN);
         elasticSearchBulkProcessorListener.setStartTime(startTime);
         elasticSearchBulkProcessorListener.resetCounters();
 
-        //Start Entity Reindexing
+        // Start Entity Reindexing
         threadScheduler.submit(
-                () -> {
-                  try {
-                    updateEntity(uriInfo,  entityType);
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
+            () -> {
+              try {
+                updateEntity(uriInfo, entityType);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         return Response.status(Response.Status.OK).entity("Reindexing Started for entity.").build();
       }
     }
   }
 
-  private synchronized Response startFullReindexing(String startedBy, String entityFQN, UriInfo uriInfo) throws IOException {
+  private synchronized Response startFullReindexing(String startedBy, String entityFQN, UriInfo uriInfo)
+      throws IOException {
     String fullReindexing = dao.entityExtensionTimeSeriesDao().getLatestExtension(entityFQN, ELASTIC_SEARCH_EXTENSION);
     EventPublisherJob fullReindexjob = JsonUtils.readValue(fullReindexing, EventPublisherJob.class);
-    if(fullReindexjob != null && fullReindexjob.getStatus() == EventPublisherJob.Status.RUNNING){
-      return Response.status(Response.Status.FORBIDDEN).entity("Full Reindexing is Running. Cannot issue new request.").build();
-    }else{
-        //create a new Job
+    if (fullReindexjob != null && fullReindexjob.getStatus() == EventPublisherJob.Status.RUNNING) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity("Full Reindexing is Running. Cannot issue new request.")
+          .build();
+    } else {
+      // create a new Job
       Long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-        EventPublisherJob newJob = new EventPublisherJob().withName(String.format("ElasticSearchReindexJob:%s", entityFQN))
-                .withPublisherType(EventPublisherJob.PublisherType.ELASTIC_SEARCH)
-                .withRunMode(EventPublisherJob.RunMode.BATCH)
-                .withStatus(EventPublisherJob.Status.RUNNING)
-                .withTimestamp(startTime)
-                .withStats(new Stats().withFailed(0).withSuccess(0))
-                .withStartedBy(startedBy);
-        dao.entityExtensionTimeSeriesDao().insert(entityFQN, ELASTIC_SEARCH_EXTENSION, "eventPublisherJob", JsonUtils.pojoToJson(newJob));
+      EventPublisherJob newJob =
+          new EventPublisherJob()
+              .withName(String.format("ElasticSearchReindexJob:%s", entityFQN))
+              .withPublisherType(EventPublisherJob.PublisherType.ELASTIC_SEARCH)
+              .withRunMode(EventPublisherJob.RunMode.BATCH)
+              .withStatus(EventPublisherJob.Status.RUNNING)
+              .withTimestamp(startTime)
+              .withStats(new Stats().withFailed(0).withSuccess(0))
+              .withStartedBy(startedBy);
+      dao.entityExtensionTimeSeriesDao()
+          .insert(entityFQN, ELASTIC_SEARCH_EXTENSION, "eventPublisherJob", JsonUtils.pojoToJson(newJob));
 
-        //Update Listener
-        elasticSearchBulkProcessorListener.setRequestIssuer(startedBy);
-        elasticSearchBulkProcessorListener.setEntityFQN(entityFQN);
-        elasticSearchBulkProcessorListener.setStartTime(startTime);
-        elasticSearchBulkProcessorListener.resetCounters();
+      // Update Listener
+      elasticSearchBulkProcessorListener.setRequestIssuer(startedBy);
+      elasticSearchBulkProcessorListener.setEntityFQN(entityFQN);
+      elasticSearchBulkProcessorListener.setStartTime(startTime);
+      elasticSearchBulkProcessorListener.resetCounters();
 
-        //Start Full Reindexing
-        threadScheduler.submit(
-                () -> {
-                  try {
-                    updateEntity(uriInfo, TABLE);
-                    updateEntity(uriInfo, TOPIC);
-                    updateEntity(uriInfo, DASHBOARD);
-                    updateEntity(uriInfo, PIPELINE);
-                    updateEntity(uriInfo, USER);
-                    updateEntity(uriInfo, TEAM);
-                    updateEntity(uriInfo, GLOSSARY_TERM);
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
-        return Response.status(Response.Status.OK).entity("Full Reindexing Started").build();
+      // Start Full Reindexing
+      threadScheduler.submit(
+          () -> {
+            try {
+              updateEntity(uriInfo, TABLE);
+              updateEntity(uriInfo, TOPIC);
+              updateEntity(uriInfo, DASHBOARD);
+              updateEntity(uriInfo, PIPELINE);
+              updateEntity(uriInfo, USER);
+              updateEntity(uriInfo, TEAM);
+              updateEntity(uriInfo, GLOSSARY_TERM);
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
+      return Response.status(Response.Status.OK).entity("Full Reindexing Started").build();
     }
   }
 
-  private synchronized void updateEntity(UriInfo uriInfo, String entityType)
-      throws IOException {
+  private synchronized void updateEntity(UriInfo uriInfo, String entityType) throws IOException {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     // Delete index
@@ -293,12 +310,8 @@ public class ElasticSearchResource {
     String after = null;
     do {
       result =
-              entityRepository.listAfter(
-                      uriInfo,
-                      new EntityUtil.Fields(allowedFields, fields),
-                      new ListFilter(Include.ALL),
-                      20,
-                      after);
+          entityRepository.listAfter(
+              uriInfo, new EntityUtil.Fields(allowedFields, fields), new ListFilter(Include.ALL), 20, after);
       elasticSearchBulkProcessorListener.setTotalRequests(result.getPaging().getTotal());
       updateElasticSearchForEntity(entityType, result.getData());
       after = result.getPaging().getAfter();
@@ -312,18 +325,19 @@ public class ElasticSearchResource {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
       }
       UpdateRequest updateRequest =
-              new UpdateRequest(
-                      elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType).indexName, entity.getId().toString());
+          new UpdateRequest(
+              elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType).indexName,
+              entity.getId().toString());
       updateRequest.doc(
-              JsonUtils.pojoToJson(
-                      Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
-              XContentType.JSON);
+          JsonUtils.pojoToJson(
+              Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
+          XContentType.JSON);
       updateRequest.docAsUpsert(true);
       bulkProcessor.add(updateRequest);
     }
   }
 
-   static class BulkProcessorListener implements BulkProcessor.Listener {
+  static class BulkProcessorListener implements BulkProcessor.Listener {
     private volatile int totalSuccessCount = 0;
     private volatile int totalFailedCount = 0;
     private volatile int totalRequests = 0;
@@ -331,6 +345,7 @@ public class ElasticSearchResource {
     private String entityFQN;
     private final CollectionDAO dao;
     private Long startTime;
+
     public BulkProcessorListener(CollectionDAO dao) {
       this.dao = dao;
     }
@@ -351,17 +366,21 @@ public class ElasticSearchResource {
           if (bulkItemResponse.isFailed()) {
             BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
             failureDetails = new FailureDetails();
-            failureDetails.setLastFailedAt(Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime());
-            failureDetails.setLastFailedReason(String.format("ID [%s]. Reason : %s", failure.getId() , failure.getMessage()));
+            failureDetails.setLastFailedAt(
+                Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime());
+            failureDetails.setLastFailedReason(
+                String.format("ID [%s]. Reason : %s", failure.getId(), failure.getMessage()));
             failedCount++;
           }
         }
-        successCount =  bulkResponse.getItems().length - failedCount;
+        successCount = bulkResponse.getItems().length - failedCount;
         updateFailedAndSuccess(failedCount, successCount);
 
-        //update stats in DB
+        // update stats in DB
         Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-        EventPublisherJob updateJob = new EventPublisherJob().withName(String.format("ElasticSearchReindexJob:%s", entityFQN))
+        EventPublisherJob updateJob =
+            new EventPublisherJob()
+                .withName(String.format("ElasticSearchReindexJob:%s", entityFQN))
                 .withPublisherType(EventPublisherJob.PublisherType.ELASTIC_SEARCH)
                 .withRunMode(EventPublisherJob.RunMode.BATCH)
                 .withStatus(EventPublisherJob.Status.RUNNING)
@@ -369,10 +388,11 @@ public class ElasticSearchResource {
                 .withStats(new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount))
                 .withStartedBy(requestIssuer)
                 .withFailureDetails(failureDetails);
-        if(totalRequests == totalFailedCount + totalSuccessCount){
+        if (totalRequests == totalFailedCount + totalSuccessCount) {
           updateJob.setStatus(EventPublisherJob.Status.SUCCESS);
         }
-        dao.entityExtensionTimeSeriesDao().update(entityFQN, ELASTIC_SEARCH_EXTENSION, JsonUtils.pojoToJson(updateJob), startTime);
+        dao.entityExtensionTimeSeriesDao()
+            .update(entityFQN, ELASTIC_SEARCH_EXTENSION, JsonUtils.pojoToJson(updateJob), startTime);
         startTime = time;
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -397,17 +417,17 @@ public class ElasticSearchResource {
       this.entityFQN = entityFQN;
     }
 
-    public synchronized void setTotalRequests(int count){
-        totalRequests = count;
+    public synchronized void setTotalRequests(int count) {
+      totalRequests = count;
     }
 
-    public synchronized void resetCounters(){
+    public synchronized void resetCounters() {
       totalRequests = 0;
       totalFailedCount = 0;
       totalSuccessCount = 0;
     }
 
-    public synchronized void updateFailedAndSuccess(int failedCount, int successCount){
+    public synchronized void updateFailedAndSuccess(int failedCount, int successCount) {
       totalFailedCount += failedCount;
       totalSuccessCount += successCount;
     }
