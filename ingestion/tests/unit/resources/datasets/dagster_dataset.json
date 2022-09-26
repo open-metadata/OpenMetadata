@@ -1,85 +1,92 @@
-[
-    1,
-    "a6ebb16c-505f-446d-8642-171c3320ccef",
-    "db1439a4208a2059caa193e7cbd39d9de7292f2a",
-    "do_it_all_with_default_config",
-    null,
-    "SUCCESS",
-    {
-        "__class__": "PipelineRun",
-        "asset_selection": null,
-        "execution_plan_snapshot_id": "a9609467aa63cf0306dd462b6e760ee51aa5cc52",
-        "external_pipeline_origin": {
-            "__class__": "ExternalPipelineOrigin",
-            "external_repository_origin": {
-                "__class__": "ExternalRepositoryOrigin",
-                "repository_location_origin": {
-                    "__class__": "ManagedGrpcPythonEnvRepositoryLocationOrigin",
-                    "loadable_target_origin": {
-                        "__class__": "LoadableTargetOrigin",
-                        "attribute": null,
-                        "executable_path": null,
-                        "module_name": null,
-                        "package_name": null,
-                        "python_file": "/opt/dagster/app/cereal.py",
-                        "working_directory": null
-                    },
-                    "location_name": "cereal.py"
-                },
-                "repository_name": "__repository__do_it_all_with_default_config"
+{
+ "assetNodes": {
+    "__typename": "AssetNode",
+    "id": "cereal.py.__repository__.[\"cereals\"]",
+    "jobNames": [
+      "__ASSET_JOB"
+    ],
+    "groupName": "default",
+    "graphName": null,
+    "opName": "cereals",
+    "opNames": [
+      "cereals"
+    ],
+    "jobs": [
+      {
+        "id": "f15cdd9d3feb2d9e56d89a40f6703da423328a6a",
+        "name": "__ASSET_JOB",
+        "description": "",
+        "runs": [
+          {
+            "id": "7900d6e2-6964-4855-b28e-9914725a920f",
+            "runId": "7900d6e2-6964-4855-b28e-9914725a920f",
+            "status": "SUCCESS",
+            "stats": {
+              "startTime": 1663664768.595747,
+              "endTime": 1663664771.090511,
+              "stepsFailed": 0
             },
-            "pipeline_name": "do_it_all_with_default_config"
-        },
-        "mode": "default",
-        "parent_run_id": null,
-        "pipeline_code_origin": {
-            "__class__": "PipelinePythonOrigin",
-            "pipeline_name": "do_it_all_with_default_config",
-            "repository_origin": {
-                "__class__": "RepositoryPythonOrigin",
-                "code_pointer": {
-                    "__class__": "FileCodePointer",
-                    "fn_name": "do_it_all_with_default_config",
-                    "python_file": "/opt/dagster/app/cereal.py",
-                    "working_directory": "/opt/dagster/app"
-                },
-                "container_context": {},
-                "container_image": null,
-                "entry_point": [
-                    "dagster"
+            "assets": [
+              {
+                "assetMaterializations": [
+                  {
+                    "label": "nabisco_cereals"
+                  },
+                  {
+                    "label": "nabisco_cereals"
+                  }
                 ],
-                "executable_path": "/usr/local/bin/python"
-            }
-        },
-        "pipeline_name": "do_it_all_with_default_config",
-        "pipeline_snapshot_id": "db1439a4208a2059caa193e7cbd39d9de7292f2a",
-        "root_run_id": null,
-        "run_config": {
-            "ops": {
-                "do_something": {
-                    "config": {
-                        "config_param": "stuff"
-                    }
-                }
-            }
-        },
-        "run_id": "a6ebb16c-505f-446d-8642-171c3320ccef",
-        "solid_selection": null,
-        "solids_to_execute": null,
-        "status": {
-            "__enum__": "PipelineRunStatus.SUCCESS"
-        },
-        "step_keys_to_execute": null,
-        "tags": {
-            ".dagster/grpc_info": {"host": "localhost", "socket": "/tmp/tmp09vd0qsu"},
-            "dagster/preset_name": "default",
-            "dagster/solid_selection": "*"
-        }
-    },
-    null,
-    null,
-    "2022-07-25T05:55:02.292119Z",
-    "2022-07-25T08:34:31.425131Z",
-    1659616628.404192,
-    1659616630.256226
-]
+                "definition": null
+              },
+              {
+                "assetMaterializations": [
+                  {
+                    "label": "cereals"
+                  },
+                  {
+                    "label": "cereals"
+                  }
+                ],
+                "definition": null
+              }
+            ]
+          },
+          {
+            "id": "9aa6e271-47fe-4d87-b620-12cbff9ba4db",
+            "runId": "9aa6e271-47fe-4d87-b620-12cbff9ba4db",
+            "status": "SUCCESS",
+            "stats": {
+              "startTime": 1663663736.870997,
+              "endTime": 1663663739.504256,
+              "stepsFailed": 0
+            },
+            "assets": [
+              {
+                "assetMaterializations": [
+                  {
+                    "label": "nabisco_cereals"
+                  },
+                  {
+                    "label": "nabisco_cereals"
+                  }
+                ],
+                "definition": null
+              },
+              {
+                "assetMaterializations": [
+                  {
+                    "label": "cereals"
+                  },
+                  {
+                    "label": "cereals"
+                  }
+                ],
+                "definition": null
+              }
+            ]
+          }
+        ]
+      }
+    ]
+ }    
+}

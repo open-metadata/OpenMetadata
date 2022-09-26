@@ -25,7 +25,7 @@ on:
       - 'openmetadata-docs/**'
 
 concurrency:
-  group: cypress-integration-tests-${{ github.head_ref || github.run_id }}
+  group: cypress-integration-tests-mysql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:

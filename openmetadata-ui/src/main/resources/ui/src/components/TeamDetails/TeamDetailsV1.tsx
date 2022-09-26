@@ -69,6 +69,7 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { filterChildTeams } from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -124,6 +125,8 @@ const TeamDetailsV1 = ({
   updateTeamHandler,
   onDescriptionUpdate,
   descriptionHandler,
+  showDeletedTeam,
+  onShowDeletedTeamChange,
   handleTeamUsersSearchAction,
   handleCurrentUserPage,
   teamUserPaginHandler,
@@ -172,7 +175,7 @@ const TeamDetailsV1 = ({
         teamUserPagin,
         isGroupType,
         isOrganization,
-        searchTerm ? table.length : undefined
+        table.length
       ),
     [currentTeam, teamUserPagin, searchTerm, table]
   );
@@ -431,9 +434,11 @@ const TeamDetailsV1 = ({
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(searchTeam(childTeams, value));
+      setTable(
+        filterChildTeams(searchTeam(childTeams, value), showDeletedTeam)
+      );
     } else {
-      setTable(childTeams ?? []);
+      setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
   };
 
@@ -526,8 +531,9 @@ const TeamDetailsV1 = ({
   }, [currentTeam]);
 
   useEffect(() => {
-    setTable(childTeams ?? []);
-  }, [childTeams]);
+    setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
+    setSearchTerm('');
+  }, [childTeams, showDeletedTeam]);
 
   useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
@@ -938,7 +944,7 @@ const TeamDetailsV1 = ({
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
               {currentTab === 1 &&
-                (isEmpty(table) && !searchTerm ? (
+                (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
                     title: createTeamPermission
                       ? 'Add Team'
@@ -949,7 +955,10 @@ const TeamDetailsV1 = ({
                     heading: 'Team',
                   })
                 ) : (
-                  <Row className="team-list-container" gutter={[16, 16]}>
+                  <Row
+                    className="team-list-container"
+                    gutter={[8, 8]}
+                    justify="space-between">
                     <Col span={8}>
                       <Searchbar
                         removeMargin
@@ -959,11 +968,13 @@ const TeamDetailsV1 = ({
                         onSearch={handleTeamSearch}
                       />
                     </Col>
-                    <Col span={16}>
-                      <Space
-                        align="end"
-                        className="tw-w-full"
-                        direction="vertical">
+                    <Col>
+                      <Space align="center">
+                        <Switch
+                          checked={showDeletedTeam}
+                          onChange={onShowDeletedTeamChange}
+                        />
+                        <span>Deleted Teams</span>
                         <ButtonAntd
                           disabled={!createTeamPermission}
                           title={

@@ -12,32 +12,14 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Input,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Divider, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import {
-  EntityTags,
-  FormattedGlossaryTermData,
-  FormattedUsersData,
-  GlossaryTermAssets,
-} from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import { cloneDeep, includes, isEqual } from 'lodash';
+import { EntityTags, FormattedUsersData, GlossaryTermAssets } from 'Models';
+import React, { useEffect, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import {
-  GlossaryTerm,
-  TermReference,
-} from '../../generated/entity/data/glossaryTerm';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -51,15 +33,15 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import DescriptionV1 from '../common/description/DescriptionV1';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TabsPane from '../common/TabsPane/TabsPane';
-import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
-import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
-import SummaryDetail from './SummaryDetail';
 import AssetsTabs from './tabs/AssetsTabs.component';
+import GlossaryTermReferences from './tabs/GlossaryTermReferences';
+import GlossaryTermSynonyms from './tabs/GlossaryTermSynonyms';
+import RelatedTerms from './tabs/RelatedTerms';
 const { Text } = Typography;
 
 type Props = {
@@ -89,21 +71,7 @@ const GlossaryTermsV1 = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(1);
   const [showRevieweModal, setShowRevieweModal] = useState<boolean>(false);
-  const [showRelatedTermsModal, setShowRelatedTermsModal] =
-    useState<boolean>(false);
-  const [isSynonymsEditing, setIsSynonymsEditing] = useState<boolean>(false);
-  const [isReferencesEditing, setIsReferencesEditing] =
-    useState<boolean>(false);
-  const [synonyms, setSynonyms] = useState<string>(
-    glossaryTerm.synonyms?.join(',') || ''
-  );
-  const [references, setReferences] = useState<TermReference[]>(
-    glossaryTerm.references || []
-  );
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
-  const [relatedTerms, setRelatedTerms] = useState<FormattedGlossaryTermData[]>(
-    []
-  );
 
   const tabs = [
     {
@@ -117,32 +85,6 @@ const GlossaryTermsV1 = ({
       position: 2,
     },
   ];
-
-  const onRelatedTermsModalCancel = () => {
-    setShowRelatedTermsModal(false);
-  };
-
-  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
-    if (!isEqual(terms, relatedTerms)) {
-      let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-      const oldTerms = terms.filter((d) => includes(relatedTerms, d));
-      const newTerms = terms
-        .filter((d) => !includes(relatedTerms, d))
-        .map((d) => ({
-          id: d.id,
-          type: d.type,
-          displayName: d.displayName,
-          name: d.name,
-        }));
-      updatedGlossaryTerm = {
-        ...updatedGlossaryTerm,
-        relatedTerms: [...oldTerms, ...newTerms],
-      };
-      setRelatedTerms(terms);
-      handleGlossaryTermUpdate(updatedGlossaryTerm);
-    }
-    onRelatedTermsModalCancel();
-  };
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
@@ -255,48 +197,6 @@ const GlossaryTermsV1 = ({
     handleGlossaryTermUpdate(updatedGlossaryTerm);
   };
 
-  const handleSynonymsSave = () => {
-    if (synonyms !== glossaryTerm.synonyms?.join(',')) {
-      let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-      updatedGlossaryTerm = {
-        ...updatedGlossaryTerm,
-        synonyms: synonyms.split(','),
-      };
-
-      handleGlossaryTermUpdate(updatedGlossaryTerm);
-    }
-    setIsSynonymsEditing(false);
-  };
-
-  const handleReferencesSave = (data: TermReference[]) => {
-    if (!isEqual(data, references)) {
-      let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-      updatedGlossaryTerm = {
-        ...updatedGlossaryTerm,
-        references: data,
-      };
-
-      handleGlossaryTermUpdate(updatedGlossaryTerm);
-      setReferences(data);
-    }
-    setIsReferencesEditing(false);
-  };
-
-  const handleValidation = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value;
-    const eleName = event.target.name;
-
-    switch (eleName) {
-      case 'synonyms': {
-        setSynonyms(value);
-
-        break;
-      }
-    }
-  };
-
   const handleTagContainerClick = () => {
     if (!isTagEditable) {
       fetchTags();
@@ -316,12 +216,6 @@ const GlossaryTermsV1 = ({
       setReviewer([]);
     }
   }, [glossaryTerm.reviewers]);
-
-  useEffect(() => {
-    if (glossaryTerm.relatedTerms?.length) {
-      setRelatedTerms(glossaryTerm.relatedTerms as FormattedGlossaryTermData[]);
-    }
-  }, [glossaryTerm.relatedTerms]);
 
   const addReviewerButton = () => {
     return (
@@ -398,19 +292,6 @@ const GlossaryTermsV1 = ({
     );
   };
 
-  const getSynonyms = (synonymsList: string) => {
-    return !isEmpty(synonymsList) ? (
-      synonymsList.split(',').map((synonym, index) => (
-        <>
-          {index > 0 ? <span className="tw-mr-2">,</span> : null}
-          <span>{synonym}</span>
-        </>
-      ))
-    ) : (
-      <></>
-    );
-  };
-
   const SummaryTab = () => {
     return (
       <Row gutter={16}>
@@ -426,115 +307,27 @@ const GlossaryTermsV1 = ({
               onDescriptionEdit={onDescriptionEdit}
               onDescriptionUpdate={onDescriptionUpdate}
             />
-            <Divider className="m-r-1" />
-            <SummaryDetail
-              data={relatedTerms}
-              hasAccess={permissions.EditAll}
-              key="related_term"
-              setShow={setShowRelatedTermsModal}
-              title="Related Terms">
-              <>
-                {relatedTerms.map((d, i) => (
-                  <Fragment key={i}>
-                    {i > 0 && <span className="tw-mr-2">,</span>}
-                    <span
-                      className="link-text-info tw-flex"
-                      data-testid={`related-term-${d?.name}`}
-                      onClick={() => {
-                        onRelatedTermClick?.(d.fullyQualifiedName);
-                      }}>
-                      <span
-                        className={classNames('tw-inline-block tw-truncate', {
-                          'tw-w-52': (d?.name as string).length > 32,
-                        })}
-                        title={d?.name as string}>
-                        {d?.name}
-                      </span>
-                    </span>
-                  </Fragment>
-                ))}
-              </>
-            </SummaryDetail>
-            <Divider className="m-r-1" />
+            <Divider className="m-r-1 m-b-sm m-t-0" />
+            <RelatedTerms
+              glossaryTerm={glossaryTerm || ({} as GlossaryTerm)}
+              permissions={permissions}
+              onGlossaryTermUpdate={handleGlossaryTermUpdate}
+              onRelatedTermClick={onRelatedTermClick}
+            />
+            <Divider className="m-r-1 m-y-sm" />
 
-            <SummaryDetail
-              hasAccess={permissions.EditAll}
-              key="synonyms"
-              setShow={setIsSynonymsEditing}
-              title="Synonyms">
-              <>
-                {isSynonymsEditing ? (
-                  <Space>
-                    <Input
-                      autoFocus
-                      data-testid="synonyms"
-                      id="synonyms"
-                      key="synonym-input"
-                      name="synonyms"
-                      placeholder="Enter comma separated term"
-                      value={synonyms}
-                      onChange={handleValidation}
-                    />
-                    <Space data-testid="buttons">
-                      <Button
-                        data-testid="cancelAssociatedTag"
-                        size="small"
-                        type="primary"
-                        onMouseDown={() => setIsSynonymsEditing(false)}>
-                        <FontAwesomeIcon
-                          className="tw-w-3.5 tw-h-3.5"
-                          icon="times"
-                        />
-                      </Button>
-                      <Button
-                        data-testid="saveAssociatedTag"
-                        size="small"
-                        type="primary"
-                        onMouseDown={handleSynonymsSave}>
-                        <FontAwesomeIcon
-                          className="tw-w-3.5 tw-h-3.5"
-                          icon="check"
-                        />
-                      </Button>
-                    </Space>
-                  </Space>
-                ) : (
-                  <>{getSynonyms(synonyms)}</>
-                )}
-              </>
-            </SummaryDetail>
-            <Divider className="m-r-1" />
+            <GlossaryTermSynonyms
+              glossaryTerm={glossaryTerm}
+              permissions={permissions}
+              onGlossaryTermUpdate={handleGlossaryTermUpdate}
+            />
+            <Divider className="m-r-1 m-y-sm" />
 
-            <SummaryDetail
-              data={references}
-              hasAccess={permissions.EditAll}
-              key="references"
-              setShow={setIsReferencesEditing}
-              title="References">
-              <>
-                {references &&
-                  references.length > 0 &&
-                  references.map((d, i) => (
-                    <Fragment key={i}>
-                      {i > 0 && <span className="tw-mr-2">,</span>}
-                      <a
-                        className="link-text-info tw-flex"
-                        data-testid="owner-link"
-                        href={d?.endpoint}
-                        rel="noopener noreferrer"
-                        target="_blank">
-                        <span
-                          className={classNames('tw-inline-block tw-truncate', {
-                            'tw-w-52': (d?.name as string).length > 32,
-                          })}
-                          title={d?.name as string}>
-                          {d?.name}
-                        </span>
-                      </a>
-                    </Fragment>
-                  ))}
-              </>
-            </SummaryDetail>
+            <GlossaryTermReferences
+              glossaryTerm={glossaryTerm}
+              permissions={permissions}
+              onGlossaryTermUpdate={handleGlossaryTermUpdate}
+            />
           </Card>
         </Col>
         <Col className="tw-px-10" flex="25%">
@@ -640,29 +433,12 @@ const GlossaryTermsV1 = ({
           )}
         </div>
 
-        {showRelatedTermsModal && (
-          <RelatedTermsModal
-            glossaryTermFQN={glossaryTerm.fullyQualifiedName}
-            header="Add Related Terms"
-            relatedTerms={relatedTerms}
-            onCancel={onRelatedTermsModalCancel}
-            onSave={handleRelatedTermsSave}
-          />
-        )}
         {showRevieweModal && (
           <ReviewerModal
             header="Add Reviewer"
             reviewer={reviewer}
             onCancel={onReviewerModalCancel}
             onSave={handleReviewerSave}
-          />
-        )}
-        {isReferencesEditing && (
-          <GlossaryReferenceModal
-            header={`Edit References for ${glossaryTerm.name}`}
-            referenceList={references}
-            onCancel={() => setIsReferencesEditing(false)}
-            onSave={handleReferencesSave}
           />
         )}
       </div>

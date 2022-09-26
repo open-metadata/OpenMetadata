@@ -12,6 +12,7 @@
  */
 
 import { Button, Divider, Form, Input, Typography } from 'antd';
+import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
@@ -40,6 +41,11 @@ const SigninPage = () => {
     onLogoutHandler,
     isAuthenticated,
   } = useAuthContext();
+
+  const enableSelfSignUp = useMemo(
+    () => authConfig?.enableSelfSignup,
+    [authConfig]
+  );
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
@@ -172,7 +178,10 @@ const SigninPage = () => {
         className="tw-flex tw-bg-body-main tw-flex-grow"
         data-testid="signin-page">
         <div className="tw-w-5/12">
-          <div className="mt-24 tw-text-center flex-center flex-col">
+          <div
+            className={classNames('mt-24 tw-text-center flex-center flex-col', {
+              'sso-container': !isAuthProviderBasic,
+            })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
             <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
               Centralized Metadata Store, Discover, <br />
@@ -218,22 +227,26 @@ const SigninPage = () => {
                   </Typography.Link>
                 </div>
 
-                <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                  <Typography.Text type="secondary">or</Typography.Text>
-                </Divider>
+                {enableSelfSignUp && (
+                  <>
+                    <Divider className="w-min-0 mt-8 mb-12 justify-center">
+                      <Typography.Text type="secondary">or</Typography.Text>
+                    </Divider>
 
-                <div className="mt-4 flex flex-center">
-                  <Typography.Text className="mr-4">
-                    New on the platform?
-                  </Typography.Text>
-                  <Button
-                    ghost
-                    data-testid="signup"
-                    type="link"
-                    onClick={onClickSignUp}>
-                    Create Account
-                  </Button>
-                </div>
+                    <div className="mt-4 flex flex-center">
+                      <Typography.Text className="mr-4">
+                        New on the platform?
+                      </Typography.Text>
+                      <Button
+                        ghost
+                        data-testid="signup"
+                        type="link"
+                        onClick={onClickSignUp}>
+                        Create Account
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="">{getSignInButton()}</div>

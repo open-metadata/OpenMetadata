@@ -251,7 +251,7 @@ const GlossaryV1 = ({
 
     updatedDetails = {
       ...selectedData,
-      displayName: displayName,
+      displayName: displayName?.trim(),
     };
 
     if (

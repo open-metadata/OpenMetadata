@@ -61,6 +61,13 @@ def _(elements, compiler, **kwargs):
     return "percentile_cont(0.5)  WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
 
 
+@compiles(MedianFn, Dialects.Hive)
+def _(elements, compiler, **kwargs):
+    """Median computation for Hive"""
+    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return "percentile(cast(%s as BIGINT), 0.5)" % col
+
+
 @compiles(MedianFn, Dialects.MySQL)
 def _(elemenst, compiler, **kwargs):
     """Median computation for MySQL currently not supported

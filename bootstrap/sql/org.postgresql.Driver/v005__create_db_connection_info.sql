@@ -327,3 +327,7 @@ SET json = jsonb_set(
 ) 
 WHERE json->>'name' = 'columnValuesToNotMatchRegex'
 AND supported_data_types IS NULL;
+
+UPDATE pipeline_service_entity
+SET json = json::jsonb #- '{connection,config,dbConnection}'
+WHERE serviceType = 'Dagster';
