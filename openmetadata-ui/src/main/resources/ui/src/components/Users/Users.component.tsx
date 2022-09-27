@@ -12,8 +12,9 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Image, Space, Switch } from 'antd';
+import { Card, Image, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -26,6 +27,8 @@ import React, {
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { changePassword } from '../../axiosAPIs/auth-API';
 import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import {
@@ -40,6 +43,8 @@ import {
   USER_PROFILE_TABS,
 } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { AuthTypes } from '../../enums/signin.enum';
+import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
@@ -56,7 +61,7 @@ import {
 } from '../../utils/ProfilerUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
@@ -69,6 +74,7 @@ import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
+import ChangePasswordForm from './ChangePasswordForm';
 import { Option, Props } from './Users.interface';
 import { userPageFilterList } from './Users.util';
 
@@ -106,10 +112,17 @@ const Users = ({
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
   const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
-
+  const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const location = useLocation();
-
   const isTaskType = isEqual(threadType, ThreadType.Task);
+
+  const { authConfig } = useAuthContext();
+
+  const { isAuthProviderBasic } = useMemo(() => {
+    return {
+      isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
+    };
+  }, [authConfig]);
 
   const handleFilterDropdownChange = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
@@ -225,6 +238,20 @@ const Users = ({
     }
   };
 
+  const handleChangePassword = async (data: ChangePasswordRequest) => {
+    try {
+      await changePassword(data);
+      showSuccessToast(
+        jsonData['api-success-messages']['update-password-success']
+      );
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['unexpected-server-response']
+      );
+    }
+  };
+
   useEffect(() => {
     setActiveTab(getUserCurrentTab(tab));
   }, [tab]);
@@ -299,7 +326,13 @@ const Users = ({
   const getDescriptionComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between tw-px-3">
+        <div
+          className={classNames(
+            'tw--ml-5 tw-flex tw-items-center tw-justify-between tw-px-3',
+            {
+              'm-b-md': !isAuthProviderBasic || !isLoggedinUser,
+            }
+          )}>
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
@@ -322,6 +355,24 @@ const Users = ({
         </div>
       );
     }
+  };
+
+  const getChangePasswordComponent = () => {
+    return (
+      <div className="m-b-sm tw-px-3">
+        <Typography.Text
+          className="tw-text-primary tw-text-xs tw-cursor-pointer"
+          onClick={() => setIsChangePassword(true)}>
+          Change Password
+        </Typography.Text>
+
+        <ChangePasswordForm
+          visible={isChangePassword}
+          onCancel={() => setIsChangePassword(false)}
+          onSave={(data) => handleChangePassword(data)}
+        />
+      </div>
+    );
   };
 
   const getTeamsComponent = () => {
@@ -663,6 +714,9 @@ const Users = ({
             {getDisplayNameComponent()}
             <p className="tw-mt-2 tw-mx-3">{userData.email}</p>
             {getDescriptionComponent()}
+            {isAuthProviderBasic &&
+              isLoggedinUser &&
+              getChangePasswordComponent()}
           </div>
         </Card>
         {getTeamsComponent()}
