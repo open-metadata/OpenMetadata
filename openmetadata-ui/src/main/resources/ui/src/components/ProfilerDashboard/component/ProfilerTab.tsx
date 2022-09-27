@@ -134,9 +134,9 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       proportionMetricData.push({
         name: x,
         timestamp: col.timestamp || 0,
-        distinctProportion: col?.distinctProportion || 0,
-        nullProportion: col?.nullProportion || 0,
-        uniqueProportion: col?.uniqueProportion || 0,
+        distinctProportion: Math.round((col?.distinctProportion || 0) * 100),
+        nullProportion: Math.round((col?.nullProportion || 0) * 100),
+        uniqueProportion: Math.round((col?.uniqueProportion || 0) * 100),
       });
     });
 

@@ -69,6 +69,7 @@ class TestSecretsManagerFactory(TestCase):
         secret_manager_providers = [
             secret_manager_provider
             for secret_manager_provider in SecretsManagerProvider
+            if secret_manager_provider is not SecretsManagerProvider.in_memory
         ]
         for secret_manager_provider in secret_manager_providers:
             open_metadata_connection: OpenMetadataConnection = OpenMetadataConnection(

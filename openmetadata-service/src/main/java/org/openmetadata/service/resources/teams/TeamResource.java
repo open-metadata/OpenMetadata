@@ -52,6 +52,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -104,8 +105,46 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     }
   }
 
+  public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
+    @SuppressWarnings("unused") /* Required for tests */
+    TeamHierarchyList() {}
+  }
+
   static final String FIELDS =
       "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount";
+
+  @GET
+  @Path("/hierarchy")
+  @Valid
+  @Operation(
+      operationId = "listTeamsHierarchy",
+      summary = "List teams with hierarchy",
+      tags = "teams",
+      description = "Get a list of teams with hierarchy.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of teams with hierarchy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TeamList.class)))
+      })
+  public ResultList<TeamHierarchy> listHierarchy(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Limit the number of teams returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10000")
+          @Min(1000)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Filter the results by whether the team can be joined by any user or not",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("isJoinable")
+          Boolean isJoinable)
+      throws IOException {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    return new ResultList<>(dao.listHierarchy(filter, limitParam, isJoinable));
+  }
 
   @GET
   @Valid
