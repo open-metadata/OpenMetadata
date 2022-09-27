@@ -26,6 +26,22 @@
         }
       },
       "additionalProperties": false
+    },
+    "runMode": {
+      "description": "This schema publisher run modes.",
+      "type": "string",
+      "enum": [
+        "stream",
+        "batch"
+      ]
+    },
+    "publisherType": {
+      "description": "This schema event Publisher Types",
+      "type": "string",
+      "enum": [
+        "elasticSearch",
+        "kafka"
+      ]
     }
   },
   "properties": {
@@ -38,20 +54,10 @@
       "type": "string"
     },
     "publisherType": {
-      "description": "This schema event Publisher Types",
-      "type": "string",
-      "enum": [
-        "elasticSearch",
-        "kafka"
-      ]
+      "$ref": "#/definitions/publisherType"
     },
     "runMode": {
-      "description": "This schema publisher run modes.",
-      "type": "string",
-      "enum": [
-        "stream",
-        "batch"
-      ]
+      "$ref": "#/definitions/runMode"
     },
     "timestamp": {
       "$ref": "../type/basic.json#/definitions/timestamp"
@@ -89,6 +95,14 @@
     },
     "stats": {
       "$ref": "#/definitions/stats"
+    },
+    "entities": {
+      "description": "List of Entities to Reindex",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     }
   },
   "required": ["name", "publisherType","runMode", "timestamp", "status"],
