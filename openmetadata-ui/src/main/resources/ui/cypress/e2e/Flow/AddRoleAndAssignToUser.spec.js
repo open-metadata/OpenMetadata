@@ -15,6 +15,8 @@ import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } f
 import { LOGIN } from "../../constants/constants";
 
 const roleName = `Role-test-${uuid()}`;
+const userName = `Usercttest${uuid()}`;
+const userEmail = `${userName}@gmail.com`;
 
 describe("Test Add role and assign it to the user", () => {
   beforeEach(() => {
@@ -78,13 +80,35 @@ describe("Test Add role and assign it to the user", () => {
       .should('be.visible')
       .should('contain', "description");
     
-    cy.get('[data-testid="avatar"]').should("be.visible").click()
-    cy.get('[data-testid="user-name"]').should("be.visible").click()
+    // Create user and assign newly created role to the user
+    cy.get('[data-menu-id*="users"]').should('be.visible').click();
 
-    cy.reload()
+    cy.get('.ant-btn').contains('Add User').click();
 
-    cy.get('[data-testid="edit-roles"]').should("be.visible").scrollIntoView().click()
-    cy.get('[id="react-select-3-input"]').should("be.visible").click()
+    cy.get('[data-testid="email"]')
+    .scrollIntoView()
+    .should('exist')
+    .should('be.visible')
+      .type(userEmail);
+    
+    cy.get('[data-testid="displayName"]')
+    .should('exist')
+    .should('be.visible')
+      .type(userName);
+    
+    cy.get(descriptionBox)
+    .should('exist')
+    .should('be.visible')
+    .type('Adding user');
+    
+    cy.get(`[id="menu-button-Roles"]`).should("exist").should("be.visible").click()
+
+    cy.get(`[data-testid="${roleName}"]`).should("be.visible").click()
+
+    cy.get('body').click()
+    
+    cy.get('[data-testid="save-user"]').scrollIntoView().click();
+
 
   })
 })
