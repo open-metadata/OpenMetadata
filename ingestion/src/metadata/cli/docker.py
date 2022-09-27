@@ -11,10 +11,10 @@
 """
 Docker functions for CLI
 """
-import os
-import shutil
 import json
+import os
 import pathlib
+import shutil
 import sys
 import tempfile
 import time
@@ -48,6 +48,8 @@ BACKEND_DATABASES = {
     "mysql": DEFAULT_COMPOSE_FILE,
     "postgres": "docker-compose-postgres.yml",
 }
+
+
 def docker_volume():
     # create a main directory
     if not os.path.exists(MAIN_DIR):
@@ -57,10 +59,10 @@ def docker_volume():
         dags = "ingestion-volume-dags"
         tmp = "ingestion-volume-tmp"
         om_server = "om-server"
-        path_to_join = [db,dag_airflow,dags,tmp,om_server]
+        path_to_join = [db, dag_airflow, dags, tmp, om_server]
         final_path = []
         for path in path_to_join:
-            temp_path = os.path.join(MAIN_DIR,path)
+            temp_path = os.path.join(MAIN_DIR, path)
             final_path.append(temp_path)
         for path in final_path:
             os.makedirs(path, exist_ok=True)
