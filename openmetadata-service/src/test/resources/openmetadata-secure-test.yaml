@@ -114,7 +114,7 @@ migrationConfiguration:
 #  port: 0
 
 secretsManagerConfiguration:
-  secretsManager: noop
+  secretsManager: in-memory
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -140,7 +140,7 @@ authorizerConfiguration:
   enableSecureSocketConnection: false
 
 authenticationConfiguration:
-  provider: "openID"
+  provider: "basic"
   providerName: ""
   publicKeyUrls:
     - "https://www.googleapis.com/oauth2/v3/certs"
@@ -168,7 +168,7 @@ airflowConfiguration:
   username: "admin"
   password: "admin"
   metadataApiEndpoint: "http://localhost:8585/api"
-  authProvider: "no-auth"
+  authProvider: "openmetadata"
 
 email:
   enableSmtpServer : "false"

@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/type/usagerequest
 
 # Usage Request
 
-*This schema defines type of table usage request used to publish the usage count on a perticular date*
+*This schema defines type of table usage request used to publish the usage count on a particular date*
 
 ## Properties
 

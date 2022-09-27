@@ -14,9 +14,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isNil } from 'lodash';
-import moment from 'moment';
 import React, {
   FC,
   Fragment,
@@ -25,63 +22,59 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import Select, { SingleValue } from 'react-select';
-import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
+import {
+  getAuthMechanismForBotUser,
+  updateUser,
+} from '../../axiosAPIs/userAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
-import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
+import {
+  AuthenticationMechanism,
+  AuthType,
+  User,
+} from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
-import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
-import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import Description from '../common/description/Description';
-import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../Users/Users.interface';
+import AuthMechanism from './AuthMechanism';
+import AuthMechanismForm from './AuthMechanismForm';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botsData: User;
+  botPermission: OperationPermission;
   updateBotsDetails: (data: UserDetails) => Promise<void>;
   revokeTokenHandler: () => void;
-}
-
-interface Option {
-  value: string;
-  label: string;
 }
 
 const BotDetails: FC<BotsDetailProp> = ({
   botsData,
   updateBotsDetails,
   revokeTokenHandler,
+  botPermission,
 }) => {
-  const { getEntityPermission } = usePermissionProvider();
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
-  const [botsToken, setBotsToken] = useState<string>('');
-  const [botsTokenExpiry, setBotsTokenExpiry] = useState<string>();
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
-  const [isRegeneratingToken, setIsRegeneratingToken] =
+
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+
+  const [authenticationMechanism, setAuthenticationMechanism] =
+    useState<AuthenticationMechanism>();
+
+  const [isAuthMechanismEdit, setIsAuthMechanismEdit] =
     useState<boolean>(false);
-  const [generateToken, setGenerateToken] = useState<boolean>(false);
-  const [selectedExpiry, setSelectedExpiry] = useState('7');
-  const [botPermission, setBotPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const editAllPermission = useMemo(
     () => botPermission.EditAll,
@@ -97,89 +90,69 @@ const BotDetails: FC<BotsDetailProp> = ({
     [botPermission]
   );
 
-  const fetchBotPermission = async () => {
+  const fetchAuthMechanismForBot = async () => {
     try {
-      const response = await getEntityPermission(
-        ResourceEntity.BOT,
-        botsData.id
-      );
-      setBotPermission(response);
+      const response = await getAuthMechanismForBotUser(botsData.id);
+      setAuthenticationMechanism(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const getJWTTokenExpiryOptions = () => {
-    return Object.keys(JWTTokenExpiry).map((expiry) => {
-      const expiryValue = JWTTokenExpiry[expiry as keyof typeof JWTTokenExpiry];
-
-      return { label: `${expiryValue} days`, value: expiryValue };
-    });
-  };
-
-  const getExpiryDateText = () => {
-    if (selectedExpiry === JWTTokenExpiry.Unlimited) {
-      return <p className="tw-mt-2">The token will never expire!</p>;
-    } else {
-      return (
-        <p className="tw-mt-2">
-          The token will expire on{' '}
-          {moment().add(selectedExpiry, 'days').format('ddd Do MMMM, YYYY')}
-        </p>
-      );
-    }
-  };
-
-  const handleOnChange = (
-    value: SingleValue<unknown>,
-    { action }: { action: string }
+  const handleAuthMechanismUpdate = async (
+    updatedAuthMechanism: AuthenticationMechanism
   ) => {
-    if (isNil(value) || action === 'clear') {
-      setSelectedExpiry('');
-    } else {
-      const selectedValue = value as Option;
-      setSelectedExpiry(selectedValue.value);
+    setIsUpdating(true);
+    try {
+      const {
+        isAdmin,
+        teams,
+        timezone,
+        name,
+        description,
+        displayName,
+        profile,
+        email,
+        isBot,
+        roles,
+      } = botsData;
+      const response = await updateUser({
+        isAdmin,
+        teams,
+        timezone,
+        name,
+        description,
+        displayName,
+        profile,
+        email,
+        isBot,
+        roles,
+        authenticationMechanism: {
+          ...botsData.authenticationMechanism,
+          authType: updatedAuthMechanism.authType,
+          config:
+            updatedAuthMechanism.authType === AuthType.Jwt
+              ? {
+                  JWTTokenExpiry: updatedAuthMechanism.config?.JWTTokenExpiry,
+                }
+              : {
+                  ssoServiceType: updatedAuthMechanism.config?.ssoServiceType,
+                  authConfig: updatedAuthMechanism.config?.authConfig,
+                },
+        },
+      } as User);
+      if (response.data) {
+        fetchAuthMechanismForBot();
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+      setIsAuthMechanismEdit(false);
     }
   };
 
-  const fetchBotsToken = () => {
-    getUserToken(botsData.id)
-      .then((res) => {
-        const { JWTToken, JWTTokenExpiresAt } = res;
-        setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
-  };
-
-  const generateBotsToken = (data: string) => {
-    generateUserToken(botsData.id, data)
-      .then((res) => {
-        const { JWTToken, JWTTokenExpiresAt } = res;
-        setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      })
-      .finally(() => {
-        setGenerateToken(false);
-      });
-  };
-
-  const handleTokenGeneration = () => {
-    if (botsToken) {
-      setIsRegeneratingToken(true);
-    } else {
-      setGenerateToken(true);
-    }
-  };
-
-  const handleGenerate = () => {
-    generateBotsToken(selectedExpiry);
-  };
+  const handleAuthMechanismEdit = () => setIsAuthMechanismEdit(true);
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -308,186 +281,29 @@ const BotDetails: FC<BotsDetailProp> = ({
     );
   };
 
-  const fetchRightPanel = () => {
-    return (
-      <Card
-        className="ant-card-feed"
-        style={{
-          ...leftPanelAntCardStyle,
-          marginTop: '16px',
-        }}>
-        <div data-testid="right-panel">
-          <div className="tw-flex tw-flex-col">
-            <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
-            <p className="tw-mb-2">
-              Anyone who has your JWT Token will be able to send REST API
-              requests to the OpenMetadata Server. Do not expose the JWT Token
-              in your application code. Do not share it on GitHub or anywhere
-              else online.
-            </p>
-          </div>
+  const rightPanel = (
+    <Card
+      className="ant-card-feed"
+      style={{
+        ...leftPanelAntCardStyle,
+        marginTop: '16px',
+      }}>
+      <div data-testid="right-panel">
+        <div className="tw-flex tw-flex-col">
+          <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
+          <p className="tw-mb-2">
+            Anyone who has your JWT Token will be able to send REST API requests
+            to the OpenMetadata Server. Do not expose the JWT Token in your
+            application code. Do not share it on GitHub or anywhere else online.
+          </p>
         </div>
-      </Card>
-    );
-  };
-
-  const getCopyComponent = () => {
-    if (botsToken) {
-      return <CopyToClipboardButton copyText={botsToken} />;
-    } else {
-      return null;
-    }
-  };
-
-  const getBotsTokenExpiryDate = () => {
-    if (botsTokenExpiry) {
-      // get the current date timestamp
-      const currentTimeStamp = Date.now();
-
-      const isTokenExpired = currentTimeStamp >= Number(botsTokenExpiry);
-
-      // get the token expiry date
-      const tokenExpiryDate =
-        moment(botsTokenExpiry).format('ddd Do MMMM, YYYY');
-
-      return (
-        <p
-          className="tw-text-grey-muted tw-mt-2 tw-italic"
-          data-testid="token-expiry">
-          {isTokenExpired
-            ? `Expired on ${tokenExpiryDate}`
-            : `Expires on ${tokenExpiryDate}`}
-          .
-        </p>
-      );
-    } else {
-      return (
-        <p
-          className="tw-text-grey-muted tw-mt-2 tw-italic"
-          data-testid="token-expiry">
-          <SVGIcons alt="warning" icon="error" />
-          <span className="tw-ml-1 tw-align-middle">
-            This token has no expiration date.
-          </span>
-        </p>
-      );
-    }
-  };
-
-  const centerLayout = () => {
-    if (generateToken) {
-      return (
-        <div className="tw-mt-4" data-testid="generate-token-form">
-          <div data-testid="expiry-dropdown">
-            <label htmlFor="expiration">{requiredField('Expiration')}</label>
-            <Select
-              defaultValue={{ label: '7 days', value: '7' }}
-              id="expiration"
-              isSearchable={false}
-              options={getJWTTokenExpiryOptions()}
-              styles={reactSingleSelectCustomStyle}
-              onChange={handleOnChange}
-            />
-            {getExpiryDateText()}
-          </div>
-          <div className="tw-flex tw-justify-end">
-            <Button
-              className={classNames('tw-mr-2')}
-              data-testid="discard-button"
-              size="regular"
-              theme="primary"
-              variant="text"
-              onClick={() => setGenerateToken(false)}>
-              Cancel
-            </Button>
-            <Button
-              data-testid="generate-button"
-              size="regular"
-              theme="primary"
-              type="submit"
-              variant="contained"
-              onClick={handleGenerate}>
-              Generate
-            </Button>
-          </div>
-        </div>
-      );
-    } else {
-      if (botsToken) {
-        return (
-          <Fragment>
-            <div className="tw-flex tw-justify-between tw-items-center tw-mt-4">
-              <input
-                disabled
-                className="tw-form-inputs tw-p-1.5"
-                data-testid="token"
-                placeholder="Generate new token..."
-                type="password"
-                value={botsToken}
-              />
-              {getCopyComponent()}
-            </div>
-            {getBotsTokenExpiryDate()}
-          </Fragment>
-        );
-      } else {
-        return (
-          <div
-            className="tw-no-description tw-text-sm tw-mt-4"
-            data-testid="no-token">
-            No token available
-          </div>
-        );
-      }
-    }
-  };
-
-  const getCenterLayout = () => {
-    return (
-      <div
-        className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4 tw-mt-4"
-        data-testid="center-panel">
-        <div className="tw-flex tw-justify-between tw-items-center">
-          <h6 className="tw-mb-2 tw-self-center">
-            {generateToken ? 'Generate JWT token' : 'JWT Token'}
-          </h6>
-          {!generateToken && editAllPermission ? (
-            <div className="tw-flex">
-              <Button
-                data-testid="generate-token"
-                size="small"
-                theme="primary"
-                variant="outlined"
-                onClick={() => handleTokenGeneration()}>
-                {botsToken ? 'Re-generate token' : 'Generate new token'}
-              </Button>
-              {botsToken ? (
-                <Button
-                  className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
-                  data-testid="revoke-button"
-                  size="custom"
-                  variant="outlined"
-                  onClick={() => setIsRevokingToken(true)}>
-                  Revoke token
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <hr className="tw-mt-2" />
-        <p className="tw-mt-4">
-          Token you have generated that can be used to access the OpenMetadata
-          API.
-        </p>
-        {centerLayout()}
       </div>
-    );
-  };
+    </Card>
+  );
 
   useEffect(() => {
     if (botsData.id) {
-      fetchBotsToken();
-      fetchBotPermission();
+      fetchAuthMechanismForBot();
     }
   }, [botsData]);
 
@@ -510,8 +326,32 @@ const BotDetails: FC<BotsDetailProp> = ({
         />
       }
       leftPanel={fetchLeftPanel()}
-      rightPanel={fetchRightPanel()}>
-      {getCenterLayout()}
+      rightPanel={rightPanel}>
+      {authenticationMechanism && (
+        <Card
+          data-testid="center-panel"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '16px',
+          }}>
+          {isAuthMechanismEdit ? (
+            <AuthMechanismForm
+              authenticationMechanism={authenticationMechanism}
+              isUpdating={isUpdating}
+              onCancel={() => setIsAuthMechanismEdit(false)}
+              onSave={handleAuthMechanismUpdate}
+            />
+          ) : (
+            <AuthMechanism
+              authenticationMechanism={authenticationMechanism}
+              hasPermission={editAllPermission}
+              onEdit={handleAuthMechanismEdit}
+              onTokenRevoke={() => setIsRevokingToken(true)}
+            />
+          )}
+        </Card>
+      )}
+
       {isRevokingToken ? (
         <ConfirmationModal
           bodyText="Are you sure you want to revoke access for JWT token?"
@@ -522,19 +362,7 @@ const BotDetails: FC<BotsDetailProp> = ({
           onConfirm={() => {
             revokeTokenHandler();
             setIsRevokingToken(false);
-          }}
-        />
-      ) : null}
-      {isRegeneratingToken ? (
-        <ConfirmationModal
-          bodyText="Generating a new token will revoke the existing JWT token. Are you sure you want to proceed?"
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Are you sure?"
-          onCancel={() => setIsRegeneratingToken(false)}
-          onConfirm={() => {
-            setIsRegeneratingToken(false);
-            setGenerateToken(true);
+            handleAuthMechanismEdit();
           }}
         />
       ) : null}

@@ -33,21 +33,25 @@ import {
   DBTFormCommonProps,
   ErrorDbtS3,
 } from './DBTConfigForm.interface';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
+  handleUpdateDescriptions: (value: boolean) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
   dbtSecurityConfig,
   dbtPrefixConfig,
+  dbtUpdateDescriptions = false,
   okText,
   cancelText,
   onCancel,
   onSubmit,
   handleSecurityConfigChange,
   handlePrefixConfigChange,
+  handleUpdateDescriptions,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
     const updatedCreds: SCredentials = {
@@ -80,7 +84,11 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtSecurityConfig, dbtPrefixConfig };
+    const submitData = {
+      dbtSecurityConfig,
+      dbtPrefixConfig,
+      dbtUpdateDescriptions,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -221,6 +229,14 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
         />
       </Field>
+      {getSeparator('')}
+
+      <SwitchField
+        dbtUpdateDescriptions={dbtUpdateDescriptions}
+        handleUpdateDescriptions={handleUpdateDescriptions}
+        id="s3-update-description"
+      />
+
       {getSeparator('')}
 
       <Field className="tw-flex tw-justify-end">

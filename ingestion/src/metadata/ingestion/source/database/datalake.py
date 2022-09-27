@@ -24,6 +24,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
+    Table,
     TableData,
     TableType,
 )
@@ -49,6 +50,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.gcs_utils import (
@@ -176,11 +178,19 @@ class DatalakeSource(DatabaseServiceSource):
             if isinstance(self.service_connection.configSource, GCSConfig):
                 bucket = self.client.get_bucket(bucket_name)
                 for key in bucket.list_blobs(prefix=prefix):
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=key.name,
+                    )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, key.name
+                        self.config.sourceConfig.config.tableFilterPattern, table_fqn
                     ):
                         self.status.filter(
-                            "{}".format(key.name),
+                            table_fqn,
                             "Object pattern not allowed",
                         )
                         continue
@@ -196,11 +206,20 @@ class DatalakeSource(DatabaseServiceSource):
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
                 for key in self._list_s3_objects(**kwargs):
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=key["Key"],
+                    )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, key["Key"]
+                        self.config.sourceConfig.config.tableFilterPattern, table_fqn
                     ):
+
                         self.status.filter(
-                            "{}".format(key["Key"]),
+                            table_fqn,
                             "Object pattern not allowed",
                         )
                         continue

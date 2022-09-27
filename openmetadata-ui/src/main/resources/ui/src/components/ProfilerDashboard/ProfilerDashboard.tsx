@@ -49,6 +49,7 @@ import {
   getProfilerDashboardWithFqnPath,
 } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   generateEntityLink,
   getTagsWithoutTier,
@@ -88,6 +89,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     dashboardType: ProfilerDashboardType;
     tab: ProfilerDashboardTab;
   }>();
+  const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -155,7 +157,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const breadcrumb = useMemo(() => {
     const serviceName = getEntityName(table.service);
     const fqn = table.fullyQualifiedName || '';
-    const columnName = getPartialNameFromTableFQN(entityTypeFQN, [
+    const columnName = getPartialNameFromTableFQN(decodedEntityFQN, [
       FqnPart.NestedColumn,
     ]);
 
@@ -337,7 +339,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         tablePermissions.ViewBasic ||
         tablePermissions.ViewTests)
     ) {
-      fetchTestCases(generateEntityLink(entityTypeFQN, true));
+      fetchTestCases(generateEntityLink(decodedEntityFQN, true));
     } else if (
       ProfilerDashboardTab.PROFILER === value &&
       (tablePermissions.ViewAll ||
@@ -392,7 +394,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   useEffect(() => {
     if (table) {
       if (isColumnView) {
-        const columnName = getNameFromFQN(entityTypeFQN);
+        const columnName = getNameFromFQN(decodedEntityFQN);
         const selectedColumn = table.columns.find(
           (col) => col.name === columnName
         );
