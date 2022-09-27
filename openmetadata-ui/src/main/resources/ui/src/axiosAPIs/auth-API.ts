@@ -18,7 +18,7 @@ import { PasswordResetRequest } from '../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../generated/auth/registrationRequest';
 import { TokenRefreshRequest } from '../generated/auth/tokenRefreshRequest';
 
-interface AccessTokenResponse {
+export interface AccessTokenResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
