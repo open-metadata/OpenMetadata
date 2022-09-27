@@ -47,6 +47,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   visible,
   onVisibilityChange,
 }) => {
+  const [form] = Form.useForm();
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
   const [profileSample, setProfileSample] = useState<number>(100);
@@ -94,6 +95,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
         return col;
       });
+      form.setFieldsValue({ includeColumns: includeColValue });
       setIncludeCol(includeColValue);
     }
   };
@@ -261,6 +263,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <Col span={24}>
           <Form
             autoComplete="off"
+            form={form}
             initialValues={{
               includeColumns: includeCol,
             }}
