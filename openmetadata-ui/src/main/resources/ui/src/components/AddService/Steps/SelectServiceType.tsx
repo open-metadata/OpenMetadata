@@ -117,7 +117,7 @@ const SelectServiceType = ({
                     )}
                   </div>
                 </div>
-                <p className="break-word text-center">{type}</p>
+                <p className="break-word text-center">{startCase(type)}</p>
               </div>
             ))}
           </div>

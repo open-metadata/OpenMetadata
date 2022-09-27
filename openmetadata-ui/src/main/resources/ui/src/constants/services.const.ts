@@ -126,12 +126,31 @@ export const PIPELINE_DEFAULT = pipelineDefault;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const excludedService = [MlModelServiceType.Sklearn];
+
+export const customSorter = (a: string, b: string): number => {
+  if (a.includes('Custom') || b.includes('Custom')) {
+    return a.includes('Custom') ? 1 : -1;
+  } else {
+    return a.localeCompare(b);
+  }
+};
+
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: Object.values(DatabaseServiceType),
-  messagingServices: Object.values(MessagingServiceType),
-  dashboardServices: Object.values(DashboardServiceType),
-  pipelineServices: Object.values(PipelineServiceType),
-  mlmodelServices: Object.values(MlModelServiceType),
+  databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
+    customSorter
+  ),
+  messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
+    customSorter
+  ),
+  dashboardServices: (Object.values(DashboardServiceType) as string[]).sort(
+    customSorter
+  ),
+  pipelineServices: (Object.values(PipelineServiceType) as string[]).sort(
+    customSorter
+  ),
+  mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
+    customSorter
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
