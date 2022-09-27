@@ -511,11 +511,3 @@ class DBTMixin:
                 entity_link = f"<#E::table::" f"{table_fqn}>"
             entity_link_list.append(entity_link)
         return entity_link_list
-
-    def unix_time(self, dt):
-        epoch = datetime.utcfromtimestamp(0)
-        delta = dt - epoch
-        return delta.total_seconds()
-
-    def unix_time_millis(self, dt):
-        return int(self.unix_time(dt) * 1000)
