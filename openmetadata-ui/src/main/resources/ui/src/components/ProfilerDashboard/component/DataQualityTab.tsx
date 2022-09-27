@@ -26,6 +26,7 @@ import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getEntityFqnFromEntityLink,
@@ -126,15 +127,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           if (isColumn) {
             const name = getNameFromFQN(
-              getEntityFqnFromEntityLink(entityLink, isColumn)
+              getDecodedFqn(
+                getEntityFqnFromEntityLink(entityLink, isColumn),
+                true
+              )
             );
 
             return name;
           }
 
-          return isColumn
-            ? getNameFromFQN(getEntityFqnFromEntityLink(entityLink, isColumn))
-            : '--';
+          return '--';
         },
       },
       {

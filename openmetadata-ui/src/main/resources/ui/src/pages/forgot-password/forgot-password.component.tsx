@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
@@ -35,11 +35,11 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="h-full tw-py-36">
+    <div className="h-full tw-py-24 forgot-password-container ">
       <Card
         bodyStyle={{ padding: '48px' }}
-        className="m-auto p-x-lg"
-        style={{ maxWidth: '450px' }}>
+        className="m-auto"
+        style={{ maxWidth: '430px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
@@ -78,9 +78,9 @@ const ForgotPassword = () => {
           {showResetLinkSentAlert && (
             <Col span={24}>
               <div
-                className="tw-flex tw-flex-col tw-px-1"
+                className="tw-flex tw-flex-col "
                 data-testid="success-screen-container">
-                <div className="tw-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
+                <div className="tw-flex tw-border tw-border-main tw-rounded tw-p-3 success-alert">
                   <div className="tw-mr-2">
                     <SVGIcons
                       alt="success"
@@ -90,15 +90,18 @@ const ForgotPassword = () => {
                     />
                   </div>
                   <p data-testid="success-line">
-                    <span>
-                      <span>Reset link has been sent to your email</span>
-                    </span>
+                    <span>Reset link has been sent to your email</span>
                   </p>
                 </div>
               </div>
             </Col>
           )}
-          <Col className="m-t-md" span={24}>
+          <Divider className="w-min-0 mt-8 mb-12 justify-center align-start p-x-xs">
+            <Typography.Text className="text-sm" type="secondary">
+              or
+            </Typography.Text>
+          </Divider>
+          <Col span={24}>
             <Button
               ghost
               className="w-full"

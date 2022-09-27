@@ -711,6 +711,10 @@ export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
 };
 
+export const replaceAllSpacialCharWith_ = (text: string) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+};
+
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
@@ -794,7 +798,7 @@ export const showPagination = (paging: Paging) => {
 };
 
 export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat('en-IN', { maximumSignificantDigits: 3 }).format(
+  return new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(
     number
   );
 };

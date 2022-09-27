@@ -23,41 +23,27 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.AUTH_0;
-import static org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.AZURE;
-import static org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC;
-import static org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.GOOGLE;
-import static org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.NO_AUTH;
-import static org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.OKTA;
-import static org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.OPENMETADATA;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.api.configuration.airflow.AuthConfiguration;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
-import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.fixtures.ConfigurationFixtures;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class ExternalSecretsManagerTest {
@@ -92,58 +78,6 @@ public abstract class ExternalSecretsManagerTest {
   void testDecryptDatabaseServiceConnectionConfig() {
     mockClientGetValue(EXPECTED_CONNECTION_JSON);
     testEncryptDecryptServiceConnection(DECRYPT);
-  }
-
-  @Test
-  void testDecryptServerConnection() {
-    AirflowConfiguration airflowConfiguration = ConfigurationFixtures.buildAirflowConfig(GOOGLE);
-    airflowConfiguration.setAuthConfig(ConfigurationFixtures.buildGoogleAuthConfig());
-    OpenMetadataServerConnection expectedServerConnection =
-        new OpenMetadataServerConnection()
-            .withAuthProvider(GOOGLE)
-            .withHostPort(airflowConfiguration.getMetadataApiEndpoint())
-            .withSecurityConfig(null);
-    OpenMetadataServerConnection actualServerConnection = secretsManager.decryptServerConnection(airflowConfiguration);
-    assertEquals(expectedServerConnection, actualServerConnection);
-  }
-
-  @Test
-  void testDecryptServerConnectionWithSSL() {
-    AirflowConfiguration airflowConfiguration = ConfigurationFixtures.buildAirflowSSLConfig(NO_AUTH);
-    OpenMetadataServerConnection expectedServerConnection =
-        new OpenMetadataServerConnection()
-            .withAuthProvider(NO_AUTH)
-            .withHostPort(airflowConfiguration.getMetadataApiEndpoint())
-            .withSecurityConfig(null)
-            .withVerifySSL(OpenMetadataServerConnection.VerifySSL.VALIDATE)
-            .withSslConfig(new ValidateSSLClientConfig().withCertificatePath("/public.cert"));
-    OpenMetadataServerConnection actualServerConnection = secretsManager.decryptServerConnection(airflowConfiguration);
-    assertEquals(expectedServerConnection, actualServerConnection);
-  }
-
-  @ParameterizedTest
-  @MethodSource("testEncryptAirflowConnectionParams")
-  void testEncryptAirflowConnection(
-      Object expectedAuthProviderConfig,
-      OpenMetadataServerConnection.AuthProvider authProvider,
-      AuthConfiguration authConfig)
-      throws JsonProcessingException {
-    String expectedSecretId = String.format("/openmetadata/%s/%s", AUTH_PROVIDER_SECRET_ID_PREFIX, authProvider);
-    AirflowConfiguration airflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);
-    airflowConfiguration.setAuthConfig(authConfig);
-    AirflowConfiguration expectedAirflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);
-
-    AirflowConfiguration actualAirflowConfiguration = secretsManager.encryptAirflowConnection(airflowConfiguration);
-
-    assertEquals(expectedAirflowConfiguration, actualAirflowConfiguration);
-    verifyClientCalls(expectedAuthProviderConfig, expectedSecretId);
-  }
-
-  @Test
-  void testDecryptAuthProviderConfig() {
-    assertNull(
-        secretsManager.decryptAuthProviderConfig(
-            mock(OpenMetadataServerConnection.AuthProvider.class), mock(AuthConfiguration.class)));
   }
 
   @Test
@@ -216,27 +150,6 @@ public abstract class ExternalSecretsManagerTest {
       assertEquals(mysqlConnection, actualConfig);
       assertNotSame(mysqlConnection, actualConfig);
     }
-  }
-
-  private static Stream<Arguments> testEncryptAirflowConnectionParams() {
-    return Stream.of(
-        Arguments.of(null, NO_AUTH, null),
-        Arguments.of(
-            ConfigurationFixtures.buildAuth0SSOClientConfig(), AUTH_0, ConfigurationFixtures.buildAuth0Config()),
-        Arguments.of(
-            ConfigurationFixtures.buildGoogleSSOClientConfig(), GOOGLE, ConfigurationFixtures.buildGoogleAuthConfig()),
-        Arguments.of(
-            ConfigurationFixtures.buildOktaSSOClientConfig(), OKTA, ConfigurationFixtures.buildOktaAuthConfig()),
-        Arguments.of(
-            ConfigurationFixtures.buildOpenMetadataJWTClientConfig(),
-            OPENMETADATA,
-            ConfigurationFixtures.buildOpenmetadataAuthConfig()),
-        Arguments.of(
-            ConfigurationFixtures.buildCustomOIDCSSOClientConfig(),
-            CUSTOM_OIDC,
-            ConfigurationFixtures.buildCustomOIDCConfig()),
-        Arguments.of(
-            ConfigurationFixtures.buildAzureClientConfig(), AZURE, ConfigurationFixtures.buildAzureAuthConfig()));
   }
 
   abstract SecretsManagerProvider expectedSecretManagerProvider();

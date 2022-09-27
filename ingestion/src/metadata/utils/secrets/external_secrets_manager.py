@@ -25,11 +25,15 @@ from metadata.generated.schema.entity.services.connections.metadata.secretsManag
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
+from metadata.generated.schema.entity.teams.authN.jwtAuth import JWTAuthMechanism
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
-    AUTH_PROVIDER_SECRET_PREFIX,
+    BOT_PREFIX,
     DBT_SOURCE_CONFIG_SECRET_PREFIX,
     TEST_CONNECTION_TEMP_SECRET_PREFIX,
     SecretsManager,
@@ -84,19 +88,26 @@ class ExternalSecretsManager(SecretsManager, ABC):
         """
         Add the auth provider security config from the AWS client store to a given OpenMetadata connection object.
         :param config: OpenMetadataConnection object
+        :param bot_name: Bot name to retrieve credentials from
         """
         logger.debug(
             f"Adding auth provider security config using {self.provider} secrets' manager"
         )
         if config.authProvider != AuthProvider.no_auth:
-            secret_id = self.build_secret_id(
-                AUTH_PROVIDER_SECRET_PREFIX, config.authProvider.value.lower()
-            )
+            secret_id = self.build_secret_id(BOT_PREFIX, config.workflowBot)
             auth_config_json = self.get_string_value(secret_id)
             try:
+                config_object = json.loads(auth_config_json)
+                if config.authProvider == AuthProvider.openmetadata:
+                    auth_mechanism: JWTAuthMechanism = JWTAuthMechanism.parse_obj(
+                        config_object
+                    )
+                    config_object = OpenMetadataJWTClientConfig(
+                        jwtToken=auth_mechanism.JWTToken
+                    ).dict()
                 config.securityConfig = AUTH_PROVIDER_MAPPING.get(
                     config.authProvider
-                ).parse_obj(json.loads(auth_config_json))
+                ).parse_obj(config_object)
             except KeyError as err:
                 msg = f"No client implemented for auth provider [{config.authProvider}]: {err}"
                 raise NotImplementedError(msg)

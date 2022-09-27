@@ -129,6 +129,7 @@ const BotDetailsPage = () => {
     } else {
       return (
         <BotDetails
+          botPermission={botPermission}
           botsData={botsData}
           revokeTokenHandler={revokeBotsToken}
           updateBotsDetails={updateBotsDetails}
