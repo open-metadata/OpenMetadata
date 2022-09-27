@@ -334,7 +334,6 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
 
 export const goToAddNewServicePage = (service_type) => {
   cy.get('[data-testid="tables"]').should('be.visible');
-
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -861,4 +860,123 @@ export const addTeam = (TEAM_DETAILS) => {
 
   verifyResponseStatusCode('@saveTeam', 201);
   verifyResponseStatusCode('@createTeam', 200);
+};
+
+export const retryIngestionRun = () => {
+  const retryTimes = 10;
+  let retryCount = 0;
+
+  const testIngestionsTab = () => {
+    cy.get('[data-testid="Ingestions"]').should('be.visible');
+    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
+      'have.text',
+      '1'
+    );
+    if (retryCount === 0) {
+      cy.wait(1000);
+      cy.get('[data-testid="Ingestions"]').should('be.visible');
+    }
+  };
+
+  const checkSuccessState = () => {
+    testIngestionsTab();
+    retryCount++;
+    // the latest run should be success
+    cy.get('[aria-describedby*="tippy-tooltip"] > .tw-h-5').then(
+      ($ingestionStatus) => {
+        if (
+          ($ingestionStatus.text() === 'Running' ||
+            $ingestionStatus.text() === 'Queued') &&
+          retryCount <= retryTimes
+        ) {
+          // retry after waiting for 20 seconds
+          cy.wait(20000);
+          cy.reload();
+          checkSuccessState();
+        } else {
+          cy.get('[aria-describedby*="tippy-tooltip"] > .tw-h-5').should(
+            'have.text',
+            'Success'
+          );
+        }
+      }
+    );
+  };
+
+  checkSuccessState();
+};
+
+export const updateDescriptionForIngestedTables = (
+  serviceName,
+  tableName,
+  description,
+  type,
+  entity
+) => {
+  //Navigate to ingested table
+  //Search entity
+  searchEntity(tableName);
+  cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
+
+  cy.get(`[data-testid="${entity}-tab"]`)
+    .should('be.visible')
+    .should('have.class', 'active');
+  interceptURL('GET', `/api/v1/permissions/*/*`, 'getEntityDetails');
+  cy.get('[data-testid="table-link"]').first().click();
+  verifyResponseStatusCode('@getEntityDetails', 200);
+
+  //update description
+  cy.get('[data-testid="edit-description"]')
+    .should('be.visible')
+    .click({ force: true });
+  cy.get(descriptionBox).should('be.visible').clear().type(description);
+  interceptURL('PATCH', '/api/v1/*/*', 'updateEntity');
+  cy.get('[data-testid="save"]').click();
+  verifyResponseStatusCode('@updateEntity', 200);
+
+  //re-run ingestion flow
+
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
+  // Services page
+  cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
+
+  interceptURL(
+    'GET',
+    `/api/v1/services/*/name/${serviceName}*`,
+    'getSelectedService'
+  );
+
+  //click on created service
+  cy.get(`[data-testid="service-name-${serviceName}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  verifyResponseStatusCode('@getSelectedService', 200);
+
+  cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/trigger/*',
+    'checkRun'
+  );
+  cy.get('[data-testid="run"]').should('be.visible').click();
+  verifyResponseStatusCode('@checkRun', 200);
+  //Wait for success
+  retryIngestionRun();
+
+  //Navigate to table name
+  searchEntity(tableName);
+  cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
+
+  cy.get(`[data-testid="${entity}-tab"]`)
+    .should('be.visible')
+    .should('have.class', 'active');
+  cy.get('[data-testid="table-link"]').first().click();
+  verifyResponseStatusCode('@getEntityDetails', 200);
+  cy.get('[data-testid="description"] > [data-testid="viewer-container"] ')
+    .first()
+    .invoke('text')
+    .should('eq', description);
 };
