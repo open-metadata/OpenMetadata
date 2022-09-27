@@ -12,6 +12,7 @@
  */
 
 import { Button, Form, Input, Select, Space } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { SsoServiceType } from '../../generated/entity/teams/authN/ssoAuth';
@@ -524,9 +525,11 @@ const AuthMechanismForm: FC<Props> = ({
       )}
       {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
       <Space className="w-full tw-justify-end" size={4}>
-        <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
-          Cancel
-        </Button>
+        {!isEmpty(authenticationMechanism) && (
+          <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
         <Button
           data-testid="save-edit"
           form="update-auth-mechanism-form"

@@ -327,30 +327,39 @@ const BotDetails: FC<BotsDetailProp> = ({
       }
       leftPanel={fetchLeftPanel()}
       rightPanel={rightPanel}>
-      {authenticationMechanism && (
-        <Card
-          data-testid="center-panel"
-          style={{
-            ...leftPanelAntCardStyle,
-            marginTop: '16px',
-          }}>
-          {isAuthMechanismEdit ? (
-            <AuthMechanismForm
-              authenticationMechanism={authenticationMechanism}
-              isUpdating={isUpdating}
-              onCancel={() => setIsAuthMechanismEdit(false)}
-              onSave={handleAuthMechanismUpdate}
-            />
-          ) : (
-            <AuthMechanism
-              authenticationMechanism={authenticationMechanism}
-              hasPermission={editAllPermission}
-              onEdit={handleAuthMechanismEdit}
-              onTokenRevoke={() => setIsRevokingToken(true)}
-            />
-          )}
-        </Card>
-      )}
+      <Card
+        data-testid="center-panel"
+        style={{
+          ...leftPanelAntCardStyle,
+          marginTop: '16px',
+        }}>
+        {authenticationMechanism ? (
+          <>
+            {isAuthMechanismEdit ? (
+              <AuthMechanismForm
+                authenticationMechanism={authenticationMechanism}
+                isUpdating={isUpdating}
+                onCancel={() => setIsAuthMechanismEdit(false)}
+                onSave={handleAuthMechanismUpdate}
+              />
+            ) : (
+              <AuthMechanism
+                authenticationMechanism={authenticationMechanism}
+                hasPermission={editAllPermission}
+                onEdit={handleAuthMechanismEdit}
+                onTokenRevoke={() => setIsRevokingToken(true)}
+              />
+            )}
+          </>
+        ) : (
+          <AuthMechanismForm
+            authenticationMechanism={{} as AuthenticationMechanism}
+            isUpdating={isUpdating}
+            onCancel={() => setIsAuthMechanismEdit(false)}
+            onSave={handleAuthMechanismUpdate}
+          />
+        )}
+      </Card>
 
       {isRevokingToken ? (
         <ConfirmationModal
