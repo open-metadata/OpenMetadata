@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,9 +28,11 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
+import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -77,6 +80,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.service.Entity;
@@ -98,7 +102,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
+    super(TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
     this.supportsAuthorizedMetadataOperations = false;
   }
 
@@ -219,6 +223,55 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Ensure that the role is not deleted
     Role role = roleResourceTest.getEntity(role1.getId(), "", ADMIN_AUTH_HEADERS);
     assertNotNull(role);
+  }
+
+  @Test
+  void delete_recursive_validTeam_200_OK(TestInfo test) throws IOException {
+    //
+    // Create hierarchy of business unit, division, and department under organization:
+    // Organization -- has children --> [bu1], bu1 has children --> [div2], div2 has children [dep3]
+    Team bu1 = createWithParents("bu1", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team div2 = createWithParents("div2", DIVISION, bu1.getEntityReference());
+    Team dep3 = createWithParents("dep3", DEPARTMENT, div2.getEntityReference());
+
+    // Ensure parent has all the newly created children
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,parents", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(new ArrayList<>(List.of(bu1.getEntityReference())), ORG_TEAM.getChildren());
+
+    // Ensure parent has all the newly created children
+    bu1 = getEntity(bu1.getId(), "children", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(new ArrayList<>(List.of(div2.getEntityReference())), bu1.getChildren());
+
+    div2 = getEntity(div2.getId(), "children", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(new ArrayList<>(List.of(dep3.getEntityReference())), div2.getChildren());
+
+    // Recursive delete parent Team bu1
+    deleteAndCheckEntity(bu1, true, false, ADMIN_AUTH_HEADERS);
+
+    Double expectedVersion = EntityUtil.nextVersion(div2.getVersion());
+
+    // Validate that the entity version is updated after soft delete
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.DELETED.value());
+
+    div2 = getEntity(div2.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(div2.getDeleted());
+    assertEquals(expectedVersion, div2.getVersion());
+
+    expectedVersion = EntityUtil.nextVersion(dep3.getVersion());
+    dep3 = getEntity(dep3.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(dep3.getDeleted());
+    assertEquals(expectedVersion, dep3.getVersion());
+
+    // hard delete all the teams
+    UUID div2Id = div2.getId();
+    UUID dep3Id = dep3.getId();
+    bu1 = getEntity(bu1.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(bu1, true, true, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getEntity(div2Id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(TEAM, div2Id));
+    assertResponse(
+        () -> getEntity(dep3Id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(TEAM, dep3Id));
   }
 
   @Test
@@ -403,17 +456,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Delete bu1 and ensure Organization does not have it a child and bu11, div12, dep13 don't change Org to parent
     deleteEntity(bu1.getId(), true, true, ADMIN_AUTH_HEADERS);
     ORG_TEAM = getEntity(ORG_TEAM.getId(), "children", ADMIN_AUTH_HEADERS);
-    bu11 = getEntity(bu11.getId(), "parents", ADMIN_AUTH_HEADERS);
-    div12 = getEntity(div12.getId(), "parents", ADMIN_AUTH_HEADERS);
-    dep13 = getEntity(dep13.getId(), "parents", ADMIN_AUTH_HEADERS);
-
     assertEntityReferencesDoesNotContain(ORG_TEAM.getChildren(), bu1.getEntityReference());
-    assertEntityReferencesDoesNotContain(bu11.getParents(), bu1.getEntityReference());
-    assertEntityReferencesDoesNotContain(div12.getParents(), bu1.getEntityReference());
-    assertEntityReferencesDoesNotContain(dep13.getParents(), bu1.getEntityReference());
-    assertEntityReferencesContain(bu11.getParents(), ORG_TEAM.getEntityReference());
-    assertEntityReferencesContain(div12.getParents(), ORG_TEAM.getEntityReference());
-    assertEntityReferencesContain(dep13.getParents(), ORG_TEAM.getEntityReference());
   }
 
   @Test
@@ -794,7 +837,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         new Rule()
             .withName("TeamManagerPolicy-UpdateTeam")
             .withEffect(Effect.ALLOW)
-            .withResources(List.of(Entity.TEAM))
+            .withResources(List.of(TEAM))
             .withOperations(List.of(MetadataOperation.EDIT_USERS));
 
     // Create a policy with the rule

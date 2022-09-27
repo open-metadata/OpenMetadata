@@ -70,6 +70,7 @@ import { DatabaseServiceType } from '../generated/entity/services/databaseServic
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { customServiceComparator } from '../utils/StringsUtils';
 
 export const NoDataFoundPlaceHolder = noDataFound;
 export const AddPlaceHolder = addPlaceHolder;
@@ -126,12 +127,23 @@ export const PIPELINE_DEFAULT = pipelineDefault;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const excludedService = [MlModelServiceType.Sklearn];
+
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: Object.values(DatabaseServiceType),
-  messagingServices: Object.values(MessagingServiceType),
-  dashboardServices: Object.values(DashboardServiceType),
-  pipelineServices: Object.values(PipelineServiceType),
-  mlmodelServices: Object.values(MlModelServiceType),
+  databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  dashboardServices: (Object.values(DashboardServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  pipelineServices: (Object.values(PipelineServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [

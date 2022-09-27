@@ -198,7 +198,7 @@ const UserListV1: FC<UserListV1Props> = ({
               buttons={
                 <Button
                   ghost
-                  // data-testid="add-user"
+                  data-testid="add-user"
                   disabled={!createPermission}
                   type="primary"
                   onClick={handleAddNewUser}>

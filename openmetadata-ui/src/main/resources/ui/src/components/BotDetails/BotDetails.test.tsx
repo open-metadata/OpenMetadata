@@ -14,6 +14,7 @@
 import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getAuthMechanismForBotUser } from '../../axiosAPIs/userAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
@@ -78,6 +79,14 @@ jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 
+jest.mock('./AuthMechanismForm', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="AuthMechanismForm">AuthMechanismForm</div>
+    )
+);
+
 describe('Test BotsDetail Component', () => {
   it('Should render all child elements', async () => {
     const { container } = render(<BotDetails {...mockProp} />, {
@@ -135,5 +144,22 @@ describe('Test BotsDetail Component', () => {
 
     // revoke token handler should get called
     expect(revokeTokenHandler).toBeCalled();
+  });
+
+  it('Should render the edit form if the authmechanism is empty', async () => {
+    (getAuthMechanismForBotUser as jest.Mock).mockImplementationOnce(() => {
+      return Promise.resolve(undefined);
+    });
+
+    const { container } = render(<BotDetails {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const authMechanismForm = await findByTestId(
+      container,
+      'AuthMechanismForm'
+    );
+
+    expect(authMechanismForm).toBeInTheDocument();
   });
 });

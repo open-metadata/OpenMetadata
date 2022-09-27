@@ -594,7 +594,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                id.toString(), entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (records.isEmpty()) {
       return;
