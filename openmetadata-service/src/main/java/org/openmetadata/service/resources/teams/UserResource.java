@@ -81,6 +81,7 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
+import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
@@ -212,6 +213,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
+    // remove USER_PROTECTED_FIELDS from fieldsParam
+    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
@@ -276,6 +279,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
+    // remove USER_PROTECTED_FIELDS from fieldsParam
+    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
     return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
@@ -310,6 +315,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
+    // remove USER_PROTECTED_FIELDS from fieldsParam
+    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
     return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
@@ -457,6 +464,41 @@ public class UserResource extends EntityResource<User, UserRepository> {
     addHref(uriInfo, response.getEntity());
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
+  }
+
+  @PUT
+  @Path("/generateToken/{id}")
+  @Operation(
+      operationId = "generateJWTTokenForBotUser",
+      summary = "Generate JWT Token for a Bot User",
+      tags = "users",
+      description = "Generate JWT Token for a Bot User.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response generateToken(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @Valid GenerateTokenRequest generateTokenRequest)
+      throws IOException {
+    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    authorizeGenerateJWT(user);
+    authorizer.authorizeAdmin(securityContext, false);
+    JWTAuthMechanism jwtAuthMechanism =
+        jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
+    user.setAuthenticationMechanism(authenticationMechanism);
+    User updatedUser = dao.createOrUpdate(uriInfo, user).getEntity();
+    jwtAuthMechanism =
+        JsonUtils.convertValue(updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
+    return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
   @PUT
