@@ -152,7 +152,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 self.metadata,
                 entity_type=Topic,
                 service_name=self.context.messaging_service.name.__root__,
-                mlmodel_name=self.get_topic_name(topic_details),
+                topic_name=self.get_topic_name(topic_details),
             )
             if filter_by_topic(
                 self.source_config.topicFilterPattern,
