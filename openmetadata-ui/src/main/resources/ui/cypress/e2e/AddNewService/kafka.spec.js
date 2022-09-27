@@ -43,7 +43,7 @@ describe('Kafka Ingestion', () => {
         .check();
       cy.get('[data-testid="filter-pattern-includes-topic"]')
         .should('be.visible')
-        .type('.*__consumer_offsets');
+        .type('__consumer_offsets');
     };
 
     testServiceCreationAndIngestion(
