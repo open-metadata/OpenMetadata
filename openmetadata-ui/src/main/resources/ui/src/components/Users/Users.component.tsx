@@ -240,6 +240,7 @@ const Users = ({
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
       await changePassword(data);
+      setIsChangePassword(false);
       showSuccessToast(
         jsonData['api-success-messages']['update-password-success']
       );
