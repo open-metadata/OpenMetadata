@@ -547,9 +547,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   void patch_isJoinable_200(TestInfo test) throws IOException {
     CreateTeam create =
         createRequest(getEntityName(test), "description", "displayName", null)
+            .withTeamType(DEPARTMENT)
             .withProfile(PROFILE)
             .withIsJoinable(false);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Team child = createWithParents("child", GROUP, team.getEntityReference());
+    // Delete child and then patch the parent
+    deleteAndCheckEntity(child, ADMIN_AUTH_HEADERS);
 
     // patch the team with isJoinable set to true
     String json = JsonUtils.pojoToJson(team);
