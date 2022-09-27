@@ -150,9 +150,12 @@ class DeltalakeSource(DatabaseServiceSource):
                 schema_name=schema.name,
             )
             if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern, schema_fqn
+                self.config.sourceConfig.config.schemaFilterPattern,
+                schema_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else schema.name,
             ):
-                self.status.filter(schema_fqn, "Schema pattern not allowed")
+                self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema.name
 

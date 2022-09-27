@@ -175,7 +175,7 @@ class GlueSource(DatabaseServiceSource):
                         if self.config.sourceConfig.config.useFqnForFiltering
                         else schema["Name"],
                     ):
-                        self.status.filter(schema_fqn, "Schema pattern not allowed")
+                        self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
                     yield schema["Name"]
                 except Exception as exc:
