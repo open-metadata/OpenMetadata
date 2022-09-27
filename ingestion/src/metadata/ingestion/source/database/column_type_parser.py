@@ -1,9 +1,9 @@
 import re
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
-from sqlalchemy.dialects.postgresql import BYTEA
 
 from metadata.ingestion.source import sqa_types
 
@@ -174,6 +174,7 @@ class ColumnTypeParser:
         "UUID": "UUID",
         "POINT": "POINT",
         "POLYGON": "POLYGON",
+        "BYTEA": "BYTEA",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
