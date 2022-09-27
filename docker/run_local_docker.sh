@@ -63,6 +63,7 @@ docker compose down
 rm -rf $PWD/docker-volume
 echo "Starting Local Docker Containers"
 mkdir docker-volume && mkdir docker-volume/db-data   && mkdir docker-volume/ingestion-volume-dag-airflow     && mkdir docker-volume/ingestion-volume-dags   && mkdir docker-volume/ingestion-volume-tmp     && mkdir docker-volume/om-server  
+cp -r ingestion/examples/airflow/dags/ docker-volume/ingestion-volume-dags/
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
