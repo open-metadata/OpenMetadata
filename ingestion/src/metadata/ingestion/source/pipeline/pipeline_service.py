@@ -207,13 +207,14 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_pipeline(self) -> Any:
         for pipeline_detail in self.get_pipelines_list():
+            pipeline_name = self.get_pipeline_name(pipeline_detail)
             if filter_by_pipeline(
                 self.source_config.pipelineFilterPattern,
-                self.get_pipeline_name(pipeline_detail),
+                pipeline_name,
             ):
                 self.status.filter(
-                    self.get_pipeline_name(pipeline_detail),
-                    "Pipeline Pattern not Allowed",
+                    pipeline_name,
+                    "Pipeline Filtered Out",
                 )
                 continue
             yield pipeline_detail

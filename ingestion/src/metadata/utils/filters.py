@@ -84,12 +84,7 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
 
 
 def filter_by_schema(
-    metadata: OpenMetadata,
-    schema_filter_pattern: Optional[FilterPattern],
-    context: TopologyContext,
-    schema_name: str,
-    status: SourceStatus,
-    use_fqn: bool = False,
+    schema_filter_pattern: Optional[FilterPattern], schema_name: str
 ) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
@@ -100,26 +95,11 @@ def filter_by_schema(
     :param schema fqn: table schema fqn
     :return: True for filtering, False otherwise
     """
-    schema_fqn = fqn.build(
-        metadata,
-        entity_type=DatabaseSchema,
-        service_name=context.database_service.name.__root__,
-        database_name=context.database.name.__root__,
-        schema_name=schema_name,
-    )
-    is_filtered = _filter(schema_filter_pattern, schema_fqn if use_fqn else schema_name)
-    if is_filtered:
-        status.filter(schema_fqn, "Schema pattern not allowed")
-    return is_filtered
+    return _filter(schema_filter_pattern, schema_name)
 
 
 def filter_by_table(
-    metadata: OpenMetadata,
-    table_filter_pattern: Optional[FilterPattern],
-    context: TopologyContext,
-    table_name: str,
-    status: SourceStatus,
-    use_fqn: bool = False,
+    table_filter_pattern: Optional[FilterPattern], table_name: str
 ) -> bool:
     """
     Return True if the table needs to be filtered, False otherwise
@@ -130,19 +110,7 @@ def filter_by_table(
     :param table_fqn: table fqn
     :return: True for filtering, False otherwise
     """
-    table_fqn = fqn.build(
-        metadata,
-        entity_type=Table,
-        service_name=context.database_service.name.__root__,
-        database_name=context.database.name.__root__,
-        schema_name=context.database_schema.name.__root__,
-        table_name=table_name,
-    )
-
-    is_filtered = _filter(table_filter_pattern, table_fqn if use_fqn else table_name)
-    if is_filtered:
-        status.filter(table_fqn, "Table pattern not allowed")
-    return is_filtered
+    return _filter(table_filter_pattern, table_name)
 
 
 def filter_by_chart(
@@ -204,7 +172,7 @@ def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool
 
 
 def filter_by_database(
-    database_filter_pattern: Optional[FilterPattern], database_fqn: str
+    database_filter_pattern: Optional[FilterPattern], database_name: str
 ) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
@@ -212,10 +180,10 @@ def filter_by_database(
     Include takes precedence over exclude
 
     :param database_filter_pattern: Model defining database filtering logic
-    :param database_fqn: database fqn
+    :param database_name: database name
     :return: True for filtering, False otherwise
     """
-    return _filter(database_filter_pattern, database_fqn)
+    return _filter(database_filter_pattern, database_name)
 
 
 def filter_by_pipeline(

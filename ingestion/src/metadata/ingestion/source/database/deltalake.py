@@ -190,11 +190,12 @@ class DeltalakeSource(DatabaseServiceSource):
                     table_name=table.name,
                 )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_fqn=table_fqn
+                    self.source_config.tableFilterPattern,
+                    table_fqn if self.source_config.useFqnForFiltering else table.name,
                 ):
                     self.status.filter(
-                        f"{table_fqn}",
-                        "Table pattern not allowed",
+                        table_fqn,
+                        "Table Filtered Out",
                     )
                     continue
                 if (
