@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -254,11 +255,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     if (fieldName.equals("connection")) {
-      PipelineConnection expectedConnection = (PipelineConnection) expected;
-      PipelineConnection actualConnection = JsonUtils.readValue((String) actual, PipelineConnection.class);
-      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), AirflowConnection.class));
-      // TODO remove this hardcoding
-      validatePipelineConnection(expectedConnection, actualConnection, PipelineServiceType.Airflow, null);
+      assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -275,13 +272,13 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
     // Use the database service tests utilities for the comparison
     // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || BOT_AUTH_HEADERS.equals(authHeaders)) {
+    if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
       DatabaseConnection actualDatabaseConnection =
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
       MysqlConnection actualMysqlConnection =
           JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
-    } else {
+    } else if (BOT_AUTH_HEADERS.equals(authHeaders)) {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
       assertNull(actualAirflowConnection.getConnection());

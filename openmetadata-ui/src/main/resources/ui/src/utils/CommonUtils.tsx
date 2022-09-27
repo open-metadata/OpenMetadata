@@ -798,7 +798,7 @@ export const showPagination = (paging: Paging) => {
 };
 
 export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat('en-IN', { maximumSignificantDigits: 3 }).format(
+  return new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(
     number
   );
 };

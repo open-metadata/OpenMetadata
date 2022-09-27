@@ -39,7 +39,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.secrets.SecretsManager;
 
 @ExtendWith(MockitoExtension.class)
-public class IngestionPipelineRepositoryTest {
+public class IngestionPipelineRepositoryUnitTest {
 
   @Mock protected CollectionDAO collectionDAO;
 

@@ -97,6 +97,7 @@ public abstract class ServiceEntityRepository<
     } else {
       // otherwise, nullify the config since it will be kept outside OM
       Object connectionConfig = service.getConnection().getConfig();
+      secretsManager.validateServiceConnection(connectionConfig, service.getServiceType().value(), serviceType);
       service.getConnection().setConfig(null);
       store(service.getId(), service, update);
       // save connection in the secret manager after storing the service

@@ -87,7 +87,7 @@ class AWSBasedSecretsManager(object):
             aws_manager.add_auth_provider_security_config(actual_om_connection)
 
             self.assert_client_called_once(
-                aws_manager, "/openmetadata/auth-provider/google"
+                aws_manager, "/openmetadata/bot/ingestion-bot"
             )
             self.assertEqual(
                 self.auth_provider_config, actual_om_connection.securityConfig
@@ -105,7 +105,7 @@ class AWSBasedSecretsManager(object):
             with self.assertRaises(ValueError) as value_error:
                 aws_manager.add_auth_provider_security_config(self.om_connection)
             self.assertTrue(
-                "/openmetadata/auth-provider/google" in str(value_error.exception)
+                "/openmetadata/bot/ingestion-bot" in str(value_error.exception)
             )
 
         @patch("metadata.clients.aws_client.AWSClient.get_client")
