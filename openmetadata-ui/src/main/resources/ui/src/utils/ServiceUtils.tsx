@@ -68,6 +68,7 @@ import {
   PRESTO,
   PULSAR,
   REDASH,
+  REDPANDA,
   REDSHIFT,
   SALESFORCE,
   SCIKIT,
@@ -191,6 +192,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case MessagingServiceType.Pulsar:
       return PULSAR;
+
+    case MessagingServiceType.Redpanda:
+      return REDPANDA;
 
     case DashboardServiceType.Superset:
       return SUPERSET;
