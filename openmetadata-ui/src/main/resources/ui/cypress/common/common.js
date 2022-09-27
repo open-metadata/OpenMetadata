@@ -17,7 +17,7 @@ export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
 
-const AARON_JOHNSON = 'Aaron Johnson';
+const ADMIN = 'admin';
 
 const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
 
@@ -144,7 +144,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(500);
+  cy.wait(1000);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -297,7 +297,11 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
 
   verifyResponseStatusCode('@getSelectedService', 200);
 
-  interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'waitForUsers');
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    'waitForTeams'
+  );
 
   //Click on edit owner button
   cy.get('[data-testid="edit-Owner-icon"]')
@@ -305,7 +309,7 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
     .should('be.visible')
     .click();
 
-  verifyResponseStatusCode('@waitForUsers', 200);
+  verifyResponseStatusCode('@waitForTeams', 200);
 
   //Clicking on users tab
   cy.get('[data-testid="dropdown-tab"]')
@@ -316,6 +320,7 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
 
   //Selecting the user
   cy.get('[data-testid="list-item"]')
+    .first()
     .should('exist')
     .should('be.visible')
     .click();
@@ -323,7 +328,7 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
   cy.get('[data-testid="owner-dropdown"]')
     .invoke('text')
     .then((text) => {
-      expect(text).equal(AARON_JOHNSON);
+      expect(text).equal(ADMIN);
     });
 };
 
@@ -725,6 +730,8 @@ export const editCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save"]').should('be.visible').click();
 
   verifyResponseStatusCode('@checkPatchForDescription', 200);
+
+  cy.get('.tw-modal-container').should('not.exist');
 
   //Fetching for updated descriptions for the created custom property
   cy.get('[data-testid="table-body"]')

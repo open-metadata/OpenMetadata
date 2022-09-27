@@ -42,7 +42,7 @@ describe('RedShift Ingestion', () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
-        .type('dbt_jaffle');
+        .type('.*dbt_jaffle');
     };
 
     testServiceCreationAndIngestion(
