@@ -171,7 +171,9 @@ public class BuildSearchIndexResource {
     String reindexJobString =
         dao.entityExtensionTimeSeriesDao().getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN, ELASTIC_SEARCH_EXTENSION);
     EventPublisherJob reindexJob = JsonUtils.readValue(reindexJobString, EventPublisherJob.class);
-    if (reindexJob != null && reindexJob.getStatus() == EventPublisherJob.Status.RUNNING) {
+    if (reindexJob != null
+        && ((System.currentTimeMillis() - reindexJob.getTimestamp() > 3600000)
+            || reindexJob.getStatus() == EventPublisherJob.Status.SUCCESS)) {
       return Response.status(Response.Status.FORBIDDEN)
           .entity("Reindexing is Running Already. Cannot issue new request.")
           .build();
@@ -257,7 +259,6 @@ public class BuildSearchIndexResource {
               new ListFilter(Include.ALL),
               createRequest.getBatchSize(),
               after);
-      System.out.println("Read Entities : " + result.getData().size());
       if (createRequest.getRunMode() == RunMode.BATCH) {
         elasticSearchBulkProcessorListener.addRequests(result.getPaging().getTotal());
         updateElasticSearchForEntityBatch(entityType, result.getData());

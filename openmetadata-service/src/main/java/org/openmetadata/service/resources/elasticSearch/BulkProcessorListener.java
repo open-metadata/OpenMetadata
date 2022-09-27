@@ -2,7 +2,7 @@ package org.openmetadata.service.resources.elasticSearch;
 
 import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
-import java.io.IOException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -44,50 +44,47 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
 
   @Override
   public void afterBulk(long executionId, BulkRequest bulkRequest, BulkResponse bulkResponse) {
+    int failedCount = 0;
+    int successCount;
+    FailureDetails failureDetails = null;
+    for (BulkItemResponse bulkItemResponse : bulkResponse) {
+      if (bulkItemResponse.isFailed()) {
+        BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
+        failureDetails = new FailureDetails();
+        failureDetails.setLastFailedAt(
+            Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime());
+        failureDetails.setLastFailedReason(
+            String.format("ID [%s]. Reason : %s", failure.getId(), failure.getMessage()));
+        failedCount++;
+      }
+    }
+    successCount = bulkResponse.getItems().length - failedCount;
+    updateFailedAndSuccess(failedCount, successCount);
+    // update stats in DB
+    Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
+    EventPublisherJob updateJob =
+        new EventPublisherJob()
+            .withName(createRequest.getName())
+            .withPublisherType(createRequest.getPublisherType())
+            .withRunMode(createRequest.getRunMode())
+            .withStatus(EventPublisherJob.Status.RUNNING)
+            .withTimestamp(time)
+            .withStats(new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount).withTotal(totalRequests))
+            .withStartedBy(requestIssuer)
+            .withFailureDetails(failureDetails)
+            .withStartTime(originalStartTime)
+            .withEntities(createRequest.getEntities());
+    if (totalRequests == totalFailedCount + totalSuccessCount) {
+      updateJob.setStatus(EventPublisherJob.Status.SUCCESS);
+      updateJob.setEndTime(time);
+    }
     try {
-      int failedCount = 0;
-      int successCount;
-      FailureDetails failureDetails = null;
-      for (BulkItemResponse bulkItemResponse : bulkResponse) {
-        if (bulkItemResponse.isFailed()) {
-          BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-          failureDetails = new FailureDetails();
-          failureDetails.setLastFailedAt(
-              Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime());
-          failureDetails.setLastFailedReason(
-              String.format("ID [%s]. Reason : %s", failure.getId(), failure.getMessage()));
-          failedCount++;
-        }
-      }
-      successCount = bulkResponse.getItems().length - failedCount;
-      updateFailedAndSuccess(failedCount, successCount);
-
-      System.out.println("TOTAL : " + totalRequests + " SUCCESS : " + successCount + " FAILEWD : " + failedCount);
-      // update stats in DB
-      Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      EventPublisherJob updateJob =
-          new EventPublisherJob()
-              .withName(createRequest.getName())
-              .withPublisherType(createRequest.getPublisherType())
-              .withRunMode(createRequest.getRunMode())
-              .withStatus(EventPublisherJob.Status.RUNNING)
-              .withTimestamp(time)
-              .withStats(
-                  new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount).withTotal(totalRequests))
-              .withStartedBy(requestIssuer)
-              .withFailureDetails(failureDetails)
-              .withStartTime(originalStartTime)
-              .withEntities(createRequest.getEntities());
-      if (totalRequests == totalFailedCount + totalSuccessCount) {
-        updateJob.setStatus(EventPublisherJob.Status.SUCCESS);
-        updateJob.setEndTime(time);
-      }
       dao.entityExtensionTimeSeriesDao()
           .update(entityFQN, ELASTIC_SEARCH_EXTENSION, JsonUtils.pojoToJson(updateJob), startTime);
-      startTime = time;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } catch (JsonProcessingException e) {
+      LOG.error("Failed in Converting to Json.");
     }
+    startTime = time;
   }
 
   @Override
