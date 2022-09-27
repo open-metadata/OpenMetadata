@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
+import { ChangePasswordRequest } from '../generated/auth/changePasswordRequest';
 import { LoginRequest } from '../generated/auth/loginRequest';
 import { PasswordResetRequest } from '../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../generated/auth/registrationRequest';
@@ -87,4 +88,10 @@ export const getAccessTokenOnExpiry = async (payload: TokenRefreshRequest) => {
   >(`${apiPath}/refresh`, payload);
 
   return response.data;
+};
+
+export const changePassword = async (payload: ChangePasswordRequest) => {
+  const response = await axiosClient.put(`${apiPath}/changePassword`, payload);
+
+  return response;
 };
