@@ -70,6 +70,7 @@ import { DatabaseServiceType } from '../generated/entity/services/databaseServic
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { customServiceComparator } from '../utils/StringsUtils';
 
 export const NoDataFoundPlaceHolder = noDataFound;
 export const AddPlaceHolder = addPlaceHolder;
@@ -127,29 +128,21 @@ export const PLUS = plus;
 export const NOSERVICE = noService;
 export const excludedService = [MlModelServiceType.Sklearn];
 
-export const customSorter = (a: string, b: string): number => {
-  if (a.includes('Custom') || b.includes('Custom')) {
-    return a.includes('Custom') ? 1 : -1;
-  } else {
-    return a.localeCompare(b);
-  }
-};
-
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
-    customSorter
+    customServiceComparator
   ),
   messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
-    customSorter
+    customServiceComparator
   ),
   dashboardServices: (Object.values(DashboardServiceType) as string[]).sort(
-    customSorter
+    customServiceComparator
   ),
   pipelineServices: (Object.values(PipelineServiceType) as string[]).sort(
-    customSorter
+    customServiceComparator
   ),
   mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
-    customSorter
+    customServiceComparator
   ),
 };
 
