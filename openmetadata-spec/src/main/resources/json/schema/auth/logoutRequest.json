@@ -17,6 +17,10 @@
     "logoutTime": {
       "description": "Logout Time",
       "$ref": "../type/basic.json#/definitions/dateTime"
+    },
+    "refreshToken": {
+      "description": "Refresh Token",
+      "type": "string"
     }
   },
   "additionalProperties": false,

@@ -409,6 +409,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
                 .withUsername(securityContext.getUserPrincipal().getName())
                 .withToken(request.getToken())
                 .withLogoutTime(logoutTime));
+    if (isBasicAuth()) {
+      // need to clear the refresh token as well
+      if (request.getRefreshToken() != null) {
+        tokenRepository.deleteToken(request.getRefreshToken());
+      }
+    }
     return Response.status(200).entity("Logout Successful").build();
   }
 

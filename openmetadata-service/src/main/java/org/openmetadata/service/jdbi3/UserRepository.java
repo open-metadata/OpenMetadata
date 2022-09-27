@@ -47,8 +47,8 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final String USER_PATCH_FIELDS = "profile,roles,teams,isEmailVerified";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams,isEmailVerified";
+  static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   private final EntityReference organization;
   private final SecretsManager secretsManager;
 
