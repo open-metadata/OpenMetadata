@@ -11,7 +11,8 @@ public class ConfigurationHolder {
   public enum ConfigurationType {
     AUTHORIZERCONFIG("authorizerConfiguration"),
     AUTHENTICATIONCONFIG("authenticationConfiguration"),
-    SMTPCONFIG("email");
+    SMTPCONFIG("email"),
+    ELASTICSEARCHCONFIG("elasticsearch");
     private String value;
 
     ConfigurationType(String value) {
@@ -41,27 +42,34 @@ public class ConfigurationHolder {
   private final ConcurrentHashMap<ConfigurationType, Object> CONFIG_MAP = new ConcurrentHashMap<>();
 
   public void init(OpenMetadataApplicationConfig config) {
-    for (Field field : OpenMetadataApplicationConfig.class.getDeclaredFields()) {
-      if (field.isAnnotationPresent(JsonProperty.class)) {
-        String configType = field.getAnnotation(JsonProperty.class).value();
-        if (configType != null && !configType.equals("")) {
-          ConfigurationType configTypeForEnum = ConfigurationType.fromValue(configType);
-          if (configTypeForEnum == null) continue;
-          switch (configTypeForEnum) {
-            case AUTHORIZERCONFIG:
-              CONFIG_MAP.put(ConfigurationType.AUTHORIZERCONFIG, config.getAuthorizerConfiguration());
-              break;
-            case AUTHENTICATIONCONFIG:
-              CONFIG_MAP.put(ConfigurationType.AUTHENTICATIONCONFIG, config.getAuthenticationConfiguration());
-              break;
-            case SMTPCONFIG:
-              CONFIG_MAP.put(ConfigurationType.SMTPCONFIG, config.getSmtpSettings());
-              break;
-            default:
-              LOG.info("Currently AuthorizerConfig, AuthenticatioConfig, and SMTP these can be added");
+    try {
+      for (Field field : OpenMetadataApplicationConfig.class.getDeclaredFields()) {
+        if (field.isAnnotationPresent(JsonProperty.class)) {
+          String configType = field.getAnnotation(JsonProperty.class).value();
+          if (configType != null && !configType.equals("")) {
+            ConfigurationType configTypeForEnum = ConfigurationType.fromValue(configType);
+            if (configTypeForEnum == null) continue;
+            switch (configTypeForEnum) {
+              case AUTHORIZERCONFIG:
+                CONFIG_MAP.put(ConfigurationType.AUTHORIZERCONFIG, config.getAuthorizerConfiguration());
+                break;
+              case AUTHENTICATIONCONFIG:
+                CONFIG_MAP.put(ConfigurationType.AUTHENTICATIONCONFIG, config.getAuthenticationConfiguration());
+                break;
+              case SMTPCONFIG:
+                CONFIG_MAP.put(ConfigurationType.SMTPCONFIG, config.getSmtpSettings());
+                break;
+              case ELASTICSEARCHCONFIG:
+                CONFIG_MAP.put(ConfigurationType.ELASTICSEARCHCONFIG, config.getElasticSearchConfiguration());
+                break;
+              default:
+                LOG.info("Currently AuthorizerConfig, AuthenticatioConfig, SMTP and ES these can be added");
+            }
           }
         }
       }
+    } catch (Exception ex) {
+      LOG.error("Failed in initialising Configuration Holder : Reason : {}", ex.getMessage());
     }
   }
 

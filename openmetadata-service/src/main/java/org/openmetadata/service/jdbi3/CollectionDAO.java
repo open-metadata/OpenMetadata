@@ -2983,6 +2983,12 @@ public interface CollectionDAO {
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
+            + "ORDER BY timestamp DESC LIMIT :limit")
+    List<String> getLastLatestExtension(
+        @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("limit") int limit);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
