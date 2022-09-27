@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
@@ -419,7 +420,15 @@ public class TeamRepository extends EntityRepository<Team> {
   private List<Team> getTeams(List<EntityReference> teamRefs) throws IOException {
     List<Team> teams = new ArrayList<>();
     for (EntityReference teamRef : teamRefs) {
-      teams.add(dao.findEntityById(teamRef.getId()));
+      try {
+        Team team = dao.findEntityById(teamRef.getId());
+        teams.add(team);
+      } catch (EntityNotFoundException ex) {
+        // Team was soft-deleted
+        LOG.debug("Failed to populate team since it might be soft deleted.", ex);
+        // Ensure that the team was soft-deleted otherwise throw an exception
+        dao.findEntityById(teamRef.getId(), Include.DELETED);
+      }
     }
     return teams;
   }
