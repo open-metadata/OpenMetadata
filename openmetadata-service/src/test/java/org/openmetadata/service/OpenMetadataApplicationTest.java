@@ -50,8 +50,8 @@ public abstract class OpenMetadataApplicationTest {
   @BeforeAll
   public static void createApplication() throws Exception {
     // The system properties are provided by maven-surefire for testing with mysql and postgres
-    final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
-    final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
+    final String jdbcContainerClassName = "org.testcontainers.containers.MySQLContainer";
+    final String jdbcContainerImage = "mysql:8";
     LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
     SQL_CONTAINER =

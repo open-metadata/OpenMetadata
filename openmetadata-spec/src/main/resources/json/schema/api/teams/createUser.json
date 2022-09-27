@@ -6,7 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.teams.CreateUser",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
-
   "properties": {
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"
@@ -60,6 +59,20 @@
       "description": "Authentication mechanism specified ",
       "$ref": "../../entity/teams/user.json#/definitions/authenticationMechanism",
       "default": null
+    },
+    "createPasswordType": {
+      "description": "User Password Method",
+      "type": "string",
+      "enum": ["ADMINCREATE", "USERCREATE"],
+      "default": "USERCREATE"
+    },
+    "password": {
+      "description": "Password for User",
+      "type": "string"
+    },
+    "confirmPassword": {
+      "description": "Confirm Password for User",
+      "type": "string"
     }
   },
   "required": ["name", "email"],
