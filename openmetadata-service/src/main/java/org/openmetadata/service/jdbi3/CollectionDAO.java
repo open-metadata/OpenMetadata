@@ -437,11 +437,17 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>) "
             + "ORDER BY toId")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
-        @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation);
+
+    default List<EntityRelationshipRecord> findTo(String fromId, String fromEntity, int relation) {
+      return findTo(fromId, fromEntity, List.of(relation));
+    }
 
     // TODO delete this
     @SqlQuery(
@@ -2976,6 +2982,12 @@ public interface CollectionDAO {
         "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
+            + "ORDER BY timestamp DESC LIMIT :limit")
+    List<String> getLastLatestExtension(
+        @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("limit") int limit);
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(

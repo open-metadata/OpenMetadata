@@ -400,13 +400,17 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this team and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Team Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private Team getTeam(CreateTeam ct, String user) throws IOException {

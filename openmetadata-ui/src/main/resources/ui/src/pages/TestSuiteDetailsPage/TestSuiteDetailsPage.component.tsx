@@ -51,6 +51,7 @@ import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
@@ -65,7 +66,7 @@ const TestSuiteDetailsPage = () => {
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isDeleteWidgetVisible, setIsDeleteWidgetVisible] = useState(false);
-  const [isTestCaseLoaded, setIsTestCaseLoaded] = useState(false);
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [testCasesPaging, setTestCasesPaging] = useState<Paging>(pagingObject);
@@ -126,7 +127,7 @@ const TestSuiteDetailsPage = () => {
   };
 
   const fetchTestCases = async (param?: ListTestCaseParams, limit?: number) => {
-    setIsTestCaseLoaded(false);
+    setIsTestCaseLoading(true);
     try {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite',
@@ -143,12 +144,14 @@ const TestSuiteDetailsPage = () => {
       setTestCaseResult([]);
       showErrorToast(jsonData['api-error-messages']['fetch-test-cases-error']);
     } finally {
-      setIsTestCaseLoaded(true);
+      setIsTestCaseLoading(false);
     }
   };
 
-  const afterSubmitAction = () => {
-    fetchTestCases();
+  const afterSubmitAction = (deletedTest = false) => {
+    fetchTestCases({
+      include: deletedTest ? Include.Deleted : Include.NonDeleted,
+    });
   };
 
   const fetchTestSuiteByName = async () => {
@@ -315,19 +318,14 @@ const TestSuiteDetailsPage = () => {
               />
               <div className="tw-mb-4">
                 {activeTab === 1 && (
-                  <>
-                    {isTestCaseLoaded ? (
-                      <TestCasesTab
-                        currentPage={currentPage}
-                        testCasePageHandler={handleTestCasePaging}
-                        testCases={testCaseResult}
-                        testCasesPaging={testCasesPaging}
-                        onTestUpdate={afterSubmitAction}
-                      />
-                    ) : (
-                      <Loader />
-                    )}
-                  </>
+                  <TestCasesTab
+                    currentPage={currentPage}
+                    isDataLoading={isTestCaseLoading}
+                    testCasePageHandler={handleTestCasePaging}
+                    testCases={testCaseResult}
+                    testCasesPaging={testCasesPaging}
+                    onTestUpdate={afterSubmitAction}
+                  />
                 )}
                 {activeTab === 2 && <TestSuitePipelineTab />}
               </div>

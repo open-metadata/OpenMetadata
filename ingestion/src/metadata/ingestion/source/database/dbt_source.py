@@ -413,11 +413,11 @@ class DBTMixin:
                 try:
                     # Process the Test Status
                     test_case_status = TestCaseStatus.Aborted
-                    test_result_value = -1
-                    if dbt_test_result.get("status") == "success":
+                    test_result_value = 0
+                    if dbt_test_result.get("status") in {"success", "pass"}:
                         test_case_status = TestCaseStatus.Success
                         test_result_value = 1
-                    elif dbt_test_result.get("status") == "failure":
+                    elif dbt_test_result.get("status") in {"failure", "fail"}:
                         test_case_status = TestCaseStatus.Failed
                         test_result_value = 0
 
@@ -431,8 +431,8 @@ class DBTMixin:
                     if dbt_test_completed_at:
                         dbt_timestamp = datetime.strptime(
                             dbt_test_completed_at, "%Y-%m-%dT%H:%M:%S.%fZ"
-                        )
-                        dbt_timestamp = self.unix_time_millis(dbt_timestamp)
+                        ).replace(microsecond=0)
+                        dbt_timestamp = dbt_timestamp.timestamp()
 
                     test_case_result = TestCaseResult(
                         timestamp=dbt_timestamp,
@@ -511,11 +511,3 @@ class DBTMixin:
                 entity_link = f"<#E::table::" f"{table_fqn}>"
             entity_link_list.append(entity_link)
         return entity_link_list
-
-    def unix_time(self, dt):
-        epoch = datetime.utcfromtimestamp(0)
-        delta = dt - epoch
-        return delta.total_seconds()
-
-    def unix_time_millis(self, dt):
-        return int(self.unix_time(dt) * 1000)

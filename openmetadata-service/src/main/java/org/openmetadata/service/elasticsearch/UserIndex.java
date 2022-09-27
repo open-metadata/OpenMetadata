@@ -7,7 +7,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
-public class UserIndex {
+public class UserIndex implements ElasticSearchIndex {
   User user;
   final List<String> excludeFields = List.of("owns", "changeDescription");
 
