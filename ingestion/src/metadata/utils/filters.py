@@ -18,7 +18,13 @@ code.
 import re
 from typing import List, Optional
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.models.topology import TopologyContext
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 
 
 class InvalidPatternException(Exception):
@@ -78,7 +84,12 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
 
 
 def filter_by_schema(
-    schema_filter_pattern: Optional[FilterPattern], schema_fqn: str
+    metadata: OpenMetadata,
+    schema_filter_pattern: Optional[FilterPattern],
+    context: TopologyContext,
+    schema_name: str,
+    status: SourceStatus,
+    use_fqn: bool = False,
 ) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
@@ -89,11 +100,26 @@ def filter_by_schema(
     :param schema fqn: table schema fqn
     :return: True for filtering, False otherwise
     """
-    return _filter(schema_filter_pattern, schema_fqn)
+    schema_fqn = fqn.build(
+        metadata,
+        entity_type=DatabaseSchema,
+        service_name=context.database_service.name.__root__,
+        database_name=context.database.name.__root__,
+        schema_name=schema_name,
+    )
+    is_filtered = _filter(schema_filter_pattern, schema_fqn if use_fqn else schema_name)
+    if is_filtered:
+        status.filter(schema_fqn, "Schema pattern not allowed")
+    return is_filtered
 
 
 def filter_by_table(
-    table_filter_pattern: Optional[FilterPattern], table_fqn: str
+    metadata: OpenMetadata,
+    table_filter_pattern: Optional[FilterPattern],
+    context: TopologyContext,
+    table_name: str,
+    status: SourceStatus,
+    use_fqn: bool = False,
 ) -> bool:
     """
     Return True if the table needs to be filtered, False otherwise
@@ -104,11 +130,23 @@ def filter_by_table(
     :param table_fqn: table fqn
     :return: True for filtering, False otherwise
     """
-    return _filter(table_filter_pattern, table_fqn)
+    table_fqn = fqn.build(
+        metadata,
+        entity_type=Table,
+        service_name=context.database_service.name.__root__,
+        database_name=context.database.name.__root__,
+        schema_name=context.database_schema.name.__root__,
+        table_name=table_name,
+    )
+
+    is_filtered = _filter(table_filter_pattern, table_fqn if use_fqn else table_name)
+    if is_filtered:
+        status.filter(table_fqn, "Table pattern not allowed")
+    return is_filtered
 
 
 def filter_by_chart(
-    chart_filter_pattern: Optional[FilterPattern], chart_fqn: str
+    chart_filter_pattern: Optional[FilterPattern], chart_name: str
 ) -> bool:
     """
     Return True if the chart needs to be filtered, False otherwise
@@ -116,14 +154,14 @@ def filter_by_chart(
     Include takes precedence over exclude
 
     :param chart_filter_pattern: Model defining chart filtering logic
-    :param chart_fqn: chart fqn
+    :param chart_name: chart name
     :return: True for filtering, False otherwise
     """
-    return _filter(chart_filter_pattern, chart_fqn)
+    return _filter(chart_filter_pattern, chart_name)
 
 
 def filter_by_topic(
-    topic_filter_pattern: Optional[FilterPattern], topic_fqn: str
+    topic_filter_pattern: Optional[FilterPattern], topic_name: str
 ) -> bool:
     """
     Return True if the topic needs to be filtered, False otherwise
@@ -131,14 +169,14 @@ def filter_by_topic(
     Include takes precedence over exclude
 
     :param topic_filter_pattern: Model defining chart filtering logic
-    :param topic_fqn: topic fqn
+    :param topic_name: topic name
     :return: True for filtering, False otherwise
     """
-    return _filter(topic_filter_pattern, topic_fqn)
+    return _filter(topic_filter_pattern, topic_name)
 
 
 def filter_by_dashboard(
-    dashboard_filter_pattern: Optional[FilterPattern], dashboard_fqn: str
+    dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
 ) -> bool:
     """
     Return True if the dashboard needs to be filtered, False otherwise
@@ -146,10 +184,10 @@ def filter_by_dashboard(
     Include takes precedence over exclude
 
     :param dashboard_filter_pattern: Model defining dashboard filtering logic
-    :param dashboard_fqn: dashboard fqn
+    :param dashboard_name: dashboard name
     :return: True for filtering, False otherwise
     """
-    return _filter(dashboard_filter_pattern, dashboard_fqn)
+    return _filter(dashboard_filter_pattern, dashboard_name)
 
 
 def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
@@ -181,7 +219,7 @@ def filter_by_database(
 
 
 def filter_by_pipeline(
-    pipeline_filter_pattern: Optional[FilterPattern], pipeline_fqn: str
+    pipeline_filter_pattern: Optional[FilterPattern], pipeline_name: str
 ) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
@@ -189,14 +227,14 @@ def filter_by_pipeline(
     Include takes precedence over exclude
 
     :param pipeline_filter_pattern: Model defining the pipeline filtering logic
-    :param pipeline_fqn: pipeline fqn
+    :param pipeline_name: pipeline name
     :return: True for filtering, False otherwise
     """
-    return _filter(pipeline_filter_pattern, pipeline_fqn)
+    return _filter(pipeline_filter_pattern, pipeline_name)
 
 
 def filter_by_mlmodel(
-    mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_fqn: str
+    mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_name: str
 ) -> bool:
     """
     Return True if the mlmodel needs to be filtered, False otherwise
@@ -204,7 +242,7 @@ def filter_by_mlmodel(
     Include takes precedence over exclude
 
     :param mlmodel_filter_pattern: Model defining the mlmodel filtering logic
-    :param mlmodel_fqn: mlmodel fqn
+    :param mlmodel_name: mlmodel name
     :return: True for filtering, False otherwise
     """
-    return _filter(mlmodel_filter_pattern, mlmodel_fqn)
+    return _filter(mlmodel_filter_pattern, mlmodel_name)

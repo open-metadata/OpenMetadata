@@ -149,17 +149,14 @@ class CommonDbSourceService(
         return schema names
         """
         for schema_name in self.get_raw_database_schema_names():
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
-                schema_name=schema_name,
-            )
             if filter_by_schema(
-                self.source_config.schemaFilterPattern, schema_fqn=schema_fqn
+                metadata=self.metadata,
+                schema_filter_pattern=self.source_config.schemaFilterPattern,
+                context=self.context,
+                schema_name=schema_name,
+                status=self.status,
+                use_fqn=self.source_config.useFqnForFiltering,
             ):
-                self.status.filter(schema_fqn, "Schema pattern not allowed")
                 continue
             yield schema_name
 
@@ -207,46 +204,29 @@ class CommonDbSourceService(
             if self.source_config.includeTables:
                 for table_name in self.inspector.get_table_names(schema_name):
                     table_name = self.standardize_table_name(schema_name, table_name)
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                    )
                     if filter_by_table(
-                        self.source_config.tableFilterPattern, table_fqn=table_fqn
+                        metadata=self.metadata,
+                        table_filter_pattern=self.source_config.tableFilterPattern,
+                        context=self.context,
+                        table_name=table_name,
+                        status=self.status,
+                        use_fqn=self.source_config.useFqnForFiltering,
                     ):
-                        self.status.filter(
-                            table_fqn,
-                            "Table pattern not allowed",
-                        )
                         continue
-
                     yield table_name, TableType.Regular
 
             if self.source_config.includeViews:
                 for view_name in self.inspector.get_view_names(schema_name):
                     view_name = self.standardize_table_name(schema_name, view_name)
-                    view_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=view_name,
-                    )
-
                     if filter_by_table(
-                        self.source_config.tableFilterPattern, table_fqn=view_fqn
+                        metadata=self.metadata,
+                        table_filter_pattern=self.source_config.tableFilterPattern,
+                        context=self.context,
+                        table_name=view_name,
+                        status=self.status,
+                        use_fqn=self.source_config.useFqnForFiltering,
                     ):
-                        self.status.filter(
-                            view_fqn,
-                            "Table pattern not allowed for view",
-                        )
                         continue
-
                     yield view_name, TableType.View
         except Exception as err:
             logger.error(

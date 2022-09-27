@@ -207,18 +207,12 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_pipeline(self) -> Any:
         for pipeline_detail in self.get_pipelines_list():
-            pipeline_fqn = fqn.build(
-                self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.pipeline_service.name.__root__,
-                pipeline_name=self.get_pipeline_name(pipeline_detail),
-            )
             if filter_by_pipeline(
                 self.source_config.pipelineFilterPattern,
-                pipeline_fqn,
+                self.get_pipeline_name(pipeline_detail),
             ):
                 self.status.filter(
-                    pipeline_fqn,
+                    self.get_pipeline_name(pipeline_detail),
                     "Pipeline Pattern not Allowed",
                 )
                 continue

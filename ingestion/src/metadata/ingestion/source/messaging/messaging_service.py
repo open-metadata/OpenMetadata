@@ -148,18 +148,12 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_topic(self) -> Any:
         for topic_details in self.get_topic_list():
-            topic_fqn = fqn.build(
-                self.metadata,
-                entity_type=Topic,
-                service_name=self.context.messaging_service.name.__root__,
-                topic_name=self.get_topic_name(topic_details),
-            )
             if filter_by_topic(
                 self.source_config.topicFilterPattern,
-                topic_fqn,
+                self.get_topic_name(topic_details),
             ):
                 self.status.filter(
-                    topic_fqn,
+                    self.get_topic_name(topic_details),
                     "Topic Pattern not Allowed",
                 )
                 continue
