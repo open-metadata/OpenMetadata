@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.json.JSONObject;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
@@ -85,7 +86,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     if (secretsManager.isLocal()) {
       secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, service, true);
       store(ingestionPipeline.getId(), ingestionPipeline, update);
-    } else {
+    } else if (service.getType().equals(Entity.DATABASE_SERVICE)
+        && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA)) {
       // otherwise, nullify the config since it will be kept outside OM
       DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
           JsonUtils.convertValue(
@@ -98,6 +100,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       databaseServiceMetadataPipeline.setDbtConfigSource(dbtConfigSource);
       ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
       secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, service, true);
+    } else {
+      store(ingestionPipeline.getId(), ingestionPipeline, update);
     }
 
     // Restore the relationships

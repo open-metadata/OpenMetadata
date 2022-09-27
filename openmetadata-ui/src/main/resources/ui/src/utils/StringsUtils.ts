@@ -128,8 +128,29 @@ export const getErrorText = (
  * @param fqn - Value to be encoded
  * @returns - Encoded text string as a valid component of a Uniform Resource Identifier (URI).
  */
-export const getEncodedFqn = (fqn: string) => {
-  return encodeURIComponent(fqn);
+export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
+  let uri = encodeURIComponent(fqn);
+
+  if (spaceAsPlus) {
+    uri = uri.replaceAll('%20', '+');
+  }
+
+  return uri;
+};
+
+/**
+ *
+ * @param fqn - Value to be encoded
+ * @returns - Decode text string as a valid component of a Uniform Resource Identifier (URI).
+ */
+export const getDecodedFqn = (fqn: string, plusAsSpace = false) => {
+  let uri = decodeURIComponent(fqn);
+
+  if (plusAsSpace) {
+    uri = uri.replaceAll('+', ' ');
+  }
+
+  return uri;
 };
 
 /**

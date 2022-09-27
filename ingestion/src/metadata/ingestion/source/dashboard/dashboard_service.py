@@ -47,6 +47,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
@@ -286,12 +287,19 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
                 continue
 
+            dashboard__fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.dashboard_service.name.__root__,
+                dashboard_name=self.get_dashboard_name(dashboard_details),
+            )
+
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
-                self.get_dashboard_name(dashboard_details),
+                dashboard__fqn,
             ):
                 self.status.filter(
-                    self.get_dashboard_name(dashboard_details),
+                    dashboard__fqn,
                     "Dashboard Pattern not Allowed",
                 )
                 continue

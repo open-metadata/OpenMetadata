@@ -37,7 +37,11 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/CommonUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -51,6 +55,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   table,
 }) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
@@ -72,7 +77,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: isColumnFqn
           ? table.columns.find(
-              (column) => column.fullyQualifiedName === entityTypeFQN
+              (column) => column.fullyQualifiedName === decodedEntityFQN
             )?.dataType
           : undefined,
       });
@@ -87,7 +92,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       const { data } = await getListTestCase({
         fields: 'testDefinition',
         limit: API_RES_MAX_SIZE,
-        entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
+        entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
       });
 
       setTestCases(data);
@@ -158,7 +163,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
     return {
       name: value.testName,
-      entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
+      entityLink: generateEntityLink(
+        getEncodedFqn(decodedEntityFQN, true),
+        isColumnFqn
+      ),
       parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: {
         id: value.testTypeId,
@@ -201,13 +209,16 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       );
       setSelectedTestType(value.testTypeId);
       const testCount = testCases.filter((test) =>
-        test.name.includes(`${getNameFromFQN(entityTypeFQN)}_${testType?.name}`)
+        test.name.includes(
+          `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
+        )
       );
       // generating dynamic unique name based on entity_testCase_number
+      const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
+        testCount.length ? `_${testCount.length}` : ''
+      }`;
       form.setFieldsValue({
-        testName: `${getNameFromFQN(entityTypeFQN)}_${testType?.name}${
-          testCount.length ? `_${testCount.length}` : ''
-        }`,
+        testName: replaceAllSpacialCharWith_(name),
       });
     }
   };
@@ -220,7 +231,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       fetchAllTestCases();
     }
     form.setFieldsValue({
-      testName: initialValue?.name ?? getNameFromFQN(entityTypeFQN),
+      testName: replaceAllSpacialCharWith_(
+        initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
+      ),
       testTypeId: initialValue?.testDefinition?.id,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
@@ -242,6 +255,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           {
             required: true,
             message: 'Name is required!',
+          },
+          {
+            pattern: /^[A-Za-z0-9_]*$/g,
+            message: 'Spacial character is not allowed!',
           },
           {
             validator: (_, value) => {

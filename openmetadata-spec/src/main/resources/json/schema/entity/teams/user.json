@@ -10,6 +10,7 @@
     "authenticationMechanism": {
       "type": "object",
       "description": "User/Bot Authentication Mechanism.",
+      "javaType": "org.openmetadata.schema.entity.teams.AuthenticationMechanism",
       "properties": {
         "config": {
           "oneOf": [

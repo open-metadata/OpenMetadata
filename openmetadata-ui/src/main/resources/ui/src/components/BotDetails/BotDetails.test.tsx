@@ -11,27 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  fireEvent,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
 const updateBotsDetails = jest.fn();
-
-const mockToken = {
-  JWTToken:
-    // eslint-disable-next-line max-len
-    'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzYWNoaW5jaGF1cmFzaXlhY2hvdGV5ODciLCJpc0JvdCI6dHJ1ZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJleHAiOjE2NTMzMDM5ODcsImlhdCI6MTY1MjY5OTE4NywiZW1haWwiOiJzYWNoaW5jaGF1cmFzaXlhY2hvdGV5ODdAZ21haWwuY29tIn0.qwcyGU_geL9GsZ58lw5H46eP7OY9GNq3gBS5l3DhvOGTjtqWzFBUdtYwg3KdP0ejXHSMW5DD2I-1jbCZI8tuSRZ0kdN7gt0xEhU3o7pweAcDb38mbPB3sgvNTGqrdX9Ya6ICVVDH3v7jVxJuJcykDxfVYFy6fyrwbrW3RxuyacV9xMUIyrD8EyDuAhth4wpwGnj5NqikQFRdqQYEWZlyafskMad4ghMy2eoFjrSc5vv7KN0bkp1SHGjxr_TAd3Oc9lIMWKquUZthGXQnnj5XKxGl1PJnXqK7l3U25DcCobbc5KxOI2_TUxfFNIfxduoHiWsAUBSqshvh7O7nCqiZqw',
-  JWTTokenExpiry: '7',
-  JWTTokenExpiresAt: 1653303987652,
-};
 
 const botsData = {
   id: 'ea09aed1-0251-4a75-b92a-b65641610c53',
@@ -45,46 +32,23 @@ const botsData = {
   href: 'http://localhost:8585/api/v1/users/ea09aed1-0251-4a75-b92a-b65641610c53',
   isBot: true,
   isAdmin: false,
-  changeDescription: {
-    fieldsAdded: [
-      {
-        name: 'authenticationMechanism',
-        newValue: {
-          config: mockToken,
-          authType: 'JWT',
-        },
-      },
-    ],
-    fieldsUpdated: [],
-    fieldsDeleted: [],
-    previousVersion: 0.1,
-  },
   deleted: false,
+};
+
+const mockAuthMechanism = {
+  config: {
+    JWTToken:
+      // eslint-disable-next-line max-len
+      'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzYWNoaW5jaGF1cmFzaXlhY2hvdGV5ODciLCJpc0JvdCI6dHJ1ZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJleHAiOjE2NjY3OTE5NjAsImlhdCI6MTY2NDE5OTk2MCwiZW1haWwiOiJzYWNoaW5jaGF1cmFzaXlhY2hvdGV5ODdAZ21haWwuY29tIn0.e5y5hh61EksbcWlLet_GpE84raDYvMho6OXAOLe5MCKrimHYj1roqoY54PFlJDSdrPWJOOeAFsTOxlqnMB_FGhOIufNW9yJwlkIOspWCusNJisLpv8_oYw9ZbrB5ATKyDz9MLTaZRZptx3JirA7s6tV-DJZId-mNzQejW2kiecYZeLZ-ipHqQeVxfzryfxUqcBUGTv-_de0uxlPdklqBuwt24bCy29qVIGxUweFDhrstmdRx_ZyQdrRvmeMHifUB6FCB1OBbII8mKYvF2P0CWF_SsxVLlRHUeOsxKeAeUk1MAA1mHm4UYdMD9OAuFMTZ10gpiELebVWiKrFYYjdICA',
+    JWTTokenExpiry: '30',
+    JWTTokenExpiresAt: 1666791960664,
+  },
+  authType: 'JWT',
 };
 
 const mockProp = {
   botsData,
-  revokeTokenHandler,
-  updateBotsDetails,
-};
-
-jest.mock('../PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-  }),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-  DEFAULT_ENTITY_PERMISSION: {
+  botPermission: {
     Create: true,
     Delete: true,
     ViewAll: true,
@@ -92,17 +56,21 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     EditDescription: true,
     EditDisplayName: true,
     EditCustomFields: true,
-  },
+  } as OperationPermission,
+  revokeTokenHandler,
+  updateBotsDetails,
+};
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
-    generateUserToken: jest
+    updateUser: jest.fn().mockImplementation(() => Promise.resolve(botsData)),
+    getAuthMechanismForBotUser: jest
       .fn()
-      .mockImplementation(() => Promise.resolve(mockToken)),
-    getUserToken: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(mockToken)),
+      .mockImplementation(() => Promise.resolve(mockAuthMechanism)),
   };
 });
 
@@ -138,95 +106,6 @@ describe('Test BotsDetail Component', () => {
 
     expect(tokenElement).toBeInTheDocument();
     expect(tokenExpiry).toBeInTheDocument();
-  });
-
-  it('Should render no token placeholder if token is not present', async () => {
-    (getUserToken as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ...mockToken,
-        JWTToken: '',
-        JWTTokenExpiresAt: '',
-      })
-    );
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const tokenElement = queryByTestId(container, 'token');
-    const tokenExpiry = queryByTestId(container, 'token-expiry');
-
-    expect(tokenElement).not.toBeInTheDocument();
-    expect(tokenExpiry).not.toBeInTheDocument();
-
-    const noToken = await findByTestId(container, 'no-token');
-
-    expect(noToken).toBeInTheDocument();
-  });
-
-  it('Should render generate token form if generate token button is clicked', async () => {
-    (getUserToken as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' })
-    );
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const generateToken = await findByTestId(container, 'generate-token');
-
-    expect(generateToken).toHaveTextContent('Generate new token');
-
-    fireEvent.click(generateToken);
-
-    const tokenForm = await findByTestId(container, 'generate-token-form');
-
-    expect(tokenForm).toBeInTheDocument();
-
-    const generateButton = await findByTestId(tokenForm, 'generate-button');
-    const discardButton = await findByTestId(tokenForm, 'discard-button');
-
-    expect(generateButton).toBeInTheDocument();
-    expect(discardButton).toBeInTheDocument();
-  });
-
-  it('Test Re-generate token flow', async () => {
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const generateToken = await findByTestId(container, 'generate-token');
-
-    expect(generateToken).toHaveTextContent('Re-generate token');
-
-    fireEvent.click(generateToken);
-
-    // should open confirmartion before re-generating token
-    const confirmationModal = await findByTestId(
-      container,
-      'confirmation-modal'
-    );
-
-    expect(confirmationModal).toBeInTheDocument();
-
-    const confirmButton = await findByTestId(confirmationModal, 'save-button');
-
-    expect(confirmButton).toBeInTheDocument();
-
-    fireEvent.click(confirmButton);
-
-    // render token form on confirmaton
-    const tokenForm = await findByTestId(container, 'generate-token-form');
-
-    expect(tokenForm).toBeInTheDocument();
-
-    const generateButton = await findByTestId(tokenForm, 'generate-button');
-    const discardButton = await findByTestId(tokenForm, 'discard-button');
-
-    expect(generateButton).toBeInTheDocument();
-    expect(discardButton).toBeInTheDocument();
-
-    fireEvent.click(generateButton);
-
-    expect(generateUserToken).toBeCalled();
   });
 
   it('Test Revoke token flow', async () => {

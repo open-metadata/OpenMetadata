@@ -28,6 +28,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_
 import static org.openmetadata.service.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_CHILDREN_UPDATE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_UPDATE;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.TEAM_HIERARCHY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.UNEXPECTED_PARENT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
@@ -37,12 +38,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -53,6 +57,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
@@ -177,6 +182,107 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     super.cleanup(team);
     SubjectCache.getInstance().invalidateTeam(team.getId());
+  }
+
+  private TeamHierarchy getTeamHierarchy(Team team) {
+    return new TeamHierarchy()
+        .withId(team.getId())
+        .withTeamType(team.getTeamType())
+        .withName(team.getName())
+        .withDisplayName(team.getDisplayName())
+        .withHref(team.getHref())
+        .withFullyQualifiedName(team.getFullyQualifiedName())
+        .withIsJoinable(team.getIsJoinable())
+        .withChildren(null);
+  }
+
+  private TeamHierarchy deepCopy(TeamHierarchy team) {
+    TeamHierarchy newTeam =
+        new TeamHierarchy()
+            .withId(team.getId())
+            .withTeamType(team.getTeamType())
+            .withName(team.getName())
+            .withDisplayName(team.getDisplayName())
+            .withHref(team.getHref())
+            .withFullyQualifiedName(team.getFullyQualifiedName())
+            .withIsJoinable(team.getIsJoinable());
+    if (team.getChildren() != null) {
+      List<TeamHierarchy> children = new ArrayList<>();
+      for (TeamHierarchy n : team.getChildren()) {
+        children.add(deepCopy(n));
+      }
+      newTeam.withChildren(children);
+    }
+    return newTeam;
+  }
+
+  private TeamHierarchy mergeTrees(TeamHierarchy team1, TeamHierarchy team2) {
+    List<TeamHierarchy> team1Children = team1.getChildren();
+    List<TeamHierarchy> team2Children = team2.getChildren();
+    if (team1Children != null && team2Children != null) {
+      List<TeamHierarchy> toMerge = new ArrayList<>(team1Children);
+      toMerge.retainAll(team2Children);
+
+      for (TeamHierarchy n : toMerge) mergeTrees(n, team2Children.get(team2Children.indexOf(n)));
+    }
+    if (team2Children != null) {
+      List<TeamHierarchy> toAdd = new ArrayList<>(team2Children);
+      if (team1Children != null) {
+        toAdd.removeAll(team1Children);
+      } else {
+        team1.setChildren(new ArrayList<>());
+      }
+      for (TeamHierarchy n : toAdd) team1.getChildren().add(deepCopy(n));
+    }
+
+    return team1;
+  }
+
+  public List<TeamHierarchy> listHierarchy(ListFilter filter, int limit, Boolean isJoinable) throws IOException {
+    Fields fields = getFields("parents");
+    Map<UUID, TeamHierarchy> map = new HashMap<>();
+    ResultList<Team> resultList = listAfter(null, fields, filter, limit, null);
+    List<Team> allTeams = resultList.getData();
+    List<Team> joinableTeams =
+        allTeams.stream()
+            .filter(isJoinable ? Team::getIsJoinable : t -> true)
+            .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
+            .collect(Collectors.toList());
+    // build hierarchy of joinable teams
+    joinableTeams.forEach(
+        team -> {
+          Team currentTeam = team;
+          TeamHierarchy currentHierarchy = getTeamHierarchy(team);
+          while (currentTeam != null
+              && currentTeam.getParents().size() > 0
+              && !currentTeam.getParents().get(0).getName().equals(ORGANIZATION_NAME)) {
+            EntityReference parentRef = currentTeam.getParents().get(0);
+            Team parent =
+                allTeams.stream()
+                    .filter(t -> t.getId().equals(parentRef.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
+            currentHierarchy = getTeamHierarchy(parent).withChildren(new ArrayList<>(List.of(currentHierarchy)));
+            if (map.containsKey(parent.getId())) {
+              TeamHierarchy parentTeam = map.get(parent.getId());
+              currentHierarchy = mergeTrees(parentTeam, currentHierarchy);
+              currentTeam =
+                  allTeams.stream()
+                      .filter(t -> t.getId().equals(parent.getId()))
+                      .findFirst()
+                      .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
+            } else {
+              currentTeam = parent;
+            }
+          }
+          UUID currentId = currentHierarchy.getId();
+          if (!map.containsKey(currentId)) {
+            map.put(currentId, currentHierarchy);
+          } else {
+            map.put(currentId, mergeTrees(map.get(currentId), currentHierarchy));
+          }
+        });
+    return new ArrayList<>(map.values());
   }
 
   private List<EntityReference> getUsers(Team team) throws IOException {

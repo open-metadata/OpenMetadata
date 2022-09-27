@@ -211,34 +211,24 @@ class ProfilerWorkflow:
         Args:
             entity: table entity
         """
-        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
-        if entity.serviceType != DatabaseServiceType.BigQuery:
-            return None
         entity_config: TableConfig = self.get_config_for_entity(entity)
         if entity_config:
             return entity_config.partitionConfig
 
-        if entity.tablePartition:
-            if entity.tablePartition.intervalType in {
-                IntervalType.TIME_UNIT,
-                IntervalType.INGESTION_TIME,
-            }:
-                try:
-                    partition_field = entity.tablePartition.columns[0]
-                except Exception:
-                    raise TypeError(
-                        "Unsupported ingestion based partition type. Skipping table"
+        if hasattr(entity, "tablePartition") and entity.tablePartition:
+            try:
+                if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
+                    return TablePartitionConfig(
+                        partitionField=entity.tablePartition.columns[0]
                     )
-
-                return TablePartitionConfig(
-                    partitionField=partition_field,
+                elif entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
+                    if entity.tablePartition.interval == "DAY":
+                        return TablePartitionConfig(partitionField="_PARTITIONDATE")
+                    return TablePartitionConfig(partitionField="_PARTITIONTIME")
+            except Exception:
+                raise TypeError(
+                    f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
                 )
-
-            raise TypeError(
-                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
-            )
-
-        return None
 
     def create_profiler_interface(
         self,

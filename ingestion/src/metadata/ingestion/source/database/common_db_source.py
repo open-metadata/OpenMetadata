@@ -29,6 +29,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -148,10 +149,17 @@ class CommonDbSourceService(
         return schema names
         """
         for schema_name in self.get_raw_database_schema_names():
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            )
             if filter_by_schema(
-                self.source_config.schemaFilterPattern, schema_name=schema_name
+                self.source_config.schemaFilterPattern, schema_fqn=schema_fqn
             ):
-                self.status.filter(schema_name, "Schema pattern not allowed")
+                self.status.filter(schema_fqn, "Schema pattern not allowed")
                 continue
             yield schema_name
 
@@ -194,33 +202,57 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
-        if self.source_config.includeTables:
-            for table_name in self.inspector.get_table_names(schema_name):
-                if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table_name
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{table_name}",
-                        "Table pattern not allowed",
+        try:
+            schema_name = self.context.database_schema.name.__root__
+            if self.source_config.includeTables:
+                for table_name in self.inspector.get_table_names(schema_name):
+                    table_name = self.standardize_table_name(schema_name, table_name)
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
                     )
-                    continue
-                table_name = self.standardize_table_name(schema_name, table_name)
-                yield table_name, TableType.Regular
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern, table_fqn=table_fqn
+                    ):
+                        self.status.filter(
+                            table_fqn,
+                            "Table pattern not allowed",
+                        )
+                        continue
 
-        if self.source_config.includeViews:
-            for view_name in self.inspector.get_view_names(schema_name):
-                if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=view_name
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{view_name}",
-                        "Table pattern not allowed for view",
+                    yield table_name, TableType.Regular
+
+            if self.source_config.includeViews:
+                for view_name in self.inspector.get_view_names(schema_name):
+                    view_name = self.standardize_table_name(schema_name, view_name)
+                    view_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=view_name,
                     )
-                    continue
 
-                view_name = self.standardize_table_name(schema_name, view_name)
-                yield view_name, TableType.View
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern, table_fqn=view_fqn
+                    ):
+                        self.status.filter(
+                            view_fqn,
+                            "Table pattern not allowed for view",
+                        )
+                        continue
+
+                    yield view_name, TableType.View
+        except Exception as err:
+            logger.error(
+                f"Fetching tables names failed for schema {schema_name} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -307,12 +339,12 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
-            is_partitioned, partiotion_details = self.get_table_partition_details(
+            is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
             if is_partitioned:
                 table_request.tableType = TableType.Partitioned.value
-                table_request.tablePartition = partiotion_details
+                table_request.tablePartition = partition_details
 
             if table_type == TableType.View or view_definition:
                 table_view = {

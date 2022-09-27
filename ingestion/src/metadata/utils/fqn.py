@@ -31,8 +31,10 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -222,6 +224,34 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, chart=`{chart_name}``"
         )
     return _build(service_name, chart_name)
+
+
+@fqn_build_registry.add(MlModel)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for MlModel FQN building
+    *,
+    service_name: str,
+    mlmodel_name: str,
+) -> str:
+    if not service_name or not mlmodel_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, mlmodel=`{mlmodel_name}``"
+        )
+    return _build(service_name, mlmodel_name)
+
+
+@fqn_build_registry.add(Topic)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for Topic FQN building
+    *,
+    service_name: str,
+    topic_name: str,
+) -> str:
+    if not service_name or not topic_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``"
+        )
+    return _build(service_name, topic_name)
 
 
 @fqn_build_registry.add(Tag)

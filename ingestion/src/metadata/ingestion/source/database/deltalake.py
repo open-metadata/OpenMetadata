@@ -12,7 +12,8 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Column, TableType
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
@@ -34,6 +35,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -140,10 +142,17 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         schemas = self.spark.catalog.listDatabases()
         for schema in schemas:
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema.name,
+            )
             if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern, schema.name
+                self.config.sourceConfig.config.schemaFilterPattern, schema_fqn
             ):
-                self.status.filter(schema.name, "Schema pattern not allowed")
+                self.status.filter(schema_fqn, "Schema pattern not allowed")
                 continue
             yield schema.name
 
@@ -172,11 +181,19 @@ class DeltalakeSource(DatabaseServiceSource):
         for table in self.spark.catalog.listTables(schema_name):
             try:
                 table_name = table.name
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table.name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table_name
+                    self.source_config.tableFilterPattern, table_fqn=table_fqn
                 ):
                     self.status.filter(
-                        f"{table_name}",
+                        f"{table_fqn}",
                         "Table pattern not allowed",
                     )
                     continue
