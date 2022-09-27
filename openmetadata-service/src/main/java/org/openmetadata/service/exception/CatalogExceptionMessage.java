@@ -40,6 +40,7 @@ public final class CatalogExceptionMessage {
       "Only one Organization is allowed. New Organization type can't be created";
   public static final String CREATE_GROUP =
       "Team of type Group can't have children of type team. Only users are allowed as part of the team";
+  public static final String TEAM_HIERARCHY = "Unexpected error occurred while building the teams hierarchy";
 
   private CatalogExceptionMessage() {}
 
