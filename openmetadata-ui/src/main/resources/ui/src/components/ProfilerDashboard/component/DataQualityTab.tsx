@@ -34,11 +34,14 @@ import {
 } from '../../../utils/TableUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import Loader from '../../Loader/Loader';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
+  isLoading = false,
   testCases,
+  deletedTable = false,
   onTestUpdate,
 }) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
@@ -147,29 +150,31 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (_, record) => {
           return (
             <Row align="middle">
-              <Tooltip
-                placement="bottomRight"
-                title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
-                <Button
-                  className="flex-center"
-                  data-testid={`edit-${record.name}`}
-                  disabled={!hasAccess}
-                  icon={
-                    <SVGIcons
-                      alt="edit"
-                      className="tw-h-4"
-                      icon={Icons.EDIT}
-                      title="Edit"
-                    />
-                  }
-                  type="text"
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of edit button
-                    e.stopPropagation();
-                    setEditTestCase(record);
-                  }}
-                />
-              </Tooltip>
+              {!deletedTable && (
+                <Tooltip
+                  placement="bottomRight"
+                  title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                  <Button
+                    className="flex-center"
+                    data-testid={`edit-${record.name}`}
+                    disabled={!hasAccess}
+                    icon={
+                      <SVGIcons
+                        alt="edit"
+                        className="tw-h-4"
+                        icon={Icons.EDIT}
+                        title="Edit"
+                      />
+                    }
+                    type="text"
+                    onClick={(e) => {
+                      // preventing expand/collapse on click of edit button
+                      e.stopPropagation();
+                      setEditTestCase(record);
+                    }}
+                  />
+                </Tooltip>
+              )}
               <Tooltip
                 placement="bottomLeft"
                 title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
@@ -197,7 +202,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
     ];
-  }, [hasAccess]);
+  }, [hasAccess, deletedTable]);
 
   return (
     <>
@@ -231,6 +236,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               />
             ),
         }}
+        loading={{
+          indicator: <Loader size="small" />,
+          spinning: isLoading,
+        }}
         pagination={false}
         size="small"
       />
@@ -243,6 +252,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
       <DeleteWidgetModal
         afterDeleteAction={onTestUpdate}
+        allowSoftDelete={!deletedTable}
         entityId={selectedTestCase?.id || ''}
         entityName={selectedTestCase?.name || ''}
         entityType="testCase"

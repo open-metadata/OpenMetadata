@@ -10,8 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Radio, Row, Select, Space, Tooltip } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  Radio,
+  Row,
+  Select,
+  Space,
+  Switch,
+  Tooltip,
+} from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
+import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -79,6 +90,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   fetchProfilerData,
   fetchTestCases,
   onTestCaseUpdate,
+  isTestCaseLoading,
   profilerData,
   onTableChange,
 }) => {
@@ -93,6 +105,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [showDeletedTest, setShowDeletedTest] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
     tab ?? ProfilerDashboardTab.PROFILER
   );
@@ -350,6 +363,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
     setSelectedTestCaseStatus('');
     setActiveTab(value);
+    setShowDeletedTest(false);
     history.push(
       getProfilerDashboardWithFqnPath(dashboardType, entityTypeFQN, value)
     );
@@ -389,6 +403,15 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     );
 
     return dataByStatus;
+  };
+
+  const handleDeletedTestCaseClick: SwitchChangeEventHandler = (value) => {
+    setShowDeletedTest(value);
+    onTestCaseUpdate(value);
+  };
+
+  const handleTestUpdate = () => {
+    onTestCaseUpdate(showDeletedTest);
   };
 
   useEffect(() => {
@@ -455,13 +478,21 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
             <Space size={16}>
               {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
-                <Form.Item className="tw-mb-0 tw-w-40" label="Status">
-                  <Select
-                    options={testCaseStatusOption}
-                    value={selectedTestCaseStatus}
-                    onChange={handleTestCaseStatusChange}
-                  />
-                </Form.Item>
+                <>
+                  <Form.Item className="m-0 " label="Deleted Tests">
+                    <Switch
+                      checked={showDeletedTest}
+                      onClick={handleDeletedTestCaseClick}
+                    />
+                  </Form.Item>
+                  <Form.Item className="tw-mb-0 tw-w-40" label="Status">
+                    <Select
+                      options={testCaseStatusOption}
+                      value={selectedTestCaseStatus}
+                      onChange={handleTestCaseStatusChange}
+                    />
+                  </Form.Item>
+                </>
               )}
               {activeTab === ProfilerDashboardTab.PROFILER && (
                 <Select
@@ -502,9 +533,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
+              deletedTable={showDeletedTest}
               hasAccess={tablePermissions.EditAll}
+              isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
-              onTestUpdate={onTestCaseUpdate}
+              onTestUpdate={handleTestUpdate}
             />
           </Col>
         )}
