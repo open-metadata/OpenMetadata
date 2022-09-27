@@ -642,6 +642,14 @@
           "$ref": "../../type/entityReference.json",
           "default": null
         },
+        "tags": {
+          "description": "Tags for this data model.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
           "type": "array",

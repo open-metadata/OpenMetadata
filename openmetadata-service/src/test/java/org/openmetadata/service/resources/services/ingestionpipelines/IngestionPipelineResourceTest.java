@@ -62,11 +62,9 @@ import org.openmetadata.schema.services.connections.database.ConnectionArguments
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -486,8 +484,10 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
 
     // Update and connector orgs and options to database connection
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     DatabaseService databaseService =
-        Entity.getEntity(ingestionPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
+        databaseServiceResourceTest.getEntity(ingestionPipeline.getService().getId(), "connection", ADMIN_AUTH_HEADERS);
+
     DatabaseConnection databaseConnection = databaseService.getConnection();
     Map<String, String> advConfig = new HashMap<>();
     advConfig.put("hive.execution.engine", "tez");

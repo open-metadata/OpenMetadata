@@ -78,7 +78,7 @@ const BasicSignUp = () => {
             </Typography.Text>
 
             {isAuthProviderBasic ? (
-              <div className="m-t-lg" style={{ width: '60%' }}>
+              <div className="m-t-lg" style={{ width: '334px' }}>
                 <Row>
                   <Col span={24}>
                     <>

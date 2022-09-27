@@ -26,6 +26,7 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -106,4 +107,14 @@ public abstract class SecretsManager {
 
   public abstract Object encryptOrDecryptIngestionBotCredentials(
       String botName, Object securityConfig, boolean encrypt);
+
+  public void validateServiceConnection(Object connectionConfig, String connectionType, ServiceType serviceType) {
+    try {
+      Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
+      JsonUtils.readValue(JsonUtils.pojoToJson(connectionConfig), clazz);
+    } catch (Exception exception) {
+      throw InvalidServiceConnectionException.byMessage(
+          connectionType, String.format("Failed to construct connection instance of %s", connectionType));
+    }
+  }
 }
