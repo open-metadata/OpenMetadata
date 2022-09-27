@@ -175,6 +175,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
         entityLink: generateEntityLink(table.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
+        include: deleted ? Include.Deleted : Include.NonDeleted,
         ...params,
       });
       const columnTestsCase: TestCase[] = [];

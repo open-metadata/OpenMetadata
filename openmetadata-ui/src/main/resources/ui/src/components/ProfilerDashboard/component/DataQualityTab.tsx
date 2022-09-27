@@ -150,29 +150,31 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (_, record) => {
           return (
             <Row align="middle">
-              <Tooltip
-                placement="bottomRight"
-                title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
-                <Button
-                  className="flex-center"
-                  data-testid={`edit-${record.name}`}
-                  disabled={!hasAccess}
-                  icon={
-                    <SVGIcons
-                      alt="edit"
-                      className="tw-h-4"
-                      icon={Icons.EDIT}
-                      title="Edit"
-                    />
-                  }
-                  type="text"
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of edit button
-                    e.stopPropagation();
-                    setEditTestCase(record);
-                  }}
-                />
-              </Tooltip>
+              {!deletedTable && (
+                <Tooltip
+                  placement="bottomRight"
+                  title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                  <Button
+                    className="flex-center"
+                    data-testid={`edit-${record.name}`}
+                    disabled={!hasAccess}
+                    icon={
+                      <SVGIcons
+                        alt="edit"
+                        className="tw-h-4"
+                        icon={Icons.EDIT}
+                        title="Edit"
+                      />
+                    }
+                    type="text"
+                    onClick={(e) => {
+                      // preventing expand/collapse on click of edit button
+                      e.stopPropagation();
+                      setEditTestCase(record);
+                    }}
+                  />
+                </Tooltip>
+              )}
               <Tooltip
                 placement="bottomLeft"
                 title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
@@ -200,7 +202,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
     ];
-  }, [hasAccess]);
+  }, [hasAccess, deletedTable]);
 
   return (
     <>

@@ -81,7 +81,7 @@ const TestCasesTab = ({
             deletedTable={deleted}
             isLoading={isDataLoading}
             testCases={sortedTestCases}
-            onTestUpdate={onTestUpdate}
+            onTestUpdate={() => onTestUpdate(deleted)}
           />
         </Col>
       </>
