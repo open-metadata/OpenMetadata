@@ -83,7 +83,7 @@ describe("Test Add role and assign it to the user", () => {
     // Create user and assign newly created role to the user
     cy.get('[data-menu-id*="users"]').should('be.visible').click();
 
-    cy.get('.ant-btn').contains('Add User').click();
+    cy.get('[data-testid="add-user"]').contains('Add User').click();
 
     cy.get('[data-testid="email"]')
     .scrollIntoView()

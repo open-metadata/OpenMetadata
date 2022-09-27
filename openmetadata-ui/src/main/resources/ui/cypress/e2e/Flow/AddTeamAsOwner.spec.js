@@ -62,9 +62,9 @@ describe("Create a team and add that team as a owner of the entity", () => {
     
     searchEntity(TEAM_DETAILS.assetName);
 
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-
     interceptURL('GET', 'api/v1/tables/name/*', 'getEntityDetails');
+
+    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
     verifyResponseStatusCode('@getEntityDetails', 200);
 
