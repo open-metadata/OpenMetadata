@@ -14,7 +14,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card, Image, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -259,7 +258,7 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-mt-4 tw-w-full tw-px-3">
+        <div className="tw-w-full">
           {isDisplayNameEdit ? (
             <Space className="tw-w-full" direction="vertical">
               <input
@@ -326,13 +325,7 @@ const Users = ({
   const getDescriptionComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div
-          className={classNames(
-            'tw--ml-5 tw-flex tw-items-center tw-justify-between tw-px-3',
-            {
-              'm-b-md': !isAuthProviderBasic || !isLoggedinUser,
-            }
-          )}>
+        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between">
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
@@ -359,9 +352,9 @@ const Users = ({
 
   const getChangePasswordComponent = () => {
     return (
-      <div className="m-b-sm tw-px-3">
+      <div>
         <Typography.Text
-          className="tw-text-primary tw-text-xs tw-cursor-pointer"
+          className="text-primary text-xs cursor-pointer"
           onClick={() => setIsChangePassword(true)}>
           Change Password
         </Typography.Text>
@@ -687,37 +680,37 @@ const Users = ({
           style={{
             ...leftPanelAntCardStyle,
           }}>
-          <div className="tw-flex tw-flex-col">
-            {isImgUrlValid ? (
-              <Image
-                alt="profile"
-                className="tw-w-full"
-                preview={false}
-                referrerPolicy="no-referrer"
-                src={image || ''}
-                onError={() => {
-                  SetIsImgUrlValid(false);
-                }}
+          {isImgUrlValid ? (
+            <Image
+              alt="profile"
+              className="tw-w-full"
+              preview={false}
+              referrerPolicy="no-referrer"
+              src={image || ''}
+              onError={() => {
+                SetIsImgUrlValid(false);
+              }}
+            />
+          ) : (
+            <div style={{ width: 'inherit' }}>
+              <ProfilePicture
+                displayName={userData?.displayName || userData.name}
+                height="150"
+                id={userData?.id || ''}
+                name={userData?.name || ''}
+                textClass="tw-text-5xl"
+                width=""
               />
-            ) : (
-              <div style={{ width: 'inherit' }}>
-                <ProfilePicture
-                  displayName={userData?.displayName || userData.name}
-                  height="150"
-                  id={userData?.id || ''}
-                  name={userData?.name || ''}
-                  textClass="tw-text-5xl"
-                  width=""
-                />
-              </div>
-            )}
+            </div>
+          )}
+          <Space className="p-sm" direction="vertical" size={8}>
             {getDisplayNameComponent()}
-            <p className="tw-mt-2 tw-mx-3">{userData.email}</p>
+            <p>{userData.email}</p>
             {getDescriptionComponent()}
             {isAuthProviderBasic &&
               isLoggedinUser &&
               getChangePasswordComponent()}
-          </div>
+          </Space>
         </Card>
         {getTeamsComponent()}
         {getRolesComponent()}

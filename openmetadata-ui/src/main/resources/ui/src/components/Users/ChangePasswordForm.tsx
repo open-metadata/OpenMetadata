@@ -1,6 +1,5 @@
 import { Form, Input, Modal } from 'antd';
-import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
 
 type ChangePasswordForm = {
@@ -16,13 +15,6 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
 }) => {
   const [form] = Form.useForm();
   const newPassword = Form.useWatch('newPassword', form);
-
-  const validationMessages = useMemo(
-    () => ({
-      required: '${label} is required',
-    }),
-    []
-  );
 
   return (
     <Modal
@@ -45,7 +37,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         id="change-password-form"
         layout="vertical"
         name="change-password-form"
-        validateMessages={validationMessages}
+        validateMessages={{ required: '${label} is required' }}
         onFinish={onSave}>
         <Form.Item
           label="Old Password"
@@ -76,9 +68,6 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             },
             {
               validator: (_, value) => {
-                if (isEmpty(newPassword)) {
-                  return Promise.reject('Please type New Password first');
-                }
                 if (value !== newPassword) {
                   return Promise.reject("Password doesn't match");
                 }
