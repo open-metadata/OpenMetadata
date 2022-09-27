@@ -99,10 +99,14 @@ describe('MyData page should work', () => {
 
     verifyResponseStatusCode('@waitAfterFollow', 200);
     // go to manage tab and search for logged in user and set the owner
-    interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'getUsers');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      'getTeams'
+    );
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@getUsers', 200);
+    verifyResponseStatusCode('@getTeams', 200);
     //Clicking on users tab
     cy.get('[data-testid="dropdown-tab"]')
       .contains('Users')
@@ -112,6 +116,7 @@ describe('MyData page should work', () => {
 
     //Selecting the user
     cy.get('[data-testid="list-item"]')
+      .first()
       .should('exist')
       .should('be.visible')
       .click();
@@ -120,7 +125,7 @@ describe('MyData page should work', () => {
       .scrollIntoView()
       .invoke('text')
       .then((text) => {
-        expect(text).equal('Aaron Johnson');
+        expect(text).equal('admin');
       });
 
     cy.clickOnLogo();
@@ -128,7 +133,7 @@ describe('MyData page should work', () => {
     // checks newly generated feed for follow and setting owner
     cy.get('[data-testid="message-container"]')
       .first()
-      .contains('Added owner: Aaron Johnson')
+      .contains('Added owner: admin')
       .should('be.visible');
 
     cy.get('[data-testid="message-container"]')

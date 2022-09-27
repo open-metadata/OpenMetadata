@@ -138,13 +138,13 @@ describe('Entity Details Page', () => {
 
     interceptURL(
       'GET',
-      '/api/v1/users/loggedInUser/groupTeams',
-      'waitForUsers'
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      'waitForTeams'
     );
 
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@waitForUsers', 200);
+    verifyResponseStatusCode('@waitForTeams', 200);
     //Clicking on users tab
     cy.get('[data-testid="dropdown-tab"]')
       .contains('Users')
@@ -155,6 +155,7 @@ describe('Entity Details Page', () => {
     interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
     //Selecting the user
     cy.get('[data-testid="list-item"]')
+      .first()
       .should('exist')
       .should('be.visible')
       .click();
@@ -165,7 +166,7 @@ describe('Entity Details Page', () => {
       .scrollIntoView()
       .invoke('text')
       .then((text) => {
-        expect(text).equal('Aaron Johnson');
+        expect(text).equal('admin');
       });
 
     cy.get('[data-testid="edit-Tier-icon"]')
@@ -204,7 +205,7 @@ describe('Entity Details Page', () => {
     // checks newly generated feed for follow and setting owner
     cy.get('[data-testid="message-container"]')
       .eq(1)
-      .contains('Added owner: Aaron Johnson')
+      .contains('Added owner: admin')
       .should('be.visible');
 
     cy.get('[data-testid="message-container"]')

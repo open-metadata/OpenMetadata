@@ -210,6 +210,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Delete Test Case should work properly', () => {
     const testName = `${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`;
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
 
     searchEntity(TEAM_ENTITY);
