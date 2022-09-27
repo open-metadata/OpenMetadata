@@ -472,9 +472,26 @@ public class TableRepository extends EntityRepository<Table> {
       storeOwner(table, dataModel.getOwner());
     }
 
+    table.setTags(dataModel.getTags());
+    applyTags(table);
+
+    // Carry forward the column description from the model to table columns, if empty
+    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+      Column stored =
+          table.getColumns().stream()
+              .filter(c -> EntityUtil.columnNameMatch.test(c, modelColumn))
+              .findAny()
+              .orElse(null);
+      if (stored == null) {
+        continue;
+      }
+      stored.setTags(modelColumn.getTags());
+    }
+    applyTags(table.getColumns());
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
 
     setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(List.of(FIELD_TAGS), FIELD_TAGS));
 
     return table;
   }

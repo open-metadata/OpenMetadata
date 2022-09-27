@@ -27,6 +27,10 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
@@ -382,8 +386,31 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             schema_name=self.context.database_schema.name.__root__,
             table_name=table_name,
         )
+
         datamodel = self.get_data_model(table_fqn)
+
+        logger.info("Processing DBT Tags")
+        dbt_tag_labels = None
         if datamodel:
+            dbt_tag_labels = datamodel.tags
+            if not dbt_tag_labels:
+                dbt_tag_labels = []
+            for column in datamodel.columns:
+                if column.tags:
+                    dbt_tag_labels.extend(column.tags)
+            if dbt_tag_labels:
+                for tag_label in dbt_tag_labels:
+                    yield OMetaTagAndCategory(
+                        category_name=CreateTagCategoryRequest(
+                            name="DBTTags",
+                            description="",
+                            categoryType="Classification",
+                        ),
+                        category_details=CreateTagRequest(
+                            name=tag_label.tagFQN.__root__.split(".")[1],
+                            description="DBT Tags",
+                        ),
+                    )
             yield DataModelLink(
                 fqn=table_fqn,
                 datamodel=datamodel,

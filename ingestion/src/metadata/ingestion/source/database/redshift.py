@@ -516,7 +516,7 @@ class RedshiftSource(CommonDbSourceService):
                     table_name=view_name,
                 )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=view_fqn
+                    self.source_config.tableFilterPattern, table_fqn=view_fqn
                 ):
                     self.status.filter(
                         view_fqn,

@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
 import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Glue';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const tableName = 'cloudfront_logs2';
+const description = `This is ${serviceName} description`;
 
 describe('Glue Ingestion', () => {
   beforeEach(() => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
   });
+
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
@@ -53,6 +56,16 @@ describe('Glue Ingestion', () => {
       serviceName,
       'database',
       false
+    );
+  });
+
+  it('Update table description and verify', () => {
+    updateDescriptionForIngestedTables(
+      serviceName,
+      tableName,
+      description,
+      SERVICE_TYPE.Database,
+      'tables'
     );
   });
 

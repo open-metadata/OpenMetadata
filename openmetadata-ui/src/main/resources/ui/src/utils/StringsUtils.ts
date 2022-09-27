@@ -161,3 +161,17 @@ export const getDecodedFqn = (fqn: string, plusAsSpace = false) => {
 export const isExternalUrl = (url = '') => {
   return /^https?:\/\//.test(url);
 };
+
+/**
+ *
+ * @param a compare value one
+ * @param b compare value two
+ * @returns sorted array (A-Z) which will have custom value at last
+ */
+export const customServiceComparator = (a: string, b: string): number => {
+  if (a.includes('Custom') || b.includes('Custom')) {
+    return a.includes('Custom') ? 1 : -1;
+  } else {
+    return a.localeCompare(b);
+  }
+};
