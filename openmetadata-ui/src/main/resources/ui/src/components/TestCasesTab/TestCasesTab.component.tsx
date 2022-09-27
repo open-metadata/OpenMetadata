@@ -72,8 +72,8 @@ const TestCasesTab = ({
       testCasePageHandler={testCasePageHandler}>
       <>
         <Col className="flex justify-end items-center" span={24}>
+          <span className="m-r-xs">Deleted Tests</span>
           <Switch checked={deleted} onClick={handleDeletedTestCaseClick} />
-          <span className="m-l-xs">Deleted Tests</span>
         </Col>
         <Col span={24}>
           <DataQualityTab

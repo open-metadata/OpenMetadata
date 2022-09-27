@@ -39,7 +39,7 @@ import { DataQualityTabProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
-  isLoading,
+  isLoading = false,
   testCases,
   deletedTable = false,
   onTestUpdate,
