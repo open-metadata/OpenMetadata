@@ -432,20 +432,13 @@ export const AuthProvider = ({
       .then((authRes) => {
         const isSecureMode = !isNil(authRes) && authRes.provider !== NO_AUTH;
         if (isSecureMode) {
-          const { provider, providerName, authority, clientId, callbackUrl } =
-            authRes;
+          const provider = authRes?.provider;
           // show an error toast if provider is null or not supported
           if (
             provider &&
             Object.values(AuthTypes).includes(provider as AuthTypes)
           ) {
-            const configJson = getAuthConfig({
-              authority,
-              clientId,
-              callbackUrl,
-              provider,
-              providerName,
-            });
+            const configJson = getAuthConfig(authRes);
             initializeAxiosInterceptors();
             setAuthConfig(configJson);
             updateAuthInstance(configJson);
@@ -461,7 +454,7 @@ export const AuthProvider = ({
             // provider is either null or not supported
             setLoading(false);
             showErrorToast(
-              `The configured SSO Provider "${provider}" is not supported. Please check the authentication configuration in the server.`
+              `The configured SSO Provider "${authRes?.provider}" is not supported. Please check the authentication configuration in the server.`
             );
           }
         } else {

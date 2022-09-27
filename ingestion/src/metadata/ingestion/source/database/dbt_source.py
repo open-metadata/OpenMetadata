@@ -16,6 +16,10 @@ from datetime import datetime
 from typing import Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
@@ -27,6 +31,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.basic import (
@@ -43,6 +48,13 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
@@ -121,6 +133,24 @@ class DBTMixin:
                                     f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}"
                                 )
 
+                    dbt_table_tags = mnode.get("tags")
+                    dbt_table_tags_list = None
+                    if dbt_table_tags:
+                        dbt_table_tags_list = [
+                            TagLabel(
+                                tagFQN=fqn.build(
+                                    self.metadata,
+                                    entity_type=Tag,
+                                    tag_category_name="DBTTags",
+                                    tag_name=tag,
+                                ),
+                                labelType=LabelType.Automated,
+                                state=State.Confirmed,
+                                source=TagSource.Tag,
+                            )
+                            for tag in dbt_table_tags
+                        ] or None
+
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=description if description else None,
@@ -130,6 +160,7 @@ class DBTMixin:
                         columns=columns,
                         upstream=upstream_nodes,
                         owner=owner,
+                        tags=dbt_table_tags_list,
                     )
                     model_fqn = fqn.build(
                         self.metadata,
@@ -187,12 +218,32 @@ class DBTMixin:
                 description = manifest_columns.get(key.lower(), {}).get("description")
                 if description is None:
                     description = ccolumn.get("comment")
+
+                dbt_column_tags = manifest_columns.get(key.lower(), {}).get("tags")
+                dbt_column_tags_list = None
+                if dbt_column_tags:
+                    dbt_column_tags_list = [
+                        TagLabel(
+                            tagFQN=fqn.build(
+                                self.metadata,
+                                entity_type=Tag,
+                                tag_category_name="DBTTags",
+                                tag_name=tag,
+                            ),
+                            labelType=LabelType.Automated,
+                            state=State.Confirmed,
+                            source=TagSource.Tag,
+                        )
+                        for tag in dbt_column_tags
+                    ] or None
+
                 col = Column(
                     name=col_name,
                     description=description if description else None,
                     dataType=col_type,
                     dataLength=1,
                     ordinalPosition=ccolumn["index"],
+                    tags=dbt_column_tags_list,
                 )
                 columns.append(col)
             except Exception as exc:  # pylint: disable=broad-except

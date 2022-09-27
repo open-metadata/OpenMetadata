@@ -38,6 +38,7 @@ public abstract class ThirdPartySecretsManager extends SecretsManager {
     String secretName = buildSecretId("service", serviceType.value(), connectionType, connectionName);
     try {
       if (encrypt) {
+        validateServiceConnection(connectionConfig, connectionType, serviceType);
         String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
         if (connectionConfigJson != null) {
           upsertSecret(secretName, connectionConfigJson);
@@ -47,7 +48,7 @@ public abstract class ThirdPartySecretsManager extends SecretsManager {
         Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
         return JsonUtils.readValue(getSecret(secretName), clazz);
       }
-    } catch (ClassNotFoundException ex) {
+    } catch (ClassNotFoundException | InvalidServiceConnectionException ex) {
       throw InvalidServiceConnectionException.byMessage(
           connectionType, String.format("Failed to construct connection instance of %s", connectionType));
     } catch (Exception e) {

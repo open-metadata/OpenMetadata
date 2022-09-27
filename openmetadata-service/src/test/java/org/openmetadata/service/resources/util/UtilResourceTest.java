@@ -26,6 +26,9 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -192,7 +195,17 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
 
     // Create a bot user.
     UserResourceTest userResourceTest = new UserResourceTest();
-    CreateUser createUser = userResourceTest.createRequest(test).withIsBot(true);
+    CreateUser createUser =
+        userResourceTest
+            .createRequest(test)
+            .withIsBot(true)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.SSO)
+                    .withConfig(
+                        new SSOAuthMechanism()
+                            .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
+                            .withAuthConfig(new GoogleSSOClientConfig().withSecretKey("/fake/path/secret.json"))));
     userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
 
     int afterUserCount = getEntitiesCount().getUserCount();
