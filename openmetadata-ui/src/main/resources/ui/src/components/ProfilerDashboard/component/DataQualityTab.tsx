@@ -34,11 +34,14 @@ import {
 } from '../../../utils/TableUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import Loader from '../../Loader/Loader';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
+  isLoading,
   testCases,
+  deletedTable = false,
   onTestUpdate,
 }) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
@@ -231,6 +234,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               />
             ),
         }}
+        loading={{
+          indicator: <Loader size="small" />,
+          spinning: isLoading,
+        }}
         pagination={false}
         size="small"
       />
@@ -243,6 +250,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
       <DeleteWidgetModal
         afterDeleteAction={onTestUpdate}
+        allowSoftDelete={!deletedTable}
         entityId={selectedTestCase?.id || ''}
         entityName={selectedTestCase?.name || ''}
         entityType="testCase"

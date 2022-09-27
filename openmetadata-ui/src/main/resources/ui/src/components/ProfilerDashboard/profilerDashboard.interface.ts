@@ -82,6 +82,8 @@ export interface DataQualityTabProps {
   testCases: TestCase[];
   onTestUpdate?: () => void;
   hasAccess: boolean;
+  isLoading?: boolean;
+  deletedTable?: boolean;
 }
 
 export interface TestSummaryProps {
