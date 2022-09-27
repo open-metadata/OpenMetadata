@@ -774,10 +774,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
-    try{
-        registeredUser = dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-    }catch(IOException ex){
-        throw new BadRequestException("Email is not valid.");
+    try {
+      registeredUser =
+          dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+    } catch (IOException ex) {
+      throw new BadRequestException("Email is not valid.");
     }
     // send a mail to the User with the Update
     try {
@@ -814,9 +815,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     List<String> fields = dao.getAllowedFieldsCopy();
     fields.add(USER_PROTECTED_FIELDS);
-    User storedUser =
-        dao.getByName(
-            uriInfo, request.getUsername(), new Fields(fields, String.join(",", fields)));
+    User storedUser = dao.getByName(uriInfo, request.getUsername(), new Fields(fields, String.join(",", fields)));
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
       throw new RuntimeException("Token does not belong to the user.");
@@ -887,7 +886,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
     // passwords validity
     if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-          throw new RuntimeException("Password and Confirm Password should match");
+      throw new RuntimeException("Password and Confirm Password should match");
     }
     PasswordUtil.validatePassword(request.getNewPassword());
     List<String> fields = dao.getAllowedFieldsCopy();
