@@ -469,7 +469,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       validateEmailAlreadyExists(create.getEmail());
       // this is also important since username is used for a lot of stuff
       user.setName(user.getEmail().split("@")[0]);
-      if (Boolean.TRUE.equals(!create.getIsBot()) && create.getCreatePasswordType() == ADMINCREATE) {
+      if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMINCREATE) {
         addAuthMechanismToUser(user, create);
       }
       // else the user will get a mail if configured smtp
