@@ -67,6 +67,7 @@ public class JwtFilter implements ContainerRequestFilter {
       List.of(
           "config",
           "signup",
+          "v1/version",
           "registrationConfirmation",
           "resendRegistrationToken",
           "generatePasswordResetLink",

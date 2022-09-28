@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
 import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Metabase';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const tableName = 'Customers Dashboard';
+const description = `This is ${serviceName} description`;
 
 describe('Metabase Ingestion', () => {
   beforeEach(() => {
@@ -48,6 +50,16 @@ describe('Metabase Ingestion', () => {
       addIngestionInput,
       serviceName,
       'dashboard'
+    );
+  });
+
+  it('Update table description and verify', () => {
+    updateDescriptionForIngestedTables(
+      serviceName,
+      tableName,
+      description,
+      SERVICE_TYPE.Dashboard,
+      'dashboards'
     );
   });
 

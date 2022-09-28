@@ -20,8 +20,10 @@ import {
   Row,
   Select,
   Space,
+  Switch,
   Tooltip,
 } from 'antd';
+import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -29,13 +31,14 @@ import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
-import { getListTestCase } from '../../axiosAPIs/testAPI';
+import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
+import { Include } from '../../generated/type/include';
 import {
   formatNumberWithComma,
   formTwoDigitNmber,
@@ -70,6 +73,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
+  const [deleted, setDeleted] = useState<boolean>(false);
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const isSummary = activeTab === ProfilerDashboardTab.SUMMARY;
   const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
 
@@ -162,13 +167,16 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
     setActiveTab(value);
   };
 
-  const fetchAllTests = async () => {
+  const fetchAllTests = async (params?: ListTestCaseParams) => {
+    setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCase({
         fields: 'testCaseResult,entityLink,testDefinition,testSuite',
         entityLink: generateEntityLink(table.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
+        include: deleted ? Include.Deleted : Include.NonDeleted,
+        ...params,
       });
       const columnTestsCase: TestCase[] = [];
       const tableTests: TableTestsType = {
@@ -192,6 +200,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
       setColumnTests(columnTestsCase);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsTestCaseLoading(false);
     }
   };
 
@@ -224,6 +234,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
     );
   };
 
+  const handleDeletedTestCaseClick: SwitchChangeEventHandler = (value) => {
+    setDeleted(value);
+    fetchAllTests({ include: value ? Include.Deleted : Include.NonDeleted });
+  };
+
   useEffect(() => {
     if (!isEmpty(table) && viewTest) {
       fetchAllTests();
@@ -249,6 +264,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
         <Space>
           {isDataQuality && (
             <>
+              <Form.Item className="m-0 " label="Deleted Tests">
+                <Switch
+                  checked={deleted}
+                  onClick={handleDeletedTestCaseClick}
+                />
+              </Form.Item>
               <Form.Item className="m-0 w-40" label="Type">
                 <Select
                   options={testCaseTypeOption}
@@ -364,7 +385,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
 
       {isDataQuality && (
         <DataQualityTab
+          deletedTable={deleted}
           hasAccess={permissions.EditAll}
+          isLoading={isTestCaseLoading}
           testCases={getFilterTestCase()}
           onTestUpdate={fetchAllTests}
         />

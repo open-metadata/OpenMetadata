@@ -437,11 +437,17 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>) "
             + "ORDER BY toId")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
-        @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation);
+
+    default List<EntityRelationshipRecord> findTo(String fromId, String fromEntity, int relation) {
+      return findTo(fromId, fromEntity, List.of(relation));
+    }
 
     // TODO delete this
     @SqlQuery(

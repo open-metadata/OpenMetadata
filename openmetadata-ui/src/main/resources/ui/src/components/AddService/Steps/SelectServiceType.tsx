@@ -117,7 +117,9 @@ const SelectServiceType = ({
                     )}
                   </div>
                 </div>
-                <p className="break-word text-center">{type}</p>
+                <p className="break-word text-center">
+                  {type.includes('Custom') ? startCase(type) : type}
+                </p>
               </div>
             ))}
           </div>

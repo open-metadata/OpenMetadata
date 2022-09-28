@@ -178,9 +178,9 @@ const SigninPage = () => {
               'sso-container': !isAuthProviderBasic,
             })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
-              Centralized Metadata Store, Discover, <br />
-              Collaborate and get your Data Right
+            <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
+              Centralized Metadata Store, Discover, Collaborate and get your
+              Data Right
             </Typography.Text>
 
             {isAuthProviderBasic ? (

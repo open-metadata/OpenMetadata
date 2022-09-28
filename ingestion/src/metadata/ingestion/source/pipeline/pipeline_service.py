@@ -211,7 +211,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 self.metadata,
                 entity_type=Pipeline,
                 service_name=self.context.pipeline_service.name.__root__,
-                mlmodel_name=self.get_pipeline_name(pipeline_detail),
+                pipeline_name=self.get_pipeline_name(pipeline_detail),
             )
             if filter_by_pipeline(
                 self.source_config.pipelineFilterPattern,
