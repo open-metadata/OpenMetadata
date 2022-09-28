@@ -16,7 +16,7 @@ import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'augcustomers';
+const tableName = 'personsx';
 const description = `This is ${serviceName} description`;
 
 describe('BigQuery Ingestion', () => {
