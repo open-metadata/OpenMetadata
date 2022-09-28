@@ -11,34 +11,34 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { lowerCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   getAllReIndexStatus,
   reIndexByPublisher,
 } from '../../axiosAPIs/elastic-index-API';
-import Searchbar from '../../components/common/searchbar/Searchbar';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/api/policies/createPolicy';
 import { EventPublisherJob } from '../../generated/settings/eventPublisherJob';
 import jsonData from '../../jsons/en';
-import { getDateFromTimestamp } from '../../utils/APIUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getStatusResultBadgeIcon } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { getDateTimeByTimeStampWithZone } from '../../utils/TimeUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const ElasticSearchIndexPage = () => {
-  const [elasticSearchReIndexData, setElasticSearchReIndexData] = useState<
-    EventPublisherJob[]
-  >([]);
-  const { permissions } = usePermissionProvider();
+  const [elasticSearchReIndexData, setElasticSearchReIndexData] =
+    useState<EventPublisherJob>();
 
-  const [searchedData, setSearchedData] = useState(elasticSearchReIndexData);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { permissions } = usePermissionProvider();
 
   const createPermission = useMemo(
     () => checkPermission(Operation.All, ResourceEntity.USER, permissions),
@@ -47,16 +47,22 @@ const ElasticSearchIndexPage = () => {
 
   const fetchAllReIndexedData = async () => {
     try {
+      setIsLoading(true);
       const response = await getAllReIndexStatus();
-      setElasticSearchReIndexData(response);
+
+      setElasticSearchReIndexData(response[0]);
     } catch {
       showErrorToast(jsonData['api-error-messages']['fetch-re-index-all']);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const performReIndexAll = async () => {
     try {
       await reIndexByPublisher();
+
+      showSuccessToast(jsonData['api-success-messages']['fetch-re-index-all']);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -65,114 +71,104 @@ const ElasticSearchIndexPage = () => {
     }
   };
 
-  const handleSearch = (text: string) => {
-    if (text) {
-      const normalizeText = lowerCase(text);
-      const matchedData = elasticSearchReIndexData.filter((filter) =>
-        filter?.startedBy?.includes(normalizeText)
-      );
-      setSearchedData(matchedData);
-    } else {
-      setSearchedData(elasticSearchReIndexData);
-    }
-  };
-
-  const handleClickReIndex = () => {
-    performReIndexAll();
-  };
-
-  const columns = useMemo(
-    () => [
-      {
-        title: 'Name',
-        dataIndex: 'name',
-        key: 'name',
-      },
-      {
-        title: 'State Time',
-        dataIndex: 'startTime',
-        key: 'startTime',
-        render: getDateFromTimestamp,
-      },
-      {
-        title: 'Type',
-        dataIndex: 'publisherType',
-        key: 'publisherType',
-      },
-      {
-        title: 'Mode',
-        dataIndex: 'runMode',
-        key: 'runMode',
-      },
-      {
-        title: 'Status',
-        dataIndex: 'status',
-        key: 'status',
-        render: (result: string) => {
-          return (
-            <Space size={8}>
-              {result && (
-                <SVGIcons
-                  alt="result"
-                  className="tw-w-4"
-                  icon={getStatusResultBadgeIcon(result)}
-                />
-              )}
-              <span>{result || '--'}</span>
-            </Space>
-          );
-        },
-      },
-    ],
-    []
-  );
+  const handleRefreshIndex = () => fetchAllReIndexedData();
 
   useEffect(() => {
     fetchAllReIndexedData();
   }, []);
 
-  useEffect(() => {
-    setSearchedData(elasticSearchReIndexData);
-  }, [elasticSearchReIndexData]);
-
   return (
     <div>
       <Row gutter={[16, 16]}>
-        <Col span={8}>
-          <Searchbar
-            removeMargin
-            placeholder="Search for elastic search index..."
-            typingInterval={500}
-            onSearch={handleSearch}
-          />
-        </Col>
-        <Col span={16}>
-          <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-            <Tooltip
-              title={
-                createPermission
-                  ? 'Elastic search re-index all'
-                  : NO_PERMISSION_FOR_ACTION
-              }>
+        <Col span={24}>
+          <Space className="w-full justify-end">
+            <Space align="center" size={16}>
               <Button
-                data-testid="elastic-search-re-index-all"
-                disabled={!createPermission}
-                type="primary"
-                onClick={handleClickReIndex}>
-                Re Index All
-              </Button>
-            </Tooltip>
+                data-testid="elastic-search-re-fetch-data"
+                disabled={!createPermission || isLoading}
+                icon={<ReloadOutlined />}
+                onClick={handleRefreshIndex}
+              />
+            </Space>
+
+            <Space align="center" size={16}>
+              <Tooltip
+                title={
+                  createPermission
+                    ? 'Elastic search re-index all'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  data-testid="elastic-search-re-index-all"
+                  disabled={!createPermission}
+                  type="primary"
+                  onClick={performReIndexAll}>
+                  Re Index All
+                </Button>
+              </Tooltip>
+            </Space>
           </Space>
         </Col>
         <Col span={24}>
           <Row>
             <Col span={24}>
-              <Table
-                columns={columns}
-                dataSource={searchedData}
-                pagination={false}
-                size="small"
-              />
+              <Card size="small">
+                <Typography.Title level={5}>ElasticSearch</Typography.Title>
+                <Space direction="horizontal" size={16}>
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Mode</span> :
+                    <span className="tw-ml-2">
+                      {elasticSearchReIndexData?.runMode || '--'}
+                    </span>
+                  </div>
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Status</span> :
+                    <span className="tw-ml-2">
+                      <Space size={8}>
+                        {elasticSearchReIndexData?.status && (
+                          <SVGIcons
+                            alt="result"
+                            className="w-4"
+                            icon={getStatusResultBadgeIcon(
+                              elasticSearchReIndexData?.status
+                            )}
+                          />
+                        )}
+                        <span>{elasticSearchReIndexData?.status || '--'}</span>
+                      </Space>
+                    </span>
+                  </div>
+
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Last Updated</span> :
+                    <span className="tw-ml-2">
+                      {elasticSearchReIndexData?.failureDetails?.lastFailedAt
+                        ? getDateTimeByTimeStampWithZone(
+                            elasticSearchReIndexData?.failureDetails
+                              ?.lastFailedAt
+                          )
+                        : '--'}
+                    </span>
+                  </div>
+                </Space>
+                <div className="m-t-sm">
+                  <span className="tw-text-grey-muted">Last error</span> :
+                  <span className="tw-ml-2">
+                    {elasticSearchReIndexData?.failureDetails
+                      ?.lastFailedReason ? (
+                      <RichTextEditorPreviewer
+                        enableSeeMoreVariant={Boolean(elasticSearchReIndexData)}
+                        markdown={
+                          elasticSearchReIndexData?.failureDetails
+                            ?.lastFailedReason
+                        }
+                      />
+                    ) : (
+                      '--'
+                    )}
+                  </span>
+                </div>
+              </Card>
             </Col>
           </Row>
         </Col>

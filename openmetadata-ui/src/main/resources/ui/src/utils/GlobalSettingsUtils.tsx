@@ -219,6 +219,21 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
+      category: 'Event Publishers',
+      items: [
+        {
+          label: 'Elastic search',
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.ALL,
+            permissions
+          ),
+          icon: (
+            <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
+          ),
+        },
+      ],
+    },
+    {
       category: 'Integrations',
       items: [
         {
@@ -252,16 +267,6 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <BotIcon className="tw-w-4 side-panel-icons" />,
-        },
-        {
-          label: 'Elastic search',
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.ALL,
-            permissions
-          ),
-          icon: (
-            <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
-          ),
         },
       ],
     },

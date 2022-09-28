@@ -145,5 +145,8 @@ export const getTimeZone = (): string => {
   return abbreviation;
 };
 
-export const getDateTimeByDateWithZone = (date: Date) =>
-  `${moment(date).format('DD MMM YYYY, hh:mm')} ${getTimeZone()}`;
+export const getDateTimeByTimeStampWithZone = (timeStamp: number): string => {
+  return `${moment(timeStamp, 'x').format(
+    'DD MMM YYYY, hh:mm'
+  )} ${getTimeZone()}`;
+};

@@ -12,43 +12,33 @@
  */
 
 import axiosClient from '.';
+import { CreateEventPublisherJob } from '../generated/api/createEventPublisherJob';
 import {
   EventPublisherJob,
   PublisherType,
+  RunMode,
 } from '../generated/settings/eventPublisherJob';
 
 export const getAllReIndexStatus = async () => {
+  const params = { limit: 1 };
   const res = await axiosClient.get<EventPublisherJob[]>(
-    `/indexResource/reindex/status`
+    '/indexResource/reindex/status',
+    {
+      params,
+    }
   );
 
   return res.data;
 };
 
-export const getReIndexStatusByEntityName = async (entityName: string) => {
-  const res = await axiosClient.get(
-    `/indexResource/reindex/${entityName}/status`
-  );
-
-  return res;
-};
-
 export const reIndexByPublisher = async (
-  type: PublisherType = PublisherType.ElasticSearch
+  payload: CreateEventPublisherJob = {
+    name: 'ElasticSearch',
+    publisherType: PublisherType.ElasticSearch,
+    runMode: RunMode.Batch,
+  }
 ) => {
-  const res = await axiosClient.post('/indexResource/reindex', {
-    batchSize: 10,
-    name: 'string',
-    publisherType: type,
-    recreateIndex: true,
-    runMode: 'batch',
-  });
+  const res = await axiosClient.post('/indexResource/reindex', payload);
 
-  return res;
-};
-
-export const reIndexByEntityName = async (entityName: string) => {
-  const res = await axiosClient.post(`indexResource/reindex/${entityName}`);
-
-  return res;
+  return res.data;
 };

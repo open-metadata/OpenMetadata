@@ -252,7 +252,7 @@ const GlobalSettingRouter = () => {
           permissions
         )}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
           GlobalSettingOptions.ELASTIC_SEARCH
         )}
       />
