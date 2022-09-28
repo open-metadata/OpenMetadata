@@ -32,8 +32,8 @@ import { generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
+import { CreatePasswordGenerator } from '../../enums/user.enum';
 import {
-  CreatePasswordGenerator,
   CreatePasswordType,
   CreateUser as CreateUserSchema,
 } from '../../generated/api/teams/createUser';
@@ -838,9 +838,9 @@ const CreateUser = ({
                 <Input
                   readOnly
                   addonAfter={
-                    <div className="tw-flex tw-items-center">
+                    <div className="flex-center w-16">
                       <div
-                        className="tw-w-8 flex-center cursor-pointer"
+                        className="w-8 h-7 flex-center cursor-pointer"
                         onClick={generateRandomPassword}>
                         {isPasswordGenerating ? (
                           <Loader size="small" type="default" />
@@ -848,12 +848,14 @@ const CreateUser = ({
                           <SVGIcons
                             alt="generate"
                             icon={Icons.SYNC}
-                            width="14"
+                            width="16"
                           />
                         )}
                       </div>
 
-                      <CopyToClipboardButton copyText={generatedPassword} />
+                      <div className="w-8 h-7 flex-center">
+                        <CopyToClipboardButton copyText={generatedPassword} />
+                      </div>
                     </div>
                   }
                   name="generatedPassword"
