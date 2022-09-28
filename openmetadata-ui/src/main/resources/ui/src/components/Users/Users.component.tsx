@@ -43,7 +43,10 @@ import {
 } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { AuthTypes } from '../../enums/signin.enum';
-import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
+import {
+  ChangePasswordRequest,
+  RequestType,
+} from '../../generated/auth/changePasswordRequest';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
@@ -239,16 +242,21 @@ const Users = ({
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
-      await changePassword(data);
+      const sendData = {
+        ...data,
+        ...(isAdminUser &&
+          !isLoggedinUser && {
+            username: userData.name,
+            requestType: RequestType.User,
+          }),
+      };
+      await changePassword(sendData);
       setIsChangePassword(false);
       showSuccessToast(
         jsonData['api-success-messages']['update-password-success']
       );
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(err as AxiosError);
     }
   };
 
@@ -316,7 +324,7 @@ const Users = ({
       );
     } else {
       return (
-        <p className="tw-mt-2 tw-px-3">
+        <p className="tw-mt-2">
           {getEntityName(userData as unknown as EntityReference)}
         </p>
       );
@@ -343,7 +351,7 @@ const Users = ({
         <div className="tw--ml-2 tw-px-3">
           <p className="tw-mt-2">
             {userData.description || (
-              <span className="tw-no-description tw-p-2">No description </span>
+              <span className="tw-no-description">No description </span>
             )}
           </p>
         </div>
@@ -361,6 +369,7 @@ const Users = ({
         </Typography.Text>
 
         <ChangePasswordForm
+          isLoggedinUser={isLoggedinUser}
           visible={isChangePassword}
           onCancel={() => setIsChangePassword(false)}
           onSave={(data) => handleChangePassword(data)}
@@ -709,7 +718,7 @@ const Users = ({
             <p>{userData.email}</p>
             {getDescriptionComponent()}
             {isAuthProviderBasic &&
-              isLoggedinUser &&
+              (isAdminUser || isLoggedinUser) &&
               getChangePasswordComponent()}
           </Space>
         </Card>

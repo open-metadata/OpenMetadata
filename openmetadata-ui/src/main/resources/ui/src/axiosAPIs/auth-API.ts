@@ -95,3 +95,9 @@ export const changePassword = async (payload: ChangePasswordRequest) => {
 
   return response;
 };
+
+export const generateRandomPwd = async () => {
+  const response = await axiosClient.get(`${apiPath}/generateRandomPwd`);
+
+  return response.data;
+};

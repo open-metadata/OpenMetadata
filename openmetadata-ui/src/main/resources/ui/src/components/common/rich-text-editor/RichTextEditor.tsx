@@ -72,7 +72,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     }, [initialValue]);
 
     return (
-      <div className={classNames(className, 'tw-my-4')} style={style}>
+      <div className={classNames(className)} style={style}>
         {readonly ? (
           <div
             className="tw-border tw-border-main tw-p-2 tw-rounded"

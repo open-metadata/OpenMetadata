@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Card, Space } from 'antd';
 import { AxiosError } from 'axios';
 import React, {
   FC,
@@ -265,16 +265,17 @@ const BotDetails: FC<BotsDetailProp> = ({
         }}>
         <div data-testid="left-panel">
           <div className="tw-flex tw-flex-col">
-            <div>
-              <SVGIcons
-                alt="bot-profile"
-                icon={Icons.BOT_PROFILE}
-                width="280px"
-              />
-            </div>
-            {getDisplayNameComponent()}
+            <SVGIcons
+              alt="bot-profile"
+              icon={Icons.BOT_PROFILE}
+              width="280px"
+            />
 
-            {getDescriptionComponent()}
+            <Space className="p-b-md" direction="vertical" size={8}>
+              {getDisplayNameComponent()}
+
+              {getDescriptionComponent()}
+            </Space>
           </div>
         </div>
       </Card>

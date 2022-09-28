@@ -6,12 +6,14 @@ type ChangePasswordForm = {
   visible: boolean;
   onCancel: () => void;
   onSave: (data: ChangePasswordRequest) => void;
+  isLoggedinUser: boolean;
 };
 
 const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
   visible,
   onCancel,
   onSave,
+  isLoggedinUser,
 }) => {
   const [form] = Form.useForm();
   const newPassword = Form.useWatch('newPassword', form);
@@ -39,16 +41,21 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         name="change-password-form"
         validateMessages={{ required: '${label} is required' }}
         onFinish={onSave}>
-        <Form.Item
-          label="Old Password"
-          name="oldPassword"
-          rules={[
-            {
-              required: true,
-            },
-          ]}>
-          <Input.Password data-testid="name" placeholder="Enter old Password" />
-        </Form.Item>
+        {isLoggedinUser && (
+          <Form.Item
+            label="Old Password"
+            name="oldPassword"
+            rules={[
+              {
+                required: true,
+              },
+            ]}>
+            <Input.Password
+              data-testid="name"
+              placeholder="Enter old Password"
+            />
+          </Form.Item>
+        )}
         <Form.Item
           label="New Password"
           name="newPassword"
