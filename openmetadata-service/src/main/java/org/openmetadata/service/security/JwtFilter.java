@@ -43,12 +43,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -62,6 +65,7 @@ public class JwtFilter implements ContainerRequestFilter {
   private JwkProvider jwkProvider;
   private String principalDomain;
   private boolean enforcePrincipalDomain;
+  private String providerType;
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -81,6 +85,7 @@ public class JwtFilter implements ContainerRequestFilter {
   @SneakyThrows
   public JwtFilter(
       AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
+    this.providerType = authenticationConfiguration.getProvider();
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
@@ -116,6 +121,11 @@ public class JwtFilter implements ContainerRequestFilter {
     MultivaluedMap<String, String> headers = requestContext.getHeaders();
     String tokenFromHeader = extractToken(headers);
     LOG.debug("Token from header:{}", tokenFromHeader);
+
+    // the case where OMD generated the Token for the Client
+    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString())) {
+      validateTokenIsNotUsedAfterLogout(tokenFromHeader);
+    }
 
     DecodedJWT jwt = validateAndReturnDecodedJwtToken(tokenFromHeader);
 
@@ -238,5 +248,12 @@ public class JwtFilter implements ContainerRequestFilter {
       }
     }
     throw new AuthenticationException("Not Authorized! Invalid Token");
+  }
+
+  private void validateTokenIsNotUsedAfterLogout(String authToken) {
+    LogoutRequest previouslyLoggedOutEvent = JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
+    if (previouslyLoggedOutEvent != null) {
+      throw new AuthenticationException("Expired token!");
+    }
   }
 }
