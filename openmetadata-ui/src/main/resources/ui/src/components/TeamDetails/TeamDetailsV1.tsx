@@ -953,6 +953,7 @@ const TeamDetailsV1 = ({
                     onClick: () => handleAddTeam(true),
                     disabled: !createTeamPermission,
                     heading: 'Team',
+                    datatestid: 'add-team',
                   })
                 ) : (
                   <Row
@@ -977,6 +978,7 @@ const TeamDetailsV1 = ({
                         />
                         <span>Deleted Teams</span>
                         <ButtonAntd
+                          data-testid="add-team"
                           disabled={!createTeamPermission}
                           title={
                             createTeamPermission
@@ -1104,6 +1106,7 @@ const TeamDetailsV1 = ({
           buttons={
             <div className="tw-text-lg tw-text-center">
               <Button
+                data-testid="add-team"
                 disabled={!createTeamPermission}
                 size="small"
                 theme="primary"
