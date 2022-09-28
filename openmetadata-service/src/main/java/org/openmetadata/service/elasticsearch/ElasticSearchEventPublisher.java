@@ -17,9 +17,14 @@ package org.openmetadata.service.elasticsearch;
 
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +46,7 @@ import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
+import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Database;
@@ -59,6 +65,8 @@ import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.EventPublisherJob;
+import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -70,6 +78,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.JsonUtils;
@@ -78,14 +88,18 @@ import org.openmetadata.service.util.JsonUtils;
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private final RestHighLevelClient client;
   private final ElasticSearchIndexDefinition esIndexDefinition;
+  private final CollectionDAO dao;
   private static final String SERVICE_NAME = "service.name";
   private static final String DATABASE_NAME = "database.name";
 
-  public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig) {
+  public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize(), new ArrayList<>());
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     esIndexDefinition = new ElasticSearchIndexDefinition(client);
     esIndexDefinition.createIndexes();
+    this.dao = dao;
+    // needs Db connection
+    registerElasticSearchJobs();
   }
 
   @Override
@@ -158,16 +172,27 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         }
       } catch (DocumentMissingException ex) {
         LOG.error("Missing Document", ex);
+        updateElasticSearchFailureStatus(
+            EventPublisherJob.Status.ACTIVEWITHERROR, "Missing Document while Updating ES.");
       } catch (ElasticsearchException e) {
         LOG.error("failed to update ES doc");
         LOG.debug(e.getMessage());
         if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
           LOG.error("Error in publishing to ElasticSearch");
+          updateElasticSearchFailureStatus(
+              EventPublisherJob.Status.ACTIVEWITHERROR,
+              String.format("Timeout when updating ES request. Reason %s", e.getMessage()));
           throw new ElasticSearchRetriableException(e.getMessage());
         } else {
+          updateElasticSearchFailureStatus(
+              EventPublisherJob.Status.ACTIVEWITHERROR,
+              String.format("Failed while updating ES. Reason %s", e.getMessage()));
           LOG.error(e.getMessage(), e);
         }
       } catch (IOException ie) {
+        updateElasticSearchFailureStatus(
+            EventPublisherJob.Status.ACTIVEWITHERROR,
+            String.format("Issue in updating ES request. Reason %s", ie.getMessage()));
         throw new EventPublisherException(ie.getMessage());
       }
     }
@@ -659,6 +684,76 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       LOG.debug(deleteRequest.toString());
       deleteRequest.setRefresh(true);
       client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  public void registerElasticSearchJobs() {
+    try {
+      dao.entityExtensionTimeSeriesDao()
+          .delete(
+              BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH,
+              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION);
+      dao.entityExtensionTimeSeriesDao()
+          .delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION);
+      long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
+      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L).withLastFailedReason("No Failures");
+      EventPublisherJob batchJob =
+          new EventPublisherJob()
+              .withName("Elastic Search Batch")
+              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
+              .withRunMode(CreateEventPublisherJob.RunMode.BATCH)
+              .withStatus(EventPublisherJob.Status.ACTIVE)
+              .withTimestamp(startTime)
+              .withStartedBy("admin")
+              .withStartTime(startTime)
+              .withFailureDetails(failureDetails);
+      EventPublisherJob streamJob =
+          new EventPublisherJob()
+              .withName("Elastic Search Stream")
+              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
+              .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
+              .withStatus(EventPublisherJob.Status.ACTIVE)
+              .withTimestamp(startTime)
+              .withStartedBy("admin")
+              .withStartTime(startTime)
+              .withFailureDetails(failureDetails);
+      dao.entityExtensionTimeSeriesDao()
+          .insert(
+              BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH,
+              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION,
+              "eventPublisherJob",
+              JsonUtils.pojoToJson(batchJob));
+      dao.entityExtensionTimeSeriesDao()
+          .insert(
+              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION,
+              "eventPublisherJob",
+              JsonUtils.pojoToJson(streamJob));
+    } catch (Exception e) {
+      LOG.error("Failed to register Elastic Search Job");
+    }
+  }
+
+  public void updateElasticSearchFailureStatus(EventPublisherJob.Status status, String failureMessage) {
+    try {
+      long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
+      String recordString =
+          dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+      EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
+      long originalLastUpdate = lastRecord.getTimestamp();
+      lastRecord.setStatus(status);
+      lastRecord.setTimestamp(updateTime);
+      lastRecord.setFailureDetails(
+          new FailureDetails().withLastFailedAt(updateTime).withLastFailedReason(failureMessage));
+
+      dao.entityExtensionTimeSeriesDao()
+          .update(
+              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              ELASTIC_SEARCH_EXTENSION,
+              JsonUtils.pojoToJson(lastRecord),
+              originalLastUpdate);
+    } catch (Exception e) {
+      LOG.error("Failed to Update Elastic Search Job Info");
     }
   }
 
