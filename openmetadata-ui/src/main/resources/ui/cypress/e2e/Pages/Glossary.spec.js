@@ -57,6 +57,7 @@ const createGlossaryTerm = (term) => {
 };
 
 const deleteGlossary = ({ name }) => {
+  verifyResponseStatusCode('@getGlossaryTerms', 200);
   cy.get('#left-panelV1').contains(name).should('be.visible').click();
   cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
@@ -98,6 +99,8 @@ describe('Glossary page should work properly', () => {
   beforeEach(() => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
+
+    interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
@@ -459,6 +462,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Delete glossary should work properly', () => {
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
     cy.get('[data-testid="header"]')
       .should('be.visible')
       .contains(NEW_GLOSSARY.name)
