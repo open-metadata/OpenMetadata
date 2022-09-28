@@ -154,11 +154,14 @@ class SalesforceSource(DatabaseServiceSource):
                         table_name=table_name,
                     )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, table_fqn
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
                     ):
                         self.status.filter(
                             table_fqn,
-                            "Table pattern not allowed",
+                            "Table Filtered Out",
                         )
                         continue
 

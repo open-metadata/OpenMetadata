@@ -153,7 +153,7 @@ public class DefaultAuthorizer implements Authorizer {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     User originalUser;
     try {
-      List<String> fields = userRepository.getAllowedFields();
+      List<String> fields = userRepository.getAllowedFieldsCopy();
       fields.add(USER_PROTECTED_FIELDS);
       originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fields, String.join(",", fields)));
       if (originalUser.getAuthenticationMechanism() == null) {

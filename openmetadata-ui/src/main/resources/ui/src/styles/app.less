@@ -16,6 +16,24 @@
 @primary: #7147e8;
 @primary-light: rgb(244, 240, 253);
 
+// font size
+
+.text-xs {
+  font-size: 12px;
+}
+.text-sm {
+  font-size: 14px;
+}
+
+// text color
+
+.text-primary {
+  color: @primary;
+}
+.error-text {
+  color: #ff4c3b;
+}
+
 // flex
 .flex {
   display: flex;
@@ -51,6 +69,9 @@
 .mx-auto {
   margin-right: auto;
   margin-left: auto;
+}
+.text-semi-bold {
+  font-weight: 500;
 }
 .text-center {
   text-align: center;
@@ -187,9 +208,6 @@
   font-weight: 600;
 }
 
-.error-text {
-  color: #ff4c3b;
-}
 .cursor-pointer {
   cursor: pointer;
 }
@@ -200,10 +218,6 @@
 .text-base {
   font-size: 1rem /* 16px */;
   line-height: 1.5rem /* 24px */;
-}
-
-.text-sm {
-  font-size: 14px;
 }
 
 /* SSO layout style  */

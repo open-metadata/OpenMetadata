@@ -185,6 +185,7 @@ const jsonData = {
     'create-user-account': 'User account created successfully!',
     'reset-password-success': 'Password reset successfully!',
     'account-verify-success': 'Email verified successfully!',
+    'update-password-success': 'Password updated successfully!',
     'fetch-re-index-all': 'Re index fetched successfully!',
   },
   'form-error-messages': {
