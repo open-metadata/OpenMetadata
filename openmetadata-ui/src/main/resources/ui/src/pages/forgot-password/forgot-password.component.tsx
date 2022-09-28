@@ -45,7 +45,7 @@ const ForgotPassword = () => {
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
-            <Typography.Text strong>
+            <Typography.Text className="tw-text-xl text-semi-bold tw-text-grey-muted">
               Enter your registered email to receive password reset link
             </Typography.Text>
           </Col>

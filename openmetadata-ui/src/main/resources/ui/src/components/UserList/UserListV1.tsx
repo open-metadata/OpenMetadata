@@ -242,6 +242,7 @@ const UserListV1: FC<UserListV1Props> = ({
           <Tooltip
             title={createPermission ? 'Add User' : NO_PERMISSION_FOR_ACTION}>
             <Button
+              data-testid="add-user"
               disabled={!createPermission}
               type="primary"
               onClick={handleAddNewUser}>
