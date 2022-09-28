@@ -94,6 +94,8 @@ logging:
     org.openmetadata.service.events: DEBUG
     io.swagger: ERROR
   appenders:
+    - type: console
+      threshold: TRACE
     - type: file
       filterFactories:
         - type: audit-exclude-filter-factory
