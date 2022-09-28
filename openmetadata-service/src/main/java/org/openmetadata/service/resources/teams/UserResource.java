@@ -1007,9 +1007,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
     } else {
       authorizer.authorizeAdmin(securityContext, false);
-      User storedUser =
-          dao.getByName(
-              uriInfo, securityContext.getUserPrincipal().getName(), new Fields(fields, String.join(",", fields)));
+      User storedUser = dao.getByName(uriInfo, request.getUsername(), new Fields(fields, String.join(",", fields)));
       String newHashedPassword = BCrypt.withDefaults().hashToString(12, request.getNewPassword().toCharArray());
       // Admin is allowed to set password for User directly
       BasicAuthMechanism storedBasicAuthMechanism =
