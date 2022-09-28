@@ -890,9 +890,9 @@ const TeamDetailsV1 = ({
                     }
                     entityType="team"
                     extraDropdownContent={extraDropdownContent}
-                    softDeleteMessage={`Any changes made to the Roles and Policies of the Parent team will not apply to "${
+                    softDeleteMessage={`Any teams under "${
                       currentTeam.displayName || currentTeam.name
-                    }". `}
+                    }" will be soft deleted as well.`}
                   />
                 )}
               </Space>
