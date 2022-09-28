@@ -94,6 +94,9 @@ const AddIngestion = ({
   const [ingestSampleData, setIngestSampleData] = useState(
     (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
   );
+  const [useFqnFilter, setUseFqnFilter] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.useFqnForFiltering ?? false
+  );
   const [databaseServiceNames, setDatabaseServiceNames] = useState(
     (data?.sourceConfig.config as ConfigClass)?.dbServiceNames ?? []
   );
@@ -420,6 +423,7 @@ const AddIngestion = ({
         };
 
         return {
+          useFqnForFiltering: useFqnFilter,
           includeViews: includeView,
           includeTags: includeTag,
           databaseFilterPattern: getFilterPatternData(
@@ -719,8 +723,10 @@ const AddIngestion = ({
             tableFilterPattern={tableFilterPattern}
             threadCount={threadCount}
             topicFilterPattern={topicFilterPattern}
+            useFqnFilter={useFqnFilter}
             onCancel={handleCancelClick}
             onNext={handleNext}
+            onUseFqnFilterClick={() => setUseFqnFilter((pre) => !pre)}
           />
         )}
 

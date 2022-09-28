@@ -144,7 +144,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(1000);
+  cy.wait(5000);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -915,14 +915,14 @@ export const updateDescriptionForIngestedTables = (
     .should('be.visible')
     .should('have.class', 'active');
   interceptURL('GET', `/api/v1/permissions/*/*`, 'getEntityDetails');
-  cy.get('[data-testid="table-link"]').first().click();
+  cy.get('[data-testid="table-link"]').should('contain', tableName).click();
   verifyResponseStatusCode('@getEntityDetails', 200);
 
   //update description
   cy.get('[data-testid="edit-description"]')
     .should('be.visible')
     .click({ force: true });
-  cy.get(descriptionBox).should('be.visible').clear().type(description);
+  cy.get(descriptionBox).should('be.visible').click().clear().type(description);
   interceptURL('PATCH', '/api/v1/*/*', 'updateEntity');
   cy.get('[data-testid="save"]').click();
   verifyResponseStatusCode('@updateEntity', 200);
@@ -936,7 +936,7 @@ export const updateDescriptionForIngestedTables = (
 
   interceptURL(
     'GET',
-    `/api/v1/services/*/name/${serviceName}*`,
+    `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${serviceName}`,
     'getSelectedService'
   );
 
@@ -956,6 +956,10 @@ export const updateDescriptionForIngestedTables = (
   );
   cy.get('[data-testid="run"]').should('be.visible').click();
   verifyResponseStatusCode('@checkRun', 200);
+
+  //Close the toast message
+  cy.get('.Toastify__close-button').should('be.visible').click();
+
   //Wait for success
   retryIngestionRun();
 
@@ -968,8 +972,8 @@ export const updateDescriptionForIngestedTables = (
     .should('have.class', 'active');
   cy.get('[data-testid="table-link"]').first().click();
   verifyResponseStatusCode('@getEntityDetails', 200);
-  cy.get('[data-testid="description"] > [data-testid="viewer-container"] ')
+  cy.get('[data-testid="markdown-parser"]')
     .first()
     .invoke('text')
-    .should('eq', description);
+    .should('contain', description);
 };

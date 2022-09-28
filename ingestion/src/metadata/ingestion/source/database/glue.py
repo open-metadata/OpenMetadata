@@ -119,12 +119,14 @@ class GlueSource(DatabaseServiceSource):
                         database_name=schema["CatalogId"],
                     )
                     if filter_by_database(
-                        database_filter_pattern=self.config.sourceConfig.config.databaseFilterPattern,
-                        database_fqn=database_fqn,
+                        self.config.sourceConfig.config.databaseFilterPattern,
+                        database_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema["CatalogId"],
                     ):
                         self.status.filter(
                             database_fqn,
-                            "Database (Catalog ID) pattern not allowed",
+                            "Database (Catalog ID) Filtered Out",
                         )
                         continue
                     if schema["CatalogId"] in database_names:
@@ -168,10 +170,12 @@ class GlueSource(DatabaseServiceSource):
                         schema_name=schema["Name"],
                     )
                     if filter_by_schema(
-                        schema_filter_pattern=self.config.sourceConfig.config.schemaFilterPattern,
-                        schema_fqn=schema_fqn,
+                        self.config.sourceConfig.config.schemaFilterPattern,
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema["Name"],
                     ):
-                        self.status.filter(schema_fqn, "Schema pattern not allowed")
+                        self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
                     yield schema["Name"]
                 except Exception as exc:
@@ -223,11 +227,13 @@ class GlueSource(DatabaseServiceSource):
                 )
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn,
+                    table_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else table_name,
                 ):
                     self.status.filter(
                         table_fqn,
-                        "Table pattern not allowed",
+                        "Table Filtered Out",
                     )
                     continue
 
