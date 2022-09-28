@@ -94,7 +94,8 @@
         "VARIANT",
         "GEOMETRY",
         "POINT",
-        "POLYGON"
+        "POLYGON",
+        "BYTEA"
       ]
     },
     "constraint": {
