@@ -42,7 +42,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     cy.clickOnLogo();
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/users*', 'getTeams');
-    //Clicking on teams
+    // Clicking on teams
     cy.get('[data-menu-id*="teams"]')
       .should('exist')
       .should('be.visible')
@@ -58,7 +58,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
       cy.reload();
 
-      //asserting the added values
+      // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
     });
 
@@ -73,7 +73,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-btn').contains('Add User')
+    cy.get('[data-testid="add-user"]')
       .should('be.visible')
       .click();
 
