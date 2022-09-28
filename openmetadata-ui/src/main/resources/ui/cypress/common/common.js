@@ -590,15 +590,6 @@ export const deleteSoftDeletedUser = (username) => {
     .should('be.visible')
     .click();
 
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
-
-  cy.get('.ant-table-placeholder > .ant-table-cell')
-    .should('be.visible')
-    .click();
-
   cy.get('[data-testid="searchbar"]')
     .should('exist')
     .should('be.visible')

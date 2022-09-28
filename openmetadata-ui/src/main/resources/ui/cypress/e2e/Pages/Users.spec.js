@@ -14,7 +14,6 @@
 import { addUser, deleteSoftDeletedUser, login, restoreUser, softDeleteUser, uuid } from '../../common/common';
 import { LOGIN } from '../../constants/constants';
 
-
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
 
