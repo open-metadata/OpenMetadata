@@ -24,11 +24,13 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
@@ -52,7 +54,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
+import javax.json.JsonValue;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -77,6 +81,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -707,6 +712,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+      }
+    }
+  }
+
+  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+    return new ChangeEvent()
+        .withEventType(eventType)
+        .withEntityId(entityInterface.getId())
+        .withEntityType(entityType)
+        .withUserName(entityInterface.getUpdatedBy())
+        .withTimestamp(entityInterface.getUpdatedAt())
+        .withChangeDescription(entityInterface.getChangeDescription())
+        .withCurrentVersion(entityInterface.getVersion())
+        .withEntity(entityInterface);
+  }
+
+  public void applyPatchToChildren(
+      List<String> childrenList, JsonPatch patch, T entity, SecurityContext securityContext) throws IOException {
+    for (JsonValue jsonValue : patch.toJsonArray()) {
+      String pathValue = jsonValue.asJsonObject().getValue("/path").toString();
+      if (pathValue.contains("owner")) {
+        List<EntityReference> entityReferences;
+        List<EntityRelationshipRecord> records =
+            daoCollection
+                .relationshipDAO()
+                .findTo(entity.getId().toString(), entity.getEntityReference().getType(), Relationship.CONTAINS.ordinal());
+        entityReferences = getEntityReferences(records);
+        if (childrenList.contains(entity.getEntityReference().getType())) {
+          EntityRepository<EntityInterface> entityRepository =
+              Entity.getEntityRepository(entity.getEntityReference().getType());
+          PatchResponse<EntityInterface> patchResponse =
+              entityRepository.patch(null, entity.getId(), securityContext.getUserPrincipal().getName(), patch);
+          EventPubSub.publish(
+              getChangeEvent(EventType.ENTITY_UPDATED, entity.getEntityReference().getType(), patchResponse.getEntity()));
+        }
+        for (EntityReference entityReference : entityReferences) {
+          entity = getEntity(entityReference, new Fields(allowedFields), ALL);
+          applyPatchToChildren(childrenList, patch, entity, securityContext);
+        }
       }
     }
   }
