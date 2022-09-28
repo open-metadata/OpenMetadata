@@ -143,6 +143,9 @@ const UserListV1: FC<UserListV1Props> = ({
                     <SVGIcons
                       alt="Restore"
                       className="tw-w-4 tw-mb-2.5"
+                      data-testid={`restore-user-btn-${
+                        record.displayName || record.name
+                      }`}
                       icon={Icons.RESTORE}
                     />
                   }
@@ -163,6 +166,9 @@ const UserListV1: FC<UserListV1Props> = ({
                   <SVGIcons
                     alt="Delete"
                     className="tw-w-4 tw-mb-2.5"
+                    data-testid={`delete-user-btn-${
+                      record.displayName || record.name
+                    }`}
                     icon={Icons.DELETE}
                   />
                 }

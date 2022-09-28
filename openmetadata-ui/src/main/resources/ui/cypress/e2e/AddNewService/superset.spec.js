@@ -16,7 +16,7 @@ import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Superset';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'NEW DASHBOARD';
+const tableName = "World Bank's Data";
 const description = `This is ${serviceName} description`;
 
 describe('Superset Ingestion', () => {

@@ -12,7 +12,7 @@
  */
 
 import { addTeam, interceptURL, login, searchEntity, uuid, verifyResponseStatusCode } from "../../common/common";
-import { LOGIN } from "../../constants/constants";
+import { LOGIN, SEARCH_ENTITY_TABLE } from "../../constants/constants";
 
 
 const teamName = `team-group-test-${uuid()}`;
@@ -21,7 +21,7 @@ const TEAM_DETAILS = {
   displayName: teamName,
   teamType: 'Group',
   description: `This is ${teamName} description`,
-  assetName: 'fact_sale',
+  assetName: SEARCH_ENTITY_TABLE.table_1.term,
 };
 
 
