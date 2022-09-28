@@ -674,6 +674,7 @@ const CreateUser = ({
           form={form}
           id="create-user-bot-form"
           layout="vertical"
+          validateMessages={{ required: '${label} is required' }}
           onFinish={handleSave}>
           <Form.Item
             label="Email"
