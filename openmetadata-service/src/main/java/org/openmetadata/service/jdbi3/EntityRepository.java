@@ -737,7 +737,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<EntityRelationshipRecord> records =
             daoCollection
                 .relationshipDAO()
-                .findTo(entity.getId().toString(), entity.getEntityReference().getType(), Relationship.CONTAINS.ordinal());
+                .findTo(
+                    entity.getId().toString(), entity.getEntityReference().getType(), Relationship.CONTAINS.ordinal());
         entityReferences = getEntityReferences(records);
         if (childrenList.contains(entity.getEntityReference().getType())) {
           EntityRepository<EntityInterface> entityRepository =
@@ -745,7 +746,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           PatchResponse<EntityInterface> patchResponse =
               entityRepository.patch(null, entity.getId(), securityContext.getUserPrincipal().getName(), patch);
           EventPubSub.publish(
-              getChangeEvent(EventType.ENTITY_UPDATED, entity.getEntityReference().getType(), patchResponse.getEntity()));
+              getChangeEvent(
+                  EventType.ENTITY_UPDATED, entity.getEntityReference().getType(), patchResponse.getEntity()));
         }
         for (EntityReference entityReference : entityReferences) {
           entity = getEntity(entityReference, new Fields(allowedFields), ALL);
