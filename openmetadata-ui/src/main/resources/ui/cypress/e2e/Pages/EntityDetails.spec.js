@@ -12,7 +12,7 @@
  */
 
 import moment from 'moment';
-import { descriptionBox, interceptURL, login, searchEntity, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -24,17 +24,8 @@ describe('Entity Details Page', () => {
   const deleteEntity = (value) => {
     const singuler = value.entity.slice(0, -1);
     // search for the term and redirect to the respective entity tab
-    searchEntity(value.term);
-    cy.get(`[data-testid="${value.entity}-tab"]`).should('be.visible').click();
-    cy.get(`[data-testid="${value.entity}-tab"]`)
-      .should('be.visible')
-      .should('have.class', 'active')
-      .click();
-    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
-    //Click on manage button
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
     cy.get('[data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
@@ -69,24 +60,7 @@ describe('Entity Details Page', () => {
 
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
-      .as('textBox');
-
-    // delete modal should be disappeared
-    cy.get('@discardBtn').click();
-
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    // open modal and type required text in input box to delete entity
-
-    cy.get('@deleteBtn').click();
-    cy.get('[data-menu-id*="delete-button"]')
-      .should('exist')
-      .should('be.visible');
-    cy.get('@permanentDelete').click();
-    cy.get('@textBox').type(DELETE_TERM);
+      .type(DELETE_TERM);
     cy.get('@confirmBtn').should('not.be.disabled');
     cy.get('@confirmBtn').click();
 
@@ -124,17 +98,7 @@ describe('Entity Details Page', () => {
   };
 
   const addOwnerAndTier = (value) => {
-    searchEntity(value.term);
-    cy.get(`[data-testid="${value.entity}-tab"]`).should('be.visible').click();
-    cy.get(`[data-testid="${value.entity}-tab"]`)
-      .should('be.visible')
-      .should('have.class', 'active');
-
-    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
-
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
     interceptURL(
       'GET',
@@ -223,18 +187,7 @@ describe('Entity Details Page', () => {
     const endDate = moment(currentDate, 'x')
       .add(5, 'days')
       .format('yyyy-MM-DDThh:mm');
-    searchEntity(value.term);
-    cy.get(`[data-testid="${value.entity}-tab"]`).should('be.visible').click();
-    cy.get(`[data-testid="${value.entity}-tab"]`)
-      .should('be.visible')
-      .should('have.class', 'active')
-      .click();
-
-    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
-
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
     cy.get('[data-testid="announcement-button"]').should('be.visible').click();
