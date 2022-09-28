@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.teams;
 
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMINCREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
@@ -26,6 +27,7 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
 import io.dropwizard.jersey.PATCH;
+import io.dropwizard.jersey.errors.ErrorMessage;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -99,6 +101,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -472,7 +475,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Basic Auth Related
     if (isBasicAuth()) {
       // basic auth doesn't allow duplicate emails
-      validateEmailAlreadyExists(create.getEmail());
+      try {
+        validateEmailAlreadyExists(create.getEmail());
+      } catch (RuntimeException ex) {
+        return Response.status(CONFLICT)
+            .type(MediaType.APPLICATION_JSON_TYPE)
+            .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
+            .build();
+      }
       // this is also important since username is used for a lot of stuff
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMINCREATE) {

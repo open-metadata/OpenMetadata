@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -254,13 +253,7 @@ public class JwtFilter implements ContainerRequestFilter {
   private void validateTokenIsNotUsedAfterLogout(String authToken) {
     LogoutRequest previouslyLoggedOutEvent = JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
     if (previouslyLoggedOutEvent != null) {
-      String userName = previouslyLoggedOutEvent.getUsername();
-      Date logoutEventDate = previouslyLoggedOutEvent.getLogoutTime();
-      String errorMessage =
-          String.format(
-              "Token corresponds to an already logged out user [%s] at [%s]. Please login again",
-              userName, logoutEventDate);
-      throw new RuntimeException(errorMessage);
+      throw new AuthenticationException("Expired token!");
     }
   }
 }
