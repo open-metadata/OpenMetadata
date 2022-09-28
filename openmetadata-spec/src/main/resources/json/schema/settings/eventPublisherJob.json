@@ -72,10 +72,9 @@
       "description": "This schema publisher run job status.",
       "type": "string",
       "enum": [
-        "Failed",
-        "Success",
-        "Aborted",
-        "Running"
+        "ACTIVE",
+        "RETRY",
+        "ACTIVEWITHERROR"
       ]
     },
     "failureDetails": {
