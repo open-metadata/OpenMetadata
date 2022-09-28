@@ -69,7 +69,10 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { filterChildTeams } from '../../utils/TeamUtils';
+import {
+  filterChildTeams,
+  getDeleteMessagePostFix,
+} from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -890,9 +893,14 @@ const TeamDetailsV1 = ({
                     }
                     entityType="team"
                     extraDropdownContent={extraDropdownContent}
-                    softDeleteMessage={`Any teams under "${
-                      currentTeam.displayName || currentTeam.name
-                    }" will be soft deleted as well.`}
+                    hardDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName || currentTeam.name,
+                      'permanently'
+                    )}
+                    softDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName || currentTeam.name,
+                      'soft'
+                    )}
                   />
                 )}
               </Space>

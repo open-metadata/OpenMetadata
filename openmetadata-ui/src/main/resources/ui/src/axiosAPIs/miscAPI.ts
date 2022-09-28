@@ -222,13 +222,13 @@ export const deleteEntity = async (
   isRecursive: boolean,
   isHardDelete = true
 ) => {
-  const searchParams = {
+  const params = {
     hardDelete: isHardDelete,
     recursive: isRecursive,
   };
 
   return APIClient.delete(`/${entityType}/${entityId}`, {
-    params: searchParams,
+    params,
   });
 };
 

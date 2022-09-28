@@ -31,7 +31,8 @@ const DeleteWidgetModal = ({
   allowSoftDelete = true,
   visible,
   deleteMessage,
-  softDeleteMessage = '',
+  softDeleteMessagePostFix = '',
+  hardDeleteMessagePostFix = '',
   entityName,
   entityType,
   onCancel,
@@ -58,13 +59,15 @@ const DeleteWidgetModal = ({
   const DELETE_OPTION = [
     {
       title: `Delete ${entityType} “${entityName}”`,
-      description: `${prepareDeleteMessage(true)} ${softDeleteMessage}`,
+      description: `${prepareDeleteMessage(true)} ${softDeleteMessagePostFix}`,
       type: DeleteType.SOFT_DELETE,
       isAllowd: allowSoftDelete,
     },
     {
       title: `Permanently Delete ${entityType} “${entityName}”`,
-      description: deleteMessage || prepareDeleteMessage(),
+      description: `${
+        deleteMessage || prepareDeleteMessage()
+      } ${hardDeleteMessagePostFix}`,
       type: DeleteType.HARD_DELETE,
       isAllowd: true,
     },
