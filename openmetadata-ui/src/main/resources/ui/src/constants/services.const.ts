@@ -46,6 +46,7 @@ import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
 import query from '../assets/img/service-icon-query.png';
 import redash from '../assets/img/service-icon-redash.png';
+import redpanda from '../assets/img/service-icon-redpanda.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
 import scikit from '../assets/img/service-icon-scikit.png';
@@ -69,6 +70,7 @@ import { DatabaseServiceType } from '../generated/entity/services/databaseServic
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { customServiceComparator } from '../utils/StringsUtils';
 
 export const NoDataFoundPlaceHolder = noDataFound;
 export const AddPlaceHolder = addPlaceHolder;
@@ -89,6 +91,7 @@ export const MARIADB = mariadb;
 export const VERTICA = vertica;
 export const KAFKA = kafka;
 export const PULSAR = pulsar;
+export const REDPANDA = redpanda;
 export const SUPERSET = superset;
 export const LOOKER = looker;
 export const TABLEAU = tableau;
@@ -124,12 +127,23 @@ export const PIPELINE_DEFAULT = pipelineDefault;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const excludedService = [MlModelServiceType.Sklearn];
+
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: Object.values(DatabaseServiceType),
-  messagingServices: Object.values(MessagingServiceType),
-  dashboardServices: Object.values(DashboardServiceType),
-  pipelineServices: Object.values(PipelineServiceType),
-  mlmodelServices: Object.values(MlModelServiceType),
+  databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  dashboardServices: (Object.values(DashboardServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  pipelineServices: (Object.values(PipelineServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [

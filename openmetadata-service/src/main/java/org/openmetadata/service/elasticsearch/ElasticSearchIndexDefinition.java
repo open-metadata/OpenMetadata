@@ -87,7 +87,7 @@ public class ElasticSearchIndexDefinition {
     return exists;
   }
 
-  private boolean createIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  public boolean createIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);
@@ -132,7 +132,7 @@ public class ElasticSearchIndexDefinition {
     }
   }
 
-  private void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  public void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);

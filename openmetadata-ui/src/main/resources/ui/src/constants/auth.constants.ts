@@ -21,6 +21,9 @@ export const VALIDATION_MESSAGES = {
   whitespace: '${label} is required',
 };
 
+export const LOGIN_FAILED_ERROR =
+  'You have entered an invalid username or password.';
+
 export const HTTP_STATUS_CODE = {
   BAD_REQUEST: 400, // The request cannot be fulfilled due to bad syntax
   CONFLICT: 409, // The request could not be completed because of a conflict in the request

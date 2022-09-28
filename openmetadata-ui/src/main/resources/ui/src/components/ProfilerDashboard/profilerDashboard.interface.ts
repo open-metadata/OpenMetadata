@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import {
   Column,
   ColumnProfile,
@@ -20,12 +21,13 @@ import { TestCase } from '../../generated/tests/testCase';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
+  isTestCaseLoading?: boolean;
   table: Table;
   testCases: TestCase[];
   profilerData: ColumnProfile[];
   fetchProfilerData: (tableId: string, days?: number) => void;
-  fetchTestCases: (fqn: string) => void;
-  onTestCaseUpdate: () => void;
+  fetchTestCases: (fqn: string, params?: ListTestCaseParams) => void;
+  onTestCaseUpdate: (deleted?: boolean) => void;
 }
 
 export type MetricChartType = {
@@ -82,6 +84,8 @@ export interface DataQualityTabProps {
   testCases: TestCase[];
   onTestUpdate?: () => void;
   hasAccess: boolean;
+  isLoading?: boolean;
+  deletedTable?: boolean;
 }
 
 export interface TestSummaryProps {

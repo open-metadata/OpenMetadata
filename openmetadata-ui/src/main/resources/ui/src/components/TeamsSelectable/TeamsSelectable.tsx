@@ -66,7 +66,8 @@ const TeamsSelectable = ({
 
     return (
       <TreeNode disabled={disabled} key={value} title={teamName} value={value}>
-        {team.children && team.children.map((n) => getTreeNodes(n))}
+        {team.children &&
+          team.children.map((n: TeamHierarchy) => getTreeNodes(n))}
       </TreeNode>
     );
   };

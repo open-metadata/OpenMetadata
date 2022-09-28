@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, mySqlConnectionInput, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, mySqlConnectionInput, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
 import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const tableName = 'DATABASE_CHANGE_LOG';
+const description = `This is ${tableName} description`;
 
 describe('MySQL Ingestion', () => {
   beforeEach(() => {
@@ -37,6 +39,16 @@ describe('MySQL Ingestion', () => {
       mySqlConnectionInput,
       addIngestionInput,
       serviceName
+    );
+  });
+
+  it('Update table description and verify', () => {
+    updateDescriptionForIngestedTables(
+      serviceName,
+      tableName,
+      description,
+      SERVICE_TYPE.Database,
+      'tables'
     );
   });
 

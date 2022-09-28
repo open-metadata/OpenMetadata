@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { SlackChatConfig } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { fetchSlackConfig } from '../axiosAPIs/miscAPI';
@@ -55,11 +55,6 @@ const AppRouter = () => {
     isSigningIn,
     getCallBackComponent,
   } = useAuthContext();
-
-  const enableSelfSignUp = useMemo(
-    () => authConfig?.enableSelfSignup,
-    [authConfig]
-  );
 
   const [slackConfig, setSlackConfig] = useState<SlackChatConfig | undefined>();
   const callbackComponent = getCallBackComponent();
@@ -113,9 +108,7 @@ const AppRouter = () => {
         <>
           {slackChat}
           <Switch>
-            {enableSelfSignUp && (
-              <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
-            )}
+            <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
 
             <Route exact path={ROUTES.HOME}>
               {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
