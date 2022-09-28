@@ -473,7 +473,7 @@ export const softDeleteUser = (username) => {
   verifyResponseStatusCode('@searchUser', 200);
 
   //Click on delete button
-  cy.get('.ant-table-row .ant-table-cell button')
+  cy.get(`[data-testid="delete-user-btn-${username}"]`)
     .should('exist')
     .should('be.visible')
     .click();
@@ -524,7 +524,10 @@ export const restoreUser = (username) => {
   cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
   verifyResponseStatusCode('@deletedUser', 200);
 
-  cy.get('button [alt="Restore"]').should('exist').should('be.visible').click();
+  cy.get(`[data-testid="restore-user-btn-${username}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
   cy.get('.ant-modal-body > p').should(
     'contain',
     `Are you sure you want to restore ${username}?`
@@ -564,7 +567,10 @@ export const deleteSoftDeletedUser = (username) => {
 
   cy.wait(1000);
 
-  cy.get('button [alt="Delete"]').should('exist').should('be.visible').click();
+  cy.get(`[data-testid="delete-user-btn-${username}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
   cy.get('[data-testid="confirm-button"]')
     .should('exist')
@@ -813,9 +819,7 @@ export const login = (username, password) => {
 export const addTeam = (TEAM_DETAILS) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   //Fetching the add button and clicking on it
-  cy.get('[data-testid="add-team"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="add-team"]').should('be.visible').click();
 
   verifyResponseStatusCode('@addTeam', 200);
 
