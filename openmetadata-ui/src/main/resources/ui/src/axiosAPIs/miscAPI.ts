@@ -19,7 +19,6 @@ import { AirflowConfiguration } from '../generated/configuration/airflowConfigur
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
@@ -223,20 +222,14 @@ export const deleteEntity = async (
   isRecursive: boolean,
   isHardDelete = true
 ) => {
-  let path = '';
+  const searchParams = {
+    hardDelete: isHardDelete,
+    recursive: isRecursive,
+  };
 
-  const searchParams = new URLSearchParams({
-    hardDelete: `${isHardDelete}`,
-    recursive: `${isRecursive}`,
+  return APIClient.delete(`/${entityType}/${entityId}`, {
+    params: searchParams,
   });
-
-  path = getURLWithQueryFields(
-    `/${entityType}/${entityId}`,
-    '',
-    `${searchParams.toString()}`
-  );
-
-  return APIClient.delete(path);
 };
 
 export const getAdvancedFieldOptions = (
