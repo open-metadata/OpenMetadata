@@ -75,6 +75,7 @@ export interface ConfigureIngestionProps {
   enableDebugLog: boolean;
   profileSample?: number;
   ingestSampleData: boolean;
+  useFqnFilter: boolean;
   pipelineType: PipelineType;
   showDatabaseFilter: boolean;
   showDashboardFilter: boolean;
@@ -92,6 +93,7 @@ export interface ConfigureIngestionProps {
   handleDatasetServiceName: (value: string[]) => void;
   handleDescription?: (value: string) => void;
   handleIncludeLineage: () => void;
+  onUseFqnFilterClick: () => void;
   handleIncludeView: () => void;
   handleIncludeTags: () => void;
   handleMarkDeletedTables?: () => void;
