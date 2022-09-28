@@ -26,6 +26,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/api/policies/createPolicy';
 import { EventPublisherJob } from '../../generated/settings/eventPublisherJob';
 import jsonData from '../../jsons/en';
+import { getDateFromTimestamp } from '../../utils/APIUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getStatusResultBadgeIcon } from '../../utils/TableUtils';
@@ -47,7 +48,7 @@ const ElasticSearchIndexPage = () => {
   const fetchAllReIndexedData = async () => {
     try {
       const response = await getAllReIndexStatus();
-      setElasticSearchReIndexData([response]);
+      setElasticSearchReIndexData(response);
     } catch {
       showErrorToast(jsonData['api-error-messages']['fetch-re-index-all']);
     }
@@ -84,18 +85,24 @@ const ElasticSearchIndexPage = () => {
     () => [
       {
         title: 'Name',
-        dataIndex: 'startedBy',
-        key: 'startedBy',
+        dataIndex: 'name',
+        key: 'name',
       },
       {
         title: 'State Time',
         dataIndex: 'startTime',
         key: 'startTime',
+        render: getDateFromTimestamp,
       },
       {
-        title: 'End Time',
-        dataIndex: 'endTime',
-        key: 'endTime',
+        title: 'Type',
+        dataIndex: 'publisherType',
+        key: 'publisherType',
+      },
+      {
+        title: 'Mode',
+        dataIndex: 'runMode',
+        key: 'runMode',
       },
       {
         title: 'Status',

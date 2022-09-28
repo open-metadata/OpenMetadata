@@ -18,7 +18,7 @@ import {
 } from '../generated/settings/eventPublisherJob';
 
 export const getAllReIndexStatus = async () => {
-  const res = await axiosClient.get<EventPublisherJob>(
+  const res = await axiosClient.get<EventPublisherJob[]>(
     `/indexResource/reindex/status`
   );
 
@@ -37,11 +37,11 @@ export const reIndexByPublisher = async (
   type: PublisherType = PublisherType.ElasticSearch
 ) => {
   const res = await axiosClient.post('/indexResource/reindex', {
-    batchSize: 0,
+    batchSize: 10,
     name: 'string',
     publisherType: type,
     recreateIndex: true,
-    runMode: 'stream',
+    runMode: 'batch',
   });
 
   return res;

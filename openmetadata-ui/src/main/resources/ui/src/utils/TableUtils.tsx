@@ -33,6 +33,7 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { Column, DataType } from '../generated/entity/data/table';
+import { Status } from '../generated/settings/eventPublisherJob';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
@@ -358,14 +359,14 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
 
 export const getStatusResultBadgeIcon = (status: string) => {
   switch (status) {
-    case TestCaseStatus.Success:
+    case Status.Success:
       return Icons.SUCCESS_BADGE;
 
-    case TestCaseStatus.Failed:
+    case Status.Failed:
       return Icons.FAIL_BADGE;
 
-    case TestCaseStatus.Aborted:
-    case 'Running':
+    case Status.Aborted:
+    case Status.Running:
       return Icons.PENDING_BADGE;
 
     default:
