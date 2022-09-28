@@ -204,19 +204,12 @@ class ModeSource(DashboardServiceSource):
             for chart in charts:
                 chart_name = chart[mode_client.VIEW_VEGAS].get(mode_client.TITLE)
                 try:
-                    chart_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        chart_name=chart_name,
-                        service_name=self.context.dashboard_service.name.__root__,
-                    )
-
                     if filter_by_chart(
                         self.source_config.chartFilterPattern,
-                        chart_fqn,
+                        chart_name,
                     ):
                         self.status.filter(
-                            chart_fqn,
+                            chart_name,
                             "Chart Pattern not Allowed",
                         )
                         continue
