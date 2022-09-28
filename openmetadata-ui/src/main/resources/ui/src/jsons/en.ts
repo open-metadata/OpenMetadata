@@ -183,6 +183,7 @@ const jsonData = {
     'create-user-account': 'User account created successfully!',
     'reset-password-success': 'Password reset successfully!',
     'account-verify-success': 'Email verified successfully!',
+    'update-password-success': 'Password updated successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
