@@ -27,3 +27,10 @@ export const filterChildTeams = (
   teamsList: Team[],
   showDeletedTeams: boolean
 ) => teamsList.filter((d) => d.deleted === showDeletedTeams);
+
+export const getDeleteMessagePostFix = (
+  teamName: string,
+  deleteType: string
+) => {
+  return `Any teams under "${teamName}" will be ${deleteType} deleted as well.`;
+};
