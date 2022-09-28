@@ -291,7 +291,9 @@ const ConfigureIngestion = ({
           />
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
-          Regex will be applied on fully qualified name instead of raw name.
+          Regex will be applied on fully qualified name (e.g
+          service_name.db_name.schema_name.table_name) instead of raw name (e.g.
+          table_name).
         </p>
         {getSeparator('')}
       </Field>
@@ -377,9 +379,9 @@ const ConfigureIngestion = ({
       case ServiceCategory.DATABASE_SERVICES:
         return (
           <Fragment>
-            {getFqnForFilteringToggles()}
             {getFilterPatterns()}
             {getSeparator('')}
+            {getFqnForFilteringToggles()}
             {getDatabaseFieldToggles()}
           </Fragment>
         );
