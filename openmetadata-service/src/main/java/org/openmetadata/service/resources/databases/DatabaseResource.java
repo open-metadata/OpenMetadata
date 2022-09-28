@@ -291,6 +291,11 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
+      @Parameter(
+              description = "Filter to apply patch to child entities",
+              schema = @Schema(type = "list", example = "false"))
+          @QueryParam("applyPatch")
+          List<String> applyPatch,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -301,7 +306,12 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    if (!applyPatch.isEmpty()) {
+      Database database = getInternal(uriInfo, securityContext, id, FIELDS, Include.ALL);
+      dao.applyPatchToChildren(applyPatch, patch, database, securityContext);
+    }
+    return response;
   }
 
   @PUT
