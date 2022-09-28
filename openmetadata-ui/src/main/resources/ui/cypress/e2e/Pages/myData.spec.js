@@ -146,7 +146,7 @@ describe('MyData page should work', () => {
     });
   });
 
-  it.only('Recent view section and redirection should work for table entity', () => {
+  it('Recent view section and redirection should work for table entity', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.tables);
     checkRecentlyViewElement();
   });
