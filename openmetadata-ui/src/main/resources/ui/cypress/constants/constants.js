@@ -26,11 +26,20 @@ export const MYDATA_SUMMARY_OPTIONS = {
 };
 
 export const SEARCH_ENTITY_TABLE = {
-  table_1: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
-  table_2: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  table_1: {
+    term: 'raw_customer',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+  },
+  table_2: {
+    term: 'fact_session',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+  },
   table_3: {
     term: 'raw_product_catalog',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
   },
 };
 
@@ -38,33 +47,43 @@ export const SEARCH_ENTITY_TOPIC = {
   topic_1: {
     term: 'shop_products',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
   },
-  topic_2: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
+  topic_2: {
+    term: 'orders',
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
+  },
 };
 
 export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
     term: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    serviceName: 'sample_superset',
   },
   dashboard_2: {
     term: 'Unicode Test',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    serviceName: 'sample_superset',
   },
 };
 
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
-    term: 'Snowflake',
+    term: 'Snowflake ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: 'sample_airflow',
   },
   pipeline_2: {
-    term: 'Hive',
+    term: 'Hive ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: 'sample_airflow',
   },
   pipeline_3: {
-    term: 'Trino',
+    term: 'Trino ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: 'sample_airflow',
   },
 };
 
@@ -72,10 +91,12 @@ export const DELETE_ENTITY = {
   table: {
     term: 'fact_sale',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
   },
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
   },
 };
 
