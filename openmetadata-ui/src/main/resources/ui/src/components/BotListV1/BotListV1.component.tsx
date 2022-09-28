@@ -114,11 +114,9 @@ const BotListV1 = ({
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
-            data-testid={`bot-link-${getEntityName(record?.botUser)}`}
-            to={getBotsPath(
-              record?.botUser?.fullyQualifiedName || record?.botUser?.name || ''
-            )}>
-            {getEntityName(record?.botUser)}
+            data-testid={`bot-link-${getEntityName(record)}`}
+            to={getBotsPath(record?.fullyQualifiedName || record?.name || '')}>
+            {getEntityName(record)}
           </Link>
         ),
       },
@@ -127,10 +125,8 @@ const BotListV1 = ({
         dataIndex: 'description',
         key: 'description',
         render: (_, record) =>
-          record?.botUser?.description ? (
-            <RichTextEditorPreviewer
-              markdown={record?.botUser?.description || ''}
-            />
+          record?.description ? (
+            <RichTextEditorPreviewer markdown={record?.description || ''} />
           ) : (
             <span data-testid="no-description">No Description</span>
           ),
@@ -146,7 +142,7 @@ const BotListV1 = ({
               placement="bottom"
               title={deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
               <Button
-                data-testid={`bot-delete-${getEntityName(record?.botUser)}`}
+                data-testid={`bot-delete-${getEntityName(record)}`}
                 disabled={!deletePermission}
                 icon={
                   <SVGIcons
