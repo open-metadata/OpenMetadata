@@ -794,7 +794,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       return Response.status(Response.Status.OK).entity("User Registration Successful.").build();
     } else {
-      return Response.status(Response.Status.BAD_REQUEST).entity("Signup is not Available").build();
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(new ErrorMessage(400, "Signup is not Available"))
+          .build();
     }
   }
 
@@ -847,7 +849,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (Exception e) {
       LOG.error("Error in sending Email Verification mail to the User : {}", e.getMessage());
       return Response.status(424)
-          .entity("There is some issue in sending the Mail. Please contact your administrator.")
+          .entity(new ErrorMessage(424, "There is some issue in sending the Mail. Please contact your administrator."))
           .build();
     }
     return Response.status(Response.Status.OK)
@@ -885,7 +887,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424)
-          .entity("There is some issue in sending the Mail. Please contact your administrator.")
+          .entity(new ErrorMessage(424, "There is some issue in sending the Mail. Please contact your administrator."))
           .build();
     }
 
@@ -1001,7 +1003,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         // it has to be 200 since we already fetched user , and we don't want to return any other data
         return Response.status(200).entity("Password Updated Successfully").build();
       } else {
-        return Response.status(403).entity("Old Password is not correct").build();
+        return Response.status(403).entity(new ErrorMessage(403, "Old Password is not correct")).build();
       }
     } else {
       authorizer.authorizeAdmin(securityContext, false);
@@ -1117,7 +1119,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
       return Response.status(200).entity(response).build();
     } else {
-      return Response.status(403).entity("You have entered an invalid username or password.").build();
+      return Response.status(403)
+          .entity(new ErrorMessage(403, "You have entered an invalid username or password."))
+          .build();
     }
   }
 
