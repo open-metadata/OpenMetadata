@@ -319,14 +319,10 @@ class TableauSource(DashboardServiceSource):
         """
         for chart in dashboard_details.get("charts"):
             try:
-                chart_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    chart_name=chart["name"],
-                    service_name=self.context.dashboard_service.name.__root__,
-                )
-                if filter_by_chart(self.source_config.chartFilterPattern, chart_fqn):
-                    self.status.filter(chart_fqn, "Chart Pattern not allowed")
+                if filter_by_chart(
+                    self.source_config.chartFilterPattern, chart["name"]
+                ):
+                    self.status.filter(chart["name"], "Chart Pattern not allowed")
                     continue
                 workbook_name = dashboard_details["name"].replace(" ", "")
                 site_url = (

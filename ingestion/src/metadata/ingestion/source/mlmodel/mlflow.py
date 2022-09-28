@@ -69,18 +69,11 @@ class MlflowSource(MlModelServiceSource):
         List and filters models from the registry
         """
         for model in cast(RegisteredModel, self.client.list_registered_models()):
-            mlmodel_fqn = fqn.build(
-                self.metadata,
-                entity_type=MlModel,
-                service_name=self.context.mlmodel_service.name.__root__,
-                mlmodel_name=model.name,
-            )
-
             if filter_by_mlmodel(
-                self.source_config.mlModelFilterPattern, mlmodel_fqn=mlmodel_fqn
+                self.source_config.mlModelFilterPattern, mlmodel_name=model.name
             ):
                 self.status.filter(
-                    mlmodel_fqn,
+                    model.name,
                     "MlModel name pattern not allowed",
                 )
                 continue

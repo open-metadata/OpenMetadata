@@ -137,11 +137,12 @@ class DynamodbSource(DatabaseServiceSource):
                     table_name=table_name,
                 )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_fqn=table_fqn
+                    self.source_config.tableFilterPattern,
+                    table_fqn if self.source_config.useFqnForFiltering else table_name,
                 ):
                     self.status.filter(
                         table_fqn,
-                        "Table pattern not allowed",
+                        "Table Filtered Out",
                     )
                     continue
                 yield table_name, TableType.Regular
