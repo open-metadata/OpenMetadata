@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMINCREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
@@ -264,6 +265,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
+  }
+
+  @GET
+  @Path("/generateRandomPwd")
+  @Operation(
+      operationId = "generateRandomPwd",
+      summary = "generateRandomPwd",
+      tags = "users",
+      description = "Generate a random pwd",
+      responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
+  public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext, false);
+    return Response.status(OK).entity(PasswordUtil.generateRandomPassword()).build();
   }
 
   @GET
