@@ -813,9 +813,7 @@ export const login = (username, password) => {
 export const addTeam = (TEAM_DETAILS) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   //Fetching the add button and clicking on it
-  cy.get('button')
-    .find('span')
-    .contains('Add Team')
+  cy.get('.ant-btn').contains('Add Team')
     .should('be.visible')
     .click();
 
