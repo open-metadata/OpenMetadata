@@ -17,7 +17,7 @@ import { lowerCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   getAllReIndexStatus,
-  reIndexAll,
+  reIndexByPublisher,
 } from '../../axiosAPIs/elastic-index-API';
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -55,7 +55,7 @@ const ElasticSearchIndexPage = () => {
 
   const performReIndexAll = async () => {
     try {
-      await reIndexAll();
+      await reIndexByPublisher();
     } catch (err) {
       showErrorToast(
         err as AxiosError,
