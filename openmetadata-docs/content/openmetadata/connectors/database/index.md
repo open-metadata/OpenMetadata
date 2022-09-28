@@ -13,7 +13,7 @@ slug: /openmetadata/connectors/database
 - [DB2](/openmetadata/connectors/database/db2)
 - [DeltaLake](/openmetadata/connectors/database/deltalake)
 - [Druid](/openmetadata/connectors/database/druid)
-- [DynamoDB](/openmetadata/connectors/database/dynamocb)
+- [DynamoDB](/openmetadata/connectors/database/dynamodb)
 - [Glue](/openmetadata/connectors/database/glue)
 - [Hive](/openmetadata/connectors/database/hive)
 - [MariaDB](/openmetadata/connectors/database/mariadb)
