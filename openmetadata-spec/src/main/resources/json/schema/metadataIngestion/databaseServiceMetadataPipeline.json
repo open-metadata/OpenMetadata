@@ -182,7 +182,7 @@
       "default": true
     },
     "useFqnForFiltering": {
-      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instaed of raw name (e.g. table_name)",
+      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
       "type": "boolean",
       "default": false
     },
