@@ -16,7 +16,7 @@ import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Kafka';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = '__consumer_offsets';
+const topicName = '__transaction_state';
 const description = `This is ${serviceName} description`;
 
 describe('Kafka Ingestion', () => {
@@ -45,7 +45,7 @@ describe('Kafka Ingestion', () => {
         .check();
       cy.get('[data-testid="filter-pattern-includes-topic"]')
         .should('be.visible')
-        .type('__consumer_offsets');
+        .type(topicName);
     };
 
     testServiceCreationAndIngestion(
@@ -60,7 +60,7 @@ describe('Kafka Ingestion', () => {
   it('Update table description and verify', () => {
     updateDescriptionForIngestedTables(
       serviceName,
-      tableName,
+      topicName,
       description,
       SERVICE_TYPE.Messaging,
       'topics'

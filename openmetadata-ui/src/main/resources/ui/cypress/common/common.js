@@ -49,7 +49,7 @@ export const handleIngestionRetry = (
 ) => {
   const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
-  const retryTimes = 25;
+  const retryTimes = 30;
   let retryCount = count;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -144,7 +144,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(1000);
+  cy.wait(5000);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -473,7 +473,7 @@ export const softDeleteUser = (username) => {
   verifyResponseStatusCode('@searchUser', 200);
 
   //Click on delete button
-  cy.get('.ant-table-row .ant-table-cell button')
+  cy.get(`[data-testid="delete-user-btn-${username}"]`)
     .should('exist')
     .should('be.visible')
     .click();
@@ -524,7 +524,10 @@ export const restoreUser = (username) => {
   cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
   verifyResponseStatusCode('@deletedUser', 200);
 
-  cy.get('button [alt="Restore"]').should('exist').should('be.visible').click();
+  cy.get(`[data-testid="restore-user-btn-${username}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
   cy.get('.ant-modal-body > p').should(
     'contain',
     `Are you sure you want to restore ${username}?`
@@ -564,7 +567,10 @@ export const deleteSoftDeletedUser = (username) => {
 
   cy.wait(1000);
 
-  cy.get('button [alt="Delete"]').should('exist').should('be.visible').click();
+  cy.get(`[data-testid="delete-user-btn-${username}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
   cy.get('[data-testid="confirm-button"]')
     .should('exist')
@@ -581,15 +587,6 @@ export const deleteSoftDeletedUser = (username) => {
   //Closing toast message
   cy.get('.Toastify__close-button > svg')
     .should('exist')
-    .should('be.visible')
-    .click();
-
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
-
-  cy.get('.ant-table-placeholder > .ant-table-cell')
     .should('be.visible')
     .click();
 
@@ -813,9 +810,7 @@ export const login = (username, password) => {
 export const addTeam = (TEAM_DETAILS) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   //Fetching the add button and clicking on it
-  cy.get('[data-testid="add-team"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="add-team"]').should('be.visible').click();
 
   verifyResponseStatusCode('@addTeam', 200);
 
@@ -920,14 +915,14 @@ export const updateDescriptionForIngestedTables = (
     .should('be.visible')
     .should('have.class', 'active');
   interceptURL('GET', `/api/v1/permissions/*/*`, 'getEntityDetails');
-  cy.get('[data-testid="table-link"]').first().click();
+  cy.get('[data-testid="table-link"]').should('contain', tableName).click();
   verifyResponseStatusCode('@getEntityDetails', 200);
 
   //update description
   cy.get('[data-testid="edit-description"]')
     .should('be.visible')
     .click({ force: true });
-  cy.get(descriptionBox).should('be.visible').clear().type(description);
+  cy.get(descriptionBox).should('be.visible').click().clear().type(description);
   interceptURL('PATCH', '/api/v1/*/*', 'updateEntity');
   cy.get('[data-testid="save"]').click();
   verifyResponseStatusCode('@updateEntity', 200);
@@ -941,7 +936,7 @@ export const updateDescriptionForIngestedTables = (
 
   interceptURL(
     'GET',
-    `/api/v1/services/*/name/${serviceName}*`,
+    `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${serviceName}`,
     'getSelectedService'
   );
 
@@ -961,6 +956,10 @@ export const updateDescriptionForIngestedTables = (
   );
   cy.get('[data-testid="run"]').should('be.visible').click();
   verifyResponseStatusCode('@checkRun', 200);
+
+  //Close the toast message
+  cy.get('.Toastify__close-button').should('be.visible').click();
+
   //Wait for success
   retryIngestionRun();
 
@@ -973,8 +972,8 @@ export const updateDescriptionForIngestedTables = (
     .should('have.class', 'active');
   cy.get('[data-testid="table-link"]').first().click();
   verifyResponseStatusCode('@getEntityDetails', 200);
-  cy.get('[data-testid="description"] > [data-testid="viewer-container"] ')
+  cy.get('[data-testid="markdown-parser"]')
     .first()
     .invoke('text')
-    .should('eq', description);
+    .should('contain', description);
 };
