@@ -12,7 +12,6 @@
  */
 
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { isUndefined } from 'lodash';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -222,23 +221,20 @@ export const deleteEntity = async (
   entityType: string,
   entityId: string,
   isRecursive: boolean,
-  isSoftDelete = false
+  isHardDelete = true
 ) => {
   let path = '';
 
-  if (isSoftDelete) {
-    path = getURLWithQueryFields(`/${entityType}/${entityId}`);
-  } else {
-    const searchParams = new URLSearchParams({ hardDelete: `true` });
-    if (!isUndefined(isRecursive)) {
-      searchParams.set('recursive', `${isRecursive}`);
-    }
-    path = getURLWithQueryFields(
-      `/${entityType}/${entityId}`,
-      '',
-      `${searchParams.toString()}`
-    );
-  }
+  const searchParams = new URLSearchParams({
+    hardDelete: `${isHardDelete}`,
+    recursive: `${isRecursive}`,
+  });
+
+  path = getURLWithQueryFields(
+    `/${entityType}/${entityId}`,
+    '',
+    `${searchParams.toString()}`
+  );
 
   return APIClient.delete(path);
 };

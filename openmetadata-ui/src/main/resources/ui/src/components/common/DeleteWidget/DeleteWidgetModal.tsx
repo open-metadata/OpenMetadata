@@ -31,6 +31,7 @@ const DeleteWidgetModal = ({
   allowSoftDelete = true,
   visible,
   deleteMessage,
+  softDeleteMessage = '',
   entityName,
   entityType,
   onCancel,
@@ -48,7 +49,7 @@ const DeleteWidgetModal = ({
   );
 
   const prepareDeleteMessage = (softDelete = false) => {
-    const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
+    const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}.`;
     const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
 
     return softDelete ? softDeleteText : hardDeleteText;
@@ -57,7 +58,7 @@ const DeleteWidgetModal = ({
   const DELETE_OPTION = [
     {
       title: `Delete ${entityType} “${entityName}”`,
-      description: prepareDeleteMessage(true),
+      description: `${prepareDeleteMessage(true)} ${softDeleteMessage}`,
       type: DeleteType.SOFT_DELETE,
       isAllowd: allowSoftDelete,
     },
@@ -115,7 +116,7 @@ const DeleteWidgetModal = ({
       prepareType ? prepareEntityType() : entityType,
       entityId ?? '',
       Boolean(isRecursiveDelete),
-      entityDeleteState.softDelete
+      !entityDeleteState.softDelete
     )
       .then((res) => {
         if (res.status === 200) {

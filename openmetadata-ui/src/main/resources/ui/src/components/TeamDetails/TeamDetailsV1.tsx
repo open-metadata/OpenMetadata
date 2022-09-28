@@ -879,6 +879,7 @@ const TeamDetailsV1 = ({
                   )}
                 {entityPermissions.EditAll && (
                   <ManageButton
+                    isRecursiveDelete
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!currentTeam.deleted}
                     buttonClassName="tw-p-4"
@@ -889,6 +890,9 @@ const TeamDetailsV1 = ({
                     }
                     entityType="team"
                     extraDropdownContent={extraDropdownContent}
+                    softDeleteMessage={`Any changes made to the Roles and Policies of the Parent team will not apply to "${
+                      currentTeam.displayName || currentTeam.name
+                    }". `}
                   />
                 )}
               </Space>

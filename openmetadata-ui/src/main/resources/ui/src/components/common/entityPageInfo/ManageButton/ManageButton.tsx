@@ -33,6 +33,7 @@ interface Props {
   entityFQN?: string;
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
+  softDeleteMessage?: string;
   canDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
@@ -43,6 +44,7 @@ const ManageButton: FC<Props> = ({
   afterDeleteAction,
   buttonClassName,
   deleteMessage,
+  softDeleteMessage,
   entityName,
   entityType,
   canDelete,
@@ -158,6 +160,7 @@ const ManageButton: FC<Props> = ({
           entityName={entityName || ''}
           entityType={entityType || ''}
           isRecursiveDelete={isRecursiveDelete}
+          softDeleteMessage={softDeleteMessage}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
         />
