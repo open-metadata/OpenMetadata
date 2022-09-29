@@ -103,7 +103,7 @@ describe('Tags page should work', () => {
   });
 
   it('Use newly created tag to any entity should work', () => {
-    const entity = SEARCH_ENTITY_TABLE.table_2.term;
+    const entity = SEARCH_ENTITY_TABLE.table_2;
     addNewTagToEntity(entity, `${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
   });
 

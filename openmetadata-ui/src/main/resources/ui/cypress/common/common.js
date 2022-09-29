@@ -408,7 +408,6 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  cy.get('[data-testid="suggestion-overlay"]').should('exist');
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
     if (
@@ -422,7 +421,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
         .click();
     } else {
       // if term is not available in search suggestion, hitting enter to search box so it will redirect to explore page
-      cy.get('body').click();
+      cy.get('body').click(1, 1);
       cy.get('[data-testid="searchBox"]').type('{enter}');
 
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
@@ -439,15 +438,14 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   });
 
   verifyResponseStatusCode('@getEntityDetails', 200);
-  cy.get('body').click();
+  cy.get('body').click(1, 1);
   cy.get('[data-testid="searchBox"]').clear();
 };
 
 // add new tag to entity and its table
-export const addNewTagToEntity = (entity, term) => {
-  searchEntity(entity);
+export const addNewTagToEntity = (entityObj, term) => {
+  visitEntityDetailsPage(entityObj.term,entityObj.serviceName,entityObj.entity)
   cy.wait(500);
-  cy.get('[data-testid="table-link"]').first().contains(entity).click();
   cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
     .eq(0)
     .should('be.visible')
@@ -685,7 +683,7 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
     .click();
 
   cy.wait(1000);
-  cy.get('[data-testid="table-link"]')
+  cy.get('[data-testid="table-data-card"] a')
     .first()
     .should('exist')
     .should('be.visible')
