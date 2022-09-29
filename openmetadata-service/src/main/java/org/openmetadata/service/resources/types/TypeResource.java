@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.types;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -95,7 +96,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     List<Type> types = JsonUtils.getTypes();
     types.forEach(
         type -> {
-          type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
+          type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
           LOG.info("Loading type {}", type.getName());
           try {
             Fields fields = getFields("customProperties");

@@ -28,21 +28,17 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerC
 
 @Slf4j
 public class OktaAuthenticationProvider implements AuthenticationProvider {
-  public static final String clientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
-  private OpenMetadataServerConnection serverConfig;
-  private OktaSSOConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
-  private OktaAccessTokenApi oktaSSOClient;
+  private final OktaAccessTokenApi oktaSSOClient;
 
   public OktaAuthenticationProvider(OpenMetadataServerConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.OKTA)) {
       LOG.error("Required type to invoke is OKTA for OKTA Authentication Provider");
       throw new RuntimeException("Required type to invoke is OKTA for OKTA Authentication Provider");
     }
-    serverConfig = iConfig;
 
-    securityConfig = (OktaSSOConfig) iConfig.getSecurityConfig();
+    OktaSSOConfig securityConfig = (OktaSSOConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {
       LOG.error("Security Config is missing, it is required");
       throw new RuntimeException("Security Config is missing, it is required");
