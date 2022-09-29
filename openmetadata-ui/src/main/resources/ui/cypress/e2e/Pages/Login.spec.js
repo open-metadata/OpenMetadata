@@ -76,7 +76,7 @@ describe('Login flow should work properly', () => {
       .invoke('text')
       .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
     interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
-    cy.get('[data-testid="user-name"]').should('be.visible').click();
+    cy.get('[data-testid="user-name"]').should('be.visible').click({force: true});
     verifyResponseStatusCode('@getUserPage', 200);
     cy.get('[data-testid="left-panel"]').should(
       'contain',
