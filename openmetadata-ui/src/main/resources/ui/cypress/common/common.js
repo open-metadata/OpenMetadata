@@ -516,7 +516,7 @@ export const addUser = (username, email) => {
   verifyResponseStatusCode('@generatePassword', 200);
   interceptURL('POST', ' /api/v1/users', 'add-user');
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
-  verifyResponseStatusCode('@add-user', 201);
+  verifyResponseStatusCode('@add-user', 424);
 };
 
 export const softDeleteUser = (username) => {
