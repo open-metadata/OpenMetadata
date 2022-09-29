@@ -161,6 +161,8 @@ const jsonData = {
     'email-not-found': 'User with the given email address does not exist!',
     'email-found': 'User with the given email address already exists!',
     'unauthorized-user': 'UnAuthorized user! please check email or password',
+    'fetch-re-index-all': 'Error while fetching re index data!',
+    'update-re-index-all': 'Error while re indexing!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
@@ -184,6 +186,7 @@ const jsonData = {
     'reset-password-success': 'Password reset successfully!',
     'account-verify-success': 'Email verified successfully!',
     'update-password-success': 'Password updated successfully!',
+    'fetch-re-index-all': 'Re index fetched successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
