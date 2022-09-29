@@ -15,18 +15,22 @@ import { Button, Form, Input, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { validEmailRegEx } from '../../constants/regex.constants';
 import { SsoServiceType } from '../../generated/entity/teams/authN/ssoAuth';
 import {
   AuthenticationMechanism,
   AuthType,
   JWTTokenExpiry,
+  User,
 } from '../../generated/entity/teams/user';
 import { Auth0SSOClientConfig } from '../../generated/security/client/auth0SSOClientConfig';
 import { AzureSSOClientConfig } from '../../generated/security/client/azureSSOClientConfig';
 import { CustomOidcSSOClientConfig } from '../../generated/security/client/customOidcSSOClientConfig';
 import { GoogleSSOClientConfig } from '../../generated/security/client/googleSSOClientConfig';
 import { OktaSSOClientConfig } from '../../generated/security/client/oktaSSOClientConfig';
+import jsonData from '../../jsons/en';
 import {
+  getAuthMechanismFormInitialValues,
   getAuthMechanismTypeOptions,
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
@@ -36,6 +40,7 @@ import Loader from '../Loader/Loader';
 const { Option } = Select;
 
 interface Props {
+  botUser: User;
   isUpdating: boolean;
   authenticationMechanism: AuthenticationMechanism;
   onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
@@ -47,6 +52,7 @@ const AuthMechanismForm: FC<Props> = ({
   onSave,
   onCancel,
   authenticationMechanism,
+  botUser,
 }) => {
   const { authConfig } = useAuthContext();
 
@@ -61,6 +67,8 @@ const AuthMechanismForm: FC<Props> = ({
     (authenticationMechanism.config?.authConfig as SSOClientConfig) ??
       ({} as SSOClientConfig)
   );
+
+  const [accountEmail, setAccountEmail] = useState<string>(botUser.email);
 
   useEffect(() => {
     const authType = authenticationMechanism.authType;
@@ -113,6 +121,10 @@ const AuthMechanismForm: FC<Props> = ({
           ...previous,
           email: value,
         }));
+
+        break;
+      case 'email':
+        setAccountEmail(value);
 
         break;
 
@@ -466,6 +478,10 @@ const AuthMechanismForm: FC<Props> = ({
   return (
     <Form
       id="update-auth-mechanism-form"
+      initialValues={getAuthMechanismFormInitialValues(
+        authenticationMechanism,
+        botUser
+      )}
       layout="vertical"
       onFinish={handleSave}>
       <Form.Item
@@ -523,7 +539,34 @@ const AuthMechanismForm: FC<Props> = ({
           </Select>
         </Form.Item>
       )}
-      {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
+      {authMechanism === AuthType.Sso && (
+        <>
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[
+              {
+                required: true,
+                type: 'email',
+                message: jsonData['form-error-messages']['empty-email'],
+              },
+              {
+                pattern: validEmailRegEx,
+                type: 'email',
+                message: jsonData['form-error-messages']['invalid-email'],
+              },
+            ]}>
+            <Input
+              data-testid="email"
+              name="email"
+              placeholder="email"
+              value={accountEmail}
+              onChange={handleOnChange}
+            />
+          </Form.Item>
+          {getSSOConfig()}
+        </>
+      )}
       <Space className="w-full tw-justify-end" size={4}>
         {!isEmpty(authenticationMechanism) && (
           <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
