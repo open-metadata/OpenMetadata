@@ -65,8 +65,8 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="displayName"]').should('exist').type(botName);
     //Enter description
     cy.get(descriptionBox).type(description);
-    interceptURL('POST', '/api/v1/bots', 'createBot');
     //Click on save button
+    interceptURL('POST', '/api/v1/bots', 'createBot');
     cy.get('[data-testid="save-user"]')
       .scrollIntoView()
       .should('be.visible')
@@ -91,9 +91,8 @@ describe('Bots Page should work properly', () => {
       .type(updatedBotName);
     //Save the updated display name
 
-    interceptURL('GET', '/api/v1/users/auth-mechanism/*', 'getBotDetails');
     cy.get('[data-testid="save-displayName"]').should('be.visible').click();
-    verifyResponseStatusCode('@getBotDetails', 200);
+    
     //Verify the display name is updated on bot details page
     cy.get('[data-testid="container"]').should('contain', updatedBotName);
     cy.wait(1000);
