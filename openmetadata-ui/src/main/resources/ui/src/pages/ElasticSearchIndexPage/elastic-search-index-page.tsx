@@ -14,26 +14,23 @@
 import { ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   getAllReIndexStatus,
   reIndexByPublisher,
 } from '../../axiosAPIs/elastic-index-API';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { Operation } from '../../generated/api/policies/createPolicy';
 import {
   EventPublisherJob,
   RunMode,
 } from '../../generated/settings/eventPublisherJob';
+import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { checkPermission } from '../../utils/PermissionsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import {
   getEventPublisherStatusText,
   getStatusResultBadgeIcon,
-} from '../../utils/TableUtils';
+} from '../../utils/EventPublisherUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { getDateTimeByTimeStampWithZone } from '../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -41,15 +38,9 @@ const ElasticSearchIndexPage = () => {
   const [batchJobData, setBatchJobData] = useState<EventPublisherJob>();
   const [streamJobData, setStreamJobData] = useState<EventPublisherJob>();
 
+  const { isAdminUser } = useAuth();
   const [batchLoading, setBatchLoading] = useState(false);
   const [streamLoading, setStreamLoading] = useState(false);
-
-  const { permissions } = usePermissionProvider();
-
-  const createPermission = useMemo(
-    () => checkPermission(Operation.All, ResourceEntity.USER, permissions),
-    [permissions]
-  );
 
   const fetchBatchReIndexedData = async () => {
     try {
@@ -111,13 +102,13 @@ const ElasticSearchIndexPage = () => {
                   <Space align="center" size={16}>
                     <Button
                       data-testid="elastic-search-re-fetch-data"
-                      disabled={!createPermission || batchLoading}
+                      disabled={batchLoading}
                       icon={<ReloadOutlined />}
                       onClick={fetchBatchReIndexedData}
                     />
                     <Button
                       data-testid="elastic-search-re-index-all"
-                      disabled={!createPermission}
+                      disabled={!isAdminUser}
                       type="primary"
                       onClick={() => performReIndexAll(RunMode.Batch)}>
                       Re Index All
@@ -186,13 +177,13 @@ const ElasticSearchIndexPage = () => {
                   <Space align="center" size={16}>
                     <Button
                       data-testid="elastic-search-re-fetch-data"
-                      disabled={!createPermission || streamLoading}
+                      disabled={streamLoading}
                       icon={<ReloadOutlined />}
                       onClick={fetchStreamReIndexedData}
                     />
                     <Button
                       data-testid="elastic-search-re-index-all"
-                      disabled={!createPermission}
+                      disabled={!isAdminUser}
                       type="primary"
                       onClick={() => performReIndexAll(RunMode.Batch)}>
                       Re Index All

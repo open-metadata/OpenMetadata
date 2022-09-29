@@ -33,7 +33,6 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { Column, DataType } from '../generated/entity/data/table';
-import { Status } from '../generated/settings/eventPublisherJob';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
@@ -354,37 +353,5 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
 
     default:
       return '';
-  }
-};
-
-export const getStatusResultBadgeIcon = (status: string) => {
-  switch (status) {
-    case Status.Active:
-      return Icons.SUCCESS_BADGE;
-
-    case Status.Activewitherror:
-      return Icons.FAIL_BADGE;
-
-    case Status.Retry:
-      return Icons.PENDING_BADGE;
-
-    default:
-      return '';
-  }
-};
-
-export const getEventPublisherStatusText = (status?: string) => {
-  switch (status) {
-    case Status.Active:
-      return 'Active';
-
-    case Status.Activewitherror:
-      return 'Active with error';
-
-    case Status.Retry:
-      return 'Retry';
-
-    default:
-      return status || '';
   }
 };
