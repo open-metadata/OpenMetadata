@@ -18,6 +18,7 @@ import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
 import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-activity.svg';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
+import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as TestSuite } from '../../src/assets/svg/icon-test-suite.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
@@ -214,6 +215,21 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <MlModelIcon className="side-panel-icons" />,
+        },
+      ],
+    },
+    {
+      category: 'Event Publishers',
+      items: [
+        {
+          label: 'Elastic search',
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.ALL,
+            permissions
+          ),
+          icon: (
+            <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
+          ),
         },
       ],
     },
