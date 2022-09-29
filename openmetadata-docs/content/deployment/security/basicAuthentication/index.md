@@ -5,24 +5,24 @@ slug: /deployment/security/basicAuthentication
 
 # UserName/Password Login
 
-By Default the OpenMetadata comes with Username/Password Login Mechanism.
+Out of the box, OpenMetadata comes with a Username & Password Login Mechanism.
 
-Default Username and Password for Login are:-
+The default Username and Password for Login are:
 
 ```commandline
-UserName - admin
+Username - admin
 Password - admin
 ```
 
 # Setting up Basic Auth Manually
 
-Following are the steps needed to be performed to set up Username/Password Login:-
+Below are the required steps to set up the Basic Login:
 
 ## Set up Configurations in `openmetadata.yaml` or with corresponding Environment Variables
 
 ### Authentication Configuration
 
-- Following configuration controls the auth mechanism for OpenMetadata update the mentioned fields as per requirement.
+- The following configuration controls the auth mechanism for OpenMetadata. Update the mentioned fields as required.
 
 ```yaml
 authenticationConfiguration:
@@ -32,7 +32,7 @@ authenticationConfiguration:
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
 ```
 
-For Basic auth we need to set :-
+For the Basic auth we need to set:
  
 -  `provider` -> `basic`
 
@@ -44,7 +44,7 @@ For Basic auth we need to set :-
 
 ### Authorizer Configuration
 
-- Following configuration controls the authorizer for OpenMetadata update the mentioned fields as per requirement.
+- This configuration controls the authorizer for OpenMetadata:
 
 ```yaml
 authorizerConfiguration:
@@ -53,9 +53,9 @@ authorizerConfiguration:
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
 ```
 
-For Basic auth we need to set :-
+For the Basic auth we need to set:
 
-- `adminPrincipals` -> `admin usernames to bootstrap the server with , mentioned as comma-seprated`
+- `adminPrincipals` -> `admin usernames to bootstrap the server with comma-separated values`
 
 - `allowedEmailRegistrationDomains` -> `This controls what all domain are allowed for email registration can be your {princialDomain} as well, for example gmail.com, outlook.comm etc.`
 
@@ -63,12 +63,11 @@ For Basic auth we need to set :-
 
 <Note>
 
-Please note following are the formats to bootstrap admins on server startup :-
+Please note the following are the formats to bootstrap admins on server startup:
 
 `[admin1,admin2,admin3]` 
 
-- This works for SMTP enabled servers, Login Password for these are generated randomly and sent to the mail {adminName}@{principalDomain}, if SMTP is not enabled for OM , please use below method to create admin users.
-
+- This works for SMTP-enabled servers, Login Password for these are generated randomly and sent to the mail {adminName}@{principalDomain}. If SMTP is not enabled for OpenMetadata, please use the below method to create admin users.
 `[admin1:password1,admin2:password2,admin3:[password3]]` 
 
 - This allows to bootstrap the server with given password, later on can be changed by specific users by visiting profile page.
@@ -77,7 +76,7 @@ Please note following are the formats to bootstrap admins on server startup :-
 
 ### Jwt Configuration
 
-- Please note Jwt Configuration is mandatory to work with UserName/Password Login.
+- Please note that the JWT Configuration is mandatory to work with UserName/Password Login.
 
 ```yaml
 jwtTokenConfiguration:
@@ -97,7 +96,7 @@ By Default the jwtTokenConfiguration is shipped with OM.
 
 ### For Production Deployment
 
-- It is a MUST! to update the JWT configuration. Following steps can be used.
+- It is a MUST! to update the JWT configuration. The following steps can be used.
 
 - Generating Private/Public Keys
 
@@ -130,7 +129,7 @@ keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 ### Setting up SMTP Server
 
-- Basic Authentication is successfully set. For better login experience we can also set up the SMTP server to allow the users for 
+- Basic Authentication is successfully set. For a better login experience, we can also set up the SMTP server to allow the users to
   Reset Password, Account Status Updates etc. as well.
 
 ```yaml
