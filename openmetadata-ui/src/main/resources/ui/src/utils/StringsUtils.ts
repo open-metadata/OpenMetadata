@@ -117,6 +117,10 @@ export const getErrorText = (
       // if error text is undefined or null or empty, try responseMessage in data
       errorText = get(value, 'response.data.responseMessage', '');
     }
+    if (!errorText) {
+      errorText = get(value, 'response.data', '');
+      errorText = typeof errorText === 'string' ? errorText : null;
+    }
   }
 
   // if error text is still empty, return the fallback text
