@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Select, Space } from 'antd';
+import { Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { checkEmailInUse } from '../../axiosAPIs/auth-API';
+import { createBotWithPut } from '../../axiosAPIs/botsAPI';
+import { createUserWithPut, getUserByName } from '../../axiosAPIs/userAPI';
+import { BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION } from '../../constants/HelperTextUtil';
 import { validEmailRegEx } from '../../constants/regex.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { Bot } from '../../generated/entity/bot';
 import { SsoServiceType } from '../../generated/entity/teams/authN/ssoAuth';
 import {
   AuthenticationMechanism,
@@ -29,11 +36,13 @@ import { CustomOidcSSOClientConfig } from '../../generated/security/client/custo
 import { GoogleSSOClientConfig } from '../../generated/security/client/googleSSOClientConfig';
 import { OktaSSOClientConfig } from '../../generated/security/client/oktaSSOClientConfig';
 import jsonData from '../../jsons/en';
+import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import {
   getAuthMechanismFormInitialValues,
   getAuthMechanismTypeOptions,
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { SSOClientConfig } from '../CreateUser/CreateUser.interface';
 import Loader from '../Loader/Loader';
 
@@ -41,6 +50,7 @@ const { Option } = Select;
 
 interface Props {
   botUser: User;
+  botData: Bot;
   isUpdating: boolean;
   authenticationMechanism: AuthenticationMechanism;
   onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
@@ -53,6 +63,7 @@ const AuthMechanismForm: FC<Props> = ({
   onCancel,
   authenticationMechanism,
   botUser,
+  botData,
 }) => {
   const { authConfig } = useAuthContext();
 
@@ -69,6 +80,9 @@ const AuthMechanismForm: FC<Props> = ({
   );
 
   const [accountEmail, setAccountEmail] = useState<string>(botUser.email);
+
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] =
+    useState<boolean>(false);
 
   useEffect(() => {
     const authType = authenticationMechanism.authType;
@@ -134,22 +148,75 @@ const AuthMechanismForm: FC<Props> = ({
   };
 
   const handleSave = () => {
-    const updatedAuthMechanism: AuthenticationMechanism = {
-      authType: authMechanism,
-      config:
-        authMechanism === AuthType.Jwt
-          ? {
-              JWTTokenExpiry: tokenExpiry,
-            }
-          : {
-              ssoServiceType: authConfig?.provider as SsoServiceType,
-              authConfig: {
-                ...ssoClientConfig,
+    if (accountEmail !== botUser.email) {
+      setIsConfirmationModalOpen(true);
+    } else {
+      const updatedAuthMechanism: AuthenticationMechanism = {
+        authType: authMechanism,
+        config:
+          authMechanism === AuthType.Jwt
+            ? {
+                JWTTokenExpiry: tokenExpiry,
+              }
+            : {
+                ssoServiceType: authConfig?.provider as SsoServiceType,
+                authConfig: {
+                  ...ssoClientConfig,
+                },
               },
-            },
-    };
+      };
 
-    onSave(updatedAuthMechanism);
+      onSave(updatedAuthMechanism);
+    }
+  };
+
+  const handleBotUpdate = async (response: User) => {
+    try {
+      await createBotWithPut({
+        ...botData,
+        botUser: { id: response.id, type: EntityType.USER },
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleAccountEmailChange = async () => {
+    try {
+      const isUserExists = await checkEmailInUse(accountEmail);
+      if (isUserExists) {
+        const userResponse = await getUserByName(
+          getNameFromEmail(accountEmail)
+        );
+        handleBotUpdate(userResponse);
+      } else {
+        const userResponse = await createUserWithPut({
+          email: accountEmail,
+          name: getNameFromEmail(accountEmail),
+          botName: botData.name,
+          isBot: true,
+          authenticationMechanism: {
+            authType: authMechanism,
+            config:
+              authMechanism === AuthType.Jwt
+                ? {
+                    JWTTokenExpiry: tokenExpiry,
+                  }
+                : {
+                    ssoServiceType: authConfig?.provider as SsoServiceType,
+                    authConfig: {
+                      ...ssoClientConfig,
+                    },
+                  },
+          },
+        });
+        handleBotUpdate(userResponse);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      onCancel();
+    }
   };
 
   const getSSOConfig = () => {
@@ -476,51 +543,24 @@ const AuthMechanismForm: FC<Props> = ({
   };
 
   return (
-    <Form
-      id="update-auth-mechanism-form"
-      initialValues={getAuthMechanismFormInitialValues(
-        authenticationMechanism,
-        botUser
-      )}
-      layout="vertical"
-      onFinish={handleSave}>
-      <Form.Item
-        label="Auth Mechanism"
-        name="auth-mechanism"
-        rules={[
-          {
-            required: true,
-            validator: () => {
-              if (!authMechanism) {
-                return Promise.reject('Auth Mechanism is required');
-              }
-
-              return Promise.resolve();
-            },
-          },
-        ]}>
-        <Select
-          className="w-full"
-          data-testid="auth-mechanism"
-          defaultValue={authMechanism}
-          placeholder="Select Auth Mechanism"
-          onChange={(value) => setAuthMechanism(value)}>
-          {getAuthMechanismTypeOptions(authConfig).map((option) => (
-            <Option key={option.value}>{option.label}</Option>
-          ))}
-        </Select>
-      </Form.Item>
-
-      {authMechanism === AuthType.Jwt && (
+    <>
+      <Form
+        id="update-auth-mechanism-form"
+        initialValues={getAuthMechanismFormInitialValues(
+          authenticationMechanism,
+          botUser
+        )}
+        layout="vertical"
+        onFinish={handleSave}>
         <Form.Item
-          label="Token Expiration"
-          name="token-expiration"
+          label="Auth Mechanism"
+          name="auth-mechanism"
           rules={[
             {
               required: true,
               validator: () => {
-                if (!tokenExpiry) {
-                  return Promise.reject('Token Expiration is required');
+                if (!authMechanism) {
+                  return Promise.reject('Auth Mechanism is required');
                 }
 
                 return Promise.resolve();
@@ -529,59 +569,102 @@ const AuthMechanismForm: FC<Props> = ({
           ]}>
           <Select
             className="w-full"
-            data-testid="token-expiry"
-            defaultValue={tokenExpiry}
-            placeholder="Select Token Expiration"
-            onChange={(value) => setTokenExpiry(value)}>
-            {getJWTTokenExpiryOptions().map((option) => (
+            data-testid="auth-mechanism"
+            defaultValue={authMechanism}
+            placeholder="Select Auth Mechanism"
+            onChange={(value) => setAuthMechanism(value)}>
+            {getAuthMechanismTypeOptions(authConfig).map((option) => (
               <Option key={option.value}>{option.label}</Option>
             ))}
           </Select>
         </Form.Item>
-      )}
-      {authMechanism === AuthType.Sso && (
-        <>
+
+        {authMechanism === AuthType.Jwt && (
           <Form.Item
-            label="Email"
-            name="email"
+            label="Token Expiration"
+            name="token-expiration"
             rules={[
               {
                 required: true,
-                type: 'email',
-                message: jsonData['form-error-messages']['empty-email'],
-              },
-              {
-                pattern: validEmailRegEx,
-                type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
+                validator: () => {
+                  if (!tokenExpiry) {
+                    return Promise.reject('Token Expiration is required');
+                  }
+
+                  return Promise.resolve();
+                },
               },
             ]}>
-            <Input
-              data-testid="email"
-              name="email"
-              placeholder="email"
-              value={accountEmail}
-              onChange={handleOnChange}
-            />
+            <Select
+              className="w-full"
+              data-testid="token-expiry"
+              defaultValue={tokenExpiry}
+              placeholder="Select Token Expiration"
+              onChange={(value) => setTokenExpiry(value)}>
+              {getJWTTokenExpiryOptions().map((option) => (
+                <Option key={option.value}>{option.label}</Option>
+              ))}
+            </Select>
           </Form.Item>
-          {getSSOConfig()}
-        </>
-      )}
-      <Space className="w-full tw-justify-end" size={4}>
-        {!isEmpty(authenticationMechanism) && (
-          <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
-            Cancel
-          </Button>
         )}
-        <Button
-          data-testid="save-edit"
-          form="update-auth-mechanism-form"
-          htmlType="submit"
-          type="primary">
-          {isUpdating ? <Loader size="small" /> : 'Save'}
-        </Button>
-      </Space>
-    </Form>
+        {authMechanism === AuthType.Sso && (
+          <>
+            <Form.Item
+              label="Email"
+              name="email"
+              rules={[
+                {
+                  required: true,
+                  type: 'email',
+                  message: jsonData['form-error-messages']['empty-email'],
+                },
+                {
+                  pattern: validEmailRegEx,
+                  type: 'email',
+                  message: jsonData['form-error-messages']['invalid-email'],
+                },
+              ]}>
+              <Input
+                data-testid="email"
+                name="email"
+                placeholder="email"
+                value={accountEmail}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            {getSSOConfig()}
+          </>
+        )}
+        <Space className="w-full tw-justify-end" size={4}>
+          {!isEmpty(authenticationMechanism) && (
+            <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+          <Button
+            data-testid="save-edit"
+            form="update-auth-mechanism-form"
+            htmlType="submit"
+            type="primary">
+            {isUpdating ? <Loader size="small" /> : 'Save'}
+          </Button>
+        </Space>
+      </Form>
+      {isConfirmationModalOpen && (
+        <Modal
+          centered
+          destroyOnClose
+          okText="Confirm"
+          title="Are you sure?"
+          visible={isConfirmationModalOpen}
+          onCancel={() => setIsConfirmationModalOpen(false)}
+          onOk={handleAccountEmailChange}>
+          <Typography.Text>
+            {BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION} for {botData.name} bot.
+          </Typography.Text>
+        </Modal>
+      )}
+    </>
   );
 };
 

@@ -341,6 +341,7 @@ const BotDetails: FC<BotsDetailProp> = ({
             {isAuthMechanismEdit ? (
               <AuthMechanismForm
                 authenticationMechanism={authenticationMechanism}
+                botData={botData}
                 botUser={botUserData}
                 isUpdating={isUpdating}
                 onCancel={() => setIsAuthMechanismEdit(false)}
@@ -359,6 +360,7 @@ const BotDetails: FC<BotsDetailProp> = ({
         ) : (
           <AuthMechanismForm
             authenticationMechanism={{} as AuthenticationMechanism}
+            botData={botData}
             botUser={botUserData}
             isUpdating={isUpdating}
             onCancel={() => setIsAuthMechanismEdit(false)}
