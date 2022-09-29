@@ -359,17 +359,32 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
 
 export const getStatusResultBadgeIcon = (status: string) => {
   switch (status) {
-    case Status.Success:
+    case Status.Active:
       return Icons.SUCCESS_BADGE;
 
-    case Status.Failed:
+    case Status.Activewitherror:
       return Icons.FAIL_BADGE;
 
-    case Status.Aborted:
-    case Status.Running:
+    case Status.Retry:
       return Icons.PENDING_BADGE;
 
     default:
       return '';
+  }
+};
+
+export const getEventPublisherStatusText = (status?: string) => {
+  switch (status) {
+    case Status.Active:
+      return 'Active';
+
+    case Status.Activewitherror:
+      return 'Active with error';
+
+    case Status.Retry:
+      return 'Retry';
+
+    default:
+      return status || '';
   }
 };

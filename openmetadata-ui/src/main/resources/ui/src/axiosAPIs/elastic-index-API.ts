@@ -19,25 +19,20 @@ import {
   RunMode,
 } from '../generated/settings/eventPublisherJob';
 
-export const getAllReIndexStatus = async () => {
-  const params = { limit: 1 };
-  const res = await axiosClient.get<EventPublisherJob[]>(
-    '/indexResource/reindex/status',
-    {
-      params,
-    }
+export const getAllReIndexStatus = async (mode: RunMode) => {
+  const res = await axiosClient.get<EventPublisherJob>(
+    `/indexResource/reindex/status/${mode}`
   );
 
   return res.data;
 };
 
-export const reIndexByPublisher = async (
-  payload: CreateEventPublisherJob = {
-    name: 'ElasticSearch',
+export const reIndexByPublisher = async (runMode: RunMode) => {
+  const payload = {
     publisherType: PublisherType.ElasticSearch,
-    runMode: RunMode.Batch,
-  }
-) => {
+    runMode,
+  } as CreateEventPublisherJob;
+
   const res = await axiosClient.post('/indexResource/reindex', payload);
 
   return res.data;
