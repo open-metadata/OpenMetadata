@@ -501,6 +501,10 @@ export const addUser = (username, email) => {
     .should('exist')
     .should('be.visible')
     .type('Adding user');
+  cy.get('[data-testid="password-generator"]')
+    .should('be.visible')
+    .click();
+  cy.wait(1000);
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
 };
 

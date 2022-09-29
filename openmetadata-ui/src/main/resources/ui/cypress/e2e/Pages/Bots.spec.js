@@ -66,6 +66,11 @@ describe('Bots Page should work properly', () => {
     //Enter description
     cy.get(descriptionBox).type(description);
     interceptURL('POST', '/api/v1/bots', 'createBot');
+     //Click Password Generator
+    cy.get('[data-testid="password-generator"]')
+    .should('be.visible')
+    .click();
+  cy.wait(1000);
     //Click on save button
     cy.get('[data-testid="save-user"]')
       .scrollIntoView()
