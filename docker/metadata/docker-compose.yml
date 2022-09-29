@@ -13,14 +13,12 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.12.0
+    image: openmetadata/db:0.12.1.preview.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
     expose:
       - 3306
-    volumes:
-     - $PWD/docker-volume/db-data:/var/lib/mysql
     networks:
       - app_net
     healthcheck:
@@ -44,7 +42,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.12.0
+    image: openmetadata/server:0.12.1.preview.0
     environment:
       ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
@@ -132,7 +130,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.12.0
+    image: openmetadata/ingestion:0.12.1.preview.0
     depends_on:
       elasticsearch:
         condition: service_started

@@ -24,8 +24,6 @@ services:
       POSTGRES_PASSWORD: password
     expose:
       - 5432
-    volumes:
-      - $PWD/docker-volume/db-data:/var/lib/postgresql
     ports:
       - "5432:5432"
     networks:
