@@ -422,7 +422,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
         .click();
     } else {
       // if term is not available in search suggestion, hitting enter to search box so it will redirect to explore page
-      cy.get('body').click();
+      cy.get('body').click(1, 1);
       cy.get('[data-testid="searchBox"]').type('{enter}');
 
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
@@ -439,15 +439,23 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   });
 
   verifyResponseStatusCode('@getEntityDetails', 200);
-  cy.get('body').click();
+  cy.get('body').then(($body) => {
+    if ($body.find('[data-testid="suggestion-overlay"]').length) {
+      cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+    }
+  });
+  cy.get('body').click(1, 1);
   cy.get('[data-testid="searchBox"]').clear();
 };
 
 // add new tag to entity and its table
-export const addNewTagToEntity = (entity, term) => {
-  searchEntity(entity);
+export const addNewTagToEntity = (entityObj, term) => {
+  visitEntityDetailsPage(
+    entityObj.term,
+    entityObj.serviceName,
+    entityObj.entity
+  );
   cy.wait(500);
-  cy.get('[data-testid="table-link"]').first().contains(entity).click();
   cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
     .eq(0)
     .should('be.visible')
@@ -651,7 +659,12 @@ export const toastNotification = (msg) => {
   cy.get('.Toastify__close-button').should('be.visible').click();
 };
 
-export const addCustomPropertiesForEntity = (entityType, customType, value) => {
+export const addCustomPropertiesForEntity = (
+  entityType,
+  customType,
+  value,
+  entityObj
+) => {
   const propertyName = `entity${entityType.name}test${uuid()}`;
 
   //Add Custom property for selected entity
@@ -677,19 +690,12 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   cy.clickOnLogo();
 
   //Checking the added property in Entity
-  //cy.contains(entityType.name).scrollIntoView().should('be.visible').click();
 
-  cy.get(`[data-testid*="${entityType.name}"] > .ant-btn > span`)
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-
-  cy.wait(1000);
-  cy.get('[data-testid="table-link"]')
-    .first()
-    .should('exist')
-    .should('be.visible')
-    .click();
+  visitEntityDetailsPage(
+    entityObj.term,
+    entityObj.serviceName,
+    entityObj.entity
+  );
 
   cy.get('[data-testid="Custom Properties"]')
     .should('exist')

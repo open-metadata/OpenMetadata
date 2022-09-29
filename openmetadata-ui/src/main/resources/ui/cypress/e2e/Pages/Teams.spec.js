@@ -28,19 +28,24 @@ const TEAM_DETAILS = {
 };
 
 describe('Teams flow should work properly', () => {
-  beforeEach(() => {
+  before(() => {
+    cy.clearLocalStorageSnapshot();
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
+    cy.saveLocalStorage('localstorage');
+  });
+  beforeEach(() => {
+    cy.log('Restoring local storage snapshot');
+    cy.restoreLocalStorage('localstorage');
+    cy.clickOnLogo();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    interceptURL('GET', '/api/v1/users*', 'getTeams');
+
     //Clicking on teams
     cy.get('[data-menu-id*="teams"]')
       .should('exist')
       .should('be.visible')
       .click();
-
-    verifyResponseStatusCode('@getTeams', 200);
   });
 
   it('Add new team', () => {
@@ -430,23 +435,6 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="confirm-button"]')
       .should('exist')
       .should('be.disabled');
-
-    cy.get('[data-testid="discard-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-
-    cy.get('[data-testid="delete-button-title"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
 
     //Check if soft delete option is present
     cy.get('[data-testid="soft-delete-option"]')
