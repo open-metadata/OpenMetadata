@@ -694,7 +694,7 @@ const CreateUser = ({
               {
                 type: 'email',
                 validator: async (_, value) => {
-                  if (validEmailRegEx.test(value)) {
+                  if (validEmailRegEx.test(value) && !forceBot) {
                     const isEmailAlreadyExists = await checkEmailInUse(value);
                     if (isEmailAlreadyExists) {
                       return Promise.reject(
