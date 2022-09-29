@@ -12,16 +12,7 @@
  */
 
 import { ReloadOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Skeleton,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -31,7 +22,6 @@ import {
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/api/policies/createPolicy';
 import {
   EventPublisherJob,
@@ -112,19 +102,6 @@ const ElasticSearchIndexPage = () => {
   return (
     <div>
       <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Space className="w-full justify-end">
-            <Space align="center" size={16}>
-              <Tooltip
-                title={
-                  createPermission
-                    ? 'Elastic search re-index all'
-                    : NO_PERMISSION_FOR_ACTION
-                }
-              />
-            </Space>
-          </Space>
-        </Col>
         <Col span={24}>
           <Row gutter={[16, 16]}>
             <Col span={24}>
