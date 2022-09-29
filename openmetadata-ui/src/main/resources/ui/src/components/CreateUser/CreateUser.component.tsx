@@ -28,7 +28,7 @@ import { isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { generateRandomPwd } from '../../axiosAPIs/auth-API';
+import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -690,6 +690,21 @@ const CreateUser = ({
                 pattern: validEmailRegEx,
                 type: 'email',
                 message: jsonData['form-error-messages']['invalid-email'],
+              },
+              {
+                type: 'email',
+                validator: async (_, value) => {
+                  if (validEmailRegEx.test(value)) {
+                    const isEmailAlreadyExists = await checkEmailInUse(value);
+                    if (isEmailAlreadyExists) {
+                      return Promise.reject(
+                        jsonData['form-error-messages']['email-is-in-use']
+                      );
+                    }
+
+                    return Promise.resolve();
+                  }
+                },
               },
             ]}>
             <Input
