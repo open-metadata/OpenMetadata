@@ -383,14 +383,6 @@ def openmetadata_imports_migration(
     required=True,
 )
 @click.option(
-    "--download",
-    help="S3 endpoint, bucket & key to download the backup file",
-    nargs=3,
-    type=click.Tuple([str, str, str]),
-    default=None,
-    required=False,
-)
-@click.option(
     "-o",
     "--options",
     multiple=True,
@@ -415,7 +407,6 @@ def restore(
     database: str,
     port: str,
     input: str,
-    download: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
     schema: str,
@@ -441,7 +432,6 @@ def restore(
         database,
         port,
         input,
-        download,
         options,
         arguments,
         schema,

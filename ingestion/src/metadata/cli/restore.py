@@ -13,13 +13,12 @@
 Restore utility for the metadata CLI
 """
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import click
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 
-from metadata.cli.db_dump import dump
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -34,13 +33,14 @@ logger = cli_logger()
 
 
 def execute_query(engine: Engine, input: Path, schema: str = None) -> None:
-    import textwrap
 
-    with engine.connect() as con:
-        with open(input) as file:
-            for query in file:
-                print((text(query)))
-                con.execute(textwrap.dedent(f"""{text(query)}"""))
+    with open(input, encoding="utf-8") as f:
+        for query in f.readlines():
+
+            clean_query = query.replace("%", "%%")
+
+            with engine.connect() as conn:
+                conn.execute(clean_query)
 
 
 def run_restore(
@@ -50,7 +50,6 @@ def run_restore(
     database: str,
     port: str,
     input: str,
-    download: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
     schema: Optional[str] = None,
@@ -65,7 +64,6 @@ def run_restore(
     :param database: database to back up
     :param port: database service port
     :param intput: local path of file to restore the backup
-    :param dwonloadload: URI to download result file
     :param options: list of other connection options
     :param arguments: list of connection arguments
     :param schema: Run the process against Postgres with the given schema
