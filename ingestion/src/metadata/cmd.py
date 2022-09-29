@@ -417,10 +417,6 @@ def restore(
     We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
     Same with connection arguments `-a <arg1>, -a <arg2> [...]`
 
-    To run the download, provide the information as
-    `--download endpoint bucket key` and properly configure the environment
-    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY.
-
     If `-s` or `--schema` is provided, we will trigger a Postgres Restore instead
     of a MySQL restore. This is the value of the schema containing the OpenMetadata
     tables.
