@@ -20,6 +20,7 @@ import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
 const updateBotsDetails = jest.fn();
+const onEmailChange = jest.fn();
 
 const botUserData = {
   id: 'ea09aed1-0251-4a75-b92a-b65641610c53',
@@ -81,6 +82,7 @@ const mockProp = {
   } as OperationPermission,
   revokeTokenHandler,
   updateBotsDetails,
+  onEmailChange,
 };
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -89,7 +91,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
-    updateUser: jest
+    createUserWithPut: jest
       .fn()
       .mockImplementation(() => Promise.resolve(botUserData)),
     getAuthMechanismForBotUser: jest

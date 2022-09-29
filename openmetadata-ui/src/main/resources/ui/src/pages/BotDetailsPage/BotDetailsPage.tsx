@@ -135,6 +135,7 @@ const BotDetailsPage = () => {
           botUserData={botUserData}
           revokeTokenHandler={revokeBotsToken}
           updateBotsDetails={updateBotsDetails}
+          onEmailChange={fetchBotsData}
         />
       );
     }

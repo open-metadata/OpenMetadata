@@ -55,6 +55,7 @@ interface Props {
   authenticationMechanism: AuthenticationMechanism;
   onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
   onCancel: () => void;
+  onEmailChange: () => void;
 }
 
 const AuthMechanismForm: FC<Props> = ({
@@ -64,6 +65,7 @@ const AuthMechanismForm: FC<Props> = ({
   authenticationMechanism,
   botUser,
   botData,
+  onEmailChange,
 }) => {
   const { authConfig } = useAuthContext();
 
@@ -173,11 +175,15 @@ const AuthMechanismForm: FC<Props> = ({
   const handleBotUpdate = async (response: User) => {
     try {
       await createBotWithPut({
-        ...botData,
+        name: botData.name,
+        description: botData.description,
+        displayName: botData.displayName,
         botUser: { id: response.id, type: EntityType.USER },
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      onEmailChange();
     }
   };
 
@@ -214,8 +220,6 @@ const AuthMechanismForm: FC<Props> = ({
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      onCancel();
     }
   };
 
