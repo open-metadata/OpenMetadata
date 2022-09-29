@@ -110,7 +110,7 @@ public class UserRepository extends EntityRepository<User> {
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .setConfig(
-              secretsManager.encryptOrDecryptIngestionBotCredentials(
+              secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), true));
     }
 
@@ -224,7 +224,7 @@ public class UserRepository extends EntityRepository<User> {
     if (user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .withConfig(
-              this.secretsManager.encryptOrDecryptIngestionBotCredentials(
+              this.secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), false));
     }
     return user;

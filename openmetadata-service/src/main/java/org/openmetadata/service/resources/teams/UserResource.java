@@ -22,7 +22,6 @@ import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -76,6 +75,8 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.Nullable;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -100,6 +101,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -232,8 +234,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
@@ -311,8 +311,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
     return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
@@ -347,8 +345,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
     return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
@@ -553,11 +549,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
-      addAuthMechanismToBot(user, create, uriInfo);
+      return createOrUpdateBot(user, create, uriInfo, securityContext);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
-    decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
 
@@ -1412,6 +1407,82 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
+  private Response createOrUpdateBot(User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext)
+      throws IOException {
+    User original = retrieveBotUser(user, uriInfo);
+    String botName = create.getBotName();
+    EntityInterface bot = retrieveBot(botName);
+    // check if the bot user exists
+    if (original != null && bot != null) {
+      // check if the bot does not have relationship with the user
+      if (!botHasRelationshipWithUser(bot, original)) {
+        // throw an exception if bot already has a relationship with a user
+        if (botHasRelationshipWithAnotherUser(bot, original)) {
+          List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(bot);
+          EntityInterface botUser =
+              dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
+          throw new IllegalArgumentException(
+              String.format("Bot [%s] is already using [%s] bot user.", bot.getName(), botUser.getName()));
+        }
+        // throw an exception if user already has a relationship with a bot
+        if (userHasRelationshipWithAnyBot(original, bot)) {
+          List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
+          bot =
+              Entity.getEntityRepository(Entity.BOT)
+                  .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
+          throw new IllegalArgumentException(
+              String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
+        }
+      }
+    } else if (bot != null) {
+      // throw an exception if bot already has a relationship with a user
+      List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(bot);
+      if (!userBotRelationship.isEmpty()) {
+        EntityInterface botUser =
+            dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
+        throw new IllegalArgumentException(
+            String.format("Bot [%s] is already using [%s] bot user.", bot.getName(), botUser.getName()));
+      }
+    }
+    addAuthMechanismToBot(user, create, uriInfo);
+    RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
+    decryptOrNullify(securityContext, response.getEntity());
+    return response.toResponse();
+  }
+
+  private EntityInterface retrieveBot(String botName) {
+    try {
+      return Entity.getEntityRepository(Entity.BOT).getByName(null, botName, Fields.EMPTY_FIELDS);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
+    List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
+    return !userBotRelationship.isEmpty()
+        && userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId()));
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
+    return dao.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+  }
+
+  private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
+    List<CollectionDAO.EntityRelationshipRecord> botUserRelationships = retrieveBotRelationshipsFor(bot);
+    return !botUserRelationships.isEmpty() && botUserRelationships.get(0).getId().equals(user.getId());
+  }
+
+  private boolean botHasRelationshipWithAnotherUser(EntityInterface bot, User user) {
+    List<CollectionDAO.EntityRelationshipRecord> botUserRelationships = retrieveBotRelationshipsFor(bot);
+    return !botUserRelationships.isEmpty()
+        && botUserRelationships.stream().anyMatch(relationship -> !relationship.getId().equals(user.getId()));
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(EntityInterface bot) {
+    return dao.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
+  }
+
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
@@ -1421,20 +1492,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
       switch (authType) {
         case JWT:
-          User original;
-          try {
-            original =
-                dao.getByName(
-                    uriInfo, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-          } catch (EntityNotFoundException | IOException exc) {
-            LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
-            original = null;
-          }
+          User original = retrieveBotUser(user, uriInfo);
           if (original != null && !secretsManager.isLocal() && authMechanism != null) {
             original
                 .getAuthenticationMechanism()
                 .setConfig(
-                    secretsManager.encryptOrDecryptIngestionBotCredentials(
+                    secretsManager.encryptOrDecryptBotUserCredentials(
                         user.getName(), authMechanism.getConfig(), false));
           }
           if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
@@ -1458,6 +1521,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException(
           String.format("Authentication mechanism is empty bot user: [%s]", user.getName()));
     }
+  }
+
+  @Nullable
+  private User retrieveBotUser(User user, UriInfo uriInfo) {
+    User original;
+    try {
+      original = dao.getByName(uriInfo, user.getFullyQualifiedName(), new Fields(List.of("authenticationMechanism")));
+    } catch (EntityNotFoundException | IOException exc) {
+      LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
+      original = null;
+    }
+    return original;
   }
 
   private void addAuthMechanismToUser(User user, @Valid CreateUser create) {
@@ -1506,7 +1581,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       user.getAuthenticationMechanism()
           .setConfig(
-              secretsManager.encryptOrDecryptIngestionBotCredentials(
+              secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), false));
       return user;
     }

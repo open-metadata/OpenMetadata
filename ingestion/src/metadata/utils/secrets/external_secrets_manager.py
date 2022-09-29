@@ -84,7 +84,9 @@ class ExternalSecretsManager(SecretsManager, ABC):
         )
         return ServiceConnection(__root__=service_connection)
 
-    def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
+    def add_auth_provider_security_config(
+        self, config: OpenMetadataConnection, bot_name: str
+    ) -> None:
         """
         Add the auth provider security config from the AWS client store to a given OpenMetadata connection object.
         :param config: OpenMetadataConnection object
@@ -93,8 +95,11 @@ class ExternalSecretsManager(SecretsManager, ABC):
         logger.debug(
             f"Adding auth provider security config using {self.provider} secrets' manager"
         )
-        if config.authProvider != AuthProvider.no_auth:
-            secret_id = self.build_secret_id(BOT_PREFIX, config.workflowBot)
+        if (
+            config.authProvider != AuthProvider.no_auth
+            and config.securityConfig is None
+        ):
+            secret_id = self.build_secret_id(BOT_PREFIX, bot_name)
             auth_config_json = self.get_string_value(secret_id)
             try:
                 config_object = json.loads(auth_config_json)

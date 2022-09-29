@@ -14,18 +14,29 @@
 package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
+import java.util.List;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.BotType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 public class BotRepository extends EntityRepository<Bot> {
-  public BotRepository(CollectionDAO dao) {
-    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", "");
+
+  static final String BOT_UPDATE_FIELDS = "botUser";
+
+  SecretsManager secretsManager;
+
+  public BotRepository(CollectionDAO dao, SecretsManager secretsManager) {
+    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+    this.secretsManager = secretsManager;
   }
 
   @Override
@@ -43,8 +54,17 @@ public class BotRepository extends EntityRepository<Bot> {
   @Override
   public void storeEntity(Bot entity, boolean update) throws IOException {
     EntityReference botUser = entity.getBotUser();
+    User user =
+        UserRepository.class
+            .cast(Entity.getEntityRepository(Entity.USER))
+            .get(null, entity.getBotUser().getId(), new EntityUtil.Fields(List.of("authenticationMechanism")));
     entity.withBotUser(null);
     store(entity.getId(), entity, update);
+    if (!BotType.BOT.equals(entity.getBotType())) {
+      AuthenticationMechanism authMechanism = user.getAuthenticationMechanism();
+      secretsManager.encryptBotCredentials(
+          entity.getBotType().value(), authMechanism != null ? authMechanism.getConfig() : null);
+    }
     entity.withBotUser(botUser);
   }
 
@@ -71,6 +91,24 @@ public class BotRepository extends EntityRepository<Bot> {
   public class BotUpdater extends EntityUpdater {
     public BotUpdater(Bot original, Bot updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateUser(original, updated);
+      if (original.getBotType() != null) {
+        updated.setBotType(original.getBotType());
+      }
+    }
+
+    private void updateUser(Bot original, Bot updated) throws IOException {
+      deleteTo(original.getBotUser().getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+      addRelationship(updated.getId(), updated.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+      if (original.getBotUser() == null
+          || updated.getBotUser() == null
+          || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {
+        recordChange("botUser", original.getBotUser(), updated.getBotUser());
+      }
     }
   }
 }

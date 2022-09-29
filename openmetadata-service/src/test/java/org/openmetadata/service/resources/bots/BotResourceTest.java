@@ -8,17 +8,22 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
+import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.util.ResultList;
 
 class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
@@ -32,10 +37,19 @@ class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     super.setup(test);
-    UserResourceTest userResourceTest = new UserResourceTest();
-    CreateUser createUser = userResourceTest.createRequest("botUser", "", "", null);
-    botUser = new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
-    botUserRef = botUser.getEntityReference();
+    createBotUser();
+  }
+
+  @BeforeEach
+  public void beforeEach() throws HttpResponseException {
+    ResultList<Bot> bots = listEntities(null, ADMIN_AUTH_HEADERS);
+    for (Bot bot : bots.getData()) {
+      try {
+        deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
+        createBotUser();
+      } catch (Exception ignored) {
+      }
+    }
   }
 
   @Test
@@ -85,4 +99,19 @@ class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+
+  private void createBotUser() throws HttpResponseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser =
+        userResourceTest
+            .createRequest("botUser", "", "", null)
+            .withIsBot(true)
+            .withIsAdmin(false)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
+    botUser = new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
+    botUserRef = botUser.getEntityReference();
+  }
 }

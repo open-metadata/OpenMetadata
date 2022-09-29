@@ -31,6 +31,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -834,5 +835,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Override
+  protected String getAllowedFields() {
+    List<String> allowedFields = Entity.getAllowedFields(entityClass);
+    allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
+    return String.join(",", allowedFields);
   }
 }

@@ -88,7 +88,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final SecretsManager secretsManager;
-  private CollectionDAO collectionDAO;
 
   @Getter private final IngestionPipelineRepository ingestionPipelineRepository;
 
@@ -101,7 +100,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao, secretsManager), authorizer);
-    this.collectionDAO = dao;
     this.secretsManager = secretsManager;
     this.ingestionPipelineRepository = new IngestionPipelineRepository(dao, secretsManager);
   }
@@ -589,7 +587,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
-        new OpenMetadataServerConnectionBuilder(secretsManager, openMetadataApplicationConfig, collectionDAO).build();
+        new OpenMetadataServerConnectionBuilder(secretsManager, openMetadataApplicationConfig).build();
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())

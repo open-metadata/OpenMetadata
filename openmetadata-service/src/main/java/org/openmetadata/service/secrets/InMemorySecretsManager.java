@@ -13,13 +13,11 @@
 
 package org.openmetadata.service.secrets;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
-import org.openmetadata.service.util.JsonUtils;
 
 /** Secret Manager used for testing */
 public class InMemorySecretsManager extends ThirdPartySecretsManager {
@@ -55,13 +53,5 @@ public class InMemorySecretsManager extends ThirdPartySecretsManager {
       throw new SecretsManagerException(String.format("Key [%s] not found in in-memory secrets manager", secretName));
     }
     return value;
-  }
-
-  public Object getBotConfig(String botName) {
-    try {
-      return JsonUtils.readValue(getSecret(buildSecretId(BOT_PREFIX, botName)), Object.class);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 }
