@@ -20,6 +20,7 @@ import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceTyp
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.GOOGLE;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.OKTA;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
@@ -72,7 +73,7 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
   private final String COLONDELIMETER = ":";
-  private final String DEFAULT_ADMIN = "admin";
+  private final String DEFAULT_ADMIN = ADMIN_USER_NAME;
   private Set<String> adminUsers;
   private Set<String> botUsers;
   private Set<String> testUsers;

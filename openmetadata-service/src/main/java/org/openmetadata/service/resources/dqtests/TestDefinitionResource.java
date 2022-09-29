@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -92,7 +94,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
             testDefinitionJson = testDefinitionJson.replace("<separator>", Entity.SEPARATOR);
             TestDefinition testDefinition = JsonUtils.readValue(testDefinitionJson, TestDefinition.class);
             long now = System.currentTimeMillis();
-            testDefinition.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
+            testDefinition.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
             daoTestDefinition.initSeedData(testDefinition);
           } catch (Exception e) {
             LOG.warn("Failed to initialize the test definition files {}", testDefinitionFile, e);
