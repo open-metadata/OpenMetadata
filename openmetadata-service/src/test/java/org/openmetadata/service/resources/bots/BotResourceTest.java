@@ -62,7 +62,6 @@ class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
 
   @Test
   void delete_ensureBotUserDelete(TestInfo test) throws IOException {
-    UserResourceTest userResourceTest = new UserResourceTest();
     User testUser = createBotUser("test-deleter");
     EntityReference testUserRef = testUser.getEntityReference();
 

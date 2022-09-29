@@ -1485,7 +1485,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       switch (authType) {
         case JWT:
           User original = retrieveBotUser(user, uriInfo);
-          if (original != null && !secretsManager.isLocal() && authMechanism != null) {
+          if (original != null && !secretsManager.isLocal() && authMechanism.getConfig() != null) {
             original
                 .getAuthenticationMechanism()
                 .setConfig(

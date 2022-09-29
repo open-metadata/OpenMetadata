@@ -25,8 +25,8 @@ import org.openmetadata.service.util.JsonUtils;
 public abstract class ThirdPartySecretsManager extends SecretsManager {
   public static final String DATABASE_METADATA_PIPELINE_SECRET_ID_PREFIX = "database-metadata-pipeline";
   public static final String TEST_CONNECTION_TEMP_SECRET_ID_PREFIX = "test-connection-temp";
-  public static final String BOT_USER_PREFIX = "bot";
-  public static final String BOT_PREFIX = "bot-user";
+  public static final String BOT_USER_PREFIX = "bot-user";
+  public static final String BOT_PREFIX = "bot";
   public static final String NULL_SECRET_STRING = "null";
 
   protected ThirdPartySecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
