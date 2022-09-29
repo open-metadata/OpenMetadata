@@ -54,13 +54,18 @@ public class BotRepository extends EntityRepository<Bot> {
   @Override
   public void storeEntity(Bot entity, boolean update) throws IOException {
     EntityReference botUser = entity.getBotUser();
-    User user =
-        UserRepository.class
-            .cast(Entity.getEntityRepository(Entity.USER))
-            .get(null, entity.getBotUser().getId(), new EntityUtil.Fields(List.of("authenticationMechanism")));
+    User user;
+    try {
+      user =
+          UserRepository.class
+              .cast(Entity.getEntityRepository(Entity.USER))
+              .get(null, entity.getBotUser().getId(), new EntityUtil.Fields(List.of("authenticationMechanism")));
+    } catch (Exception ignored) {
+      user = null;
+    }
     entity.withBotUser(null);
     store(entity.getId(), entity, update);
-    if (!BotType.BOT.equals(entity.getBotType())) {
+    if (!BotType.BOT.equals(entity.getBotType()) && user != null) {
       AuthenticationMechanism authMechanism = user.getAuthenticationMechanism();
       secretsManager.encryptBotCredentials(
           entity.getBotType().value(), authMechanism != null ? authMechanism.getConfig() : null);

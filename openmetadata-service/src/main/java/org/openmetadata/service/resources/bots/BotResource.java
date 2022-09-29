@@ -326,6 +326,9 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   private boolean userHasRelationshipWithAnyBot(User user, Bot botUser) {
+    if (user == null) {
+      return false;
+    }
     List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
     return !userBotRelationship.isEmpty()
         && (botUser == null
@@ -339,11 +342,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   private Bot getBot(SecurityContext securityContext, CreateBot create) throws IOException {
     Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
     Bot originalBot = retrieveBot(bot.getName());
-    User botUser =
-        UserRepository.class
-            .cast(Entity.getEntityRepository(Entity.USER))
-            .get(null, bot.getBotUser().getId(), EntityUtil.Fields.EMPTY_FIELDS);
-    if (!Boolean.TRUE.equals(botUser.getIsBot())) {
+    User botUser = retrieveUser(bot);
+    if (botUser != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
       throw new IllegalArgumentException(String.format("User [%s] is not a bot user", botUser.getName()));
     }
     if (userHasRelationshipWithAnyBot(botUser, originalBot)) {
@@ -354,6 +354,16 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           String.format("Bot user [%s] is already used by [%s] bot", botUser.getName(), bot.getName()));
     }
     return bot;
+  }
+
+  private User retrieveUser(Bot bot) {
+    try {
+      return UserRepository.class
+          .cast(Entity.getEntityRepository(Entity.USER))
+          .get(null, bot.getBotUser().getId(), EntityUtil.Fields.EMPTY_FIELDS);
+    } catch (Exception exception) {
+      return null;
+    }
   }
 
   private Bot retrieveBot(String botName) {

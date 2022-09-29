@@ -82,7 +82,7 @@ class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
           .withName(name)
           .withBotUser(Objects.requireNonNull(createBotUser(name)).getEntityReference());
     }
-    return new CreateBot().withName(name != null ? name : name.replace(".", "_")).withBotUser(botUserRef);
+    return new CreateBot().withName(name).withBotUser(botUserRef);
   }
 
   @SneakyThrows // TODO remove
