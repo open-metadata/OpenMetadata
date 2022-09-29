@@ -41,7 +41,8 @@ describe('Custom Properties should work properly', () => {
       const propertyName = addCustomPropertiesForEntity(
         entity,
         'integer',
-        entity.integerValue
+        entity.integerValue,
+        entity.entityObj
       );
       //Navigating back to custom properties page
       cy.get('[data-testid="appbar-item-settings"]')
@@ -79,7 +80,8 @@ describe('Custom Properties should work properly', () => {
       const propertyName = addCustomPropertiesForEntity(
         entity,
         'string',
-        entity.stringValue
+        entity.stringValue,
+        entity.entityObj
       );
 
       //Navigating back to custom properties page
@@ -119,7 +121,8 @@ describe('Custom Properties should work properly', () => {
       const propertyName = addCustomPropertiesForEntity(
         entity,
         'markdown',
-        entity.markdownValue
+        entity.markdownValue,
+        entity.entityObj
       );
       //Navigating back to custom properties page
       cy.get('[data-testid="appbar-item-settings"]')

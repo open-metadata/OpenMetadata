@@ -71,17 +71,12 @@ export const SEARCH_ENTITY_DASHBOARD = {
 
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
-    term: 'snowflake_etl',
+    term: 'dim_product etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
   },
   pipeline_2: {
-    term: 'hive_etl',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
-    serviceName: 'sample_airflow',
-  },
-  pipeline_3: {
-    term: 'trino_etl',
+    term: 'dim_location etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
   },
@@ -208,6 +203,7 @@ export const ENTITIES = {
     integerValue: '45',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_TABLE.table_1,
   },
   entity_topic: {
     name: 'topic',
@@ -215,6 +211,7 @@ export const ENTITIES = {
     integerValue: '23',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_TOPIC.topic_1,
   },
   entity_dashboard: {
     name: 'dashboard',
@@ -222,6 +219,7 @@ export const ENTITIES = {
     integerValue: '14',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
   },
   entity_pipeline: {
     name: 'pipeline',
@@ -229,6 +227,7 @@ export const ENTITIES = {
     integerValue: '78',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
   },
 };
 
