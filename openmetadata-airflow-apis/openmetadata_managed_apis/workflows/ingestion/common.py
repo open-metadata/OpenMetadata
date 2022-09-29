@@ -97,7 +97,9 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             entity=TestSuite, fqn=ingestion_pipeline.service.name
         )  # check we are able to access OM server
         if not service:
-            raise InvalidServiceException(f"Could not get service from type {service_type}")
+            raise InvalidServiceException(
+                f"Could not get service from type {service_type}"
+            )
         return WorkflowSource(
             type=service_type,
             serviceName=ingestion_pipeline.service.name,

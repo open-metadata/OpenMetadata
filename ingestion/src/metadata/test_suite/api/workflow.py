@@ -14,8 +14,8 @@ Workflow definition for the test suite
 """
 
 from __future__ import annotations
-import sys
 
+import sys
 import traceback
 from copy import deepcopy
 from logging import Logger
