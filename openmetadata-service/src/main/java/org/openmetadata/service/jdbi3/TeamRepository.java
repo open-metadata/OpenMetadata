@@ -19,6 +19,7 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
@@ -474,7 +475,7 @@ public class TeamRepository extends EntityRepository<Team> {
                 .withDisplayName(ORGANIZATION_NAME)
                 .withDescription("Organization under which all the other team hierarchy is created")
                 .withTeamType(ORGANIZATION)
-                .withUpdatedBy("admin")
+                .withUpdatedBy(ADMIN_USER_NAME)
                 .withUpdatedAt(System.currentTimeMillis())
                 .withPolicies(new ArrayList<>(List.of(organizationPolicy)))
                 .withDefaultRoles(new ArrayList<>(List.of(dataConsumerRole)));
