@@ -65,8 +65,14 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="displayName"]').should('exist').type(botName);
     //Enter description
     cy.get(descriptionBox).type(description);
-    interceptURL('POST', '/api/v1/bots', 'createBot');
+    //Generate Password
+    interceptURL('GET', ' /api/v1/users/generateRandomPwd', 'generatePassword');
+    cy.get('[data-testid="password-generator"]')
+    .should('be.visible')
+    .click();
+  verifyResponseStatusCode('@generatePassword', 200);
     //Click on save button
+    interceptURL('POST', '/api/v1/bots', 'createBot');
     cy.get('[data-testid="save-user"]')
       .scrollIntoView()
       .should('be.visible')

@@ -10,11 +10,6 @@
 #  limitations under the License.
 
 version: "3.9"
-volumes:
-  ingestion-volume-dag-airflow:
-  ingestion-volume-dags:
-  ingestion-volume-tmp:
-
 services:
   postgresql:
     container_name: openmetadata_postgresql
@@ -25,6 +20,8 @@ services:
       POSTGRES_PASSWORD: password
     expose:
       - 5432
+    volumes:
+      - $PWD/docker-volume/db-data:/var/lib/postgresql
     ports:
       - "5432:5432"
     networks:
@@ -118,6 +115,8 @@ services:
     expose:
       - 8585
       - 8586
+    volumes:
+      - $PWD/docker-volume/om-server:/tmp
     ports:
       - "8585:8585"
       - "8586:8586"
@@ -165,9 +164,9 @@ services:
     networks:
       - app_net
     volumes:
-      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
-      - ingestion-volume-dags:/opt/airflow/dags
-      - ingestion-volume-tmp:/tmp
+      - $PWD/docker-volume/ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
+      - $PWD/docker-volume/ingestion-volume-dags:/opt/airflow/dags
+      - $PWD/docker-volume/ingestion-volume-tmp:/tmp
 
 networks:
   app_net:
