@@ -842,6 +842,7 @@ const CreateUser = ({
                     <div className="flex-center w-16">
                       <div
                         className="w-8 h-7 flex-center cursor-pointer"
+                        data-testid="password-generator"
                         onClick={generateRandomPassword}>
                         {isPasswordGenerating ? (
                           <Loader size="small" type="default" />

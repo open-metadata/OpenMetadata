@@ -12,7 +12,6 @@
 Docker functions for CLI
 """
 import json
-import os
 import pathlib
 import shutil
 import sys
@@ -40,14 +39,9 @@ from metadata.utils.logger import cli_logger, ometa_logger
 logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
-MAIN_DIR = "docker-volume"
-AIRFLOW_DAGS_FILE = "ingestion/examples/airflow/dags"
-DAG_VOLUME_BASE_PATH = "docker-volume/ingestion-volume-dags/"
-MAIN_DIR = "docker-volume"
-
 RELEASE_BRANCH_VERSION = get_client_version()
-BASE_PATH = f"https://raw.githubusercontent.com/open-metadata/OpenMetadata/{RELEASE_BRANCH_VERSION}"
-DOCKER_URL_ROOT = f"{BASE_PATH}/docker/metadata/"
+
+DOCKER_URL_ROOT = f"https://raw.githubusercontent.com/open-metadata/OpenMetadata/{RELEASE_BRANCH_VERSION}/docker/metadata/"
 
 DEFAULT_COMPOSE_FILE = "docker-compose.yml"
 BACKEND_DATABASES = {
@@ -57,64 +51,7 @@ BACKEND_DATABASES = {
 DEFUALT_JWT_TOKEN = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
 
 
-def docker_volume():
-    # create a main directory
-    if not os.path.exists(MAIN_DIR):
-        os.mkdir(MAIN_DIR)
-        db = "db-data"
-        dag_airflow = "ingestion-volume-dag-airflow"
-        dags = "ingestion-volume-dags"
-        tmp = "ingestion-volume-tmp"
-        om_server = "om-server"
-        path_to_join = [db, dag_airflow, dags, tmp, om_server]
-        final_path = []
-        for path in path_to_join:
-            temp_path = os.path.join(MAIN_DIR, path)
-            final_path.append(temp_path)
-        for path in final_path:
-            os.makedirs(path, exist_ok=True)
-
-
-def download_and_save_dag(filename: str):
-    file = requests.get(f"{BASE_PATH}/{AIRFLOW_DAGS_FILE}/{filename}", stream=True)
-    with open(os.path.join(DAG_VOLUME_BASE_PATH, filename), "wb") as f:
-        for chunk in file.iter_content():
-            f.write(chunk)
-
-
-def copy_dag_to_volumes():
-    dag_files = [
-        "airflow_lineage_example.py",
-        "airflow_metadata_extraction.py",
-        "airflow_metadata_to_es.py",
-        "airflow_sample_data.py",
-        "airflow_sample_usage.py",
-    ]
-    for dag in dag_files:
-        download_and_save_dag(dag)
-
-
-def docker_volume():
-    # create a main directory
-    if not os.path.exists(MAIN_DIR):
-        os.mkdir(MAIN_DIR)
-        db = "db-data"
-        dag_airflow = "ingestion-volume-dag-airflow"
-        dags = "ingestion-volume-dags"
-        tmp = "ingestion-volume-tmp"
-        om_server = "om-server"
-        path_to_join = [db, dag_airflow, dags, tmp, om_server]
-        final_path = []
-        for path in path_to_join:
-            temp_path = os.path.join(MAIN_DIR, path)
-            final_path.append(temp_path)
-        for path in final_path:
-            os.makedirs(path, exist_ok=True)
-
-
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
-    logger.info("Creating the docker volumes ..")
-    docker_volume()
     logger.info("Running docker compose for OpenMetadata..")
     click.secho("It may take some time on the first run", fg="bright_yellow")
     if file_path:
@@ -125,10 +62,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     logger.info("Ran docker compose for OpenMetadata successfully.")
     if ingest_sample_data:
         logger.info("Waiting for ingestion to complete..")
-
         wait_for_containers(docker)
-        # shutil.copytree("ingestion/examples/airflow/dags", "docker-volume/ingestion-volume-dags/", dirs_exist_ok=True)
-        copy_dag_to_volumes()
         run_sample_data()
         metadata_config = OpenMetadataConnection(
             hostPort="http://localhost:8585/api",
