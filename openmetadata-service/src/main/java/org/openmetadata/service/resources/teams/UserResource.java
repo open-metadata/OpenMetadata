@@ -112,6 +112,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -145,6 +146,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private final String providerType;
 
+  private final LoginAttemptCache loginAttemptCache;
+
   @Override
   public User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
@@ -166,6 +169,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         ConfigurationHolder.getInstance()
             .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
             .getProvider();
+    this.loginAttemptCache = new LoginAttemptCache();
   }
 
   public static class UserList extends ResultList<User> {
@@ -939,20 +943,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     tokenRepository.deleteTokenByUserAndType(storedUser.getId().toString(), PASSWORD_RESET.toString());
     // Update user about Password Change
     try {
-      Map<String, String> templatePopulator = new HashMap<>();
-      templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-      templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
-      templatePopulator.put(EmailUtil.USERNAME, storedUser.getName());
-      templatePopulator.put(EmailUtil.ACTIONKEY, "Update Password");
-      templatePopulator.put(EmailUtil.ACTIONSTATUSKEY, "Change Successful");
-
-      EmailUtil.getInstance()
-          .sendMail(
-              EmailUtil.getInstance().getAccountStatusChangeSubject(),
-              templatePopulator,
-              storedUser.getEmail(),
-              EmailUtil.EMAILTEMPLATEBASEPATH,
-              EmailUtil.ACCOUNTSTATUSTEMPLATEFILE);
+      sendAccountStatus(storedUser, "Update Password", "Change Successful");
     } catch (Exception ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage());
       return Response.status(424)
@@ -960,6 +951,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               "Password updated successfully. There is some problem in sending mail. Please contact your administrator.")
           .build();
     }
+    loginAttemptCache.recordSuccessfulLogin(request.getUsername());
     return Response.status(response.getStatus()).entity("Password Changed Successfully").build();
   }
 
@@ -1000,6 +992,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
         dao.createOrUpdate(uriInfo, storedUser);
         // it has to be 200 since we already fetched user , and we don't want to return any other data
+        // remove login/details from cache
+        loginAttemptCache.recordSuccessfulLogin(securityContext.getUserPrincipal().getName());
         return Response.status(200).entity("Password Updated Successfully").build();
       } else {
         return Response.status(403).entity(new ErrorMessage(403, "Old Password is not correct")).build();
@@ -1014,6 +1008,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       storedBasicAuthMechanism.setPassword(newHashedPassword);
       storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
       RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, storedUser);
+      // remove login/details from cache
+      loginAttemptCache.recordSuccessfulLogin(request.getUsername());
       try {
         sendInviteMailToUser(
             uriInfo,
@@ -1083,41 +1079,55 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
-      throws IOException {
+      throws IOException, TemplateException {
     String userName =
         loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
 
-    User storedUser;
-    try {
-      storedUser = dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-    } catch (IOException ex) {
-      throw new BadRequestException("You have entered an invalid username or password.");
-    }
+    if (!loginAttemptCache.isLoginBlocked(userName)) {
+      User storedUser;
+      try {
+        storedUser =
+            dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+      } catch (IOException ex) {
+        throw new BadRequestException("You have entered an invalid username or password.");
+      }
 
-    if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
-      throw new IllegalArgumentException("You have entered an invalid username or password.");
-    }
+      if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
+        throw new IllegalArgumentException("You have entered an invalid username or password.");
+      }
 
-    LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
-    String requestPassword = loginRequest.getPassword();
-    String storedHashPassword = storedData.get("password");
-    if (BCrypt.verifyer().verify(requestPassword.toCharArray(), storedHashPassword).verified) {
-      // successfully verified create a jwt token for frontend
-      RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
-      JWTAuthMechanism jwtAuthMechanism =
-          jwtTokenGenerator.generateJWTToken(
-              storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+      LinkedHashMap<String, String> storedData =
+          (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
+      String requestPassword = loginRequest.getPassword();
+      String storedHashPassword = storedData.get("password");
+      if (BCrypt.verifyer().verify(requestPassword.toCharArray(), storedHashPassword).verified) {
+        // successfully verified create a jwt token for frontend
+        RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
+        JWTAuthMechanism jwtAuthMechanism =
+            jwtTokenGenerator.generateJWTToken(
+                storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
 
-      JwtResponse response = new JwtResponse();
-      response.setTokenType("Bearer");
-      response.setAccessToken(jwtAuthMechanism.getJWTToken());
-      response.setRefreshToken(refreshToken.getToken().toString());
-      response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
-      return Response.status(200).entity(response).build();
+        JwtResponse response = new JwtResponse();
+        response.setTokenType("Bearer");
+        response.setAccessToken(jwtAuthMechanism.getJWTToken());
+        response.setRefreshToken(refreshToken.getToken().toString());
+        response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
+        return Response.status(200).entity(response).build();
+      } else {
+        loginAttemptCache.recordFailedLogin(userName);
+        int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(userName);
+        if (failedLoginAttempt == 3) {
+          // send a mail to the user
+          sendAccountStatus(
+              storedUser, "Multiple Failed Login Attempts.", "Login Blocked for 10 mins. Please change your password.");
+        }
+        return Response.status(403)
+            .entity(new ErrorMessage(403, "You have entered an invalid username or password."))
+            .build();
+      }
     } else {
-      return Response.status(403)
-          .entity(new ErrorMessage(403, "You have entered an invalid username or password."))
+      return Response.status(500)
+          .entity(new ErrorMessage(500, "Failed Login Attempts Exceeded. Please try after some time."))
           .build();
     }
   }
@@ -1210,7 +1220,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (emailVerificationToken == null) {
       throw new EntityNotFoundException("Invalid Token. Please issue a new Request");
     }
-    User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("*"));
+    User registeredUser =
+        dao.get(uriInfo, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (registeredUser.getIsEmailVerified()) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
@@ -1279,6 +1290,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // insert the token
     tokenRepository.insertToken(emailVerificationToken);
+  }
+
+  private void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
+    Map<String, String> templatePopulator = new HashMap<>();
+    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.USERNAME, user.getName());
+    templatePopulator.put(EmailUtil.ACTIONKEY, action);
+    templatePopulator.put(EmailUtil.ACTIONSTATUSKEY, status);
+    EmailUtil.getInstance()
+        .sendMail(
+            EmailUtil.getInstance().getAccountStatusChangeSubject(),
+            templatePopulator,
+            user.getEmail(),
+            EmailUtil.EMAILTEMPLATEBASEPATH,
+            EmailUtil.ACCOUNTSTATUSTEMPLATEFILE);
   }
 
   private void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
