@@ -68,15 +68,15 @@ export const SEARCH_ENTITY_DASHBOARD = {
     serviceName: 'sample_superset',
   },
 };
-
+// Note:- Please do not change term name of pipeline
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
-    term: 'dim_product etl',
+    term: 'dim_product_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
   },
   pipeline_2: {
-    term: 'dim_location etl',
+    term: 'dim_location_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
   },

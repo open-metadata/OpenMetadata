@@ -15,15 +15,24 @@ import { addCustomPropertiesForEntity, deleteCreatedProperty, editCreatedPropert
 import { ENTITIES, LOGIN } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
-  beforeEach(() => {
+  before(() => {
+    cy.clearLocalStorageSnapshot();
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-
+    cy.saveLocalStorage('localstorage');
+  });
+  beforeEach(() => {
+    cy.log('Restoring local storage snapshot');
+    cy.restoreLocalStorage('localstorage');
+    cy.clickOnLogo();
+    interceptURL('GET', '/api/v1/users*', 'settingsPage');
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    verifyResponseStatusCode('@settingsPage', 200);
+    cy.get('[data-testid="settings-left-panel"]').should('be.visible');
   });
 
-  it('Add Integer custom property for all Entities', () => {
-    Object.values(ENTITIES).forEach((entity) => {
+  Object.values(ENTITIES).forEach((entity) => {
+    it(`Add Integer custom property for ${entity.name}  Entities`, () => {
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
@@ -61,8 +70,8 @@ describe('Custom Properties should work properly', () => {
     });
   });
 
-  it('Add String custom property for all Entities', () => {
-    Object.values(ENTITIES).forEach((entity) => {
+  Object.values(ENTITIES).forEach((entity) => {
+    it(`Add String custom property for ${entity.name} Entities`, () => {
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
@@ -102,8 +111,8 @@ describe('Custom Properties should work properly', () => {
     });
   });
 
-  it('Add Markdown custom property for all Entities', () => {
-    Object.values(ENTITIES).forEach((entity) => {
+  Object.values(ENTITIES).forEach((entity) => {
+    it(`Add Markdown custom property for ${entity.name} Entities`, () => {
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
