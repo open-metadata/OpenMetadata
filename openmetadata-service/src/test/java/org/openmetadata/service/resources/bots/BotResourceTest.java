@@ -5,6 +5,7 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.Objects;
 import lombok.SneakyThrows;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -62,8 +63,7 @@ class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @Test
   void delete_ensureBotUserDelete(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
-    CreateUser createUser = userResourceTest.createRequest(test);
-    User testUser = new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
+    User testUser = createBotUser("test-deleter");
     EntityReference testUserRef = testUser.getEntityReference();
 
     CreateBot create = createRequest(test).withBotUser(testUserRef);
@@ -77,7 +77,12 @@ class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
 
   @Override
   public CreateBot createRequest(String name) {
-    return new CreateBot().withName(name).withBotUser(botUserRef);
+    if (name != null && name.contains("entityListWithPagination_200")) {
+      return new CreateBot()
+          .withName(name)
+          .withBotUser(Objects.requireNonNull(createBotUser(name)).getEntityReference());
+    }
+    return new CreateBot().withName(name != null ? name : name.replace(".", "_")).withBotUser(botUserRef);
   }
 
   @SneakyThrows // TODO remove
@@ -100,18 +105,28 @@ class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
 
-  private void createBotUser() throws HttpResponseException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    CreateUser createUser =
-        userResourceTest
-            .createRequest("botUser", "", "", null)
-            .withIsBot(true)
-            .withIsAdmin(false)
-            .withAuthenticationMechanism(
-                new AuthenticationMechanism()
-                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
-                    .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
-    botUser = new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
-    botUserRef = botUser.getEntityReference();
+  private void createBotUser() {
+    botUser = createBotUser("botUser");
+    if (botUser != null) {
+      botUserRef = botUser.getEntityReference();
+    }
+  }
+
+  private User createBotUser(String botName) {
+    try {
+      UserResourceTest userResourceTest = new UserResourceTest();
+      CreateUser createUser =
+          userResourceTest
+              .createRequest(botName, "", "", null)
+              .withIsBot(true)
+              .withIsAdmin(false)
+              .withAuthenticationMechanism(
+                  new AuthenticationMechanism()
+                      .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                      .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
+      return new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
+    } catch (Exception ignore) {
+      return null;
+    }
   }
 }

@@ -1413,35 +1413,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String botName = create.getBotName();
     EntityInterface bot = retrieveBot(botName);
     // check if the bot user exists
-    if (original != null && bot != null) {
-      // check if the bot does not have relationship with the user
-      if (!botHasRelationshipWithUser(bot, original)) {
-        // throw an exception if bot already has a relationship with a user
-        if (botHasRelationshipWithAnotherUser(bot, original)) {
-          List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(bot);
-          EntityInterface botUser =
-              dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
-          throw new IllegalArgumentException(
-              String.format("Bot [%s] is already using [%s] bot user.", bot.getName(), botUser.getName()));
-        }
-        // throw an exception if user already has a relationship with a bot
-        if (userHasRelationshipWithAnyBot(original, bot)) {
-          List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
-          bot =
-              Entity.getEntityRepository(Entity.BOT)
-                  .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
-          throw new IllegalArgumentException(
-              String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
-        }
-      }
-    } else if (bot != null) {
+    if (!botHasRelationshipWithUser(bot, original)) {
       // throw an exception if bot already has a relationship with a user
-      List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(bot);
-      if (!userBotRelationship.isEmpty()) {
+      if (bot != null && original != null && botHasRelationshipWithAnotherUser(bot, original)) {
+        List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(bot);
         EntityInterface botUser =
             dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
         throw new IllegalArgumentException(
             String.format("Bot [%s] is already using [%s] bot user.", bot.getName(), botUser.getName()));
+      }
+      // throw an exception if user already has a relationship with a bot
+      if (original != null && userHasRelationshipWithAnyBot(original, bot)) {
+        List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
+        bot =
+            Entity.getEntityRepository(Entity.BOT)
+                .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
+        throw new IllegalArgumentException(
+            String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
       }
     }
     addAuthMechanismToBot(user, create, uriInfo);
@@ -1461,7 +1449,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
     List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
     return !userBotRelationship.isEmpty()
-        && userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId()));
+        && (botUser == null
+            || (userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId()))));
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
@@ -1469,6 +1458,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
+    if (bot == null || user == null) {
+      return false;
+    }
     List<CollectionDAO.EntityRelationshipRecord> botUserRelationships = retrieveBotRelationshipsFor(bot);
     return !botUserRelationships.isEmpty() && botUserRelationships.get(0).getId().equals(user.getId());
   }
