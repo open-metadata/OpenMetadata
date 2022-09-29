@@ -184,6 +184,7 @@ const AuthMechanismForm: FC<Props> = ({
       showErrorToast(error as AxiosError);
     } finally {
       onEmailChange();
+      setIsConfirmationModalOpen(false);
     }
   };
 
@@ -220,6 +221,8 @@ const AuthMechanismForm: FC<Props> = ({
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsConfirmationModalOpen(false);
     }
   };
 
