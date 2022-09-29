@@ -94,6 +94,10 @@ logging:
     org.openmetadata.service.events: DEBUG
     io.swagger: ERROR
   appenders:
+    - type: console
+      threshold: TRACE
+      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      timeZone: UTC
     - type: file
       filterFactories:
         - type: audit-exclude-filter-factory

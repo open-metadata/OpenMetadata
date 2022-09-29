@@ -63,4 +63,4 @@ Once the account is created, you can see the fields in the exported JSON file fr
 IAM & Admin > Service Accounts > Keys
 ```
 
-You can validate the whole Google service account setup [here](deployment/security/google).
+You can validate the whole Google service account setup [here](/deployment/security/google).

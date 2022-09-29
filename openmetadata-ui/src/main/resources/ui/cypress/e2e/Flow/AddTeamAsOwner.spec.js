@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { addTeam, interceptURL, login, searchEntity, uuid, verifyResponseStatusCode } from "../../common/common";
-import { LOGIN, SEARCH_ENTITY_TABLE } from "../../constants/constants";
-
+import { addTeam, interceptURL, login, uuid, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import { LOGIN, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const teamName = `team-group-test-${uuid()}`;
 const TEAM_DETAILS = {
@@ -21,25 +20,23 @@ const TEAM_DETAILS = {
   displayName: teamName,
   teamType: 'Group',
   description: `This is ${teamName} description`,
-  assetName: SEARCH_ENTITY_TABLE.table_1.term,
+  ...SEARCH_ENTITY_TABLE.table_1,
 };
 
-
-describe("Create a team and add that team as a owner of the entity", () => {
-   beforeEach(() => {
+describe('Create a team and add that team as a owner of the entity', () => {
+  beforeEach(() => {
     login(LOGIN.username, LOGIN.password);
-     cy.goToHomePage();
-   });
-  
+    cy.goToHomePage();
+  });
+
   /**
    * Here we are adding team of type group as
    * Only team of type group can own the entities
    */
-  it("Add a group team type and assign it as a owner of the entity", () => {
-
+  it('Add a group team type and assign it as a owner of the entity', () => {
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-     interceptURL('GET', '/api/v1/users*', 'getTeams');
-     
+    interceptURL('GET', '/api/v1/users*', 'getTeams');
+
     //Clicking on teams
     cy.get('[data-menu-id*="teams"]')
       .should('exist')
@@ -49,7 +46,7 @@ describe("Create a team and add that team as a owner of the entity", () => {
     verifyResponseStatusCode('@getTeams', 200);
 
     addTeam(TEAM_DETAILS);
-    
+
     cy.reload();
 
     /**
@@ -59,14 +56,12 @@ describe("Create a team and add that team as a owner of the entity", () => {
     cy.get('table')
       .find('.ant-table-row')
       .should('contain', TEAM_DETAILS.description);
-    
-    searchEntity(TEAM_DETAILS.assetName);
 
-    interceptURL('GET', 'api/v1/tables/name/*', 'getEntityDetails');
-
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(
+      TEAM_DETAILS.term,
+      TEAM_DETAILS.serviceName,
+      TEAM_DETAILS.entity
+    );
 
     interceptURL(
       'GET',
@@ -80,8 +75,10 @@ describe("Create a team and add that team as a owner of the entity", () => {
 
     interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
 
-    cy.get('[data-testid="searchInputText"]').should("be.visible").type(TEAM_DETAILS.displayName)
-    
+    cy.get('[data-testid="searchInputText"]')
+      .should('be.visible')
+      .type(TEAM_DETAILS.displayName);
+
     //Selecting the team
     cy.get(`[title="${TEAM_DETAILS.displayName}"]`)
       .should('exist')
@@ -96,6 +93,5 @@ describe("Create a team and add that team as a owner of the entity", () => {
       .then((text) => {
         expect(text).equal(TEAM_DETAILS.displayName);
       });
-  })
-
-})
+  });
+});

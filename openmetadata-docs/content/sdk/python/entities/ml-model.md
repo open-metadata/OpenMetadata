@@ -34,7 +34,7 @@ There are some common questions with lifecycle tools, such as _Where (URL) is th
 
 This information, together with the rest of the features brought by OpenMetadata, lets us also manage topics such as schema changes in the sources or feature drifts, with the corresponding alerting systems.
 
-While we can already extract certain pieces of information automatically via our Connectors (e.g., [Mlflow](/connectors/mlmodel/mlflow)), there are attributes that we'll need to fill in by ourselves. Thanks to the [Solution Design](/developers/architecture/design) of OpenMetadata and the [Python SDK](/sdk/python), this is going to be a rather easy task that will unlock the full power of your **organization's metadata**.
+While we can already extract certain pieces of information automatically via our Connectors (e.g., [Mlflow](/connectors/ml-model/mlflow)), there are attributes that we'll need to fill in by ourselves. Thanks to the [Solution Design](/main-concepts/high-level-design) of OpenMetadata and the [Python SDK](/sdk/python), this is going to be a rather easy task that will unlock the full power of your **organization's metadata**.
 
 ## Properties
 Now that we have a clearer view of what we are trying to achieve, let's jump into a deeper view on the `MlModel` Entity [definition](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/data/mlmodel.json):

@@ -6,10 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.CreateEventPublisherJob",
   "properties": {
-    "name": {
-      "description": "Name of the Job",
-      "type": "string"
-    },
     "publisherType": {
       "$ref": "../settings/eventPublisherJob.json#/definitions/publisherType"
     },
@@ -36,6 +32,6 @@
       "default": 100
     }
   },
-  "required": ["name", "publisherType","runMode"],
+  "required": ["publisherType", "runMode"],
   "additionalProperties": false
 }
