@@ -169,6 +169,7 @@
     "connect-api-mocker": "^1.10.0",
     "copy-webpack-plugin": "^7.0.0",
     "css-loader": "3.4.2",
+    "cypress-localstorage-commands": "^2.2.1",
     "dotenv": "^16.0.0",
     "eslint": "^6.6.0",
     "eslint-config-prettier": "^6.11.0",

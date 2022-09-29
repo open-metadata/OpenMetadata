@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, login, searchEntity, verifyResponseStatusCode } from '../../common/common';
+import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { DELETE_TERM, LOGIN, NEW_GLOSSARY, NEW_GLOSSARY_TERMS, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
@@ -57,6 +57,7 @@ const createGlossaryTerm = (term) => {
 };
 
 const deleteGlossary = ({ name }) => {
+  verifyResponseStatusCode('@getGlossaryTerms', 200);
   cy.get('#left-panelV1').contains(name).should('be.visible').click();
   cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
@@ -98,6 +99,8 @@ describe('Glossary page should work properly', () => {
   beforeEach(() => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
+
+    interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
@@ -347,17 +350,11 @@ describe('Glossary page should work properly', () => {
   it('Assets Tab should work properly', () => {
     const glossary = NEW_GLOSSARY.name;
     const term = NEW_GLOSSARY_TERMS.term_1.name;
-    const entity = SEARCH_ENTITY_TABLE.table_3.term;
+    const entity = SEARCH_ENTITY_TABLE.table_3;
     goToAssetsTab(term);
     cy.contains('No assets available.').should('be.visible');
     cy.get('[data-testid="no-data-image"]').should('be.visible');
-    searchEntity(entity);
-
-    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
-
-    cy.get('[data-testid="table-link"]').first().contains(entity).click();
-
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
     //Add tag to breadcrumb
     cy.get('[data-testid="tag-container"] [data-testid="tags"]')
@@ -405,12 +402,14 @@ describe('Glossary page should work properly', () => {
       .click({ force: true });
 
     goToAssetsTab(term);
-    cy.get('[data-testid="table-link"]').contains(entity).should('be.visible');
+    cy.get(`[data-testid="${entity.serviceName}-${entity.term}"]`)
+      .contains(entity.term)
+      .should('be.visible');
   });
 
   it('Remove Glossary term from entity should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
-    const entity = SEARCH_ENTITY_TABLE.table_3.term;
+    const entity = SEARCH_ENTITY_TABLE.table_3;
 
     interceptURL('GET', '/api/v1/search/query*', 'assetTab');
     // go assets tab
@@ -418,8 +417,8 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@assetTab', 200);
 
     interceptURL('GET', '/api/v1/feed*', 'entityDetails');
-    cy.get('[data-testid="table-link"]')
-      .contains(entity)
+    cy.get(`[data-testid="${entity.serviceName}-${entity.term}"]`)
+      .contains(entity.term)
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@entityDetails', 200);
@@ -459,6 +458,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Delete glossary should work properly', () => {
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
     cy.get('[data-testid="header"]')
       .should('be.visible')
       .contains(NEW_GLOSSARY.name)

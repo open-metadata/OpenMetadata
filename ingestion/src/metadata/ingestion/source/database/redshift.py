@@ -496,11 +496,12 @@ class RedshiftSource(CommonDbSourceService):
                     table_name=table_name,
                 )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_fqn=table_fqn
+                    self.source_config.tableFilterPattern,
+                    table_fqn if self.source_config.useFqnForFiltering else table_name,
                 ):
                     self.status.filter(
                         table_fqn,
-                        "Table pattern not allowed",
+                        "Table Filtered Out",
                     )
                     continue
                 yield table_name, STANDARD_TABLE_TYPES.get(table_type)
@@ -516,11 +517,12 @@ class RedshiftSource(CommonDbSourceService):
                     table_name=view_name,
                 )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_fqn=view_fqn
+                    self.source_config.tableFilterPattern,
+                    view_fqn if self.source_config.useFqnForFiltering else view_name,
                 ):
                     self.status.filter(
                         view_fqn,
-                        "Table pattern not allowed for view",
+                        "Table Filtered Out",
                     )
                     continue
                 yield view_name, STANDARD_TABLE_TYPES.get(table_type)
@@ -543,9 +545,12 @@ class RedshiftSource(CommonDbSourceService):
                 )
 
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_fqn=database_fqn
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else new_database,
                 ):
-                    self.status.filter(database_fqn, "Database pattern not allowed")
+                    self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
                 try:

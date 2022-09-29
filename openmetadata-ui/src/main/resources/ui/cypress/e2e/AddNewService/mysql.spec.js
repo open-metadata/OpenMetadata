@@ -12,11 +12,11 @@
  */
 
 import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, mySqlConnectionInput, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
-import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import { LOGIN, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'DATABASE_CHANGE_LOG';
+const tableName = TEAM_ENTITY;
 const description = `This is ${tableName} description`;
 
 describe('MySQL Ingestion', () => {

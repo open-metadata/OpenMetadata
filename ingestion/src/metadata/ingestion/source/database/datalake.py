@@ -178,20 +178,24 @@ class DatalakeSource(DatabaseServiceSource):
             if isinstance(self.service_connection.configSource, GCSConfig):
                 bucket = self.client.get_bucket(bucket_name)
                 for key in bucket.list_blobs(prefix=prefix):
+                    table_name = self.standardize_table_name(bucket_name, key.name)
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.context.database_service.name.__root__,
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
-                        table_name=key.name,
+                        table_name=table_name,
                     )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, table_fqn
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
                     ):
                         self.status.filter(
                             table_fqn,
-                            "Object pattern not allowed",
+                            "Object Filtered Out",
                         )
                         continue
                     if not self.check_valid_file_type(key.name):
@@ -199,28 +203,32 @@ class DatalakeSource(DatabaseServiceSource):
                             f"Object filtered due to unsupported file type: {key.name}"
                         )
                         continue
-                    table_name = self.standardize_table_name(bucket_name, key.name)
+
                     yield table_name, TableType.Regular
             if isinstance(self.service_connection.configSource, S3Config):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
                 for key in self._list_s3_objects(**kwargs):
+                    table_name = self.standardize_table_name(bucket_name, key["Key"])
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.context.database_service.name.__root__,
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
-                        table_name=key["Key"],
+                        table_name=table_name,
                     )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, table_fqn
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
                     ):
 
                         self.status.filter(
                             table_fqn,
-                            "Object pattern not allowed",
+                            "Object Filtered Out",
                         )
                         continue
                     if not self.check_valid_file_type(key["Key"]):
@@ -228,7 +236,7 @@ class DatalakeSource(DatabaseServiceSource):
                             f"Object filtered due to unsupported file type: {key['Key']}"
                         )
                         continue
-                    table_name = self.standardize_table_name(bucket_name, key["Key"])
+
                     yield table_name, TableType.Regular
 
     def yield_table(

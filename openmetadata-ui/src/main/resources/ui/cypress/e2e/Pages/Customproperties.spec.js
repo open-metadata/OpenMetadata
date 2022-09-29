@@ -18,11 +18,8 @@ describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    interceptURL('GET', '/api/v1/users*', 'getTeams');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@getTeams', 200);
   });
 
   it('Add Integer custom property for all Entities', () => {

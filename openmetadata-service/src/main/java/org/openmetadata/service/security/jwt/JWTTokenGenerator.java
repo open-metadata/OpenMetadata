@@ -3,6 +3,8 @@ package org.openmetadata.service.security.jwt;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
@@ -21,9 +23,13 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
+import org.openmetadata.service.security.AuthenticationException;
 
 @Slf4j
 public class JWTTokenGenerator {
+  private final String subjectClaim = "sub";
+  private final String emailClaim = "email";
+  private final String isBotClaim = "isBot";
   private static JWTTokenGenerator instance = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
@@ -68,9 +74,9 @@ public class JWTTokenGenerator {
           JWT.create()
               .withIssuer(issuer)
               .withKeyId(kid)
-              .withClaim("sub", user.getName())
-              .withClaim("email", user.getEmail())
-              .withClaim("isBot", true)
+              .withClaim(subjectClaim, user.getName())
+              .withClaim(emailClaim, user.getEmail())
+              .withClaim(isBotClaim, true)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
@@ -91,9 +97,9 @@ public class JWTTokenGenerator {
           JWT.create()
               .withIssuer(issuer)
               .withKeyId(kid)
-              .withClaim("sub", userName)
-              .withClaim("email", email)
-              .withClaim("isBot", isBot)
+              .withClaim(subjectClaim, userName)
+              .withClaim(emailClaim, email)
+              .withClaim(isBotClaim, isBot)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
@@ -144,5 +150,22 @@ public class JWTTokenGenerator {
     }
     jwksResponse.setJwsKeys(List.of(jwksKey));
     return jwksResponse;
+  }
+
+  public Date getTokenExpiryFromJWT(String token) {
+    DecodedJWT jwt;
+    try {
+      jwt = JWT.decode(token);
+    } catch (JWTDecodeException e) {
+      throw new AuthenticationException("Invalid token", e);
+    }
+
+    // Check if expired
+    // If expiresAt is set to null, treat it as never expiring token
+    if (jwt.getExpiresAt() == null) {
+      throw new AuthenticationException("Invalid Token, Expiry not present!");
+    }
+
+    return jwt.getExpiresAt();
   }
 }

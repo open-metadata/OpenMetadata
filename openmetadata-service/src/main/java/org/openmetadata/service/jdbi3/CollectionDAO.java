@@ -2997,7 +2997,7 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension")
-    void delete(@Bind("entityId") String id, @Bind("extension") String extension);
+    void delete(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
     void deleteAll(@Bind("entityFQN") String entityFQN);

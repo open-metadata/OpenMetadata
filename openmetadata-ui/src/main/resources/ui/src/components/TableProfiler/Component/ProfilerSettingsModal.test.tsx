@@ -17,11 +17,6 @@ import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
 
-jest.mock('antd/lib/form', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => <form>{children}</form>);
-});
 jest.mock('antd/lib/grid', () => ({
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest

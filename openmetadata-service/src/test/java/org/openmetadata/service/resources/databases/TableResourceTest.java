@@ -1381,7 +1381,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     UserResourceTest userResourceTest = new UserResourceTest();
     User user =
         userResourceTest.createAndCheckEntity(
-            userResourceTest.createRequest(test).withName("testName").withEmail("test1@gmail.com").withIsBot(false),
+            userResourceTest.createRequest(test).withName("test1").withEmail("test1@gmail.com").withIsBot(false),
             ADMIN_AUTH_HEADERS);
 
     //

@@ -14,7 +14,7 @@ OpenMetadata being a full stack project, we use the following for development:
 - [Python 3.7 or higher](https://www.python.org/downloads/)
 - [Node >=10.0.0](https://nodejs.org/en/download/)
 - [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)
-- [Rpm (Optional, only to run RPM profile with maven)](https://brewinstall.org/install-rpm-on-mac-with-brew/)
+- [Rpm (Optional, only to run RPM profile with maven)](https://macappstore.org/rpm/)
 - Antlr 4.9.2 - `sudo make install_antlr_cli`
 
 - Here is a snapshot of a working environment on a Macbook.
