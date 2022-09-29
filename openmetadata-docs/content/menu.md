@@ -55,8 +55,8 @@ site_menu:
 
   - category: Deployment / Enable Security
     url: /deployment/security
-  - category: Deployment / Enable Security / UserName-Password Login
-    url: /deployment/security/basicAuthentication
+  - category: Deployment / Enable Security / Basic Authentication
+    url: /deployment/security/basic-auth
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker

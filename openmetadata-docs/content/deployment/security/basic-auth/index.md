@@ -1,6 +1,6 @@
 ---
-title: Username/Login Authentication
-slug: /deployment/security/basicAuthentication
+title: Basic Authentication
+slug: /deployment/security/basic-auth
 ---
 
 # UserName/Password Login
