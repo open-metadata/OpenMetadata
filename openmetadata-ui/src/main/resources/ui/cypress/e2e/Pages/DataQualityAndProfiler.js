@@ -100,11 +100,14 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     handleIngestionRetry('database', true, 0, 'profiler');
+  });
 
-    // check if profiler is ingested properly
+  it('Check if profiler is ingested properly or not', () => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
     goToProfilerTab();
     cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
-  });
+  })
 
   it('Add table test case with new test suite', () => {
     login(LOGIN.username, LOGIN.password);
