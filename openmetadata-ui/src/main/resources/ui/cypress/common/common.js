@@ -501,10 +501,11 @@ export const addUser = (username, email) => {
     .should('exist')
     .should('be.visible')
     .type('Adding user');
+  interceptURL('GET', ' /api/v1/users/generateRandomPwd', 'generatePassword');
   cy.get('[data-testid="password-generator"]')
     .should('be.visible')
     .click();
-  cy.wait(1000);
+  verifyResponseStatusCode('@generatePassword', 200);
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
 };
 
