@@ -283,7 +283,7 @@ export const AuthProvider = ({
               silentSignInRetries += 1;
               trySilentSignIn();
             })
-        : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
+        : resetUserDetails(); // Logout if we reaches max silent signIn limit;
     }
   };
 
