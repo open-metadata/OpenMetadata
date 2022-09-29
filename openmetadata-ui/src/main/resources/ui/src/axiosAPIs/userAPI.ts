@@ -219,3 +219,12 @@ export const updateBotDetail = async (id: string, data: Operation[]) => {
 
   return response.data;
 };
+
+export const createUserWithPut = async (userDetails: CreateUser) => {
+  const response = await APIClient.put<CreateUser, AxiosResponse<User>>(
+    `/users`,
+    userDetails
+  );
+
+  return response.data;
+};
