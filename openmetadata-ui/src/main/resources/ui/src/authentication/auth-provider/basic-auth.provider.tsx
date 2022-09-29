@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { JwtPayload } from 'jwt-decode';
-import React, { createContext, ReactNode, useContext } from 'react';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   basicAuthRegister,
@@ -22,7 +22,10 @@ import {
   generatePasswordResetLink,
   resetPassword,
 } from '../../axiosAPIs/auth-API';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import {
+  HTTP_STATUS_CODE,
+  LOGIN_FAILED_ERROR,
+} from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../generated/auth/registrationRequest';
@@ -53,6 +56,7 @@ interface InitialContext {
   handleForgotPassword: (email: string) => Promise<void>;
   handleResetPassword: (payload: PasswordResetRequest) => Promise<void>;
   handleLogout: () => void;
+  loginError?: string | null;
 }
 
 /**
@@ -77,12 +81,14 @@ const BasicAuthProvider = ({
   onLoginFailure,
 }: BasicAuthProps) => {
   const { setLoadingIndicator } = useAuthContext();
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const history = useHistory();
 
   const handleLogin = async (email: string, password: string) => {
     try {
       setLoadingIndicator(true);
+      setLoginError(null);
       try {
         const response = await basicAuthSignIn({ email, password });
 
@@ -102,10 +108,9 @@ const BasicAuthProvider = ({
           });
         }
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          jsonData['api-error-messages']['unauthorized-user']
-        );
+        const err = error as AxiosError<{ code: number; message: string }>;
+
+        setLoginError(err.response?.data.message || LOGIN_FAILED_ERROR);
         onLoginFailure();
       }
     } catch (err) {
@@ -207,6 +212,7 @@ const BasicAuthProvider = ({
     handleForgotPassword,
     handleResetPassword,
     handleLogout,
+    loginError,
   };
 
   return (

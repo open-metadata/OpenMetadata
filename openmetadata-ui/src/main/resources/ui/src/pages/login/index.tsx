@@ -42,18 +42,13 @@ const SigninPage = () => {
     isAuthenticated,
   } = useAuthContext();
 
-  const enableSelfSignUp = useMemo(
-    () => authConfig?.enableSelfSignup,
-    [authConfig]
-  );
-
   const { isAuthProviderBasic } = useMemo(() => {
     return {
       isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
     };
   }, [authConfig]);
 
-  const { handleLogin } = useBasicAuth();
+  const { handleLogin, loginError } = useBasicAuth();
 
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
@@ -183,9 +178,9 @@ const SigninPage = () => {
               'sso-container': !isAuthProviderBasic,
             })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
-              Centralized Metadata Store, Discover, <br />
-              Collaborate and get your Data Right
+            <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
+              Centralized Metadata Store, Discover, Collaborate and get your
+              Data Right
             </Typography.Text>
 
             {isAuthProviderBasic ? (
@@ -198,7 +193,7 @@ const SigninPage = () => {
                   onFinish={handleSubmit}>
                   <Form.Item
                     data-testid="email"
-                    label="Email"
+                    label="Username or Email"
                     name="email"
                     requiredMark={false}
                     rules={[{ required: true }]}>
@@ -221,16 +216,37 @@ const SigninPage = () => {
                     Login
                   </Button>
                 </Form>
+                {loginError && (
+                  <div
+                    className="tw-flex tw-flex-col m-y-md"
+                    data-testid="login-error-container">
+                    <div className="tw-flex tw-border tw-border-main tw-rounded tw-p-3 error-alert ">
+                      <div className="tw-mr-2">
+                        <SVGIcons
+                          alt="failed"
+                          className="tw-w-5"
+                          data-testid="failed-icon"
+                          icon={Icons.FAIL_BADGE}
+                        />
+                      </div>
+                      <p data-testid="success-line">
+                        <span>{loginError}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="mt-8" onClick={onClickForgotPassword}>
                   <Typography.Link underline data-testid="forgot-password">
                     Forgot Password
                   </Typography.Link>
                 </div>
 
-                {enableSelfSignUp && (
+                {authConfig?.enableSelfSignUp && (
                   <>
                     <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                      <Typography.Text type="secondary">or</Typography.Text>
+                      <Typography.Text className="text-sm" type="secondary">
+                        or
+                      </Typography.Text>
                     </Divider>
 
                     <div className="mt-4 flex flex-center">

@@ -90,11 +90,13 @@ describe('Bots Page should work properly', () => {
       .clear()
       .type(updatedBotName);
     //Save the updated display name
-    interceptURL('PATCH', '/api/v1/users/*', 'updateBot');
+
+    interceptURL('GET', '/api/v1/users/auth-mechanism/*', 'getBotDetails');
     cy.get('[data-testid="save-displayName"]').should('be.visible').click();
-    verifyResponseStatusCode('@updateBot', 200);
+    verifyResponseStatusCode('@getBotDetails', 200);
     //Verify the display name is updated on bot details page
     cy.get('[data-testid="container"]').should('contain', updatedBotName);
+    cy.wait(1000);
     //Click on edit description button
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
     //Enter updated description and save

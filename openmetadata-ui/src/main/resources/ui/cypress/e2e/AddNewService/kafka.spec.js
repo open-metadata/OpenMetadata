@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
 import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Kafka';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const topicName = '__transaction_state';
+const description = `This is ${serviceName} description`;
 
 describe('Kafka Ingestion', () => {
   beforeEach(() => {
@@ -43,7 +45,7 @@ describe('Kafka Ingestion', () => {
         .check();
       cy.get('[data-testid="filter-pattern-includes-topic"]')
         .should('be.visible')
-        .type('__consumer_offsets');
+        .type(topicName);
     };
 
     testServiceCreationAndIngestion(
@@ -52,6 +54,16 @@ describe('Kafka Ingestion', () => {
       addIngestionInput,
       serviceName,
       'messaging'
+    );
+  });
+
+  it('Update table description and verify', () => {
+    updateDescriptionForIngestedTables(
+      serviceName,
+      topicName,
+      description,
+      SERVICE_TYPE.Messaging,
+      'topics'
     );
   });
 

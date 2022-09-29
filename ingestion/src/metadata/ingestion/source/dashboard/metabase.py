@@ -147,14 +147,12 @@ class MetabaseSource(DashboardServiceSource):
 
                 if not ("name" in chart_details):
                     continue
-                chart_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    chart_name=chart_details["name"],
-                    service_name=self.context.dashboard_service.name.__root__,
-                )
-                if filter_by_chart(self.source_config.chartFilterPattern, chart_fqn):
-                    self.status.filter(chart_fqn, "Chart Pattern not allowed")
+                if filter_by_chart(
+                    self.source_config.chartFilterPattern, chart_details["name"]
+                ):
+                    self.status.filter(
+                        chart_details["name"], "Chart Pattern not allowed"
+                    )
                     continue
                 yield CreateChartRequest(
                     name=chart_details["name"],

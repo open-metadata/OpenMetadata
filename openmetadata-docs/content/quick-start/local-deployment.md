@@ -347,3 +347,7 @@ WARNING! This will remove all custom networks not used by at least one container
 ```
 
 So be careful if you want to keep up some (unused) networks from your laptop.
+
+### Connect to a Container from the Host
+
+Do you want to connect to a container from the host [Refer](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)
