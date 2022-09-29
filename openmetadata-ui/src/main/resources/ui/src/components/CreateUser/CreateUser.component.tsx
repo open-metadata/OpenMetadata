@@ -311,11 +311,6 @@ const CreateUser = ({
       email: email,
       isAdmin: isAdmin,
       isBot: isBot,
-      password: isPasswordGenerated ? generatedPassword : password,
-      confirmPassword: isPasswordGenerated
-        ? generatedPassword
-        : confirmPassword,
-      createPasswordType: CreatePasswordType.Admincreate,
       ...(forceBot
         ? {
             authenticationMechanism: {
@@ -333,7 +328,13 @@ const CreateUser = ({
                     },
             },
           }
-        : {}),
+        : {
+            password: isPasswordGenerated ? generatedPassword : password,
+            confirmPassword: isPasswordGenerated
+              ? generatedPassword
+              : confirmPassword,
+            createPasswordType: CreatePasswordType.Admincreate,
+          }),
     };
     onSave(userProfile);
   };
@@ -771,103 +772,104 @@ const CreateUser = ({
             <RichTextEditor initialValue={description} ref={markdownRef} />
           </Form.Item>
 
-          <Radio.Group
-            name="passwordGenerator"
-            value={passwordGenerator}
-            onChange={handleOnChange}>
-            <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
-              Automatic Generate
-            </Radio>
-            <Radio value={CreatePasswordGenerator.CreatePassword}>
-              Create Password
-            </Radio>
-          </Radio.Group>
-
-          {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
-            <div className="m-t-sm">
-              <Form.Item
-                label="Password"
-                name="password"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input.Password
-                  name="password"
-                  placeholder="Enter a Password"
-                  value={password}
-                  onChange={handleOnChange}
-                />
-              </Form.Item>
-
-              <Form.Item
-                label="Confirm Password"
-                name="confirmPassword"
-                rules={[
-                  {
-                    required: true,
-                  },
-                  {
-                    validator: (_, value) => {
-                      if (value !== password) {
-                        return Promise.reject("Password doesn't match");
-                      }
-
-                      return Promise.resolve();
-                    },
-                  },
-                ]}>
-                <Input.Password
-                  name="confirmPassword"
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChange={handleOnChange}
-                />
-              </Form.Item>
-            </div>
-          ) : (
-            <div className="m-t-sm">
-              <Form.Item
-                label="Generated Password"
-                name="generatedPassword"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input
-                  readOnly
-                  addonAfter={
-                    <div className="flex-center w-16">
-                      <div
-                        className="w-8 h-7 flex-center cursor-pointer"
-                        onClick={generateRandomPassword}>
-                        {isPasswordGenerating ? (
-                          <Loader size="small" type="default" />
-                        ) : (
-                          <SVGIcons
-                            alt="generate"
-                            icon={Icons.SYNC}
-                            width="16"
-                          />
-                        )}
-                      </div>
-
-                      <div className="w-8 h-7 flex-center">
-                        <CopyToClipboardButton copyText={generatedPassword} />
-                      </div>
-                    </div>
-                  }
-                  name="generatedPassword"
-                  value={generatedPassword}
-                />
-              </Form.Item>
-            </div>
-          )}
-
           {!forceBot && (
             <>
+              <Radio.Group
+                name="passwordGenerator"
+                value={passwordGenerator}
+                onChange={handleOnChange}>
+                <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
+                  Automatic Generate
+                </Radio>
+                <Radio value={CreatePasswordGenerator.CreatePassword}>
+                  Create Password
+                </Radio>
+              </Radio.Group>
+
+              {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
+                <div className="m-t-sm">
+                  <Form.Item
+                    label="Password"
+                    name="password"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}>
+                    <Input.Password
+                      name="password"
+                      placeholder="Enter a Password"
+                      value={password}
+                      onChange={handleOnChange}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                      {
+                        validator: (_, value) => {
+                          if (value !== password) {
+                            return Promise.reject("Password doesn't match");
+                          }
+
+                          return Promise.resolve();
+                        },
+                      },
+                    ]}>
+                    <Input.Password
+                      name="confirmPassword"
+                      placeholder="Confirm Password"
+                      value={confirmPassword}
+                      onChange={handleOnChange}
+                    />
+                  </Form.Item>
+                </div>
+              ) : (
+                <div className="m-t-sm">
+                  <Form.Item
+                    label="Generated Password"
+                    name="generatedPassword"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}>
+                    <Input.Password
+                      readOnly
+                      addonAfter={
+                        <div className="flex-center w-16">
+                          <div
+                            className="w-8 h-7 flex-center cursor-pointer"
+                            onClick={generateRandomPassword}>
+                            {isPasswordGenerating ? (
+                              <Loader size="small" type="default" />
+                            ) : (
+                              <SVGIcons
+                                alt="generate"
+                                icon={Icons.SYNC}
+                                width="16"
+                              />
+                            )}
+                          </div>
+
+                          <div className="w-8 h-7 flex-center">
+                            <CopyToClipboardButton
+                              copyText={generatedPassword}
+                            />
+                          </div>
+                        </div>
+                      }
+                      name="generatedPassword"
+                      value={generatedPassword}
+                    />
+                  </Form.Item>
+                </div>
+              )}
               <Form.Item label="Teams" name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
