@@ -18,7 +18,7 @@ Password - admin
 
 Below are the required steps to set up the Basic Login:
 
-## Set up Configurations in `openmetadata.yaml` or with corresponding Environment Variables
+## Set up Configurations in openmetadata.yaml
 
 ### Authentication Configuration
 
@@ -34,13 +34,13 @@ authenticationConfiguration:
 
 For the Basic auth we need to set:
  
--  `provider` -> `basic`
+-  `provider -> basic`
 
--  `publicKeyUrls` -> `{http|https}://{ your domain}:{port}}/api/v1/config/jwks`
+-  `publicKeyUrls -> {http|https}://{your_domain}:{port}}/api/v1/config/jwks`
 
--  `authority` -> `{your domain}`
+-  `authority -> {your_domain}`
 
--  `enableSelfSignup` -> `This flag indicates if users can come and signup by themselves on the OM`
+-  `enableSelfSignup -> This flag indicates if users can come and signup by themselves on the OM`
 
 ### Authorizer Configuration
 
@@ -55,11 +55,11 @@ authorizerConfiguration:
 
 For the Basic auth we need to set:
 
-- `adminPrincipals` -> `admin usernames to bootstrap the server with comma-separated values`
+- `adminPrincipals -> admin usernames to bootstrap the server with, comma-separated values`
 
-- `allowedEmailRegistrationDomains` -> `This controls what all domain are allowed for email registration can be your {princialDomain} as well, for example gmail.com, outlook.comm etc.`
+- `allowedEmailRegistrationDomains -> This controls what all domain are allowed for email registration can be your {princialDomain} as well, for example gmail.com, outlook.comm etc.`
 
-- `principalDomain` -> `This controls what all domain are allowed for email registration, for example gmail.com, outlook.comm etc.`
+- `principalDomain -> This controls what all domain are allowed for email registration, for example gmail.com, outlook.comm etc.`
 
 <Note>
 
@@ -68,6 +68,7 @@ Please note the following are the formats to bootstrap admins on server startup:
 `[admin1,admin2,admin3]` 
 
 - This works for SMTP-enabled servers, Login Password for these are generated randomly and sent to the mail {adminName}@{principalDomain}. If SMTP is not enabled for OpenMetadata, please use the below method to create admin users.
+
 `[admin1:password1,admin2:password2,admin3:[password3]]` 
 
 - This allows to bootstrap the server with given password, later on can be changed by specific users by visiting profile page.
@@ -144,6 +145,8 @@ email:
   password: ${SMTP_SERVER_PWD:-""} -> (SMTP Server Password)
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 ```
+<Note>
+
 - Following are valid value for transportation Strategy
 
   `SMTP      -> IF SMTP port is 25 use this`
@@ -151,3 +154,5 @@ email:
   `SMTPS     -> IF SMTP port is 465 use this`
 
   `SMTP_TLS  -> IF SMTP port is 587 use this`
+
+</Note>
