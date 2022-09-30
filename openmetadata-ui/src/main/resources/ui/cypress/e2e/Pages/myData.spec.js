@@ -55,7 +55,7 @@ describe('MyData page should work', () => {
   };
 
   const checkRecentlySearchElement = (term) => {
-    searchEntity(term);
+    searchEntity(term, false);
     cy.clickOnLogo();
     cy.get(`[data-testid="search-term-${term}"]`)
       .scrollIntoView()
