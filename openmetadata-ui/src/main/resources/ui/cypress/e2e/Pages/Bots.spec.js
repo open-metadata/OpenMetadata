@@ -70,7 +70,8 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="password-generator"]')
     .should('be.visible')
     .click();
-  verifyResponseStatusCode('@generatePassword', 200);
+    verifyResponseStatusCode('@generatePassword', 200);
+    cy.wait(1000);
     //Click on save button
     interceptURL('POST', '/api/v1/bots', 'createBot');
     cy.get('[data-testid="save-user"]')
