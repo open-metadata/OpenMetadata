@@ -26,6 +26,7 @@ from metadata.cli.ingest import run_ingest
 from metadata.cli.openmetadata_imports_migration import (
     run_openmetadata_imports_migration,
 )
+from metadata.cli.restore import run_restore
 from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
@@ -341,6 +342,96 @@ def openmetadata_imports_migration(
         dir_path (str): _description_
     """
     run_openmetadata_imports_migration(dir_path)
+
+
+@metadata.command()
+@click.option(
+    "-h",
+    "--host",
+    help="Host that runs the database",
+    required=True,
+)
+@click.option(
+    "-u",
+    "--user",
+    help="User to run the restore backup",
+    required=True,
+)
+@click.option(
+    "-p",
+    "--password",
+    help="Credentials for the user",
+    required=True,
+)
+@click.option(
+    "-d",
+    "--database",
+    help="Database to restore",
+    required=True,
+)
+@click.option(
+    "--port",
+    help="Database service port",
+    default="3306",
+    required=False,
+)
+@click.option(
+    "--input",
+    help="Local backup file path for restore",
+    type=click.Path(exists=False, dir_okay=True),
+    default=None,
+    required=True,
+)
+@click.option(
+    "-o",
+    "--options",
+    multiple=True,
+    default=None,
+)
+@click.option(
+    "-a",
+    "--arguments",
+    multiple=True,
+    default=None,
+)
+@click.option(
+    "-s",
+    "--schema",
+    default=None,
+    required=False,
+)
+def restore(
+    host: str,
+    user: str,
+    password: str,
+    database: str,
+    port: str,
+    input: str,
+    options: List[str],
+    arguments: List[str],
+    schema: str,
+) -> None:
+    """
+    Run a restore for the metadata DB.
+
+    We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
+    Same with connection arguments `-a <arg1>, -a <arg2> [...]`
+
+    If `-s` or `--schema` is provided, we will trigger a Postgres Restore instead
+    of a MySQL restore. This is the value of the schema containing the OpenMetadata
+    tables.
+    """
+    run_restore(
+        host,
+        user,
+        password,
+        database,
+        port,
+        input,
+        options,
+        arguments,
+        schema,
+    )
 
 
 metadata.add_command(check)
