@@ -114,9 +114,6 @@ services:
     expose:
       - 8585
       - 8586
-      - 9200
-      - 9300
-      - 3306
     ports:
       - "8585:8585"
       - "8586:8586"
@@ -164,7 +161,7 @@ services:
     networks:
       - app_net
     volumes:
-      - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
+      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
       - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
 
