@@ -22,6 +22,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import {
   createUserWithPut,
   getAuthMechanismForBotUser,
@@ -30,6 +31,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import {
   AuthenticationMechanism,
@@ -143,6 +145,12 @@ const BotDetails: FC<BotsDetailProp> = ({
         botName: botData.name,
       });
       if (response) {
+        await createBotWithPut({
+          name: botData.name,
+          description: botData.description,
+          displayName: botData.displayName,
+          botUser: { id: response.id, type: EntityType.USER },
+        });
         fetchAuthMechanismForBot();
       }
     } catch (error) {
