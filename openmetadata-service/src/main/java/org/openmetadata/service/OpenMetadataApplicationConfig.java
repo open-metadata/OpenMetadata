@@ -22,6 +22,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
@@ -93,6 +94,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
+
+  @JsonProperty("login")
+  private LoginConfiguration loginSettings;
 
   @Override
   public String toString() {
