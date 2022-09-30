@@ -814,9 +814,6 @@ const CreateUser = ({
                 name="confirmPassword"
                 rules={[
                   {
-                    required: true,
-                  },
-                  {
                     validator: (_, value) => {
                       if (value !== password) {
                         return Promise.reject("Password doesn't match");

@@ -115,7 +115,6 @@ const BasicSignUp = () => {
                           rules={[
                             {
                               required: true,
-                              message: 'Password is required',
                             },
                             {
                               pattern: passwordRegex,
@@ -128,7 +127,6 @@ const BasicSignUp = () => {
                           label="Confirm Password"
                           name="confirmPassword"
                           rules={[
-                            { required: true },
                             {
                               validator: (_, value) => {
                                 if (isEmpty(password)) {

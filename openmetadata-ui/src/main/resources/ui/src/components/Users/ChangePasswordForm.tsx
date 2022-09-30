@@ -77,9 +77,6 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
           name="confirmPassword"
           rules={[
             {
-              required: true,
-            },
-            {
               validator: (_, value) => {
                 if (value !== newPassword) {
                   return Promise.reject("Password doesn't match");
