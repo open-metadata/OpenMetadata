@@ -97,16 +97,15 @@ class ExternalSecretsManager(SecretsManager, ABC):
             f"Adding auth provider security config using {self.provider} secrets' manager"
         )
 
-        auth_provider_secret_id = self.build_secret_id(
-            BOT_PREFIX, bot_name, AUTH_PROVIDER_PREFIX
-        )
-        auth_provider_secret = self.get_string_value(auth_provider_secret_id)
-        config.authProvider = AuthProvider(json.loads(auth_provider_secret))
-
         if (
             config.authProvider != AuthProvider.no_auth
             and config.securityConfig is None
         ):
+            auth_provider_secret_id = self.build_secret_id(
+                BOT_PREFIX, bot_name, AUTH_PROVIDER_PREFIX
+            )
+            auth_provider_secret = self.get_string_value(auth_provider_secret_id)
+            config.authProvider = AuthProvider(json.loads(auth_provider_secret))
             secret_id = self.build_secret_id(BOT_PREFIX, bot_name)
             auth_config_json = self.get_string_value(secret_id)
             try:
