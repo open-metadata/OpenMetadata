@@ -193,3 +193,7 @@ elasticsearch:
 
 slackChat:
   slackUrl: "http://localhost:8080"
+
+login:
+  maxLoginFailAttempts: 3
+  accessBlockTime: 600

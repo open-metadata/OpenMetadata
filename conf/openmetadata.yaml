@@ -253,3 +253,7 @@ email:
 sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
 slackChat:
   slackUrl: ${SLACK_CHAT_SLACK_URL:-""}
+
+login:
+  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
