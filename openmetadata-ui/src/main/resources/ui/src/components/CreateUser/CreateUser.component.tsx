@@ -106,11 +106,10 @@ const CreateUser = ({
     {} as SSOClientConfig
   );
 
-  const { isAuthProviderBasic } = useMemo(() => {
-    return {
-      isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
-    };
-  }, [authConfig]);
+  const isAuthProviderBasic = useMemo(
+    () => authConfig?.provider === AuthTypes.BASIC,
+    [authConfig]
+  );
 
   const slashedBreadcrumbList = [
     {
