@@ -513,6 +513,7 @@ export const addUser = (username, email) => {
   cy.get('[data-testid="password-generator"]').should('be.visible').click();
   verifyResponseStatusCode('@generatePassword', 200);
   cy.wait(1000);
+  interceptURL('POST', ' /api/v1/users', 'add-user');
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
 };
 
