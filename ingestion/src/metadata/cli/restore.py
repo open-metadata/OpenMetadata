@@ -28,7 +28,7 @@ def execute_sql_file(engine: Engine, input: Path, schema: str = None) -> None:
 
     with open(input, encoding="utf-8") as f:
         for query in f.readlines():
-            # In some sql queries '%', and it has special meaning which is trying to band parameters. % can be escaped as %%
+            # `%` is a reserved syntax in SQLAlchemy to bind parameters. Escaping it with `%%`
             clean_query = query.replace("%", "%%")
 
             with engine.connect() as conn:
