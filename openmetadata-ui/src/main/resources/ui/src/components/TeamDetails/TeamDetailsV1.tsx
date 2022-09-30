@@ -15,7 +15,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
-  Empty,
   Modal,
   Row,
   Space,
@@ -1186,7 +1185,9 @@ const TeamDetailsV1 = ({
   ) : (
     <Row align="middle" className="tw-h-full">
       <Col span={24}>
-        <Empty description={NO_PERMISSION_TO_VIEW} />
+        <ErrorPlaceHolder>
+          <p>{NO_PERMISSION_TO_VIEW}</p>
+        </ErrorPlaceHolder>
       </Col>
     </Row>
   );

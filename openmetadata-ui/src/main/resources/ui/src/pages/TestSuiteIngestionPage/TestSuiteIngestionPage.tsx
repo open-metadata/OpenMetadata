@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Empty } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -20,6 +19,7 @@ import { getTestSuiteByName } from '../../axiosAPIs/testAPI';
 import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
 import { INGESTION_DATA } from '../../components/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -116,7 +116,11 @@ const TestSuiteIngestionPage = () => {
   }
 
   if (isUndefined(testSuite)) {
-    return <Empty description="No Data found" />;
+    return (
+      <ErrorPlaceHolder>
+        <p>No Data found</p>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (
