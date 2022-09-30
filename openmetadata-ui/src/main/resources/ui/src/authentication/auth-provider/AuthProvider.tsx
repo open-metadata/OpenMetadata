@@ -139,16 +139,10 @@ export const AuthProvider = ({
    * Stores redirect URL for successful login
    */
   function storeRedirectPath() {
-    const redirectPathExists = Boolean(
-      cookieStorage.getItem(REDIRECT_PATHNAME)
-    );
-
-    if (!redirectPathExists) {
-      cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
-        expires: getUrlPathnameExpiry(),
-        path: '/',
-      });
-    }
+    cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
+      expires: getUrlPathnameExpiry(),
+      path: '/',
+    });
   }
 
   const resetUserDetails = (forceLogout = false) => {

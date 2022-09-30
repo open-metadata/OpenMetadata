@@ -232,6 +232,10 @@ export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
 };
 
+export const getUrlPathnameExpiryAfterRoute = () => {
+  return new Date(Date.now() + 1000);
+};
+
 /**
  * @exp expiry of token
  * @isExpired wether token is already expired or not
