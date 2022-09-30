@@ -14,10 +14,8 @@
 package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
-import java.util.List;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.BotType;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -25,7 +23,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 public class BotRepository extends EntityRepository<Bot> {
@@ -54,21 +51,10 @@ public class BotRepository extends EntityRepository<Bot> {
   @Override
   public void storeEntity(Bot entity, boolean update) throws IOException {
     EntityReference botUser = entity.getBotUser();
-    User user;
-    try {
-      user =
-          UserRepository.class
-              .cast(Entity.getEntityRepository(Entity.USER))
-              .get(null, entity.getBotUser().getId(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-    } catch (Exception ignored) {
-      user = null;
-    }
     entity.withBotUser(null);
     store(entity.getId(), entity, update);
-    if (!BotType.BOT.equals(entity.getBotType()) && user != null) {
-      AuthenticationMechanism authMechanism = user.getAuthenticationMechanism();
-      secretsManager.encryptBotCredentials(
-          entity.getBotType().value(), authMechanism != null ? authMechanism.getConfig() : null);
+    if (!BotType.BOT.equals(entity.getBotType())) {
+      secretsManager.encryptOrDecryptBotCredentials(entity.getBotType().value(), botUser.getName(), true);
     }
     entity.withBotUser(botUser);
   }

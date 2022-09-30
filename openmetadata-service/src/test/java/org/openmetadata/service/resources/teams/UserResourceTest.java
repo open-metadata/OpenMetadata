@@ -722,28 +722,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void put_failIfBotHasARelationshipToAnotherUser(TestInfo test) throws HttpResponseException {
-    BotResourceTest botResourceTest = new BotResourceTest();
-    String botName = "test-bot-fail";
-    // create bot user
-    CreateUser createBotUser = creatBotUserRequest("test-bot-user-fail", true).withBotName(botName);
-    User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
-    // assign bot user to a bot
-    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
-    botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    // create different bot user
-    createBotUser = creatBotUserRequest("test-bot-user-fail-2", true);
-    updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    // put different user with a same bot name
-    CreateUser createDifferentBotUser = creatBotUserRequest("test-bot-user-fail-2", true).withBotName(botName);
-    assertResponse(
-        () -> updateEntity(createDifferentBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Bot [test-bot-fail] is already using [test-bot-user-fail] bot user.", botName));
-  }
-
-  @Test
   void put_ok_ifBotUserIsBotUserOfBot(TestInfo test) throws HttpResponseException {
     BotResourceTest botResourceTest = new BotResourceTest();
     String botName = "test-bot-ok";

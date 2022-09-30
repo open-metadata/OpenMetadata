@@ -98,6 +98,8 @@ DBT_SOURCE_CONFIG_SECRET_PREFIX: str = "database-metadata-pipeline"
 
 BOT_PREFIX: str = "bot"
 
+AUTH_PROVIDER_PREFIX: str = "auth-provider"
+
 TEST_CONNECTION_TEMP_SECRET_PREFIX: str = "test-connection-temp"
 
 

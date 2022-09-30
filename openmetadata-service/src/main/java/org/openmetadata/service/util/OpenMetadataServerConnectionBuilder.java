@@ -131,7 +131,7 @@ public class OpenMetadataServerConnectionBuilder {
         user.getAuthenticationMechanism()
             .setConfig(
                 secretsManager.encryptOrDecryptBotUserCredentials(
-                    botName, user.getAuthenticationMechanism().getConfig(), false));
+                    user.getName(), user.getAuthenticationMechanism().getConfig(), false));
       }
       return user;
     } catch (IOException | EntityNotFoundException ex) {

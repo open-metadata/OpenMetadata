@@ -107,7 +107,7 @@ public abstract class SecretsManager {
 
   public abstract Object encryptOrDecryptBotUserCredentials(String botUserName, Object securityConfig, boolean encrypt);
 
-  public abstract void encryptBotCredentials(String botName, Object securityConfig);
+  public abstract Object encryptOrDecryptBotCredentials(String botName, String botUserName, boolean encrypt);
 
   public void validateServiceConnection(Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {

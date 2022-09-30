@@ -72,8 +72,11 @@ import org.openmetadata.service.util.ResultList;
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
+  SecretsManager secretsManager;
+
   public BotResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(Bot.class, new BotRepository(dao, secretsManager), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   @Override
@@ -262,7 +265,13 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
     Bot bot = getBot(securityContext, create);
-    return createOrUpdate(uriInfo, securityContext, bot, false);
+    Response response = createOrUpdate(uriInfo, securityContext, bot, false);
+    // ensures the secrets' manager store the credentials even when the botUser does not change
+    bot = (Bot) response.getEntity();
+    if (!BotType.BOT.equals(bot.getBotType())) {
+      secretsManager.encryptOrDecryptBotCredentials(bot.getBotType().value(), bot.getBotUser().getName(), true);
+    }
+    return response;
   }
 
   @PATCH

@@ -418,9 +418,8 @@ public class DefaultAuthorizer implements Authorizer {
     EntityRepository<User> userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
     try {
       User originalUser =
-          userRepository.getByName(
-              null, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-      AuthenticationMechanism authMechanism = user.getAuthenticationMechanism();
+          userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
+      AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
       if (authMechanism != null) {
         Object config =
             secretsManager.encryptOrDecryptBotUserCredentials(user.getName(), authMechanism.getConfig(), false);

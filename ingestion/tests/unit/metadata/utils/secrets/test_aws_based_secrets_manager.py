@@ -80,7 +80,9 @@ class AWSBasedSecretsManager(object):
         @patch("metadata.clients.aws_client.AWSClient.get_client")
         def test_aws_manager_add_auth_provider_security_config(self, mocked_get_client):
             aws_manager = self.build_secret_manager(
-                mocked_get_client, self.build_response_value(AUTH_PROVIDER_CONFIG)
+                mocked_get_client,
+                self.build_response_value("google"),
+                self.build_response_value(AUTH_PROVIDER_CONFIG),
             )
             actual_om_connection = deepcopy(self.om_connection)
             actual_om_connection.securityConfig = None
@@ -90,7 +92,9 @@ class AWSBasedSecretsManager(object):
             )
 
             self.assert_client_called_once(
-                aws_manager, "/openmetadata/bot/ingestion-bot"
+                aws_manager,
+                "/openmetadata/bot/ingestion-bot/auth-provider",
+                "/openmetadata/bot/ingestion-bot",
             )
             self.assertEqual(
                 self.auth_provider_config, actual_om_connection.securityConfig
@@ -191,18 +195,23 @@ class AWSBasedSecretsManager(object):
 
         @abstractmethod
         def build_secret_manager(
-            self, mocked_get_client: Mock, expected_json: Dict[str, Any]
+            self,
+            mocked_get_client: Mock,
+            expected_json_2: Dict[str, Any],
+            expected_json_1: Dict[str, Any],
         ) -> AWSBasedSecretsManager:
             pass
 
         @staticmethod
         @abstractmethod
         def assert_client_called_once(
-            aws_manager: AWSBasedSecretsManager, expected_call: str
+            aws_manager: AWSBasedSecretsManager,
+            expected_call_1: str,
+            expected_call_2: str,
         ) -> None:
             pass
 
         @staticmethod
         @abstractmethod
-        def build_response_value(json_value: dict):
+        def build_response_value(json_value: Any):
             pass
