@@ -70,9 +70,11 @@ const ManageButton: FC<Props> = ({
                 })}
                 size={8}
                 onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDelete(true);
-                  setShowActions(false);
+                  if (canDelete) {
+                    e.stopPropagation();
+                    setIsDelete(true);
+                    setShowActions(false);
+                  }
                 }}>
                 <SVGIcons alt="Delete" icon={Icons.DELETE} />
                 <div className="tw-text-left" data-testid="delete-button">
