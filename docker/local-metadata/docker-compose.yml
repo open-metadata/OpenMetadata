@@ -130,7 +130,7 @@ services:
       - 8585
       - 8586
     ports:
-      - "8585:8585"
+      - "80:8585"
       - "8586:8586"
     depends_on:
       elasticsearch:
