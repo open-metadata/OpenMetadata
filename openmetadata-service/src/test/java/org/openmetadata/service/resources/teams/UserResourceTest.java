@@ -732,6 +732,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // assign bot user to a bot
     CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
     botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    // create different bot user
+    createBotUser = creatBotUserRequest("test-bot-user-fail-2", true);
+    updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
     // put different user with a same bot name
     CreateUser createDifferentBotUser = creatBotUserRequest("test-bot-user-fail-2", true).withBotName(botName);
     assertResponse(
