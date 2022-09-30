@@ -75,6 +75,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
+    value ? setIsOpen(true) : setIsOpen(false);
   };
 
   const supportLinks = [

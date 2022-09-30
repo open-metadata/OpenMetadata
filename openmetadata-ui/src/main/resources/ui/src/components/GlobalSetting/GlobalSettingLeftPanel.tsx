@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Empty, Menu, MenuProps } from 'antd';
+import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React, { useMemo } from 'react';
@@ -24,6 +24,7 @@ import {
   MenuList,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
@@ -78,7 +79,9 @@ const GlobalSettingLeftPanel = () => {
       />
     </LeftPanelCard>
   ) : (
-    <Empty className="tw-mt-8" />
+    <ErrorPlaceHolder>
+      <p>No Data</p>
+    </ErrorPlaceHolder>
   );
 };
 

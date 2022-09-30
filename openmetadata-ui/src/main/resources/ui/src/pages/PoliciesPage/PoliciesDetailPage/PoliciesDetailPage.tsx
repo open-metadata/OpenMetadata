@@ -17,7 +17,6 @@ import {
   Card,
   Col,
   Dropdown,
-  Empty,
   Menu,
   Modal,
   Row,
@@ -435,14 +434,17 @@ const PoliciesDetailPage = () => {
       {policyPermission.ViewAll || policyPermission.ViewBasic ? (
         <>
           {isEmpty(policy) ? (
-            <Empty description={`No policy found for ${fqn}`}>
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => history.push(policiesPath)}>
-                Go Back
-              </Button>
-            </Empty>
+            <ErrorPlaceHolder>
+              <div className="text-center">
+                <p>No policy found for ${fqn}</p>
+                <Button
+                  size="small"
+                  type="primary"
+                  onClick={() => history.push(policiesPath)}>
+                  Go Back
+                </Button>
+              </div>
+            </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
               <div className="tw--ml-5">
@@ -463,7 +465,9 @@ const PoliciesDetailPage = () => {
               <Tabs defaultActiveKey="rules">
                 <TabPane key="rules" tab="Rules">
                   {isEmpty(policy.rules) ? (
-                    <Empty description="No rules found" />
+                    <ErrorPlaceHolder>
+                      <p>No rules found</p>
+                    </ErrorPlaceHolder>
                   ) : (
                     <Space
                       className="tw-w-full tabpane-space"
