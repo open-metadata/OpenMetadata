@@ -402,6 +402,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
+    ingestionPipeline.setOpenMetadataServerConnection(
+        new OpenMetadataServerConnectionBuilder(secretsManager, openMetadataApplicationConfig).build());
     pipelineServiceClient.deployPipeline(ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline);
     return addHref(uriInfo, ingestionPipeline);
