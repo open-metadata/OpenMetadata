@@ -19,6 +19,8 @@ import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
+import { passwordErrorMessage } from '../../constants/error-message';
+import { passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import LoginCarousel from '../login/LoginCarousel';
@@ -111,17 +113,12 @@ const BasicSignUp = () => {
                           label="Password"
                           name="password"
                           rules={[
-                            { required: true },
                             {
-                              validator: (_, value) => {
-                                if (value < 8 && value > 16) {
-                                  return Promise.reject(
-                                    'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character'
-                                  );
-                                }
-
-                                return Promise.resolve();
-                              },
+                              required: true,
+                            },
+                            {
+                              pattern: passwordRegex,
+                              message: passwordErrorMessage,
                             },
                           ]}>
                           <Input.Password placeholder="Enter password" />

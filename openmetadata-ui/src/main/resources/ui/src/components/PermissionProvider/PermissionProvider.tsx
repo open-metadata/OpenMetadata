@@ -31,7 +31,10 @@ import {
   getResourcePermission,
 } from '../../axiosAPIs/permissionAPI';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
+import {
+  getUrlPathnameExpiryAfterRoute,
+  isProtectedRoute,
+} from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -84,7 +87,10 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const redirectToStoredPath = () => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
-      cookieStorage.removeItem(REDIRECT_PATHNAME);
+      cookieStorage.setItem(REDIRECT_PATHNAME, urlPathname, {
+        expires: getUrlPathnameExpiryAfterRoute(),
+        path: '/',
+      });
       history.push(urlPathname);
     }
   };
