@@ -13,7 +13,6 @@ Docker functions for CLI
 """
 import json
 import pathlib
-import shutil
 import sys
 import tempfile
 import time
@@ -215,10 +214,6 @@ def run_docker(
             logger.info(
                 "Stopping docker compose for OpenMetadata and removing images, networks, volumes..."
             )
-            logger.info("Do you want to Delete the docker mounted volumes from host")
-            user_response = click.prompt("Please enter [y/N]", type=str)
-            if user_response == "y":
-                shutil.rmtree(MAIN_DIR)
             docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
             logger.info(
                 "Stopped docker compose for OpenMetadata and removing images, networks, volumes."
