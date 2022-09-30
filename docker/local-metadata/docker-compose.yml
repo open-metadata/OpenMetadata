@@ -122,6 +122,10 @@ services:
       # Airflow SSL Configurations
       AIRFLOW_VERIFY_SSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"}
       AIRFLOW_SSL_CERT_PATH: ${AIRFLOW_SSL_CERT_PATH:-""}
+      # Admin Port 
+      SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
+      # Server Port
+      SERVER_PORT: ${SERVER_PORT:-8585}
     expose:
       - 8585
       - 8586
