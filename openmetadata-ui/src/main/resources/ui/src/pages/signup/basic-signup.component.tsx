@@ -19,6 +19,7 @@ import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
+import { passwordErrorMessage } from '../../constants/error-message';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -118,8 +119,7 @@ const BasicSignUp = () => {
                             },
                             {
                               pattern: passwordRegex,
-                              message:
-                                'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character',
+                              message: passwordErrorMessage,
                             },
                           ]}>
                           <Input.Password placeholder="Enter password" />

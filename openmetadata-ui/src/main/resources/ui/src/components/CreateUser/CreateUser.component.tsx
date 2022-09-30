@@ -30,7 +30,11 @@ import React, { useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { validEmailRegEx } from '../../constants/regex.constants';
+import { passwordErrorMessage } from '../../constants/error-message';
+import {
+  passwordRegex,
+  validEmailRegEx,
+} from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
 import {
@@ -791,6 +795,10 @@ const CreateUser = ({
                 rules={[
                   {
                     required: true,
+                  },
+                  {
+                    pattern: passwordRegex,
+                    message: passwordErrorMessage,
                   },
                 ]}>
                 <Input.Password
