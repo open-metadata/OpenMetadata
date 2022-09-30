@@ -18,17 +18,9 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import click
-from sqlalchemy.engine import Engine
 
 from metadata.cli.db_dump import dump
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
-)
-from metadata.utils.connections import get_connection
-from metadata.utils.helpers import list_to_dict
+from metadata.cli.utils import get_engine
 from metadata.utils.logger import cli_logger
 
 logger = cli_logger()
@@ -138,26 +130,9 @@ def run_backup(
 
     out = get_output(output)
 
-    connection_options = list_to_dict(options)
-    connection_arguments = list_to_dict(arguments)
-
-    connection_dict = {
-        "hostPort": f"{host}:{port}",
-        "username": user,
-        "password": password,
-        "connectionOptions": connection_options if connection_options else None,
-        "connectionArguments": connection_arguments if connection_arguments else None,
-    }
-
-    if not schema:
-        connection_dict["databaseSchema"] = database
-        connection = MysqlConnection(**connection_dict)
-    else:
-        connection_dict["database"] = database
-        connection = PostgresConnection(**connection_dict)
-
-    engine: Engine = get_connection(connection)
-
+    engine = get_engine(
+        host, port, user, password, options, arguments, schema, database
+    )
     dump(engine=engine, output=out, schema=schema)
 
     click.secho(
