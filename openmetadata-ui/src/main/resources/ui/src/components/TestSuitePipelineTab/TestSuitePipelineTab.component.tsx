@@ -210,6 +210,7 @@ const TestSuitePipelineTab = () => {
       await deployIngestionPipelineById(id);
       setCurrDeployId({ id, state: 'success' });
       setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
+      showSuccessToast('Pipeline deployed successfully');
     } catch (error) {
       setCurrDeployId({ id: '', state: '' });
       showErrorToast(
@@ -222,25 +223,46 @@ const TestSuitePipelineTab = () => {
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
-        <Tooltip title={editPermission ? 'Run' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            data-testid="run"
-            disabled={!editPermission}
-            type="link"
-            onClick={() =>
-              handleTriggerIngestion(ingestion.id as string, ingestion.name)
-            }>
-            {currTriggerId.id === ingestion.id ? (
-              currTriggerId.state === 'success' ? (
-                <FontAwesomeIcon icon="check" />
+        <>
+          <Tooltip title={editPermission ? 'Run' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              data-testid="run"
+              disabled={!editPermission}
+              type="link"
+              onClick={() =>
+                handleTriggerIngestion(ingestion.id as string, ingestion.name)
+              }>
+              {currTriggerId.id === ingestion.id ? (
+                currTriggerId.state === 'success' ? (
+                  <FontAwesomeIcon icon="check" />
+                ) : (
+                  <Loader size="small" type="default" />
+                )
               ) : (
-                <Loader size="small" type="default" />
-              )
-            ) : (
-              'Run'
-            )}
-          </Button>
-        </Tooltip>
+                'Run'
+              )}
+            </Button>
+          </Tooltip>
+          {separator}
+          <Tooltip
+            title={editPermission ? 'Re Deploy' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              data-testid="re-deploy-btn"
+              disabled={!editPermission}
+              type="link"
+              onClick={() => handleDeployIngestion(ingestion.id as string)}>
+              {currDeployId.id === ingestion.id ? (
+                currDeployId.state === 'success' ? (
+                  <FontAwesomeIcon icon="check" />
+                ) : (
+                  <Loader size="small" type="default" />
+                )
+              ) : (
+                'Re Deploy'
+              )}
+            </Button>
+          </Tooltip>
+        </>
       );
     } else {
       return (
@@ -507,7 +529,14 @@ const TestSuitePipelineTab = () => {
     ];
 
     return column;
-  }, [airFlowEndPoint, isKillModalOpen, isLogsModalOpen, selectedPipeline]);
+  }, [
+    airFlowEndPoint,
+    isKillModalOpen,
+    isLogsModalOpen,
+    selectedPipeline,
+    currDeployId,
+    currTriggerId,
+  ]);
 
   if (isLoading) {
     return <Loader />;
