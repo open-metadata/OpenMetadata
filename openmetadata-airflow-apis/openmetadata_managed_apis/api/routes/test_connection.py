@@ -47,6 +47,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         and test the connection
         """
         json_request = request.get_json(cache=False)
+        
         try:
             test_service_connection = parse_test_connection_request_gracefully(
                 config_dict=json_request
