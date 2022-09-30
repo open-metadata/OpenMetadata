@@ -16,27 +16,19 @@ from pathlib import Path
 from typing import List, Optional
 
 import click
-from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
-)
-from metadata.utils.connections import get_connection
-from metadata.utils.helpers import list_to_dict
+from metadata.cli.utils import get_engine
 from metadata.utils.logger import cli_logger
 
 logger = cli_logger()
 
 
-def execute_query(engine: Engine, input: Path, schema: str = None) -> None:
+def execute_sql_file(engine: Engine, input: Path, schema: str = None) -> None:
 
     with open(input, encoding="utf-8") as f:
         for query in f.readlines():
-
+            # In some sql queries '%', and it has special meaning which is trying to band parameters. % can be escaped as %%
             clean_query = query.replace("%", "%%")
 
             with engine.connect() as conn:
@@ -73,27 +65,11 @@ def run_restore(
         fg="bright_green",
     )
 
-    connection_options = list_to_dict(options)
-    connection_arguments = list_to_dict(arguments)
+    engine = get_engine(
+        host, port, user, password, options, arguments, schema, database
+    )
 
-    connection_dict = {
-        "hostPort": f"{host}:{port}",
-        "username": user,
-        "password": password,
-        "connectionOptions": connection_options if connection_options else None,
-        "connectionArguments": connection_arguments if connection_arguments else None,
-    }
-
-    if not schema:
-        connection_dict["databaseSchema"] = database
-        connection = MysqlConnection(**connection_dict)
-    else:
-        connection_dict["database"] = database
-        connection = PostgresConnection(**connection_dict)
-
-    engine: Engine = get_connection(connection)
-
-    execute_query(engine=engine, input=input, schema=schema)
+    execute_sql_file(engine=engine, input=input, schema=schema)
 
     click.secho(
         f"Backup restored from {input}",

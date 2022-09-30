@@ -14,7 +14,7 @@ TABLES_DUMP_ALL = {
     "openmetadata_settings",
 }
 
-EXCLUDED_TABLES = {"entity_extension_time_series": {"exclude_columns": ["timestamp"]}}
+CUSTOM_TABLES = {"entity_extension_time_series": {"exclude_columns": ["timestamp"]}}
 NOT_MIGRATE = {"DATABASE_CHANGE_LOG"}
 
 STATEMENT_JSON = "SELECT json FROM {table}"
@@ -72,7 +72,7 @@ def dump_entity_custom(engine: Engine, output: Path, inspector) -> None:
     This function is used to dump entities with custom handling
     """
     with open(output, "a") as file:
-        for table, data in EXCLUDED_TABLES.items():
+        for table, data in CUSTOM_TABLES.items():
 
             truncate = STATEMENT_TRUNCATE.format(table=table)
             file.write(truncate)
@@ -116,7 +116,7 @@ def dump(engine: Engine, output: Path, schema: str = None) -> None:
         for table in tables
         if table not in TABLES_DUMP_ALL
         and table not in NOT_MIGRATE
-        and table not in EXCLUDED_TABLES.keys()
+        and table not in CUSTOM_TABLES.keys()
     ]
 
     dump_all(tables=list(TABLES_DUMP_ALL), engine=engine, output=output)
