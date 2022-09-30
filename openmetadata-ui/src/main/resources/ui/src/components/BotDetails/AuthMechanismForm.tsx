@@ -621,12 +621,8 @@ const AuthMechanismForm: FC<Props> = ({
               name="email"
               rules={[
                 {
-                  required: true,
-                  type: 'email',
-                  message: jsonData['form-error-messages']['empty-email'],
-                },
-                {
                   pattern: validEmailRegEx,
+                  required: true,
                   type: 'email',
                   message: jsonData['form-error-messages']['invalid-email'],
                 },

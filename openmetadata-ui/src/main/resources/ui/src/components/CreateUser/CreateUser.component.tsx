@@ -682,17 +682,14 @@ const CreateUser = ({
             name="email"
             rules={[
               {
-                required: true,
-                type: 'email',
-                message: jsonData['form-error-messages']['empty-email'],
-              },
-              {
                 pattern: validEmailRegEx,
+                required: true,
                 type: 'email',
                 message: jsonData['form-error-messages']['invalid-email'],
               },
               {
                 type: 'email',
+                required: true,
                 validator: async (_, value) => {
                   if (validEmailRegEx.test(value) && !forceBot) {
                     const isEmailAlreadyExists = await checkEmailInUse(value);
