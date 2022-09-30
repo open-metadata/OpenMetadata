@@ -203,14 +203,16 @@ const TestSuitePipelineTab = () => {
     }
   };
 
-  const handleDeployIngestion = async (id: string) => {
+  const handleDeployIngestion = async (id: string, reDeployed: boolean) => {
     setCurrDeployId({ id, state: 'waiting' });
 
     try {
       await deployIngestionPipelineById(id);
       setCurrDeployId({ id, state: 'success' });
       setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
-      showSuccessToast('Pipeline deployed successfully');
+      showSuccessToast(
+        `Pipeline ${reDeployed ? 'Re Deployed' : 'Deployed'} successfully`
+      );
     } catch (error) {
       setCurrDeployId({ id: '', state: '' });
       showErrorToast(
@@ -250,7 +252,9 @@ const TestSuitePipelineTab = () => {
               data-testid="re-deploy-btn"
               disabled={!editPermission}
               type="link"
-              onClick={() => handleDeployIngestion(ingestion.id as string)}>
+              onClick={() =>
+                handleDeployIngestion(ingestion.id as string, true)
+              }>
               {currDeployId.id === ingestion.id ? (
                 currDeployId.state === 'success' ? (
                   <FontAwesomeIcon icon="check" />
@@ -271,7 +275,9 @@ const TestSuitePipelineTab = () => {
             data-testid="deploy"
             disabled={!editPermission}
             type="link"
-            onClick={() => handleDeployIngestion(ingestion.id as string)}>
+            onClick={() =>
+              handleDeployIngestion(ingestion.id as string, false)
+            }>
             {currDeployId.id === ingestion.id ? (
               currDeployId.state === 'success' ? (
                 <FontAwesomeIcon icon="check" />
