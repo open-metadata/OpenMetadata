@@ -14,7 +14,6 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
-
 services:
   postgresql:
     container_name: openmetadata_postgresql
@@ -165,7 +164,7 @@ services:
     networks:
       - app_net
     volumes:
-      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
+      - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
       - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
 

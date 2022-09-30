@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -1124,7 +1125,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
 
     // Admins, Owner or a User with policy can update the entity
-    entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
@@ -1143,7 +1144,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             entity, originalJson, authHeaders(USER1.getName() + "@open-metadata.org"), MINOR_UPDATE, change);
 
     // Admin, owner (USER1) and user with DataSteward role can update description on entity owned by USER1.
-    entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
     patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), true);

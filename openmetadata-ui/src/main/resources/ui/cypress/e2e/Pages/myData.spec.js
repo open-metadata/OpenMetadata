@@ -13,7 +13,7 @@
 
 /// <reference types="cypress" />
 
-import { interceptURL, login, searchEntity, verifyResponseStatusCode, visitEntityTab } from '../../common/common';
+import { interceptURL, login, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage, visitEntityTab } from '../../common/common';
 import { FOLLOWING_TITLE, LOGIN, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tables = Object.values(SEARCH_ENTITY_TABLE);
@@ -25,16 +25,18 @@ describe('MyData page should work', () => {
   beforeEach(() => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
+    interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+    interceptURL('GET', '/api/v1/search/*', 'explorePageSearch');
   });
 
   const checkRecentlyViewElement = () => {
-    cy.get('[data-testid="table-data-card"]')
+    verifyResponseStatusCode('@explorePageSearch', 200);
+    cy.get('[data-testid="table-data-card"] a')
       .first()
       .should('be.visible')
-      .scrollIntoView();
-    cy.wait(500);
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-
+      .scrollIntoView()
+      .click();
+    verifyResponseStatusCode('@getEntityDetails', 200);
     cy.get('[data-testid="inactive-link"]')
       .invoke('text')
       .then((text) => {
@@ -76,23 +78,8 @@ describe('MyData page should work', () => {
 
   const followAndOwnTheEntity = (termObj) => {
     // search for the term and redirect to the respective entity tab
-    searchEntity(termObj.term);
 
-    cy.get(`[data-testid="${termObj.entity}-tab"]`)
-      .should('be.visible')
-      .click();
-
-    cy.get(`[data-testid="${termObj.entity}-tab"]`)
-      .should('be.visible')
-      .should('have.class', 'active');
-
-    // click on the 1st result and go to entity details page and follow the entity
-    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
-    cy.get('[data-testid="table-link"]')
-      .first()
-      .contains(termObj.term, { matchCase: false })
-      .click();
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
 
     interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
     cy.get('[data-testid="follow-button"]').should('be.visible').click();

@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.client_version import get_client_version
@@ -35,7 +38,6 @@ from metadata.utils.logger import cli_logger, ometa_logger
 logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
-
 RELEASE_BRANCH_VERSION = get_client_version()
 
 DOCKER_URL_ROOT = f"https://raw.githubusercontent.com/open-metadata/OpenMetadata/{RELEASE_BRANCH_VERSION}/docker/metadata/"
@@ -45,6 +47,7 @@ BACKEND_DATABASES = {
     "mysql": DEFAULT_COMPOSE_FILE,
     "postgres": "docker-compose-postgres.yml",
 }
+DEFUALT_JWT_TOKEN = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
 
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
@@ -61,7 +64,9 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
         wait_for_containers(docker)
         run_sample_data()
         metadata_config = OpenMetadataConnection(
-            hostPort="http://localhost:8585/api", authProvider="no-auth"
+            hostPort="http://localhost:8585/api",
+            authProvider="openmetadata",
+            securityConfig=OpenMetadataJWTClientConfig(jwtToken=DEFUALT_JWT_TOKEN),
         )
         ometa_logger().disabled = True
         ometa_client = OpenMetadata(metadata_config)

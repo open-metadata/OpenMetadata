@@ -32,7 +32,7 @@ pip3 install "openmetadata-ingestion[deltalake]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/deltalakeConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/deltaLakeConnection.json)
 you can find the structure to create a connection to Deltalake.
 
 In order to create and run a Metadata Ingestion workflow, we will follow

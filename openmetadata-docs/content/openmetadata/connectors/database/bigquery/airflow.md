@@ -59,7 +59,7 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/bigqueryConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json)
 you can find the structure to create a connection to BigQuery.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -604,7 +604,7 @@ workflowConfig:
 
 #### Source Configuration
 
-- You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/bigqueryConnection.json).
+- You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
 - The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
 
 Note that the filter patterns support regex as includes or excludes. E.g.,

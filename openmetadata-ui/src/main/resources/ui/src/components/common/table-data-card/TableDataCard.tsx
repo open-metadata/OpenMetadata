@@ -27,6 +27,7 @@ import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
+import { FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -38,6 +39,7 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -157,7 +159,9 @@ const TableDataCard: FunctionComponent<Props> = ({
     const title = (
       <button
         className="tw-text-grey-body tw-font-semibold"
-        data-testid="table-link"
+        data-testid={`${getPartialNameFromTableFQN(fullyQualifiedName, [
+          FqnPart.Service,
+        ])}-${getPartialNameFromTableFQN(fullyQualifiedName, [FqnPart.Table])}`}
         id={`${id}Title`}
         onClick={handleLinkClick}>
         {stringToHTML(name)}

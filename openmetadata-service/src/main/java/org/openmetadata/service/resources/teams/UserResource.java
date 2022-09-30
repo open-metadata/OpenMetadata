@@ -1330,6 +1330,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         break;
       case USERCREATE:
         sendPasswordResetLink(uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
+        break;
       default:
         LOG.error("Invalid Password Create Type");
     }
@@ -1528,7 +1529,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private void addAuthMechanismToUser(User user, @Valid CreateUser create) {
-    if (!create.getConfirmPassword().equals(create.getConfirmPassword())) {
+    if (!create.getPassword().equals(create.getConfirmPassword())) {
       throw new IllegalArgumentException("Password and Confirm Password should be same.");
     }
     PasswordUtil.validatePassword(create.getPassword());
@@ -1552,7 +1553,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return false;
     }
     if (create.getAuthenticationMechanism().getConfig() != null
-        & create.getAuthenticationMechanism().getAuthType() != null) {
+        && create.getAuthenticationMechanism().getAuthType() != null) {
       return true;
     }
     throw new IllegalArgumentException(

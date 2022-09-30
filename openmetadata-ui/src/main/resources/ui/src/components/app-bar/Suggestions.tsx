@@ -174,6 +174,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     return (
       <div
         className="tw-flex tw-items-center hover:tw-bg-body-hover"
+        data-testid={`${getPartialNameFromTableFQN(fqdn, [
+          FqnPart.Service,
+        ])}-${name}`}
         key={fqdn}>
         <img
           alt={serviceType}

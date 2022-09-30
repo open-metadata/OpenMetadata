@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { addUser, deleteSoftDeletedUser, login, restoreUser, softDeleteUser, uuid } from '../../common/common';
+import { addUser, deleteSoftDeletedUser, interceptURL, login, restoreUser, softDeleteUser, uuid, verifyResponseStatusCode } from '../../common/common';
 import { LOGIN } from '../../constants/constants';
 
 const userName = `Usercttest${uuid()}`;
@@ -29,6 +29,7 @@ describe('Users flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+    interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15', 'getUsers');
     cy.get('.ant-menu-title-content')
       .contains('Users')
       .should('exist')
@@ -41,6 +42,7 @@ describe('Users flow should work properly', () => {
     cy.get('.ant-btn').contains('Add User').click();
 
     addUser(userName, userEmail);
+    verifyResponseStatusCode('@getUsers', 200);
 
     //Validate if user is added in the User tab
 
@@ -74,6 +76,7 @@ describe('Admin flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+      interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isAdmin=true&isBot=false&limit=15', 'getAdmins');
     cy.get('.ant-menu-title-content')
       .contains('Admins')
       .should('exist')
@@ -93,6 +96,7 @@ describe('Admin flow should work properly', () => {
       .click();
 
     addUser(adminName, adminEmail);
+    verifyResponseStatusCode('@getAdmins', 200);
 
     //Validate if user is added in the User tab
 
