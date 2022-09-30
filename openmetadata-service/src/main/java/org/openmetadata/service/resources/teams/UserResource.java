@@ -22,7 +22,6 @@ import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -233,7 +232,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           Include include)
       throws IOException {
     // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
+    fieldsParam = removeUserProtectedFields(fieldsParam);
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
@@ -312,7 +311,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           Include include)
       throws IOException {
     // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
+    fieldsParam = removeUserProtectedFields(fieldsParam);
     return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
@@ -348,7 +347,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           Include include)
       throws IOException {
     // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = fieldsParam != null ? fieldsParam.replaceAll("," + USER_PROTECTED_FIELDS, "") : null;
+    fieldsParam = removeUserProtectedFields(fieldsParam);
     return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
@@ -1335,6 +1334,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         break;
       case USERCREATE:
         sendPasswordResetLink(uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
+        break;
       default:
         LOG.error("Invalid Password Create Type");
     }
@@ -1416,52 +1416,51 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
     }
-    if (isValidAuthenticationMechanism(create)) {
-      AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
-      AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
-      switch (authType) {
-        case JWT:
-          User original;
-          try {
-            original =
-                dao.getByName(
-                    uriInfo, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-          } catch (EntityNotFoundException | IOException exc) {
-            LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
-            original = null;
-          }
-          if (original != null && !secretsManager.isLocal() && authMechanism != null) {
-            original
-                .getAuthenticationMechanism()
-                .setConfig(
-                    secretsManager.encryptOrDecryptIngestionBotCredentials(
-                        user.getName(), authMechanism.getConfig(), false));
-          }
-          if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
-            JWTAuthMechanism jwtAuthMechanism =
-                JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-            authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
-          } else {
-            authMechanism = original.getAuthenticationMechanism();
-          }
-          break;
-        case SSO:
-          SSOAuthMechanism ssoAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
-          authMechanism.setConfig(ssoAuthMechanism);
-          break;
-        default:
-          throw new IllegalArgumentException(
-              String.format("Not supported authentication mechanism type: [%s]", authType.value()));
-      }
-      user.setAuthenticationMechanism(authMechanism);
-    } else {
+    if (!isValidAuthenticationMechanism(create)) {
       throw new IllegalArgumentException(
           String.format("Authentication mechanism is empty bot user: [%s]", user.getName()));
     }
+
+    AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
+    AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
+    switch (authType) {
+      case JWT:
+        User original;
+        try {
+          original =
+              dao.getByName(
+                  uriInfo, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
+        } catch (EntityNotFoundException | IOException exc) {
+          LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
+          original = null;
+        }
+        if (original != null && !secretsManager.isLocal()) {
+          original
+              .getAuthenticationMechanism()
+              .setConfig(
+                  secretsManager.encryptOrDecryptIngestionBotCredentials(
+                      user.getName(), authMechanism.getConfig(), false));
+        }
+        if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
+          JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+          authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
+        } else {
+          authMechanism = original.getAuthenticationMechanism();
+        }
+        break;
+      case SSO:
+        SSOAuthMechanism ssoAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
+        authMechanism.setConfig(ssoAuthMechanism);
+        break;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+    }
+    user.setAuthenticationMechanism(authMechanism);
   }
 
   private void addAuthMechanismToUser(User user, @Valid CreateUser create) {
-    if (!create.getConfirmPassword().equals(create.getConfirmPassword())) {
+    if (!create.getPassword().equals(create.getConfirmPassword())) {
       throw new IllegalArgumentException("Password and Confirm Password should be same.");
     }
     PasswordUtil.validatePassword(create.getPassword());
@@ -1485,7 +1484,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return false;
     }
     if (create.getAuthenticationMechanism().getConfig() != null
-        & create.getAuthenticationMechanism().getAuthType() != null) {
+        && create.getAuthenticationMechanism().getAuthType() != null) {
       return true;
     }
     throw new IllegalArgumentException(
@@ -1511,5 +1510,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return user;
     }
     return user;
+  }
+
+  private String removeUserProtectedFields(String fieldsParam) {
+    return fieldsParam != null ? fieldsParam.replace("," + USER_PROTECTED_FIELDS, "") : null;
   }
 }

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
@@ -81,7 +82,6 @@ public final class TestUtils {
   public static final String ENTITY_NAME_LENGTH_ERROR =
       String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
-  public static final String ADMIN_USER_NAME = "admin";
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String BOT_USER_NAME = "ingestion-bot";
   public static final Map<String, String> BOT_AUTH_HEADERS = authHeaders(BOT_USER_NAME + "@open-metadata.org");
