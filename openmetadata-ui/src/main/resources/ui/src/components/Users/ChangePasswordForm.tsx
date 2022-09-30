@@ -1,5 +1,7 @@
 import { Form, Input, Modal } from 'antd';
 import React from 'react';
+import { passwordErrorMessage } from '../../constants/error-message';
+import { passwordRegex } from '../../constants/regex.constants';
 import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
 
 type ChangePasswordForm = {
@@ -63,6 +65,10 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             {
               required: true,
             },
+            {
+              pattern: passwordRegex,
+              message: passwordErrorMessage,
+            },
           ]}>
           <Input.Password placeholder="Enter New Password" />
         </Form.Item>
@@ -70,9 +76,6 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
           label="Confirm New Password"
           name="confirmPassword"
           rules={[
-            {
-              required: true,
-            },
             {
               validator: (_, value) => {
                 if (value !== newPassword) {
