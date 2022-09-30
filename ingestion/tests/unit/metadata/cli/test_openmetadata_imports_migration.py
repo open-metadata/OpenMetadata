@@ -16,10 +16,11 @@ test import migration cli script
 import os
 from unittest import TestCase
 
+import pytest
+
 from metadata.cli.openmetadata_imports_migration import (
     run_openmetadata_imports_migration,
 )
-import pytest
 
 
 class TestOpenmetadataImportsMigration(TestCase):

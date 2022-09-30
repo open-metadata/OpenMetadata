@@ -64,6 +64,7 @@ def run_openmetadata_imports_migration(
                     f"Old config path found. Replaced {V115_DAG_CONFIG_PATH} with {V12_DAG_CONFIG_PATH}."
                 )
 
+            if orig_fle_data != fle_data:
                 with open(
                     os.path.join(root, filename), "w", encoding="utf-8"
                 ) as dag_file:
