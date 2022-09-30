@@ -82,9 +82,6 @@ const CreateUserPage = () => {
 
       return Boolean(response);
     } catch (_error) {
-      // eslint-disable-next-line no-console
-      console.log(_error);
-
       return false;
     }
   };
