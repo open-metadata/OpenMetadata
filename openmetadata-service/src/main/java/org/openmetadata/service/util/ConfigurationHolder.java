@@ -12,7 +12,9 @@ public class ConfigurationHolder {
     AUTHORIZERCONFIG("authorizerConfiguration"),
     AUTHENTICATIONCONFIG("authenticationConfiguration"),
     SMTPCONFIG("email"),
-    ELASTICSEARCHCONFIG("elasticsearch");
+    ELASTICSEARCHCONFIG("elasticsearch"),
+    LOGINCONFIG("login");
+
     private String value;
 
     ConfigurationType(String value) {
@@ -62,8 +64,11 @@ public class ConfigurationHolder {
               case ELASTICSEARCHCONFIG:
                 CONFIG_MAP.put(ConfigurationType.ELASTICSEARCHCONFIG, config.getElasticSearchConfiguration());
                 break;
+              case LOGINCONFIG:
+                CONFIG_MAP.put(ConfigurationType.LOGINCONFIG, config.getLoginSettings());
+                break;
               default:
-                LOG.info("Currently AuthorizerConfig, AuthenticatioConfig, SMTP and ES these can be added");
+                LOG.error("Invalid Setting Type Given.");
             }
           }
         }

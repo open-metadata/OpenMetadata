@@ -5,17 +5,38 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.service.util.ConfigurationHolder;
 
 public class LoginAttemptCache {
-  private final int MAX_ATTEMPT = 3;
+  private final int MAX_ATTEMPT;
   private final LoadingCache<String, Integer> attemptsCache;
 
   public LoginAttemptCache() {
     super();
+    LoginConfiguration loginConfiguration =
+        ConfigurationHolder.getInstance()
+            .getConfig(ConfigurationHolder.ConfigurationType.LOGINCONFIG, LoginConfiguration.class);
+    MAX_ATTEMPT = 3;
     attemptsCache =
         CacheBuilder.newBuilder()
             .maximumSize(1000)
-            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .expireAfterWrite(loginConfiguration.getAccessBlockTime(), TimeUnit.SECONDS)
+            .build(
+                new CacheLoader<>() {
+                  public Integer load(String key) {
+                    return 0;
+                  }
+                });
+  }
+
+  public LoginAttemptCache(int maxAttempt, int blockTimeInSec) {
+    super();
+    MAX_ATTEMPT = maxAttempt;
+    attemptsCache =
+        CacheBuilder.newBuilder()
+            .maximumSize(1000)
+            .expireAfterWrite(blockTimeInSec, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
                   public Integer load(String key) {
