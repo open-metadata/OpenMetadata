@@ -27,9 +27,9 @@ import org.openmetadata.service.security.AuthenticationException;
 
 @Slf4j
 public class JWTTokenGenerator {
-  private final String subjectClaim = "sub";
-  private final String emailClaim = "email";
-  private final String isBotClaim = "isBot";
+  private static final String subjectClaim = "sub";
+  private static final String emailClaim = "email";
+  private static final String isBotClaim = "isBot";
   private static JWTTokenGenerator instance = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;

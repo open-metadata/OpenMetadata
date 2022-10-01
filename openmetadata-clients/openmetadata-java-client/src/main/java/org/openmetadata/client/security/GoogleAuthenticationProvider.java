@@ -30,9 +30,9 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
   private GoogleSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
-  private final String OPENID_SCOPE = "https://www.googleapis.com/auth/plus.me";
-  private final String PROFILE_SCOPE = "https://www.googleapis.com/auth/userinfo.profile";
-  private final String EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
+  private static final String OPENID_SCOPE = "https://www.googleapis.com/auth/plus.me";
+  private static final String PROFILE_SCOPE = "https://www.googleapis.com/auth/userinfo.profile";
+  private static final String EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
 
   public GoogleAuthenticationProvider(OpenMetadataServerConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.GOOGLE)) {

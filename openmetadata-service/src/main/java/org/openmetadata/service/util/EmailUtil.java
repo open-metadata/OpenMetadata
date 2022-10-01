@@ -28,11 +28,11 @@ public class EmailUtil {
   public static final String SUPPORTURL = "supportUrl";
   public static final String EMAILTEMPLATEBASEPATH = "/emailTemplates";
   // Email Verification
-  private final String EMAILVERIFICATIONSUBJECT = "%s: Verify your Email Address (Action Required)";
+  private static final String EMAILVERIFICATIONSUBJECT = "%s: Verify your Email Address (Action Required)";
   public static final String EMAILVERIFICATIONLINKKEY = "userEmailTokenVerificationLink";
   public static final String EMAILVERIFICATIONTEMPLATEPATH = "email-verification.ftl";
   // Password Reset Link
-  private final String PASSWORDRESETSUBJECT = "%s: Reset your Password";
+  private static final String PASSWORDRESETSUBJECT = "%s: Reset your Password";
   public static final String PASSWORDRESETLINKKEY = "userResetPasswordLink";
   public static final String EXPIRATIONTIMEKEY = "expirationTime";
   public static final String DEFAULTEXPIRATIONTIME = "60";
@@ -41,12 +41,12 @@ public class EmailUtil {
 
   public static final String PASSWORDRESETTEMPLATEFILE = "reset-link.ftl";
   // Account Change Status
-  private final String ACCOUNTSTATUSSUBJECT = "%s: Change in Account Status";
+  private static final String ACCOUNTSTATUSSUBJECT = "%s: Change in Account Status";
   public static final String ACTIONKEY = "action";
   public static final String ACTIONSTATUSKEY = "actionStatus";
   public static final String ACCOUNTSTATUSTEMPLATEFILE = "account-activity-change.ftl";
 
-  private final String INVITE_SUBJECT = "Welcome to %s";
+  private static final String INVITE_SUBJECT = "Welcome to %s";
 
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";

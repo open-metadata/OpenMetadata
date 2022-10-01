@@ -77,8 +77,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
-  private final String COLONDELIMETER = ":";
-  private final String DEFAULT_ADMIN = ADMIN_USER_NAME;
+  private static final String COLONDELIMETER = ":";
+  private static final String DEFAULT_ADMIN = ADMIN_USER_NAME;
   private Set<String> adminUsers;
   private Set<String> botPrincipalUsers;
   private Set<String> testUsers;
