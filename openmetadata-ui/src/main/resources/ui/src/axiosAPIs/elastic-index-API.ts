@@ -27,11 +27,17 @@ export const getAllReIndexStatus = async (mode: RunMode) => {
   return res.data;
 };
 
-export const reIndexByPublisher = async (runMode: RunMode) => {
+export const reIndexByPublisher = async ({
+  runMode,
+  entities = ['all'],
+  recreateIndex = true,
+}: CreateEventPublisherJob) => {
   const payload = {
     publisherType: PublisherType.ElasticSearch,
     runMode,
-  } as CreateEventPublisherJob;
+    recreateIndex,
+    entities,
+  };
 
   const res = await axiosClient.post('/indexResource/reindex', payload);
 
