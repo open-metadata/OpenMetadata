@@ -267,6 +267,8 @@ public class EmailUtil {
   }
 
   public static class EmailUtilBuilder {
+    private EmailUtilBuilder() {}
+
     public static EmailUtil build(SmtpSettings smtpServerSettings) {
       if (INSTANCE == null) {
         INSTANCE = new EmailUtil(smtpServerSettings);
