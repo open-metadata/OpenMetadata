@@ -31,6 +31,7 @@ const mockProps = {
   entityId: 'string-id',
   entityType: 'table',
   entityFQN: 'x.y.z',
+  canDelete: true,
   isRecursiveDelete: true,
   deleteMessage: 'string',
   onAnnouncementClick: mockAnnouncementClick,
