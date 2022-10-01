@@ -62,22 +62,21 @@ public final class ElasticSearchClientUtils {
   private static SSLContext createSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
       throws KeyStoreException {
 
-    if (elasticSearchConfiguration.getScheme().equals("https")) {
-      if (elasticSearchConfiguration.getTruststorePath() != null
-          && !elasticSearchConfiguration.getTruststorePath().isEmpty()) {
-        Path trustStorePath = Paths.get(elasticSearchConfiguration.getTruststorePath());
-        KeyStore truststore = KeyStore.getInstance("jks");
-        try (InputStream is = Files.newInputStream(trustStorePath)) {
-          truststore.load(is, elasticSearchConfiguration.getTruststorePassword().toCharArray());
-          SSLContextBuilder sslBuilder = SSLContexts.custom().loadTrustMaterial(truststore, null);
-          return sslBuilder.build();
-        } catch (IOException
-            | NoSuchAlgorithmException
-            | CertificateException
-            | KeyStoreException
-            | KeyManagementException e) {
-          throw new RuntimeException("Failed to crete SSLContext to for ElasticSearch Client", e);
-        }
+    if (elasticSearchConfiguration.getScheme().equals("https")
+        && elasticSearchConfiguration.getTruststorePath() != null
+        && !elasticSearchConfiguration.getTruststorePath().isEmpty()) {
+      Path trustStorePath = Paths.get(elasticSearchConfiguration.getTruststorePath());
+      KeyStore truststore = KeyStore.getInstance("jks");
+      try (InputStream is = Files.newInputStream(trustStorePath)) {
+        truststore.load(is, elasticSearchConfiguration.getTruststorePassword().toCharArray());
+        SSLContextBuilder sslBuilder = SSLContexts.custom().loadTrustMaterial(truststore, null);
+        return sslBuilder.build();
+      } catch (IOException
+          | NoSuchAlgorithmException
+          | CertificateException
+          | KeyStoreException
+          | KeyManagementException e) {
+        throw new RuntimeException("Failed to crete SSLContext to for ElasticSearch Client", e);
       }
     }
     return null;

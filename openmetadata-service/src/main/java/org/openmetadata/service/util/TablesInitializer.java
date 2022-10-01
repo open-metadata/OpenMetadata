@@ -312,16 +312,16 @@ public final class TablesInitializer {
 
   private static void printToConsoleInDebug(String message) {
     if (DEBUG_MODE) {
-      logger.log(message);
+      System.out.println(message);
     }
   }
 
   private static void printError(String message) {
-    logger.log(message);
+    System.err.println(message);
   }
 
   private static void printToConsoleMandatory(String message) {
-    logger.log(message);
+    System.out.println(message);
   }
 
   private static void createIngestionBot(OpenMetadataApplicationConfig config, Jdbi jdbi) {

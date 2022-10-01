@@ -426,11 +426,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
                 .withUsername(securityContext.getUserPrincipal().getName())
                 .withToken(request.getToken())
                 .withLogoutTime(logoutTime));
-    if (isBasicAuth()) {
+    if (isBasicAuth() && request.getRefreshToken() != null) {
       // need to clear the refresh token as well
-      if (request.getRefreshToken() != null) {
-        tokenRepository.deleteToken(request.getRefreshToken());
-      }
+      tokenRepository.deleteToken(request.getRefreshToken());
     }
     return Response.status(200).entity("Logout Successful").build();
   }
@@ -1441,16 +1439,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String botName = create.getBotName();
     EntityInterface bot = retrieveBot(botName);
     // check if the bot user exists
-    if (!botHasRelationshipWithUser(bot, original)) {
+    if (!botHasRelationshipWithUser(bot, original)
+        && original != null
+        && userHasRelationshipWithAnyBot(original, bot)) {
       // throw an exception if user already has a relationship with a bot
-      if (original != null && userHasRelationshipWithAnyBot(original, bot)) {
-        List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
-        bot =
-            Entity.getEntityRepository(Entity.BOT)
-                .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
-        throw new IllegalArgumentException(
-            String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
-      }
+      List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
+      bot =
+          Entity.getEntityRepository(Entity.BOT)
+              .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
+      throw new IllegalArgumentException(
+          String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
     }
     addAuthMechanismToBot(user, create, uriInfo);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
