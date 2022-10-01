@@ -71,24 +71,21 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
 
   @Override
   public void validateCreatedEntity(
-      TestDefinition createdEntity, CreateTestDefinition request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      TestDefinition createdEntity, CreateTestDefinition request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
     assertEquals(request.getTestPlatforms(), createdEntity.getTestPlatforms());
   }
 
   @Override
-  public void compareEntities(TestDefinition expected, TestDefinition updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(TestDefinition expected, TestDefinition updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDescription(), updated.getDescription());
     assertEquals(expected.getTestPlatforms(), updated.getTestPlatforms());
   }
 
   @Override
-  public TestDefinition validateGetWithDifferentFields(TestDefinition entity, boolean byName)
-      throws HttpResponseException {
+  public TestDefinition validateGetWithDifferentFields(TestDefinition entity, boolean byName) {
     return null;
   }
 

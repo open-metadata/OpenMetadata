@@ -80,7 +80,7 @@ public class SettingsCache {
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
-    public Settings load(@CheckForNull String settingsName) throws IOException {
+    public Settings load(@CheckForNull String settingsName) {
       Settings setting = SETTINGS_REPOSITORY.getConfigWithKey(settingsName);
       LOG.info("Loaded Setting {}", setting.getConfigType());
       return setting;

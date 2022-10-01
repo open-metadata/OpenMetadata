@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public class OpenMetadataServerHealthCheck extends HealthCheck {
 
   @Override
-  protected Result check() throws Exception {
+  protected Result check() {
     return Result.healthy();
   }
 }

@@ -418,8 +418,6 @@ public final class JsonUtils {
 
   /**
    * Serialize object removing all the fields annotated with @{@link MaskedField}
-   *
-   * @return Serialized JSON string
    */
   public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
     return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
@@ -427,8 +425,6 @@ public final class JsonUtils {
 
   /**
    * Serialize object removing all the fields annotated with @{@link ExposedField}
-   *
-   * @return Object if the serialization of `entity` does not result in an empty JSON string.
    */
   public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
     String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
@@ -450,11 +446,6 @@ public final class JsonUtils {
 
   /**
    * Compared the canonicalized JSON representation of two object to check if they are equals or not
-   *
-   * @param obj1
-   * @param obj2
-   * @return True if the representations are equal, otherwise, false
-   * @throws JsonProcessingException if the Object mapper fails
    */
   public static boolean areEquals(Object obj1, Object obj2) throws JsonProcessingException {
     ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();

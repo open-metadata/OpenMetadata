@@ -21,17 +21,17 @@ public class ThreadResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getOwner() throws IOException {
+  public EntityReference getOwner() {
     return owner;
   }
 
   @Override
-  public List<TagLabel> getTags() throws IOException {
+  public List<TagLabel> getTags() {
     return null;
   }
 
   @Override
-  public EntityInterface getEntity() throws IOException {
+  public EntityInterface getEntity() {
     return null;
   }
 }

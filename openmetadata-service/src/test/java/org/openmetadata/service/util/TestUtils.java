@@ -101,7 +101,7 @@ public final class TestUtils {
   public static MessagingConnection KAFKA_CONNECTION;
   public static DashboardConnection SUPERSET_CONNECTION;
 
-  public static MlModelConnection MLFLOW_CONNECTION;
+  public static final MlModelConnection MLFLOW_CONNECTION;
 
   public static URI PIPELINE_URL;
 

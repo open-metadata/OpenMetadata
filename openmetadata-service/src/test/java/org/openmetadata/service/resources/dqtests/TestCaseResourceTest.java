@@ -523,8 +523,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Override
-  public void validateCreatedEntity(TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders) {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getEntityLink(), createdEntity.getEntityLink());
     assertEquals(request.getTestSuite(), createdEntity.getTestSuite());
@@ -534,8 +533,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Override
-  public void compareEntities(TestCase expected, TestCase updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(TestCase expected, TestCase updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(expected, updated, getPrincipalName(authHeaders));
     assertEquals(expected.getEntityLink(), updated.getEntityLink());
     assertEquals(expected.getTestSuite(), updated.getTestSuite());
@@ -545,13 +543,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Override
-  public TestCase validateGetWithDifferentFields(TestCase entity, boolean byName) throws HttpResponseException {
+  public TestCase validateGetWithDifferentFields(TestCase entity, boolean byName) {
     // TODO fix this
     return null;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

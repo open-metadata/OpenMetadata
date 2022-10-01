@@ -171,14 +171,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   public UserResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(User.class, new UserRepository(dao, secretsManager), authorizer);
-    jwtTokenGenerator = JWTTokenGenerator.getInstance();
+    jwtTokenGenerator = JWTTokenGenerator.getINSTANCE();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
     userRepository = new UserRepository(dao, secretsManager);
     this.secretsManager = secretsManager;
     this.providerType =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
             .getProvider();
     this.isEmailServiceEnabled =
         ConfigurationHolder.getInstance()
@@ -789,7 +789,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
     if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
         .getEnableSelfSignup()) {
       User registeredUser = registerUser(uriInfo, create);
       if (isEmailServiceEnabled) {
@@ -876,7 +876,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
+  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
@@ -1206,7 +1206,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String emailDomain = tokens[1];
     Set<String> allowedDomains =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZERCONFIG, AuthorizerConfiguration.class)
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
             .getAllowedEmailRegistrationDomains();
     if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
       LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
@@ -1217,7 +1217,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
     User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
     if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZERCONFIG, AuthorizerConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
         .getAdminPrincipals()
         .contains(userName)) {
       newUser.setIsAdmin(true);

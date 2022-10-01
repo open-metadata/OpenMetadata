@@ -53,7 +53,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Test
-  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
+  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) {
     // PUT based updates are categorized as create operation
     // PUT from a bot to update itself is rejected because of that
     // TODO turning off the test for now which requires BOT to make update using PUT
@@ -90,7 +90,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Test
-  void put_failIfUserIsNotBot(TestInfo test) throws IOException {
+  void put_failIfUserIsNotBot(TestInfo test) {
     // create a non bot user
     User testUser = new UserResourceTest().createUser("bot-test-user", false);
     EntityReference userRef = Objects.requireNonNull(testUser).getEntityReference();
@@ -125,23 +125,22 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
 
   @SneakyThrows // TODO remove
   @Override
-  public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders) {
     assertReference(request.getBotUser(), entity.getBotUser());
   }
 
   @Override
-  public void compareEntities(Bot expected, Bot updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Bot expected, Bot updated, Map<String, String> authHeaders) {
     assertReference(expected.getBotUser(), updated.getBotUser());
   }
 
   @Override
-  public Bot validateGetWithDifferentFields(Bot entity, boolean byName) throws HttpResponseException {
+  public Bot validateGetWithDifferentFields(Bot entity, boolean byName) {
     return entity; // TODO cleanup
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   private void createUser() {
     botUser = new UserResourceTest().createUser("botUser", true);

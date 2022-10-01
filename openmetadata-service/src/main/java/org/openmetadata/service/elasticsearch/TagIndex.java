@@ -9,13 +9,13 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TagIndex implements ElasticSearchIndex {
-  Tag tag;
+  final Tag tag;
 
   public TagIndex(Tag tag) {
     this.tag = tag;
   }
 
-  public Map<String, Object> buildESDoc() throws JsonProcessingException {
+  public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(tag);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(tag.getFullyQualifiedName()).weight(5).build());

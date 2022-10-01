@@ -3096,12 +3096,10 @@ public interface CollectionDAO {
       settings.setConfigType(configType);
       Object value = null;
       try {
-        switch (configType) {
-          case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-            break;
-          default:
-            throw new RuntimeException("Invalid Settings Type");
+        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
+          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+        } else {
+          throw new RuntimeException("Invalid Settings Type");
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

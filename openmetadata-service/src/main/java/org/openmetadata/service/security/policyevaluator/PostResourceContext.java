@@ -9,7 +9,7 @@ import org.openmetadata.service.Entity;
 
 /** Posts that are part of conversation threads require special handling */
 public class PostResourceContext implements ResourceContextInterface {
-  private EntityReference owner;
+  private final EntityReference owner;
 
   public PostResourceContext(EntityReference owner) {
     this.owner = owner;
@@ -21,17 +21,17 @@ public class PostResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getOwner() throws IOException {
+  public EntityReference getOwner() {
     return owner;
   }
 
   @Override
-  public List<TagLabel> getTags() throws IOException {
+  public List<TagLabel> getTags() {
     return null;
   }
 
   @Override
-  public EntityInterface getEntity() throws IOException {
+  public EntityInterface getEntity() {
     return null;
   }
 }

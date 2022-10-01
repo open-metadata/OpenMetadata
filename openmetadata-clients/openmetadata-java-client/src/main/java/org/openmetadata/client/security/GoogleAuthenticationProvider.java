@@ -26,8 +26,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerC
 
 @Slf4j
 public class GoogleAuthenticationProvider implements AuthenticationProvider {
-  private OpenMetadataServerConnection serverConfig;
-  private GoogleSSOClientConfig securityConfig;
+  private final GoogleSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
   private static final String OPENID_SCOPE = "https://www.googleapis.com/auth/plus.me";
@@ -39,7 +38,6 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
       LOG.error("Required type to invoke is Google for GoogleAuthentication Provider");
       throw new RuntimeException("Required type to invoke is Google for GoogleAuthentication Provider");
     }
-    serverConfig = iConfig;
 
     securityConfig = (GoogleSSOClientConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {

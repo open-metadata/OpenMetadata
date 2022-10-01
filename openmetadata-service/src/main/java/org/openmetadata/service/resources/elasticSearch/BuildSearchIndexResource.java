@@ -91,7 +91,7 @@ public class BuildSearchIndexResource {
         ElasticSearchClientUtils.createElasticSearchClient(
             ConfigurationHolder.getInstance()
                 .getConfig(
-                    ConfigurationHolder.ConfigurationType.ELASTICSEARCHCONFIG, ElasticSearchConfiguration.class));
+                    ConfigurationHolder.ConfigurationType.ELASTICSEARCH_CONFIG, ElasticSearchConfiguration.class));
     this.dao = dao;
     this.authorizer = authorizer;
     this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
@@ -235,7 +235,6 @@ public class BuildSearchIndexResource {
 
     // Update Listener for only Batch
     BulkProcessorListener bulkProcessorListener = new BulkProcessorListener(dao);
-    ;
     BulkProcessor processor = getBulkProcessor(bulkProcessorListener);
 
     try {

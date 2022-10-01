@@ -68,7 +68,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   public static Tag ADDRESS_TAG;
 
   @BeforeAll
-  public static void setup() throws HttpResponseException, JsonProcessingException {
+  public static void setup() throws HttpResponseException {
     new TagResourceTest().setupTags();
   }
 
