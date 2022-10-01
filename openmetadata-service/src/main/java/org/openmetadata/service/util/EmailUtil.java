@@ -28,7 +28,7 @@ public class EmailUtil {
   public static final String SUPPORTURL = "supportUrl";
   public static final String EMAILTEMPLATEBASEPATH = "/emailTemplates";
   // Email Verification
-  private static final  String EMAILVERIFICATIONSUBJECT = "%s: Verify your Email Address (Action Required)";
+  private static final String EMAILVERIFICATIONSUBJECT = "%s: Verify your Email Address (Action Required)";
   public static final String EMAILVERIFICATIONLINKKEY = "userEmailTokenVerificationLink";
   public static final String EMAILVERIFICATIONTEMPLATEPATH = "email-verification.ftl";
   // Password Reset Link
