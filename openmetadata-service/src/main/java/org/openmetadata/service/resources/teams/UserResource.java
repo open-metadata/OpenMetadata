@@ -1439,7 +1439,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String botName = create.getBotName();
     EntityInterface bot = retrieveBot(botName);
     // check if the bot user exists
-    if (!botHasRelationshipWithUser(bot, original) && original != null && userHasRelationshipWithAnyBot(original, bot)) {
+    if (!botHasRelationshipWithUser(bot, original)
+        && original != null
+        && userHasRelationshipWithAnyBot(original, bot)) {
       // throw an exception if user already has a relationship with a bot
       List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
       bot =

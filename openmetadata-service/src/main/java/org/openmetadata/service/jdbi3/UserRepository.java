@@ -349,7 +349,9 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange("authenticationMechanism", original.getAuthenticationMechanism(), "new-encrypted-value");
-      } else if (origAuthMechanism != null && updatedAuthMechanism != null && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
+      } else if (origAuthMechanism != null
+          && updatedAuthMechanism != null
+          && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
         recordChange("authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
       }
     }
