@@ -6,6 +6,15 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.Bot",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "botType": {
+      "javaType": "org.openmetadata.schema.entity.BotType",
+      "description": "Type of bot",
+      "type": "string",
+      "enum": ["bot", "ingestion-bot"],
+      "default": "bot"
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of a bot instance.",
@@ -30,6 +39,10 @@
     "botUser" : {
       "description": "Bot user created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
       "$ref" : "../type/entityReference.json"
+    },
+    "botType" : {
+      "$ref": "#/definitions/botType",
+      "default": "bot"
     },
     "version": {
       "description": "Metadata version of the entity.",

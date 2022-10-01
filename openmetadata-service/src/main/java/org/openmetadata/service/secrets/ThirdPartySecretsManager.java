@@ -13,19 +13,34 @@
 
 package org.openmetadata.service.secrets;
 
+import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.List;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ThirdPartySecretsManager extends SecretsManager {
   public static final String DATABASE_METADATA_PIPELINE_SECRET_ID_PREFIX = "database-metadata-pipeline";
   public static final String TEST_CONNECTION_TEMP_SECRET_ID_PREFIX = "test-connection-temp";
+  public static final String BOT_USER_PREFIX = "bot-user";
   public static final String BOT_PREFIX = "bot";
+  public static final String AUTH_PROVIDER = "auth-provider";
   public static final String NULL_SECRET_STRING = "null";
 
   protected ThirdPartySecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
@@ -70,9 +85,49 @@ public abstract class ThirdPartySecretsManager extends SecretsManager {
   }
 
   @Override
-  public Object encryptOrDecryptIngestionBotCredentials(String botName, Object securityConfig, boolean encrypt) {
-    String secretName = buildSecretId(BOT_PREFIX, botName);
+  public Object encryptOrDecryptBotUserCredentials(String botUserName, Object securityConfig, boolean encrypt) {
+    String secretName = buildSecretId(BOT_USER_PREFIX, botUserName);
     return encryptOrDecryptObject(securityConfig, encrypt, secretName);
+  }
+
+  // TODO: move this logic outside secrets manager
+  public Object encryptOrDecryptBotCredentials(String botName, String botUserName, boolean encrypt) {
+    String secretName = buildSecretId(BOT_PREFIX, botName);
+    if (encrypt) {
+      try {
+        // save bot user auth config
+        Object authConfig = encryptOrDecryptBotUserCredentials(botUserName, null, false);
+        // save bot user auth provider
+        User botUser =
+            UserRepository.class
+                .cast(Entity.getEntityRepository(Entity.USER))
+                .getByName(null, botUserName, new EntityUtil.Fields(List.of("authenticationMechanism")));
+        AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
+        if (authMechanism != null) {
+          String authProviderSecretName = buildSecretId(BOT_PREFIX, botName, AUTH_PROVIDER);
+          String authProvider = null;
+          if (JWT.equals(authMechanism.getAuthType())) {
+            JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authConfig, JWTAuthMechanism.class);
+            encryptOrDecryptObject(
+                new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken()), true, secretName);
+            authProvider = OpenMetadataServerConnection.AuthProvider.OPENMETADATA.value();
+          } else if (authConfig != null && SSO.equals(authMechanism.getAuthType())) {
+            encryptOrDecryptObject(
+                JsonUtils.convertValue(authConfig, SSOAuthMechanism.class).getAuthConfig(), true, secretName);
+            authProvider =
+                OpenMetadataServerConnection.AuthProvider.fromValue(
+                        (String) JsonUtils.getMap(authConfig).get("ssoServiceType"))
+                    .value();
+          }
+          encryptOrDecryptObject(authProvider, true, authProviderSecretName);
+        }
+      } catch (Exception e) {
+        throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
+      }
+    } else {
+      return encryptOrDecryptObject(null, false, secretName);
+    }
+    return null;
   }
 
   @Override
@@ -82,10 +137,10 @@ public abstract class ThirdPartySecretsManager extends SecretsManager {
   }
 
   @Nullable
-  private Object encryptOrDecryptObject(Object securityConfig, boolean encrypt, String secretName) {
+  private Object encryptOrDecryptObject(Object objectValue, boolean encrypt, String secretName) {
     try {
       if (encrypt) {
-        String securityConfigJson = JsonUtils.pojoToJson(securityConfig);
+        String securityConfigJson = JsonUtils.pojoToJson(objectValue);
         upsertSecret(secretName, securityConfigJson);
         return null;
       } else {
