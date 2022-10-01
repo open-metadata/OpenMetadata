@@ -75,6 +75,8 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.Nullable;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -99,6 +101,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -112,6 +115,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -145,6 +149,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private final String providerType;
 
+  private final LoginAttemptCache loginAttemptCache;
+
   @Override
   public User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
@@ -166,6 +172,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         ConfigurationHolder.getInstance()
             .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
             .getProvider();
+    this.loginAttemptCache = new LoginAttemptCache();
   }
 
   public static class UserList extends ResultList<User> {
@@ -231,8 +238,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = removeUserProtectedFields(fieldsParam);
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
@@ -310,8 +315,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = removeUserProtectedFields(fieldsParam);
     return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
@@ -346,8 +349,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    // remove USER_PROTECTED_FIELDS from fieldsParam
-    fieldsParam = removeUserProtectedFields(fieldsParam);
     return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
@@ -552,11 +553,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
-      addAuthMechanismToBot(user, create, uriInfo);
+      return createOrUpdateBot(user, create, uriInfo, securityContext);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
-    decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
 
@@ -939,20 +939,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     tokenRepository.deleteTokenByUserAndType(storedUser.getId().toString(), PASSWORD_RESET.toString());
     // Update user about Password Change
     try {
-      Map<String, String> templatePopulator = new HashMap<>();
-      templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-      templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
-      templatePopulator.put(EmailUtil.USERNAME, storedUser.getName());
-      templatePopulator.put(EmailUtil.ACTIONKEY, "Update Password");
-      templatePopulator.put(EmailUtil.ACTIONSTATUSKEY, "Change Successful");
-
-      EmailUtil.getInstance()
-          .sendMail(
-              EmailUtil.getInstance().getAccountStatusChangeSubject(),
-              templatePopulator,
-              storedUser.getEmail(),
-              EmailUtil.EMAILTEMPLATEBASEPATH,
-              EmailUtil.ACCOUNTSTATUSTEMPLATEFILE);
+      sendAccountStatus(storedUser, "Update Password", "Change Successful");
     } catch (Exception ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage());
       return Response.status(424)
@@ -960,6 +947,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               "Password updated successfully. There is some problem in sending mail. Please contact your administrator.")
           .build();
     }
+    loginAttemptCache.recordSuccessfulLogin(request.getUsername());
     return Response.status(response.getStatus()).entity("Password Changed Successfully").build();
   }
 
@@ -1000,6 +988,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
         dao.createOrUpdate(uriInfo, storedUser);
         // it has to be 200 since we already fetched user , and we don't want to return any other data
+        // remove login/details from cache
+        loginAttemptCache.recordSuccessfulLogin(securityContext.getUserPrincipal().getName());
         return Response.status(200).entity("Password Updated Successfully").build();
       } else {
         return Response.status(403).entity(new ErrorMessage(403, "Old Password is not correct")).build();
@@ -1014,6 +1004,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       storedBasicAuthMechanism.setPassword(newHashedPassword);
       storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
       RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, storedUser);
+      // remove login/details from cache
+      loginAttemptCache.recordSuccessfulLogin(request.getUsername());
       try {
         sendInviteMailToUser(
             uriInfo,
@@ -1083,41 +1075,55 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
-      throws IOException {
+      throws IOException, TemplateException {
     String userName =
         loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
 
-    User storedUser;
-    try {
-      storedUser = dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-    } catch (IOException ex) {
-      throw new BadRequestException("You have entered an invalid username or password.");
-    }
+    if (!loginAttemptCache.isLoginBlocked(userName)) {
+      User storedUser;
+      try {
+        storedUser =
+            dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+      } catch (IOException ex) {
+        throw new BadRequestException("You have entered an invalid username or password.");
+      }
 
-    if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
-      throw new IllegalArgumentException("You have entered an invalid username or password.");
-    }
+      if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
+        throw new IllegalArgumentException("You have entered an invalid username or password.");
+      }
 
-    LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
-    String requestPassword = loginRequest.getPassword();
-    String storedHashPassword = storedData.get("password");
-    if (BCrypt.verifyer().verify(requestPassword.toCharArray(), storedHashPassword).verified) {
-      // successfully verified create a jwt token for frontend
-      RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
-      JWTAuthMechanism jwtAuthMechanism =
-          jwtTokenGenerator.generateJWTToken(
-              storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+      LinkedHashMap<String, String> storedData =
+          (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
+      String requestPassword = loginRequest.getPassword();
+      String storedHashPassword = storedData.get("password");
+      if (BCrypt.verifyer().verify(requestPassword.toCharArray(), storedHashPassword).verified) {
+        // successfully verified create a jwt token for frontend
+        RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
+        JWTAuthMechanism jwtAuthMechanism =
+            jwtTokenGenerator.generateJWTToken(
+                storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
 
-      JwtResponse response = new JwtResponse();
-      response.setTokenType("Bearer");
-      response.setAccessToken(jwtAuthMechanism.getJWTToken());
-      response.setRefreshToken(refreshToken.getToken().toString());
-      response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
-      return Response.status(200).entity(response).build();
+        JwtResponse response = new JwtResponse();
+        response.setTokenType("Bearer");
+        response.setAccessToken(jwtAuthMechanism.getJWTToken());
+        response.setRefreshToken(refreshToken.getToken().toString());
+        response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
+        return Response.status(200).entity(response).build();
+      } else {
+        loginAttemptCache.recordFailedLogin(userName);
+        int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(userName);
+        if (failedLoginAttempt == 3) {
+          // send a mail to the user
+          sendAccountStatus(
+              storedUser, "Multiple Failed Login Attempts.", "Login Blocked for 10 mins. Please change your password.");
+        }
+        return Response.status(403)
+            .entity(new ErrorMessage(403, "You have entered an invalid username or password."))
+            .build();
+      }
     } else {
-      return Response.status(403)
-          .entity(new ErrorMessage(403, "You have entered an invalid username or password."))
+      return Response.status(500)
+          .entity(new ErrorMessage(500, "Failed Login Attempts Exceeded. Please try after some time."))
           .build();
     }
   }
@@ -1210,7 +1216,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (emailVerificationToken == null) {
       throw new EntityNotFoundException("Invalid Token. Please issue a new Request");
     }
-    User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("*"));
+    User registeredUser =
+        dao.get(uriInfo, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (registeredUser.getIsEmailVerified()) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
@@ -1279,6 +1286,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // insert the token
     tokenRepository.insertToken(emailVerificationToken);
+  }
+
+  private void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
+    Map<String, String> templatePopulator = new HashMap<>();
+    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.USERNAME, user.getName());
+    templatePopulator.put(EmailUtil.ACTIONKEY, action);
+    templatePopulator.put(EmailUtil.ACTIONSTATUSKEY, status);
+    EmailUtil.getInstance()
+        .sendMail(
+            EmailUtil.getInstance().getAccountStatusChangeSubject(),
+            templatePopulator,
+            user.getEmail(),
+            EmailUtil.EMAILTEMPLATEBASEPATH,
+            EmailUtil.ACCOUNTSTATUSTEMPLATEFILE);
   }
 
   private void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
@@ -1412,51 +1435,110 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
+  private Response createOrUpdateBot(User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext)
+      throws IOException {
+    User original = retrieveBotUser(user, uriInfo);
+    String botName = create.getBotName();
+    EntityInterface bot = retrieveBot(botName);
+    // check if the bot user exists
+    if (!botHasRelationshipWithUser(bot, original)) {
+      // throw an exception if user already has a relationship with a bot
+      if (original != null && userHasRelationshipWithAnyBot(original, bot)) {
+        List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
+        bot =
+            Entity.getEntityRepository(Entity.BOT)
+                .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
+        throw new IllegalArgumentException(
+            String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
+      }
+    }
+    addAuthMechanismToBot(user, create, uriInfo);
+    RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
+    decryptOrNullify(securityContext, response.getEntity());
+    return response.toResponse();
+  }
+
+  private EntityInterface retrieveBot(String botName) {
+    try {
+      return Entity.getEntityRepository(Entity.BOT).getByName(null, botName, Fields.EMPTY_FIELDS);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
+    List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
+    return !userBotRelationship.isEmpty()
+        && (botUser == null
+            || (userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId()))));
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
+    return dao.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+  }
+
+  private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
+    if (bot == null || user == null) {
+      return false;
+    }
+    List<CollectionDAO.EntityRelationshipRecord> botUserRelationships = retrieveBotRelationshipsFor(bot);
+    return !botUserRelationships.isEmpty() && botUserRelationships.get(0).getId().equals(user.getId());
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(EntityInterface bot) {
+    return dao.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
+  }
+
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
     }
-    if (!isValidAuthenticationMechanism(create)) {
+    if (isValidAuthenticationMechanism(create)) {
+      AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
+      AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
+      switch (authType) {
+        case JWT:
+          User original = retrieveBotUser(user, uriInfo);
+          if (original != null && !secretsManager.isLocal() && authMechanism.getConfig() != null) {
+            original
+                .getAuthenticationMechanism()
+                .setConfig(
+                    secretsManager.encryptOrDecryptBotUserCredentials(
+                        user.getName(), authMechanism.getConfig(), false));
+          }
+          if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
+            JWTAuthMechanism jwtAuthMechanism =
+                JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+            authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
+          } else {
+            authMechanism = original.getAuthenticationMechanism();
+          }
+          break;
+        case SSO:
+          SSOAuthMechanism ssoAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
+          authMechanism.setConfig(ssoAuthMechanism);
+          break;
+        default:
+          throw new IllegalArgumentException(
+              String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+      }
+      user.setAuthenticationMechanism(authMechanism);
+    } else {
       throw new IllegalArgumentException(
           String.format("Authentication mechanism is empty bot user: [%s]", user.getName()));
     }
+  }
 
-    AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
-    AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
-    switch (authType) {
-      case JWT:
-        User original;
-        try {
-          original =
-              dao.getByName(
-                  uriInfo, user.getFullyQualifiedName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-        } catch (EntityNotFoundException | IOException exc) {
-          LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
-          original = null;
-        }
-        if (original != null && !secretsManager.isLocal()) {
-          original
-              .getAuthenticationMechanism()
-              .setConfig(
-                  secretsManager.encryptOrDecryptIngestionBotCredentials(
-                      user.getName(), authMechanism.getConfig(), false));
-        }
-        if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
-          JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-          authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
-        } else {
-          authMechanism = original.getAuthenticationMechanism();
-        }
-        break;
-      case SSO:
-        SSOAuthMechanism ssoAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
-        authMechanism.setConfig(ssoAuthMechanism);
-        break;
-      default:
-        throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+  @Nullable
+  private User retrieveBotUser(User user, UriInfo uriInfo) {
+    User original;
+    try {
+      original = dao.getByName(uriInfo, user.getFullyQualifiedName(), new Fields(List.of("authenticationMechanism")));
+    } catch (EntityNotFoundException | IOException exc) {
+      LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
+      original = null;
     }
-    user.setAuthenticationMechanism(authMechanism);
+    return original;
   }
 
   private void addAuthMechanismToUser(User user, @Valid CreateUser create) {
@@ -1505,14 +1587,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       user.getAuthenticationMechanism()
           .setConfig(
-              secretsManager.encryptOrDecryptIngestionBotCredentials(
+              secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), false));
       return user;
     }
     return user;
-  }
-
-  private String removeUserProtectedFields(String fieldsParam) {
-    return fieldsParam != null ? fieldsParam.replace("," + USER_PROTECTED_FIELDS, "") : null;
   }
 }

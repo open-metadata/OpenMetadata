@@ -30,6 +30,10 @@
       "description": "When true indicates user is a bot with appropriate privileges",
       "type": "boolean"
     },
+    "botName": {
+      "description": "User bot name if we want to associate this bot with an specific bot",
+      "type": "string"
+    },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges",
       "type": "boolean",

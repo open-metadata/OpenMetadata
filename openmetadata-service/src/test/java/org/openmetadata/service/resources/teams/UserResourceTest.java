@@ -31,6 +31,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -61,9 +62,11 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -71,6 +74,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -89,6 +93,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
@@ -520,6 +525,28 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void patch_teamAddition_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    EntityReference team1 =
+        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
+    User user =
+        createEntity(
+            createRequest(test, 10)
+                .withName("testUser1")
+                .withDisplayName("displayName")
+                .withEmail("testUser1@email.com"),
+            authHeaders("test1@email.com"));
+    String userJson = JsonUtils.pojoToJson(user);
+    List<EntityReference> teams = user.getTeams();
+    teams.add(team1);
+    user.setTeams(teams); // Update the teams
+    user = patchEntity(user.getId(), userJson, user, ADMIN_AUTH_HEADERS); // Patch the user
+    // Ensure default "Organization" team is not part of the patch response
+    assertEquals(1, user.getTeams().size());
+    assertEquals(team1.getId(), user.getTeams().get(0).getId());
+  }
+
+  @Test
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
@@ -698,6 +725,41 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF, DATA_STEWARD_ROLE_REF), user_team21.getInheritedRoles());
   }
 
+  @Test
+  void put_failIfBotUserIsAlreadyAssignedToAnotherBot(TestInfo test) throws HttpResponseException {
+    BotResourceTest botResourceTest = new BotResourceTest();
+    String botName = "test-bot-user-fail";
+    // create bot user
+    CreateUser createBotUser = creatBotUserRequest("test-bot-user", true).withBotName(botName);
+    User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
+    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
+    // assign bot user to a bot
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    // put user with a different bot name
+    CreateUser createWrongBotUser = creatBotUserRequest("test-bot-user", true).withBotName("test-bot-user-fail-2");
+    assertResponse(
+        () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        String.format("Bot user [test-bot-user] is already used by [%s] bot.", botName));
+  }
+
+  @Test
+  void put_ok_ifBotUserIsBotUserOfBot(TestInfo test) throws HttpResponseException {
+    BotResourceTest botResourceTest = new BotResourceTest();
+    String botName = "test-bot-ok";
+    // create bot user
+    CreateUser createBotUser = creatBotUserRequest("test-bot-user-ok", true).withBotName(botName);
+    User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
+    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
+    // assign bot user to a bot
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    // put again user with same bot name
+    CreateUser createDifferentBotUser = creatBotUserRequest("test-bot-user-ok", true).withBotName(botName);
+    updateEntity(createDifferentBotUser, OK, ADMIN_AUTH_HEADERS);
+  }
+
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -793,6 +855,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     }
     if (expectedTeams.isEmpty()) {
       expectedTeams = new ArrayList<>(List.of(ORG_TEAM.getEntityReference())); // Organization is default team
+    } else {
+      // Remove ORG_TEAM from the expected teams
+      expectedTeams =
+          expectedTeams.stream().filter(t -> !t.getId().equals(ORG_TEAM.getId())).collect(Collectors.toList());
     }
     assertEntityReferences(expectedTeams, user.getTeams());
 
@@ -834,5 +900,31 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Override
+  protected String getAllowedFields() {
+    List<String> allowedFields = Entity.getAllowedFields(entityClass);
+    allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
+    return String.join(",", allowedFields);
+  }
+
+  public User createUser(String botName, boolean isBot) {
+    try {
+      CreateUser createUser = creatBotUserRequest(botName, isBot);
+      return createEntity(createUser, ADMIN_AUTH_HEADERS);
+    } catch (Exception ignore) {
+      return null;
+    }
+  }
+
+  private CreateUser creatBotUserRequest(String botUserName, boolean isBot) {
+    return createRequest(botUserName, "", "", null)
+        .withIsBot(isBot)
+        .withIsAdmin(false)
+        .withAuthenticationMechanism(
+            new AuthenticationMechanism()
+                .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
   }
 }

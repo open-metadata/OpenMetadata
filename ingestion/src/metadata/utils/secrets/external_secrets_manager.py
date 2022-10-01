@@ -33,6 +33,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
+    AUTH_PROVIDER_PREFIX,
     BOT_PREFIX,
     DBT_SOURCE_CONFIG_SECRET_PREFIX,
     TEST_CONNECTION_TEMP_SECRET_PREFIX,
@@ -84,7 +85,9 @@ class ExternalSecretsManager(SecretsManager, ABC):
         )
         return ServiceConnection(__root__=service_connection)
 
-    def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
+    def add_auth_provider_security_config(
+        self, config: OpenMetadataConnection, bot_name: str
+    ) -> None:
         """
         Add the auth provider security config from the AWS client store to a given OpenMetadata connection object.
         :param config: OpenMetadataConnection object
@@ -93,18 +96,20 @@ class ExternalSecretsManager(SecretsManager, ABC):
         logger.debug(
             f"Adding auth provider security config using {self.provider} secrets' manager"
         )
-        if config.authProvider != AuthProvider.no_auth:
-            secret_id = self.build_secret_id(BOT_PREFIX, config.workflowBot)
+
+        if (
+            config.authProvider != AuthProvider.no_auth
+            and config.securityConfig is None
+        ):
+            auth_provider_secret_id = self.build_secret_id(
+                BOT_PREFIX, bot_name, AUTH_PROVIDER_PREFIX
+            )
+            auth_provider_secret = self.get_string_value(auth_provider_secret_id)
+            config.authProvider = AuthProvider(json.loads(auth_provider_secret))
+            secret_id = self.build_secret_id(BOT_PREFIX, bot_name)
             auth_config_json = self.get_string_value(secret_id)
             try:
                 config_object = json.loads(auth_config_json)
-                if config.authProvider == AuthProvider.openmetadata:
-                    auth_mechanism: JWTAuthMechanism = JWTAuthMechanism.parse_obj(
-                        config_object
-                    )
-                    config_object = OpenMetadataJWTClientConfig(
-                        jwtToken=auth_mechanism.JWTToken
-                    ).dict()
                 config.securityConfig = AUTH_PROVIDER_MAPPING.get(
                     config.authProvider
                 ).parse_obj(config_object)

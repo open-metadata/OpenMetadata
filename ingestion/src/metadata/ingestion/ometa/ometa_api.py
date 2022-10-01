@@ -17,6 +17,7 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.entity.bot import BotType
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.ssl_registry import (
@@ -178,7 +179,9 @@ class OpenMetadata(
         )
 
         # Load auth provider config from Secret Manager if necessary
-        self.secrets_manager_client.add_auth_provider_security_config(self.config)
+        self.secrets_manager_client.add_auth_provider_security_config(
+            self.config, BotType.ingestion_bot.value
+        )
 
         # Load the auth provider init from the registry
         auth_provider_fn = auth_provider_registry.registry.get(

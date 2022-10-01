@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Space, Statistic } from 'antd';
+import { Card, Col, Row, Space, Statistic } from 'antd';
 import React from 'react';
 import {
   Legend,
@@ -24,7 +24,7 @@ import {
   YAxis,
 } from 'recharts';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
@@ -102,15 +102,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               className="tw-h-full tw-w-full"
               justify="center">
               <Col>
-                <Empty
-                  description="No Data Available"
-                  image={
-                    <SVGIcons
-                      alt="no-data-placeholder"
-                      icon={Icons.NO_DATA_PLACEHOLDER}
-                    />
-                  }
-                />
+                <ErrorPlaceHolder>
+                  <p>No Data Available</p>
+                </ErrorPlaceHolder>
               </Col>
             </Row>
           )}

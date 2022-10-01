@@ -237,9 +237,9 @@ public class SecretsManagerMigrationService {
       User user = userRepository.dao.findEntityById(botUser.getId());
 
       Object authConfig =
-          oldSecretManager.encryptOrDecryptIngestionBotCredentials(
+          oldSecretManager.encryptOrDecryptBotUserCredentials(
               botUser.getName(), user.getAuthenticationMechanism().getConfig(), false);
-      authConfig = newSecretManager.encryptOrDecryptIngestionBotCredentials(botUser.getName(), authConfig, true);
+      authConfig = newSecretManager.encryptOrDecryptBotUserCredentials(botUser.getName(), authConfig, true);
 
       user.getAuthenticationMechanism().setConfig(authConfig);
 
