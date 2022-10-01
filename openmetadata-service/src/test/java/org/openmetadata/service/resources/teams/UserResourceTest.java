@@ -64,6 +64,7 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -520,6 +521,28 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void patch_teamAddition_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    EntityReference team1 =
+        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
+    User user =
+        createEntity(
+            createRequest(test, 10)
+                .withName("testUser1")
+                .withDisplayName("displayName")
+                .withEmail("testUser1@email.com"),
+            authHeaders("test1@email.com"));
+    String userJson = JsonUtils.pojoToJson(user);
+    List<EntityReference> teams = user.getTeams();
+    teams.add(team1);
+    user.setTeams(teams); // Update the teams
+    user = patchEntity(user.getId(), userJson, user, ADMIN_AUTH_HEADERS); // Patch the user
+    // Ensure default "Organization" team is not part of the patch response
+    assertEquals(1, user.getTeams().size());
+    assertEquals(team1.getId(), user.getTeams().get(0).getId());
+  }
+
+  @Test
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
@@ -793,6 +816,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     }
     if (expectedTeams.isEmpty()) {
       expectedTeams = new ArrayList<>(List.of(ORG_TEAM.getEntityReference())); // Organization is default team
+    } else {
+      // Remove ORG_TEAM from the expected teams
+      expectedTeams =
+          expectedTeams.stream().filter(t -> !t.getId().equals(ORG_TEAM.getId())).collect(Collectors.toList());
     }
     assertEntityReferences(expectedTeams, user.getTeams());
 

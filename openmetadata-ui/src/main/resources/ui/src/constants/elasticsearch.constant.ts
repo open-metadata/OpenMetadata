@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,41 @@
  *  limitations under the License.
  */
 
-.align-start {
-  align-items: start;
-}
-
-.d-flex {
-  display: flex;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.flex-1 {
-  flex: 1;
-}
+export const ELASTIC_SEARCH_INDEX_ENTITIES = [
+  {
+    value: 'table',
+    label: 'Table',
+  },
+  {
+    value: 'topic',
+    label: 'Topic',
+  },
+  {
+    value: 'dashboard',
+    label: 'Dashboard',
+  },
+  {
+    value: 'pipeline',
+    label: 'Pipeline',
+  },
+  {
+    value: 'mlmodel',
+    label: 'ML Model',
+  },
+  {
+    value: 'user',
+    label: 'User',
+  },
+  {
+    value: 'team',
+    label: 'Team',
+  },
+  {
+    value: 'glossaryTerm',
+    label: 'Glossary Term',
+  },
+  {
+    value: 'tag',
+    label: 'Tag',
+  },
+];

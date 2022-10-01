@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
-import { ReloadOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Skeleton, Space, Typography } from 'antd';
+import { QuestionCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Row,
+  Skeleton,
+  Space,
+  Switch,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
@@ -20,8 +31,10 @@ import {
   reIndexByPublisher,
 } from '../../axiosAPIs/elastic-index-API';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { ELASTIC_SEARCH_INDEX_ENTITIES } from '../../constants/elasticsearch.constant';
 import {
   EventPublisherJob,
+  PublisherType,
   RunMode,
 } from '../../generated/settings/eventPublisherJob';
 import { useAuth } from '../../hooks/authHooks';
@@ -41,6 +54,18 @@ const ElasticSearchIndexPage = () => {
   const { isAdminUser } = useAuth();
   const [batchLoading, setBatchLoading] = useState(false);
   const [streamLoading, setStreamLoading] = useState(false);
+  const [recreateIndex, setRecreateIndex] = useState(true);
+  const [entities, setEntities] = useState<string[]>([
+    'topic',
+    'dashboard',
+    'pipeline',
+    'mlmodel',
+    'bot',
+    'user',
+    'team',
+    'glossaryTerm',
+    'tag',
+  ]);
 
   const fetchBatchReIndexedData = async () => {
     try {
@@ -70,7 +95,12 @@ const ElasticSearchIndexPage = () => {
 
   const performReIndexAll = async (mode: RunMode) => {
     try {
-      await reIndexByPublisher(mode);
+      await reIndexByPublisher({
+        runMode: mode,
+        entities,
+        recreateIndex,
+        publisherType: PublisherType.ElasticSearch,
+      });
 
       showSuccessToast(jsonData['api-success-messages']['fetch-re-index-all']);
     } catch (err) {
@@ -98,76 +128,128 @@ const ElasticSearchIndexPage = () => {
             <Col span={24}>
               <Card size="small">
                 <div className="d-flex justify-between">
-                  <Typography.Title level={5}>ElasticSearch</Typography.Title>
-                  <Space align="center" size={16}>
-                    <Button
-                      data-testid="elastic-search-re-fetch-data"
-                      disabled={batchLoading}
-                      icon={<ReloadOutlined />}
-                      onClick={fetchBatchReIndexedData}
-                    />
-                    <Button
-                      data-testid="elastic-search-re-index-all"
-                      disabled={!isAdminUser}
-                      type="primary"
-                      onClick={() => performReIndexAll(RunMode.Batch)}>
-                      Re Index All
-                    </Button>
-                  </Space>
-                </div>
-                <Skeleton loading={batchLoading}>
-                  <Space direction="horizontal" size={16}>
-                    <div className="tw-flex">
-                      <span className="tw-text-grey-muted">Mode</span> :
-                      <span className="tw-ml-2">
-                        {batchJobData?.runMode || '--'}
-                      </span>
-                    </div>
-                    <div className="tw-flex">
-                      <span className="tw-text-grey-muted">Status</span> :
-                      <span className="tw-ml-2">
-                        <Space size={8}>
-                          {batchJobData?.status && (
-                            <SVGIcons
-                              alt="result"
-                              className="w-4"
-                              icon={getStatusResultBadgeIcon(
-                                batchJobData?.status
+                  <div>
+                    <Skeleton loading={batchLoading}>
+                      <Typography.Title level={5}>
+                        ElasticSearch
+                      </Typography.Title>
+                      <Space direction="horizontal" size={16}>
+                        <div className="tw-flex">
+                          <span className="tw-text-grey-muted">Mode</span> :
+                          <span className="tw-ml-2">
+                            {batchJobData?.runMode || '--'}
+                          </span>
+                        </div>
+                        <div className="tw-flex">
+                          <span className="tw-text-grey-muted">Status</span> :
+                          <span className="tw-ml-2">
+                            <Space size={8}>
+                              {batchJobData?.status && (
+                                <SVGIcons
+                                  alt="result"
+                                  className="w-4"
+                                  icon={getStatusResultBadgeIcon(
+                                    batchJobData?.status
+                                  )}
+                                />
                               )}
+                              <span>
+                                {getEventPublisherStatusText(
+                                  batchJobData?.status
+                                ) || '--'}
+                              </span>
+                            </Space>
+                          </span>
+                        </div>
+
+                        <div className="tw-flex">
+                          <span className="tw-text-grey-muted">
+                            Last Updated
+                          </span>{' '}
+                          :
+                          <span className="tw-ml-2">
+                            {batchJobData?.failureDetails?.lastFailedAt
+                              ? getDateTimeByTimeStampWithZone(
+                                  batchJobData?.failureDetails?.lastFailedAt
+                                )
+                              : '--'}
+                          </span>
+                        </div>
+                      </Space>
+                      <div className="m-t-sm">
+                        <span className="tw-text-grey-muted">Last error</span> :
+                        <span className="tw-ml-2">
+                          {batchJobData?.failureDetails?.lastFailedReason ? (
+                            <RichTextEditorPreviewer
+                              enableSeeMoreVariant={Boolean(batchJobData)}
+                              markdown={
+                                batchJobData?.failureDetails?.lastFailedReason
+                              }
                             />
+                          ) : (
+                            '--'
                           )}
-                          <span>{batchJobData?.status || '--'}</span>
-                        </Space>
-                      </span>
+                        </span>
+                      </div>
+                    </Skeleton>
+                  </div>
+
+                  <Space
+                    direction="vertical"
+                    size={16}
+                    style={{ maxWidth: '420px' }}>
+                    <Space size={8}>
+                      <Switch
+                        checked={recreateIndex}
+                        onChange={setRecreateIndex}
+                      />
+                      <Typography.Text
+                        className="d-flex items-center"
+                        type="secondary">
+                        Recreate indexes&nbsp;
+                        <Tooltip
+                          placement="bottomRight"
+                          title="This will delete exiting indexing and create new">
+                          <QuestionCircleOutlined />
+                        </Tooltip>
+                      </Typography.Text>
+                    </Space>
+                    <div>
+                      <Typography.Text className="m-b-sm">
+                        Entities
+                      </Typography.Text>
+                      <Checkbox.Group
+                        defaultValue={entities}
+                        onChange={(values) => setEntities(values as string[])}>
+                        <Row>
+                          {ELASTIC_SEARCH_INDEX_ENTITIES.map((option) => (
+                            <Col key={option.value} span={8}>
+                              <Checkbox value={option.value}>
+                                {option.label}
+                              </Checkbox>
+                            </Col>
+                          ))}
+                        </Row>
+                      </Checkbox.Group>
                     </div>
 
-                    <div className="tw-flex">
-                      <span className="tw-text-grey-muted">Last Updated</span> :
-                      <span className="tw-ml-2">
-                        {batchJobData?.failureDetails?.lastFailedAt
-                          ? getDateTimeByTimeStampWithZone(
-                              batchJobData?.failureDetails?.lastFailedAt
-                            )
-                          : '--'}
-                      </span>
-                    </div>
+                    <Space align="center" className="flex-end" size={16}>
+                      <Button
+                        data-testid="elastic-search-re-fetch-data"
+                        disabled={batchLoading}
+                        icon={<ReloadOutlined />}
+                        onClick={fetchBatchReIndexedData}
+                      />
+                      <Button
+                        data-testid="elastic-search-re-index-all"
+                        disabled={!isAdminUser}
+                        type="primary"
+                        onClick={() => performReIndexAll(RunMode.Batch)}>
+                        Re Index All
+                      </Button>
+                    </Space>
                   </Space>
-                  <div className="m-t-sm">
-                    <span className="tw-text-grey-muted">Last error</span> :
-                    <span className="tw-ml-2">
-                      {batchJobData?.failureDetails?.lastFailedReason ? (
-                        <RichTextEditorPreviewer
-                          enableSeeMoreVariant={Boolean(batchJobData)}
-                          markdown={
-                            batchJobData?.failureDetails?.lastFailedReason
-                          }
-                        />
-                      ) : (
-                        '--'
-                      )}
-                    </span>
-                  </div>
-                </Skeleton>
+                </div>
               </Card>
             </Col>
             <Col span={24}>
@@ -181,13 +263,6 @@ const ElasticSearchIndexPage = () => {
                       icon={<ReloadOutlined />}
                       onClick={fetchStreamReIndexedData}
                     />
-                    <Button
-                      data-testid="elastic-search-re-index-all"
-                      disabled={!isAdminUser}
-                      type="primary"
-                      onClick={() => performReIndexAll(RunMode.Batch)}>
-                      Re Index All
-                    </Button>
                   </Space>
                 </div>
                 <Skeleton loading={streamLoading}>
