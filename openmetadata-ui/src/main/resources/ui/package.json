@@ -102,7 +102,7 @@
     "test": "jest --passWithNoTests",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
     "test:watch": "jest --passWithNoTests --watch",
-    "test:coverage": "jest --passWithNoTests --coverage",
+    "test:coverage": "jest --passWithNoTests --coverage --maxWorkers=50%",
     "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters=\"text-summary\"",
     "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx}' --fix",
