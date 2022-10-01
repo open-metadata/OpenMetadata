@@ -13,6 +13,7 @@
 
 import { QuestionCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
+  Badge,
   Button,
   Card,
   Checkbox,
@@ -25,6 +26,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import {
   getAllReIndexStatus,
@@ -46,6 +48,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getDateTimeByTimeStampWithZone } from '../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import './elastic-search-index.style.less';
 
 const ElasticSearchIndexPage = () => {
   const [batchJobData, setBatchJobData] = useState<EventPublisherJob>();
@@ -56,6 +59,7 @@ const ElasticSearchIndexPage = () => {
   const [streamLoading, setStreamLoading] = useState(false);
   const [recreateIndex, setRecreateIndex] = useState(true);
   const [entities, setEntities] = useState<string[]>([
+    'table',
     'topic',
     'dashboard',
     'pipeline',
@@ -159,6 +163,39 @@ const ElasticSearchIndexPage = () => {
                                 ) || '--'}
                               </span>
                             </Space>
+                          </span>
+                        </div>
+
+                        <div className="tw-flex">
+                          <span className="tw-text-grey-muted">
+                            Request stats
+                          </span>{' '}
+                          :
+                          <span className="tw-ml-2">
+                            {isEmpty(batchJobData) ? (
+                              <Space size={8}>
+                                <Badge
+                                  className="request-badge running"
+                                  count={batchJobData?.stats?.total}
+                                  title={`Total request sent: ${batchJobData?.stats?.total}`}
+                                />
+
+                                <Badge
+                                  className="request-badge success"
+                                  count={batchJobData?.stats?.success}
+                                  title={`Success request: ${batchJobData?.stats?.success}`}
+                                />
+
+                                <Badge
+                                  showZero
+                                  className="request-badge failed"
+                                  count={batchJobData?.stats?.failed}
+                                  title={`Failed request: ${batchJobData?.stats?.failed}`}
+                                />
+                              </Space>
+                            ) : (
+                              '--'
+                            )}
                           </span>
                         </div>
 
