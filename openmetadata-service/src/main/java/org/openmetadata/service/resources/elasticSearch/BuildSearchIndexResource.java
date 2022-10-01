@@ -94,7 +94,7 @@ public class BuildSearchIndexResource {
                     ConfigurationHolder.ConfigurationType.ELASTICSEARCHCONFIG, ElasticSearchConfiguration.class));
     this.dao = dao;
     this.authorizer = authorizer;
-    this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client);
+    this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
     this.threadScheduler =
         new ThreadPoolExecutor(
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
@@ -230,6 +230,7 @@ public class BuildSearchIndexResource {
     long originalLastUpdate = lastRecord.getTimestamp();
     lastRecord.setStatus(EventPublisherJob.Status.ACTIVE);
     lastRecord.setTimestamp(updateTime);
+    lastRecord.setEntities(createRequest.getEntities());
     dao.entityExtensionTimeSeriesDao()
         .update(
             ELASTIC_SEARCH_ENTITY_FQN_BATCH,
@@ -271,7 +272,6 @@ public class BuildSearchIndexResource {
       CreateEventPublisherJob createRequest)
       throws IOException {
     listener.allowTotalRequestUpdate();
-
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
 
@@ -288,18 +288,26 @@ public class BuildSearchIndexResource {
     String fields = String.join(",", allowedFields);
     ResultList<EntityInterface> result;
     String after = null;
-    do {
-      result =
-          entityRepository.listAfter(
-              uriInfo,
-              new EntityUtil.Fields(allowedFields, fields),
-              new ListFilter(Include.ALL),
-              createRequest.getBatchSize(),
-              after);
-      listener.addRequests(result.getPaging().getTotal());
-      updateElasticSearchForEntityBatch(processor, entityType, result.getData());
-      after = result.getPaging().getAfter();
-    } while (after != null);
+    try {
+      do {
+        if (entityType.equals(TEAM)) {
+          // just name and display name are needed
+          fields = "name,displayName";
+        }
+        result =
+            entityRepository.listAfter(
+                uriInfo,
+                new EntityUtil.Fields(allowedFields, fields),
+                new ListFilter(Include.ALL),
+                createRequest.getBatchSize(),
+                after);
+        listener.addRequests(result.getPaging().getTotal());
+        updateElasticSearchForEntityBatch(indexType, processor, entityType, result.getData());
+        after = result.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Entities of type : {}", entityType);
+    }
   }
 
   private synchronized void updateEntityStream(
@@ -321,17 +329,21 @@ public class BuildSearchIndexResource {
     String fields = String.join(",", allowedFields);
     ResultList<EntityInterface> result;
     String after = null;
-    do {
-      result =
-          entityRepository.listAfter(
-              uriInfo,
-              new EntityUtil.Fields(allowedFields, fields),
-              new ListFilter(Include.ALL),
-              createRequest.getBatchSize(),
-              after);
-      updateElasticSearchForEntityStream(entityType, result.getData());
-      after = result.getPaging().getAfter();
-    } while (after != null);
+    try {
+      do {
+        result =
+            entityRepository.listAfter(
+                uriInfo,
+                new EntityUtil.Fields(allowedFields, fields),
+                new ListFilter(Include.ALL),
+                createRequest.getBatchSize(),
+                after);
+        updateElasticSearchForEntityStream(entityType, result.getData());
+        after = result.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Entities of type : {}", entityType);
+    }
 
     // Mark the Job end
     String reindexJobString =
@@ -356,12 +368,16 @@ public class BuildSearchIndexResource {
   }
 
   private synchronized void updateElasticSearchForEntityBatch(
-      BulkProcessor bulkProcessor, String entityType, List<EntityInterface> entities) throws IOException {
+      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
+      BulkProcessor bulkProcessor,
+      String entityType,
+      List<EntityInterface> entities)
+      throws IOException {
     for (EntityInterface entity : entities) {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
       }
-      bulkProcessor.add(getUpdateRequest(entityType, entity));
+      bulkProcessor.add(getUpdateRequest(indexType, entityType, entity));
     }
   }
 
@@ -372,6 +388,8 @@ public class BuildSearchIndexResource {
             .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     EventPublisherJob latestJob = JsonUtils.readValue(reindexJobString, EventPublisherJob.class);
     Long lastUpdateTime = latestJob.getTimestamp();
+    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
+        elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     for (EntityInterface entity : entities) {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
@@ -379,7 +397,7 @@ public class BuildSearchIndexResource {
       FailureDetails failureDetails = null;
       Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       try {
-        client.update(getUpdateRequest(entityType, entity), RequestOptions.DEFAULT);
+        client.update(getUpdateRequest(indexType, entityType, entity), RequestOptions.DEFAULT);
       } catch (IOException ex) {
         failureDetails = new FailureDetails().withLastFailedAt(time).withLastFailedReason(ex.getMessage());
         latestJob.setFailureDetails(failureDetails);
@@ -396,10 +414,10 @@ public class BuildSearchIndexResource {
     }
   }
 
-  private UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) throws JsonProcessingException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(
-            elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType).indexName, entity.getId().toString());
+  private UpdateRequest getUpdateRequest(
+      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, EntityInterface entity)
+      throws JsonProcessingException {
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(
             Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),

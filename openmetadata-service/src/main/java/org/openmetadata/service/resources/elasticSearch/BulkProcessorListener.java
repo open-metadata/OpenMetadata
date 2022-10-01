@@ -56,7 +56,6 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
       }
       updateFailedAndSuccess(failedCount, bulkResponse.getItems().length - failedCount);
 
-      // update stats in DB
       EventPublisherJob.Status status =
           batchHasFailures ? EventPublisherJob.Status.ACTIVEWITHERROR : EventPublisherJob.Status.ACTIVE;
       Stats stats = new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount).withTotal(totalRequests);
@@ -109,7 +108,11 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
           dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_BATCH, ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
-      lastRecord.setStatus(status);
+      if (totalRequests == totalFailedCount + totalSuccessCount) {
+        lastRecord.setStatus(EventPublisherJob.Status.IDLE);
+      } else {
+        lastRecord.setStatus(status);
+      }
       lastRecord.setTimestamp(updateTime);
       if (failDetails != null) {
         lastRecord.setFailureDetails(

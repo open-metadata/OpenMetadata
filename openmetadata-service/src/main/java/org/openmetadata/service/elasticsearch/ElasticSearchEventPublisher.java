@@ -99,9 +99,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     // needs Db connection
     registerElasticSearchJobs();
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
-    esIndexDefinition = new ElasticSearchIndexDefinition(client);
+    esIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
     esIndexDefinition.createIndexes();
-
   }
 
   @Override
@@ -704,7 +703,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               .withName("Elastic Search Batch")
               .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
               .withRunMode(CreateEventPublisherJob.RunMode.BATCH)
-              .withStatus(EventPublisherJob.Status.ACTIVE)
+              .withStatus(EventPublisherJob.Status.IDLE)
               .withTimestamp(startTime)
               .withStartedBy(ADMIN_USER_NAME)
               .withStartTime(startTime)
