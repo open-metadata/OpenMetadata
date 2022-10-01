@@ -271,6 +271,14 @@ public final class TestUtils {
     return readResponse(response, clz, Status.CREATED.getStatusCode());
   }
 
+  public static <T, K> T post(
+      WebTarget target, K request, Class<T> clz, int expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    return readResponse(response, clz, expectedStatus);
+  }
+
   public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
       throws HttpResponseException {
     Response response =
