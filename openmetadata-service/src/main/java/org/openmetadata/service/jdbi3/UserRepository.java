@@ -286,6 +286,11 @@ public class UserRepository extends EntityRepository<User> {
       }
       addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
     }
+    if (teams.size() > 1) {
+      // Remove organization team from the response
+      teams = teams.stream().filter(t -> !t.getId().equals(organization.getId())).collect(Collectors.toList());
+      user.setTeams(teams);
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
