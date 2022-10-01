@@ -967,10 +967,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkBefore(
             fqnPrefix, toType, limit, before, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkBefore(
           fqnPrefix, toType, limit, before, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1058,10 +1056,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkAfter(
             fqnPrefix, toType, limit, after, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkAfter(
           fqnPrefix, toType, limit, after, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1146,10 +1142,8 @@ public interface CollectionDAO {
         }
         return listCountAnnouncementsByEntityLink(fqnPrefix, toType, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listCountThreadsByEntityLink(
           fqnPrefix, toType, type, status, resolved, relation, userName, teamNames, filterRelation);

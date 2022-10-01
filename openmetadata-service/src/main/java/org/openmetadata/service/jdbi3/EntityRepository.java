@@ -1221,11 +1221,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
-      if (operation.isPatch() || updatedOwner != null) {
+      if ((operation.isPatch() || updatedOwner != null)
+          && recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
-        if (recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
-          EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
-        }
+        EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
       }
     }
 
