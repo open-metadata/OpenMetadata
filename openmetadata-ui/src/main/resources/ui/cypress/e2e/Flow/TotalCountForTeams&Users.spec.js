@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { interceptURL, login, searchEntity, verifyResponseStatusCode } from '../../common/common';
+import { login, visitEntityDetailsPage } from '../../common/common';
 import { LOGIN, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
-const assetName = SEARCH_ENTITY_TABLE.table_1.term;
+const TEAM_DETAILS = SEARCH_ENTITY_TABLE.table_1;
 const userURL =
   '/api/v1/search/query?q=***&from=0&size=10&index=user_search_index';
 const teamURL =
@@ -34,13 +34,13 @@ describe('Test if the total count of users and teams is correctly displayed in t
   });
 
   it('Check total count of users and teams', () => {
-    searchEntity(assetName);
     const token = localStorage.getItem('oidcIdToken');
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
-    interceptURL('GET', 'api/v1/tables/name/*', 'getEntityDetails');
-
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(
+      TEAM_DETAILS.term,
+      TEAM_DETAILS.serviceName,
+      TEAM_DETAILS.entity
+    );
 
     cy.request({
       method: 'GET',

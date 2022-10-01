@@ -12,7 +12,6 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { camelCase, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -20,7 +19,7 @@ import {
   addIngestionPipeline,
   checkAirflowStatus,
   deployIngestionPipelineById,
-  patchIngestionPipeline,
+  updateIngestionPipeline as putIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
@@ -137,32 +136,45 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const updateIngestionPipeline = async (repeatFrequency: string) => {
-    const updatedPipeline = {
-      ...ingestionPipeline,
+    const {
+      airflowConfig,
+      description,
+      displayName,
+      loggerLevel,
+      name,
+      owner,
+      pipelineType,
+      service,
+      sourceConfig,
+    } = ingestionPipeline as IngestionPipeline;
+
+    const updatedPipelineData = {
       airflowConfig: {
-        ...ingestionPipeline?.airflowConfig,
+        ...airflowConfig,
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
       },
+      description,
+      displayName,
+      loggerLevel,
+      name,
+      owner,
+      pipelineType,
+      service,
+      sourceConfig,
     };
-    const jsonPatch = compare(
-      ingestionPipeline as IngestionPipeline,
-      updatedPipeline
-    );
-    if (jsonPatch.length) {
-      try {
-        const response = await patchIngestionPipeline(
-          ingestionPipeline?.id || '',
-          jsonPatch
-        );
-        handleIngestionDeploy(response.id);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          jsonData['api-error-messages']['update-ingestion-error']
-        );
-      }
+
+    try {
+      const response = await putIngestionPipeline(
+        updatedPipelineData as CreateIngestionPipeline
+      );
+      handleIngestionDeploy(response.id);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-ingestion-error']
+      );
     }
   };
 

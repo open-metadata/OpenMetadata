@@ -16,7 +16,7 @@ import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Metabase';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'jaffle_shop';
+const tableName = 'jaffle_shop dashboard';
 const description = `This is ${serviceName} description`;
 
 describe('Metabase Ingestion', () => {

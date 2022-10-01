@@ -93,7 +93,7 @@ from.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/gluepipeline/add-new-service.png"
+  src="/images/openmetadata/connectors/glue/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service"
 />
@@ -109,7 +109,7 @@ desired.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/gluepipeline/service-connection.png"
+  src="/images/openmetadata/connectors/glue/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />

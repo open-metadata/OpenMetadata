@@ -15,6 +15,7 @@
 
 package org.openmetadata.service.elasticsearch;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
@@ -94,12 +95,13 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize(), new ArrayList<>());
-    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
-    esIndexDefinition = new ElasticSearchIndexDefinition(client);
-    esIndexDefinition.createIndexes();
     this.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();
+    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
+    esIndexDefinition = new ElasticSearchIndexDefinition(client);
+    esIndexDefinition.createIndexes();
+
   }
 
   @Override
@@ -704,7 +706,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               .withRunMode(CreateEventPublisherJob.RunMode.BATCH)
               .withStatus(EventPublisherJob.Status.ACTIVE)
               .withTimestamp(startTime)
-              .withStartedBy("admin")
+              .withStartedBy(ADMIN_USER_NAME)
               .withStartTime(startTime)
               .withFailureDetails(failureDetails);
       EventPublisherJob streamJob =
@@ -714,7 +716,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
               .withStatus(EventPublisherJob.Status.ACTIVE)
               .withTimestamp(startTime)
-              .withStartedBy("admin")
+              .withStartedBy(ADMIN_USER_NAME)
               .withStartTime(startTime)
               .withFailureDetails(failureDetails);
       dao.entityExtensionTimeSeriesDao()

@@ -98,6 +98,8 @@ DBT_SOURCE_CONFIG_SECRET_PREFIX: str = "database-metadata-pipeline"
 
 BOT_PREFIX: str = "bot"
 
+AUTH_PROVIDER_PREFIX: str = "auth-provider"
+
 TEST_CONNECTION_TEMP_SECRET_PREFIX: str = "test-connection-temp"
 
 
@@ -128,10 +130,13 @@ class SecretsManager(metaclass=Singleton):
         pass
 
     @abstractmethod
-    def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
+    def add_auth_provider_security_config(
+        self, config: OpenMetadataConnection, bot_name: str
+    ) -> None:
         """
         Add the auth provider security config from the secret manager to a given OpenMetadata connection object.
         :param config: OpenMetadataConnection object
+        :param bot_name: Bot name with the credentials
         """
         pass
 

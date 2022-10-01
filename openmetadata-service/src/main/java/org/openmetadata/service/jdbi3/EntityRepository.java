@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -265,7 +266,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     LOG.info("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
-    entity.setUpdatedBy("admin");
+    entity.setUpdatedBy(ADMIN_USER_NAME);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setId(UUID.randomUUID());
     create(null, entity);
@@ -1154,8 +1155,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updated = updated;
       this.operation = operation;
       this.updatingUser =
-          updated.getUpdatedBy().equalsIgnoreCase("admin")
-              ? new User().withName("admin").withIsAdmin(true)
+          updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
+              ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
               : SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
     }
 

@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -92,13 +93,20 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     ] = None
 
     if service_type == "testSuite":
+        service = metadata.get_by_name(
+            entity=TestSuite, fqn=ingestion_pipeline.service.name
+        )  # check we are able to access OM server
+        if not service:
+            raise InvalidServiceException(
+                f"Could not get service from type {service_type}"
+            )
         return WorkflowSource(
             type=service_type,
             serviceName=ingestion_pipeline.service.name,
             sourceConfig=ingestion_pipeline.sourceConfig,
         )
 
-    elif service_type == "databaseService":
+    if service_type == "databaseService":
         service: DatabaseService = metadata.get_by_name(
             entity=DatabaseService, fqn=ingestion_pipeline.service.name
         )
