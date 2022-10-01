@@ -201,11 +201,9 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     // validate principal domain
-    if (enforcePrincipalDomain) {
-      if (!domain.equals(principalDomain)) {
-        throw new AuthenticationException(
-            String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
-      }
+    if (enforcePrincipalDomain && !domain.equals(principalDomain)) {
+      throw new AuthenticationException(
+          String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
     }
     return userName;
   }
