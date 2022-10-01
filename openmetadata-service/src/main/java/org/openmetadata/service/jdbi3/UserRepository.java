@@ -119,7 +119,7 @@ public class UserRepository extends EntityRepository<User> {
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .setConfig(
-              secretsManager.encryptOrDecryptIngestionBotCredentials(
+              secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), true));
     }
 
@@ -233,7 +233,7 @@ public class UserRepository extends EntityRepository<User> {
     if (user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .withConfig(
-              this.secretsManager.encryptOrDecryptIngestionBotCredentials(
+              this.secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), false));
     }
     return user;
@@ -349,15 +349,11 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange("authenticationMechanism", original.getAuthenticationMechanism(), "new-encrypted-value");
-      } else if (hasConfig(origAuthMechanism) && hasConfig(updatedAuthMechanism)) {
+      } else if (origAuthMechanism != null && updatedAuthMechanism != null) {
         if (!JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
           recordChange("authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
         }
       }
-    }
-
-    private boolean hasConfig(AuthenticationMechanism authenticationMechanism) {
-      return authenticationMechanism != null && authenticationMechanism.getConfig() != null;
     }
   }
 }
