@@ -12,6 +12,7 @@ This workflow is available ONLY for the following connectors:
 - [MSSQL](/openmetadata/connectors/database/mssql)
 - [Redshift](/openmetadata/connectors/database/redshift)
 - [Clickhouse](/openmetadata/connectors/database/clickhouse)
+- [Postgres](/openmetadata/connectors/database/postgres)
 
 If your database service is not yet supported, you can use this same workflow by providing a Query Log file!
 

@@ -84,6 +84,7 @@ services such as:
 - [MSSQL](/openmetadata/connectors/database/mssql)
 - [Redshift](/openmetadata/connectors/database/redshift)
 - [Clickhouse](/openmetadata/connectors/database/clickhouse)
+- [Postgres](/openmetadata/connectors/database/postgres)
 
 There are specific workflows (Usage & Lineage) that will use the query log information. An alternative for sources not
 listed here is to run the workflow by providing the Query Logs that you have previously exported and then running
@@ -120,6 +121,7 @@ You can check the queries being used here:
 - [MSSQL](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L350)
 - [Redshift](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L18)
 - [Clickhouse](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L376)
+- [Postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L467)
 
 By default, we apply a result limit of 1000 records. You might also need to increase that for databases with big volumes
 of queries.
