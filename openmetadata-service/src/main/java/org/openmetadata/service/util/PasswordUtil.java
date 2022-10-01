@@ -34,6 +34,8 @@ public class PasswordUtil {
     validator = new PasswordValidator(rules);
   }
 
+  private PasswordUtil() {}
+
   public static void validatePassword(String pwd) {
     PasswordData password = new PasswordData(pwd);
     RuleResult result = validator.validate(password);
