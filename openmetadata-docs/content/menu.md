@@ -147,6 +147,8 @@ site_menu:
     url: /deployment/upgrade
   - category: Deployment / Upgrade OpenMetadata / Backup Metadata
     url: /deployment/upgrade/backup-metadata
+  - category: Deployment / Upgrade OpenMetadata / Restore Metadata
+    url: /deployment/upgrade/restore-metadata
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
     url: /deployment/upgrade/bare-metal
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
