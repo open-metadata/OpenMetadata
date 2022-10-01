@@ -41,7 +41,7 @@ public class OpenMetadata {
   private ApiClient apiClient;
   private OpenMetadataServerConnection serverConfig;
   private String basePath;
-  private final String requestInterceptorKey = "custom";
+  private static final String requestInterceptorKey = "custom";
 
   public OpenMetadata(OpenMetadataServerConnection config) {
     initClient(config);
