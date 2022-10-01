@@ -484,6 +484,8 @@ site_menu:
     url: /openmetadata/ingestion/versioning/change-events
   - category: OpenMetadata / Ingestion / Versioning / Event Notification via Webhooks
     url: /openmetadata/ingestion/versioning/event-notification-via-webhooks
+  - category: OpenMetadata / Ingestion / Ingestion Pipeline UI Deployment
+    url: /openmetadata/ingestion/ingestion-pipeline
 
   - category: OpenMetadata / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
