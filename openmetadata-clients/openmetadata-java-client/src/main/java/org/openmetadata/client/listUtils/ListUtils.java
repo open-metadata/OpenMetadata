@@ -1,4 +1,4 @@
-package org.openmetadata.client.listUtils;
+package org.openmetadata.client.listutils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
