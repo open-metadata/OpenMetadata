@@ -803,7 +803,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           sendEmailVerification(uriInfo, registeredUser);
         } catch (Exception e) {
           LOG.error("Error in sending mail to the User : {}", e.getMessage());
-          return Response.status(424).entity(EMAIL_SENDING_ISSUE).build();
+          return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
         }
       }
       return Response.status(Response.Status.CREATED).entity("User Registration Successful.").build();
@@ -958,7 +958,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         sendAccountStatus(storedUser, "Update Password", "Change Successful");
       } catch (Exception ex) {
         LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage());
-        return Response.status(424).entity(EMAIL_SENDING_ISSUE).build();
+        return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
       }
     }
     loginAttemptCache.recordSuccessfulLogin(request.getUsername());
