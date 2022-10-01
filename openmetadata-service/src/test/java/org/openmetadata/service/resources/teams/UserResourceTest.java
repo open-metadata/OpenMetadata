@@ -798,38 +798,38 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Login With Correct Password
     LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
     JwtResponse jwtResponse =
-            TestUtils.post(
-                    getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
+        TestUtils.post(
+            getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
 
     validateJwtBasicAuth(jwtResponse, "testBasicAuth");
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-            new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
     assertResponse(
-            () ->
-                    TestUtils.post(
-                            getResource("users/login"),
-                            failedLoginWithWrongEmail,
-                            JwtResponse.class,
-                            BAD_REQUEST.getStatusCode(),
-                            ADMIN_AUTH_HEADERS),
-            BAD_REQUEST,
-            CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongEmail,
+                JwtResponse.class,
+                BAD_REQUEST.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-            new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
     assertResponse(
-            () ->
-                    TestUtils.post(
-                            getResource("users/login"),
-                            failedLoginWithWrongPwd,
-                            JwtResponse.class,
-                            UNAUTHORIZED.getStatusCode(),
-                            ADMIN_AUTH_HEADERS),
-            UNAUTHORIZED,
-            CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongPwd,
+                JwtResponse.class,
+                UNAUTHORIZED.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        UNAUTHORIZED,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
   }
 
   private void validateJwtBasicAuth(JwtResponse jwtResponse, String username) {
