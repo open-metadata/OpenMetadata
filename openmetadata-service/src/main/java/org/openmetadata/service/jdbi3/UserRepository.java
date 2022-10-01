@@ -65,6 +65,15 @@ public class UserRepository extends EntityRepository<User> {
     this.secretsManager = secretsManager;
   }
 
+  public final Fields getFieldsWithUserAuth(String fields) {
+    if (fields != null && fields.equals("*")) {
+      List<String> tempFields = getAllowedFieldsCopy();
+      tempFields.add("authenticationMechanism");
+      return new Fields(allowedFields, String.join(",", tempFields));
+    }
+    return new Fields(allowedFields, fields);
+  }
+
   public UserRepository(CollectionDAO dao) {
     this(dao, null);
   }
