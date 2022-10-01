@@ -171,21 +171,17 @@ public class BuildSearchIndexResource {
   }
 
   private synchronized Response startReindexingStreamMode(
-      UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest) throws IOException {
+      UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest) {
     // create a new Job
     threadScheduler.submit(
         () -> {
-          try {
-            this.submitStreamJob(uriInfo, startedBy, createRequest);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
+          this.submitStreamJob(uriInfo, startedBy, createRequest);
         });
     return Response.status(Response.Status.OK).entity("Reindexing Started").build();
   }
 
   private synchronized Response startReindexingBatchMode(
-      UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest) throws IOException {
+      UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest) {
     // create a new Job
     threadScheduler.submit(
         () -> {
@@ -198,8 +194,7 @@ public class BuildSearchIndexResource {
     return Response.status(Response.Status.OK).entity("Reindexing Started").build();
   }
 
-  private synchronized void submitStreamJob(UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest)
-      throws JsonProcessingException {
+  private synchronized void submitStreamJob(UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest) {
     try {
       if (createRequest.getEntities().contains("all")) {
         updateEntityStream(uriInfo, TABLE, createRequest);
