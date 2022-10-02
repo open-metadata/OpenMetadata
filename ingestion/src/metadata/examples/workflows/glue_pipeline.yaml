@@ -1,9 +1,9 @@
 source:
-  type: glue
+  type: glue-pipeline 
   serviceName: local_glue
   serviceConnection:
     config:
-      type: Glue
+      type: GluePipeline
       awsConfig:
         awsAccessKeyId: aws accessKey id
         awsSecretAccessKey: aws secret access key

@@ -16,7 +16,7 @@
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
         "Airflow",
-        "Glue",
+        "GluePipeline",
         "Airbyte",
         "Fivetran",
         "Dagster",
@@ -28,7 +28,7 @@
           "name": "Airflow"
         },
         {
-          "name": "Glue"
+          "name": "GluePipeline"
         },
         {
           "name": "Airbyte"
@@ -62,7 +62,7 @@
               "$ref": "./connections/pipeline/airflowConnection.json"
             },
             {
-              "$ref": "./connections/pipeline/glueConnection.json"
+              "$ref": "./connections/pipeline/gluePipelineConnection.json"
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
