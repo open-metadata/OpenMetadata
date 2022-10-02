@@ -21,6 +21,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -76,6 +78,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.LoginRequest;
+import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
@@ -92,6 +96,8 @@ import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -100,6 +106,7 @@ import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -712,6 +719,131 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
     assertEquals(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
+  }
+
+  @Test
+  void get_generateRandomPassword(TestInfo test) throws HttpResponseException {
+    String randomPwd = TestUtils.get(getResource("users/generateRandomPwd"), String.class, ADMIN_AUTH_HEADERS);
+    assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
+  }
+
+  @Test
+  void post_createUser_BasicAuth_AdminCreate_login_200_ok(TestInfo test) throws HttpResponseException {
+    // Create a user with Auth and Try Logging in
+    User user =
+        createEntity(
+            createRequest(test)
+                .withName("testBasicAuth")
+                .withDisplayName("Test")
+                .withEmail("testBasicAuth@email.com")
+                .withIsBot(false)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMINCREATE)
+                .withPassword("Test@1234")
+                .withConfirmPassword("Test@1234"),
+            authHeaders("testBasicAuth@email.com"));
+
+    // jwtAuth Response should be null always
+    user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(user.getAuthenticationMechanism());
+
+    // Login With Correct Password
+    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
+    JwtResponse jwtResponse =
+        TestUtils.post(
+            getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
+
+    validateJwtBasicAuth(jwtResponse, "testBasicAuth");
+
+    // Login With Wrong email
+    LoginRequest failedLoginWithWrongEmail =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongEmail,
+                JwtResponse.class,
+                BAD_REQUEST.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+
+    // Login With Wrong Password
+    LoginRequest failedLoginWithWrongPwd =
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongPwd,
+                JwtResponse.class,
+                UNAUTHORIZED.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        UNAUTHORIZED,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+  }
+
+  @Test
+  void post_createUser_BasicAuth_SignUp_200_ok(TestInfo test) throws HttpResponseException {
+    // Create a user with Auth and Try Logging in
+    RegistrationRequest newRegistrationRequest =
+        new RegistrationRequest()
+            .withFirstName("Test")
+            .withLastName("Test")
+            .withEmail("testBasicAuth@email.com")
+            .withPassword("Test@1234");
+
+    TestUtils.post(getResource("users/signup"), newRegistrationRequest, String.class, ADMIN_AUTH_HEADERS);
+
+    // jwtAuth Response should be null always
+    User user = getEntityByName("testBasicAuth", "isEmailVerified,authenticationMechanism", ADMIN_AUTH_HEADERS);
+    assertNull(user.getAuthenticationMechanism());
+
+    // Login With Correct Password
+    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
+    JwtResponse jwtResponse =
+        TestUtils.post(
+            getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
+
+    validateJwtBasicAuth(jwtResponse, "testBasicAuth");
+
+    // Login With Wrong email
+    LoginRequest failedLoginWithWrongEmail =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongEmail,
+                JwtResponse.class,
+                BAD_REQUEST.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+
+    // Login With Wrong Password
+    LoginRequest failedLoginWithWrongPwd =
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongPwd,
+                JwtResponse.class,
+                UNAUTHORIZED.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        UNAUTHORIZED,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+  }
+
+  private void validateJwtBasicAuth(JwtResponse jwtResponse, String username) {
+    assertNotNull(jwtResponse.getAccessToken());
+    DecodedJWT jwt = decodedJWT(jwtResponse.getAccessToken());
+    Date date = jwt.getExpiresAt();
+    long hours = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60));
+    assertEquals(1, hours);
+    assertEquals(username, jwt.getClaims().get("sub").asString());
+    assertEquals(false, jwt.getClaims().get("isBot").asBoolean());
   }
 
   @Test

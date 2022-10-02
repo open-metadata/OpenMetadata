@@ -1,5 +1,7 @@
 package org.openmetadata.service.util;
 
+import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.passay.CharacterData;
@@ -40,8 +42,7 @@ public class PasswordUtil {
     PasswordData password = new PasswordData(pwd);
     RuleResult result = validator.validate(password);
     if (!result.isValid()) {
-      throw new RuntimeException(
-          "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.");
+      throw new RuntimeException(PASSWORD_INVALID_FORMAT);
     }
   }
 
