@@ -147,9 +147,9 @@ public class LineageRepository {
 
     final List<EntityReference> upstreamEntityReferences = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      EntityReference ref = Entity.getEntityReferenceById(entityRelationshipRecord.getType(),
-              entityRelationshipRecord.getId(),
-              Include.ALL);
+      EntityReference ref =
+          Entity.getEntityReferenceById(
+              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       upstreamEntityReferences.add(ref);
       lineage
@@ -177,9 +177,9 @@ public class LineageRepository {
 
     final List<EntityReference> downstreamEntityReferences = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      EntityReference ref = Entity.getEntityReferenceById(entityRelationshipRecord.getType(),
-              entityRelationshipRecord.getId(),
-              Include.ALL);
+      EntityReference ref =
+          Entity.getEntityReferenceById(
+              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       downstreamEntityReferences.add(ref);
       lineage

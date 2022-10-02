@@ -609,15 +609,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Delete all the contained entities
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      LOG.info("Recursively {} deleting {} {}",
-              hardDelete ? "hard" : "soft",
-              entityRelationshipRecord.getType(),
-              entityRelationshipRecord.getId());
-      Entity.deleteEntity(updatedBy,
-              entityRelationshipRecord.getType(),
-              entityRelationshipRecord.getId(),
-              true,
-              hardDelete);
+      LOG.info(
+          "Recursively {} deleting {} {}",
+          hardDelete ? "hard" : "soft",
+          entityRelationshipRecord.getType(),
+          entityRelationshipRecord.getId());
+      Entity.deleteEntity(
+          updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), true, hardDelete);
     }
   }
 
@@ -1101,7 +1099,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> ingestionPipelines = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
       ingestionPipelines.add(
-              daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
+          daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return ingestionPipelines;
   }
