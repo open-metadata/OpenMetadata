@@ -372,9 +372,9 @@ public interface CollectionDAO {
     @Getter private final Double version;
     @Getter private final String entityJson;
 
-    public EntityVersionPair(ExtensionRecord record) {
-      this.version = EntityUtil.getVersion(record.getExtensionName());
-      this.entityJson = record.getExtensionJson();
+    public EntityVersionPair(ExtensionRecord extensionRecord) {
+      this.version = EntityUtil.getVersion(extensionRecord.getExtensionName());
+      this.entityJson = extensionRecord.getExtensionJson();
     }
   }
 
