@@ -29,6 +29,7 @@ const mockProps = {
   allowSoftDelete: true,
   entityName: 'string',
   entityId: 'string-id',
+  canDelete: true,
   entityType: 'table',
   entityFQN: 'x.y.z',
   isRecursiveDelete: true,
