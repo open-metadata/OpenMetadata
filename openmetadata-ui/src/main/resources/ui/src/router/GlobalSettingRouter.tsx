@@ -79,7 +79,7 @@ const MsTeamsPage = withSuspenseFallback(
 );
 const ElasticSearchIndexPage = withSuspenseFallback(
   React.lazy(
-    () => import('../pages/ElasticSearchIndexPage/elastic-search-index-page')
+    () => import('../pages/ElasticSearchIndexPage/elastic-search-index.page')
   )
 );
 

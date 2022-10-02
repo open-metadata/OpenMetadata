@@ -13,6 +13,7 @@
 
 import { QuestionCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
+  Badge,
   Button,
   Card,
   Checkbox,
@@ -25,6 +26,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import {
   getAllReIndexStatus,
@@ -46,6 +48,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getDateTimeByTimeStampWithZone } from '../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import './elastic-search-index.style.less';
 
 const ElasticSearchIndexPage = () => {
   const [batchJobData, setBatchJobData] = useState<EventPublisherJob>();
@@ -54,8 +57,9 @@ const ElasticSearchIndexPage = () => {
   const { isAdminUser } = useAuth();
   const [batchLoading, setBatchLoading] = useState(false);
   const [streamLoading, setStreamLoading] = useState(false);
-  const [recreateIndex, setRecreateIndex] = useState(true);
+  const [recreateIndex, setRecreateIndex] = useState(false);
   const [entities, setEntities] = useState<string[]>([
+    'table',
     'topic',
     'dashboard',
     'pipeline',
@@ -137,7 +141,7 @@ const ElasticSearchIndexPage = () => {
                         <div className="tw-flex">
                           <span className="tw-text-grey-muted">Mode</span> :
                           <span className="tw-ml-2">
-                            {batchJobData?.runMode || '--'}
+                            {startCase(batchJobData?.runMode) || '--'}
                           </span>
                         </div>
                         <div className="tw-flex">
@@ -164,33 +168,82 @@ const ElasticSearchIndexPage = () => {
 
                         <div className="tw-flex">
                           <span className="tw-text-grey-muted">
+                            Index stats
+                          </span>{' '}
+                          :
+                          <span className="tw-ml-2">
+                            {!isEmpty(batchJobData) ? (
+                              <Space size={8}>
+                                <Badge
+                                  className="request-badge running"
+                                  count={batchJobData?.stats?.total}
+                                  title={`Total index sent: ${batchJobData?.stats?.total}`}
+                                />
+
+                                <Badge
+                                  className="request-badge success"
+                                  count={batchJobData?.stats?.success}
+                                  title={`Success index: ${batchJobData?.stats?.success}`}
+                                />
+
+                                <Badge
+                                  showZero
+                                  className="request-badge failed"
+                                  count={batchJobData?.stats?.failed}
+                                  title={`Failed index: ${batchJobData?.stats?.failed}`}
+                                />
+                              </Space>
+                            ) : (
+                              '--'
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="tw-flex">
+                          <span className="tw-text-grey-muted">
                             Last Updated
                           </span>{' '}
                           :
                           <span className="tw-ml-2">
-                            {batchJobData?.failureDetails?.lastFailedAt
+                            {batchJobData?.timestamp
                               ? getDateTimeByTimeStampWithZone(
-                                  batchJobData?.failureDetails?.lastFailedAt
+                                  batchJobData?.timestamp
                                 )
                               : '--'}
                           </span>
                         </div>
                       </Space>
-                      <div className="m-t-sm">
-                        <span className="tw-text-grey-muted">Last error</span> :
-                        <span className="tw-ml-2">
-                          {batchJobData?.failureDetails?.lastFailedReason ? (
-                            <RichTextEditorPreviewer
-                              enableSeeMoreVariant={Boolean(batchJobData)}
-                              markdown={
-                                batchJobData?.failureDetails?.lastFailedReason
-                              }
-                            />
-                          ) : (
-                            '--'
-                          )}
-                        </span>
-                      </div>
+                      <Space className="m-t-sm" size={16}>
+                        <div>
+                          <span className="tw-text-grey-muted">
+                            Last Failed At:
+                          </span>
+                          <p className="tw-ml-2">
+                            {batchJobData?.failureDetails?.lastFailedAt
+                              ? getDateTimeByTimeStampWithZone(
+                                  batchJobData?.failureDetails?.lastFailedAt
+                                )
+                              : '--'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="tw-text-grey-muted">
+                            Last error:
+                          </span>
+                          <span className="tw-ml-2">
+                            {batchJobData?.failureDetails?.lastFailedReason ? (
+                              <RichTextEditorPreviewer
+                                enableSeeMoreVariant={Boolean(batchJobData)}
+                                markdown={
+                                  batchJobData?.failureDetails?.lastFailedReason
+                                }
+                              />
+                            ) : (
+                              '--'
+                            )}
+                          </span>
+                        </div>
+                      </Space>
                     </Skeleton>
                   </div>
 
@@ -270,7 +323,7 @@ const ElasticSearchIndexPage = () => {
                     <div className="tw-flex">
                       <span className="tw-text-grey-muted">Mode</span> :
                       <span className="tw-ml-2">
-                        {streamJobData?.runMode || '--'}
+                        {startCase(streamJobData?.runMode) || '--'}
                       </span>
                     </div>
                     <div className="tw-flex">
@@ -298,28 +351,44 @@ const ElasticSearchIndexPage = () => {
                     <div className="tw-flex">
                       <span className="tw-text-grey-muted">Last Updated</span> :
                       <span className="tw-ml-2">
-                        {streamJobData?.failureDetails?.lastFailedAt
+                        {streamJobData?.timestamp
                           ? getDateTimeByTimeStampWithZone(
-                              streamJobData?.failureDetails?.lastFailedAt
+                              streamJobData?.timestamp
                             )
                           : '--'}
                       </span>
                     </div>
                   </Space>
-                  <div className="m-t-sm">
-                    <span className="tw-text-grey-muted">Last error</span> :
-                    <span className="tw-ml-2">
-                      {streamJobData?.failureDetails?.lastFailedReason ? (
-                        <RichTextEditorPreviewer
-                          enableSeeMoreVariant={Boolean(streamJobData)}
-                          markdown={
-                            streamJobData?.failureDetails?.lastFailedReason
-                          }
-                        />
-                      ) : (
-                        '--'
-                      )}
-                    </span>
+                  <div>
+                    <Space className="m-t-sm" size={16}>
+                      <div>
+                        <span className="tw-text-grey-muted">
+                          Last Failed At:
+                        </span>
+                        <p className="tw-ml-2">
+                          {streamJobData?.failureDetails?.lastFailedAt
+                            ? getDateTimeByTimeStampWithZone(
+                                streamJobData?.failureDetails?.lastFailedAt
+                              )
+                            : '--'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="tw-text-grey-muted">Last error</span> :
+                        <span className="tw-ml-2">
+                          {streamJobData?.failureDetails?.lastFailedReason ? (
+                            <RichTextEditorPreviewer
+                              enableSeeMoreVariant={Boolean(streamJobData)}
+                              markdown={
+                                streamJobData?.failureDetails?.lastFailedReason
+                              }
+                            />
+                          ) : (
+                            '--'
+                          )}
+                        </span>
+                      </div>
+                    </Space>
                   </div>
                 </Skeleton>
               </Card>
