@@ -31,6 +31,26 @@ const mockUserDetail = {
   deleted: false,
 };
 
+const botData = {
+  id: '4755f87d-2a53-4376-97e6-fc072f29cf5a',
+  name: 'ingestion-bot',
+  fullyQualifiedName: 'ingestion-bot',
+  displayName: 'ingestion-bot',
+  botUser: {
+    id: 'b91d42cb-2a02-4364-ae80-db08b77f1b0c',
+    type: 'user',
+    name: 'ingestion-bot',
+    fullyQualifiedName: 'ingestion-bot',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/users/b91d42cb-2a02-4364-ae80-db08b77f1b0c',
+  },
+  version: 0.1,
+  updatedAt: 1664267598781,
+  updatedBy: 'ingestion-bot',
+  href: 'http://localhost:8585/api/v1/bots/4755f87d-2a53-4376-97e6-fc072f29cf5a',
+  deleted: false,
+};
+
 jest.mock('../../components/BotDetails/BotDetails.component', () => {
   return jest
     .fn()
@@ -38,6 +58,7 @@ jest.mock('../../components/BotDetails/BotDetails.component', () => {
 });
 
 jest.mock('../../axiosAPIs/userAPI', () => ({
+  getBotByName: jest.fn().mockImplementation(() => Promise.resolve(botData)),
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve()),
   revokeUserToken: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),

@@ -193,6 +193,7 @@ const jsonData = {
     'invalid-email': 'Email is invalid.',
     'invalid-url': 'Url is invalid.',
     'is-required': 'is required',
+    'email-is-in-use': 'Email is already in use!',
   },
   label: {
     'delete-entity-text':
