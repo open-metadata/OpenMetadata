@@ -419,8 +419,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(responseCode = "400", description = "Invalid expression")
       })
   public void validateCondition(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression) {
     CompiledRule.validateExpression(expression, Boolean.class);
   }
 

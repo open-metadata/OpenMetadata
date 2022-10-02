@@ -305,11 +305,7 @@ public class SecretsManagerMigrationService {
    * pipelines
    */
   private void deleteChangeEventsFor(String entityType) {
-    try {
-      changeEventRepository.deleteAll(entityType);
-    } catch (IOException e) {
-      throw new SecretsManagerMigrationException(e.getMessage(), e.getCause());
-    }
+    changeEventRepository.deleteAll(entityType);
   }
 
   private Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
