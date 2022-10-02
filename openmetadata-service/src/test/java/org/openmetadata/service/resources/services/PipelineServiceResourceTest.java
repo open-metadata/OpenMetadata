@@ -86,7 +86,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     createPipeline =
         pipelineServiceResourceTest
             .createRequest(test, 2)
-            .withServiceType(PipelineServiceType.Glue)
+            .withServiceType(PipelineServiceType.GluePipeline)
             .withConnection(TestUtils.GLUE_CONNECTION);
 
     pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
