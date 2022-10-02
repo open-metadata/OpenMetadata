@@ -17,9 +17,10 @@ import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  getBotByName,
   getUserByName,
   revokeUserToken,
-  updateUserDetail,
+  updateBotDetail,
 } from '../../axiosAPIs/userAPI';
 import BotDetails from '../../components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -32,6 +33,7 @@ import {
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../../components/Users/Users.interface';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -40,7 +42,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const BotDetailsPage = () => {
   const { botsName } = useParams<{ [key: string]: string }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [botsData, setBotsData] = useState<User>({} as User);
+  const [botUserData, setBotUserData] = useState<User>({} as User);
+  const [botData, setBotData] = useState<Bot>({} as Bot);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [botPermission, setBotPermission] = useState<OperationPermission>(
@@ -62,34 +65,32 @@ const BotDetailsPage = () => {
     }
   };
 
-  const fetchBotsData = () => {
-    setIsLoading(true);
-    getUserByName(botsName)
-      .then((res) => {
-        if (res) {
-          setBotsData(res);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-user-details-error']
-        );
-        setIsError(true);
-      })
-      .finally(() => setIsLoading(false));
+  const fetchBotsData = async () => {
+    try {
+      setIsLoading(true);
+      const botResponse = await getBotByName(botsName);
+
+      const botUserResponse = await getUserByName(
+        botResponse.botUser.fullyQualifiedName || ''
+      );
+      setBotUserData(botUserResponse);
+      setBotData(botResponse);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updateBotsDetails = async (data: UserDetails) => {
-    const updatedDetails = { ...botsData, ...data };
-    const jsonPatch = compare(botsData, updatedDetails);
+    const updatedDetails = { ...botData, ...data };
+    const jsonPatch = compare(botData, updatedDetails);
 
     try {
-      const response = await updateUserDetail(botsData.id, jsonPatch);
+      const response = await updateBotDetail(botData.id, jsonPatch);
       if (response) {
-        setBotsData((prevData) => ({
+        setBotData((prevData) => ({
           ...prevData,
           ...response,
         }));
@@ -102,10 +103,10 @@ const BotDetailsPage = () => {
   };
 
   const revokeBotsToken = () => {
-    revokeUserToken(botsData.id)
+    revokeUserToken(botUserData.id)
       .then((res) => {
         const data = res;
-        setBotsData(data);
+        setBotUserData(data);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -129,10 +130,12 @@ const BotDetailsPage = () => {
     } else {
       return (
         <BotDetails
+          botData={botData}
           botPermission={botPermission}
-          botsData={botsData}
+          botUserData={botUserData}
           revokeTokenHandler={revokeBotsToken}
           updateBotsDetails={updateBotsDetails}
+          onEmailChange={fetchBotsData}
         />
       );
     }

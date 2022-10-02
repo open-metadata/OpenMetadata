@@ -63,7 +63,7 @@ describe('Test manage button component', () => {
   });
 
   it('Should render delete modal component on click of delete option', async () => {
-    render(<ManageButton {...mockProps} />);
+    render(<ManageButton {...mockProps} canDelete />);
 
     const manageButton = await screen.findByTestId('manage-button');
 
