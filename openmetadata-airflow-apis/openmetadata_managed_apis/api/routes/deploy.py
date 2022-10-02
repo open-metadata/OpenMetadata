@@ -52,7 +52,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         the session
         """
 
-        json_request = request.get_json()
+        json_request = request.get_json(cache=False)
 
         try:
 
