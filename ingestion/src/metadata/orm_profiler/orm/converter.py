@@ -55,7 +55,7 @@ _TYPE_MAP = {
     DataType.BINARY: CustomTypes.BYTES.value,
     DataType.VARBINARY: sqlalchemy.VARBINARY,
     DataType.ARRAY: sqlalchemy.ARRAY,
-    DataType.BLOB: sqlalchemy.BLOB,
+    DataType.BLOB: CustomTypes.BYTES.value,
     DataType.LONGBLOB: sqlalchemy.LargeBinary,
     DataType.MEDIUMBLOB: sqlalchemy.LargeBinary,
     DataType.MAP: sqa_types.SQAMap,
