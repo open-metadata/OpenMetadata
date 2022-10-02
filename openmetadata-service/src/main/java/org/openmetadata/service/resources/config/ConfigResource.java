@@ -42,7 +42,7 @@ public class ConfigResource {
 
   public ConfigResource(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     this.openMetadataApplicationConfig = openMetadataApplicationConfig;
-    this.jwtTokenGenerator = JWTTokenGenerator.getINSTANCE();
+    this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
   }
 
   @GET

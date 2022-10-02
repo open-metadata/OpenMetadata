@@ -9,7 +9,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import io.dropwizard.testing.ResourceHelpers;
-
 import java.security.interfaces.RSAPublicKey;
 import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +36,7 @@ class JWTTokenGeneratorTest {
     jwtTokenConfiguration.setJwtissuer("open-metadata.org");
     jwtTokenConfiguration.setRsaprivateKeyFilePath(rsaPrivateKeyPath);
     jwtTokenConfiguration.setRsapublicKeyFilePath(rsaPublicKeyPath);
-    jwtTokenGenerator = JWTTokenGenerator.getINSTANCE();
+    jwtTokenGenerator = JWTTokenGenerator.getInstance();
     jwtTokenGenerator.init(jwtTokenConfiguration);
   }
 

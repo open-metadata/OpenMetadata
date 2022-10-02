@@ -8,7 +8,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;

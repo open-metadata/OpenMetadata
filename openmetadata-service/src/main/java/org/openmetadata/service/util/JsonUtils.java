@@ -416,16 +416,12 @@ public final class JsonUtils {
     return Paths.get(path).getParent().getFileName().toString();
   }
 
-  /**
-   * Serialize object removing all the fields annotated with @{@link MaskedField}
-   */
+  /** Serialize object removing all the fields annotated with @{@link MaskedField} */
   public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
     return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
   }
 
-  /**
-   * Serialize object removing all the fields annotated with @{@link ExposedField}
-   */
+  /** Serialize object removing all the fields annotated with @{@link ExposedField} */
   public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
     String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
     return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
@@ -444,9 +440,7 @@ public final class JsonUtils {
     return OBJECT_MAPPER.readTree(extensionJson);
   }
 
-  /**
-   * Compared the canonicalized JSON representation of two object to check if they are equals or not
-   */
+  /** Compared the canonicalized JSON representation of two object to check if they are equals or not */
   public static boolean areEquals(Object obj1, Object obj2) throws JsonProcessingException {
     ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
     JsonNode obj1sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj1));

@@ -42,6 +42,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -76,8 +77,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
-  private final static String COLON_DELIMITER = ":";
-  private final static String DEFAULT_ADMIN = ADMIN_USER_NAME;
+  private static final String COLON_DELIMITER = ":";
+  private static final String DEFAULT_ADMIN = ADMIN_USER_NAME;
   private Set<String> adminUsers;
   private Set<String> botPrincipalUsers;
   private Set<String> testUsers;
@@ -187,7 +188,7 @@ public class DefaultAuthorizer implements Authorizer {
   private void sendInviteMailToAdmin(User user, String pwd) {
     Map<String, String> templatePopulator = new HashMap<>();
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
     templatePopulator.put(EmailUtil.PASSWORD, pwd);
     templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
@@ -197,7 +198,7 @@ public class DefaultAuthorizer implements Authorizer {
               EmailUtil.getInstance().getEmailInviteSubject(),
               templatePopulator,
               user.getEmail(),
-              EmailUtil.EMAILTEMPLATEBASEPATH,
+              EmailUtil.EMAIL_TEMPLATE_BASEPATH,
               EmailUtil.INVITE_RANDOM_PWD);
     } catch (Exception ex) {
       LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
@@ -391,7 +392,7 @@ public class DefaultAuthorizer implements Authorizer {
           }
         } else if ("basic".equals(authConfig.getProvider())) {
           authMechanism =
-              buildAuthMechanism(JWT, JWTTokenGenerator.getINSTANCE().generateJWTToken(user, JWTTokenExpiry.Unlimited));
+              buildAuthMechanism(JWT, JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited));
         }
       }
     }

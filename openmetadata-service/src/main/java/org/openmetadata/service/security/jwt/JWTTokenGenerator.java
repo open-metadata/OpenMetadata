@@ -38,7 +38,7 @@ public class JWTTokenGenerator {
 
   private JWTTokenGenerator() {}
 
-  public static JWTTokenGenerator getINSTANCE() {
+  public static JWTTokenGenerator getInstance() {
     return INSTANCE;
   }
 

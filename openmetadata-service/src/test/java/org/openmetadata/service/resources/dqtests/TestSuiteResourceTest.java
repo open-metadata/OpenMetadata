@@ -7,7 +7,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -113,8 +112,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
   }
 
-  private void verifyTestSuites(ResultList<TestSuite> actualTestSuites, List<CreateTestSuite> expectedTestSuites)
-      throws HttpResponseException {
+  private void verifyTestSuites(ResultList<TestSuite> actualTestSuites, List<CreateTestSuite> expectedTestSuites) {
     Map<String, TestSuite> testSuiteMap = new HashMap<>();
     for (TestSuite result : actualTestSuites.getData()) {
       testSuiteMap.put(result.getName(), result);

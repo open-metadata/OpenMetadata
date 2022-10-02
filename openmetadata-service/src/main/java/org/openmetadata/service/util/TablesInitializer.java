@@ -344,10 +344,10 @@ public final class TablesInitializer {
             .withUpdatedAt(System.currentTimeMillis());
     JWTAuthMechanism jwtAuthMechanism = null;
     if (config.getJwtTokenConfiguration() != null) {
-      JWTTokenGenerator.getINSTANCE().init(config.getJwtTokenConfiguration());
+      JWTTokenGenerator.getInstance().init(config.getJwtTokenConfiguration());
       GenerateTokenRequest generateTokenRequest =
           new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
-      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getINSTANCE();
+      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
       jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
       AuthenticationMechanism authenticationMechanism =
           new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
@@ -389,10 +389,10 @@ public final class TablesInitializer {
             .withUpdatedAt(System.currentTimeMillis());
     JWTAuthMechanism jwtAuthMechanism = null;
     if (config.getJwtTokenConfiguration() != null) {
-      JWTTokenGenerator.getINSTANCE().init(config.getJwtTokenConfiguration());
+      JWTTokenGenerator.getInstance().init(config.getJwtTokenConfiguration());
       GenerateTokenRequest generateTokenRequest =
           new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
-      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getINSTANCE();
+      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
       jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
       AuthenticationMechanism authenticationMechanism =
           new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);

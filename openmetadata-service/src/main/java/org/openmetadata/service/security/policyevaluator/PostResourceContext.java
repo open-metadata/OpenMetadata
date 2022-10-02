@@ -1,6 +1,5 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import java.io.IOException;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;

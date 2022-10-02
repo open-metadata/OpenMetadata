@@ -494,8 +494,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void verifyTestCases(
-      ResultList<TestCase> actualTestCases, List<CreateTestCase> expectedTestCases, int expectedCount)
-      throws HttpResponseException {
+      ResultList<TestCase> actualTestCases, List<CreateTestCase> expectedTestCases, int expectedCount) {
     assertEquals(expectedCount, actualTestCases.getPaging().getTotal());
     assertEquals(expectedTestCases.size(), actualTestCases.getData().size());
     Map<String, TestCase> testCaseMap = new HashMap<>();

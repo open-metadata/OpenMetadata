@@ -110,7 +110,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Instantiate JWT Token Generator
-    JWTTokenGenerator.getINSTANCE().init(catalogConfig.getJwtTokenConfiguration());
+    JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
