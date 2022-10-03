@@ -1,0 +1,42 @@
+FROM python:3.9-slim
+
+# Install Dependencies (listed in alphabetical order)
+RUN apt-get update \
+    && apt-get install -y build-essential \
+    default-libmysqlclient-dev \
+    freetds-bin \
+    freetds-dev \
+    gcc \
+    gnupg \
+    libevent-dev \
+    libffi-dev \
+    libpq-dev \
+    librdkafka-dev \
+    libsasl2-dev \
+    libsasl2-modules \
+    libssl-dev \
+    libxml2 \
+    openjdk-11-jre \
+    openssl \
+    postgresql \
+    postgresql-contrib \
+    tdsodbc \
+    unixodbc \
+    unixodbc-dev \
+    wget --no-install-recommends \
+    # Accept MSSQL ODBC License
+    # && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR ingestion/
+
+# Only copy the necessary source files to execute Workflows
+COPY src/ src/
+COPY setup.* ./
+COPY README.md .
+COPY operators/docker/main.py .
+
+RUN pip install --upgrade pip
+
+ARG INGESTION_DEPENDENCY="all"
+RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
