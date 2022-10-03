@@ -496,3 +496,4 @@ export const configOptions = {
 };
 
 export const NOTIFICATION_READ_TIMER = 2500;
+export const TIER_CATEGORY = 'Tier';
