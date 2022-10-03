@@ -51,7 +51,7 @@ STATUS_MAP = {
 }
 
 
-class GluePipelineSource(PipelineServiceSource):
+class GluepipelineSource(PipelineServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.task_id_mapping = {}
