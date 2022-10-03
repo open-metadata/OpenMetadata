@@ -243,21 +243,19 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   @Override
-  public void validateCreatedEntity(Webhook webhook, CreateWebhook createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Webhook webhook, CreateWebhook createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), webhook.getName());
     List<EventFilter> filters = createRequest.getEventFilters();
     assertEquals(filters, webhook.getEventFilters());
   }
 
   @Override
-  public void compareEntities(Webhook expected, Webhook updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(Webhook expected, Webhook updated, Map<String, String> authHeaders) {
     // Patch not supported
   }
 
   @Override
-  public Webhook validateGetWithDifferentFields(Webhook entity, boolean byName) throws HttpResponseException {
+  public Webhook validateGetWithDifferentFields(Webhook entity, boolean byName) {
     return entity; // Nothing to validate
   }
 

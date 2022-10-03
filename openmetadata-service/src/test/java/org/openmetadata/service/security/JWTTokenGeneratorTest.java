@@ -9,10 +9,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import io.dropwizard.testing.ResourceHelpers;
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,7 +31,7 @@ class JWTTokenGeneratorTest {
   protected JWTTokenGenerator jwtTokenGenerator;
 
   @BeforeAll
-  public void setup(TestInfo test) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+  public void setup(TestInfo test) {
     jwtTokenConfiguration = new JWTTokenConfiguration();
     jwtTokenConfiguration.setJwtissuer("open-metadata.org");
     jwtTokenConfiguration.setRsaprivateKeyFilePath(rsaPrivateKeyPath);

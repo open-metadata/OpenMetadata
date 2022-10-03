@@ -148,12 +148,12 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void post_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
+  void post_validUsageByName_200_OK(TestInfo test) {
     testValidUsageByName(test, POST);
   }
 
   @Test
-  void put_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
+  void put_validUsageByName_200_OK(TestInfo test) {
     testValidUsageByName(test, PUT);
   }
 

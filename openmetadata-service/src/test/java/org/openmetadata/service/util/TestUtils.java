@@ -61,7 +61,7 @@ import org.openmetadata.schema.services.connections.database.SnowflakeConnection
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.schema.services.connections.pipeline.GlueConnection;
+import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
@@ -101,7 +101,7 @@ public final class TestUtils {
   public static MessagingConnection KAFKA_CONNECTION;
   public static DashboardConnection SUPERSET_CONNECTION;
 
-  public static MlModelConnection MLFLOW_CONNECTION;
+  public static final MlModelConnection MLFLOW_CONNECTION;
 
   public static URI PIPELINE_URL;
 
@@ -192,7 +192,7 @@ public final class TestUtils {
       GLUE_CONNECTION =
           new PipelineConnection()
               .withConfig(
-                  new GlueConnection()
+                  new GluePipelineConnection()
                       .withAwsConfig(
                           new AWSCredentials()
                               .withAwsAccessKeyId("ABCD")
@@ -269,6 +269,14 @@ public final class TestUtils {
     Response response =
         SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, Status.CREATED.getStatusCode());
+  }
+
+  public static <T, K> T post(
+      WebTarget target, K request, Class<T> clz, int expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    return readResponse(response, clz, expectedStatus);
   }
 
   public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)

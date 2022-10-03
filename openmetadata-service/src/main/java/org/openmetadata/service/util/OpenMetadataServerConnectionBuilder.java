@@ -20,6 +20,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class OpenMetadataServerConnectionBuilder {
@@ -27,14 +28,14 @@ public class OpenMetadataServerConnectionBuilder {
   OpenMetadataServerConnection.AuthProvider authProvider;
   String bot;
   Object securityConfig;
-  OpenMetadataServerConnection.VerifySSL verifySSL;
-  String openMetadataURL;
-  String clusterName;
-  SecretsManagerProvider secretsManagerProvider;
-  Object airflowSSLConfig;
+  private final OpenMetadataServerConnection.VerifySSL verifySSL;
+  private final String openMetadataURL;
+  private final String clusterName;
+  private final SecretsManagerProvider secretsManagerProvider;
+  private final Object airflowSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
-  SecretsManager secretsManager;
+  private final SecretsManager secretsManager;
 
   public OpenMetadataServerConnectionBuilder(
       SecretsManager secretsManager, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
@@ -118,14 +119,14 @@ public class OpenMetadataServerConnectionBuilder {
 
   private User retrieveIngestionBotUser(String botName) {
     try {
-      Bot bot = botRepository.getByName(null, botName, EntityUtil.Fields.EMPTY_FIELDS);
-      if (bot.getBotUser() == null) {
+      Bot bot1 = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
+      if (bot1.getBotUser() == null) {
         return null;
       }
       User user =
           userRepository.getByName(
               null,
-              bot.getBotUser().getFullyQualifiedName(),
+              bot1.getBotUser().getFullyQualifiedName(),
               new EntityUtil.Fields(List.of("authenticationMechanism")));
       if (user.getAuthenticationMechanism() != null) {
         user.getAuthenticationMechanism()
@@ -137,12 +138,6 @@ public class OpenMetadataServerConnectionBuilder {
     } catch (IOException | EntityNotFoundException ex) {
       LOG.debug((bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
       return null;
-    }
-  }
-
-  private void addBotNameIfUserExists(User botUser, String bot) {
-    if (botUser != null) {
-      this.bot = bot;
     }
   }
 

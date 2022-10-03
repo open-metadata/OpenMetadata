@@ -419,6 +419,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       // if term is available in search suggestion, redirecting to entity details page
       cy.get(`[data-testid="${serviceName}-${term}"] [data-testid="data-name"]`)
         .should('be.visible')
+        .first()
         .click();
     } else {
       // if term is not available in search suggestion, hitting enter to search box so it will redirect to explore page
@@ -668,7 +669,8 @@ export const addCustomPropertiesForEntity = (
   entityType,
   customType,
   value,
-  entityObj
+  entityObj,
+  entityName
 ) => {
   const propertyName = `entity${entityType.name}test${uuid()}`;
 
@@ -697,7 +699,7 @@ export const addCustomPropertiesForEntity = (
   //Checking the added property in Entity
 
   visitEntityDetailsPage(
-    entityObj.term,
+    entityName || entityObj.term,
     entityObj.serviceName,
     entityObj.entity
   );
@@ -809,7 +811,7 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
   //Checking if property got deleted successfully
-  cy.get('[data-testid="add-field-button"]').should('be.visible');
+  cy.get('[data-testid="add-field-button"]').scrollIntoView().should('be.visible');
 };
 
 export const updateOwner = () => {

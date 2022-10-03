@@ -242,7 +242,6 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
     for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
-        @SuppressWarnings("unchecked")
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
@@ -664,16 +663,14 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     if (updateRequest != null) {
-      LOG.debug("Sending request to ElasticSearch");
-      LOG.debug(updateRequest.toString());
+      LOG.debug("Sending request to ElasticSearch {}", updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch");
-      LOG.debug(deleteRequest.toString());
+      LOG.debug("Sending request to ElasticSearch {}", deleteRequest);
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
@@ -681,8 +678,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch");
-      LOG.debug(deleteRequest.toString());
+      LOG.debug("Sending request to ElasticSearch {}", deleteRequest);
       deleteRequest.setRefresh(true);
       client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }

@@ -193,12 +193,14 @@ const jsonData = {
     'invalid-email': 'Email is invalid.',
     'invalid-url': 'Url is invalid.',
     'is-required': 'is required',
+    'email-is-in-use': 'Email is already in use!',
   },
   label: {
     'delete-entity-text':
       'Once you delete this entity, it will be removed permanently.',
     'email-confirmation':
       'Please confirm your email, confirmation has been sent to your email',
+    'special-character-error': 'Special character is not allowed!',
   },
   message: {
     'no-services': 'No services',

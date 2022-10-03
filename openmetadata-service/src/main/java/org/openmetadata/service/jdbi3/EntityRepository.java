@@ -608,9 +608,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityRelationshipRecord record : records) {
-      LOG.info("Recursively {} deleting {} {}", hardDelete ? "hard" : "soft", record.getType(), record.getId());
-      Entity.deleteEntity(updatedBy, record.getType(), record.getId(), true, hardDelete);
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      LOG.info(
+          "Recursively {} deleting {} {}",
+          hardDelete ? "hard" : "soft",
+          entityRelationshipRecord.getType(),
+          entityRelationshipRecord.getId());
+      Entity.deleteEntity(
+          updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), true, hardDelete);
     }
   }
 
@@ -753,9 +758,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
     ObjectNode objectNode = JsonUtils.getObjectNode();
-    for (ExtensionRecord record : records) {
-      String fieldName = TypeRegistry.getPropertyName(record.getExtensionName());
-      objectNode.set(fieldName, JsonUtils.readTree(record.getExtensionJson()));
+    for (ExtensionRecord extensionRecord : records) {
+      String fieldName = TypeRegistry.getPropertyName(extensionRecord.getExtensionName());
+      objectNode.set(fieldName, JsonUtils.readTree(extensionRecord.getExtensionJson()));
     }
     return objectNode;
   }
@@ -827,8 +832,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
-    for (EntityRelationshipRecord record : records) {
-      followers.add(daoCollection.userDAO().findEntityReferenceById(record.getId(), ALL));
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      followers.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return followers;
   }
@@ -851,9 +856,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!records.isEmpty()) {
       // Restore all the contained entities
-      for (EntityRelationshipRecord record : records) {
-        LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      for (EntityRelationshipRecord entityRelationshipRecord : records) {
+        LOG.info("Recursively restoring {} {}", entityRelationshipRecord.getType(), entityRelationshipRecord.getId());
+        Entity.restoreEntity(updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId());
       }
     }
 
@@ -1092,8 +1097,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityRelationshipRecord> records =
         findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
     List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (EntityRelationshipRecord record : records) {
-      ingestionPipelines.add(daoCollection.ingestionPipelineDAO().findEntityReferenceById(record.getId(), ALL));
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      ingestionPipelines.add(
+          daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return ingestionPipelines;
   }

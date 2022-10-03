@@ -16,7 +16,7 @@ public class LoginAttemptCache {
     super();
     LoginConfiguration loginConfiguration =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.LOGINCONFIG, LoginConfiguration.class);
+            .getConfig(ConfigurationHolder.ConfigurationType.LOGIN_CONFIG, LoginConfiguration.class);
     MAX_ATTEMPT = 3;
     attemptsCache =
         CacheBuilder.newBuilder()

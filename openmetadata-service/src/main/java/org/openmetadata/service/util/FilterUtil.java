@@ -176,7 +176,6 @@ public class FilterUtil {
 
   public static List<EventFilter> getEventFilterFromSettings(Settings setting) throws IOException {
     String json = JsonUtils.pojoToJson(setting.getConfigValue());
-    List<EventFilter> eventFilterList = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-    return eventFilterList;
+    return JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
   }
 }

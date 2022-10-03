@@ -263,7 +263,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).build();
   }
 
-  public static MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+  public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
     return VIEW_ALL_OPERATIONS;
