@@ -167,14 +167,6 @@ can restore using Restore metadata CLI.
 
 The restore CLI needs to be used with `openmetadata-ingestion` version 0.12.1 or higher.
 
-## Installation
-
-The CLI comes bundled in the base `openmetadata-ingestion` Python package. You can install it with:
-
-```commandline
-pip install openmetadata-ingestion
-```
-
 ## Restore CLI
 
 After the installation, we can take a look at the different options to run the CLI:
@@ -205,25 +197,9 @@ Options:
   --help                Show this message and exit.
 ```
 
-### Database Connection
-
-There is a set of four required parameters, the minimum required for us to access the database service and run the
-restore: `host`, `user`, `password` and `database` to point to. Note that the user should have at least read access to the
-database. By default, we'll try to connect through the port `3306`, but this can be overridden with the `--port` option.
-
 ### Output
 
-The CLI will give messages like this `Backup restored from openmetadata_202209301715_backup.sql` when backup restored complited.
-
-### Connection Options and Arguments
-
-You can pass any required connection options or arguments to the MySQL connection via `-o <opt1>, -o <opt2> [...]`
-or `-a <arg1>, -a <arg2> [...]`.
-
-### Restore Postgres
-
-If you are saving the data from Postgres, pass the argument `-s <schema>` or `--schema=<schema>` to indicate the
-schema containing the OpenMetadata tables. E.g., `-s public`.
+The CLI will give messages like this `Backup restored from openmetadata_202209301715_backup.sql` when backup restored completed.
 
 ### Trying it out
 
