@@ -292,10 +292,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @Parameter(
-          description = "Filter to apply patch to child entities",
-          schema = @Schema(type = "list", example = "false"))
-      @QueryParam("applyPatch")
-      List<String> applyPatch,
+              description = "Filter to apply patch to child entities",
+              schema = @Schema(type = "list", example = "false"))
+          @QueryParam("applyPatch")
+          List<String> applyPatch,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
