@@ -438,6 +438,8 @@ site_menu:
     url: /openmetadata/connectors/metadata
   - category: OpenMetadata / Connectors / Metadata / Amundsen
     url: /openmetadata/connectors/metadata/amundsen
+  - category: OpenMetadata / Connectors / Metadata / Atlas
+    url: /openmetadata/connectors/metadata/atlas
 
   - category: OpenMetadata / Connectors / Managing Credentials
     url: /openmetadata/connectors/credentials
