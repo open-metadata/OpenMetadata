@@ -170,7 +170,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                   },
                   {
                     pattern: /^[A-Za-z0-9_]*$/g,
-                    message: jsonData.label['spatial-character-error'],
+                    message: jsonData.label['special-character-error'],
                   },
                   {
                     validator: (_, value) => {
