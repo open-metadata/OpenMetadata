@@ -16,6 +16,8 @@ test import migration cli script
 import os
 from unittest import TestCase
 
+import pytest
+
 from metadata.cli.openmetadata_imports_migration import (
     run_openmetadata_imports_migration,
 )
@@ -36,7 +38,7 @@ class TestOpenmetadataImportsMigration(TestCase):
 
     def test_run_openmetadata_imports_migration(self):
         """test the run openmetadata function"""
-        run_openmetadata_imports_migration(self.path_to_ress_dir)
+        run_openmetadata_imports_migration(self.path_to_ress_dir, True)
         failures = []
 
         for root, _, filenames in os.walk(self.path_to_ress_dir):
@@ -47,6 +49,8 @@ class TestOpenmetadataImportsMigration(TestCase):
                     ) as fle:
                         data = fle.read()
                         if "from openmetadata_managed_apis." not in data:
+                            failures.append(filename)
+                        if "/opt/airflow/dag_generated_configs" not in data:
                             failures.append(filename)
 
         assert not failures

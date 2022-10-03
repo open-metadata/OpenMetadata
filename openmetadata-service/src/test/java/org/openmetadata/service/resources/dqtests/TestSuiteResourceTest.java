@@ -7,7 +7,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -62,7 +61,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void put_testCaseResults_200(TestInfo test) throws IOException, ParseException {
+  void put_testCaseResults_200(TestInfo test) throws IOException {
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     List<EntityReference> testCases1 = new ArrayList<>();
     List<EntityReference> testCases2 = new ArrayList<>();
@@ -113,8 +112,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
   }
 
-  private void verifyTestSuites(ResultList<TestSuite> actualTestSuites, List<CreateTestSuite> expectedTestSuites)
-      throws HttpResponseException {
+  private void verifyTestSuites(ResultList<TestSuite> actualTestSuites, List<CreateTestSuite> expectedTestSuites) {
     Map<String, TestSuite> testSuiteMap = new HashMap<>();
     for (TestSuite result : actualTestSuites.getData()) {
       testSuiteMap.put(result.getName(), result);
@@ -126,8 +124,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     }
   }
 
-  private void verifyTestCases(List<EntityReference> actualTestCases, List<EntityReference> expectedTestCases)
-      throws HttpResponseException {
+  private void verifyTestCases(List<EntityReference> actualTestCases, List<EntityReference> expectedTestCases) {
     assertEquals(expectedTestCases.size(), actualTestCases.size());
     Map<UUID, EntityReference> testCaseMap = new HashMap<>();
     for (EntityReference result : actualTestCases) {
@@ -147,21 +144,19 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Override
-  public void validateCreatedEntity(TestSuite createdEntity, CreateTestSuite request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(TestSuite createdEntity, CreateTestSuite request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
-  public void compareEntities(TestSuite expected, TestSuite updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(TestSuite expected, TestSuite updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDescription(), updated.getDescription());
   }
 
   @Override
-  public TestSuite validateGetWithDifferentFields(TestSuite entity, boolean byName) throws HttpResponseException {
+  public TestSuite validateGetWithDifferentFields(TestSuite entity, boolean byName) {
     return null;
   }
 

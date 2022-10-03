@@ -146,9 +146,11 @@ public class LineageRepository {
         dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
 
     final List<EntityReference> upstreamEntityReferences = new ArrayList<>();
-    for (EntityRelationshipRecord record : records) {
-      EntityReference ref = Entity.getEntityReferenceById(record.getType(), record.getId(), Include.ALL);
-      LineageDetails lineageDetails = JsonUtils.readValue(record.getJson(), LineageDetails.class);
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      EntityReference ref =
+          Entity.getEntityReferenceById(
+              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
+      LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       upstreamEntityReferences.add(ref);
       lineage
           .getUpstreamEdges()
@@ -174,9 +176,11 @@ public class LineageRepository {
         dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
 
     final List<EntityReference> downstreamEntityReferences = new ArrayList<>();
-    for (EntityRelationshipRecord record : records) {
-      EntityReference ref = Entity.getEntityReferenceById(record.getType(), record.getId(), Include.ALL);
-      LineageDetails lineageDetails = JsonUtils.readValue(record.getJson(), LineageDetails.class);
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      EntityReference ref =
+          Entity.getEntityReferenceById(
+              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
+      LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       downstreamEntityReferences.add(ref);
       lineage
           .getDownstreamEdges()

@@ -91,7 +91,7 @@ public class BuildSearchIndexResource {
         ElasticSearchClientUtils.createElasticSearchClient(
             ConfigurationHolder.getInstance()
                 .getConfig(
-                    ConfigurationHolder.ConfigurationType.ELASTICSEARCHCONFIG, ElasticSearchConfiguration.class));
+                    ConfigurationHolder.ConfigurationType.ELASTICSEARCH_CONFIG, ElasticSearchConfiguration.class));
     this.dao = dao;
     this.authorizer = authorizer;
     this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
@@ -123,8 +123,9 @@ public class BuildSearchIndexResource {
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
       })
   public Response reindexAllEntities(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventPublisherJob createRequest)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventPublisherJob createRequest) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext, false);
     String startedBy = securityContext.getUserPrincipal().getName();
@@ -173,10 +174,7 @@ public class BuildSearchIndexResource {
   private synchronized Response startReindexingStreamMode(
       UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest) {
     // create a new Job
-    threadScheduler.submit(
-        () -> {
-          this.submitStreamJob(uriInfo, startedBy, createRequest);
-        });
+    threadScheduler.submit(() -> this.submitStreamJob(uriInfo, startedBy, createRequest));
     return Response.status(Response.Status.OK).entity("Reindexing Started").build();
   }
 
@@ -235,27 +233,22 @@ public class BuildSearchIndexResource {
 
     // Update Listener for only Batch
     BulkProcessorListener bulkProcessorListener = new BulkProcessorListener(dao);
-    ;
     BulkProcessor processor = getBulkProcessor(bulkProcessorListener);
 
-    try {
-      if (createRequest.getEntities().contains("all")) {
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, TABLE, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, TOPIC, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, DASHBOARD, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, PIPELINE, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, MLMODEL, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, USER, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, TEAM, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, GLOSSARY_TERM, createRequest);
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, TAG, createRequest);
-      } else {
-        for (String entityName : createRequest.getEntities()) {
-          updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
-        }
+    if (createRequest.getEntities().contains("all")) {
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TABLE, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TOPIC, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, DASHBOARD, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, PIPELINE, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, MLMODEL, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, USER, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TEAM, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, GLOSSARY_TERM, createRequest);
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TAG, createRequest);
+    } else {
+      for (String entityName : createRequest.getEntities()) {
+        updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
       }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -264,8 +257,7 @@ public class BuildSearchIndexResource {
       BulkProcessorListener listener,
       UriInfo uriInfo,
       String entityType,
-      CreateEventPublisherJob createRequest)
-      throws IOException {
+      CreateEventPublisherJob createRequest) {
     listener.allowTotalRequestUpdate();
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
@@ -389,7 +381,7 @@ public class BuildSearchIndexResource {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
       }
-      FailureDetails failureDetails = null;
+      FailureDetails failureDetails;
       Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       try {
         client.update(getUpdateRequest(indexType, entityType, entity), RequestOptions.DEFAULT);

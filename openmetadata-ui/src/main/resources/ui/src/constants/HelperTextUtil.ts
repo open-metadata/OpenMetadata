@@ -51,3 +51,9 @@ export const NO_PERMISSION_TO_VIEW =
 
 export const GROUP_TEAM_TYPE_CHANGE_MSG =
   "The team type 'Group' cannot be changed. Please create a new team with the preferred type.";
+
+export const INGESTION_BOT_CANT_BE_DELETED =
+  'You can not delete the ingestion bot.';
+
+export const BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION =
+  'Changing account email will update or create a new bot user';

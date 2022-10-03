@@ -29,7 +29,7 @@ public class BotRepository extends EntityRepository<Bot> {
 
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  SecretsManager secretsManager;
+  final SecretsManager secretsManager;
 
   public BotRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);

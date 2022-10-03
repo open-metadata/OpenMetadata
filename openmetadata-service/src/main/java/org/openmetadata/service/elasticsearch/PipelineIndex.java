@@ -9,7 +9,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class PipelineIndex implements ElasticSearchIndex {
-  Pipeline pipeline;
+  final Pipeline pipeline;
   final List<String> excludeFields = List.of("changeDescription");
 
   public PipelineIndex(Pipeline pipeline) {

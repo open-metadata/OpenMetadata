@@ -416,20 +416,12 @@ public final class JsonUtils {
     return Paths.get(path).getParent().getFileName().toString();
   }
 
-  /**
-   * Serialize object removing all the fields annotated with @{@link MaskedField}
-   *
-   * @return Serialized JSON string
-   */
+  /** Serialize object removing all the fields annotated with @{@link MaskedField} */
   public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
     return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
   }
 
-  /**
-   * Serialize object removing all the fields annotated with @{@link ExposedField}
-   *
-   * @return Object if the serialization of `entity` does not result in an empty JSON string.
-   */
+  /** Serialize object removing all the fields annotated with @{@link ExposedField} */
   public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
     String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
     return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
@@ -448,14 +440,7 @@ public final class JsonUtils {
     return OBJECT_MAPPER.readTree(extensionJson);
   }
 
-  /**
-   * Compared the canonicalized JSON representation of two object to check if they are equals or not
-   *
-   * @param obj1
-   * @param obj2
-   * @return True if the representations are equal, otherwise, false
-   * @throws JsonProcessingException if the Object mapper fails
-   */
+  /** Compared the canonicalized JSON representation of two object to check if they are equals or not */
   public static boolean areEquals(Object obj1, Object obj2) throws JsonProcessingException {
     ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
     JsonNode obj1sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj1));

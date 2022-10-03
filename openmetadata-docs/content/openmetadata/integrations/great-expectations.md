@@ -4,7 +4,7 @@ slug: /openmetadata/integrations/great-expectations
 ---
 
 # Great Expectations
-Configure Great Expectations to integrate with OpenMetadata and ingest your tests results to your table service page.
+For Data Quality tests the open source python package Great Expectations stands out from the crowd. For those of you who don't know, [Great Expectations](https://greatexpectations.io/) is a shared, open standard for data quality. It helps data teams eliminate pipeline debt, through data testing, documentation, and profiling. Learn more about the product in [their documentation](https://docs.greatexpectations.io/docs/).  With this tutorial, we show you how to configure Great Expectations to integrate with OpenMetadata and ingest your test results to your table service page.
 
 ## Requirements
 
