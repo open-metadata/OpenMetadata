@@ -112,9 +112,9 @@
                             <goal>analyze-only</goal>
                         </goals>
                         <configuration>
-                            <ignoredUnusedDeclaredDependencies>
-                                <ignoredUnusedDeclaredDependency>org.projectlombok:lombok:</ignoredUnusedDeclaredDependency>
-                            </ignoredUnusedDeclaredDependencies>
+                            <ignoredDependencies>
+                                <ignoredDependency>org.projectlombok:lombok</ignoredDependency>
+                            </ignoredDependencies>
                         </configuration>
                     </execution>
                 </executions>
