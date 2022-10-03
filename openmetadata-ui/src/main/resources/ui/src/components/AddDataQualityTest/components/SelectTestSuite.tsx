@@ -168,6 +168,10 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                     message: 'Name is required!',
                   },
                   {
+                    pattern: /^[A-Za-z0-9_]*$/g,
+                    message: 'Spacial character is not allowed!',
+                  },
+                  {
                     validator: (_, value) => {
                       if (testSuites.some((suite) => suite.name === value)) {
                         return Promise.reject('Name already exist!');
