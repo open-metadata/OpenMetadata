@@ -227,17 +227,6 @@ workflowConfig:
 
 ### Auth0 SSO
 
-### Openmetadata JWT Auth
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: '{bot_jwt_token}'
-```
-
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
