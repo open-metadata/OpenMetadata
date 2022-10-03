@@ -157,6 +157,6 @@ public class WebhookCallbackResource {
   static class EventDetails {
     @Getter @Setter long firstEventTime;
     @Getter @Setter long latestEventTime;
-    @Getter ConcurrentLinkedQueue<ChangeEvent> events = new ConcurrentLinkedQueue<>();
+    @Getter final ConcurrentLinkedQueue<ChangeEvent> events = new ConcurrentLinkedQueue<>();
   }
 }

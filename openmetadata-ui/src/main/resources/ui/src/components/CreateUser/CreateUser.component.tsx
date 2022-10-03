@@ -28,7 +28,7 @@ import { isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { generateRandomPwd } from '../../axiosAPIs/auth-API';
+import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/error-message';
 import {
@@ -321,11 +321,6 @@ const CreateUser = ({
       email: email,
       isAdmin: isAdmin,
       isBot: isBot,
-      password: isPasswordGenerated ? generatedPassword : password,
-      confirmPassword: isPasswordGenerated
-        ? generatedPassword
-        : confirmPassword,
-      createPasswordType: CreatePasswordType.Admincreate,
       ...(forceBot
         ? {
             authenticationMechanism: {
@@ -343,7 +338,13 @@ const CreateUser = ({
                     },
             },
           }
-        : {}),
+        : {
+            password: isPasswordGenerated ? generatedPassword : password,
+            confirmPassword: isPasswordGenerated
+              ? generatedPassword
+              : confirmPassword,
+            createPasswordType: CreatePasswordType.Admincreate,
+          }),
     };
     onSave(userProfile);
   };
@@ -691,14 +692,26 @@ const CreateUser = ({
             name="email"
             rules={[
               {
+                pattern: validEmailRegEx,
                 required: true,
                 type: 'email',
-                message: jsonData['form-error-messages']['empty-email'],
+                message: jsonData['form-error-messages']['invalid-email'],
               },
               {
-                pattern: validEmailRegEx,
                 type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
+                required: true,
+                validator: async (_, value) => {
+                  if (validEmailRegEx.test(value) && !forceBot) {
+                    const isEmailAlreadyExists = await checkEmailInUse(value);
+                    if (isEmailAlreadyExists) {
+                      return Promise.reject(
+                        jsonData['form-error-messages']['email-is-in-use']
+                      );
+                    }
+
+                    return Promise.resolve();
+                  }
+                },
               },
             ]}>
             <Input
@@ -781,111 +794,111 @@ const CreateUser = ({
             <RichTextEditor initialValue={description} ref={markdownRef} />
           </Form.Item>
 
-          {isAuthProviderBasic && (
-            <>
-              <Radio.Group
-                name="passwordGenerator"
-                value={passwordGenerator}
-                onChange={handleOnChange}>
-                <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
-                  Automatic Generate
-                </Radio>
-                <Radio value={CreatePasswordGenerator.CreatePassword}>
-                  Create Password
-                </Radio>
-              </Radio.Group>
-
-              {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
-                <div className="m-t-sm">
-                  <Form.Item
-                    label="Password"
-                    name="password"
-                    rules={[
-                      {
-                        required: true,
-                      },
-                      {
-                        pattern: passwordRegex,
-                        message: passwordErrorMessage,
-                      },
-                    ]}>
-                    <Input.Password
-                      name="password"
-                      placeholder="Enter a Password"
-                      value={password}
-                      onChange={handleOnChange}
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="Confirm Password"
-                    name="confirmPassword"
-                    rules={[
-                      {
-                        validator: (_, value) => {
-                          if (value !== password) {
-                            return Promise.reject("Password doesn't match");
-                          }
-
-                          return Promise.resolve();
-                        },
-                      },
-                    ]}>
-                    <Input.Password
-                      name="confirmPassword"
-                      placeholder="Confirm Password"
-                      value={confirmPassword}
-                      onChange={handleOnChange}
-                    />
-                  </Form.Item>
-                </div>
-              ) : (
-                <div className="m-t-sm">
-                  <Form.Item
-                    label="Generated Password"
-                    name="generatedPassword"
-                    rules={[
-                      {
-                        required: true,
-                      },
-                    ]}>
-                    <Input
-                      readOnly
-                      addonAfter={
-                        <div className="flex-center w-16">
-                          <div
-                            className="w-8 h-7 flex-center cursor-pointer"
-                            data-testid="password-generator"
-                            onClick={generateRandomPassword}>
-                            {isPasswordGenerating ? (
-                              <Loader size="small" type="default" />
-                            ) : (
-                              <SVGIcons
-                                alt="generate"
-                                icon={Icons.SYNC}
-                                width="16"
-                              />
-                            )}
-                          </div>
-
-                          <div className="w-8 h-7 flex-center">
-                            <CopyToClipboardButton
-                              copyText={generatedPassword}
-                            />
-                          </div>
-                        </div>
-                      }
-                      name="generatedPassword"
-                      value={generatedPassword}
-                    />
-                  </Form.Item>
-                </div>
-              )}
-            </>
-          )}
-
           {!forceBot && (
             <>
+              {isAuthProviderBasic && (
+                <>
+                  <Radio.Group
+                    name="passwordGenerator"
+                    value={passwordGenerator}
+                    onChange={handleOnChange}>
+                    <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
+                      Automatic Generate
+                    </Radio>
+                    <Radio value={CreatePasswordGenerator.CreatePassword}>
+                      Create Password
+                    </Radio>
+                  </Radio.Group>
+
+                  {passwordGenerator ===
+                  CreatePasswordGenerator.CreatePassword ? (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Password"
+                        name="password"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                          {
+                            pattern: passwordRegex,
+                            message: passwordErrorMessage,
+                          },
+                        ]}>
+                        <Input.Password
+                          name="password"
+                          placeholder="Enter a Password"
+                          value={password}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        label="Confirm Password"
+                        name="confirmPassword"
+                        rules={[
+                          {
+                            validator: (_, value) => {
+                              if (value !== password) {
+                                return Promise.reject("Password doesn't match");
+                              }
+
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}>
+                        <Input.Password
+                          name="confirmPassword"
+                          placeholder="Confirm Password"
+                          value={confirmPassword}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+                    </div>
+                  ) : (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Generated Password"
+                        name="generatedPassword"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                        ]}>
+                        <Input.Password
+                          readOnly
+                          addonAfter={
+                            <div className="flex-center w-16">
+                              <div
+                                className="w-8 h-7 flex-center cursor-pointer"
+                                data-testid="password-generator"
+                                onClick={generateRandomPassword}>
+                                {isPasswordGenerating ? (
+                                  <Loader size="small" type="default" />
+                                ) : (
+                                  <SVGIcons
+                                    alt="generate"
+                                    icon={Icons.SYNC}
+                                    width="16"
+                                  />
+                                )}
+                              </div>
+
+                              <div className="w-8 h-7 flex-center">
+                                <CopyToClipboardButton
+                                  copyText={generatedPassword}
+                                />
+                              </div>
+                            </div>
+                          }
+                          name="generatedPassword"
+                          value={generatedPassword}
+                        />
+                      </Form.Item>
+                    </div>
+                  )}
+                </>
+              )}
               <Form.Item label="Teams" name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>

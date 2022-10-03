@@ -13,8 +13,10 @@
 
 package org.openmetadata.service.resources.teams;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.OK;
+import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMINCREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
@@ -22,6 +24,9 @@ import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USERNAME_PASSWORD;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -90,6 +95,7 @@ import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
@@ -121,6 +127,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.ConfigurationHolder;
+import org.openmetadata.service.util.ConfigurationHolder.ConfigurationType;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -149,6 +156,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private final String providerType;
 
+  private final boolean isEmailServiceEnabled;
+
   private final LoginAttemptCache loginAttemptCache;
 
   @Override
@@ -170,8 +179,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     this.secretsManager = secretsManager;
     this.providerType =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
             .getProvider();
+    this.isEmailServiceEnabled =
+        ConfigurationHolder.getInstance()
+            .getConfig(ConfigurationType.SMTP_CONFIG, SmtpSettings.class)
+            .getEnableSmtpServer();
     this.loginAttemptCache = new LoginAttemptCache();
   }
 
@@ -504,7 +517,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     // TODO do we need to authenticate user is creating himself?
     addHref(uriInfo, dao.create(uriInfo, user));
-    if (isBasicAuth()) {
+    if (isBasicAuth() && isEmailServiceEnabled) {
       try {
         sendInviteMailToUser(
             uriInfo,
@@ -777,19 +790,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
     if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
         .getEnableSelfSignup()) {
       User registeredUser = registerUser(uriInfo, create);
-      try {
-        sendEmailVerification(uriInfo, registeredUser);
-      } catch (Exception e) {
-        LOG.error("Error in sending mail to the User : {}", e.getMessage());
-        return Response.status(424)
-            .entity(
-                "User Registration Successful. Email for Verification couldn't be sent. Please contact your administrator")
-            .build();
+      if (isEmailServiceEnabled) {
+        try {
+          sendEmailVerification(uriInfo, registeredUser);
+        } catch (Exception e) {
+          LOG.error("Error in sending mail to the User : {}", e.getMessage());
+          return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
+        }
       }
-      return Response.status(Response.Status.OK).entity("User Registration Successful.").build();
+      return Response.status(Response.Status.CREATED).entity("User Registration Successful.").build();
     } else {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(new ErrorMessage(400, "Signup is not Available"))
@@ -841,13 +853,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return Response.status(Response.Status.OK).entity("Email Already Verified For User.").build();
     }
     tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
-    try {
-      sendEmailVerification(uriInfo, registeredUser);
-    } catch (Exception e) {
-      LOG.error("Error in sending Email Verification mail to the User : {}", e.getMessage());
-      return Response.status(424)
-          .entity(new ErrorMessage(424, "There is some issue in sending the Mail. Please contact your administrator."))
-          .build();
+    if (isEmailServiceEnabled) {
+      try {
+        sendEmailVerification(uriInfo, registeredUser);
+      } catch (Exception e) {
+        LOG.error("Error in sending Email Verification mail to the User : {}", e.getMessage());
+        return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
+      }
     }
     return Response.status(Response.Status.OK)
         .entity("Email Verification Mail Sent. Please check your Mailbox.")
@@ -865,7 +877,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
+  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
@@ -875,19 +887,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new BadRequestException("Email is not valid.");
     }
     // send a mail to the User with the Update
-    try {
-      sendPasswordResetLink(
-          uriInfo,
-          registeredUser,
-          EmailUtil.getInstance().getPasswordResetSubject(),
-          EmailUtil.PASSWORDRESETTEMPLATEFILE);
-    } catch (Exception ex) {
-      LOG.error("Error in sending mail for reset password" + ex.getMessage());
-      return Response.status(424)
-          .entity(new ErrorMessage(424, "There is some issue in sending the Mail. Please contact your administrator."))
-          .build();
+    if (isEmailServiceEnabled) {
+      try {
+        sendPasswordResetLink(
+            uriInfo,
+            registeredUser,
+            EmailUtil.getInstance().getPasswordResetSubject(),
+            EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+      } catch (Exception ex) {
+        LOG.error("Error in sending mail for reset password" + ex.getMessage());
+        return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
+      }
     }
-
     return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
   }
 
@@ -935,15 +946,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId().toString(), PASSWORD_RESET.toString());
+
     // Update user about Password Change
-    try {
-      sendAccountStatus(storedUser, "Update Password", "Change Successful");
-    } catch (Exception ex) {
-      LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage());
-      return Response.status(424)
-          .entity(
-              "Password updated successfully. There is some problem in sending mail. Please contact your administrator.")
-          .build();
+    if (isEmailServiceEnabled) {
+      try {
+        sendAccountStatus(storedUser, "Update Password", "Change Successful");
+      } catch (Exception ex) {
+        LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage());
+        return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
+      }
     }
     loginAttemptCache.recordSuccessfulLogin(request.getUsername());
     return Response.status(response.getStatus()).entity("Password Changed Successfully").build();
@@ -1004,15 +1015,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
       RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, storedUser);
       // remove login/details from cache
       loginAttemptCache.recordSuccessfulLogin(request.getUsername());
-      try {
-        sendInviteMailToUser(
-            uriInfo,
-            response.getEntity(),
-            String.format("%s: Password Update", EmailUtil.getInstance().getEmailingEntity()),
-            ADMINCREATE,
-            request.getNewPassword());
-      } catch (Exception ex) {
-        LOG.error("Error in sending invite to User" + ex.getMessage());
+      if (isEmailServiceEnabled) {
+        try {
+          sendInviteMailToUser(
+              uriInfo,
+              response.getEntity(),
+              String.format("%s: Password Update", EmailUtil.getInstance().getEmailingEntity()),
+              ADMINCREATE,
+              request.getNewPassword());
+        } catch (Exception ex) {
+          LOG.error("Error in sending invite to User" + ex.getMessage());
+        }
       }
       return Response.status(response.getStatus()).entity("Password Updated Successfully").build();
     }
@@ -1082,12 +1095,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       try {
         storedUser =
             dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-      } catch (IOException ex) {
-        throw new BadRequestException("You have entered an invalid username or password.");
+      } catch (Exception ex) {
+        return Response.status(BAD_REQUEST)
+            .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), INVALID_USERNAME_PASSWORD))
+            .build();
       }
 
       if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
-        throw new IllegalArgumentException("You have entered an invalid username or password.");
+        return Response.status(BAD_REQUEST)
+            .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), INVALID_USERNAME_PASSWORD))
+            .build();
       }
 
       LinkedHashMap<String, String> storedData =
@@ -1106,7 +1123,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         response.setAccessToken(jwtAuthMechanism.getJWTToken());
         response.setRefreshToken(refreshToken.getToken().toString());
         response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
-        return Response.status(200).entity(response).build();
+        return Response.status(OK).entity(response).build();
       } else {
         loginAttemptCache.recordFailedLogin(userName);
         int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(userName);
@@ -1115,13 +1132,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           sendAccountStatus(
               storedUser, "Multiple Failed Login Attempts.", "Login Blocked for 10 mins. Please change your password.");
         }
-        return Response.status(403)
-            .entity(new ErrorMessage(403, "You have entered an invalid username or password."))
+        return Response.status(UNAUTHORIZED)
+            .entity(new ErrorMessage(UNAUTHORIZED.getStatusCode(), INVALID_USERNAME_PASSWORD))
             .build();
       }
     } else {
-      return Response.status(500)
-          .entity(new ErrorMessage(500, "Failed Login Attempts Exceeded. Please try after some time."))
+      return Response.status(BAD_REQUEST)
+          .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), MAX_FAILED_LOGIN_ATTEMPT))
           .build();
     }
   }
@@ -1190,7 +1207,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String emailDomain = tokens[1];
     Set<String> allowedDomains =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZERCONFIG, AuthorizerConfiguration.class)
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
             .getAllowedEmailRegistrationDomains();
     if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
       LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
@@ -1201,7 +1218,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
     User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
     if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZERCONFIG, AuthorizerConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
         .getAdminPrincipals()
         .contains(userName)) {
       newUser.setIsAdmin(true);
@@ -1270,17 +1287,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Map<String, String> templatePopulator = new HashMap<>();
 
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.EMAILVERIFICATIONLINKKEY, emailVerificationLink);
-    templatePopulator.put(EmailUtil.EXPIRATIONTIMEKEY, "24");
+    templatePopulator.put(EmailUtil.EMAIL_VERIFICATION_LINKKEY, emailVerificationLink);
+    templatePopulator.put(EmailUtil.EXPIRATION_TIME_KEY, "24");
     EmailUtil.getInstance()
         .sendMail(
             EmailUtil.getInstance().getEmailVerificationSubject(),
             templatePopulator,
             user.getEmail(),
-            EmailUtil.EMAILTEMPLATEBASEPATH,
-            EmailUtil.EMAILVERIFICATIONTEMPLATEPATH);
+            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+            EmailUtil.EMAIL_VERIFICATION_TEMPLATE_PATH);
 
     // insert the token
     tokenRepository.insertToken(emailVerificationToken);
@@ -1289,17 +1306,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
     Map<String, String> templatePopulator = new HashMap<>();
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.ACTIONKEY, action);
-    templatePopulator.put(EmailUtil.ACTIONSTATUSKEY, status);
+    templatePopulator.put(EmailUtil.ACTION_KEY, action);
+    templatePopulator.put(EmailUtil.ACTION_STATUS_KEY, status);
     EmailUtil.getInstance()
         .sendMail(
             EmailUtil.getInstance().getAccountStatusChangeSubject(),
             templatePopulator,
             user.getEmail(),
-            EmailUtil.EMAILTEMPLATEBASEPATH,
-            EmailUtil.ACCOUNTSTATUSTEMPLATEFILE);
+            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+            EmailUtil.ACCOUNT_STATUS_TEMPLATE_FILE);
   }
 
   private void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
@@ -1318,13 +1335,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
             mailVerificationToken);
     Map<String, String> templatePopulator = new HashMap<>();
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.PASSWORDRESETLINKKEY, passwordResetLink);
-    templatePopulator.put(EmailUtil.EXPIRATIONTIMEKEY, EmailUtil.DEFAULTEXPIRATIONTIME);
+    templatePopulator.put(EmailUtil.PASSWORD_RESET_LINKKEY, passwordResetLink);
+    templatePopulator.put(EmailUtil.EXPIRATION_TIME_KEY, EmailUtil.DEFAULT_EXPIRATION_TIME);
 
     EmailUtil.getInstance()
-        .sendMail(subject, templatePopulator, user.getEmail(), EmailUtil.EMAILTEMPLATEBASEPATH, templateFilePath);
+        .sendMail(subject, templatePopulator, user.getEmail(), EmailUtil.EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     // don't persist tokens delete existing
     tokenRepository.deleteTokenByUserAndType(user.getId().toString(), PASSWORD_RESET.toString());
     tokenRepository.insertToken(resetToken);
@@ -1337,7 +1354,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       case ADMINCREATE:
         Map<String, String> templatePopulator = new HashMap<>();
         templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-        templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
         templatePopulator.put(EmailUtil.USERNAME, user.getName());
         templatePopulator.put(EmailUtil.PASSWORD, pwd);
         templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
@@ -1347,7 +1364,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   subject,
                   templatePopulator,
                   user.getEmail(),
-                  EmailUtil.EMAILTEMPLATEBASEPATH,
+                  EmailUtil.EMAIL_TEMPLATE_BASEPATH,
                   EmailUtil.INVITE_RANDOM_PWD);
         } catch (Exception ex) {
           LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());

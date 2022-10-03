@@ -25,26 +25,26 @@ import org.simplejavamail.mailer.MailerBuilder;
 public class EmailUtil {
   public static final String USERNAME = "userName";
   public static final String ENTITY = "entity";
-  public static final String SUPPORTURL = "supportUrl";
-  public static final String EMAILTEMPLATEBASEPATH = "/emailTemplates";
+  public static final String SUPPORT_URL = "supportUrl";
+  public static final String EMAIL_TEMPLATE_BASEPATH = "/emailTemplates";
   // Email Verification
-  private static final String EMAILVERIFICATIONSUBJECT = "%s: Verify your Email Address (Action Required)";
-  public static final String EMAILVERIFICATIONLINKKEY = "userEmailTokenVerificationLink";
-  public static final String EMAILVERIFICATIONTEMPLATEPATH = "email-verification.ftl";
+  private static final String EMAIL_VERIFICATION_SUBJECT = "%s: Verify your Email Address (Action Required)";
+  public static final String EMAIL_VERIFICATION_LINKKEY = "userEmailTokenVerificationLink";
+  public static final String EMAIL_VERIFICATION_TEMPLATE_PATH = "email-verification.ftl";
   // Password Reset Link
-  private static final String PASSWORDRESETSUBJECT = "%s: Reset your Password";
-  public static final String PASSWORDRESETLINKKEY = "userResetPasswordLink";
-  public static final String EXPIRATIONTIMEKEY = "expirationTime";
-  public static final String DEFAULTEXPIRATIONTIME = "60";
+  private static final String PASSWORD_RESET_SUBJECT = "%s: Reset your Password";
+  public static final String PASSWORD_RESET_LINKKEY = "userResetPasswordLink";
+  public static final String EXPIRATION_TIME_KEY = "expirationTime";
+  public static final String DEFAULT_EXPIRATION_TIME = "60";
   public static final String PASSWORD = "password";
   public static final String APPLICATION_LOGIN_LINK = "applicationLoginLink";
 
-  public static final String PASSWORDRESETTEMPLATEFILE = "reset-link.ftl";
+  public static final String PASSWORD_RESET_TEMPLATE_FILE = "reset-link.ftl";
   // Account Change Status
-  private static final String ACCOUNTSTATUSSUBJECT = "%s: Change in Account Status";
-  public static final String ACTIONKEY = "action";
-  public static final String ACTIONSTATUSKEY = "actionStatus";
-  public static final String ACCOUNTSTATUSTEMPLATEFILE = "account-activity-change.ftl";
+  private static final String ACCOUNT_STATUS_SUBJECT = "%s: Change in Account Status";
+  public static final String ACTION_KEY = "action";
+  public static final String ACTION_STATUS_KEY = "actionStatus";
+  public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change.ftl";
 
   private static final String INVITE_SUBJECT = "Welcome to %s";
 
@@ -278,15 +278,15 @@ public class EmailUtil {
   }
 
   public String getEmailVerificationSubject() {
-    return String.format(EMAILVERIFICATIONSUBJECT, defaultSmtpSettings.getEmailingEntity());
+    return String.format(EMAIL_VERIFICATION_SUBJECT, defaultSmtpSettings.getEmailingEntity());
   }
 
   public String getPasswordResetSubject() {
-    return String.format(PASSWORDRESETSUBJECT, defaultSmtpSettings.getEmailingEntity());
+    return String.format(PASSWORD_RESET_SUBJECT, defaultSmtpSettings.getEmailingEntity());
   }
 
   public String getAccountStatusChangeSubject() {
-    return String.format(ACCOUNTSTATUSSUBJECT, defaultSmtpSettings.getEmailingEntity());
+    return String.format(ACCOUNT_STATUS_SUBJECT, defaultSmtpSettings.getEmailingEntity());
   }
 
   public String getEmailInviteSubject() {

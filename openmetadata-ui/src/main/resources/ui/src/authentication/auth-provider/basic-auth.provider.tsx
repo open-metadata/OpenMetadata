@@ -128,19 +128,13 @@ const BasicAuthProvider = ({
       const isEmailAlreadyExists = await checkEmailInUse(request.email);
       if (!isEmailAlreadyExists) {
         setLoadingIndicator(true);
-        const response = await basicAuthRegister(request);
+        await basicAuthRegister(request);
 
-        if (response === HTTP_STATUS_CODE.SUCCESS) {
-          showSuccessToast(
-            jsonData['api-success-messages']['create-user-account']
-          );
-          showInfoToast(jsonData['label']['email-confirmation']);
-          history.push(ROUTES.SIGNIN);
-        } else {
-          return showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
-        }
+        showSuccessToast(
+          jsonData['api-success-messages']['create-user-account']
+        );
+        showInfoToast(jsonData['label']['email-confirmation']);
+        history.push(ROUTES.SIGNIN);
       } else {
         return showErrorToast(jsonData['api-error-messages']['email-found']);
       }

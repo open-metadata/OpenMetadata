@@ -47,7 +47,6 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
       for (BulkItemResponse bulkItemResponse : bulkResponse) {
         if (bulkItemResponse.isFailed()) {
           BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-          ;
           failureDetails.setLastFailedReason(
               String.format("ID [%s]. Reason : %s", failure.getId(), failure.getMessage()));
           failedCount++;

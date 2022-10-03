@@ -1,9 +1,9 @@
 ---
-title: Run Glue Connector using Airflow SDK
-slug: /openmetadata/connectors/pipeline/glue/airflow
+title: Run Glue Pipeline Connector using the CLI
+slug: /openmetadata/connectors/pipeline/glue-pipeline/cli
 ---
 
-# Run Glue using the Airflow SDK
+# Run Glue Pipeline using the metadata CLI
 
 In this section, we provide guides and references to use the Glue connector.
 
@@ -47,11 +47,11 @@ This is a sample config for Glue:
 
 ```yaml
 source:
-  type: glue
+  type: glue-pipeline
   serviceName: local_glue
   serviceConnection:
     config:
-      type: Glue
+      type: GluePipeline
       awsConfig:
         awsAccessKeyId: KEY
         awsSecretAccessKey: SECRET
@@ -75,8 +75,9 @@ sink:
 workflowConfig:
   # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+
 ```
 
 #### Source Configuration - Service Connection
@@ -118,14 +119,27 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
 ```
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
+
+### Openmetadata JWT Auth
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
+```
 
 ### Auth0 SSO
 
@@ -242,60 +256,13 @@ workflowConfig:
 
 </Collapse>
 
-## 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-Create a Python file in your Airflow DAGs directory with the following contents:
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
-```python
-import pathlib
-import yaml
-from datetime import timedelta
-from airflow import DAG
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
-
-default_args = {
-    "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
-}
-
-config = """
-<your YAML configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = yaml.safe_load(config)
-    workflow = Workflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-with DAG(
-    "sample_data",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *',
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="ingest_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
+```bash
+metadata ingest -c <path-to-yaml>
 ```
 
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration, you will
-be able to extract metadata from different sources.
+Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
+you will be able to extract metadata from different sources.

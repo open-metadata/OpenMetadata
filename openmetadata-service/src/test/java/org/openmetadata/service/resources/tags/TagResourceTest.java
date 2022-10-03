@@ -27,7 +27,6 @@ import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -68,7 +67,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   public static Tag ADDRESS_TAG;
 
   @BeforeAll
-  public static void setup() throws HttpResponseException, JsonProcessingException {
+  public static void setup() throws HttpResponseException {
     new TagResourceTest().setupTags();
   }
 

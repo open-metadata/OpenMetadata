@@ -8,7 +8,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class GlossaryTermIndex implements ElasticSearchIndex {
-  GlossaryTerm glossaryTerm;
+  final GlossaryTerm glossaryTerm;
   final List<String> excludeFields = List.of("changeDescription");
 
   public GlossaryTermIndex(GlossaryTerm glossaryTerm) {

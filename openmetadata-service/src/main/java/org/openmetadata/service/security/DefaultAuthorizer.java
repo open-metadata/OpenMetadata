@@ -77,7 +77,7 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
-  private static final String COLONDELIMETER = ":";
+  private static final String COLON_DELIMITER = ":";
   private static final String DEFAULT_ADMIN = ADMIN_USER_NAME;
   private Set<String> adminUsers;
   private Set<String> botPrincipalUsers;
@@ -111,7 +111,7 @@ public class DefaultAuthorizer implements Authorizer {
     LOG.debug("Checking user entries for admin users");
     String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
     if (!ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
         .getProvider()
         .equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
       for (String adminUser : adminUsers) {
@@ -154,8 +154,8 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void handleBasicAuth(Set<String> adminUsers, String domain) throws IOException {
     for (String adminUser : adminUsers) {
-      if (adminUser.contains(COLONDELIMETER)) {
-        String[] tokens = adminUser.split(COLONDELIMETER);
+      if (adminUser.contains(COLON_DELIMITER)) {
+        String[] tokens = adminUser.split(COLON_DELIMITER);
         addUserForBasicAuth(tokens[0], tokens[1], domain);
       } else {
         boolean isDefaultAdmin = adminUser.equals(DEFAULT_ADMIN);
@@ -188,7 +188,7 @@ public class DefaultAuthorizer implements Authorizer {
   private void sendInviteMailToAdmin(User user, String pwd) {
     Map<String, String> templatePopulator = new HashMap<>();
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
     templatePopulator.put(EmailUtil.PASSWORD, pwd);
     templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
@@ -198,7 +198,7 @@ public class DefaultAuthorizer implements Authorizer {
               EmailUtil.getInstance().getEmailInviteSubject(),
               templatePopulator,
               user.getEmail(),
-              EmailUtil.EMAILTEMPLATEBASEPATH,
+              EmailUtil.EMAIL_TEMPLATE_BASEPATH,
               EmailUtil.INVITE_RANDOM_PWD);
     } catch (Exception ex) {
       LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
@@ -340,10 +340,6 @@ public class DefaultAuthorizer implements Authorizer {
    *             </ul>
    *       </ul>
    * </ul>
-   *
-   * @param user the user
-   * @param openMetadataApplicationConfig the OM config
-   * @return enriched user
    */
   private User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     User originalUser = retrieveAuthMechanism(user);

@@ -31,19 +31,17 @@ interface Props {
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { setIsAuthenticated, authConfig } = useAuthContext();
-    const {
-      loginWithRedirect,
-      logout,
-      getAccessTokenSilently,
-      getIdTokenClaims,
-    } = useAuth0();
+    const { loginWithRedirect, getAccessTokenSilently, getIdTokenClaims } =
+      useAuth0();
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
-        loginWithRedirect();
+        loginWithRedirect().catch((error) => {
+          // eslint-disable-next-line no-console
+          console.error(error);
+        });
       },
       invokeLogout() {
-        logout();
         setIsAuthenticated(false);
         onLogoutSuccess();
       },
