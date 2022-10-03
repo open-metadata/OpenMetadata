@@ -240,11 +240,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create table with different optional fields
     // Optional field description
     CreateTable create = createRequest(test).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
+    Table createdTable = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     // Optional fields tableType
     create.withName(getEntityName(test, 1)).withTableType(TableType.View);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Table createdTableWithOptionalFields = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(createdTable);
+    assertNotNull(createdTableWithOptionalFields);
   }
 
   @Test
