@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -179,11 +181,13 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
     create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
   }
 
   @Test
   void post_IngestionPipelineWithConfig_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withSourceConfig(DATABASE_METADATA_CONFIG), ADMIN_AUTH_HEADERS);
+    CreateEntity entity = createAndCheckEntity(createRequest(test).withSourceConfig(DATABASE_METADATA_CONFIG), ADMIN_AUTH_HEADERS);
+    assertNotNull(entity);
   }
 
   @Test
@@ -593,6 +597,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     fieldAdded(change, FIELD_OWNER, USER1_REF);
     updateAndCheckEntity(
         request.withDescription("newDescription").withOwner(USER1_REF), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertNotNull(change);
   }
 
   private IngestionPipeline updateIngestionPipeline(
