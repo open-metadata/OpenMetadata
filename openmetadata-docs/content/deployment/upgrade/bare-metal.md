@@ -14,7 +14,25 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 ## Procedure
 
-### 1. Download the binaries for the release you want to install
+Below procedure is to go from  **0.11.5 to 0.12.1**
+
+### 1. Back up metadata
+
+Before proceeding, pleae make sure you made a backup of your MySQL/Postgres DB behind OpenMetadata server. This step is extremely important for you to restore to your current state if any issues come up during the upgrade 
+
+<InlineCalloutContainer>
+  <InlineCallout
+    color="violet-70"
+    icon="luggage"
+    bold="Backup Metadata"
+    href="/deployment/upgrade/backup-metadata"
+  >
+    Learn how to back up MySQL data.
+  </InlineCallout>
+</InlineCalloutContainer>
+
+
+### 2. Download the binaries for the release you want to install
 
 OpenMetadata release binaries are maintained as GitHub releases.
 
@@ -32,7 +50,7 @@ Using the command-line tool or application of your choice, extract the release b
 For example, to extract using `tar`, run the following command. 
 
 ```commandline
-tar xfz openmetadata-*.tar.gz
+tar xfz openmetadata-0.12.1.tar.gz
 ```
 
 This will create a directory with the same name as the download file minus the `.tar` and `.gz` extensions.
@@ -49,7 +67,7 @@ For example, to navigate into the directory created by issuing the tar command a
 command.
 
 ```commandline
-cd openmetadata-0.10.0
+cd openmetadata-0.12.1
 ```
 
 ### 4. Stop the OpenMetadata server
@@ -66,7 +84,71 @@ directory of your current installation by running the following command:
 ./bin/openmetadata.sh stop
 ```
 
-### 5. Migrate the database schemas and ElasticSearch indexes
+### 5. Update the configurations
+
+#### Database Connection Environment Variables
+
+On 0.11, the Environment Variables to connect to Database used were
+
+* MYSQL_USER
+* MYSQL_USER_PASSWORD
+* MYSQL_HOST
+* MYSQL_PORT
+* MYSQL_DATABASE
+
+These environment variables are changed in 0.12.1 Release
+
+* DB_USER
+* DB_USER_PASSWORD
+* DB_HOST
+* DB_PORT
+* OM_DATABASE
+
+This will effect to all the bare metal and docker instances which configures a custom database depending on the above environment variable values.
+
+#### Config updates
+
+If you configured SSO and authorizer please make sure you changed the following configs
+
+```
+authorizerConfiguration:
+  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
+  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
+  
+```
+
+Make sure all of the following configs are properly udpated with the new java package name **org.openmetadata.service**
+
+Event Handlers
+
+```
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.service.events.AuditEventHandler"
+    - "org.openmetadata.service.events.ChangeEventHandler"
+```
+
+Swagger docs
+
+```
+swagger:
+  resourcePackage: org.openmetadata.service.resources
+```
+
+Logging
+
+```
+logging:
+  level: ${LOG_LEVEL:-DEBUG}
+  loggers:
+    org.openmetadata.service.events: DEBUG
+    io.swagger: ERROR
+```
+
+
+
+
+### 6. Migrate the database schemas and ElasticSearch indexes
 
 The bootstrap/bootstrap_storage.sh script enables you to perform a number of operations on the OpenMetadata database (in
 MySQL) and index (in Elasticsearch).
@@ -83,7 +165,7 @@ Find specific instructions [here](/deployment/upgrades/versions/090-to-010).
 
 </Note>
 
-### 6. Restart the OpenMetadata server
+### 7. Restart the OpenMetadata server
 
 Once you've dropped and recreated your data in the new version, restart the OpenMetadata server using the new release
 binaries. You may restart the server by running the following command.
@@ -92,7 +174,22 @@ binaries. You may restart the server by running the following command.
 ./bin/openmetadata.sh start
 ```
 
-### Optional - Upgrade all your connectors
+### 8. Reindex ElasticSearch
+
+We have added a conditional suggestion mapping for all of the elasticsearch indexes. This may require re-indexing. With 0.12.1 its never been easier to index your metadata
+
+#### 8.1 Go to Settings -> Event Publishers -> ElasticSearch
+
+<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project"/>
+
+#### 8.2 Make sure you select "Recreate Indexes"
+
+Click on the "Recreate Indexes" lable and click "Re Index All"
+
+
+
+
+###  Upgrade all your connectors
 
 If you are ingesting data manually or in a custom scheduler using OpenMetadata connectors,
 upgrade all your connectors by running the following command for each connector.
