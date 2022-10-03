@@ -93,9 +93,9 @@ class AirflowSource(PipelineServiceSource):
     config: WorkflowSource
 
     def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+            self,
+            config: WorkflowSource,
+            metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
         self._session = None
@@ -131,10 +131,10 @@ class AirflowSource(PipelineServiceSource):
                 DagRun.start_date,
                 DagRun.state,
             )
-            .filter(DagRun.dag_id == dag_id)
-            .order_by(DagRun.execution_date.desc())
-            .limit(self.config.serviceConnection.__root__.config.numberOfStatus)
-            .all()
+                .filter(DagRun.dag_id == dag_id)
+                .order_by(DagRun.execution_date.desc())
+                .limit(self.config.serviceConnection.__root__.config.numberOfStatus)
+                .all()
         )
 
         dag_run_dict = [dict(elem) for elem in dag_run_list]
@@ -154,7 +154,7 @@ class AirflowSource(PipelineServiceSource):
         ]
 
     def get_task_instances(
-        self, dag_id: str, run_id: str, execution_date: datetime
+            self, dag_id: str, run_id: str, execution_date: datetime
     ) -> List[OMTaskInstance]:
         """
         We are building our own scoped TaskInstance
@@ -175,8 +175,8 @@ class AirflowSource(PipelineServiceSource):
                     TaskInstance.end_date,
                     TaskInstance.run_id,
                 )
-                .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id)
-                .all()
+                    .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id)
+                    .all()
             )
         except Exception as exc:  # pylint: disable=broad-except
             # Using a broad Exception here as the backend can come in many flavours (pymysql, pyodbc...)
@@ -201,43 +201,44 @@ class AirflowSource(PipelineServiceSource):
         ]
 
     def yield_pipeline_status(
-        self, pipeline_details: SerializedDAG
+            self, pipeline_details: SerializedDAG
     ) -> OMetaPipelineStatus:
         try:
             dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
 
             for dag_run in dag_run_list:
-                tasks = self.get_task_instances(
-                    dag_id=dag_run.dag_id,
-                    run_id=dag_run.run_id,
-                    execution_date=dag_run.execution_date,  # Used for Airflow 2.1.4 query fallback
-                )
+                if dag_run.run_id:  # Airflow dags can have old task which are turned off/commented out in code
+                    tasks = self.get_task_instances(
+                        dag_id=dag_run.dag_id,
+                        run_id=dag_run.run_id,
+                        execution_date=dag_run.execution_date,  # Used for Airflow 2.1.4 query fallback
+                    )
 
-                task_statuses = [
-                    TaskStatus(
-                        name=task.task_id,
+                    task_statuses = [
+                        TaskStatus(
+                            name=task.task_id,
+                            executionStatus=STATUS_MAP.get(
+                                task.state, StatusType.Pending.value
+                            ),
+                            startTime=datetime_to_ts(task.start_date),
+                            endTime=datetime_to_ts(
+                                task.end_date
+                            ),  # Might be None for running tasks
+                        )  # Log link might not be present in all Airflow versions
+                        for task in tasks
+                    ]
+
+                    pipeline_status = PipelineStatus(
+                        taskStatus=task_statuses,
                         executionStatus=STATUS_MAP.get(
-                            task.state, StatusType.Pending.value
+                            dag_run.state, StatusType.Pending.value
                         ),
-                        startTime=datetime_to_ts(task.start_date),
-                        endTime=datetime_to_ts(
-                            task.end_date
-                        ),  # Might be None for running tasks
-                    )  # Log link might not be present in all Airflow versions
-                    for task in tasks
-                ]
-
-                pipeline_status = PipelineStatus(
-                    taskStatus=task_statuses,
-                    executionStatus=STATUS_MAP.get(
-                        dag_run.state, StatusType.Pending.value
-                    ),
-                    timestamp=dag_run.execution_date.timestamp(),
-                )
-                yield OMetaPipelineStatus(
-                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                    pipeline_status=pipeline_status,
-                )
+                        timestamp=dag_run.execution_date.timestamp(),
+                    )
+                    yield OMetaPipelineStatus(
+                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                        pipeline_status=pipeline_status,
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -260,11 +261,10 @@ class AirflowSource(PipelineServiceSource):
         )
 
         for serialized_dag in self.session.query(
-            SerializedDagModel.dag_id,
-            json_data_column,
-            SerializedDagModel.fileloc,
+                SerializedDagModel.dag_id,
+                json_data_column,
+                SerializedDagModel.fileloc,
         ).all():
-
             yield OMSerializedDagDetails(
                 dag_id=serialized_dag[0],
                 data=serialized_dag[1],
@@ -312,7 +312,7 @@ class AirflowSource(PipelineServiceSource):
         return SerializedDAG.from_json(data)
 
     def yield_pipeline(
-        self, pipeline_details: OMSerializedDagDetails
+            self, pipeline_details: OMSerializedDagDetails
     ) -> Iterable[CreatePipelineRequest]:
         """
         Convert a DAG into a Pipeline Entity
@@ -381,7 +381,7 @@ class AirflowSource(PipelineServiceSource):
             return None
 
     def yield_pipeline_lineage_details(
-        self, pipeline_details: OMSerializedDagDetails
+            self, pipeline_details: OMSerializedDagDetails
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Parse xlets and add lineage between Pipelines and Tables
