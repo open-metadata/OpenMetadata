@@ -110,6 +110,9 @@ const AppRouter = () => {
           <Switch>
             <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
 
+            {callbackComponent ? (
+              <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+            ) : null}
             <Route exact path={ROUTES.HOME}>
               {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
                 <>
@@ -153,9 +156,6 @@ const AppRouter = () => {
                   path={ROUTES.ACCOUNT_ACTIVATION}
                 />
               </>
-            ) : null}
-            {callbackComponent ? (
-              <Route component={callbackComponent} path={ROUTES.CALLBACK} />
             ) : null}
             {isAuthDisabled || isAuthenticated ? (
               <AuthenticatedAppRouter />
