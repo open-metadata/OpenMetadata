@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
-  SecretsManager secretsManager;
+  final SecretsManager secretsManager;
 
   public BotResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(Bot.class, new BotRepository(dao, secretsManager), authorizer);

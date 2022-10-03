@@ -70,7 +70,7 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
-  public void prepare(T service) throws IOException {
+  public void prepare(T service) {
     setFullyQualifiedName(service);
   }
 

@@ -508,7 +508,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) throws IOException {
+  public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     String id = thread.getId().toString();
 
     // Delete all the relationships to other entities

@@ -130,7 +130,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static Thread THREAD;
   public static Map<String, String> AUTH_HEADERS;
   public static TableResourceTest TABLE_RESOURCE_TEST;
-  public static Comparator<Reaction> REACTION_COMPARATOR =
+  public static final Comparator<Reaction> REACTION_COMPARATOR =
       (o1, o2) ->
           o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
               ? 0

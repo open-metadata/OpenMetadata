@@ -127,6 +127,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.ConfigurationHolder;
+import org.openmetadata.service.util.ConfigurationHolder.ConfigurationType;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -178,11 +179,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     this.secretsManager = secretsManager;
     this.providerType =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
             .getProvider();
     this.isEmailServiceEnabled =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.SMTPCONFIG, SmtpSettings.class)
+            .getConfig(ConfigurationType.SMTP_CONFIG, SmtpSettings.class)
             .getEnableSmtpServer();
     this.loginAttemptCache = new LoginAttemptCache();
   }
@@ -789,7 +790,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
     if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATIONCONFIG, AuthenticationConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
         .getEnableSelfSignup()) {
       User registeredUser = registerUser(uriInfo, create);
       if (isEmailServiceEnabled) {
@@ -876,7 +877,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
+  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
@@ -892,7 +893,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             uriInfo,
             registeredUser,
             EmailUtil.getInstance().getPasswordResetSubject(),
-            EmailUtil.PASSWORDRESETTEMPLATEFILE);
+            EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
       } catch (Exception ex) {
         LOG.error("Error in sending mail for reset password" + ex.getMessage());
         return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -1206,7 +1207,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String emailDomain = tokens[1];
     Set<String> allowedDomains =
         ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZERCONFIG, AuthorizerConfiguration.class)
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
             .getAllowedEmailRegistrationDomains();
     if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
       LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
@@ -1217,7 +1218,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
     User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
     if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZERCONFIG, AuthorizerConfiguration.class)
+        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
         .getAdminPrincipals()
         .contains(userName)) {
       newUser.setIsAdmin(true);
@@ -1286,17 +1287,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Map<String, String> templatePopulator = new HashMap<>();
 
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.EMAILVERIFICATIONLINKKEY, emailVerificationLink);
-    templatePopulator.put(EmailUtil.EXPIRATIONTIMEKEY, "24");
+    templatePopulator.put(EmailUtil.EMAIL_VERIFICATION_LINKKEY, emailVerificationLink);
+    templatePopulator.put(EmailUtil.EXPIRATION_TIME_KEY, "24");
     EmailUtil.getInstance()
         .sendMail(
             EmailUtil.getInstance().getEmailVerificationSubject(),
             templatePopulator,
             user.getEmail(),
-            EmailUtil.EMAILTEMPLATEBASEPATH,
-            EmailUtil.EMAILVERIFICATIONTEMPLATEPATH);
+            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+            EmailUtil.EMAIL_VERIFICATION_TEMPLATE_PATH);
 
     // insert the token
     tokenRepository.insertToken(emailVerificationToken);
@@ -1305,17 +1306,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
     Map<String, String> templatePopulator = new HashMap<>();
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.ACTIONKEY, action);
-    templatePopulator.put(EmailUtil.ACTIONSTATUSKEY, status);
+    templatePopulator.put(EmailUtil.ACTION_KEY, action);
+    templatePopulator.put(EmailUtil.ACTION_STATUS_KEY, status);
     EmailUtil.getInstance()
         .sendMail(
             EmailUtil.getInstance().getAccountStatusChangeSubject(),
             templatePopulator,
             user.getEmail(),
-            EmailUtil.EMAILTEMPLATEBASEPATH,
-            EmailUtil.ACCOUNTSTATUSTEMPLATEFILE);
+            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+            EmailUtil.ACCOUNT_STATUS_TEMPLATE_FILE);
   }
 
   private void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
@@ -1334,13 +1335,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
             mailVerificationToken);
     Map<String, String> templatePopulator = new HashMap<>();
     templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
     templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.PASSWORDRESETLINKKEY, passwordResetLink);
-    templatePopulator.put(EmailUtil.EXPIRATIONTIMEKEY, EmailUtil.DEFAULTEXPIRATIONTIME);
+    templatePopulator.put(EmailUtil.PASSWORD_RESET_LINKKEY, passwordResetLink);
+    templatePopulator.put(EmailUtil.EXPIRATION_TIME_KEY, EmailUtil.DEFAULT_EXPIRATION_TIME);
 
     EmailUtil.getInstance()
-        .sendMail(subject, templatePopulator, user.getEmail(), EmailUtil.EMAILTEMPLATEBASEPATH, templateFilePath);
+        .sendMail(subject, templatePopulator, user.getEmail(), EmailUtil.EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     // don't persist tokens delete existing
     tokenRepository.deleteTokenByUserAndType(user.getId().toString(), PASSWORD_RESET.toString());
     tokenRepository.insertToken(resetToken);
@@ -1353,7 +1354,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       case ADMINCREATE:
         Map<String, String> templatePopulator = new HashMap<>();
         templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-        templatePopulator.put(EmailUtil.SUPPORTURL, EmailUtil.getInstance().getSupportUrl());
+        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
         templatePopulator.put(EmailUtil.USERNAME, user.getName());
         templatePopulator.put(EmailUtil.PASSWORD, pwd);
         templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
@@ -1363,7 +1364,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   subject,
                   templatePopulator,
                   user.getEmail(),
-                  EmailUtil.EMAILTEMPLATEBASEPATH,
+                  EmailUtil.EMAIL_TEMPLATE_BASEPATH,
                   EmailUtil.INVITE_RANDOM_PWD);
         } catch (Exception ex) {
           LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());

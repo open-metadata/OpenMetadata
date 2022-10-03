@@ -59,9 +59,9 @@ public class WebhookPublisher extends AbstractEventPublisher {
   private final Webhook webhook;
   private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
   private Client client;
-  private CollectionDAO daoCollection;
+  private final CollectionDAO daoCollection;
 
-  private WebhookRepository webhookRepository;
+  private final WebhookRepository webhookRepository;
 
   public WebhookPublisher(Webhook webhook, CollectionDAO dao) {
     super(webhook.getBatchSize(), webhook.getEventFilters());
