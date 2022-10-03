@@ -329,19 +329,29 @@ def backup(
 
 
 @metadata.command()
-@click.option("-d", "--dir-path", default="/ingestion/examples/airflow/dags")
+@click.option(
+    "-d",
+    "--dir-path",
+    default="/opt/airflow/dags",
+    type=click.Path(exists=True, dir_okay=True),
+    help="Path to the DAG folder. Default to `/opt/airflow/dags`",
+)
+@click.option(
+    "--change-config-file-path",
+    is_flag=True,
+    help="Flag option. If pass this will try to change the path of the dag config files",
+)
 def openmetadata_imports_migration(
     dir_path: str,
+    change_config_file_path: bool,
 ) -> None:
     """Update DAG files generated after creating workflow in 0.11 and before.
 
     In 0.12 the airflow managed API package name changed from `openmetadata` to `openmetadata_managed_apis`
-    hence breaking existing DAGs
-
-    Args:
-        dir_path (str): _description_
+    hence breaking existing DAGs. The `dag_generated_config` folder also changed location in Docker. This small CLI
+    utility allows you to update both elements.
     """
-    run_openmetadata_imports_migration(dir_path)
+    run_openmetadata_imports_migration(dir_path, change_config_file_path)
 
 
 @metadata.command()
