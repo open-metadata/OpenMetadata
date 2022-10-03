@@ -36,7 +36,7 @@ export const getStatusResultBadgeIcon = (status: string) => {
 export const getEventPublisherStatusText = (status?: string) => {
   switch (status) {
     case Status.Idle:
-      return 'Ideal';
+      return 'Idle';
     case Status.Completed:
       return 'Completed';
     case Status.Active:
