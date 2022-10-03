@@ -67,9 +67,12 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Add user to created team', () => {
+    interceptURL('GET', '/api/v1/users*', 'getUsers');
+
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
+    verifyResponseStatusCode('@getUsers', 200);
     //Clicking on users tab
     cy.get('[data-testid="Users"]')
       .should('exist')
@@ -140,8 +143,11 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Join team should work properly', () => {
+    interceptURL('GET', '/api/v1/users*', 'getUsers');
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+
+    verifyResponseStatusCode('@getUsers', 200);
 
     //Click on join teams button
     cy.get('[data-testid="join-teams"]').should('be.visible').click();
