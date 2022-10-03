@@ -69,7 +69,7 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
   }, [activeData]);
 
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal" data-testid="whats-new-dialog">
       <div className="tw-modal-backdrop" />
       <div
         className="tw-modal-container tw-pb-0"
