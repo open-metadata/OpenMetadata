@@ -790,26 +790,26 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         new RegistrationRequest()
             .withFirstName("Test")
             .withLastName("Test")
-            .withEmail("testBasicAuth@email.com")
+            .withEmail("testBasicAuth123@email.com")
             .withPassword("Test@1234");
 
     TestUtils.post(getResource("users/signup"), newRegistrationRequest, String.class, ADMIN_AUTH_HEADERS);
 
     // jwtAuth Response should be null always
-    User user = getEntityByName("testBasicAuth", "isEmailVerified,authenticationMechanism", ADMIN_AUTH_HEADERS);
+    User user = getEntityByName("testBasicAuth123", null, ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
+    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
 
-    validateJwtBasicAuth(jwtResponse, "testBasicAuth");
+    validateJwtBasicAuth(jwtResponse, "testBasicAuth123");
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword("Test@1234");
     assertResponse(
         () ->
             TestUtils.post(
@@ -823,7 +823,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test1@1234");
     assertResponse(
         () ->
             TestUtils.post(
