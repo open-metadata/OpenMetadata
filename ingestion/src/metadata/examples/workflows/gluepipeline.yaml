@@ -1,5 +1,5 @@
 source:
-  type: glue-pipeline 
+  type: gluepipeline 
   serviceName: local_glue
   serviceConnection:
     config:
