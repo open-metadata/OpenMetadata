@@ -110,6 +110,8 @@ public class WebSocketManager {
   }
 
   public static class WebSocketManagerBuilder {
+    private WebSocketManagerBuilder() {}
+
     public static void build(EngineIoServerOptions eiOptions) {
       INSTANCE = new WebSocketManager(eiOptions);
     }

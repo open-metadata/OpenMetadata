@@ -50,7 +50,7 @@ public class ChangeEventRepository {
   }
 
   @Transaction
-  public void deleteAll(String entityType) throws IOException {
+  public void deleteAll(String entityType) {
     dao.deleteAll(entityType);
   }
 }

@@ -23,8 +23,8 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
-    GlueConnection,
+from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
+    GluePipelineConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -51,7 +51,7 @@ STATUS_MAP = {
 }
 
 
-class GlueSource(PipelineServiceSource):
+class GluePipelineSource(PipelineServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.task_id_mapping = {}
@@ -61,8 +61,8 @@ class GlueSource(PipelineServiceSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: GlueConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, GlueConnection):
+        connection: GluePipelineConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, GluePipelineConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
             )

@@ -2143,10 +2143,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private void validateTableConstraints(List<TableConstraint> expected, List<TableConstraint> actual) {
-    if (expected == null || actual == null) {
-      assertEquals(expected, actual);
-      return;
-    }
     assertEquals(expected, actual);
   }
 

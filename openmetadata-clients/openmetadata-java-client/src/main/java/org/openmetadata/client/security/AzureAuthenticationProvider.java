@@ -29,7 +29,6 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerC
 
 @Slf4j
 public class AzureAuthenticationProvider implements AuthenticationProvider {
-  private OpenMetadataServerConnection serverConfig;
   private final AzureSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
@@ -39,7 +38,6 @@ public class AzureAuthenticationProvider implements AuthenticationProvider {
       LOG.error("Required type to invoke is Azure for AzureAuthentication Provider");
       throw new RuntimeException("Required type to invoke is Azure for AzureAuthentication Provider");
     }
-    serverConfig = iConfig;
 
     securityConfig = (AzureSSOClientConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {

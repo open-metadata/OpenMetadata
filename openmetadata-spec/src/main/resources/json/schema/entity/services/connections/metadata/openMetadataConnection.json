@@ -96,11 +96,6 @@
         }
       ]
     },
-    "workflowBot": {
-      "description": "OpenMetadata bot used for the ingestion",
-      "type": "string",
-      "default": "ingestion-bot"
-    },
     "apiVersion": {
       "description": "OpenMetadata server API version to use.",
       "type": "string",

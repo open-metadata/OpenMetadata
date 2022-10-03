@@ -27,10 +27,10 @@ import org.openmetadata.service.security.AuthenticationException;
 
 @Slf4j
 public class JWTTokenGenerator {
-  private final String subjectClaim = "sub";
-  private final String emailClaim = "email";
-  private final String isBotClaim = "isBot";
-  private static JWTTokenGenerator instance = new JWTTokenGenerator();
+  private static final String SUBJECT_CLAIM = "sub";
+  private static final String EMAIL_CLAIM = "email";
+  private static final String IS_BOT_CLAIM = "isBot";
+  private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
   private String issuer;
@@ -39,7 +39,7 @@ public class JWTTokenGenerator {
   private JWTTokenGenerator() {}
 
   public static JWTTokenGenerator getInstance() {
-    return instance;
+    return INSTANCE;
   }
 
   /** Expected to be initialized only once during application start */
@@ -74,9 +74,9 @@ public class JWTTokenGenerator {
           JWT.create()
               .withIssuer(issuer)
               .withKeyId(kid)
-              .withClaim(subjectClaim, user.getName())
-              .withClaim(emailClaim, user.getEmail())
-              .withClaim(isBotClaim, true)
+              .withClaim(SUBJECT_CLAIM, user.getName())
+              .withClaim(EMAIL_CLAIM, user.getEmail())
+              .withClaim(IS_BOT_CLAIM, true)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
@@ -97,9 +97,9 @@ public class JWTTokenGenerator {
           JWT.create()
               .withIssuer(issuer)
               .withKeyId(kid)
-              .withClaim(subjectClaim, userName)
-              .withClaim(emailClaim, email)
-              .withClaim(isBotClaim, isBot)
+              .withClaim(SUBJECT_CLAIM, userName)
+              .withClaim(EMAIL_CLAIM, email)
+              .withClaim(IS_BOT_CLAIM, isBot)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);

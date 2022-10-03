@@ -65,6 +65,15 @@ public class UserRepository extends EntityRepository<User> {
     this.secretsManager = secretsManager;
   }
 
+  public final Fields getFieldsWithUserAuth(String fields) {
+    if (fields != null && fields.equals("*")) {
+      List<String> tempFields = getAllowedFieldsCopy();
+      tempFields.add("authenticationMechanism");
+      return new Fields(allowedFields, String.join(",", tempFields));
+    }
+    return new Fields(allowedFields, fields);
+  }
+
   public UserRepository(CollectionDAO dao) {
     this(dao, null);
   }
@@ -110,7 +119,7 @@ public class UserRepository extends EntityRepository<User> {
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .setConfig(
-              secretsManager.encryptOrDecryptIngestionBotCredentials(
+              secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), true));
     }
 
@@ -224,7 +233,7 @@ public class UserRepository extends EntityRepository<User> {
     if (user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .withConfig(
-              this.secretsManager.encryptOrDecryptIngestionBotCredentials(
+              this.secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), false));
     }
     return user;
@@ -276,6 +285,11 @@ public class UserRepository extends EntityRepository<User> {
         continue; // Default relationship user to organization team is not stored
       }
       addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
+    }
+    if (teams.size() > 1) {
+      // Remove organization team from the response
+      teams = teams.stream().filter(t -> !t.getId().equals(organization.getId())).collect(Collectors.toList());
+      user.setTeams(teams);
     }
   }
 
@@ -335,15 +349,11 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange("authenticationMechanism", original.getAuthenticationMechanism(), "new-encrypted-value");
-      } else if (hasConfig(origAuthMechanism) && hasConfig(updatedAuthMechanism)) {
-        if (!JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
-          recordChange("authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
-        }
+      } else if (origAuthMechanism != null
+          && updatedAuthMechanism != null
+          && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
+        recordChange("authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
       }
-    }
-
-    private boolean hasConfig(AuthenticationMechanism authenticationMechanism) {
-      return authenticationMechanism != null && authenticationMechanism.getConfig() != null;
     }
   }
 }

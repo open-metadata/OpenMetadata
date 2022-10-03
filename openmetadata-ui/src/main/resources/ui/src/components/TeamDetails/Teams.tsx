@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Empty, Row, Space, Switch, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import {
@@ -22,6 +22,7 @@ import { Team } from '../../generated/entity/teams/team';
 import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -111,7 +112,9 @@ const Teams: FC<TeamsProps> = ({
   ) : (
     <Row align="middle" className="tw-h-full">
       <Col span={24}>
-        <Empty description={NO_PERMISSION_TO_VIEW} />
+        <ErrorPlaceHolder>
+          <p>{NO_PERMISSION_TO_VIEW}</p>
+        </ErrorPlaceHolder>
       </Col>
     </Row>
   );

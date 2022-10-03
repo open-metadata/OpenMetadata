@@ -138,6 +138,8 @@ authorizerConfiguration:
   principalDomain: "open-metadata.org"
   enforcePrincipalDomain: false
   enableSecureSocketConnection: false
+  allowedEmailRegistrationDomains:
+    - "all"
 
 authenticationConfiguration:
   provider: "basic"
@@ -151,6 +153,7 @@ authenticationConfiguration:
     - "email"
     - "preferred_username"
     - "sub"
+  enableSelfSignup : true
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
@@ -171,7 +174,7 @@ airflowConfiguration:
   authProvider: "openmetadata"
 
 email:
-  enableSmtpServer : "false"
+  enableSmtpServer : false
   openMetadataUrl: ""
   serverEndpoint: ""
   serverPort: ""
@@ -193,3 +196,7 @@ elasticsearch:
 
 slackChat:
   slackUrl: "http://localhost:8080"
+
+login:
+  maxLoginFailAttempts: 3
+  accessBlockTime: 600

@@ -20,7 +20,7 @@ import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 public class OktaAccessTokenRequestInterceptor implements AuthenticationProvider {
-  private OktaSSOConfig securityConfig;
+  private final OktaSSOConfig securityConfig;
   private String base64Credentials;
 
   public OktaAccessTokenRequestInterceptor(OktaSSOConfig config) {

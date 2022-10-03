@@ -186,13 +186,14 @@ const jsonData = {
     'reset-password-success': 'Password reset successfully!',
     'account-verify-success': 'Email verified successfully!',
     'update-password-success': 'Password updated successfully!',
-    'fetch-re-index-all': 'Re index fetched successfully!',
+    'fetch-re-index-all': 'Re-index started',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
     'invalid-url': 'Url is invalid.',
     'is-required': 'is required',
+    'email-is-in-use': 'Email is already in use!',
   },
   label: {
     'delete-entity-text':
