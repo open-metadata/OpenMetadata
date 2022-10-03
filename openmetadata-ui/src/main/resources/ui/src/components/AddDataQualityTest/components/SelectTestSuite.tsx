@@ -36,6 +36,7 @@ import {
 } from '../../../constants/constants';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useAuth } from '../../../hooks/authHooks';
+import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -169,7 +170,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                   },
                   {
                     pattern: /^[A-Za-z0-9_]*$/g,
-                    message: 'Spacial character is not allowed!',
+                    message: jsonData.label['spatial-character-error'],
                   },
                   {
                     validator: (_, value) => {
