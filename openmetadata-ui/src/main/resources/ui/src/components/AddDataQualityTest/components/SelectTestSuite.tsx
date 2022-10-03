@@ -36,6 +36,7 @@ import {
 } from '../../../constants/constants';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useAuth } from '../../../hooks/authHooks';
+import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -166,6 +167,10 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                   {
                     required: isEmpty(form.getFieldValue('testSuiteId')),
                     message: 'Name is required!',
+                  },
+                  {
+                    pattern: /^[A-Za-z0-9_]*$/g,
+                    message: jsonData.label['special-character-error'],
                   },
                   {
                     validator: (_, value) => {

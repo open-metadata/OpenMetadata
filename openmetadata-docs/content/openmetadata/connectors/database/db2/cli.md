@@ -129,7 +129,7 @@ workflowConfig:
   # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>2. Configure service settings
+    authProvider: <OpenMetadata auth provider>
 ```
 
 #### Source Configuration - Service Connection
@@ -172,14 +172,27 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
 ```
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
+
+### Openmetadata JWT Auth
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
+```
 
 ### Auth0 SSO
 

@@ -191,7 +191,7 @@ describe('Entity Details Page', () => {
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
     cy.get('[data-testid="announcement-button"]').should('be.visible').click();
-    cy.get('.ant-empty-description')
+    cy.get('[data-testid="announcement-error"]')
       .should('be.visible')
       .contains('No Announcements, Click on add announcement to add one.');
     cy.get('[data-testid="add-announcement"]').should('be.visible').click();
