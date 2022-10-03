@@ -37,8 +37,7 @@ Click on the Add New Service button to start the Service creation.
 ### 3. Select the Service Type
 
 Select the service type which are available on the Atlas and create a service. In this example we will
-need to create services for hive. Possible service names are `athena`, `bigquery`, `db2`, `druid`, `delta`,
-`salesforce`, `oracle`, `glue`, `snowflake` or `hive`.
+need to create services for hive.
 
 <Image src="/images/openmetadata/connectors/amundsen/create-service-3.png" alt="db-service"/>
 
@@ -73,8 +72,8 @@ source:
       atlasHost: http://192.168.1.8:21000
       username: admin
       password: admin
-      dbService: Hive
-      messagingService: Mysql
+      dbService: hive
+      messagingService: kafka
       serviceType: Hive
       hostPort: localhost:10000
       entityTypes: examples/workflows/atlas_mapping.yaml
@@ -91,6 +90,8 @@ workflowConfig:
 ```
 
 This is a sample config for Atlas mapping:
+It represent a key which is used to map the name of the database in atlas with OMD Service.
+File name: `atlas_mapping.yaml`
 
 ```yaml
 Table:
@@ -107,12 +108,12 @@ Topic:
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json).
 
 - `username`: Username to connect to the Atlas. This user should have privileges to read all the metadata in Atlas.
-- `password`: Password to connect to the Atlas..
+- `password`: Password to connect to the Atlas.
 - `hostPort`: Host and port of the data source..
 - `entityTypes`: entity types of the data source.
-- `serviceType`: service type of the data source..
+- `serviceType`: service type of the data source.
 - `atlasHost`: Atlas Host of the data source.
-- `dbService` (Optional): source database of the data source.
+- `dbService` : source database of the data source(Database service that you created from UI. example- hive).
 - `messagingService` (Optional): messaging service source of the data source.
 - `database` (Optional) :Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Atlas.
 
@@ -128,25 +129,139 @@ OpenMetadata installation. For a simple, local installation using our docker con
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: "http://localhost:8585/api"
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "{bot_jwt_token}"
 ```
 
-### OpenMetadata Security Providers
+<Collapse title="Configure SSO in the Ingestion Workflows">
 
-We support different security providers. You can find their definitions here. An example of an `Auth0` configuration would
-be the following:
+### Openmetadata JWT Auth
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "{bot_jwt_token}"
+```
+
+### Auth0 SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: auth0
+    securityConfig:
+      clientId: "{your_client_id}"
+      secretKey: "{your_client_secret}"
+      domain: "{your_domain}"
+```
+
+### Azure SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: azure
+    securityConfig:
+      clientSecret: "{your_client_secret}"
+      authority: "{your_authority_url}"
+      clientId: "{your_client_id}"
+      scopes:
+        - your_scopes
+```
+
+### Custom OIDC SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: custom-oidc
+    securityConfig:
+      clientId: "{your_client_id}"
+      secretKey: "{your_client_secret}"
+      domain: "{your_domain}"
+```
+
+### Google SSO
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: google
+    securityConfig:
+      secretKey: "{path-to-json-creds}"
+```
+
+### Okta SSO
 
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
+    authProvider: okta
+    securityConfig:
+      clientId: "{CLIENT_ID - SPA APP}"
+      orgURL: "{ISSUER_URL}/v1/token"
+      privateKey: "{public/private keypair}"
+      email: "{email}"
+      scopes:
+        - token
+```
+
+### Amazon Cognito SSO
+
+The ingestion can be configured by [Enabling JWT Tokens](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens)
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
     authProvider: auth0
     securityConfig:
-      clientId: <client ID>
-      secretKey: <secret key>
-      domain: <domain>
+      clientId: "{your_client_id}"
+      secretKey: "{your_client_secret}"
+      domain: "{your_domain}"
 ```
+
+### OneLogin SSO
+
+Which uses Custom OIDC for the ingestion
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: custom-oidc
+    securityConfig:
+      clientId: "{your_client_id}"
+      secretKey: "{your_client_secret}"
+      domain: "{your_domain}"
+```
+
+### KeyCloak SSO
+
+Which uses Custom OIDC for the ingestion
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: custom-oidc
+    securityConfig:
+      clientId: "{your_client_id}"
+      secretKey: "{your_client_secret}"
+      domain: "{your_domain}"
+```
+
+</Collapse>
 
 ## 2. Run with the CLI
 
