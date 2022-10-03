@@ -1,9 +1,9 @@
 ---
-title: Glue
-slug: /openmetadata/connectors/pipeline/glue
+title: Glue Pipeline
+slug: /openmetadata/connectors/pipeline/glue-pipeline
 ---
 
-# Glue
+# Glue Pipeline
 
 In this section, we provide guides and references to use the Glue connector.
 
