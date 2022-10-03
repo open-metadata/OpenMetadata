@@ -297,10 +297,9 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @PathParam("id") UUID id,
       @Parameter(
               description = "Filter to apply patch to child entities",
-              schema = @Schema(type = "boolean", example = "false"))
+              schema = @Schema(type = "list", example = "false"))
           @QueryParam("applyPatch")
-          @DefaultValue("false")
-          Boolean applyPatch,
+          List<String> applyPatch,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -312,9 +311,9 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           JsonPatch patch)
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    if (applyPatch) {
+    if (!applyPatch.isEmpty()) {
       DatabaseSchema databaseSchema = getInternal(uriInfo, securityContext, id, FIELDS, Include.ALL);
-      dao.applyPatchToChildren(patch, databaseSchema, securityContext);
+      dao.applyPatchToChildren(applyPatch, patch, databaseSchema, securityContext);
     }
     return response;
   }

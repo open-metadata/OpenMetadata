@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -54,6 +55,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
+import javax.json.JsonValue;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
@@ -736,18 +738,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withEntity(entityInterface);
   }
 
-  public void applyPatchToChildren(JsonPatch patch, T entity, SecurityContext securityContext) throws IOException {
-    List<EntityRelationshipRecord> records =
-        daoCollection
-            .relationshipDAO()
-            .findTo(entity.getId().toString(), entity.getEntityReference().getType(), Relationship.CONTAINS.ordinal());
-    List<EntityReference> entityReferences = getEntityReferences(records);
-    for (EntityReference entityReference : entityReferences) {
-      EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(entityReference.getType());
-      PatchResponse<EntityInterface> patchResponse =
-          entityRepository.patch(null, entityReference.getId(), securityContext.getUserPrincipal().getName(), patch);
-      EventPubSub.publish(
-          getChangeEvent(EventType.ENTITY_UPDATED, entityReference.getType(), patchResponse.getEntity()));
+  public void applyPatchToChildren(
+      List<String> childrenList, JsonPatch patch, T entity, SecurityContext securityContext) throws IOException {
+    for (JsonValue jsonValue : patch.toJsonArray()) {
+      String pathValue = jsonValue.asJsonObject().getValue("/path").toString();
+      if (pathValue.contains("owner")) {
+        List<EntityReference> entityReferences;
+        List<EntityRelationshipRecord> records =
+            daoCollection
+                .relationshipDAO()
+                .findTo(
+                    entity.getId().toString(), entity.getEntityReference().getType(), Relationship.CONTAINS.ordinal());
+        entityReferences = getEntityReferences(records);
+        if (childrenList.contains(entity.getEntityReference().getType())) {
+          EntityRepository<EntityInterface> entityRepository =
+              Entity.getEntityRepository(entity.getEntityReference().getType());
+          PatchResponse<EntityInterface> patchResponse =
+              entityRepository.patch(null, entity.getId(), securityContext.getUserPrincipal().getName(), patch);
+          EventPubSub.publish(
+              getChangeEvent(
+                  EventType.ENTITY_UPDATED, entity.getEntityReference().getType(), patchResponse.getEntity()));
+        }
+        for (EntityReference entityReference : entityReferences) {
+          entity = getEntity(entityReference, new Fields(allowedFields), ALL);
+          applyPatchToChildren(childrenList, patch, entity, securityContext);
+        }
+      }
     }
   }
 
@@ -1144,7 +1160,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Entities can be only owned by team of type 'group'
     if (owner.getType().equals(Entity.TEAM)) {
-      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, ALL);
+      Team team = getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, ALL);
       if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
       }
