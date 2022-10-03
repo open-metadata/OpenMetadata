@@ -17,6 +17,11 @@ To test out your security integration, check out how to
 
 ## Changing ports
 
+<Note>
+
+To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases). The latest version is at the top of the page
+</Note>
+
 This docker deployment is powered by `docker compose`, and uses the `docker-compose.yml` files shipped during 
 each release [example](https://github.com/open-metadata/OpenMetadata/releases/tag/0.11.4-release).
 
