@@ -289,7 +289,7 @@ const GlossaryPageV1 = () => {
     const hierarchy = getTermPosFromGlossaries(arrGlossary, dataFQN);
     if (hierarchy.length < 2) {
       setSelectedData(dataFQN ? arrGlossary[hierarchy[0]] : arrGlossary[0]);
-      handleSelectedKey(dataFQN ? dataFQN : arrGlossary[0].name);
+      handleSelectedKey(dataFQN ? dataFQN : arrGlossary[0]?.name);
       if (!expandedKey.length) {
         handleExpandedKey([dataFQN], true);
       }
