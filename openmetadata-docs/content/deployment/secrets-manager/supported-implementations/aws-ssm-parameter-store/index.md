@@ -97,6 +97,6 @@ workflowConfig:
       awsAccessKeyId: <aws access key id>
       awsSecretAccessKey: <aws secret access key>
       awsRegion: <aws region>
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
 ```

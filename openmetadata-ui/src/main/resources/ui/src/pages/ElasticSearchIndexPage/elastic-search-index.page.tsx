@@ -177,12 +177,14 @@ const ElasticSearchIndexPage = () => {
                                 <Badge
                                   className="request-badge running"
                                   count={batchJobData?.stats?.total}
+                                  overflowCount={99999999}
                                   title={`Total index sent: ${batchJobData?.stats?.total}`}
                                 />
 
                                 <Badge
                                   className="request-badge success"
                                   count={batchJobData?.stats?.success}
+                                  overflowCount={99999999}
                                   title={`Success index: ${batchJobData?.stats?.success}`}
                                 />
 
@@ -190,6 +192,7 @@ const ElasticSearchIndexPage = () => {
                                   showZero
                                   className="request-badge failed"
                                   count={batchJobData?.stats?.failed}
+                                  overflowCount={99999999}
                                   title={`Failed index: ${batchJobData?.stats?.failed}`}
                                 />
                               </Space>
@@ -262,7 +265,7 @@ const ElasticSearchIndexPage = () => {
                         Recreate indexes&nbsp;
                         <Tooltip
                           placement="bottomRight"
-                          title="This will delete exiting indexing and create new">
+                          title="This will delete existing indexes and re-create them.">
                           <QuestionCircleOutlined />
                         </Tooltip>
                       </Typography.Text>
