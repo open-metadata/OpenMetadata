@@ -21,14 +21,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/database/postgresql/airflow"
+    link="/openmetadata/connectors/database/postgres/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/database/postgresql/cli"
+    link="/openmetadata/connectors/database/postgres/cli"
     size="half"
   />
 </TileContainer>
@@ -41,6 +41,18 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+### Usage and Lineage considerations
+
+When extracting lineage and usage information from Postgres we base our finding on the `pg_stat_statements` table.
+You can find more information about it on the official [docs](https://www.postgresql.org/docs/current/pgstatstatements.html#id-1.11.7.39.6).
+
+Another interesting consideration here is explained in the following SO [question](https://stackoverflow.com/questions/50803147/what-is-the-timeframe-for-pg-stat-statements).
+As a summary:
+- The `pg_stat_statements` has no time data embedded in it.
+- It will show all queries from the last reset (one can call `pg_stat_statements_reset()`).
+
+Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
 
 ## Metadata Ingestion
 
@@ -75,7 +87,7 @@ Select PostgreSQL as the service type and click Next.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/postgresql/select-service.png"
+  src="/images/openmetadata/connectors/postgres/select-service.png"
   alt="Select Service"
   caption="Select your service from the list"
 />
@@ -95,7 +107,7 @@ from.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/postgresql/add-new-service.png"
+  src="/images/openmetadata/connectors/postgres/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service"
 />
@@ -111,7 +123,7 @@ desired.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/postgresql/service-connection.png"
+  src="/images/openmetadata/connectors/postgres/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />

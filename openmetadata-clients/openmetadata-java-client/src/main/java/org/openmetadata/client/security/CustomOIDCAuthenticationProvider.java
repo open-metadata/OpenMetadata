@@ -28,7 +28,6 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerC
 
 @Slf4j
 public class CustomOIDCAuthenticationProvider implements AuthenticationProvider {
-  private OpenMetadataServerConnection serverConfig;
   private final CustomOIDCSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
@@ -39,7 +38,6 @@ public class CustomOIDCAuthenticationProvider implements AuthenticationProvider 
       LOG.error("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
       throw new RuntimeException("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
     }
-    serverConfig = iConfig;
 
     securityConfig = (CustomOIDCSSOClientConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {

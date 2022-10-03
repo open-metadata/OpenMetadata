@@ -1,5 +1,7 @@
 package org.openmetadata.service.util;
 
+import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.passay.CharacterData;
@@ -15,7 +17,7 @@ import org.passay.WhitespaceRule;
 
 public class PasswordUtil {
 
-  private static PasswordValidator validator;
+  private static final PasswordValidator VALIDATOR;
 
   static {
     List<Rule> rules = new ArrayList<>();
@@ -31,15 +33,16 @@ public class PasswordUtil {
     rules.add(new CharacterRule(EnglishCharacterData.Digit, 1));
     // Rule 3.d: At least one special character
     rules.add(new CharacterRule(EnglishCharacterData.Special, 1));
-    validator = new PasswordValidator(rules);
+    VALIDATOR = new PasswordValidator(rules);
   }
+
+  private PasswordUtil() {}
 
   public static void validatePassword(String pwd) {
     PasswordData password = new PasswordData(pwd);
-    RuleResult result = validator.validate(password);
+    RuleResult result = VALIDATOR.validate(password);
     if (!result.isValid()) {
-      throw new RuntimeException(
-          "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.");
+      throw new RuntimeException(PASSWORD_INVALID_FORMAT);
     }
   }
 
@@ -70,7 +73,6 @@ public class PasswordUtil {
     CharacterRule splCharRule = new CharacterRule(specialChars);
     splCharRule.setNumberOfCharacters(2);
 
-    String password = gen.generatePassword(8, splCharRule, lowerCaseRule, upperCaseRule, digitRule);
-    return password;
+    return gen.generatePassword(8, splCharRule, lowerCaseRule, upperCaseRule, digitRule);
   }
 }

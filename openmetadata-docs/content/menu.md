@@ -55,6 +55,8 @@ site_menu:
 
   - category: Deployment / Enable Security
     url: /deployment/security
+  - category: Deployment / Enable Security / Basic Authentication
+    url: /deployment/security/basic-auth
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -482,6 +484,8 @@ site_menu:
     url: /openmetadata/ingestion/versioning/change-events
   - category: OpenMetadata / Ingestion / Versioning / Event Notification via Webhooks
     url: /openmetadata/ingestion/versioning/event-notification-via-webhooks
+  - category: OpenMetadata / Ingestion / Ingestion Pipeline UI Deployment
+    url: /openmetadata/ingestion/ingestion-pipeline
 
   - category: OpenMetadata / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration

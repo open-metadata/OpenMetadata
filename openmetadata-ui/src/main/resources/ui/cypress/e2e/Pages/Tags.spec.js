@@ -15,12 +15,22 @@ import { addNewTagToEntity, descriptionBox, interceptURL, login, verifyResponseS
 import { LOGIN, NEW_TAG, NEW_TAG_CATEGORY, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 describe('Tags page should work', () => {
-  beforeEach(() => {
+  before(() => {
+    cy.clearLocalStorageSnapshot();
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
+    cy.saveLocalStorage('localstorage');
+  });
+
+  beforeEach(() => {
+    cy.log('Restoring local storage snapshot');
+    cy.restoreLocalStorage('localstorage');
+    cy.clickOnLogo();
+    interceptURL('GET', '/api/v1/tags*', 'getTags');
     cy.get('[data-testid="appbar-item-tags"]')
       .should('be.visible')
       .click({ force: true });
+    verifyResponseStatusCode('@getTags', 200);
   });
 
   it('Required Details should be available', () => {
@@ -93,7 +103,7 @@ describe('Tags page should work', () => {
   });
 
   it('Use newly created tag to any entity should work', () => {
-    const entity = SEARCH_ENTITY_TABLE.table_2.term;
+    const entity = SEARCH_ENTITY_TABLE.table_2;
     addNewTagToEntity(entity, `${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
   });
 

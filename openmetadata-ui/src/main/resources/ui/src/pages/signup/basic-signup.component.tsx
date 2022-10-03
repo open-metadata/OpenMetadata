@@ -19,6 +19,8 @@ import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
+import { passwordErrorMessage } from '../../constants/error-message';
+import { passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import LoginCarousel from '../login/LoginCarousel';
@@ -72,13 +74,13 @@ const BasicSignUp = () => {
         <div className="tw-w-5/12">
           <div className="mt-4 tw-text-center flex-center flex-col">
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text strong className="mt-8 tw-mx-auto tw-text-xl w-83">
-              Centralized Metadata Store, Discover, <br />
-              Collaborate and get your Data Right
+            <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
+              Centralized Metadata Store, Discover, Collaborate and get your
+              Data Right
             </Typography.Text>
 
             {isAuthProviderBasic ? (
-              <div className="m-t-lg" style={{ width: '334px' }}>
+              <div style={{ width: '334px' }}>
                 <Row>
                   <Col span={24}>
                     <>
@@ -111,17 +113,12 @@ const BasicSignUp = () => {
                           label="Password"
                           name="password"
                           rules={[
-                            { required: true },
                             {
-                              validator: (_, value) => {
-                                if (value < 8 && value > 16) {
-                                  return Promise.reject(
-                                    'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character'
-                                  );
-                                }
-
-                                return Promise.resolve();
-                              },
+                              required: true,
+                            },
+                            {
+                              pattern: passwordRegex,
+                              message: passwordErrorMessage,
                             },
                           ]}>
                           <Input.Password placeholder="Enter password" />
@@ -157,7 +154,7 @@ const BasicSignUp = () => {
                           Create Account
                         </Button>
 
-                        <Divider className="w-min-0 w-max-200 mt-8 mb-12 justify-center">
+                        <Divider className="w-min-0  mt-8 mb-12 justify-center">
                           <Typography.Text type="secondary">or</Typography.Text>
                         </Divider>
 

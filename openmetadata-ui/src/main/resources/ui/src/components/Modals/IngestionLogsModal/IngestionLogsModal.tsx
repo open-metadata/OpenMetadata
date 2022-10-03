@@ -12,7 +12,7 @@
  */
 
 import { Viewer } from '@toast-ui/react-editor';
-import { Button, Empty, Modal } from 'antd';
+import { Button, Modal } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -22,6 +22,7 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { gzipToStringConverter } from '../../../utils/ingestionutils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 
 interface IngestionLogsModalProps {
@@ -148,14 +149,13 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
               </div>
             </Fragment>
           ) : (
-            <Empty
-              data-testid="empty-logs"
-              description={
-                isLogNotFound
+            <ErrorPlaceHolder dataTestId="empty-logs">
+              <p>
+                {isLogNotFound
                   ? `No logs yet found for the latest execution of ${pipelinName}`
-                  : 'No logs data available'
-              }
-            />
+                  : 'No logs data available'}
+              </p>
+            </ErrorPlaceHolder>
           )}
         </Fragment>
       )}

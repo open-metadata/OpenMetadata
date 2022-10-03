@@ -21,3 +21,8 @@ export enum OwnerType {
   USER = 'user',
   TEAM = 'team',
 }
+
+export enum CreatePasswordGenerator {
+  AutomatciGenerate = 'AUTOMATIC_GENERATE',
+  CreatePassword = 'CREATE_PASSWORD',
+}

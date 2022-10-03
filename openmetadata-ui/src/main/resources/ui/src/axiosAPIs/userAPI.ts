@@ -19,6 +19,7 @@ import {
   AuthenticationMechanism,
   CreateUser,
 } from '../generated/api/teams/createUser';
+import { Bot } from '../generated/entity/bot';
 import { JwtAuth } from '../generated/entity/teams/authN/jwtAuth';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
@@ -192,6 +193,37 @@ export const getGroupTypeTeams = async () => {
 export const getAuthMechanismForBotUser = async (botId: string) => {
   const response = await APIClient.get<AuthenticationMechanism>(
     `/users/auth-mechanism/${botId}`
+  );
+
+  return response.data;
+};
+
+export const getBotByName = async (name: string, arrQueryFields?: string) => {
+  const url = getURLWithQueryFields(`/bots/name/${name}`, arrQueryFields);
+
+  const response = await APIClient.get<Bot>(url);
+
+  return response.data;
+};
+
+export const updateBotDetail = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<Bot>>(
+    `/bots/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};
+
+export const createUserWithPut = async (userDetails: CreateUser) => {
+  const response = await APIClient.put<CreateUser, AxiosResponse<User>>(
+    `/users`,
+    userDetails
   );
 
   return response.data;

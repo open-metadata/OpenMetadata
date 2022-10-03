@@ -17,6 +17,8 @@ import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvi
 
 public class SecretsManagerFactory {
 
+  private SecretsManagerFactory() {}
+
   public static SecretsManager createSecretsManager(SecretsManagerConfiguration config, String clusterName) {
     SecretsManagerProvider secretManager =
         config != null && config.getSecretsManager() != null

@@ -22,13 +22,14 @@ export const customAttributesPath = {
 };
 
 export enum GlobalSettingsMenuCategory {
-  MEMBERS = 'members',
   ACCESS = 'access',
-  SERVICES = 'services',
+  COLLABORATION = 'collaboration',
   CUSTOM_ATTRIBUTES = 'customAttributes',
   DATA_QUALITY = 'dataQuality',
+  EVENT_PUBLISHERS = 'eventPublishers',
   INTEGRATIONS = 'integrations',
-  COLLABORATION = 'collaboration',
+  MEMBERS = 'members',
+  SERVICES = 'services',
 }
 
 export enum GlobalSettingOptions {
@@ -49,6 +50,7 @@ export enum GlobalSettingOptions {
   MSTEAMS = 'msteams',
   TEST_SUITE = 'testSuite',
   ACTIVITY_FEED = 'activityFeed',
+  ELASTIC_SEARCH = 'elasticSearch',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

@@ -125,8 +125,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
-    GlueConnection as GluePipelineConnection,
+from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
+    GluePipelineConnection as GluePipelineConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
@@ -463,7 +463,9 @@ def _(connection: GlueDBClient) -> None:
     from botocore.client import ClientError
 
     try:
-        connection.client.list_workflows()
+        pagitator = connection.client.get_paginator("get_databases")
+        pagitator.paginate()
+
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg)
@@ -482,7 +484,7 @@ def _(connection: GluePipelineClient) -> None:
     from botocore.client import ClientError
 
     try:
-        connection.client.get_paginator("get_databases")
+        connection.client.list_workflows()
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg)

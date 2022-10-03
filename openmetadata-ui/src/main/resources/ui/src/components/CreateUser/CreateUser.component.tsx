@@ -12,16 +12,36 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Form, Input, Select, Space, Switch } from 'antd';
+import {
+  Button,
+  Form,
+  Input,
+  Radio,
+  RadioChangeEvent,
+  Select,
+  Space,
+  Switch,
+} from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { validEmailRegEx } from '../../constants/regex.constants';
+import { passwordErrorMessage } from '../../constants/error-message';
+import {
+  passwordRegex,
+  validEmailRegEx,
+} from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
-import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
+import { AuthTypes } from '../../enums/signin.enum';
+import { CreatePasswordGenerator } from '../../enums/user.enum';
+import {
+  CreatePasswordType,
+  CreateUser as CreateUserSchema,
+} from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthType,
@@ -39,6 +59,9 @@ import {
   getAuthMechanismTypeOptions,
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
@@ -57,6 +80,7 @@ const CreateUser = ({
   onSave,
   forceBot,
 }: CreateUserProps) => {
+  const [form] = Form.useForm();
   const { authConfig } = useAuthContext();
   const markdownRef = useRef<EditorContentRef>();
   const [description] = useState<string>('');
@@ -70,6 +94,13 @@ const CreateUser = ({
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
     []
   );
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordGenerator, setPasswordGenerator] = useState(
+    CreatePasswordGenerator.AutomatciGenerate
+  );
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const [authMechanism, setAuthMechanism] = useState<AuthType>(AuthType.Jwt);
   const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
     JWTTokenExpiry.OneHour
@@ -77,6 +108,11 @@ const CreateUser = ({
 
   const [ssoClientConfig, setSSOClientConfig] = useState<SSOClientConfig>(
     {} as SSOClientConfig
+  );
+
+  const isAuthProviderBasic = useMemo(
+    () => authConfig?.provider === AuthTypes.BASIC,
+    [authConfig]
   );
 
   const slashedBreadcrumbList = [
@@ -96,7 +132,9 @@ const CreateUser = ({
    * @param event
    */
   const handleOnChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    event:
+      | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      | RadioChangeEvent
   ) => {
     const value = event.target.value;
     const eleName = event.target.name;
@@ -189,6 +227,21 @@ const CreateUser = ({
 
         break;
 
+      case 'password':
+        setPassword(value);
+
+        break;
+
+      case 'confirmPassword':
+        setConfirmPassword(value);
+
+        break;
+
+      case 'passwordGenerator':
+        setPasswordGenerator(value);
+
+        break;
+
       default:
         break;
     }
@@ -230,10 +283,28 @@ const CreateUser = ({
     });
   };
 
+  //   *******  Generate Random Passwprd  *****
+  const generateRandomPassword = async () => {
+    setIsPasswordGenerating(true);
+    try {
+      const password = await generateRandomPwd();
+      setTimeout(() => {
+        setGeneratedPassword(password);
+        form.setFieldsValue({ generatedPassword: password });
+      }, 500);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsPasswordGenerating(false);
+    }
+  };
+
   /**
    * Form submit handler
    */
   const handleSave = () => {
+    const isPasswordGenerated =
+      passwordGenerator === CreatePasswordGenerator.AutomatciGenerate;
     const validRole = selectedRoles.filter(
       (id) => !isUndefined(id)
     ) as string[];
@@ -267,7 +338,13 @@ const CreateUser = ({
                     },
             },
           }
-        : {}),
+        : {
+            password: isPasswordGenerated ? generatedPassword : password,
+            confirmPassword: isPasswordGenerated
+              ? generatedPassword
+              : confirmPassword,
+            createPasswordType: CreatePasswordType.Admincreate,
+          }),
     };
     onSave(userProfile);
   };
@@ -604,20 +681,37 @@ const CreateUser = ({
         <h6 className="tw-heading tw-text-base">
           Create {forceBot ? 'Bot' : 'User'}
         </h6>
-        <Form id="create-user-bot-form" layout="vertical" onFinish={handleSave}>
+        <Form
+          form={form}
+          id="create-user-bot-form"
+          layout="vertical"
+          validateMessages={{ required: '${label} is required' }}
+          onFinish={handleSave}>
           <Form.Item
             label="Email"
             name="email"
             rules={[
               {
+                pattern: validEmailRegEx,
                 required: true,
                 type: 'email',
-                message: jsonData['form-error-messages']['empty-email'],
+                message: jsonData['form-error-messages']['invalid-email'],
               },
               {
-                pattern: validEmailRegEx,
                 type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
+                required: true,
+                validator: async (_, value) => {
+                  if (validEmailRegEx.test(value) && !forceBot) {
+                    const isEmailAlreadyExists = await checkEmailInUse(value);
+                    if (isEmailAlreadyExists) {
+                      return Promise.reject(
+                        jsonData['form-error-messages']['email-is-in-use']
+                      );
+                    }
+
+                    return Promise.resolve();
+                  }
+                },
               },
             ]}>
             <Input
@@ -699,8 +793,112 @@ const CreateUser = ({
           <Form.Item label="Description" name="description">
             <RichTextEditor initialValue={description} ref={markdownRef} />
           </Form.Item>
+
           {!forceBot && (
             <>
+              {isAuthProviderBasic && (
+                <>
+                  <Radio.Group
+                    name="passwordGenerator"
+                    value={passwordGenerator}
+                    onChange={handleOnChange}>
+                    <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
+                      Automatic Generate
+                    </Radio>
+                    <Radio value={CreatePasswordGenerator.CreatePassword}>
+                      Create Password
+                    </Radio>
+                  </Radio.Group>
+
+                  {passwordGenerator ===
+                  CreatePasswordGenerator.CreatePassword ? (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Password"
+                        name="password"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                          {
+                            pattern: passwordRegex,
+                            message: passwordErrorMessage,
+                          },
+                        ]}>
+                        <Input.Password
+                          name="password"
+                          placeholder="Enter a Password"
+                          value={password}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        label="Confirm Password"
+                        name="confirmPassword"
+                        rules={[
+                          {
+                            validator: (_, value) => {
+                              if (value !== password) {
+                                return Promise.reject("Password doesn't match");
+                              }
+
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}>
+                        <Input.Password
+                          name="confirmPassword"
+                          placeholder="Confirm Password"
+                          value={confirmPassword}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+                    </div>
+                  ) : (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Generated Password"
+                        name="generatedPassword"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                        ]}>
+                        <Input.Password
+                          readOnly
+                          addonAfter={
+                            <div className="flex-center w-16">
+                              <div
+                                className="w-8 h-7 flex-center cursor-pointer"
+                                data-testid="password-generator"
+                                onClick={generateRandomPassword}>
+                                {isPasswordGenerating ? (
+                                  <Loader size="small" type="default" />
+                                ) : (
+                                  <SVGIcons
+                                    alt="generate"
+                                    icon={Icons.SYNC}
+                                    width="16"
+                                  />
+                                )}
+                              </div>
+
+                              <div className="w-8 h-7 flex-center">
+                                <CopyToClipboardButton
+                                  copyText={generatedPassword}
+                                />
+                              </div>
+                            </div>
+                          }
+                          name="generatedPassword"
+                          value={generatedPassword}
+                        />
+                      </Form.Item>
+                    </div>
+                  )}
+                </>
+              )}
               <Form.Item label="Teams" name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
@@ -733,6 +931,7 @@ const CreateUser = ({
               </Form.Item>
             </>
           )}
+
           <Space className="w-full tw-justify-end" size={4}>
             <Button data-testid="cancel-user" type="link" onClick={onCancel}>
               Cancel

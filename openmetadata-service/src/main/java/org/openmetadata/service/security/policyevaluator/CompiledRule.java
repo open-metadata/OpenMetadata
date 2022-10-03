@@ -132,11 +132,9 @@ public class CompiledRule extends Rule {
     Iterator<MetadataOperation> iterator = operationContext.getOperations().listIterator();
     while (iterator.hasNext()) {
       MetadataOperation operation = iterator.next();
-      if (matchOperation(operation)) {
-        if (matchExpression(policyContext, subjectContext, resourceContext)) {
-          LOG.info("operation {} allowed", operation);
-          iterator.remove();
-        }
+      if (matchOperation(operation) && matchExpression(policyContext, subjectContext, resourceContext)) {
+        LOG.info("operation {} allowed", operation);
+        iterator.remove();
       }
     }
   }
@@ -154,15 +152,13 @@ public class CompiledRule extends Rule {
     Access access = getAccess();
     // Walk through all the operations in the rule and set permissions
     for (Permission permission : resourcePermission.getPermissions()) {
-      if (matchOperation(permission.getOperation())) {
-        if (overrideAccess(access, permission.getAccess())) {
-          permission
-              .withAccess(access)
-              .withRole(policyContext.getRoleName())
-              .withPolicy(policyContext.getPolicyName())
-              .withRule(this);
-          LOG.debug("Updated permission {}", permission);
-        }
+      if (matchOperation(permission.getOperation()) && overrideAccess(access, permission.getAccess())) {
+        permission
+            .withAccess(access)
+            .withRole(policyContext.getRoleName())
+            .withPolicy(policyContext.getPolicyName())
+            .withRule(this);
+        LOG.debug("Updated permission {}", permission);
       }
     }
   }

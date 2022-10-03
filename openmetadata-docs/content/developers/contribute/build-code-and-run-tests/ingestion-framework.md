@@ -37,7 +37,7 @@ Once you have generated the sources, you should be able to run the tests and the
 
 ### Quality tools
 When working on the Ingestion Framework, you might want to take into consideration the following style-check tooling:
-- [pylint](https://www.pylint.org/) is a Static Code Analysis tool to catch errors, align coding standards and help us follow conventions and apply improvements.
+- [pylint](https://pylint.pycqa.org/en/latest/) is a Static Code Analysis tool to catch errors, align coding standards and help us follow conventions and apply improvements.
 - [black](https://black.readthedocs.io/en/stable/) can be used to both autoformat the code and validate that the codebase is compliant.
 - [isort](https://pycqa.github.io/isort/) helps us not lose time trying to find the proper combination of importing from `stdlib`, requirements, project files…
 

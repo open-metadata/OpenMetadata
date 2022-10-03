@@ -69,6 +69,7 @@ import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
@@ -145,7 +146,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerEventFilter(catalogConfig, environment, jdbi);
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
-    registerEventPublisher(catalogConfig);
+    registerEventPublisher(catalogConfig, jdbi);
 
     // Check if migration is need from local secret manager to configured one and migrate
     new SecretsManagerMigrationService(secretsManager, catalogConfig.getClusterName())
@@ -263,11 +264,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+  private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
     // register ElasticSearch Event publisher
     if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
       ElasticSearchEventPublisher elasticSearchEventPublisher =
-          new ElasticSearchEventPublisher(openMetadataApplicationConfig.getElasticSearchConfiguration());
+          new ElasticSearchEventPublisher(
+              openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
     }
   }

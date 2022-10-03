@@ -38,7 +38,7 @@ class NoopSecretsManager(SecretsManager):
     provider: str = SecretsManagerProvider.noop.name
 
     def add_auth_provider_security_config(
-        self, open_metadata_connection: OpenMetadataConnection
+        self, open_metadata_connection: OpenMetadataConnection, bot_name: str
     ) -> None:
         """
         The LocalSecretsManager does not modify the OpenMetadataConnection object

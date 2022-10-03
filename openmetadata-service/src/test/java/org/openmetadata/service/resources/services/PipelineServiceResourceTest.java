@@ -86,7 +86,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     createPipeline =
         pipelineServiceResourceTest
             .createRequest(test, 2)
-            .withServiceType(PipelineServiceType.Glue)
+            .withServiceType(PipelineServiceType.GluePipeline)
             .withConnection(TestUtils.GLUE_CONNECTION);
 
     pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
@@ -149,7 +149,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  void post_put_invalidConnection_as_admin_4xx(TestInfo test) throws IOException {
+  void post_put_invalidConnection_as_admin_4xx(TestInfo test) {
     RedshiftConnection redshiftConnection = new RedshiftConnection();
     DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
     PipelineConnection pipelineConnection = new PipelineConnection().withConfig(redshiftConnection);

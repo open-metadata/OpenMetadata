@@ -77,6 +77,11 @@ const TestSuitePage = withSuspenseFallback(
 const MsTeamsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
 );
+const ElasticSearchIndexPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/ElasticSearchIndexPage/elastic-search-index.page')
+  )
+);
 
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -236,6 +241,19 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.MSTEAMS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ElasticSearchIndexPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.ALL,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
+          GlobalSettingOptions.ELASTIC_SEARCH
         )}
       />
 

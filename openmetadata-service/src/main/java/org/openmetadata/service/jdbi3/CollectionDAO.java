@@ -372,9 +372,9 @@ public interface CollectionDAO {
     @Getter private final Double version;
     @Getter private final String entityJson;
 
-    public EntityVersionPair(ExtensionRecord record) {
-      this.version = EntityUtil.getVersion(record.getExtensionName());
-      this.entityJson = record.getExtensionJson();
+    public EntityVersionPair(ExtensionRecord extensionRecord) {
+      this.version = EntityUtil.getVersion(extensionRecord.getExtensionName());
+      this.entityJson = extensionRecord.getExtensionJson();
     }
   }
 
@@ -967,10 +967,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkBefore(
             fqnPrefix, toType, limit, before, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkBefore(
           fqnPrefix, toType, limit, before, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1058,10 +1056,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkAfter(
             fqnPrefix, toType, limit, after, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkAfter(
           fqnPrefix, toType, limit, after, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1146,10 +1142,8 @@ public interface CollectionDAO {
         }
         return listCountAnnouncementsByEntityLink(fqnPrefix, toType, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listCountThreadsByEntityLink(
           fqnPrefix, toType, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -2997,7 +2991,7 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension")
-    void delete(@Bind("entityId") String id, @Bind("extension") String extension);
+    void delete(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
     void deleteAll(@Bind("entityFQN") String entityFQN);
@@ -3102,12 +3096,10 @@ public interface CollectionDAO {
       settings.setConfigType(configType);
       Object value = null;
       try {
-        switch (configType) {
-          case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-            break;
-          default:
-            throw new RuntimeException("Invalid Settings Type");
+        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
+          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+        } else {
+          throw new RuntimeException("Invalid Settings Type");
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

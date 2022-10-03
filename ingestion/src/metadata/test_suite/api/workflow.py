@@ -15,6 +15,7 @@ Workflow definition for the test suite
 
 from __future__ import annotations
 
+import sys
 import traceback
 from copy import deepcopy
 from logging import Logger
@@ -277,8 +278,9 @@ class TestSuiteWorkflow:
         processor.config.testSuites
         """
         test_suite_entities = []
+        test_suites = self.processor_config.testSuites or []
 
-        for test_suite in self.processor_config.testSuites:
+        for test_suite in test_suites:
             test_suite_entity = self.metadata.get_by_name(
                 entity=TestSuite,
                 fqn=test_suite.name,
@@ -388,6 +390,10 @@ class TestSuiteWorkflow:
             self.get_test_suite_entity_for_ui_workflow()
             or self.get_or_create_test_suite_entity_for_cli_workflow()
         )
+        if not test_suites:
+            logger.warning("No testSuite found in configuration file. Exiting.")
+            sys.exit(1)
+
         test_cases = self.get_test_cases_from_test_suite(test_suites)
         if self.processor_config.testSuites:
             cli_config_test_cases_def = self.get_test_case_from_cli_config()

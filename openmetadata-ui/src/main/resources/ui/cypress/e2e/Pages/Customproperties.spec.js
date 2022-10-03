@@ -15,18 +15,24 @@ import { addCustomPropertiesForEntity, deleteCreatedProperty, editCreatedPropert
 import { ENTITIES, LOGIN } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
-  beforeEach(() => {
+  before(() => {
+    cy.clearLocalStorageSnapshot();
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    interceptURL('GET', '/api/v1/users*', 'getTeams');
-
+    cy.saveLocalStorage('localstorage');
+  });
+  beforeEach(() => {
+    cy.log('Restoring local storage snapshot');
+    cy.restoreLocalStorage('localstorage');
+    cy.clickOnLogo();
+    interceptURL('GET', '/api/v1/users*', 'settingsPage');
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@getTeams', 200);
+    verifyResponseStatusCode('@settingsPage', 200);
+    cy.get('[data-testid="settings-left-panel"]').should('be.visible');
   });
 
-  it('Add Integer custom property for all Entities', () => {
-    Object.values(ENTITIES).forEach((entity) => {
+  Object.values(ENTITIES).forEach((entity) => {
+    it(`Add Integer custom property for ${entity.name}  Entities`, () => {
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
@@ -44,7 +50,8 @@ describe('Custom Properties should work properly', () => {
       const propertyName = addCustomPropertiesForEntity(
         entity,
         'integer',
-        entity.integerValue
+        entity.integerValue,
+        entity.entityObj
       );
       //Navigating back to custom properties page
       cy.get('[data-testid="appbar-item-settings"]')
@@ -63,8 +70,8 @@ describe('Custom Properties should work properly', () => {
     });
   });
 
-  it('Add String custom property for all Entities', () => {
-    Object.values(ENTITIES).forEach((entity) => {
+  Object.values(ENTITIES).forEach((entity) => {
+    it(`Add String custom property for ${entity.name} Entities`, () => {
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
@@ -82,7 +89,8 @@ describe('Custom Properties should work properly', () => {
       const propertyName = addCustomPropertiesForEntity(
         entity,
         'string',
-        entity.stringValue
+        entity.stringValue,
+        entity.entityObj
       );
 
       //Navigating back to custom properties page
@@ -103,8 +111,8 @@ describe('Custom Properties should work properly', () => {
     });
   });
 
-  it('Add Markdown custom property for all Entities', () => {
-    Object.values(ENTITIES).forEach((entity) => {
+  Object.values(ENTITIES).forEach((entity) => {
+    it(`Add Markdown custom property for ${entity.name} Entities`, () => {
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
@@ -122,7 +130,8 @@ describe('Custom Properties should work properly', () => {
       const propertyName = addCustomPropertiesForEntity(
         entity,
         'markdown',
-        entity.markdownValue
+        entity.markdownValue,
+        entity.entityObj
       );
       //Navigating back to custom properties page
       cy.get('[data-testid="appbar-item-settings"]')

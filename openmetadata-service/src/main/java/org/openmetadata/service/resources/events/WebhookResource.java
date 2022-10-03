@@ -92,7 +92,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   }
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     try {
       List<String> listAllWebhooks = webhookDAO.listAllWebhooks(webhookDAO.getTableName());
       List<Webhook> webhookList = JsonUtils.readObjects(listAllWebhooks, Webhook.class);

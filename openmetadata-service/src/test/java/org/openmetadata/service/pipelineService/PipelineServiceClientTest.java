@@ -8,7 +8,7 @@ import org.openmetadata.service.exception.PipelineServiceVersionException;
 
 public class PipelineServiceClientTest {
 
-  MockPipelineServiceClient mockPipelineServiceClient =
+  final MockPipelineServiceClient mockPipelineServiceClient =
       new MockPipelineServiceClient("user", "password", "https://endpoint.com", "111.11.11.1", 10);
 
   @Test

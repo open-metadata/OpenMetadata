@@ -237,9 +237,9 @@ public class SecretsManagerMigrationService {
       User user = userRepository.dao.findEntityById(botUser.getId());
 
       Object authConfig =
-          oldSecretManager.encryptOrDecryptIngestionBotCredentials(
+          oldSecretManager.encryptOrDecryptBotUserCredentials(
               botUser.getName(), user.getAuthenticationMechanism().getConfig(), false);
-      authConfig = newSecretManager.encryptOrDecryptIngestionBotCredentials(botUser.getName(), authConfig, true);
+      authConfig = newSecretManager.encryptOrDecryptBotUserCredentials(botUser.getName(), authConfig, true);
 
       user.getAuthenticationMechanism().setConfig(authConfig);
 
@@ -305,11 +305,7 @@ public class SecretsManagerMigrationService {
    * pipelines
    */
   private void deleteChangeEventsFor(String entityType) {
-    try {
-      changeEventRepository.deleteAll(entityType);
-    } catch (IOException e) {
-      throw new SecretsManagerMigrationException(e.getMessage(), e.getCause());
-    }
+    changeEventRepository.deleteAll(entityType);
   }
 
   private Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>

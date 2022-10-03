@@ -157,7 +157,6 @@ const AppRouter = () => {
             {callbackComponent ? (
               <Route component={callbackComponent} path={ROUTES.CALLBACK} />
             ) : null}
-            <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
             {isAuthDisabled || isAuthenticated ? (
               <AuthenticatedAppRouter />
             ) : (
@@ -180,6 +179,7 @@ const AppRouter = () => {
                 />
               </>
             )}
+            <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
           </Switch>
         </>
       )}

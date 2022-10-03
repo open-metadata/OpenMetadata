@@ -19,7 +19,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -80,7 +79,7 @@ public class SettingsCache {
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
-    public Settings load(@CheckForNull String settingsName) throws IOException {
+    public Settings load(@CheckForNull String settingsName) {
       Settings setting = SETTINGS_REPOSITORY.getConfigWithKey(settingsName);
       LOG.info("Loaded Setting {}", setting.getConfigType());
       return setting;

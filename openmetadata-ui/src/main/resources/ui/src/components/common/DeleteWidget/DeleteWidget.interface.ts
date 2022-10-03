@@ -16,6 +16,8 @@ export interface DeleteWidgetModalProps {
   onCancel: () => void;
   allowSoftDelete?: boolean;
   deleteMessage?: string;
+  softDeleteMessagePostFix?: string;
+  hardDeleteMessagePostFix?: string;
   entityName: string;
   entityType: string;
   isAdminUser?: boolean;

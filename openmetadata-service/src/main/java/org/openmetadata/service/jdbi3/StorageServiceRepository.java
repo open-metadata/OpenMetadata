@@ -45,7 +45,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void prepare(StorageService entity) throws IOException {
+  public void prepare(StorageService entity) {
     setFullyQualifiedName(entity);
   }
 
