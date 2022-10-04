@@ -150,6 +150,8 @@ Click on the "Recreate Indexes" lable and click "Re Index All"
 
 ## Troubleshooting for 0.12 Release
 
+### Using custom helm values
+
 If you are facing an issue similar to below when openmetadata pod keeps on restarting.
 
 ```
