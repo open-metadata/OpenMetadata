@@ -15,6 +15,7 @@ import { findAllByTestId, findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import Explore from './Explore.component';
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useLocation: jest
@@ -37,6 +38,9 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 jest.mock('../../utils/FilterUtils', () => ({
   getFilterString: jest.fn().mockImplementation(() => 'user.address'),
   getFilterCount: jest.fn().mockImplementation(() => 10),
+  getFilterElasticsearchQuery: jest
+    .fn()
+    .mockImplementation(() => ({ query: {} })),
 }));
 
 jest.mock('../../components/searched-data/SearchedData', () => {

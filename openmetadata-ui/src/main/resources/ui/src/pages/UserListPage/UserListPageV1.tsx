@@ -12,10 +12,9 @@
  */
 
 import { AxiosError } from 'axios';
-import { FormattedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
 import UserListV1 from '../../components/UserList/UserListV1';
@@ -31,7 +30,6 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
@@ -99,49 +97,49 @@ const UserListPageV1 = () => {
     currentPage = 1,
     isAdmin = false,
     isDeleted = false
-  ) => {
-    let filters = '';
-    if (isAdmin) {
-      filters = '(isAdmin:true)';
-    }
+  ) =>
+    searchQuery({
+      query: text,
+      pageNumber: currentPage,
+      pageSize: PAGE_SIZE_MEDIUM,
+      searchIndex: SearchIndex.USER,
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  isAdmin,
+                },
+              },
+              {
+                term: {
+                  deleted: isDeleted,
+                },
+              },
+            ],
+          },
+        },
+      },
+    })
+      .then((res) => res.hits.hits.map(({ _source }) => _source))
+      .catch((err) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-users-error']
+        );
 
-    return new Promise<Array<FormattedUsersData>>((resolve) => {
-      searchData(
-        text,
-        currentPage,
-        PAGE_SIZE_MEDIUM,
-        filters,
-        '',
-        '',
-        SearchIndex.USER,
-        isDeleted
-      )
-        .then((res: SearchResponse) => {
-          const data = formatUsersResponse(res.data.hits.hits);
-          setPaging({
-            total: res.data.hits.total.value,
-          });
-          resolve(data);
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-users-error']
-          );
-          resolve([]);
-        });
-    });
-  };
+        return [];
+      });
 
   const getSearchedUsers = (value: string, pageNumber: number) => {
     setIsDataLoading(true);
 
-    userQuerySearch(value, pageNumber, isAdminPage, showDeletedUser).then(
-      (resUsers) => {
-        setUserList(resUsers as unknown as User[]);
-        setIsDataLoading(false);
-      }
-    );
+    userQuerySearch(value, pageNumber, isAdminPage, showDeletedUser)
+      .then((resUsers) => {
+        setUserList(resUsers);
+      })
+      .finally(() => setIsDataLoading(false));
   };
 
   const handlePagingChange = (

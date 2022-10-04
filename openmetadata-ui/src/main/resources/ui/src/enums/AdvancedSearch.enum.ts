@@ -18,4 +18,6 @@ export enum AdvancedFields {
   SERVICE = 'service_suggest',
   CHART = 'chart_suggest',
   TASK = 'task_suggest',
+  ROOT = 'suggest',
+  SERVICE_TYPE = 'serviceType',
 }

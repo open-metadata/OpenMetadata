@@ -15,8 +15,8 @@ import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
-import { getUserSuggestions } from '../axiosAPIs/miscAPI';
 import { getPipelineByFqn } from '../axiosAPIs/pipelineAPI';
+import { suggestQuery } from '../axiosAPIs/searchAPI';
 import { getTableDetailsByFQN } from '../axiosAPIs/tableAPI';
 import { getTopicByFqn } from '../axiosAPIs/topicsAPI';
 import {
@@ -29,6 +29,7 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { TaskType } from '../generated/entity/feed/thread';
@@ -142,14 +143,15 @@ export const fetchOptions = (
   query: string,
   setOptions: (value: React.SetStateAction<Option[]>) => void
 ) => {
-  getUserSuggestions(query)
+  suggestQuery({
+    query,
+    searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+    fetchSource: true,
+    includeFields: ['name', 'displayName', 'entityType'],
+  })
     .then((res) => {
-      // TODO: Fix types below
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hits = (res.data as any).suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line
-      const suggestOptions = hits.map((hit: any) => ({
-        label: hit._source.name ?? hit._source.display_name,
+      const suggestOptions = res.map((hit) => ({
+        label: hit._source.name ?? hit._source.displayName,
         value: hit._id,
         type: hit._source.entityType,
       }));

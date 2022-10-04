@@ -13,10 +13,11 @@
 
 import { AxiosError } from 'axios';
 import { flatten, isEmpty } from 'lodash';
-import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
+import { EntityTags, TableColumn, TagOption } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { Bucket } from '../interface/search.interface';
 
 export const getTagCategories = async (fields?: Array<string> | string) => {
   try {

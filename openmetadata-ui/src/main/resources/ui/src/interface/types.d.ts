@@ -15,39 +15,18 @@
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
   import { Paging } from './../generated/type/paging';
+  import { EntityReference } from '../generated/entity/type';
 
-  export interface EntityReference {
-    deleted?: boolean;
-
-    description?: string;
-
-    displayName?: string;
-
-    fullyQualifiedName?: string;
-
-    href?: string;
-
-    id: string;
-
-    name?: string;
-
-    type: string;
-  }
+  export type FilterObject = {
+    [key: string]: Array<string>;
+  };
 
   export type Match = {
     params: {
       searchQuery: string;
     };
   };
-  export type FilterObject = {
-    [key: string]: Array<string>;
-  };
-  export type PaginationProps = {
-    sizePerPage: number;
-    totalNumberOfValues: number;
-    currentPage: number;
-    paginate: Function;
-  };
+
   export type Feed = {
     addressedToEntity: {
       description: string;
@@ -152,36 +131,6 @@ declare module 'Models' {
     tier?: string;
   };
 
-  export type Bucket = {
-    key: string;
-    doc_count: number;
-    label?: string;
-  };
-  type AggregationType = {
-    title: string;
-    buckets: Array<Bucket>;
-  };
-  export type Sterm = {
-    doc_count_error_upper_bound: number;
-    sum_other_doc_count: number;
-    buckets: Array<Bucket>;
-  };
-
-  export interface Aggregation {
-    'sterms#Platform': Sterm;
-    'sterms#Cluster': Sterm;
-    'sterms#Tags': Sterm;
-  }
-  export type TableEntity = {
-    id: string;
-    href: string;
-    tableType: string;
-    fullyQualifiedName: string;
-    tableConstraints?: string;
-    followers?: Array<string>;
-    tags?: Array<string>;
-  } & TableDetail;
-
   export type UserProfile = {
     images: Record<string, string>;
   };
@@ -203,95 +152,13 @@ declare module 'Models' {
     slackUrl: string;
   };
 
-  export type FormattedTableData = {
-    id: string;
-    name: string;
-    displayName: string;
-    description: string;
-    fullyQualifiedName: string;
-    owner: EntityReference;
-    tableType?: string;
-    tags: string[] | TagLabel[];
-    dailyStats?: number;
-    dailyPercentileRank?: number;
-    weeklyStats?: number;
-    weeklyPercentileRank?: number;
-    service?: string;
-    serviceType?: string;
-    tier: string | TagLabel;
-    highlight?: {
-      description: string[];
-      name: string[];
-    };
-    index: string;
-    type?: string;
-    database?: string;
-    databaseSchema?: string;
-    deleted?: boolean;
-    entityType?: string;
-  };
-
-  export type FormattedUsersData = {
-    name: string;
-    displayName: string;
-    email: string;
-    type: string;
-    id: string;
-  };
-
-  export type FormattedTeamsData = {
-    name: string;
-    displayName: string;
-    type: string;
-    id: string;
-    teamType: string;
-  };
-
-  export type FormattedGlossaryTermData = {
-    name: string;
-    displayName: string;
-    fullyQualifiedName: string;
-    fqdn?: string;
-    type: string;
-    id: string;
-    description?: string;
-  };
-
-  export type SearchedUsersAndTeams = {
-    users: FormattedUsersData[];
-    teams: FormattedTeamsData[];
-    usersTotal?: number;
-    teamsTotal?: number;
-  };
-
   export type TagOption = {
     fqn: string;
     source: string;
   };
 
-  export interface FormattedGlossarySuggestion {
-    deleted: boolean;
-    description: string;
-    display_name: string;
-    entity_type: string;
-    fullyQualifiedName: string;
-    glossary_id: string;
-    glossary: { name: string };
-    last_updated_timestamp: number;
-    name: string;
-  }
-
-  export interface GlossarySuggestionHit {
-    text: string;
-    _index?: string;
-    _type?: string;
-    _id?: string;
-    _score?: number;
-    _source: FormattedGlossarySuggestion;
-  }
-
   export interface GlossaryTermAssets {
-    data: FormattedTableData[];
+    data: Array<EntityReference & { owner?: EntityReference }>;
     total: number;
     currPage: number;
   }
@@ -311,15 +178,6 @@ declare module 'Models' {
     signingIn?: boolean;
   };
 
-  export type Table = {
-    id: string;
-    type?: string;
-    name: string;
-    description: string;
-    href: string;
-    fullyQualifiedName: string;
-  };
-
   export type StateInfo = {
     count: number;
     percentileRank: number;
@@ -332,51 +190,6 @@ declare module 'Models' {
     date: string;
   };
 
-  export type Database = {
-    description: string;
-    displayName?: string;
-    fullyQualifiedName: string;
-    href: string;
-    id: string;
-    name: string;
-    owner: {
-      description: string;
-      href: string;
-      id: string;
-      name: string;
-      type: string;
-    };
-    service: {
-      description: string;
-      href: string;
-      id: string;
-      name: string;
-      type: string;
-    };
-    tables: Table[];
-    usageSummary: UsageState;
-  };
-
-  export type SearchHit = {
-    _index?: string;
-    _type?: string;
-    _id?: string;
-    _score?: number;
-    _source: FormattedTableData;
-  };
-
-  export type SearchResponse = {
-    data: {
-      hits: {
-        total: {
-          value: number;
-          relation?: string;
-        };
-        hits: Array<SearchHit>;
-      };
-      aggregations: Record<string, Sterm>;
-    };
-  };
   export type Team = {
     id: string;
     name: string;
@@ -418,16 +231,6 @@ declare module 'Models' {
   export type SampleData = {
     columns: Array<string>;
     rows: Array<Array<string>>;
-  };
-
-  export type SearchDataFunctionType = {
-    queryString: string;
-    from: number;
-    size?: number;
-    filters: string;
-    sortField: string;
-    sortOrder: string;
-    searchIndex?: string;
   };
 
   export type EntityCounts = {
@@ -596,7 +399,15 @@ declare module 'Models' {
 
   export type Status = 'initial' | 'waiting' | 'success';
 
-  // ES interface end
-
-  //   interface ESUserResponse {}
+  /**
+   * The `keyof` operator, when applied to a union type, expands to the keys are common for
+   * all members of the union.
+   *
+   * keyof { key1: string; key2: string; } | { key1: string } == 'key1'
+   *
+   * KeysOfUnion expands to the union of all keys from all members of the union.
+   *
+   * KeysOfUnion<{ key1: string; key2: string; } | { key1: string }> == 'key1' | 'key2'
+   */
+  export type KeysOfUnion<T> = T extends T ? keyof T : never;
 }

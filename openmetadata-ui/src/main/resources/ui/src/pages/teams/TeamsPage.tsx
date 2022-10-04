@@ -14,12 +14,11 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
-import { SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import {
   createTeam,
   getTeamByName,
@@ -50,7 +49,6 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
@@ -246,20 +244,27 @@ const TeamsPage = () => {
 
   const searchUsers = (text: string, currentPage: number) => {
     setIsDataLoading(true);
-    searchData(
-      text,
-      currentPage,
-      PAGE_SIZE_MEDIUM,
-      `(teams.id:${selectedTeam?.id})`,
-      '',
-      '',
-      SearchIndex.USER
-    )
-      .then((res: SearchResponse) => {
-        const data = formatUsersResponse(res.data.hits.hits);
-        setUsers(data);
+    searchQuery({
+      query: text,
+      pageNumber: currentPage,
+      pageSize: PAGE_SIZE_MEDIUM,
+      queryFilter: {
+        query: {
+          bool: {
+            must: {
+              term: {
+                'teams.id': selectedTeam.id,
+              },
+            },
+          },
+        },
+      },
+      searchIndex: SearchIndex.USER,
+    })
+      .then((res) => {
+        setUsers(res.hits.hits.map(({ _source }) => _source));
         setUserPaging({
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
         });
       })
       .catch(() => {

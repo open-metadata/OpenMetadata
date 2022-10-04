@@ -21,7 +21,7 @@ import {
   screen,
 } from '@testing-library/react';
 import { flatten } from 'lodash';
-import { FormattedGlossaryTermData, TagOption } from 'Models';
+import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -29,6 +29,7 @@ import {
   TagClass,
 } from '../../../generated/entity/tags/tagCategory';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { GlossarySearchSource } from '../../../interface/search.interface';
 import { fetchGlossaryTerms } from '../../../utils/GlossaryUtils';
 import { getTagCategories } from '../../../utils/TagsUtils';
 import EntityPageInfo from './EntityPageInfo';
@@ -185,9 +186,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
 jest.mock('../../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map(
-      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
-    );
+    return terms.map((term: GlossarySearchSource) => term?.fullyQualifiedName);
   }),
 }));
 

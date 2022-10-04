@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityReference, SearchDataFunctionType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { EntityReference } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
@@ -28,8 +28,8 @@ export interface MyDataProps {
   pendingTaskCount: number;
   ownedDataCount: number;
   userDetails?: User;
-  ownedData: Array<EntityReference>;
-  followedData: Array<EntityReference>;
+  ownedData: EntityReference[];
+  followedData: EntityReference[];
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
@@ -38,7 +38,6 @@ export interface MyDataProps {
     after?: string,
     threadType?: ThreadType
   ) => void;
-  fetchData?: (value: SearchDataFunctionType) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (
     threadId: string,

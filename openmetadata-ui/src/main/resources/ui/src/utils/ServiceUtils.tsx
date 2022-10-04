@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
-  Bucket,
   DynamicFormFieldType,
   DynamicObj,
   ServicesData,
@@ -101,6 +100,7 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
+import { Bucket } from '../interface/search.interface';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';

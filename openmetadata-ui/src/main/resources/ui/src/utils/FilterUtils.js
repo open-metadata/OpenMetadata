@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEqual } from 'lodash';
+import { isEqual, isNil } from 'lodash';
 import {
   initialFilterQS,
   searchFilterQS,
@@ -34,6 +34,41 @@ const prepareModifiedKey = (key, restrictKeyModification = false) => {
     }
   }
 };
+
+const filterNameToField = {
+  service: 'serviceType',
+  servicename: 'service.name.keyword',
+  servicecategory: 'service.type',
+  entitytype: 'entityType',
+  tier: 'tier.tagFQN',
+  tags: 'tags.tagFQN',
+  database: 'database.name.keyword',
+  databaseschema: 'databaseSchema.name.keyword',
+};
+
+export const getFilterElasticsearchQuery = (f, excludeFilters = []) =>
+  isNil(f)
+    ? { query: { bool: {} } }
+    : Object.entries(f).filter(([key]) => !excludeFilters.includes(key)).length
+    ? {
+        query: {
+          bool: {
+            must: Object.entries(f)
+              .filter(([key]) => !excludeFilters.includes(key))
+              .filter(([, value]) => value.length)
+              .map(([key, values]) => ({
+                bool: {
+                  should: values.map((value) => ({
+                    term: {
+                      [prepareModifiedKey(key)]: value,
+                    },
+                  })),
+                },
+              })),
+          },
+        },
+      }
+    : undefined;
 
 export const getFilterString = (
   filters,
@@ -84,10 +119,11 @@ export const prepareQueryParams = (filters, initFilters = {}) => {
 
   for (const [key, values] of filterEntries) {
     if (values?.length) {
-      const matchQuotes = /".*"/g;
-      const searchValue = values.map((value) =>
-        value.match(matchQuotes) ? value : `"${value}"`
-      );
+      // const matchQuotes = /".*"/g;
+      // const searchValue = values.map((value) =>
+      //   value.match(matchQuotes) ? value : `"${value}"`
+      // );
+      const searchValue = values;
       if (
         initFilterKeys.includes(key) &&
         isEqual(initFilters[key], searchValue)

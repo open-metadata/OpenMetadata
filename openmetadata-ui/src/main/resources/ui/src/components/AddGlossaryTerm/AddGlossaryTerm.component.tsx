@@ -15,16 +15,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import {
-  EditorContentRef,
-  EntityTags,
-  FormattedGlossaryTermData,
-  FormattedUsersData,
-} from 'Models';
+import { EditorContentRef, EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { TermReference } from '../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../generated/entity/type';
 import {
   errorMsg,
   isUrlFriendlyName,
@@ -75,17 +71,15 @@ const AddGlossaryTerm = ({
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
-  const [relatedTerms, setRelatedTerms] = useState<
-    Array<FormattedGlossaryTermData>
-  >([]);
+  const [relatedTerms, setRelatedTerms] = useState<Array<EntityReference>>([]);
   const [synonyms, setSynonyms] = useState('');
   const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
-      setReviewer(glossaryData?.reviewers as FormattedUsersData[]);
+      setReviewer(glossaryData?.reviewers ?? []);
     }
   }, [glossaryData]);
 
@@ -97,7 +91,7 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
+  const handleRelatedTermsSave = (terms: Array<EntityReference>) => {
     setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };
@@ -106,7 +100,7 @@ const AddGlossaryTerm = ({
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
@@ -466,7 +460,9 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleTermRemove}
-                      tag={d.name}
+                      tag={
+                        d.name || d.displayName || d.fullyQualifiedName || ''
+                      }
                       type="contained"
                     />
                   );
@@ -496,7 +492,7 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleReviewerRemove}
-                      tag={d.name}
+                      tag={d.name || d.displayName || ''}
                       type="contained"
                     />
                   );

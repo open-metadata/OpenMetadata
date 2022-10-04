@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { FormattedTeamsData, FormattedUsersData } from 'Models';
 import AppState from '../AppState';
 import { EntityReference } from '../generated/type/entityUsage';
+import {
+  TeamSearchSource,
+  UserSearchSource,
+} from '../interface/search.interface';
 import { getEntityName } from './CommonUtils';
 
 /**
@@ -23,8 +26,8 @@ import { getEntityName } from './CommonUtils';
  * @returns List of user or team
  */
 export const getOwnerList = (
-  listUsers?: FormattedUsersData[],
-  listTeams?: FormattedTeamsData[],
+  listUsers?: UserSearchSource[],
+  listTeams?: TeamSearchSource[],
   excludeCurrentUser?: boolean
 ) => {
   const userDetails = AppState.getCurrentUserDetails();

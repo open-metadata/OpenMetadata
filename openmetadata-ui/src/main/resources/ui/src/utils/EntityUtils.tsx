@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
-import { Bucket, LeafNodes, LineagePos } from 'Models';
+import { LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
@@ -33,6 +33,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
+import { Bucket } from '../interface/search.interface';
 import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
 import {
   getDataTypeString,
@@ -44,7 +45,7 @@ import { getTableTags } from './TagsUtils';
 export const getEntityTags = (
   type: string,
   entityDetail: Table | Pipeline | Dashboard | Topic
-): Array<TagLabel | undefined> => {
+): Array<TagLabel> => {
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
@@ -116,7 +117,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: getEntityName(owner) || '--',
+          value: getEntityName(owner),
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
@@ -267,15 +268,6 @@ export const getEntityCountByType = (buckets: Array<Bucket>) => {
       default:
         break;
     }
-  });
-
-  return entityCounts;
-};
-
-export const getTotalEntityCountByType = (buckets: Array<Bucket> = []) => {
-  let entityCounts = 0;
-  buckets.forEach((bucket) => {
-    entityCounts += bucket.doc_count;
   });
 
   return entityCounts;

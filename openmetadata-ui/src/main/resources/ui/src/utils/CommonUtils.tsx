@@ -59,25 +59,13 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
-import { Bot } from '../generated/entity/bot';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { Database } from '../generated/entity/data/database';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Pipeline } from '../generated/entity/data/pipeline';
-import { Table } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
-import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
-import { Policy } from '../generated/entity/policies/policy';
 import {
   IngestionPipeline,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Role } from '../generated/entity/teams/role';
-import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
-import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -185,9 +173,14 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
 };
 
 export const getCurrentUserId = (): string => {
-  const currentUser = AppState.getCurrentUserDetails();
+  // TODO: Replace below with USERID from Logged-in data
+  const { id: userId } = !isEmpty(AppState.userDetails)
+    ? AppState.userDetails
+    : AppState.users?.length
+    ? AppState.users[0]
+    : { id: undefined };
 
-  return currentUser?.id || '';
+  return userId as string;
 };
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {
@@ -648,40 +641,15 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @param entity - entity reference
  * @returns - entity name
  */
-export const getEntityName = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-    | GlossaryTerm
-    | Webhook
-    | Bot
-) => {
-  return entity?.displayName || entity?.name || '';
-};
+export const getEntityName: (
+  e:
+    | Pick<EntityReference, 'name' | 'displayName' | 'fullyQualifiedName'>
+    | undefined
+) => string = (entity) =>
+  entity?.displayName ?? entity?.name ?? entity?.fullyQualifiedName ?? '';
 
-export const getEntityId = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-) => entity?.id || '';
+export const getEntityId = (entity?: { id?: string } | undefined) =>
+  entity?.id ?? '';
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
@@ -1014,7 +982,9 @@ export const commonUserDetailColumns: ColumnsType<User> = [
   },
 ];
 
-export const getOwnerValue = (owner: EntityReference) => {
+export const getOwnerValue = (
+  owner?: Partial<Pick<EntityReference, 'name' | 'fullyQualifiedName' | 'type'>>
+) => {
   switch (owner?.type) {
     case 'team':
       return getTeamAndUserDetailsPath(owner?.name || '');

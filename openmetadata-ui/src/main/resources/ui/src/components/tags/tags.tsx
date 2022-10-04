@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
@@ -24,7 +24,7 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
 
-const Tags: FunctionComponent<TagProps> = ({
+const Tags: React.FC<TagProps> = ({
   className,
   editable,
   tag,

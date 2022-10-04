@@ -16,7 +16,13 @@ import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getFilterString } from '../utils/FilterUtils';
 
-export const myDataSearchIndex = `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`;
+export const myDataSearchIndex = [
+  SearchIndex.DASHBOARD,
+  SearchIndex.TABLE,
+  SearchIndex.TOPIC,
+  SearchIndex.PIPELINE,
+  SearchIndex.MLMODEL,
+];
 
 export const myDataEntityCounts = {
   tableCount: 0,

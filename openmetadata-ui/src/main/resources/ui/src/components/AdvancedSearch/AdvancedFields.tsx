@@ -13,11 +13,12 @@
 
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
+import { SearchIndex } from '../../enums/search.enum';
 import { AdvanceField } from '../Explore/explore.interface';
 import AdvancedField from './AdvancedField';
 
 interface Props {
-  index: string;
+  index: SearchIndex;
   fields: Array<AdvanceField>;
   onFieldRemove: (value: string) => void;
   onClear: () => void;

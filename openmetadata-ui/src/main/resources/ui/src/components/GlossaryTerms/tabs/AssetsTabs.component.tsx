@@ -1,9 +1,7 @@
 import { GlossaryTermAssets } from 'Models';
 import React from 'react';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { Paging } from '../../../generated/type/paging';
-import { getTierFromSearchTableTags } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/next-previous/NextPrevious';
 import TableDataCard from '../../common/table-data-card/TableDataCard';
@@ -22,27 +20,9 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
           {assetData.data.map((entity, index) => (
             <div className="m-b-sm" key={index}>
               <TableDataCard
-                database={entity.database}
-                databaseSchema={entity.databaseSchema}
-                deleted={entity.deleted}
-                description={entity.description}
-                fullyQualifiedName={entity.fullyQualifiedName}
                 id={`tabledatacard${index}`}
-                indexType={entity.index}
-                name={entity.name}
-                owner={entity.owner}
-                service={entity.service}
-                serviceType={entity.serviceType || '--'}
-                tags={entity.tags}
-                tier={
-                  (
-                    entity.tier?.tagFQN ||
-                    getTierFromSearchTableTags(
-                      (entity.tags || []).map((tag) => tag.tagFQN)
-                    )
-                  )?.split(FQN_SEPARATOR_CHAR)[1]
-                }
-                usage={entity.weeklyPercentileRank}
+                searchIndex={entity.type}
+                source={entity}
               />
             </div>
           ))}

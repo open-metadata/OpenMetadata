@@ -13,8 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { EntityReference } from 'Models';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ServicePageData } from '../pages/service';

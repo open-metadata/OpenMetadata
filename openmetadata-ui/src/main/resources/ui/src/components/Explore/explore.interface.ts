@@ -11,21 +11,30 @@
  *  limitations under the License.
  */
 
-import { FilterObject, SearchResponse } from 'Models';
+import { FilterObject } from 'Models';
+import { SearchIndex } from '../../enums/search.enum';
+import { SearchResponse } from '../../interface/search.interface';
 
 export type UrlParams = {
   searchQuery: string;
   tab: string;
 };
 
+export type ExploreSearchIndex =
+  | SearchIndex.TOPIC
+  | SearchIndex.TABLE
+  | SearchIndex.MLMODEL
+  | SearchIndex.PIPELINE
+  | SearchIndex.DASHBOARD;
+
 export type ExploreSearchData = {
-  resSearchResults: SearchResponse;
-  resAggServiceType: SearchResponse;
-  resAggTier: SearchResponse;
-  resAggTag: SearchResponse;
-  resAggDatabase: SearchResponse;
-  resAggDatabaseSchema: SearchResponse;
-  resAggServiceName: SearchResponse;
+  resSearchResults: SearchResponse<ExploreSearchIndex>;
+  resAggServiceType: SearchResponse<ExploreSearchIndex>;
+  resAggTier: SearchResponse<ExploreSearchIndex>;
+  resAggTag: SearchResponse<ExploreSearchIndex>;
+  resAggDatabase: SearchResponse<ExploreSearchIndex>;
+  resAggDatabaseSchema: SearchResponse<ExploreSearchIndex>;
+  resAggServiceName: SearchResponse<ExploreSearchIndex>;
 };
 
 export interface ExploreProps {

@@ -13,7 +13,7 @@
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import Tags from './tags';
 
 const mockCallback = jest.fn();
@@ -81,9 +81,7 @@ describe('Test tags Component', () => {
         removeTag={mockCallback}
         startWith="#"
         tag={{
-          labelType: LabelType.Manual,
           source: TagSource.Tag,
-          state: State.Confirmed,
           tagFQN: 'testTag.Test1',
         }}
       />
@@ -104,9 +102,7 @@ describe('Test tags Component', () => {
         startWith="#"
         tag={{
           description: 'TestDescription',
-          labelType: LabelType.Manual,
           source: TagSource.Glossary,
-          state: State.Confirmed,
           tagFQN: 'glossaryTag.Test1',
         }}
       />

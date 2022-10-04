@@ -20,7 +20,7 @@ import {
   waitForDomChange,
 } from '@testing-library/react';
 import React from 'react';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
 import { MOCK_USER_DATA } from './mockUserData';
@@ -33,6 +33,7 @@ const mockParam = {
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParam),
 }));
+
 jest.mock('../../axiosAPIs/userAPI', () => ({
   getUsers: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -40,8 +41,9 @@ jest.mock('../../axiosAPIs/userAPI', () => ({
     })
   ),
 }));
-jest.mock('../../axiosAPIs/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() =>
+
+jest.mock('../../axiosAPIs/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: MOCK_USER_DATA,
     })
@@ -69,6 +71,7 @@ jest.mock('../../components/UserList/UserListV1', () => {
     </div>
   ));
 });
+
 jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
@@ -128,7 +131,7 @@ describe('Test UserListPage component', () => {
   it('handleSearch function should work properly', async () => {
     mockParam.tab = GlobalSettingOptions.ADMINS;
     const userAPI = getUsers as jest.Mock;
-    const searchAPI = searchData as jest.Mock;
+    const searchAPI = searchQuery as jest.Mock;
     render(<UserListPageV1 />);
     const searchBox = await screen.findByTestId('search-input');
     const userlist = await screen.findByText('UserList.component');

@@ -13,6 +13,7 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../../enums/search.enum';
 import { AdvanceField } from '../Explore/explore.interface';
 import AdvancedFields from './AdvancedFields';
 
@@ -22,7 +23,7 @@ jest.mock('./AdvancedField', () =>
     .mockReturnValue(<div data-testid="advanced-field">AdvancedField</div>)
 );
 
-const index = 'table_search_index';
+const index = SearchIndex.TABLE;
 const fields = [
   { key: 'owner.name', value: undefined },
   { key: 'column_names', value: undefined },

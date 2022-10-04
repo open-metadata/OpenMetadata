@@ -14,13 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, extend, isEmpty } from 'lodash';
-import {
-  FormattedGlossarySuggestion,
-  GlossarySuggestionHit,
-  GlossaryTermAssets,
-  LoadingState,
-  SearchResponse,
-} from 'Models';
+import { GlossaryTermAssets, LoadingState } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -31,7 +25,7 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../axiosAPIs/glossaryAPI';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
@@ -41,8 +35,8 @@ import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { GlossarySearchSource } from '../../interface/search.interface';
 import jsonData from '../../jsons/en';
-import { formatDataResponse } from '../../utils/APIUtils';
 import {
   getChildGlossaryTerms,
   getGlossariesWithRootTerms,
@@ -225,30 +219,42 @@ const GlossaryPageV1 = () => {
    */
   const fetchGlossaryTermAssets = (fqn: string, forceReset = false) => {
     if (fqn) {
-      const tagName = fqn;
-      searchData(
-        '',
-        forceReset ? 1 : assetData.currPage,
-        PAGE_SIZE,
-        `(tags.tagFQN:"${tagName}")`,
-        '',
-        '',
-        myDataSearchIndex
-      )
-        .then((res: SearchResponse) => {
-          const hits = res?.data?.hits?.hits;
-          if (hits?.length > 0) {
+      searchQuery({
+        pageNumber: forceReset ? 1 : assetData.currPage,
+        pageSize: PAGE_SIZE,
+        queryFilter: { query: { term: { 'tags.tagFQN': fqn } } },
+        searchIndex: myDataSearchIndex,
+        fetchSource: true,
+        includeFields: [
+          'id',
+          'type',
+          'entityType',
+          'serviceType',
+          'name',
+          'fullyQualifiedName',
+          'description',
+          'displayName',
+          'deleted',
+          'href',
+          'owner',
+        ],
+      })
+        .then((res) => {
+          if (res.hits.hits.length > 0) {
             setAssetData((pre) => {
-              const data = formatDataResponse(hits);
-              const total = res.data.hits.total.value;
+              const total = res.hits.total.value;
 
               return forceReset
                 ? {
-                    data,
+                    data: res.hits.hits.map(({ _source }) => _source),
                     total,
                     currPage: 1,
                   }
-                : { ...pre, data, total };
+                : {
+                    ...pre,
+                    data: res.hits.hits.map(({ _source }) => _source),
+                    total,
+                  };
             });
           } else {
             setAssetData((pre) => {
@@ -324,7 +330,7 @@ const GlossaryPageV1 = () => {
     if (isEmpty(data)) {
       modifiedData = updateGlossaryListBySearchedTerms(modifiedData, [
         { fullyQualifiedName: arrFQN[arrFQN.length - 1] },
-      ] as FormattedGlossarySuggestion[]);
+      ] as GlossarySearchSource[]);
     }
     selectDataByFQN(fqn, modifiedData);
   };
@@ -374,7 +380,7 @@ const GlossaryPageV1 = () => {
   const getSearchedGlossaries = (
     arrGlossaries: ModifiedGlossaryData[],
     newGlossaries: string[],
-    searchedTerms: FormattedGlossarySuggestion[]
+    searchedTerms: GlossarySearchSource[]
   ) => {
     if (newGlossaries.length) {
       let arrNewData: ModifiedGlossaryData[] = [];
@@ -392,7 +398,7 @@ const GlossaryPageV1 = () => {
           );
           setGlossariesList(arrData);
           handleExpandedKey(
-            getHierarchicalKeysByFQN(searchedTerms[0].fullyQualifiedName)
+            getHierarchicalKeysByFQN(searchedTerms[0].fullyQualifiedName ?? '')
           );
         })
         .catch((err: AxiosError) => {
@@ -408,7 +414,7 @@ const GlossaryPageV1 = () => {
       );
       setGlossariesList(arrData);
       handleExpandedKey(
-        getHierarchicalKeysByFQN(searchedTerms[0].fullyQualifiedName)
+        getHierarchicalKeysByFQN(searchedTerms[0].fullyQualifiedName ?? '')
       );
     }
   };
@@ -418,15 +424,16 @@ const GlossaryPageV1 = () => {
    */
   const fetchSearchedTerms = useCallback(() => {
     if (searchText) {
-      searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-        // TODO: fix type issues below
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then((res: any) => {
-          if (res.data) {
-            const searchedTerms: FormattedGlossarySuggestion[] =
-              res.data.hits?.hits?.map(
-                (item: GlossarySuggestionHit) => item._source
-              ) || [];
+      searchQuery({
+        query: searchText,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE,
+        searchIndex: SearchIndex.GLOSSARY,
+      })
+        .then((res) => {
+          if (res) {
+            const searchedTerms =
+              res.hits?.hits?.map((item) => item._source) || [];
             if (searchedTerms.length) {
               const searchedGlossaries: string[] = [
                 ...new Set(

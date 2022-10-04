@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { AggregationType, FilterObject } from 'Models';
+import { FilterObject } from 'Models';
+import { AggregationType } from '../../../interface/search.interface';
 
 export type FacetProp = {
   aggregations: Array<AggregationType>;

@@ -14,18 +14,17 @@
 import { Empty } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
-import { FormattedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { suggestQuery } from '../../axiosAPIs/searchAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
-import { formatDataResponse } from '../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -36,7 +35,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
-  const [data, setData] = useState<Array<FormattedTableData>>([]);
+  const [data, setData] = useState<EntityReference[]>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 
@@ -54,22 +53,15 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   };
 
   useEffect(() => {
-    getSuggestions(
-      searchValue,
-      SearchIndex[entityType as keyof typeof SearchIndex]
-    )
+    suggestQuery({
+      query: searchValue,
+      searchIndex: SearchIndex[
+        entityType as keyof typeof SearchIndex
+      ] as ExploreSearchIndex,
+      fetchSource: true,
+    })
       .then((res) => {
-        if (res.data) {
-          setData(
-            // TODO: fix types below
-            formatDataResponse(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            )
-          );
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
+        setData(res.map(({ _source }) => _source));
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -112,20 +104,20 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                     description: entity.description,
                     displayName: entity.displayName,
                     id: entity.id,
-                    type: entity.entityType as string,
+                    type: entity.type,
                     name: entity.name,
                     fullyQualifiedName: entity.fullyQualifiedName,
                   });
                 }}>
                 <img
-                  alt={entity.serviceType}
+                  alt={entity.type}
                   className="tw-inline tw-h-4 tw-mr-2"
-                  src={serviceTypeLogo(entity.serviceType as string)}
+                  src={serviceTypeLogo(entity.type)}
                 />
                 {getSuggestionLabel(
-                  entity.fullyQualifiedName,
-                  entity.entityType as string,
-                  entity.name
+                  entity.fullyQualifiedName ?? '',
+                  entity.type,
+                  entity.name ?? ''
                 )}
               </span>
             </div>

@@ -13,20 +13,17 @@
 
 import { AxiosError } from 'axios';
 import { isEqual, isUndefined } from 'lodash';
-import { SearchedUsersAndTeams, SearchResponse } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
-import {
-  getSearchedTeams,
-  getSearchedUsers,
-  getSuggestedTeams,
-  getSuggestedUsers,
-} from '../axiosAPIs/miscAPI';
+import { searchQuery, suggestQuery } from '../axiosAPIs/searchAPI';
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { SettledStatus } from '../enums/axios.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { TeamType } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
-import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
+import {
+  TeamSearchSource,
+  UserSearchSource,
+} from '../interface/search.interface';
 import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
@@ -141,77 +138,63 @@ export const getUserProfilePic = (
   return profile;
 };
 
-export const searchFormattedUsersAndTeams = (
-  searchQuery = WILD_CARD_CHAR,
-  from = 1
-): Promise<SearchedUsersAndTeams> => {
-  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
-    const teamQuery = `${searchQuery} AND teamType:Group`;
-    const promises = [
-      getSearchedUsers(searchQuery, from),
-      getSearchedTeams(teamQuery, from),
-    ];
-    Promise.allSettled(promises)
-      .then(
-        ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
-          const users =
-            resUsers.status === SettledStatus.FULFILLED
-              ? formatUsersResponse(resUsers.value.data.hits.hits)
-              : [];
-          const teams =
-            resTeams.status === SettledStatus.FULFILLED
-              ? formatTeamsResponse(resTeams.value.data.hits.hits)
-              : [];
-          const usersTotal =
-            resUsers.status === SettledStatus.FULFILLED
-              ? resUsers.value.data.hits.total.value
-              : 0;
-          const teamsTotal =
-            resTeams.status === SettledStatus.FULFILLED
-              ? resTeams.value.data.hits.total.value
-              : 0;
-          resolve({ users, teams, usersTotal, teamsTotal });
-        }
-      )
-      .catch((err: AxiosError) => {
-        reject(err);
-      });
+export const searchFormattedUsersAndTeams: (
+  q: string,
+  f: number
+) => Promise<{
+  users: UserSearchSource[];
+  teams: TeamSearchSource[];
+  teamsTotal: number;
+  usersTotal: number;
+}> = (query, from) =>
+  Promise.all([
+    searchQuery({
+      query,
+      searchIndex: [SearchIndex.USER],
+      pageNumber: from,
+    }),
+    searchQuery({
+      query,
+      searchIndex: [SearchIndex.TEAM],
+      pageNumber: from,
+      queryFilter: {
+        query: {
+          term: { teamType: TeamType.Group },
+        },
+      },
+    }),
+  ]).then(([resUsers, resTeams]) => {
+    const users = resUsers.hits.hits.map(({ _source }) => _source);
+    const teams = resTeams.hits.hits.map(({ _source }) => _source);
+
+    return {
+      users,
+      teams,
+      usersTotal: resUsers.hits.total.value,
+      teamsTotal: resTeams.hits.total.value,
+    };
   });
-};
 
 export const suggestFormattedUsersAndTeams = (
   searchQuery: string
-): Promise<SearchedUsersAndTeams> => {
-  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
-    const promises = [
-      getSuggestedUsers(searchQuery),
-      getSuggestedTeams(searchQuery),
-    ];
+): Promise<{
+  users: UserSearchSource[];
+  teams: TeamSearchSource[];
+}> =>
+  suggestQuery({
+    query: searchQuery,
+    searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+    fetchSource: true,
+  }).then((res) => {
+    const users = res
+      .filter(({ _index }) => _index === SearchIndex.USER)
+      .map(({ _source }) => _source) as UserSearchSource[];
+    const teams = res
+      .filter(({ _index }) => _index === SearchIndex.TEAM)
+      .map(({ _source }) => _source) as TeamSearchSource[];
 
-    Promise.allSettled(promises)
-      .then(([resUsers, resTeams]) => {
-        const users =
-          resUsers.status === SettledStatus.FULFILLED
-            ? formatUsersResponse(
-                // TODO: fix type errors below
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (resUsers.value.data as any).suggest['metadata-suggest'][0]
-                  .options
-              )
-            : [];
-        const teams =
-          resTeams.status === SettledStatus.FULFILLED
-            ? formatTeamsResponse(
-                // TODO: fix type errors below
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (resTeams.value.data as any).suggest['metadata-suggest'][0]
-                  .options
-              )
-            : [];
-        resolve({ users, teams });
-      })
-      .catch((err: AxiosError) => {
-        reject(err);
-      });
+    return {
+      users,
+      teams,
+    };
   });
-};

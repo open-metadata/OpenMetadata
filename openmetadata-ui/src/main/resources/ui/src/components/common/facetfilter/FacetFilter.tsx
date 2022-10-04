@@ -13,13 +13,14 @@
 
 import classNames from 'classnames';
 import { toLower } from 'lodash';
-import { AggregationType, Bucket, FilterObject } from 'Models';
+import { FilterObject } from 'Models';
 import PropTypes from 'prop-types';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   facetFilterPlaceholder,
   LIST_SIZE,
 } from '../../../constants/constants';
+import { AggregationType, Bucket } from '../../../interface/search.interface';
 import { checkSelected } from '../../../utils/FilterUtils';
 import { getTagsWithLabel } from '../../../utils/TagsUtils';
 import { FacetProp } from './FacetTypes';

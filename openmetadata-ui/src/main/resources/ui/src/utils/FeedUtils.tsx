@@ -31,12 +31,11 @@ import {
   updatePost,
   updateThread,
 } from '../axiosAPIs/feedsAPI';
+import { searchQuery, suggestQuery } from '../axiosAPIs/searchAPI';
 import {
-  getInitialEntity,
-  getSuggestions,
-  getUserSuggestions,
-} from '../axiosAPIs/miscAPI';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../constants/char.constants';
 import {
   entityLinkRegEx,
   entityRegex,
@@ -168,10 +167,13 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
     if (!searchTerm) {
-      const data = await getInitialEntity(SearchIndex.USER);
-      // TODO: fix below type issues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hits = (data as any).data.hits.hits;
+      const data = await searchQuery({
+        query: WILD_CARD_CHAR,
+        pageNumber: 0,
+        pageSize: 5,
+        searchIndex: SearchIndex.USER,
+      });
+      const hits = data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
         const entityType = hit._source.entityType;
@@ -189,17 +191,19 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         };
       });
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await getUserSuggestions(searchTerm);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      atValues = hits.map((hit: any) => {
+      const hits = await suggestQuery({
+        query: searchTerm,
+        searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+        fetchSource: true,
+        includeFields: ['entityType', 'deleted', 'name', 'displayName'],
+      });
+      atValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
 
         return {
           id: hit._id,
           value: getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.display_name}`,
+            `@${hit._source.name ?? hit._source.displayName}`,
             hit._source.deleted
           ),
           link: buildMentionLink(
@@ -216,8 +220,13 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
     if (!searchTerm) {
       // TODO: fix below type issues
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await getInitialEntity(SearchIndex.TABLE);
-      const hits = data.data.hits.hits;
+      const data: any = await searchQuery({
+        query: WILD_CARD_CHAR,
+        pageNumber: 0,
+        pageSize: 5,
+        searchIndex: SearchIndex.TABLE,
+      });
+      const hits = data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
         const entityType = hit._source.entityType;
@@ -232,11 +241,12 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         };
       });
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await getSuggestions(searchTerm);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      hashValues = hits.map((hit: any) => {
+      const hits = await suggestQuery({
+        query: searchTerm,
+        fetchSource: true,
+        includeFields: ['entityType', 'name', 'fullyQualifiedName'],
+      });
+      hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
 
         return {
@@ -244,7 +254,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
           value: `#${entityType}/${hit._source.name}`,
           link: buildMentionLink(
             entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName)
+            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
         };
       });

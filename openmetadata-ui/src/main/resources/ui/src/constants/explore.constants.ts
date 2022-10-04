@@ -12,10 +12,14 @@
  */
 
 import { toLower } from 'lodash';
-import { AggregationType, Bucket, FilterObject } from 'Models';
-import { TabCounts } from '../components/Explore/explore.interface';
+import { FilterObject } from 'Models';
+import {
+  ExploreSearchIndex,
+  TabCounts,
+} from '../components/Explore/explore.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { AggregationType, Bucket } from '../interface/search.interface';
 import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
 import { tiers } from './constants';
@@ -192,7 +196,7 @@ export const getAggrWithDefaultValue = (
   return sortedAgg as Array<AggregationType>;
 };
 
-export const getCurrentIndex = (tab: string) => {
+export const getCurrentIndex = (tab: string): ExploreSearchIndex => {
   let currentIndex = SearchIndex.TABLE;
   switch (tab) {
     case 'topics':

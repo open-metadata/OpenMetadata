@@ -13,64 +13,46 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../../enums/search.enum';
+import { SuggestResponse } from '../../interface/search.interface';
 import { AdvanceField } from '../Explore/explore.interface';
 import AdvancedField from './AdvancedField';
 
-const mockData = {
-  'metadata-suggest': [
-    {
-      text: 'clou',
-      offset: 0,
-      length: 4,
-      options: [
-        {
-          text: 'Cloud_Infra',
-          _index: 'team_search_index',
-          _type: '_doc',
-          _id: '267a4dd4-df64-400d-b4d1-3925d6f23885',
-          _score: 10,
-          _source: {
-            suggest: [
-              {
-                input: 'Cloud_Infra',
-                weight: 5,
-              },
-              {
-                input: 'Cloud_Infra',
-                weight: 10,
-              },
-            ],
-            deleted: false,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            team_id: '267a4dd4-df64-400d-b4d1-3925d6f23885',
-            name: 'Cloud_Infra',
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            display_name: 'Cloud_Infra',
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            entityType: 'team',
-            users: [],
-            owns: [],
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            default_roles: [],
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            last_updated_timestamp: 1654838173854,
-          },
-        },
-      ],
+const mockUserData: SuggestResponse<SearchIndex.USER> = [
+  {
+    text: 'Aaron Johnson',
+    _index: SearchIndex.USER,
+    _id: '2cae227c-e2c4-487c-b52c-a96ae242d90d',
+    _source: {
+      id: '2cae227c-e2c4-487c-b52c-a96ae242d90d',
+      name: 'aaron_johnson0',
+      fullyQualifiedName: 'aaron_johnson0',
+      displayName: 'Aaron Johnson',
+      version: 0.1,
+      updatedAt: 1661336540995,
+      updatedBy: 'anonymous',
+      email: 'aaron_johnson0@gmail.com',
+      href: 'http://localhost:8585/api/v1/users/2cae227c-e2c4-487c-b52c-a96ae242d90d',
+      isAdmin: false,
+      teams: [],
+      deleted: false,
+      roles: [],
+      inheritedRoles: [],
+      entityType: 'user',
+      type: 'user',
     },
-  ],
-};
+  },
+];
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
-  getAdvancedFieldOptions: jest
+jest.mock('../../axiosAPIs/searchAPI', () => ({
+  suggestQuery: jest
     .fn()
-    .mockImplementation(() => Promise.resolve()),
-  getUserSuggestions: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: { suggest: mockData } })),
+    .mockImplementation(
+      (): Promise<SuggestResponse<SearchIndex>> => Promise.resolve(mockUserData)
+    ),
 }));
 
-const index = 'table_search_index';
+const index = SearchIndex.TABLE;
 const field = { key: 'owner.name', value: undefined } as AdvanceField;
 const onFieldRemove = jest.fn();
 const onFieldValueSelect = jest.fn();
@@ -150,15 +132,13 @@ describe('Test AdvancedField Component', () => {
 
     const fieldOptions = await findAllByTestId('field-option');
 
-    expect(fieldOptions).toHaveLength(
-      mockData['metadata-suggest'][0].options.length
-    );
+    expect(fieldOptions).toHaveLength(mockUserData.length);
 
     fireEvent.click(fieldOptions[0]);
 
     expect(onFieldValueSelect).toHaveBeenCalledWith({
       key: 'owner.name',
-      value: 'Cloud_Infra',
+      value: 'aaron_johnson0',
     });
   });
 });

@@ -12,18 +12,18 @@
  */
 
 import { capitalize, toLower } from 'lodash';
-import { AggregationType, Sterm } from 'Models';
 import { getQueryParam } from '../constants/explore.constants';
+import { Aggregations, AggregationType } from '../interface/search.interface';
 import { getFilterKey } from './FilterUtils';
 
 export const getAggregationList = (
-  aggregation: Record<string, Sterm>,
+  aggregation: Aggregations,
   aggregationType = ''
 ): Array<AggregationType> => {
   const aggrEntriesArr = Object.entries(aggregation);
   const aggregationList: Array<AggregationType> = [];
   aggrEntriesArr.forEach((aggr) => {
-    const aggrTitle = aggr[0].substring(aggr[0].indexOf('#') + 1);
+    const aggrTitle = aggr[0];
     if (!aggregationType || toLower(aggrTitle) === toLower(aggregationType)) {
       aggregationList.push({
         title: aggrTitle,

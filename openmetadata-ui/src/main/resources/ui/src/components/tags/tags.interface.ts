@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import React from 'react';
 import { TagLabel } from '../../generated/type/tagLabel';
 
 export type TagProps = {
@@ -18,7 +19,7 @@ export type TagProps = {
   editable?: boolean;
   type?: 'contained' | 'outlined' | 'label' | 'border';
   startWith?: '#' | '+ ';
-  tag: string | TagLabel;
+  tag: string | Pick<TagLabel, 'tagFQN' | 'description' | 'source'>;
   isRemovable?: boolean;
   showOnlyName?: boolean;
   removeTag?: (

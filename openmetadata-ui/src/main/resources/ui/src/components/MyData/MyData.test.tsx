@@ -19,11 +19,10 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import { EntityReference } from 'Models';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { User } from '../../generated/entity/teams/user';
-import { formatDataResponse } from '../../utils/APIUtils';
+import { EntityReference } from '../../generated/entity/type';
 import MyData from './MyData.component';
 import { MyDataProps } from './MyData.interface';
 
@@ -341,7 +340,7 @@ const mockProp: MyDataProps = {
   followedDataCount: 5,
   ownedDataCount: 5,
   error: '',
-  feedData: formatDataResponse(mockData.data.hits.hits),
+  feedData: mockData.data.hits.hits,
   fetchData: fetchData,
   fetchFeedHandler: mockFetchFeedHandler,
   followedData: currentUserMockData,

@@ -15,7 +15,8 @@ import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { getTagSuggestions } from '../../../axiosAPIs/miscAPI';
+import { suggestQuery } from '../../../axiosAPIs/searchAPI';
+import { SearchIndex } from '../../../enums/search.enum';
 import {
   LabelType,
   State,
@@ -48,24 +49,18 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
   const [options, setOptions] = useState<SelectOption[]>([]);
 
   const fetchOptions = (query: string) => {
-    getTagSuggestions(query)
-      // TODO: Fix types below
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then((res: any) => {
-        const suggestOptions =
-          res.data.suggest['metadata-suggest'][0].options ?? [];
-        const uniqueOptions = [
-          ...new Set(
-            // eslint-disable-next-line
-            suggestOptions.map((op: any) => op._source)
-          ),
-        ];
+    suggestQuery({
+      query,
+      searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+      fetchSource: true,
+      includeFields: ['fullyQualifiedName', 'entityType'],
+    })
+      .then((res) => {
         setOptions(
-          // eslint-disable-next-line
-          uniqueOptions.map((op: any) => ({
-            label: op.fullyQualifiedName as string,
-            value: op.fullyQualifiedName as string,
-            'data-sourcetype': op.entityType,
+          res.map((op) => ({
+            label: op._source.fullyQualifiedName as string,
+            value: op._source.fullyQualifiedName as string,
+            'data-sourcetype': op._source.entityType,
           }))
         );
       })

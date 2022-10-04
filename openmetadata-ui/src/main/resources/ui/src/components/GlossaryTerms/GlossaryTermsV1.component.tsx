@@ -16,10 +16,11 @@ import { Button, Card, Col, Divider, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags, FormattedUsersData, GlossaryTermAssets } from 'Models';
+import { EntityTags, GlossaryTermAssets } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../generated/entity/type';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -71,7 +72,7 @@ const GlossaryTermsV1 = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(1);
   const [showRevieweModal, setShowRevieweModal] = useState<boolean>(false);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
   const tabs = [
     {
@@ -90,7 +91,7 @@ const GlossaryTermsV1 = ({
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (data: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (data: Array<EntityReference>) => {
     if (!isEqual(data, reviewer)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
       const oldReviewer = data.filter((d) => includes(reviewer, d));
@@ -208,7 +209,7 @@ const GlossaryTermsV1 = ({
     if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
       setReviewer(
         glossaryTerm.reviewers.map((d) => ({
-          ...(d as FormattedUsersData),
+          ...d,
           type: 'user',
         }))
       );

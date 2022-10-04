@@ -13,28 +13,20 @@
 
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
-import {
-  FormattedGlossarySuggestion,
-  FormattedGlossaryTermData,
-  SearchResponse,
-} from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
 import {
   getGlossaries,
   getGlossaryTermByFQN,
   getGlossaryTerms,
 } from '../axiosAPIs/glossaryAPI';
-import { searchData } from '../axiosAPIs/miscAPI';
-import {
-  FQN_SEPARATOR_CHAR,
-  WILD_CARD_CHAR,
-} from '../constants/char.constants';
+import { searchQuery } from '../axiosAPIs/searchAPI';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { PRIMERY_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { GlossarySearchSource } from '../interface/search.interface';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
-import { formatSearchGlossaryTermResponse } from './APIUtils';
 import { getEntityName } from './CommonUtils';
 
 export interface GlossaryTermTreeNode {
@@ -47,18 +39,12 @@ export interface GlossaryTermTreeNode {
  * To get all glossary terms
  * @returns promise of list of formatted glossary terms
  */
-export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
-  return new Promise<FormattedGlossaryTermData[]>((resolve, reject) => {
-    searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
-        const data = formatSearchGlossaryTermResponse(
-          res?.data?.hits?.hits || []
-        );
-        resolve(data);
-      })
-      .catch((error: AxiosError) => reject(error.response));
-  });
-};
+export const fetchGlossaryTerms = () =>
+  searchQuery({
+    pageNumber: 1,
+    pageSize: 1000,
+    searchIndex: SearchIndex.GLOSSARY,
+  }).then((res) => res.hits.hits.map(({ _source }) => _source));
 
 /**
  * To get list of fqns from list of glossary terms
@@ -66,9 +52,9 @@ export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
  * @returns list of term fqns
  */
 export const getGlossaryTermlist = (
-  terms: Array<FormattedGlossaryTermData> = []
+  terms: Array<GlossarySearchSource> = []
 ): Array<string> => {
-  return terms.map((term: FormattedGlossaryTermData) => term.fqdn || '');
+  return terms.map((term) => term.fullyQualifiedName || '');
 };
 
 /**
@@ -185,14 +171,16 @@ const optimiseGlossaryTermTree = (treeNodes?: GlossaryTermTreeNode[]) => {
  * @returns list of glossary tree
  */
 export const getSearchedGlossaryTermTree = (
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: GlossarySearchSource[]
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
     if (term.fullyQualifiedName) {
-      const arrFQN = term.fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
-      const rootName = arrFQN[0];
-      termTree.push(createGlossaryTermNode(term.fullyQualifiedName, rootName));
+      const arrFQN = term.fullyQualifiedName?.split(FQN_SEPARATOR_CHAR);
+      const rootName = arrFQN?.length ? arrFQN[0] : '';
+      termTree.push(
+        createGlossaryTermNode(term.fullyQualifiedName ?? '', rootName)
+      );
     }
   }
   optimiseGlossaryTermTree(termTree);
@@ -208,7 +196,7 @@ export const getSearchedGlossaryTermTree = (
  */
 export const updateGlossaryListBySearchedTerms = (
   glossaries: ModifiedGlossaryData[],
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: GlossarySearchSource[]
 ) => {
   const searchedTermTree = getSearchedGlossaryTermTree(searchedTerms);
 

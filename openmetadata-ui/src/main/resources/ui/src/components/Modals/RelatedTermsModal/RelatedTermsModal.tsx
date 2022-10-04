@@ -12,22 +12,22 @@
  */
 
 import { isUndefined } from 'lodash';
-import { FormattedGlossaryTermData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../../axiosAPIs/searchAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/bot';
+import { GlossarySearchSource } from '../../../interface/search.interface';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
-import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
 
 type RelatedTermsModalProp = {
   glossaryTermFQN?: string;
-  relatedTerms?: Array<FormattedGlossaryTermData>;
+  relatedTerms?: Array<EntityReference>;
   onCancel: () => void;
-  onSave: (terms: Array<FormattedGlossaryTermData>) => void;
+  onSave: (terms: Array<EntityReference>) => void;
   header: string;
 };
 
@@ -40,37 +40,43 @@ const RelatedTermsModal = ({
 }: RelatedTermsModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [options, setOptions] = useState<FormattedGlossaryTermData[]>([]);
-  const [selectedOption, setSelectedOption] = useState<
-    FormattedGlossaryTermData[]
-  >(relatedTerms ?? []);
+  const [options, setOptions] = useState<EntityReference[]>([]);
+  const [selectedOption, setSelectedOption] = useState<EntityReference[]>(
+    relatedTerms ?? []
+  );
 
-  const getSearchedTerms = (searchedData: FormattedGlossaryTermData[]) => {
+  const getSearchedTerms = (
+    searchedData: GlossarySearchSource[]
+  ): EntityReference[] => {
     const currOptions = selectedOption.map(
       (item) => item.fullyQualifiedName || item.name
     );
-    const data = searchedData.filter((item: FormattedGlossaryTermData) => {
-      return !currOptions.includes(item.fullyQualifiedName);
-    });
+    const data = searchedData.filter(
+      (item: GlossarySearchSource) =>
+        !currOptions.includes(item.fullyQualifiedName || item.name)
+    );
 
     return [...selectedOption, ...data];
   };
 
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
-    searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
-        const termResult = (
-          formatSearchGlossaryTermResponse(
-            res?.data?.hits?.hits || []
-          ) as FormattedGlossaryTermData[]
-        ).filter((item) => {
-          const isTermExist = relatedTerms?.some(
-            (term) => term.fullyQualifiedName === item.fullyQualifiedName
-          );
+    searchQuery({
+      query: searchText,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE,
+      searchIndex: SearchIndex.GLOSSARY,
+    })
+      .then((res) => {
+        const termResult = (res?.hits?.hits || [])
+          .map(({ _source }) => _source)
+          .filter((item) => {
+            const isTermExist = relatedTerms?.some(
+              (term) => term.fullyQualifiedName === item.fullyQualifiedName
+            );
 
-          return !isTermExist && item.fullyQualifiedName !== glossaryTermFQN;
-        });
+            return !isTermExist && item.fullyQualifiedName !== glossaryTermFQN;
+          });
         const data = !searchText ? getSearchedTerms(termResult) : termResult;
         setOptions(data);
       })
@@ -93,9 +99,8 @@ const RelatedTermsModal = ({
     if (!isChecked) {
       setSelectedOption((pre) => pre.filter((option) => option.id !== id));
     } else {
-      const newOption: FormattedGlossaryTermData =
-        options.find((d) => d.id === id) || ({} as FormattedGlossaryTermData);
-      setSelectedOption([...selectedOption, newOption]);
+      const newOptions = options.filter((d) => d.id === id);
+      setSelectedOption([...selectedOption, ...newOptions]);
     }
   };
 
@@ -106,7 +111,7 @@ const RelatedTermsModal = ({
         isCheckBoxes
         item={{
           name: '',
-          displayName: d.displayName || d.name,
+          displayName: d.displayName || d.name || '',
           id: d.id,
           isChecked: isIncludeInOptions(d.id),
           type: d.type,

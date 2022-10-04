@@ -11,107 +11,87 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { suggestQuery } from '../../axiosAPIs/searchAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { FqnPart } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
-import jsonData from '../../jsons/en';
+import { GENERAL_SEARCH_INDEX, SearchIndex } from '../../enums/search.enum';
+import {
+  DashboardSearchSource,
+  MlmodelSearchSource,
+  PipelineSearchSource,
+  SuggestResponse,
+  TableSearchSource,
+  TopicSearchSource,
+} from '../../interface/search.interface';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 
-type SuggestionProp = {
+export interface SuggestionsProps {
   searchText: string;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
-};
+}
 
-type CommonSource = {
-  fullyQualifiedName: string;
-  serviceType: string;
-  name: string;
-};
+type FormattedDataFields = 'fullyQualifiedName' | 'name' | 'serviceType';
 
-type TableSource = {
-  table_id: string;
-  table_name: string;
-} & CommonSource;
+const Suggestions: React.FC<SuggestionsProps> = ({
+  searchText,
+  isOpen,
+  setIsOpen,
+}) => {
+  const [tableSuggestions, setTableSuggestions] = useState<
+    Pick<TableSearchSource, FormattedDataFields>[]
+  >([]);
+  const [topicSuggestions, setTopicSuggestions] = useState<
+    Pick<TopicSearchSource, FormattedDataFields>[]
+  >([]);
 
-type DashboardSource = {
-  dashboard_id: string;
-  dashboard_name: string;
-} & CommonSource;
-
-type TopicSource = {
-  topic_id: string;
-  topic_name: string;
-} & CommonSource;
-
-type PipelineSource = {
-  pipeline_id: string;
-  pipeline_name: string;
-} & CommonSource;
-
-type MlModelSource = {
-  ml_model_id: string;
-  mlmodel_name: string;
-} & CommonSource;
-
-type Option = {
-  _index: string;
-  _source: TableSource &
-    DashboardSource &
-    TopicSource &
-    PipelineSource &
-    MlModelSource;
-};
-
-const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
-  const [options, setOptions] = useState<Array<Option>>([]);
-  const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
-  const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
-    DashboardSource[]
+    Pick<DashboardSearchSource, FormattedDataFields>[]
   >([]);
 
   const [pipelineSuggestions, setPipelineSuggestions] = useState<
-    PipelineSource[]
+    Pick<PipelineSearchSource, FormattedDataFields>[]
   >([]);
-  const [mlModelSuggestions, setMlModelSuggestions] = useState<MlModelSource[]>(
-    []
-  );
+  const [mlModelSuggestions, setMlModelSuggestions] = useState<
+    Pick<MlmodelSearchSource, FormattedDataFields>[]
+  >([]);
   const isMounting = useRef(true);
 
-  const setSuggestions = (options: Array<Option>) => {
+  const setSuggestions = (
+    options: SuggestResponse<
+      typeof GENERAL_SEARCH_INDEX[number],
+      'name' | 'fullyQualifiedName' | 'serviceType'
+    >
+  ) => {
     setTableSuggestions(
       options
-        .filter((option) => option._index === SearchIndex.TABLE)
-        .map((option) => option._source)
+        .filter(({ _index }) => _index === SearchIndex.TABLE)
+        .map(({ _source }) => _source as TableSearchSource)
     );
     setTopicSuggestions(
       options
-        .filter((option) => option._index === SearchIndex.TOPIC)
-        .map((option) => option._source)
+        .filter(({ _index }) => _index === SearchIndex.TOPIC)
+        .map(({ _source }) => _source as TopicSearchSource)
     );
     setDashboardSuggestions(
       options
-        .filter((option) => option._index === SearchIndex.DASHBOARD)
-        .map((option) => option._source)
+        .filter(({ _index }) => _index === SearchIndex.DASHBOARD)
+        .map(({ _source }) => _source as DashboardSearchSource)
     );
     setPipelineSuggestions(
       options
-        .filter((option) => option._index === SearchIndex.PIPELINE)
-        .map((option) => option._source)
+        .filter(({ _index }) => _index === SearchIndex.PIPELINE)
+        .map(({ _source }) => _source as PipelineSearchSource)
     );
     setMlModelSuggestions(
       options
-        .filter((option) => option._index === SearchIndex.MLMODEL)
-        .map((option) => option._source)
+        .filter(({ _index }) => _index === SearchIndex.MLMODEL)
+        .map(({ _source }) => _source as MlmodelSearchSource)
     );
   };
 
@@ -204,12 +184,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           <>
             {getGroupLabel(SearchIndex.TABLE)}
 
-            {tableSuggestions.map((suggestion: TableSource) => {
+            {tableSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.TABLE
               );
@@ -220,12 +200,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           <>
             {getGroupLabel(SearchIndex.TOPIC)}
 
-            {topicSuggestions.map((suggestion: TopicSource) => {
+            {topicSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.TOPIC
               );
@@ -236,12 +216,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           <>
             {getGroupLabel(SearchIndex.DASHBOARD)}
 
-            {dashboardSuggestions.map((suggestion: DashboardSource) => {
+            {dashboardSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.DASHBOARD
               );
@@ -252,12 +232,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           <>
             {getGroupLabel(SearchIndex.PIPELINE)}
 
-            {pipelineSuggestions.map((suggestion: PipelineSource) => {
+            {pipelineSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.PIPELINE
               );
@@ -268,12 +248,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           <>
             {getGroupLabel(SearchIndex.MLMODEL)}
 
-            {mlModelSuggestions.map((suggestion: MlModelSource) => {
+            {mlModelSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.MLMODEL
               );
@@ -286,28 +266,15 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
   useEffect(() => {
     if (!isMounting.current) {
-      getSuggestions(searchText)
-        .then((res) => {
-          if (res.data) {
-            // TODO: Fix type issues below
-            setOptions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            );
-            setSuggestions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            );
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-suggestions-error']
-          );
-        });
+      suggestQuery({
+        query: searchText,
+        searchIndex: GENERAL_SEARCH_INDEX,
+        fetchSource: true,
+        // includeFields: ['name', 'serviceType', 'fullyQualifiedName'],
+      }).then((options) => {
+        setSuggestions(options);
+        setIsOpen(true);
+      });
     }
   }, [searchText]);
 
@@ -318,7 +285,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
   return (
     <>
-      {options.length > 0 && isOpen ? (
+      {isOpen ? (
         <>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "

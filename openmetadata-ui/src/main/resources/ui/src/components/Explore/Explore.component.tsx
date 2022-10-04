@@ -19,17 +19,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, get, isEmpty, lowerCase } from 'lodash';
-import {
-  AggregationType,
-  Bucket,
-  FilterObject,
-  FormattedTableData,
-  SearchDataFunctionType,
-  SearchResponse,
-} from 'Models';
+import { FilterObject } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
@@ -57,20 +50,31 @@ import { mockSearchData } from '../../constants/mockTourData.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
 import {
+  AggregationType,
+  Bucket,
+  SearchRequest,
+  SearchResponse,
+} from '../../interface/search.interface';
+import {
   getAggregationList,
   getAggregationListFromQS,
 } from '../../utils/AggregationUtils';
-import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
+import {
+  getFilterCount,
+  getFilterElasticsearchQuery,
+  getFilterString,
+} from '../../utils/FilterUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
 import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import PageLayoutV1 from '../containers/PageLayoutV1';
+import { SearchedDataProps } from '../searched-data/SearchedData.interface';
 import {
   AdvanceField,
   ExploreProps,
   ExploreSearchData,
+  ExploreSearchIndex,
 } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
@@ -80,7 +84,7 @@ const Explore: React.FC<ExploreProps> = ({
   initialFilter,
   searchFilter,
   tab,
-  searchQuery,
+  searchQuery: searchQueryParam,
   sortValue,
   fetchCount,
   handleFilterChange,
@@ -98,7 +102,7 @@ const Explore: React.FC<ExploreProps> = ({
     ...INITIAL_FILTERS,
     ...initialFilter,
   };
-  const [data, setData] = useState<Array<FormattedTableData>>([]);
+  const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [filters, setFilters] = useState<FilterObject>({
     ...filterObject,
     ...searchFilter,
@@ -106,14 +110,15 @@ const Explore: React.FC<ExploreProps> = ({
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
+  const [aggregations, setAggregations] = useState<AggregationType[]>([]);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
-  const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
+  const [searchIndex, setSearchIndex] = useState<ExploreSearchIndex>(
+    getCurrentIndex(tab)
+  );
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
   const [error, setError] = useState<string>('');
-  const currentSearchIndex = useRef<string>();
 
   const [isEntityLoading, setIsEntityLoading] = useState(true);
   const [isFilterSet, setIsFilterSet] = useState<boolean>(
@@ -225,7 +230,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const updateAggregationCount = useCallback(
-    (newAggregations: Array<AggregationType>) => {
+    (newAggregations: AggregationType[]) => {
       const oldAggs = cloneDeep(aggregations);
       for (const newAgg of newAggregations) {
         for (const oldAgg of oldAggs) {
@@ -257,11 +262,11 @@ const Explore: React.FC<ExploreProps> = ({
     [aggregations, filters]
   );
 
-  const updateSearchResults = (res: SearchResponse) => {
-    const hits = res.data.hits.hits;
+  const updateSearchResults = (res: SearchResponse<ExploreSearchIndex>) => {
+    const hits = res.hits.hits;
     if (hits.length > 0) {
-      setTotalNumberOfValues(res.data.hits.total.value);
-      setData(formatDataResponse(hits));
+      setTotalNumberOfValues(res.hits.total.value);
+      setData(hits);
     } else {
       setData([]);
       setTotalNumberOfValues(0);
@@ -298,40 +303,38 @@ const Explore: React.FC<ExploreProps> = ({
   const updateData = (searchResult: ExploreSearchData) => {
     if (searchResult) {
       updateSearchResults(searchResult.resSearchResults);
-      setCount(searchResult.resSearchResults.data.hits.total.value);
+      setCount(searchResult.resSearchResults.hits.total.value);
       if (forceSetAgg.current) {
         setAggregations(
-          searchResult.resSearchResults.data.hits.hits.length > 0
-            ? getAggregationList(
-                searchResult.resSearchResults.data.aggregations
-              )
+          searchResult.resSearchResults.hits.hits.length > 0
+            ? getAggregationList(searchResult.resSearchResults.aggregations)
             : getAggregationListFromQS(location.search)
         );
         setIsInitialFilterSet(false);
       } else {
         const aggServiceType = getAggregationList(
-          searchResult.resAggServiceType.data.aggregations,
-          'service'
+          searchResult.resAggServiceType.aggregations,
+          'service.type'
         );
         const aggTier = getAggregationList(
-          searchResult.resAggTier.data.aggregations,
-          'tier'
+          searchResult.resAggTier.aggregations,
+          'tier.tagFQN'
         );
         const aggTag = getAggregationList(
-          searchResult.resAggTag.data.aggregations,
-          'tags'
+          searchResult.resAggTag.aggregations,
+          'tags.tagFQN'
         );
         const aggDatabase = getAggregationList(
-          searchResult.resAggDatabase.data.aggregations,
-          'database'
+          searchResult.resAggDatabase.aggregations,
+          'database.name.keyword'
         );
         const aggDatabaseSchema = getAggregationList(
-          searchResult.resAggDatabaseSchema.data.aggregations,
-          'databaseschema'
+          searchResult.resAggDatabaseSchema.aggregations,
+          'databaseSchema.name.keyword'
         );
         const aggServiceName = getAggregationList(
-          searchResult.resAggServiceName.data.aggregations,
-          'servicename'
+          searchResult.resAggServiceName.aggregations,
+          'service.name.keyword'
         );
 
         updateAggregationCount([
@@ -347,28 +350,24 @@ const Explore: React.FC<ExploreProps> = ({
     setIsEntityLoading(false);
   };
 
-  const fetchData = (value: SearchDataFunctionType[]) => {
-    if (isTourPage) {
-      updateData(mockSearchData as unknown as ExploreSearchData);
-    } else {
-      const promiseValue = value.map((d) => {
-        currentSearchIndex.current = d.searchIndex;
+  const fetchData = (value: SearchRequest<ExploreSearchIndex>[]) => {
+    const promiseValue = value.map((req) => {
+      return searchQuery(req);
+    });
 
-        return searchData(
-          d.queryString,
-          d.from,
-          d.size,
-          d.filters,
-          d.sortField,
-          d.sortOrder,
-          d.searchIndex,
-          showDeleted
-        );
-      });
-
-      Promise.all(promiseValue)
-        .then(
-          ([
+    Promise.all(promiseValue)
+      .then(
+        ([
+          resSearchResults,
+          resAggServiceType,
+          resAggTier,
+          resAggTag,
+          resAggDatabase,
+          resAggDatabaseSchema,
+          resAggServiceName,
+        ]) => {
+          setError('');
+          updateData({
             resSearchResults,
             resAggServiceType,
             resAggTier,
@@ -376,105 +375,88 @@ const Explore: React.FC<ExploreProps> = ({
             resAggDatabase,
             resAggDatabaseSchema,
             resAggServiceName,
-          ]: Array<SearchResponse>) => {
-            setError('');
-            if (
-              currentSearchIndex.current ===
-                resSearchResults.data.hits.hits[0]?._index ||
-              isEmpty(resSearchResults.data.hits.hits)
-            ) {
-              updateData({
-                resSearchResults,
-                resAggServiceType,
-                resAggTier,
-                resAggTag,
-                resAggDatabase,
-                resAggDatabaseSchema,
-                resAggServiceName,
-              });
-              if (isEmpty(resSearchResults.data.hits.hits)) {
-                setTotalNumberOfValues(0);
-                setIsEntityLoading(false);
-              }
-            }
-          }
-        )
-        .catch((err: AxiosError) => {
-          const errMsg = get(err, 'response.data.responseMessage', '');
-          setError(errMsg);
-        });
-    }
+          });
+        }
+      )
+      .catch((err: AxiosError) => {
+        const errMsg = get(err, 'response.data.responseMessage', '');
+        setError(errMsg);
+      });
   };
 
   const fetchTableData = () => {
     setIsEntityLoading(true);
-    const fetchParams = [
+    fetchData([
       {
-        queryString: searchText,
-        from: currentPage,
-        size: PAGE_SIZE,
-        filters: getFilterString(filters),
+        query: searchText,
+        pageNumber: currentPage,
+        pageSize: PAGE_SIZE,
+        queryFilter: getFilterElasticsearchQuery(filters),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
       },
       {
-        queryString: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['service']),
+        query: searchText,
+        pageNumber: currentPage,
+        pageSize: ZERO_SIZE,
+        queryFilter: getFilterElasticsearchQuery(filters, ['service']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
+        trackTotalHits: true,
       },
       {
-        queryString: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['tier']),
+        query: searchText,
+        pageNumber: currentPage,
+        pageSize: ZERO_SIZE,
+        queryFilter: getFilterElasticsearchQuery(filters, ['tier']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
+        trackTotalHits: true,
       },
       {
-        queryString: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['tags']),
+        query: searchText,
+        pageNumber: currentPage,
+        pageSize: ZERO_SIZE,
+        queryFilter: getFilterElasticsearchQuery(filters, ['tags']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
+        trackTotalHits: true,
       },
       {
-        queryString: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['database']),
+        query: searchText,
+        pageNumber: currentPage,
+        pageSize: ZERO_SIZE,
+        queryFilter: getFilterElasticsearchQuery(filters, ['database']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
+        trackTotalHits: true,
       },
       {
-        queryString: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['databaseschema']),
+        query: searchText,
+        pageNumber: currentPage,
+        pageSize: ZERO_SIZE,
+        queryFilter: getFilterElasticsearchQuery(filters, ['databaseschema']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
+        trackTotalHits: true,
       },
       {
-        queryString: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['servicename']),
+        query: searchText,
+        pageNumber: currentPage,
+        pageSize: ZERO_SIZE,
+        queryFilter: getFilterElasticsearchQuery(filters, ['servicename']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
+        trackTotalHits: true,
       },
-    ];
-
-    fetchData(fetchParams);
+    ]);
   };
 
   const getFacetedFilter = () => {
@@ -563,7 +545,7 @@ const Explore: React.FC<ExploreProps> = ({
       resetFilters();
       history.push({
         pathname: getExplorePathWithSearch(
-          searchQuery,
+          searchQueryParam,
           tabsInfo[selectedTab - 1].path
         ),
         search: location.search,
@@ -628,9 +610,9 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     isTourPage
       ? updateData(mockSearchData as unknown as ExploreSearchData)
-      : handleSearchText && handleSearchText(searchQuery || emptyValue);
+      : handleSearchText && handleSearchText(searchQueryParam || emptyValue);
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQueryParam]);
 
   useEffect(() => {
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);

@@ -13,13 +13,12 @@
 
 import { Select, Spin, Typography } from 'antd';
 import { cloneDeep, debounce, includes } from 'lodash';
-import { EntityReference, SearchResponse } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../../axiosAPIs/searchAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
+import { EntityReference } from '../../../generated/entity/type';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import SummaryDetail from '../SummaryDetail';
 
@@ -76,15 +75,18 @@ const RelatedTerms = ({
 
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
-    searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
-        const termResult = (
-          formatSearchGlossaryTermResponse(
-            res?.data?.hits?.hits || []
-          ) as EntityReference[]
-        ).filter((item) => {
-          return item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName;
-        });
+    searchQuery({
+      searchIndex: SearchIndex.GLOSSARY,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE,
+    })
+      // searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
+      .then((res) => {
+        const termResult = res.hits.hits
+          .map(({ _source }) => _source)
+          .filter((item) => {
+            return item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName;
+          });
 
         const data = searchText ? getSearchedTerms(termResult) : termResult;
         setOptions(data);

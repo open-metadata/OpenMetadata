@@ -19,12 +19,7 @@ import {
   render,
 } from '@testing-library/react';
 import { flatten } from 'lodash';
-import {
-  FormattedGlossaryTermData,
-  LeafNodes,
-  LoadingNodeState,
-  TagOption,
-} from 'Models';
+import { LeafNodes, LoadingNodeState, TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -33,6 +28,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { GlossarySearchSource } from '../../interface/search.interface';
 import { fetchGlossaryTerms } from '../../utils/GlossaryUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
 import DashboardDetails from './DashboardDetails.component';
@@ -248,9 +244,7 @@ jest.mock('../../utils/CommonUtils', () => ({
 jest.mock('../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map(
-      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
-    );
+    return terms.map((term: GlossarySearchSource) => term?.fullyQualifiedName);
   }),
 }));
 

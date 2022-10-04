@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityReference } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -37,6 +36,7 @@ import { SOCKET_EVENTS } from '../../constants/constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { EntityReference } from '../../generated/entity/type';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';

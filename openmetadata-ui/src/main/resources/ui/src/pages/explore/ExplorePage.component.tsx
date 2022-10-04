@@ -12,31 +12,36 @@
  */
 
 import { isEmpty } from 'lodash';
-import { Bucket, FilterObject } from 'Models';
+import { FilterObject } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
+  ExploreSearchIndex,
   TabCounts,
   UrlParams,
 } from '../../components/Explore/explore.interface';
 import { getExplorePathWithSearch } from '../../constants/constants';
 import {
-  emptyValue,
   getCurrentTab,
   getEntityTypeByIndex,
   getInitialFilter,
   getQueryParam,
   getSearchFilter,
+  INITIAL_FROM,
   INITIAL_TAB_COUNTS,
   tabsInfo,
+  ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { getTotalEntityCountByType } from '../../utils/EntityUtils';
-import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
+import {
+  getFilterElasticsearchQuery,
+  prepareQueryParams,
+} from '../../utils/FilterUtils';
+import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
@@ -50,9 +55,9 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
 
-  const { searchQuery, tab } = useParams<UrlParams>();
+  const { searchQuery: searchQueryParam, tab } = useParams<UrlParams>();
 
-  const [searchText, setSearchText] = useState<string>(searchQuery || '');
+  const [searchText, setSearchText] = useState<string>(searchQueryParam || '');
   const [tabCounts, setTabCounts] = useState<TabCounts>(INITIAL_TAB_COUNTS);
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
@@ -78,7 +83,7 @@ const ExplorePage: FunctionComponent = () => {
   const handleFilterChange = (filterData: FilterObject) => {
     const params = prepareQueryParams(filterData, initialFilter);
 
-    const explorePath = getExplorePathWithSearch(searchQuery, tab);
+    const explorePath = getExplorePathWithSearch(searchQueryParam, tab);
 
     history.push({
       pathname: explorePath,
@@ -86,22 +91,20 @@ const ExplorePage: FunctionComponent = () => {
     });
   };
 
-  const fetchEntityCount = async (indexType: SearchIndex) => {
+  const fetchEntityCount = async (indexType: ExploreSearchIndex) => {
     const entityType = getEntityTypeByIndex(indexType);
     try {
-      const { data } = await searchData(
-        searchText,
-        0,
-        0,
-        getFilterString(initialFilter),
-        emptyValue,
-        emptyValue,
-        indexType,
-        showDeleted,
-        true
-      );
-      const count = getTotalEntityCountByType(
-        data.aggregations?.['sterms#EntityType']?.buckets as Bucket[]
+      const res = await searchQuery({
+        query: searchText,
+        pageSize: ZERO_SIZE,
+        pageNumber: INITIAL_FROM,
+        queryFilter: getFilterElasticsearchQuery(initialFilter),
+        searchIndex: indexType,
+        fetchSource: false,
+      });
+
+      const count = getTotalEntityCountByService(
+        res.aggregations['EntityType'].buckets
       );
 
       setTabCounts((prev) => ({ ...prev, [entityType]: count }));
@@ -142,7 +145,7 @@ const ExplorePage: FunctionComponent = () => {
         initialFilter={initialFilter}
         isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
         searchFilter={searchFilter}
-        searchQuery={searchQuery}
+        searchQuery={searchQueryParam}
         searchText={searchText}
         showDeleted={showDeleted}
         sortValue={initialSortField}

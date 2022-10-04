@@ -19,7 +19,6 @@ import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityReference } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
@@ -54,6 +53,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
 import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';

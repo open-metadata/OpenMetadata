@@ -16,10 +16,18 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { getSuggestions } from '../../../axiosAPIs/miscAPI';
+import { suggestQuery } from '../../../axiosAPIs/searchAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import {
+  DashboardSearchSource,
+  MlmodelSearchSource,
+  PipelineSearchSource,
+  SuggestResponse,
+  TableSearchSource,
+  TopicSearchSource,
+} from '../../../interface/search.interface';
 import jsonData from '../../../jsons/en';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
@@ -29,15 +37,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import CmdKIcon from '../../common/CmdKIcon/CmdKIcon.component';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
-import {
-  DashboardSource,
-  GlobalSearchSuggestionsProp,
-  MlModelSource,
-  Option,
-  PipelineSource,
-  TableSource,
-  TopicSource,
-} from './GlobalSearchSuggestions.interface';
+import { GlobalSearchSuggestionsProp } from './GlobalSearchSuggestions.interface';
 import './GlobalSearchSuggestions.less';
 
 const GlobalSearchSuggestions = ({
@@ -51,46 +51,50 @@ const GlobalSearchSuggestions = ({
   selectRef,
 }: GlobalSearchSuggestionsProp) => {
   const history = useHistory();
-  const [options, setOptions] = useState<Array<Option>>([]);
-  const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
-  const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
+  const [options, setOptions] = useState<SuggestResponse<SearchIndex>>([]);
+  const [tableSuggestions, setTableSuggestions] = useState<TableSearchSource[]>(
+    []
+  );
+  const [topicSuggestions, setTopicSuggestions] = useState<TopicSearchSource[]>(
+    []
+  );
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
-    DashboardSource[]
+    DashboardSearchSource[]
   >([]);
 
   const [pipelineSuggestions, setPipelineSuggestions] = useState<
-    PipelineSource[]
+    PipelineSearchSource[]
   >([]);
-  const [mlModelSuggestions, setMlModelSuggestions] = useState<MlModelSource[]>(
-    []
-  );
+  const [mlModelSuggestions, setMlModelSuggestions] = useState<
+    MlmodelSearchSource[]
+  >([]);
   const isMounting = useRef(true);
 
-  const setSuggestions = (options: Array<Option>) => {
+  const setSuggestions = (options: SuggestResponse<SearchIndex>) => {
     setTableSuggestions(
       options
         .filter((option) => option._index === SearchIndex.TABLE)
-        .map((option) => option._source)
+        .map((option) => option._source as TableSearchSource)
     );
     setTopicSuggestions(
       options
         .filter((option) => option._index === SearchIndex.TOPIC)
-        .map((option) => option._source)
+        .map((option) => option._source as TopicSearchSource)
     );
     setDashboardSuggestions(
       options
         .filter((option) => option._index === SearchIndex.DASHBOARD)
-        .map((option) => option._source)
+        .map((option) => option._source as DashboardSearchSource)
     );
     setPipelineSuggestions(
       options
         .filter((option) => option._index === SearchIndex.PIPELINE)
-        .map((option) => option._source)
+        .map((option) => option._source as PipelineSearchSource)
     );
     setMlModelSuggestions(
       options
         .filter((option) => option._index === SearchIndex.MLMODEL)
-        .map((option) => option._source)
+        .map((option) => option._source as MlmodelSearchSource)
     );
   };
 
@@ -139,23 +143,30 @@ const GlobalSearchSuggestions = ({
     );
   };
 
-  const getSuggestionElement = (
-    fqdn: string,
-    serviceType: string,
-    name: string,
-    index: string
-  ) => {
+  const getSuggestionElement: (args: {
+    fullyQualifiedName: string | undefined;
+    name: string | undefined;
+    serviceType: string | undefined;
+    index: SearchIndex;
+  }) => React.ReactNode = ({
+    fullyQualifiedName = '',
+    name = '',
+    serviceType = '',
+    index,
+  }) => {
     let database;
     let schema;
     if (index === SearchIndex.TABLE) {
-      database = getPartialNameFromTableFQN(fqdn, [FqnPart.Database]);
-      schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
+      database = getPartialNameFromTableFQN(fullyQualifiedName, [
+        FqnPart.Database,
+      ]);
+      schema = getPartialNameFromTableFQN(fullyQualifiedName, [FqnPart.Schema]);
     }
-    const entitiyLink = getEntityLink(index, fqdn);
+    const entitiyLink = getEntityLink(index, fullyQualifiedName);
 
     return (
       <Select.Option key={entitiyLink} value={entitiyLink}>
-        <div className="tw-flex tw-items-center" key={fqdn}>
+        <div className="tw-flex tw-items-center" key={fullyQualifiedName}>
           <img
             alt={serviceType}
             className="tw-inline tw-h-4"
@@ -164,7 +175,7 @@ const GlobalSearchSuggestions = ({
           <Link
             className="tw-px-2 tw-text-sm"
             data-testid="data-name"
-            id={fqdn.replace(/\./g, '')}
+            id={fullyQualifiedName.replace(/\./g, '')}
             to={entitiyLink}
             onClick={() => onOptionSelection()}>
             {database && schema
@@ -183,15 +194,15 @@ const GlobalSearchSuggestions = ({
           <>
             {getGroupLabel(SearchIndex.TABLE)}
 
-            {tableSuggestions.map((suggestion: TableSource) => {
+            {tableSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
-              return getSuggestionElement(
+              return getSuggestionElement({
                 fullyQualifiedName,
                 serviceType,
                 name,
-                SearchIndex.TABLE
-              );
+                index: SearchIndex.TABLE,
+              });
             })}
           </>
         )}
@@ -199,15 +210,15 @@ const GlobalSearchSuggestions = ({
           <>
             {getGroupLabel(SearchIndex.TOPIC)}
 
-            {topicSuggestions.map((suggestion: TopicSource) => {
+            {topicSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
-              return getSuggestionElement(
+              return getSuggestionElement({
                 fullyQualifiedName,
                 serviceType,
                 name,
-                SearchIndex.TOPIC
-              );
+                index: SearchIndex.TOPIC,
+              });
             })}
           </>
         )}
@@ -215,15 +226,15 @@ const GlobalSearchSuggestions = ({
           <>
             {getGroupLabel(SearchIndex.DASHBOARD)}
 
-            {dashboardSuggestions.map((suggestion: DashboardSource) => {
+            {dashboardSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
-              return getSuggestionElement(
+              return getSuggestionElement({
                 fullyQualifiedName,
                 serviceType,
                 name,
-                SearchIndex.DASHBOARD
-              );
+                index: SearchIndex.DASHBOARD,
+              });
             })}
           </>
         )}
@@ -231,15 +242,15 @@ const GlobalSearchSuggestions = ({
           <>
             {getGroupLabel(SearchIndex.PIPELINE)}
 
-            {pipelineSuggestions.map((suggestion: PipelineSource) => {
+            {pipelineSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
-              return getSuggestionElement(
+              return getSuggestionElement({
                 fullyQualifiedName,
                 serviceType,
                 name,
-                SearchIndex.PIPELINE
-              );
+                index: SearchIndex.PIPELINE,
+              });
             })}
           </>
         )}
@@ -247,15 +258,15 @@ const GlobalSearchSuggestions = ({
           <>
             {getGroupLabel(SearchIndex.MLMODEL)}
 
-            {mlModelSuggestions.map((suggestion: MlModelSource) => {
+            {mlModelSuggestions.map((suggestion) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
-              return getSuggestionElement(
+              return getSuggestionElement({
                 fullyQualifiedName,
                 serviceType,
                 name,
-                SearchIndex.MLMODEL
-              );
+                index: SearchIndex.MLMODEL,
+              });
             })}
           </>
         )}
@@ -265,21 +276,10 @@ const GlobalSearchSuggestions = ({
 
   useEffect(() => {
     if (!isMounting.current) {
-      getSuggestions(searchText)
+      suggestQuery({ query: searchText, fetchSource: true })
         .then((res) => {
-          if (res.data) {
-            // TODO: improve suggest api types
-            setOptions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            );
-            setSuggestions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            );
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
+          setOptions(res);
+          setSuggestions(res);
         })
         .catch((err: AxiosError) => {
           showErrorToast(

@@ -19,7 +19,6 @@ import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
 import Explore from '../../components/Explore/Explore.component';
 import MyData from '../../components/MyData/MyData.component';
-import { MyDataProps } from '../../components/MyData/MyData.interface';
 import NavBar from '../../components/nav-bar/NavBar';
 import Tour from '../../components/tour/Tour';
 import { ROUTES, TOUR_SEARCH_TERM } from '../../constants/constants';
@@ -55,7 +54,6 @@ const TourPage = () => {
   const [currentPage, setCurrentPage] = useState<CurrentTourPageType>(
     AppState.currentTourPage
   );
-  const [myDataSearchResult, setMyDataSearchResult] = useState(mockFeedData);
   const [datasetActiveTab, setdatasetActiveTab] = useState(
     AppState.activeTabforTourDatasetPage
   );
@@ -133,10 +131,7 @@ const TourPage = () => {
               testSuiteCount: 2,
             }}
             error=""
-            feedData={myDataSearchResult as MyDataProps['feedData']}
-            fetchData={() => {
-              setMyDataSearchResult(mockFeedData);
-            }}
+            feedData={mockFeedData}
             fetchFeedHandler={handleOnClick}
             followedData={[]}
             followedDataCount={1}

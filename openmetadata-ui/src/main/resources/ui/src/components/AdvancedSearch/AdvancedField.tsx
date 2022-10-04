@@ -16,12 +16,9 @@ import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { FC, useState } from 'react';
-import {
-  getAdvancedFieldOptions,
-  getTagSuggestions,
-  getUserSuggestions,
-} from '../../axiosAPIs/miscAPI';
+import { suggestQuery } from '../../axiosAPIs/searchAPI';
 import { MISC_FIELDS } from '../../constants/advanceSearch.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import {
   getAdvancedField,
   getItemLabel,
@@ -30,7 +27,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { AdvanceField } from '../Explore/explore.interface';
 
 interface Props {
-  index: string;
+  index: SearchIndex;
   field: AdvanceField;
   onFieldRemove: (value: string) => void;
   onFieldValueSelect: (field: AdvanceField) => void;
@@ -102,72 +99,46 @@ const AdvancedField: FC<Props> = ({
 
   const fetchOptions = (query: string) => {
     if (!MISC_FIELDS.includes(field.key)) {
-      getAdvancedFieldOptions(query, index, advancedField)
-        .then((res) => {
-          const suggestOptions =
-            // TODO: Fix type issues below
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (res.data as any).suggest['metadata-suggest'][0].options ?? [];
-          const uniqueOptions = [
-            // eslint-disable-next-line
-            ...new Set(suggestOptions.map((op: any) => op.text)),
-          ];
-          setOptions(
-            uniqueOptions.map((op: unknown) => ({
-              label: op as string,
-              value: op as string,
-            }))
-          );
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    } else {
-      if (field.key === 'tags') {
-        getTagSuggestions(query)
-          .then((res) => {
-            const suggestOptions =
-              // TODO: Fix type issues below
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              ...new Set(
-                // eslint-disable-next-line
-                suggestOptions.map((op: any) => op._source.fullyQualifiedName)
-              ),
-            ];
-            setOptions(
-              uniqueOptions.map((op: unknown) => ({
-                label: op as string,
-                value: op as string,
-              }))
-            );
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
-      } else {
-        getUserSuggestions(query)
-          .then((res) => {
-            const suggestOptions =
-              // TODO: Fix type issues below
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              // eslint-disable-next-line
-              ...new Set(suggestOptions.map((op: any) => op._source.name)),
-            ];
-            setOptions(
-              uniqueOptions.map((op: unknown) => ({
-                label: op as string,
-                value: op as string,
-              }))
-            );
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
-      }
+      return suggestQuery({
+        query,
+        searchIndex: index,
+        field: advancedField,
+        fetchSource: false,
+      }).then((res) => res.map(({ text }) => ({ label: text, value: text })));
     }
+
+    if (field.key === 'tags') {
+      return suggestQuery({
+        query,
+        searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+        fetchSource: true,
+        includeFields: ['fullyQualifiedName'],
+      }).then((res) =>
+        res.map(({ _source }) => ({
+          label: _source.fullyQualifiedName ?? '',
+          value: _source.fullyQualifiedName ?? '',
+        }))
+      );
+    }
+
+    return suggestQuery({
+      query,
+      searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+      fetchSource: true,
+      includeFields: ['name'],
+    }).then((res) =>
+      res.map(({ _source }) => ({
+        label: _source.name,
+        value: _source.name,
+      }))
+    );
   };
 
   const handleSearch = (newValue: string) => {
     if (newValue) {
-      fetchOptions(newValue);
+      fetchOptions(newValue)
+        .then((ops) => setOptions(ops))
+        .catch((err: AxiosError) => showErrorToast(err));
     } else {
       setOptions([]);
     }
