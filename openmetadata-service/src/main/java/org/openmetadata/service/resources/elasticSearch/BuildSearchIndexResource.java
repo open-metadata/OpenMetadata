@@ -266,7 +266,7 @@ public class BuildSearchIndexResource {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
 
-    if (createRequest.getRecreateIndex()) {
+    if (Boolean.TRUE.equals(createRequest.getRecreateIndex())) {
       // Delete index
       elasticSearchIndexDefinition.deleteIndex(indexType);
       // Create index
@@ -307,7 +307,7 @@ public class BuildSearchIndexResource {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
 
-    if (createRequest.getRecreateIndex()) {
+    if (Boolean.TRUE.equals(createRequest.getRecreateIndex())) {
       // Delete index
       elasticSearchIndexDefinition.deleteIndex(indexType);
       // Create index
