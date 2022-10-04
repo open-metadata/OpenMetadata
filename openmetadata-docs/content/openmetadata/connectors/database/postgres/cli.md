@@ -22,6 +22,18 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+### Usage and Lineage considerations
+
+When extracting lineage and usage information from Postgres we base our finding on the `pg_stat_statements` table.
+You can find more information about it on the official [docs](https://www.postgresql.org/docs/current/pgstatstatements.html#id-1.11.7.39.6).
+
+Another interesting consideration here is explained in the following SO [question](https://stackoverflow.com/questions/50803147/what-is-the-timeframe-for-pg-stat-statements).
+As a summary:
+- The `pg_stat_statements` has no time data embedded in it.
+- It will show all queries from the last reset (one can call `pg_stat_statements_reset()`).
+
+Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
+
 ### Python Requirements
 
 To run the Postgres ingestion, you will need to install:
@@ -171,14 +183,27 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
 ```
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
+
+### Openmetadata JWT Auth
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
+```
 
 ### Auth0 SSO
 

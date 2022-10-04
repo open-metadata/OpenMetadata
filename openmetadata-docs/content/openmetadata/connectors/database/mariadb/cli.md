@@ -171,14 +171,27 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
 ```
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
+
+### Openmetadata JWT Auth
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
+```
 
 ### Auth0 SSO
 
@@ -436,7 +449,41 @@ metadata profile -c <path-to-yaml>
 ```
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
+## SSL Configuration
 
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
+
+```yaml
+---
+source:
+  type: mariadb
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: MariaDB
+      username: <username>
+      password: <password>
+      hostPort: <hostPort>
+      ...
+      ...
+      connectionArguments:
+        ssl:
+          ssl_ca: /path/to/client-ssl/ca.pem,
+          ssl_cert: /path/to/client-ssl/client-cert.pem
+          ssl_key: /path/to/client-ssl/client-key.pem
+          #ssl_disabled: True #boolean
+          #ssl_verify_cert: True #boolean
+          #ssl_verify_identity: True #boolean
+
+```
+
+  - **ssl**: A dict of arguments which contains:
+    - **ssl_ca**: Path to the file that contains a PEM-formatted CA certificate.
+    - **ssl_cert**: Path to the file that contains a PEM-formatted client certificate.
+    - **ssl_disabled**: A boolean value that disables usage of TLS.
+    - **ssl_key**: Path to the file that contains a PEM-formatted private key for the client certificate.
+    - **ssl_verify_cert**: Set to true to check the server certificate's validity.
+    - **ssl_verify_identity**: Set to true to check the server's identity.
 ## DBT Integration
 
 You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).

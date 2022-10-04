@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import org.openmetadata.client.model.Paging;
+import org.openmetadata.schema.type.Paging;
 
 public class ListUtils {
 

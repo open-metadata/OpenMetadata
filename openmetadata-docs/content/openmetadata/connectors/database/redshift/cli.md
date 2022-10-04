@@ -190,14 +190,27 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
 ```
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
+
+### Openmetadata JWT Auth
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
+```
 
 ### Auth0 SSO
 
@@ -540,6 +553,44 @@ metadata profile -c <path-to-yaml>
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
 
+## SSL Configuration
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
+
+```yaml
+---
+source:
+  type: redshift
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Redshift
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      username: username
+      ...
+      ...
+      ...
+      connectionArguments:
+        sslmode: <ssl-mode>
+```
+
+
+### SSL Modes
+
+There are couple of types of SSL modes that Redshift supports which can be added to ConnectionArguments, they are as follows:
+- **disable**: SSL is disabled and the connection is not encrypted.
+
+- **allow**: SSL is used if the server requires it.
+
+- **prefer**: SSL is used if the server supports it. Amazon Redshift supports SSL, so SSL is used when you set sslmode to prefer.
+
+- **require**: SSL is required.
+
+- **verify-ca**: SSL must be used and the server certificate must be verified.
+
+- **verify-full**: SSL must be used. The server certificate must be verified and the server hostname must match the hostname attribute on the certificate.
+
+For more information, you can visit [Redshift SSL documentation](https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html)
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest DBT models' definitions and their lineage from [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).

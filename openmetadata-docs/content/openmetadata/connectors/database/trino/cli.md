@@ -179,14 +179,27 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
 ```
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
 
 <Collapse title="Configure SSO in the Ingestion Workflows">
+
+### Openmetadata JWT Auth
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: '{bot_jwt_token}'
+```
 
 ### Auth0 SSO
 
@@ -450,6 +463,34 @@ metadata profile -c <path-to-yaml>
 ```
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
+## SSL Configuration
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under **connectionArguments** which is placed in source.
+
+```yaml
+---
+source:
+  type: trino
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Trino
+      hostPort: <hostPort>
+      username: <username>
+      catalog: <catalog>
+      ...
+      ...
+      connectionArguments:
+        verify: <verify-mode>
+```
+
+
+### SSL Modes
+There are couple of types of SSL modes that redshift supports which can be added to ConnectionArguments, they are as follows:
+- **false**: In order to disable SSL verification, set the `verify` parameter to `False`.
+- **\<path-to-crt\>**: To use self-signed certificates, specify a path to the certificate in `verify` parameter.
+More details can be found in [the Python requests library documentation](https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification).
+ 
+
 
 ## DBT Integration
 
