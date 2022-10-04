@@ -84,7 +84,9 @@ const UpdateTag = () => {
 
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
-  const message = `Update tags for ${getSanitizeValue || entityType}`;
+  const message = `Update tags for ${getSanitizeValue || entityType} ${
+    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
+  }`;
 
   // get current user details
   const currentUser = useMemo(
@@ -145,7 +147,7 @@ const UpdateTag = () => {
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
-        message: value.title || message,
+        message: value.title,
         about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
@@ -190,7 +192,7 @@ const UpdateTag = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    form.setFieldsValue({ title: message });
+    form.setFieldsValue({ title: message.trimEnd() });
   }, [entityData]);
 
   useEffect(() => {
