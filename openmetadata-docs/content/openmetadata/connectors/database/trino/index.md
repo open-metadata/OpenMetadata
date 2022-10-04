@@ -169,6 +169,17 @@ caption="Configure Metadata Ingestion Page"
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
+
+#### **SSL Configuration**
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under **connectionArguments** which is placed in source.
+
+##### **SSL Modes**
+There are couple of types of SSL modes that redshift supports which can be added to ConnectionArguments, they are as follows:
+- **false**: In order to disable SSL verification, set the `verify` parameter to `False`.
+- **\<path-to-crt\>**: To use self-signed certificates, specify a path to the certificate in `verify` parameter.
+More details can be found in [the Python requests library documentation](https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification).
+ 
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The
