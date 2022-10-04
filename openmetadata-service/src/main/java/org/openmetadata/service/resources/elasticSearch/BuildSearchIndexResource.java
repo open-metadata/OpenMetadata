@@ -80,21 +80,25 @@ public class BuildSearchIndexResource {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_BATCH = "eventPublisher:ElasticSearch:BATCH";
-  private final RestHighLevelClient client;
-  private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
+  private RestHighLevelClient client;
+  private ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   private final CollectionDAO dao;
   private final Authorizer authorizer;
   private final ExecutorService threadScheduler;
 
   public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer) {
-    this.client =
-        ElasticSearchClientUtils.createElasticSearchClient(
-            ConfigurationHolder.getInstance()
-                .getConfig(
-                    ConfigurationHolder.ConfigurationType.ELASTICSEARCH_CONFIG, ElasticSearchConfiguration.class));
+    if (ConfigurationHolder.getInstance()
+            .getConfig(ConfigurationHolder.ConfigurationType.ELASTICSEARCH_CONFIG, ElasticSearchConfiguration.class)
+        != null) {
+      this.client =
+          ElasticSearchClientUtils.createElasticSearchClient(
+              ConfigurationHolder.getInstance()
+                  .getConfig(
+                      ConfigurationHolder.ConfigurationType.ELASTICSEARCH_CONFIG, ElasticSearchConfiguration.class));
+      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+    }
     this.dao = dao;
     this.authorizer = authorizer;
-    this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
     this.threadScheduler =
         new ThreadPoolExecutor(
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());

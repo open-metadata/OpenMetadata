@@ -62,7 +62,9 @@ public class ConfigurationHolder {
                 CONFIG_MAP.put(ConfigurationType.SMTP_CONFIG, config.getSmtpSettings());
                 break;
               case ELASTICSEARCH_CONFIG:
-                CONFIG_MAP.put(ConfigurationType.ELASTICSEARCH_CONFIG, config.getElasticSearchConfiguration());
+                if (config.getElasticSearchConfiguration() != null) {
+                  CONFIG_MAP.put(ConfigurationType.ELASTICSEARCH_CONFIG, config.getElasticSearchConfiguration());
+                }
                 break;
               case LOGIN_CONFIG:
                 CONFIG_MAP.put(ConfigurationType.LOGIN_CONFIG, config.getLoginSettings());

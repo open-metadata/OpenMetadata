@@ -798,14 +798,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
           sendEmailVerification(uriInfo, registeredUser);
         } catch (Exception e) {
           LOG.error("Error in sending mail to the User : {}", e.getMessage());
-          return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
+          return Response.status(424, EMAIL_SENDING_ISSUE).build();
         }
       }
-      return Response.status(Response.Status.CREATED).entity("User Registration Successful.").build();
-    } else {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new ErrorMessage(400, "Signup is not Available"))
+      return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
+          .entity(registeredUser)
           .build();
+    } else {
+      return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Signup is not available").build();
     }
   }
 
