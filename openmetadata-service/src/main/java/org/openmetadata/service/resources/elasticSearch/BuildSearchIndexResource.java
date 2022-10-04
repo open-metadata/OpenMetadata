@@ -99,7 +99,6 @@ public class BuildSearchIndexResource {
     }
     this.dao = dao;
     this.authorizer = authorizer;
-
     this.threadScheduler =
         new ThreadPoolExecutor(
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
