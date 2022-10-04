@@ -377,7 +377,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20220320</version>
+      <version>20220924</version>
     </dependency>
 
     <dependency>
