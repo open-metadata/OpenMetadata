@@ -175,6 +175,8 @@ site_menu:
 
   - category: How to guides / Teams and Users
     url: /how-to-guides/teams-and-users
+  - category: How to guides / Teams and Users / How to Organise Teams and Users
+    url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
 
   - category: OpenMetadata
     url: /openmetadata
