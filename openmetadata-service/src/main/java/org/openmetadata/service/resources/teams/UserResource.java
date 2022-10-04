@@ -1223,7 +1223,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .contains(userName)) {
       newUser.setIsAdmin(true);
     }
-    return dao.create(uriInfo, newUser);
+    // remove auth mechanism from the user
+    User registeredUser = dao.create(uriInfo, newUser);
+    registeredUser.setAuthenticationMechanism(null);
+    return registeredUser;
   }
 
   public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
