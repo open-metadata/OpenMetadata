@@ -83,9 +83,7 @@ def map_types(col: Column, table_service_type):
         and col.dataType == DataType.JSON
     ):
         # pylint: disable=import-outside-toplevel
-        from snowflake.sqlalchemy import (
-            VARIANT,
-        )
+        from snowflake.sqlalchemy import VARIANT
 
         return VARIANT
 
