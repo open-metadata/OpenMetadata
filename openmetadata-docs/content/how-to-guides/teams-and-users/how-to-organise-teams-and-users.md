@@ -3,7 +3,9 @@ title: How To Organise Teams And users
 slug: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
 ---
 
-# Team structure in OpenMetadata
+# How To Organise Teams And users
+
+## Team structure in OpenMetadata
 
 In OpenMetadata we have hierarchal team structure with `teamType` that can be `Organization`, `Business Unit`, `Division`, `Department`, and `Group` (default team type).
 
