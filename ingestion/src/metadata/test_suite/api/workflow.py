@@ -161,9 +161,7 @@ class TestSuiteWorkflow:
                 service_connection_config.database = table_fqn.split(".")[1]
             return service_connection_config
 
-        logger.error(
-            f"Could not retrive connection details for entity {entity_link}"
-        )
+        logger.error(f"Could not retrive connection details for entity {entity_link}")
         raise ValueError()
 
     def _get_table_entity_from_test_case(self, table_fqn: str):
@@ -339,7 +337,7 @@ class TestSuiteWorkflow:
         """
         test_case_names_to_create = {
             test_case_def[0].name for test_case_def in cli_config_test_cases_def
-         } - {test_case.name.__root__ for test_case in test_cases}
+        } - {test_case.name.__root__ for test_case in test_cases}
 
         if not test_case_names_to_create:
             return None
