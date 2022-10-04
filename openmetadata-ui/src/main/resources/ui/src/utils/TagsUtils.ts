@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { flatten, isEmpty } from 'lodash';
 import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
+import { TAG_VIEW_CAP } from '../constants/constants';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
@@ -111,4 +112,9 @@ export const getTagsWithLabel = (tags: Array<Bucket>) => {
       label: isEmpty(containQuotes) ? tag.key.split('.').pop() : containQuotes,
     };
   });
+};
+
+//  Will return tag with ellipses if it exceeds the limit
+export const getTagDisplay = (tag: string) => {
+  return tag.length > TAG_VIEW_CAP ? `${tag.slice(0, TAG_VIEW_CAP)}...` : tag;
 };
