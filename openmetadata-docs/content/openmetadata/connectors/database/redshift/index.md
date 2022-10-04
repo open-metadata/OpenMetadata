@@ -177,6 +177,26 @@ caption="Configure Metadata Ingestion Page"
  
 </Note>
 
+#### **SSL Configuration**
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
+
+##### **SSL Modes**
+
+There are couple of types of SSL modes that Redshift supports which can be added to ConnectionArguments, they are as follows:
+- **disable**: SSL is disabled and the connection is not encrypted.
+
+- **allow**: SSL is used if the server requires it.
+
+- **prefer**: SSL is used if the server supports it. Amazon Redshift supports SSL, so SSL is used when you set sslmode to prefer.
+
+- **require**: SSL is required.
+
+- **verify-ca**: SSL must be used and the server certificate must be verified.
+
+- **verify-full**: SSL must be used. The server certificate must be verified and the server hostname must match the hostname attribute on the certificate.
+
+For more information, you can visit [Redshift SSL documentation](https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html)
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The

@@ -170,6 +170,18 @@ caption="Configure Metadata Ingestion Page"
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
+#### **SSL Configuration**
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
+
+- **ssl**: A dict of arguments which contains:
+    - **ssl_ca**: Path to the file that contains a PEM-formatted CA certificate.
+    - **ssl_cert**: Path to the file that contains a PEM-formatted client certificate.
+    - **ssl_disabled**: A boolean value that disables usage of TLS.
+    - **ssl_key**: Path to the file that contains a PEM-formatted private key for the client certificate.
+    - **ssl_verify_cert**: Set to true to check the server certificate's validity.
+    - **ssl_verify_identity**: Set to true to check the server's identity.
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The
