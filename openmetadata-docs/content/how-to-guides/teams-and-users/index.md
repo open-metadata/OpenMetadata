@@ -1,6 +1,6 @@
 ---
 title: How To Organise Teams And users
-slug: /openmetadata/teams-and-users/how-to-organise-teams-and-users
+slug: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
 ---
 
 # Team structure in OpenMetadata
