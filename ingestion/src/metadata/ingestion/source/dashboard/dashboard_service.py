@@ -286,21 +286,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     f"Cannot extract dashboard details from {dashboard}: {exc}"
                 )
                 continue
-
-            dashboard__fqn = fqn.build(
-                self.metadata,
-                entity_type=Dashboard,
-                service_name=self.context.dashboard_service.name.__root__,
-                dashboard_name=self.get_dashboard_name(dashboard_details),
-            )
+            dashboard_name = self.get_dashboard_name(dashboard_details)
 
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
-                dashboard__fqn,
+                dashboard_name,
             ):
                 self.status.filter(
-                    dashboard__fqn,
-                    "Dashboard Pattern not Allowed",
+                    dashboard_name,
+                    "Dashboard Fltered Out",
                 )
                 continue
             yield dashboard_details

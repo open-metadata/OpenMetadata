@@ -372,9 +372,9 @@ public interface CollectionDAO {
     @Getter private final Double version;
     @Getter private final String entityJson;
 
-    public EntityVersionPair(ExtensionRecord record) {
-      this.version = EntityUtil.getVersion(record.getExtensionName());
-      this.entityJson = record.getExtensionJson();
+    public EntityVersionPair(ExtensionRecord extensionRecord) {
+      this.version = EntityUtil.getVersion(extensionRecord.getExtensionName());
+      this.entityJson = extensionRecord.getExtensionJson();
     }
   }
 
@@ -437,11 +437,17 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>) "
             + "ORDER BY toId")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
-        @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation);
+
+    default List<EntityRelationshipRecord> findTo(String fromId, String fromEntity, int relation) {
+      return findTo(fromId, fromEntity, List.of(relation));
+    }
 
     // TODO delete this
     @SqlQuery(
@@ -961,10 +967,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkBefore(
             fqnPrefix, toType, limit, before, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkBefore(
           fqnPrefix, toType, limit, before, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1052,10 +1056,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkAfter(
             fqnPrefix, toType, limit, after, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkAfter(
           fqnPrefix, toType, limit, after, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1140,10 +1142,8 @@ public interface CollectionDAO {
         }
         return listCountAnnouncementsByEntityLink(fqnPrefix, toType, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listCountThreadsByEntityLink(
           fqnPrefix, toType, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -2977,6 +2977,12 @@ public interface CollectionDAO {
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
+            + "ORDER BY timestamp DESC LIMIT :limit")
+    List<String> getLastLatestExtension(
+        @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("limit") int limit);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -2985,7 +2991,7 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension")
-    void delete(@Bind("entityId") String id, @Bind("extension") String extension);
+    void delete(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
     void deleteAll(@Bind("entityFQN") String entityFQN);
@@ -3090,12 +3096,10 @@ public interface CollectionDAO {
       settings.setConfigType(configType);
       Object value = null;
       try {
-        switch (configType) {
-          case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-            break;
-          default:
-            throw new RuntimeException("Invalid Settings Type");
+        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
+          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+        } else {
+          throw new RuntimeException("Invalid Settings Type");
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

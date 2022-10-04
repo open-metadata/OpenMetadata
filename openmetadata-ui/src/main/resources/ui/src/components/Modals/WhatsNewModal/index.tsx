@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
@@ -59,8 +59,17 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
     onCancel();
   };
 
+  useEffect(() => {
+    const hasFeatures = activeData.features.length > 0;
+    if (hasFeatures) {
+      setCheckedValue('features');
+    } else {
+      setCheckedValue('change-log');
+    }
+  }, [activeData]);
+
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal" data-testid="whats-new-dialog">
       <div className="tw-modal-backdrop" />
       <div
         className="tw-modal-container tw-pb-0"
@@ -136,13 +145,19 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
                     </p>
                   </div>
                   <div>
-                    <div className="tw-w-60 tw-inline-flex tw-border tw-border-primary tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
-                      <button
-                        className={getToggleButtonClasses('features')}
-                        data-testid="WhatsNewModalFeatures"
-                        onClick={() => handleToggleChange('features')}>
-                        Features
-                      </button>
+                    <div
+                      className={classNames(
+                        'tw-inline-flex tw-border tw-border-primary tw-text-sm tw-rounded-md tw-h-8 tw-bg-white',
+                        { 'tw-w-60': activeData.features.length > 0 }
+                      )}>
+                      {activeData.features.length > 0 && (
+                        <button
+                          className={getToggleButtonClasses('features')}
+                          data-testid="WhatsNewModalFeatures"
+                          onClick={() => handleToggleChange('features')}>
+                          Features
+                        </button>
+                      )}
                       <button
                         className={getToggleButtonClasses('change-log')}
                         data-testid="WhatsNewModalChangeLogs"
@@ -155,9 +170,10 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
                   </div>
                 </div>
                 <div>
-                  {checkedValue === 'features' && (
-                    <FeaturesCarousel data={activeData.features} />
-                  )}
+                  {checkedValue === 'features' &&
+                    activeData.features.length > 0 && (
+                      <FeaturesCarousel data={activeData.features} />
+                    )}
                   {checkedValue === 'change-log' && (
                     <ChangeLogs
                       data={

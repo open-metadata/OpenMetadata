@@ -31,7 +31,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public void prepare(TestDefinition entity) throws IOException {
+  public void prepare(TestDefinition entity) {
     setFullyQualifiedName(entity);
     // validate test platforms
     if (entity.getTestPlatforms() == null || entity.getTestPlatforms().isEmpty()) {

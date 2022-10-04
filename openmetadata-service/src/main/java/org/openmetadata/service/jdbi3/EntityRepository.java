@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -265,7 +266,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     LOG.info("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
-    entity.setUpdatedBy("admin");
+    entity.setUpdatedBy(ADMIN_USER_NAME);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setId(UUID.randomUUID());
     create(null, entity);
@@ -594,7 +595,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                id.toString(), entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (records.isEmpty()) {
       return;
@@ -604,9 +608,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityRelationshipRecord record : records) {
-      LOG.info("Recursively {} deleting {} {}", hardDelete ? "hard" : "soft", record.getType(), record.getId());
-      Entity.deleteEntity(updatedBy, record.getType(), record.getId(), true, hardDelete);
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      LOG.info(
+          "Recursively {} deleting {} {}",
+          hardDelete ? "hard" : "soft",
+          entityRelationshipRecord.getType(),
+          entityRelationshipRecord.getId());
+      Entity.deleteEntity(
+          updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), true, hardDelete);
     }
   }
 
@@ -749,9 +758,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
     ObjectNode objectNode = JsonUtils.getObjectNode();
-    for (ExtensionRecord record : records) {
-      String fieldName = TypeRegistry.getPropertyName(record.getExtensionName());
-      objectNode.set(fieldName, JsonUtils.readTree(record.getExtensionJson()));
+    for (ExtensionRecord extensionRecord : records) {
+      String fieldName = TypeRegistry.getPropertyName(extensionRecord.getExtensionName());
+      objectNode.set(fieldName, JsonUtils.readTree(extensionRecord.getExtensionJson()));
     }
     return objectNode;
   }
@@ -823,8 +832,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
-    for (EntityRelationshipRecord record : records) {
-      followers.add(daoCollection.userDAO().findEntityReferenceById(record.getId(), ALL));
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      followers.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return followers;
   }
@@ -847,9 +856,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!records.isEmpty()) {
       // Restore all the contained entities
-      for (EntityRelationshipRecord record : records) {
-        LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      for (EntityRelationshipRecord entityRelationshipRecord : records) {
+        LOG.info("Recursively restoring {} {}", entityRelationshipRecord.getType(), entityRelationshipRecord.getId());
+        Entity.restoreEntity(updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId());
       }
     }
 
@@ -1061,6 +1070,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return allowedFields;
   }
 
+  public final List<String> getAllowedFieldsCopy() {
+    return new ArrayList<>(allowedFields);
+  }
+
   protected String getCustomPropertyFQNPrefix(String entityType) {
     return FullyQualifiedName.build(entityType, "customProperties");
   }
@@ -1084,8 +1097,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityRelationshipRecord> records =
         findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
     List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (EntityRelationshipRecord record : records) {
-      ingestionPipelines.add(daoCollection.ingestionPipelineDAO().findEntityReferenceById(record.getId(), ALL));
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      ingestionPipelines.add(
+          daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return ingestionPipelines;
   }
@@ -1147,8 +1161,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updated = updated;
       this.operation = operation;
       this.updatingUser =
-          updated.getUpdatedBy().equalsIgnoreCase("admin")
-              ? new User().withName("admin").withIsAdmin(true)
+          updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
+              ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
               : SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
     }
 
@@ -1213,11 +1227,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
-      if (operation.isPatch() || updatedOwner != null) {
+      if ((operation.isPatch() || updatedOwner != null)
+          && recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
-        if (recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
-          EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
-        }
+        EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
       }
     }
 

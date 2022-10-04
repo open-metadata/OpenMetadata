@@ -7,8 +7,8 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
-public class MlModelIndex {
-  MlModel mlModel;
+public class MlModelIndex implements ElasticSearchIndex {
+  final MlModel mlModel;
 
   public MlModelIndex(MlModel mlModel) {
     this.mlModel = mlModel;

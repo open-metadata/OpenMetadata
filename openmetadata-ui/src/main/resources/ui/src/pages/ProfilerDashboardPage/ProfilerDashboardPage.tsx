@@ -22,7 +22,7 @@ import {
   getTableDetailsByFQN,
   patchTableDetails,
 } from '../../axiosAPIs/tableAPI';
-import { getListTestCase } from '../../axiosAPIs/testAPI';
+import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -37,6 +37,7 @@ import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { Include } from '../../generated/type/include';
 import jsonData from '../../jsons/en';
 import {
   getNameFromFQN,
@@ -58,6 +59,7 @@ const ProfilerDashboardPage = () => {
   const [table, setTable] = useState<Table>({} as Table);
   const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [error, setError] = useState(false);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
 
@@ -99,13 +101,15 @@ const ProfilerDashboardPage = () => {
     }
   };
 
-  const fetchTestCases = async (fqn: string) => {
+  const fetchTestCases = async (fqn: string, params?: ListTestCaseParams) => {
+    setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCase({
         fields: 'testDefinition,testCaseResult,testSuite',
         entityLink: fqn,
         includeAllTests: !isColumnView,
         limit: API_RES_MAX_SIZE,
+        ...params,
       });
       setTestCases(data);
     } catch (error) {
@@ -115,11 +119,14 @@ const ProfilerDashboardPage = () => {
       );
     } finally {
       setIsLoading(false);
+      setIsTestCaseLoading(false);
     }
   };
 
-  const handleTestCaseUpdate = () => {
-    fetchTestCases(generateEntityLink(decodedEntityFQN, isColumnView));
+  const handleTestCaseUpdate = (deleted = false) => {
+    fetchTestCases(generateEntityLink(decodedEntityFQN, isColumnView), {
+      include: deleted ? Include.Deleted : Include.NonDeleted,
+    });
   };
 
   const fetchTableEntity = async () => {
@@ -216,6 +223,7 @@ const ProfilerDashboardPage = () => {
       <ProfilerDashboard
         fetchProfilerData={fetchProfilerData}
         fetchTestCases={fetchTestCases}
+        isTestCaseLoading={isTestCaseLoading}
         profilerData={profilerData}
         table={table}
         testCases={testCases}

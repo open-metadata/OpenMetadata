@@ -157,9 +157,10 @@ class CommonDbSourceService(
                 schema_name=schema_name,
             )
             if filter_by_schema(
-                self.source_config.schemaFilterPattern, schema_fqn=schema_fqn
+                self.source_config.schemaFilterPattern,
+                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
             ):
-                self.status.filter(schema_fqn, "Schema pattern not allowed")
+                self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema_name
 
@@ -216,14 +217,16 @@ class CommonDbSourceService(
                         table_name=table_name,
                     )
                     if filter_by_table(
-                        self.source_config.tableFilterPattern, table_fqn=table_fqn
+                        self.source_config.tableFilterPattern,
+                        table_fqn
+                        if self.source_config.useFqnForFiltering
+                        else table_name,
                     ):
                         self.status.filter(
                             table_fqn,
-                            "Table pattern not allowed",
+                            "Table Filtered Out",
                         )
                         continue
-
                     yield table_name, TableType.Regular
 
             if self.source_config.includeViews:
@@ -239,14 +242,16 @@ class CommonDbSourceService(
                     )
 
                     if filter_by_table(
-                        self.source_config.tableFilterPattern, table_fqn=view_fqn
+                        self.source_config.tableFilterPattern,
+                        view_fqn
+                        if self.source_config.useFqnForFiltering
+                        else view_name,
                     ):
                         self.status.filter(
                             view_fqn,
-                            "Table pattern not allowed for view",
+                            "Table Filtered Out",
                         )
                         continue
-
                     yield view_name, TableType.View
         except Exception as err:
             logger.error(

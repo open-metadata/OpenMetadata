@@ -14,7 +14,9 @@
 // ***********************************************************
 
 // Import commands.js using ES2015 syntax:
+import 'cypress-localstorage-commands';
 import './commands';
+import './get-search-query.command';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')

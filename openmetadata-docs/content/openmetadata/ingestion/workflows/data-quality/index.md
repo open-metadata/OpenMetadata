@@ -120,7 +120,7 @@ processor:
                 value: [value]
               - ...
 ```
-The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/content/openmetadata/ingestion/workflows/data-quality/tests.md).
+The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/openmetadata/ingestion/workflows/data-quality/tests).
 
 
 `sink` and `workflowConfig` will have the same settings than the ingestion and profiler workflow.
@@ -157,8 +157,8 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
 ```
 
 ### How to Run Tests

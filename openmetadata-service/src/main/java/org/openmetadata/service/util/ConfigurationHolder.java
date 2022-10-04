@@ -9,10 +9,13 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 @Slf4j
 public class ConfigurationHolder {
   public enum ConfigurationType {
-    AUTHORIZERCONFIG("authorizerConfiguration"),
-    AUTHENTICATIONCONFIG("authenticationConfiguration"),
-    SMTPCONFIG("email");
-    private String value;
+    AUTHORIZER_CONFIG("authorizerConfiguration"),
+    AUTHENTICATION_CONFIG("authenticationConfiguration"),
+    SMTP_CONFIG("email"),
+    ELASTICSEARCH_CONFIG("elasticsearch"),
+    LOGIN_CONFIG("login");
+
+    private final String value;
 
     ConfigurationType(String value) {
       this.value = value;
@@ -41,27 +44,39 @@ public class ConfigurationHolder {
   private final ConcurrentHashMap<ConfigurationType, Object> CONFIG_MAP = new ConcurrentHashMap<>();
 
   public void init(OpenMetadataApplicationConfig config) {
-    for (Field field : OpenMetadataApplicationConfig.class.getDeclaredFields()) {
-      if (field.isAnnotationPresent(JsonProperty.class)) {
-        String configType = field.getAnnotation(JsonProperty.class).value();
-        if (configType != null && !configType.equals("")) {
-          ConfigurationType configTypeForEnum = ConfigurationType.fromValue(configType);
-          if (configTypeForEnum == null) continue;
-          switch (configTypeForEnum) {
-            case AUTHORIZERCONFIG:
-              CONFIG_MAP.put(ConfigurationType.AUTHORIZERCONFIG, config.getAuthorizerConfiguration());
-              break;
-            case AUTHENTICATIONCONFIG:
-              CONFIG_MAP.put(ConfigurationType.AUTHENTICATIONCONFIG, config.getAuthenticationConfiguration());
-              break;
-            case SMTPCONFIG:
-              CONFIG_MAP.put(ConfigurationType.SMTPCONFIG, config.getSmtpSettings());
-              break;
-            default:
-              LOG.info("Currently AuthorizerConfig, AuthenticatioConfig, and SMTP these can be added");
+    try {
+      for (Field field : OpenMetadataApplicationConfig.class.getDeclaredFields()) {
+        if (field.isAnnotationPresent(JsonProperty.class)) {
+          String configType = field.getAnnotation(JsonProperty.class).value();
+          if (configType != null && !configType.equals("")) {
+            ConfigurationType configTypeForEnum = ConfigurationType.fromValue(configType);
+            if (configTypeForEnum == null) continue;
+            switch (configTypeForEnum) {
+              case AUTHORIZER_CONFIG:
+                CONFIG_MAP.put(ConfigurationType.AUTHORIZER_CONFIG, config.getAuthorizerConfiguration());
+                break;
+              case AUTHENTICATION_CONFIG:
+                CONFIG_MAP.put(ConfigurationType.AUTHENTICATION_CONFIG, config.getAuthenticationConfiguration());
+                break;
+              case SMTP_CONFIG:
+                CONFIG_MAP.put(ConfigurationType.SMTP_CONFIG, config.getSmtpSettings());
+                break;
+              case ELASTICSEARCH_CONFIG:
+                if (config.getElasticSearchConfiguration() != null) {
+                  CONFIG_MAP.put(ConfigurationType.ELASTICSEARCH_CONFIG, config.getElasticSearchConfiguration());
+                }
+                break;
+              case LOGIN_CONFIG:
+                CONFIG_MAP.put(ConfigurationType.LOGIN_CONFIG, config.getLoginSettings());
+                break;
+              default:
+                LOG.error("Invalid Setting Type Given.");
+            }
           }
         }
       }
+    } catch (Exception ex) {
+      LOG.error("Failed in initialising Configuration Holder : Reason : {}", ex.getMessage());
     }
   }
 

@@ -235,6 +235,11 @@ public final class TablesInitializer {
       RestHighLevelClient client,
       SchemaMigrationOption schemaMigrationOption)
       throws SQLException {
+    final Jdbi jdbi =
+        Jdbi.create(
+            config.getDataSourceFactory().getUrl(),
+            config.getDataSourceFactory().getUser(),
+            config.getDataSourceFactory().getPassword());
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
       case CREATE:
@@ -278,19 +283,19 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.createIndexes();
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.updateIndexes();
         break;
       case ES_DROP:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.dropIndexes();
         break;
       case CREATE_INGESTION_BOT:
-        createIngestionBot(config);
+        createIngestionBot(config, jdbi);
         break;
       case UPDATE_INGESTION_BOT:
         updateIngestionBot(config);
@@ -319,12 +324,7 @@ public final class TablesInitializer {
     System.out.println(message);
   }
 
-  private static void createIngestionBot(OpenMetadataApplicationConfig config) {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
+  private static void createIngestionBot(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));

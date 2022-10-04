@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
 import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Snowflake';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const tableName = 'TEST_TABLE';
+const description = `This is ${serviceName} description`;
 
 describe('Snowflake Ingestion', () => {
   beforeEach(() => {
@@ -36,7 +38,7 @@ describe('Snowflake Ingestion', () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
-        .type('public');
+        .type('PUBLIC');
     };
 
     testServiceCreationAndIngestion(
@@ -44,6 +46,16 @@ describe('Snowflake Ingestion', () => {
       connectionInput,
       addIngestionInput,
       serviceName
+    );
+  });
+
+  it('Update table description and verify', () => {
+    updateDescriptionForIngestedTables(
+      serviceName,
+      tableName,
+      description,
+      SERVICE_TYPE.Database,
+      'tables'
     );
   });
 

@@ -171,14 +171,10 @@ class PowerbiSource(DashboardServiceSource):
 
         for chart in charts:
             try:
-                chart_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    chart_name=chart["title"],
-                    service_name=self.context.dashboard_service.name.__root__,
-                )
-                if filter_by_chart(self.source_config.chartFilterPattern, chart_fqn):
-                    self.status.filter(chart_fqn, "Chart Pattern not Allowed")
+                if filter_by_chart(
+                    self.source_config.chartFilterPattern, chart["title"]
+                ):
+                    self.status.filter(chart["title"], "Chart Pattern not Allowed")
                     continue
                 yield CreateChartRequest(
                     name=chart["id"],

@@ -47,15 +47,21 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.BotType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/bots")
@@ -66,8 +72,11 @@ import org.openmetadata.service.util.ResultList;
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
-  public BotResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Bot.class, new BotRepository(dao), authorizer);
+  final SecretsManager secretsManager;
+
+  public BotResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(Bot.class, new BotRepository(dao, secretsManager), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   @Override
@@ -236,7 +245,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create)
       throws IOException {
-    Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
+    Bot bot = getBot(securityContext, create);
     return create(uriInfo, securityContext, bot, false);
   }
 
@@ -255,8 +264,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
-    Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, bot, false);
+    Bot bot = getBot(securityContext, create);
+    Response response = createOrUpdate(uriInfo, securityContext, bot, false);
+    // ensures the secrets' manager store the credentials even when the botUser does not change
+    bot = (Bot) response.getEntity();
+    if (!BotType.BOT.equals(bot.getBotType())) {
+      secretsManager.encryptOrDecryptBotCredentials(bot.getBotType().value(), bot.getBotUser().getName(), true);
+    }
+    return response;
   }
 
   @PATCH
@@ -305,10 +320,66 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
+    BotType botType = dao.get(null, id, EntityUtil.Fields.EMPTY_FIELDS).getBotType();
+    if (!BotType.BOT.equals(botType)) {
+      throw new IllegalArgumentException(String.format("[%s] can not be deleted.", botType.value()));
+    }
     return delete(uriInfo, securityContext, id, true, hardDelete, false);
   }
 
   private Bot getBot(CreateBot create, String user) throws IOException {
-    return copy(new Bot(), create, user).withBotUser(create.getBotUser());
+    return copy(new Bot(), create, user)
+        .withBotUser(create.getBotUser())
+        .withBotType(BotType.BOT)
+        .withFullyQualifiedName(create.getName());
+  }
+
+  private boolean userHasRelationshipWithAnyBot(User user, Bot botUser) {
+    if (user == null) {
+      return false;
+    }
+    List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
+    return !userBotRelationship.isEmpty()
+        && (botUser == null
+            || userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId())));
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
+    return dao.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+  }
+
+  private Bot getBot(SecurityContext securityContext, CreateBot create) throws IOException {
+    Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
+    Bot originalBot = retrieveBot(bot.getName());
+    User botUser = retrieveUser(bot);
+    if (botUser != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
+      throw new IllegalArgumentException(String.format("User [%s] is not a bot user", botUser.getName()));
+    }
+    if (userHasRelationshipWithAnyBot(botUser, originalBot)) {
+      List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(botUser);
+      bot =
+          dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), EntityUtil.Fields.EMPTY_FIELDS);
+      throw new IllegalArgumentException(
+          String.format("Bot user [%s] is already used by [%s] bot", botUser.getName(), bot.getName()));
+    }
+    return bot;
+  }
+
+  private User retrieveUser(Bot bot) {
+    try {
+      return UserRepository.class
+          .cast(Entity.getEntityRepository(Entity.USER))
+          .get(null, bot.getBotUser().getId(), EntityUtil.Fields.EMPTY_FIELDS);
+    } catch (Exception exception) {
+      return null;
+    }
+  }
+
+  private Bot retrieveBot(String botName) {
+    try {
+      return dao.getByName(null, botName, EntityUtil.Fields.EMPTY_FIELDS);
+    } catch (Exception e) {
+      return null;
+    }
   }
 }

@@ -14,6 +14,8 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 
 public class TokenUtil {
+  private TokenUtil() {}
+
   public static TokenInterface createNewTokenWithDefaults(UUID userId, UUID tokenId, TokenType type) {
     switch (type) {
       case EMAIL_VERIFICATION:

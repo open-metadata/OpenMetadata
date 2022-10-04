@@ -68,3 +68,18 @@ support Metadata Versioning, maintaining the history of changes of all your asse
     Learn how OpenMetadata keeps track of your metadata evolution.
   </InlineCallout>
 </InlineCalloutContainer>
+
+## Deep Dive
+
+Understand how OpenMetadata deploys the workflows that are created from the UI.
+
+<InlineCalloutContainer>
+  <InlineCallout
+    color="violet-70"
+    bold="Ingestion Pipeline UI Deployment"
+    icon="360"
+    href="/openmetadata/ingestion/ingestion-pipeline"
+  >
+    Learn about the Pipeline Service interface and how OpenMetadata handles workflow deployments.
+  </InlineCallout>
+</InlineCalloutContainer>

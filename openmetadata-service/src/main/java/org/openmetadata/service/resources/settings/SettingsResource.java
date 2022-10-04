@@ -139,8 +139,7 @@ public class SettingsResource {
             description = "List of Settings",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
-  public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return settingsRepository.listAllConfigs();
   }
 
@@ -157,8 +156,7 @@ public class SettingsResource {
             description = "List of Settings",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
-  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return bootStrappedFilters;
   }
 
@@ -175,7 +173,7 @@ public class SettingsResource {
             description = "List of Filters",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
-  public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+  public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     Settings settings =
         new Settings().withConfigType(ACTIVITY_FEED_FILTER_SETTING).withConfigValue(bootStrappedFilters);
     return settingsRepository.createNewSetting(settings);
@@ -263,8 +261,7 @@ public class SettingsResource {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return settingsRepository.patchSetting(settingName, patch);
   }
 }

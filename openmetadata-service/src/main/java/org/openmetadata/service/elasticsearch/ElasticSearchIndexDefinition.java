@@ -1,9 +1,15 @@
 package org.openmetadata.service.elasticsearch;
 
+import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.List;
 import lombok.Builder;
@@ -19,16 +25,22 @@ import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutMappingRequest;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.openmetadata.schema.settings.EventPublisherJob;
+import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
+  private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
   private final RestHighLevelClient client;
 
-  public ElasticSearchIndexDefinition(RestHighLevelClient client) {
+  public ElasticSearchIndexDefinition(RestHighLevelClient client, CollectionDAO dao) {
+    this.dao = dao;
     this.client = client;
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
       elasticSearchIndexes.put(elasticSearchIndexType, ElasticSearchIndexStatus.NOT_CREATED);
@@ -87,7 +99,7 @@ public class ElasticSearchIndexDefinition {
     return exists;
   }
 
-  private boolean createIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  public boolean createIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);
@@ -102,6 +114,9 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
+      updateElasticSearchFailureStatus(
+          EventPublisherJob.Status.ACTIVEWITHERROR,
+          String.format("Failed to create Elastic Search indexes due to: %s", e.getMessage()));
       LOG.error("Failed to create Elastic Search indexes due to", e);
       return false;
     }
@@ -128,11 +143,14 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
+      updateElasticSearchFailureStatus(
+          EventPublisherJob.Status.ACTIVEWITHERROR,
+          String.format("Failed to update Elastic Search indexes due to: %s", e.getMessage()));
       LOG.error("Failed to update Elastic Search indexes due to", e);
     }
   }
 
-  private void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  public void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);
@@ -143,6 +161,9 @@ public class ElasticSearchIndexDefinition {
         LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
       }
     } catch (IOException e) {
+      updateElasticSearchFailureStatus(
+          EventPublisherJob.Status.ACTIVEWITHERROR,
+          String.format("Failed to delete Elastic Search indexes due to: %s", e.getMessage()));
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }
@@ -173,8 +194,35 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
       return ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
+      return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TAG)) {
+      return ElasticSearchIndexType.TAG_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
+  }
+
+  private void updateElasticSearchFailureStatus(EventPublisherJob.Status status, String failureMessage) {
+    try {
+      long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
+      String recordString =
+          dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+      EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
+      long originalLastUpdate = lastRecord.getTimestamp();
+      lastRecord.setStatus(status);
+      lastRecord.setTimestamp(updateTime);
+      lastRecord.setFailureDetails(
+          new FailureDetails().withLastFailedAt(updateTime).withLastFailedReason(failureMessage));
+
+      dao.entityExtensionTimeSeriesDao()
+          .update(
+              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              ELASTIC_SEARCH_EXTENSION,
+              JsonUtils.pojoToJson(lastRecord),
+              originalLastUpdate);
+    } catch (Exception e) {
+      LOG.error("Failed to Update Elastic Search Job Info");
+    }
   }
 }
 

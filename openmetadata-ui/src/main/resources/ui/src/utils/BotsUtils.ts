@@ -14,8 +14,9 @@
 import { isUndefined } from 'lodash';
 import moment from 'moment';
 import { AuthTypes } from '../enums/signin.enum';
+import { AuthenticationMechanism } from '../generated/api/teams/createUser';
 import { SsoServiceType } from '../generated/entity/teams/authN/ssoAuth';
-import { AuthType, JWTTokenExpiry } from '../generated/entity/teams/user';
+import { AuthType, JWTTokenExpiry, User } from '../generated/entity/teams/user';
 
 export const getJWTTokenExpiryOptions = () => {
   return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -114,9 +115,34 @@ export const getTokenExpiry = (expiry: number) => {
   };
 };
 
-export const DEFAULT_GOOGLE_SSO_CLIENT_CONFIG = {
-  secretKey: '',
-  audience: 'https://www.googleapis.com/oauth2/v4/token',
-};
+export const getAuthMechanismFormInitialValues = (
+  authMechanism: AuthenticationMechanism,
+  botUser: User
+) => {
+  const authConfig = authMechanism.config?.authConfig;
+  const email = botUser.email;
 
-export const SECRET_KEY_ERROR_MSG = 'SecretKey is required!';
+  return {
+    audience: authConfig?.audience,
+    secretKey: authConfig?.secretKey,
+
+    clientId: authConfig?.clientId,
+
+    oktaEmail: authConfig?.email,
+
+    orgURL: authConfig?.orgURL,
+
+    privateKey: authConfig?.privateKey,
+
+    scopes: authConfig?.scopes?.join(','),
+
+    domain: authConfig?.domain,
+
+    authority: authConfig?.authority,
+
+    clientSecret: authConfig?.clientSecret,
+
+    tokenEndpoint: authConfig?.tokenEndpoint,
+    email,
+  };
+};

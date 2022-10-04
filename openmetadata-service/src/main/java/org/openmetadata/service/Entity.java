@@ -127,6 +127,7 @@ public final class Entity {
   //
   // Reserved names in OpenMetadata
   //
+  public static final String ADMIN_USER_NAME = "admin";
   public static final String ORGANIZATION_NAME = "Organization";
   public static final String DATACONSUMER_ROLE = "DataConsumer";
 

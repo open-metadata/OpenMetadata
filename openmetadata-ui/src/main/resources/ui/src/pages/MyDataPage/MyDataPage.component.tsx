@@ -32,8 +32,6 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { AssetsType } from '../../enums/entity.enum';
@@ -44,12 +42,10 @@ import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
-import { userPermissions } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
-  const { permissions } = usePermissionProvider();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [entityCounts, setEntityCounts] = useState<EntitiesCount>(
@@ -75,13 +71,6 @@ const MyDataPage = () => {
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
-
-  const viewUserPermission = useMemo(() => {
-    return (
-      !isEmpty(permissions) &&
-      userPermissions.hasViewPermissions(ResourceEntity.USER, permissions)
-    );
-  }, [permissions]);
 
   const fetchEntityCount = () => {
     getAllEntityCount()
@@ -269,7 +258,7 @@ const MyDataPage = () => {
         !isEmpty(AppState.userDetails)) &&
       (isNil(ownedData) || isNil(followedData))
     ) {
-      viewUserPermission && fetchMyData();
+      fetchMyData();
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 

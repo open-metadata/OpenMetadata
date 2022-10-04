@@ -46,8 +46,8 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
 ```
 Modify the sourceConfig part of the yaml config as shown below according to the preferred source for DBT manifest.json and catalog.json files
 

@@ -15,7 +15,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
-  Empty,
   Modal,
   Row,
   Space,
@@ -69,7 +68,10 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { filterChildTeams } from '../../utils/TeamUtils';
+import {
+  filterChildTeams,
+  getDeleteMessagePostFix,
+} from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -879,6 +881,7 @@ const TeamDetailsV1 = ({
                   )}
                 {entityPermissions.EditAll && (
                   <ManageButton
+                    isRecursiveDelete
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!currentTeam.deleted}
                     buttonClassName="tw-p-4"
@@ -889,6 +892,14 @@ const TeamDetailsV1 = ({
                     }
                     entityType="team"
                     extraDropdownContent={extraDropdownContent}
+                    hardDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName || currentTeam.name,
+                      'permanently'
+                    )}
+                    softDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName || currentTeam.name,
+                      'soft'
+                    )}
                   />
                 )}
               </Space>
@@ -953,6 +964,7 @@ const TeamDetailsV1 = ({
                     onClick: () => handleAddTeam(true),
                     disabled: !createTeamPermission,
                     heading: 'Team',
+                    datatestid: 'add-team',
                   })
                 ) : (
                   <Row
@@ -977,6 +989,7 @@ const TeamDetailsV1 = ({
                         />
                         <span>Deleted Teams</span>
                         <ButtonAntd
+                          data-testid="add-team"
                           disabled={!createTeamPermission}
                           title={
                             createTeamPermission
@@ -1104,6 +1117,7 @@ const TeamDetailsV1 = ({
           buttons={
             <div className="tw-text-lg tw-text-center">
               <Button
+                data-testid="add-team"
                 disabled={!createTeamPermission}
                 size="small"
                 theme="primary"
@@ -1171,7 +1185,9 @@ const TeamDetailsV1 = ({
   ) : (
     <Row align="middle" className="tw-h-full">
       <Col span={24}>
-        <Empty description={NO_PERMISSION_TO_VIEW} />
+        <ErrorPlaceHolder>
+          <p>{NO_PERMISSION_TO_VIEW}</p>
+        </ErrorPlaceHolder>
       </Col>
     </Row>
   );

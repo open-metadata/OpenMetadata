@@ -61,8 +61,8 @@ bulkSink:
     filename: /tmp/query_log_usage
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
 ```
 The `serviceName` and `serviceConnection` used in the above config has to be the same as used during Metadata Ingestion.
 The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).

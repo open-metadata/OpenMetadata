@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button as ButtonAntd, Col, Empty, Row, Tooltip } from 'antd';
+import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -236,7 +236,9 @@ const CustomEntityDetailV1 = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <Empty description={NO_PERMISSION_TO_VIEW} />
+        <ErrorPlaceHolder>
+          <p>{NO_PERMISSION_TO_VIEW}</p>
+        </ErrorPlaceHolder>
       </Col>
     </Row>
   );

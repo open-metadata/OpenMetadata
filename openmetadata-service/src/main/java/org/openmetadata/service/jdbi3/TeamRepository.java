@@ -19,6 +19,7 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
@@ -133,7 +135,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void storeRelationships(Team team) throws IOException {
+  public void storeRelationships(Team team) {
     // Add team owner relationship
     storeOwner(team, team.getOwner());
     for (EntityReference user : listOrEmpty(team.getUsers())) {
@@ -419,7 +421,15 @@ public class TeamRepository extends EntityRepository<Team> {
   private List<Team> getTeams(List<EntityReference> teamRefs) throws IOException {
     List<Team> teams = new ArrayList<>();
     for (EntityReference teamRef : teamRefs) {
-      teams.add(dao.findEntityById(teamRef.getId()));
+      try {
+        Team team = dao.findEntityById(teamRef.getId());
+        teams.add(team);
+      } catch (EntityNotFoundException ex) {
+        // Team was soft-deleted
+        LOG.debug("Failed to populate team since it might be soft deleted.", ex);
+        // Ensure that the team was soft-deleted otherwise throw an exception
+        dao.findEntityById(teamRef.getId(), Include.DELETED);
+      }
     }
     return teams;
   }
@@ -465,7 +475,7 @@ public class TeamRepository extends EntityRepository<Team> {
                 .withDisplayName(ORGANIZATION_NAME)
                 .withDescription("Organization under which all the other team hierarchy is created")
                 .withTeamType(ORGANIZATION)
-                .withUpdatedBy("admin")
+                .withUpdatedBy(ADMIN_USER_NAME)
                 .withUpdatedAt(System.currentTimeMillis())
                 .withPolicies(new ArrayList<>(List.of(organizationPolicy)))
                 .withDefaultRoles(new ArrayList<>(List.of(dataConsumerRole)));

@@ -64,3 +64,4 @@ OpenMetadata can extract metadata from the following list of connectors:
 ## Metadata Services
 
 - [Amundsen](/openmetadata/connectors/metadata/amundsen)
+- [Atlas](/openmetadata/connectors/metadata/atlas)

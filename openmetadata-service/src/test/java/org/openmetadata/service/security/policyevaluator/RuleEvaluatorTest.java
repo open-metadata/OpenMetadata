@@ -30,7 +30,7 @@ class RuleEvaluatorTest {
   private static EvaluationContext evaluationContext;
 
   @BeforeAll
-  public static void setup() throws NoSuchMethodException {
+  public static void setup() {
     Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
     Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
     table = new Table().withName("table");

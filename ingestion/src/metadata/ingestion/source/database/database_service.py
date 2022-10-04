@@ -389,9 +389,9 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
 
         datamodel = self.get_data_model(table_fqn)
 
-        logger.info("Processing DBT Tags")
         dbt_tag_labels = None
         if datamodel:
+            logger.info("Processing DBT Tags")
             dbt_tag_labels = datamodel.tags
             if not dbt_tag_labels:
                 dbt_tag_labels = []

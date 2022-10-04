@@ -14,13 +14,15 @@
 import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getAuthMechanismForBotUser } from '../../axiosAPIs/userAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
 const updateBotsDetails = jest.fn();
+const onEmailChange = jest.fn();
 
-const botsData = {
+const botUserData = {
   id: 'ea09aed1-0251-4a75-b92a-b65641610c53',
   name: 'sachinchaurasiyachotey87',
   fullyQualifiedName: 'sachinchaurasiyachotey87',
@@ -32,6 +34,26 @@ const botsData = {
   href: 'http://localhost:8585/api/v1/users/ea09aed1-0251-4a75-b92a-b65641610c53',
   isBot: true,
   isAdmin: false,
+  deleted: false,
+};
+
+const botData = {
+  id: '4755f87d-2a53-4376-97e6-fc072f29cf5a',
+  name: 'ingestion-bot',
+  fullyQualifiedName: 'ingestion-bot',
+  displayName: 'ingestion-bot',
+  botUser: {
+    id: 'b91d42cb-2a02-4364-ae80-db08b77f1b0c',
+    type: 'user',
+    name: 'ingestion-bot',
+    fullyQualifiedName: 'ingestion-bot',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/users/b91d42cb-2a02-4364-ae80-db08b77f1b0c',
+  },
+  version: 0.1,
+  updatedAt: 1664267598781,
+  updatedBy: 'ingestion-bot',
+  href: 'http://localhost:8585/api/v1/bots/4755f87d-2a53-4376-97e6-fc072f29cf5a',
   deleted: false,
 };
 
@@ -47,7 +69,8 @@ const mockAuthMechanism = {
 };
 
 const mockProp = {
-  botsData,
+  botUserData,
+  botData,
   botPermission: {
     Create: true,
     Delete: true,
@@ -59,6 +82,7 @@ const mockProp = {
   } as OperationPermission,
   revokeTokenHandler,
   updateBotsDetails,
+  onEmailChange,
 };
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -67,7 +91,9 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
-    updateUser: jest.fn().mockImplementation(() => Promise.resolve(botsData)),
+    createUserWithPut: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve(botUserData)),
     getAuthMechanismForBotUser: jest
       .fn()
       .mockImplementation(() => Promise.resolve(mockAuthMechanism)),
@@ -77,6 +103,14 @@ jest.mock('../../axiosAPIs/userAPI', () => {
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
+
+jest.mock('./AuthMechanismForm', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="AuthMechanismForm">AuthMechanismForm</div>
+    )
+);
 
 describe('Test BotsDetail Component', () => {
   it('Should render all child elements', async () => {
@@ -135,5 +169,22 @@ describe('Test BotsDetail Component', () => {
 
     // revoke token handler should get called
     expect(revokeTokenHandler).toBeCalled();
+  });
+
+  it('Should render the edit form if the authmechanism is empty', async () => {
+    (getAuthMechanismForBotUser as jest.Mock).mockImplementationOnce(() => {
+      return Promise.resolve(undefined);
+    });
+
+    const { container } = render(<BotDetails {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const authMechanismForm = await findByTestId(
+      container,
+      'AuthMechanismForm'
+    );
+
+    expect(authMechanismForm).toBeInTheDocument();
   });
 });

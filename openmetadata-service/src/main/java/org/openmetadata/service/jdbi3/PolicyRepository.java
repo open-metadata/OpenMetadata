@@ -147,7 +147,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
   }
 
-  public void validateRules(Policy policy) throws IOException {
+  public void validateRules(Policy policy) {
     // Resolve JSON blobs into Rule object and perform schema based validation
     List<Rule> rules = policy.getRules();
     if (listOrEmpty(rules).isEmpty()) {

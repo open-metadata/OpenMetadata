@@ -253,17 +253,11 @@ class LookerSource(DashboardServiceSource):
             Iterable[DashboardElement], dashboard_details.dashboard_elements
         ):
             try:
-                chart_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    chart_name=chart.id,
-                    service_name=self.context.dashboard_service.name.__root__,
-                )
                 if filter_by_chart(
                     chart_filter_pattern=self.source_config.chartFilterPattern,
-                    chart_fqn=chart_fqn,
+                    chart_name=chart.id,
                 ):
-                    self.status.filter(chart_fqn, "Chart filtered out")
+                    self.status.filter(chart.id, "Chart filtered out")
                     continue
 
                 if not chart.id:

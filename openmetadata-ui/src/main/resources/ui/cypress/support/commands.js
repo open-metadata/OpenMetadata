@@ -63,9 +63,9 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 });
 
 Cypress.Commands.add('goToHomePage', () => {
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+  cy.get('[data-testid="whats-new-dialog"]').should('be.visible');
   cy.get('[data-testid="closeWhatsNew"]').click();
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+  cy.get('[data-testid="whats-new-dialog"]').should('not.exist');
 });
 
 Cypress.Commands.add('clickOnLogo', () => {

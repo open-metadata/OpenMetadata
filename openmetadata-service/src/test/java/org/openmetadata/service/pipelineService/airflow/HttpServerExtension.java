@@ -44,7 +44,7 @@ public class HttpServerExtension implements BeforeAllCallback, AfterAllCallback 
   private com.sun.net.httpserver.HttpServer server;
 
   @Override
-  public void afterAll(ExtensionContext extensionContext) throws Exception {
+  public void afterAll(ExtensionContext extensionContext) {
     if (server != null) {
       server.stop(0);
     }
