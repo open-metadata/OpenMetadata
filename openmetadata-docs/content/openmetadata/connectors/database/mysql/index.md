@@ -172,7 +172,7 @@ caption="Configure Metadata Ingestion Page"
 
 #### **SSL Configuration**
 
-In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in source.
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
 
 - **ssl**: A dict of arguments which contains:
     - **ssl_ca**: Path to the file that contains a PEM-formatted CA certificate.

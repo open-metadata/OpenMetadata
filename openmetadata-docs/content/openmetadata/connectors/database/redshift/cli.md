@@ -555,7 +555,7 @@ Note how instead of running `ingest`, we are using the `profile` command to sele
 
 ## SSL Configuration
 
-In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in source.
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
 
 ```yaml
 ---
@@ -577,7 +577,7 @@ source:
 
 ### SSL Modes
 
-There are couple of types of SSL modes that redshift supports which can be added to ConnectionArguments, they are as follows:
+There are couple of types of SSL modes that Redshift supports which can be added to ConnectionArguments, they are as follows:
 - **disable**: SSL is disabled and the connection is not encrypted.
 
 - **allow**: SSL is used if the server requires it.

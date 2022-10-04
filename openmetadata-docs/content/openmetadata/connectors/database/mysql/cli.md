@@ -451,7 +451,7 @@ metadata profile -c <path-to-yaml>
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
 ## SSL Configuration
 
-In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in source.
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
 
 ```yaml
 ---
