@@ -7,6 +7,6 @@ slug: /openmetadata/connectors/pipeline
 
 - [Airbyte](/openmetadata/connectors/pipeline/airbyte)
 - [Airflow](/openmetadata/connectors/pipeline/airflow)
-- [Glue Pipeline](/openmetadata/connectors/pipeline/glue-pipeline)
+- [Glue](/openmetadata/connectors/pipeline/glue)
 - [Fivetran](/openmetadata/connectors/pipeline/fivetran)
 - [Dagster](/openmetadata/connectors/pipeline/dagster)

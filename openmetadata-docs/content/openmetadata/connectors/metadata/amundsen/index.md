@@ -90,8 +90,8 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
 ### Source Configuration - Service Connection
@@ -118,139 +118,25 @@ OpenMetadata installation. For a simple, local installation using our docker con
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: '{bot_jwt_token}'
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
-<Collapse title="Configure SSO in the Ingestion Workflows">
+### OpenMetadata Security Providers
 
-### Openmetadata JWT Auth
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: '{bot_jwt_token}'
-```
-
-### Auth0 SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: auth0
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-### Azure SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: azure
-    securityConfig:
-      clientSecret: '{your_client_secret}'
-      authority: '{your_authority_url}'
-      clientId: '{your_client_id}'
-      scopes:
-        - your_scopes
-```
-
-### Custom OIDC SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: custom-oidc
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-### Google SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: google
-    securityConfig:
-      secretKey: '{path-to-json-creds}'
-```
-
-### Okta SSO
+We support different security providers. You can find their definitions here. An example of an `Auth0` configuration would
+be the following:
 
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
-    authProvider: okta
-    securityConfig:
-      clientId: "{CLIENT_ID - SPA APP}"
-      orgURL: "{ISSUER_URL}/v1/token"
-      privateKey: "{public/private keypair}"
-      email: "{email}"
-      scopes:
-        - token
-```
-
-### Amazon Cognito SSO
-
-The ingestion can be configured by [Enabling JWT Tokens](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens)
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
     authProvider: auth0
     securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
+      clientId: <client ID>
+      secretKey: <secret key>
+      domain: <domain>
 ```
-
-### OneLogin SSO
-
-Which uses Custom OIDC for the ingestion
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: custom-oidc
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-### KeyCloak SSO
-
-Which uses Custom OIDC for the ingestion
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: custom-oidc
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-</Collapse>
 
 ## 2. Run with the CLI
 

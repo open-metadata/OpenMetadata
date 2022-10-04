@@ -157,8 +157,8 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
 ### How to Run Tests
