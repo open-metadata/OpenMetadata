@@ -9,13 +9,13 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 @Slf4j
 public class ConfigurationHolder {
   public enum ConfigurationType {
-    AUTHORIZER_CONFIG("authorizerConfiguration"),
-    AUTHENTICATION_CONFIG("authenticationConfiguration"),
-    SMTP_CONFIG("email"),
-    ELASTICSEARCH_CONFIG("elasticsearch"),
-    LOGIN_CONFIG("login");
+    AUTHORIZERCONFIG("authorizerConfiguration"),
+    AUTHENTICATIONCONFIG("authenticationConfiguration"),
+    SMTPCONFIG("email"),
+    ELASTICSEARCHCONFIG("elasticsearch"),
+    LOGINCONFIG("login");
 
-    private final String value;
+    private String value;
 
     ConfigurationType(String value) {
       this.value = value;
@@ -52,22 +52,20 @@ public class ConfigurationHolder {
             ConfigurationType configTypeForEnum = ConfigurationType.fromValue(configType);
             if (configTypeForEnum == null) continue;
             switch (configTypeForEnum) {
-              case AUTHORIZER_CONFIG:
-                CONFIG_MAP.put(ConfigurationType.AUTHORIZER_CONFIG, config.getAuthorizerConfiguration());
+              case AUTHORIZERCONFIG:
+                CONFIG_MAP.put(ConfigurationType.AUTHORIZERCONFIG, config.getAuthorizerConfiguration());
                 break;
-              case AUTHENTICATION_CONFIG:
-                CONFIG_MAP.put(ConfigurationType.AUTHENTICATION_CONFIG, config.getAuthenticationConfiguration());
+              case AUTHENTICATIONCONFIG:
+                CONFIG_MAP.put(ConfigurationType.AUTHENTICATIONCONFIG, config.getAuthenticationConfiguration());
                 break;
-              case SMTP_CONFIG:
-                CONFIG_MAP.put(ConfigurationType.SMTP_CONFIG, config.getSmtpSettings());
+              case SMTPCONFIG:
+                CONFIG_MAP.put(ConfigurationType.SMTPCONFIG, config.getSmtpSettings());
                 break;
-              case ELASTICSEARCH_CONFIG:
-                if (config.getElasticSearchConfiguration() != null) {
-                  CONFIG_MAP.put(ConfigurationType.ELASTICSEARCH_CONFIG, config.getElasticSearchConfiguration());
-                }
+              case ELASTICSEARCHCONFIG:
+                CONFIG_MAP.put(ConfigurationType.ELASTICSEARCHCONFIG, config.getElasticSearchConfiguration());
                 break;
-              case LOGIN_CONFIG:
-                CONFIG_MAP.put(ConfigurationType.LOGIN_CONFIG, config.getLoginSettings());
+              case LOGINCONFIG:
+                CONFIG_MAP.put(ConfigurationType.LOGINCONFIG, config.getLoginSettings());
                 break;
               default:
                 LOG.error("Invalid Setting Type Given.");
