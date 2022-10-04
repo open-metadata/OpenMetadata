@@ -15,7 +15,7 @@ Define Median function
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import FunctionElement
+from sqlalchemy.sql.functions import GenericFunction
 
 from metadata.orm_profiler.metrics.core import CACHE
 from metadata.orm_profiler.orm.registry import Dialects
@@ -24,7 +24,7 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-class MedianFn(FunctionElement):
+class MedianFn(GenericFunction):
     inherit_cache = CACHE
 
 
@@ -50,7 +50,7 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
-    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
+    col = elements.clauses.clauses[0].name
     return "approx_percentile(%s, 0.5)" % col
 
 
