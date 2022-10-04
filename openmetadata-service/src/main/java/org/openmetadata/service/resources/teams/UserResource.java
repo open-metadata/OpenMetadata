@@ -788,9 +788,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
-    if (Boolean.TRUE.equals(ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-        .getEnableSelfSignup())) {
+    if (Boolean.TRUE.equals(
+        ConfigurationHolder.getInstance()
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
+            .getEnableSelfSignup())) {
       User registeredUser = registerUser(uriInfo, create);
       if (isEmailServiceEnabled) {
         try {
