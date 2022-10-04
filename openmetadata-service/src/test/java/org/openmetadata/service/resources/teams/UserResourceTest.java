@@ -206,6 +206,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     create = createRequest(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
   }
 
   @Test
@@ -228,6 +229,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     change = getChangeDescription(user.getVersion());
     fieldUpdated(change, "displayName", "displayName1", "displayName2");
     updateAndCheckEntity(update, OK, authHeaders("user.xyz@email.com"), MINOR_UPDATE, change);
+    assertNotNull(user);
   }
 
   @Test
@@ -251,6 +253,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withEmail("testAdmin@email.com")
             .withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
   }
 
   @Test

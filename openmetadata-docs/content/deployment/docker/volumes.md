@@ -8,6 +8,11 @@ Advance section
 
 Volumes provide the ability to connect specific filesystem paths of the container back to the host machine. If a directory or a file in the container is mounted, changes in that directory  or file can also be seen on the host machine.we are going to use a mapping of a directory present on the host macine with the container path.
 
+<Note>
+
+To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases). The latest version is at the top of the page
+</Note>
+
 # Docker Volumes
 
 ## Volumes for MYSQL container:

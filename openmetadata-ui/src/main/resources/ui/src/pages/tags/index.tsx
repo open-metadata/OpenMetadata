@@ -43,6 +43,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { TIER_CATEGORY } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
 import {
@@ -427,21 +428,23 @@ const TagsPage = () => {
   };
 
   useEffect(() => {
-    fetchCategories(true);
-  }, []);
-
-  useEffect(() => {
     if (currentCategory) {
       fetchCurrentCategoryPermission();
     }
   }, [currentCategory]);
 
   useEffect(() => {
+    /**
+     * If tagCategoryName is present then fetch that category
+     */
     if (tagCategoryName) {
-      fetchCurrentCategory(tagCategoryName);
-    } else {
-      setCurrentCategory(categories[0]);
+      const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
+      fetchCurrentCategory(isTier ? TIER_CATEGORY : tagCategoryName);
     }
+    /**
+     * Fetch all categories and set current category only if there is no categoryName
+     */
+    fetchCategories(!tagCategoryName);
   }, [tagCategoryName]);
 
   const fetchLeftPanel = () => {

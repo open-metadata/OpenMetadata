@@ -502,7 +502,7 @@
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
-        <version>9.4.39.v20210325</version>
+        <version>9.4.40.v20210413</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
