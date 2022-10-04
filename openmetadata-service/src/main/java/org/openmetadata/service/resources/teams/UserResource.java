@@ -802,10 +802,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
       return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
-          .entity(registeredUser).build();
-    } else {
-      return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Signup is not available")
+          .entity(registeredUser)
           .build();
+    } else {
+      return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Signup is not available").build();
     }
   }
 
