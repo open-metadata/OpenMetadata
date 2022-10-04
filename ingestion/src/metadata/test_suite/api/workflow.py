@@ -206,8 +206,10 @@ class TestSuiteWorkflow:
         Args:
             entity: table entity
         """
-        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
-        if entity.serviceType != DatabaseServiceType.BigQuery:
+        if (
+            not hasattr(entity, "serviceType")
+            or entity.serviceType != DatabaseServiceType.BigQuery
+        ):
             return None
 
         if hasattr(entity, "tablePartition") and entity.tablePartition:
