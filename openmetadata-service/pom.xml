@@ -16,9 +16,9 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.17.3</org.testcontainers.version>
-    <awssdk.version>2.17.256</awssdk.version>
-    <expiring.map.version>0.5.9</expiring.map.version>
+    <org.testcontainers.version>1.17.4</org.testcontainers.version>
+    <awssdk.version>2.17.286</awssdk.version>
+    <expiring.map.version>0.5.10</expiring.map.version>
   </properties>
 
   <dependencyManagement>
@@ -329,11 +329,6 @@
       <artifactId>lombok</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.wix</groupId>
-      <artifactId>wix-embedded-mysql</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
       <version>${org.testcontainers.version}</version>
@@ -369,6 +364,11 @@
       <artifactId>johnzon-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>javax.validation</groupId>
+      <artifactId>validation-api</artifactId>
+      <version>2.0.1.Final</version>
+    </dependency>
+    <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr353</artifactId>
     </dependency>
@@ -377,7 +377,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20220320</version>
+      <version>20220924</version>
     </dependency>
 
     <dependency>
@@ -452,7 +452,7 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-expression</artifactId>
-      <version>${spring-expression.version}</version>
+      <version>${spring.version}</version>
     </dependency>
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
@@ -572,7 +572,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-        <version>${maven-src-plugin.version}</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

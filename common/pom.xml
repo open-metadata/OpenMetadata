@@ -28,101 +28,27 @@
   <artifactId>common</artifactId>
 
   <dependencies>
+    <!-- Required dependency for logging -->
     <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
-    </dependency>
-    <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
-    <dependency>
-      <groupId>javax.json</groupId>
-      <artifactId>javax.json-api</artifactId>
-    </dependency>
-
-    <!-- Apache Johnzon: Implementation of the Java API for JSON Processing (JSR 374) -->
-    <dependency>
-      <groupId>org.apache.johnzon</groupId>
-      <artifactId>johnzon-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-annotations</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
     </dependency>
-    <dependency>
-      <groupId>com.smoketurner</groupId>
-      <artifactId>dropwizard-swagger</artifactId>
-      <version>${dropwizard.swagger.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>io.dropwizard</groupId>
-          <artifactId>dropwizard-core</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.code.findbugs</groupId>
-          <artifactId>annotations</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>jetty-io</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.glassfish</groupId>
-          <artifactId>jakarta.el</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-io</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.glassfish</groupId>
-      <artifactId>jakarta.el</artifactId>
-    </dependency>
-
+    <!-- Required dependency for @Slf4j annotation -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt</artifactId>
-      <version>${jjwt.version}</version>
-    </dependency>
-
-
-    <!-- https://mvnrepository.com/artifact/com.auth0/java-jwt -->
-    <dependency>
-      <groupId>com.auth0</groupId>
-      <artifactId>java-jwt</artifactId>
-      <version>${java-jwt.version}</version>
-    </dependency>
-
-    <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
-    <dependency>
-      <groupId>com.auth0</groupId>
-      <artifactId>jwks-rsa</artifactId>
-      <version>${jwks-rsa.version}</version>
-    </dependency>
-
     <!--test dependencies-->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${org.junit.jupiter.version}</version>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.kjetland</groupId>
-      <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
-      <version>1.0.39</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.datatype</groupId>
-      <artifactId>jackson-datatype-jsr353</artifactId>
     </dependency>
     <!-- used for generating custom annotations in jsonschema2pojo-maven-plugin -->
     <dependency>
@@ -152,7 +78,6 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-source-plugin</artifactId>
-          <version>${maven-src-plugin.version}</version>
           <executions>
             <execution>
               <id>attach-sources</id>
