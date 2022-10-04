@@ -1195,7 +1195,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private void authorizeGenerateJWT(User user) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
-      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
+      throw new IllegalArgumentException("Generating JWT Testing token is only supported for bot users");
     }
   }
 
