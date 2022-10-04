@@ -45,6 +45,10 @@ const Tags: FunctionComponent<TagProps> = ({
     return tag.startsWith('#') ? tag.slice(1) : tag;
   };
 
+  const getDisplayTag = (tag: string) => {
+    return tag.length > 35 ? `${tag.slice(0, 35).toLowerCase()}...` : tag;
+  };
+
   const getTag = (tag: string, startWith = '', source?: string) => {
     const startIcon =
       startWith === '+ ' ? (
@@ -58,7 +62,7 @@ const Tags: FunctionComponent<TagProps> = ({
       );
     const tagName = showOnlyName
       ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
-      : tag;
+      : getDisplayTag(tag);
 
     return (
       <span
