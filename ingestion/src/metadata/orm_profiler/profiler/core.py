@@ -38,7 +38,6 @@ from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    Metric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
@@ -68,8 +67,6 @@ class Profiler(Generic[TMetric]):
     - An ORM Table. One profiler attacks one table at a time.
     - A tuple of metrics, from which we will construct queries.
     """
-
-    # pylint: disable=too-many-instance-attributes,too-many-public-methods
 
     def __init__(
         self,

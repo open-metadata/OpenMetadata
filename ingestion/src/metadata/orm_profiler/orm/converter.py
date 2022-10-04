@@ -82,7 +82,10 @@ def map_types(col: Column, table_service_type):
         table_service_type == databaseService.DatabaseServiceType.Snowflake
         and col.dataType == DataType.JSON
     ):
-        from snowflake.sqlalchemy import VARIANT
+        # pylint: disable=import-outside-toplevel
+        from snowflake.sqlalchemy import (
+            VARIANT,
+        )
 
         return VARIANT
 

@@ -29,7 +29,7 @@ class MedianFn(FunctionElement):
 
 
 @compiles(MedianFn)
-def _(elements, compiler, **kwargs):
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     col = elements.clauses.clauses[0].name
     return "percentile_cont(0.5) WITHIN GROUP (ORDER BY %s ASC)" % col
 
@@ -69,7 +69,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.MySQL)
-def _(elemenst, compiler, **kwargs):
+def _(elemenst, compiler, **kwargs):  # pylint: disable=unused-argument
     """Median computation for MySQL currently not supported
     Needs to be tackled in https://github.com/open-metadata/OpenMetadata/issues/6340
     """
@@ -77,8 +77,8 @@ def _(elemenst, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.SQLite)
-def _(elements, compiler, **kwargs):
-    col, table = [element for element in elements.clauses]
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    col, table = list(elements.clauses)
     return """
     (SELECT 
         AVG({col})
