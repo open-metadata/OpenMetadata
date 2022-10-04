@@ -80,8 +80,8 @@ public class BuildSearchIndexResource {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_BATCH = "eventPublisher:ElasticSearch:BATCH";
-  private final RestHighLevelClient client;
-  private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
+  private RestHighLevelClient client;
+  private ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   private final CollectionDAO dao;
   private final Authorizer authorizer;
   private final ExecutorService threadScheduler;
