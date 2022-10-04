@@ -181,10 +181,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         ConfigurationHolder.getInstance()
             .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
             .getProvider();
-    this.isEmailServiceEnabled =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationType.SMTP_CONFIG, SmtpSettings.class)
-            .getEnableSmtpServer();
+    SmtpSettings smtpSettings =
+        ConfigurationHolder.getInstance().getConfig(ConfigurationType.SMTP_CONFIG, SmtpSettings.class);
+    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.loginAttemptCache = new LoginAttemptCache();
   }
 
