@@ -168,6 +168,14 @@ site_menu:
   - category: Deployment / Airflow
     url: /deployment/airflow
 
+  - category: How to guides
+    url: /how-to-guides
+    color: violet-70
+    icon: openmetadata
+
+  - category: How to guides / Teams and Users
+    url: /how-to-guides/teams-and-users
+
   - category: OpenMetadata
     url: /openmetadata
     color: violet-70
