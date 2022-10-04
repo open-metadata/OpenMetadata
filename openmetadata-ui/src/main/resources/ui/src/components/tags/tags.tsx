@@ -20,6 +20,7 @@ import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTagDisplay } from '../../utils/TagsUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
@@ -45,10 +46,6 @@ const Tags: FunctionComponent<TagProps> = ({
     return tag.startsWith('#') ? tag.slice(1) : tag;
   };
 
-  const getDisplayTag = (tag: string) => {
-    return tag.length > 35 ? `${tag.slice(0, 35)}...` : tag;
-  };
-
   const getTag = (tag: string, startWith = '', source?: string) => {
     const startIcon =
       startWith === '+ ' ? (
@@ -62,7 +59,7 @@ const Tags: FunctionComponent<TagProps> = ({
       );
     const tagName = showOnlyName
       ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
-      : getDisplayTag(tag);
+      : getTagDisplay(tag);
 
     return (
       <span
