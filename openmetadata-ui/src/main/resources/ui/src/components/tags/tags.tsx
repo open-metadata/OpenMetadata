@@ -46,7 +46,7 @@ const Tags: FunctionComponent<TagProps> = ({
   };
 
   const getDisplayTag = (tag: string) => {
-    return tag.length > 35 ? `${tag.slice(0, 35).toLowerCase()}...` : tag;
+    return tag.length > 35 ? `${tag.slice(0, 35)}...` : tag;
   };
 
   const getTag = (tag: string, startWith = '', source?: string) => {
