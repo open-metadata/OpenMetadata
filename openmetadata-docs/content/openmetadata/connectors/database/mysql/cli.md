@@ -449,6 +449,41 @@ metadata profile -c <path-to-yaml>
 ```
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
+## SSL Configuration
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in source.
+
+```yaml
+---
+source:
+  type: mysql
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Mysql
+      username: <username>
+      password: <password>
+      hostPort: <hostPort>
+      ...
+      ...
+      connectionArguments:
+        ssl:
+          ssl_ca: /path/to/client-ssl/ca.pem,
+          ssl_cert: /path/to/client-ssl/client-cert.pem
+          ssl_key: /path/to/client-ssl/client-key.pem
+          #ssl_disabled: True #boolean
+          #ssl_verify_cert: True #boolean
+          #ssl_verify_identity: True #boolean
+
+```
+
+  - **ssl**: A dict of arguments which contains:
+    - **ssl_ca**: Path to the file that contains a PEM-formatted CA certificate.
+    - **ssl_cert**: Path to the file that contains a PEM-formatted client certificate.
+    - **ssl_disabled**: A boolean value that disables usage of TLS.
+    - **ssl_key**: Path to the file that contains a PEM-formatted private key for the client certificate.
+    - **ssl_verify_cert**: Set to true to check the server certificate's validity.
+    - **ssl_verify_identity**: Set to true to check the server's identity.
 
 ## DBT Integration
 
