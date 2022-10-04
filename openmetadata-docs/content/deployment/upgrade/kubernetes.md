@@ -79,33 +79,34 @@ open-metadata/openmetadata-dependencies	0.0.34       	0.11.4     	Helm Dependenc
 
 ## Upgrade OpenMetadata Dependencies
 
-<Warning>
 
-We have upgraded the Airflow version from 2.1.4 to 2.3.3 with OpenMetadata `0.12.X` releases. Before you start upgrading OpenMetadata Dependencies, it is adviced to follow airflow migration docs [here](/deployment/upgrade/bare-metal#upgrade-ingestion-container).
+### Step 1: Upgrade Airfow
 
-</Warning>
+We have **upgraded the Airflow version from 2.1.4 to 2.3.3** with OpenMetadata `0.12.X` releases. 
 
-Upgrade OpenMetadata Dependencies with the below command:
+Before you start upgrading OpenMetadata Dependencies, you must follow airflow migration docs [here](/deployment/upgrade/bare-metal#upgrade-ingestion-container) to upgrade Airflow.
+
+
+### Step 2: Upgrade OpenMetadata Dependencies with the below command
 
 ```commandline
 helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
 ```
 
-<Note>
 
 The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml).
 You can modify any configuration and deploy by passing your own `values.yaml`.
 
-</Note>
 
-<Warning>
+### Step 3: Troubleshooting
 
 If your helm upgrade fails with the below command result -
 ```
 Error: UPGRADE FAILED: cannot patch "mysql" with kind StatefulSet: StatefulSet.apps "mysql" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden
 ```
 
-This is probably because with `0.12.1`, we have default size of mysql persistence set to 50Gi.
+This is probably because with `0.12.1`, we have **default size of mysql persistence set to 50Gi**.
+
 Kubernetes does not allow changes to Persistent volume with helm upgrades.
 
 In order to work around this issue, you can either default the persistence size to 8Gi or run the below command which will patch Persistent Volumes and Persistent Volume Claims for mysql helm and then run the above `helm upgrade` command.
@@ -114,8 +115,6 @@ In order to work around this issue, you can either default the persistence size 
 kubectl patch pvc data-mysql-0 -p '{"spec":{"resources":{"requests":{"storage":"50Gi"}}}}'
 kubectl patch pv <mysql-pv> -p '{"spec":{"storage":"50Gi"}}'
 ```
-
-</Warning>
 
 <Tip>
 
@@ -147,6 +146,9 @@ We have added a conditional suggestion mapping for all of the elasticsearch inde
 ### Make sure you select "Recreate Indexes"
 
 Click on the "Recreate Indexes" lable and click "Re Index All"
+
+
+
 
 ## Troubleshooting for 0.12 Release
 
