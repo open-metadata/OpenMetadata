@@ -30,19 +30,13 @@ RUN apt-get update \
 
 WORKDIR ingestion/
 
-# Only copy the necessary source files to execute Workflows
-COPY src/ src/
-COPY setup.* ./
-COPY README.md .
-
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/main.py .
 
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
-
+RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error

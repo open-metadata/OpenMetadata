@@ -265,7 +265,7 @@ export-snyk-html-report:  ## export json file from security-report/ to HTML
 	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
 
 # Ingestion Operators
-.PHONY: docker-operator-dev
-build-ingestion-base:  ## Builds the ingestion DEV docker operator with the local ingestion files
+.PHONY: build-ingestion-base-local
+build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
-	docker build -f ingestion/operators/docker/Dockerfile-dev ingestion/ -t openmetadata/ingestion-base:local
+	docker build -f ingestion/operators/docker/Dockerfile-dev . -t openmetadata/ingestion-base:local

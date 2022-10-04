@@ -41,3 +41,25 @@ Our `main.py` Python file will then be in charge of:
 1. Loading the workflow configuration from the environment variables,
 2. Get the required workflow class to run and finally,
 3. Execute the workflow.
+
+To try this locally, you can build the DEV image with `make build-ingestion-base-local` from the project root.
+
+TODO: Bring chmod 666 to /var/run/docker.sock in the ingestion container
+
+## Further improvements
+
+We have two operator to leverage if we don't want to run the ingestion from Airflow's host environment:
+
+```python
+from airflow.providers.docker.operators.docker import DockerOperator
+from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
+```
+
+Which can be installed from `apache-airflow[docker]` and `apache-airflow[kubernetes]` respectively.
+
+If we want to handle both of these directly on the `openmetadata-managed-apis` we need to consider a couple of things:
+1. `DockerOperator` will only work with Docker and `KubernetesPodOperator` will only work with a k8s cluster. This means
+    that we'll need to dynamically handle the internal logic to use either of them depending on the deployment.
+    [Docs](https://airflow.apache.org/docs/apache-airflow-providers-cncf-kubernetes/stable/operators.html).
+2. For GKE deployment things get a bit more complicated, as we'll need to use and test yet another operator
+    custom-built for GKE: `GKEStartPodOperator`. [Docs](https://airflow.apache.org/docs/apache-airflow-providers-google/stable/operators/cloud/kubernetes_engine.html#howto-operator-gkestartpodoperator)
