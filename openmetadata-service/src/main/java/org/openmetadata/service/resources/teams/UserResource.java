@@ -788,9 +788,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
-    if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-        .getEnableSelfSignup()) {
+    if (Boolean.TRUE.equals(
+        ConfigurationHolder.getInstance()
+            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
+            .getEnableSelfSignup())) {
       User registeredUser = registerUser(uriInfo, create);
       if (isEmailServiceEnabled) {
         try {
@@ -847,7 +848,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           String user)
       throws IOException {
     User registeredUser = dao.getByName(uriInfo, user, getFields("isEmailVerified"));
-    if (registeredUser.getIsEmailVerified()) {
+    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       // no need to do anything
       return Response.status(Response.Status.OK).entity("Email Already Verified For User.").build();
     }
@@ -1100,7 +1101,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .build();
       }
 
-      if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
+      if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {
         return Response.status(BAD_REQUEST)
             .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), INVALID_USERNAME_PASSWORD))
             .build();
@@ -1235,7 +1236,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     User registeredUser =
         dao.get(uriInfo, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
-    if (registeredUser.getIsEmailVerified()) {
+    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
     }
@@ -1259,7 +1260,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User extendRegistrationToken(UriInfo uriInfo, String existingToken) throws IOException {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(existingToken);
     User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("isEmailVerified"));
-    if (registeredUser.getIsEmailVerified()) {
+    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       // no need to do anything
       return registeredUser;
     }
@@ -1400,7 +1401,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new RuntimeException(
           "Password Reset Token" + token.getToken() + "Expired token. Please issue a new request");
     }
-    if (!token.getIsActive()) {
+    if (Boolean.FALSE.equals(token.getIsActive())) {
       throw new RuntimeException("Password Reset Token" + token.getToken() + "Token was marked inactive");
     }
   }
