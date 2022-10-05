@@ -1,6 +1,6 @@
 ---
 title: Extract GCS Composer Metadata
-slug: /openmetadata/connectors/pipeline/airflow/gcs
+slug: /connectors/pipeline/airflow/gcs
 ---
 
 # Extract GCS Composer Metadata

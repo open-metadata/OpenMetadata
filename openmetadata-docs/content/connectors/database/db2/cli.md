@@ -1,6 +1,6 @@
 ---
 title: Run DB2 Connector using the CLI
-slug: /openmetadata/connectors/database/db2/cli
+slug: /connectors/database/db2/cli
 ---
 
 # Run DB2 using the metadata CLI

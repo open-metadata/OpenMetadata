@@ -1,6 +1,6 @@
 ---
 title: Metadata Versioning
-slug: /openmetadata/ingestion/versioning
+slug: /connectors/ingestion/versioning
 ---
 
 # Metadata Versioning

@@ -1,6 +1,6 @@
 ---
 title: Run Athena Connector using the CLI
-slug: /openmetadata/connectors/database/athena/cli
+slug: /connectors/database/athena/cli
 ---
 
 # Run Athena using the metadata CLI

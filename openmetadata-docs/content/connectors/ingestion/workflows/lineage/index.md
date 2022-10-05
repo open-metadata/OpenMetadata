@@ -1,6 +1,6 @@
 ---
 title: Lineage Workflow
-slug: /openmetadata/ingestion/workflows/lineage
+slug: /connectors/ingestion/workflows/lineage
 ---
 
 # Lineage Workflow

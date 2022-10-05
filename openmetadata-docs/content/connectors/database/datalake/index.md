@@ -1,6 +1,6 @@
 ---
 title: Datalake
-slug: /openmetadata/connectors/database/datalake
+slug: /connectors/database/datalake
 ---
 
 # Datalake
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/database/datalake/airflow"
+    link="/connectors/database/datalake/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/database/datalake/cli"
+    link="/connectors/database/datalake/cli"
     size="half"
   />
 </TileContainer>

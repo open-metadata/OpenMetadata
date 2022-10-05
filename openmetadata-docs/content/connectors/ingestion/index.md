@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion
-slug: /openmetadata/ingestion
+slug: /connectors/ingestion
 ---
 
 # Metadata Ingestion
@@ -22,7 +22,7 @@ In this section we will explore the different workflows, how they work and how t
     color="violet-70"
     bold="Metadata Ingestion"
     icon="cable"
-    href="/openmetadata/ingestion/workflows/metadata"
+    href="/connectors/ingestion/workflows/metadata"
   >
     Learn more about how to ingest metadata from dozens of connectors.
   </InlineCallout>
@@ -30,7 +30,7 @@ In this section we will explore the different workflows, how they work and how t
     color="violet-70"
     bold="Metadata Profiler & Quality Tests"
     icon="cable"
-    href="/openmetadata/ingestion/workflows/profiler"
+    href="/connectors/ingestion/workflows/profiler"
   >
     Get metrics from your Tables and run automated Quality Tests!
   </InlineCallout>
@@ -38,7 +38,7 @@ In this section we will explore the different workflows, how they work and how t
     color="violet-70"
     bold="Metadata Usage"
     icon="cable"
-    href="/openmetadata/ingestion/workflows/usage"
+    href="/connectors/ingestion/workflows/usage"
   >
     To analyze popular entities.
   </InlineCallout>
@@ -46,7 +46,7 @@ In this section we will explore the different workflows, how they work and how t
     color="violet-70"
     bold="Metadata Lineage"
     icon="cable"
-    href="/openmetadata/ingestion/workflows/lineage"
+    href="/connectors/ingestion/workflows/lineage"
   >
     To analyze relationships in your data platform.
   </InlineCallout>
@@ -63,7 +63,7 @@ support Metadata Versioning, maintaining the history of changes of all your asse
     color="violet-70"
     bold="Metadata Versioning"
     icon="360"
-    href="/openmetadata/ingestion/versioning"
+    href="/connectors/ingestion/versioning"
   >
     Learn how OpenMetadata keeps track of your metadata evolution.
   </InlineCallout>
@@ -78,7 +78,7 @@ Understand how OpenMetadata deploys the workflows that are created from the UI.
     color="violet-70"
     bold="Ingestion Pipeline UI Deployment"
     icon="360"
-    href="/openmetadata/ingestion/ingestion-pipeline"
+    href="/connectors/ingestion/ingestion_deployment"
   >
     Learn about the Pipeline Service interface and how OpenMetadata handles workflow deployments.
   </InlineCallout>

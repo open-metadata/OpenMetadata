@@ -1,6 +1,6 @@
 ---
 title: Ingest Owner from DBT
-slug: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-owner
+slug: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-owner
 ---
 
 # Ingest Owner from DBT

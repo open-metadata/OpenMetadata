@@ -1,6 +1,6 @@
 ---
 title: Run MariaDB Connector using the CLI
-slug: /openmetadata/connectors/database/mariadb/cli
+slug: /connectors/database/mariadb/cli
 ---
 
 # Run MariaDB using the metadata CLI

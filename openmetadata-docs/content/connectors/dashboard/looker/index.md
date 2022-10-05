@@ -1,6 +1,6 @@
 ---
 title: Looker
-slug: /openmetadata/connectors/dashboard/looker
+slug: /connectors/dashboard/looker
 ---
 
 # Looker
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/dashboard/looker/airflow"
+    link="/connectors/dashboard/looker/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/dashboard/looker/cli"
+    link="/connectors/dashboard/looker/cli"
     size="half"
   />
 </TileContainer>

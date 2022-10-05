@@ -1,6 +1,6 @@
 ---
 title: Run MSSQL Connector using Airflow SDK
-slug: /openmetadata/connectors/database/mssql/airflow
+slug: /connectors/database/mssql/airflow
 ---
 
 # Run MSSQL using the Airflow SDK

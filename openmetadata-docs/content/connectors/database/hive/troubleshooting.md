@@ -1,6 +1,6 @@
 ---
 title: Hive Connector Troubleshooting
-slug: /openmetadata/connectors/database/hive/troubleshooting
+slug: /connectors/database/hive/troubleshooting
 ---
 
 # Troubleshooting

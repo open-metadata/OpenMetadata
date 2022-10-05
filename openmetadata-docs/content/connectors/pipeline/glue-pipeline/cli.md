@@ -1,6 +1,6 @@
 ---
 title: Run Glue Pipeline Connector using the CLI
-slug: /openmetadata/connectors/pipeline/glue-pipeline/cli
+slug: /connectors/pipeline/glue-pipeline/cli
 ---
 
 # Run Glue Pipeline using the metadata CLI

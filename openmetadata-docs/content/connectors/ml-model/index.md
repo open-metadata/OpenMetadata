@@ -1,8 +1,8 @@
 ---
 title: ML Model Services
-slug: /openmetadata/connectors/ml-model
+slug: /connectors/ml-model
 ---
 
 # ML Model Services
 
-- [Mlflow](/openmetadata/connectors/ml-model/mlflow)
+- [Mlflow](/connectors/ml-model/mlflow)

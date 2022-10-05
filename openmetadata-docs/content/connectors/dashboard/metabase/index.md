@@ -1,6 +1,6 @@
 ---
 title: Metabase
-slug: /openmetadata/connectors/dashboard/metabase
+slug: /connectors/dashboard/metabase
 ---
 
 # Metabase
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/dashboard/metabase/airflow"
+    link="/connectors/dashboard/metabase/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/dashboard/metabase/cli"
+    link="/connectors/dashboard/metabase/cli"
     size="half"
   />
 </TileContainer>

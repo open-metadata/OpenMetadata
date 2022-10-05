@@ -1,6 +1,6 @@
 ---
 title: Run Clickhouse Connector using the CLI
-slug: /openmetadata/connectors/database/clickhouse/cli
+slug: /connectors/database/clickhouse/cli
 ---
 
 # Run Clickhouse using the metadata CLI

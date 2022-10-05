@@ -1,6 +1,6 @@
 ---
 title: Run Redshift Connector using the CLI
-slug: /openmetadata/connectors/database/redshift/cli
+slug: /connectors/database/redshift/cli
 ---
 
 # Run Redshift using the metadata CLI

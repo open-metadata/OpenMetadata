@@ -1,14 +1,14 @@
 ---
 title: Dashboard Services
-slug: /openmetadata/connectors/dashboard
+slug: /connectors/dashboard
 ---
 
 # Dashboard Services
 
-- [Looker](/openmetadata/connectors/dashboard/looker)
-- [Metabase](/openmetadata/connectors/dashboard/metabase)
-- [Mode](/openmetadata/connectors/dashboard/mode)
-- [PowerBI](/openmetadata/connectors/dashboard/powerbi)
-- [Redash](/openmetadata/connectors/dashboard/redash)
-- [Superset](/openmetadata/connectors/dashboard/superset)
-- [Tableau](/openmetadata/connectors/dashboard/tableau)
+- [Looker](/connectors/dashboard/looker)
+- [Metabase](/connectors/dashboard/metabase)
+- [Mode](/connectors/dashboard/mode)
+- [PowerBI](/connectors/dashboard/powerbi)
+- [Redash](/connectors/dashboard/redash)
+- [Superset](/connectors/dashboard/superset)
+- [Tableau](/connectors/dashboard/tableau)

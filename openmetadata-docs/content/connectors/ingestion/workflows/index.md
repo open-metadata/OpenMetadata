@@ -1,6 +1,6 @@
 ---
 title: Ingestion Workflows
-slug: /openmetadata/ingestion/workflows
+slug: /connectors/ingestion/workflows
 ---
 
 # Ingestion Workflows
@@ -12,7 +12,7 @@ OpenMetadata uses workflows to ingest different kinds of metadata:
     color="violet-70"
     icon="celebration"
     bold="Metadata Ingestion"
-    href="/openmetadata/ingestion/workflows/metadata"
+    href="/connectors/ingestion/workflows/metadata"
   >
     Ingest metadata from any of our connectors
   </InlineCallout>
@@ -20,7 +20,7 @@ OpenMetadata uses workflows to ingest different kinds of metadata:
     color="violet-70"
     icon="storage"
     bold="Usage Information"
-    href="/openmetadata/ingestion/workflows/usage"
+    href="/connectors/ingestion/workflows/usage"
   >
     Find out how your users interact with your data.
   </InlineCallout>
@@ -28,7 +28,7 @@ OpenMetadata uses workflows to ingest different kinds of metadata:
     color="violet-70"
     icon="fit_screen"
     bold="Data Lineage"
-    href="/openmetadata/ingestion/workflows/lineage"
+    href="/connectors/ingestion/workflows/lineage"
   >
     Understand dependencies in your Data Platform.
   </InlineCallout>
@@ -36,7 +36,7 @@ OpenMetadata uses workflows to ingest different kinds of metadata:
     color="violet-70"
     icon="fit_screen"
     bold="Data Profiler"
-    href="/openmetadata/ingestion/workflows/profiler"
+    href="/connectors/ingestion/workflows/profiler"
   >
     Compute metrics and ingest sample data.
   </InlineCallout>
@@ -44,7 +44,7 @@ OpenMetadata uses workflows to ingest different kinds of metadata:
     color="violet-70"
     icon="fit_screen"
     bold="Data Quality"
-    href="/openmetadata/ingestion/workflows/data-quality"
+    href="/connectors/ingestion/workflows/data-quality"
   >
     Monitor your data and avoid surprises.
   </InlineCallout>

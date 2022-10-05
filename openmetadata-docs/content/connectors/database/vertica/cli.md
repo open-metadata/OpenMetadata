@@ -1,6 +1,6 @@
 ---
 title: Run Vertica Connector using the CLI
-slug: /openmetadata/connectors/database/vertica/cli
+slug: /connectors/database/vertica/cli
 ---
 
 # Run Vertica using the metadata CLI

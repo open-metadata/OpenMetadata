@@ -1,6 +1,6 @@
 ---
 title: Run Postgres Connector using Airflow SDK
-slug: /openmetadata/connectors/database/postgres/airflow
+slug: /connectors/database/postgres/airflow
 ---
 
 # Run Postgres using the Airflow SDK

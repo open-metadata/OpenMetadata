@@ -1,6 +1,6 @@
 ---
 title: Run MySQL Connector using Airflow SDK
-slug: /openmetadata/connectors/database/mysql/airflow
+slug: /connectors/database/mysql/airflow
 ---
 
 # Run MySQL using the Airflow SDK

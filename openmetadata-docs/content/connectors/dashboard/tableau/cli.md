@@ -1,6 +1,6 @@
 ---
 title: Run Tableau Connector using the CLI
-slug: /openmetadata/connectors/dashboard/tableau/cli
+slug: /connectors/dashboard/tableau/cli
 ---
 
 # Run Tableau using the metadata CLI

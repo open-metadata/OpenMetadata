@@ -1,6 +1,6 @@
 ---
 title: Data Quality
-slug: /openmetadata/ingestion/workflows/data-quality
+slug: /connectors/ingestion/workflows/data-quality
 ---
 
 # Data Quality

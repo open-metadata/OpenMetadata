@@ -1,6 +1,6 @@
 ---
 title: Superset
-slug: /openmetadata/connectors/dashboard/superset
+slug: /connectors/dashboard/superset
 ---
 
 # Superset
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/dashboard/superset/airflow"
+    link="/connectors/dashboard/superset/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/dashboard/superset/cli"
+    link="/connectors/dashboard/superset/cli"
     size="half"
   />
 </TileContainer>

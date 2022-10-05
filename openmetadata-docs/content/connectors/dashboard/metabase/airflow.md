@@ -1,6 +1,6 @@
 ---
 title: Run Metabase Connector using Airflow SDK
-slug: /openmetadata/connectors/dashboard/metabase/airflow
+slug: /connectors/dashboard/metabase/airflow
 ---
 
 # Run Metabase using the Airflow SDK

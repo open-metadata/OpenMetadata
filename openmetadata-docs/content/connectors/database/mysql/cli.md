@@ -1,6 +1,6 @@
 ---
 title: Run MySQL Connector using the CLI
-slug: /openmetadata/connectors/database/mysql/cli
+slug: /connectors/database/mysql/cli
 ---
 
 # Run MySQL using the metadata CLI

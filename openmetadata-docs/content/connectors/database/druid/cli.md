@@ -1,6 +1,6 @@
 ---
 title: Run Druid Connector using the CLI
-slug: /openmetadata/connectors/database/druid/cli
+slug: /connectors/database/druid/cli
 ---
 
 # Run Druid using the metadata CLI

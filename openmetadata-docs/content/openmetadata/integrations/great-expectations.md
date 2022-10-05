@@ -13,7 +13,7 @@ You will to have OpenMetadata version 0.10 or later.
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](/quick-start/local-deployment) or follow the [Prefect Integration](/openmetadata/integrations/prefect) guide.
 
-Before ingesting your tests results from Great Expectations you will need to have your table metadata ingested into OpenMetadata. Follow the instruction in the [Connectors](/openmetadata/connectors) section to learn more.
+Before ingesting your tests results from Great Expectations you will need to have your table metadata ingested into OpenMetadata. Follow the instruction in the [Connectors](/connectors) section to learn more.
 
 ### Python Requirements
 You will need to install our Great Expectations submodule

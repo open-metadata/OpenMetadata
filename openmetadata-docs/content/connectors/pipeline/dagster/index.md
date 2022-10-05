@@ -1,6 +1,6 @@
 ---
 title: Dagster
-slug: /openmetadata/connectors/pipeline/dagster
+slug: /connectors/pipeline/dagster
 ---
 
 # Dagster
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/pipeline/dagster/airflow"
+    link="/connectors/pipeline/dagster/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/pipeline/dagster/cli"
+    link="/connectors/pipeline/dagster/cli"
     size="half"
   />
 </TileContainer>

@@ -1,6 +1,6 @@
 ---
 title: Glue Pipeline
-slug: /openmetadata/connectors/pipeline/glue-pipeline
+slug: /connectors/pipeline/glue-pipeline
 ---
 
 # Glue Pipeline
@@ -19,7 +19,7 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/connectors/pipeline/glue-pipeine/airflow"
+    link="/connectors/pipeline/glue-pipeline/airflow"
     size="half"
   />
   <Tile

@@ -1,6 +1,6 @@
 ---
 title: Run Trino Connector using Airflow SDK
-slug: /openmetadata/connectors/database/trino/airflow
+slug: /connectors/database/trino/airflow
 ---
 
 # Run Trino using the Airflow SDK

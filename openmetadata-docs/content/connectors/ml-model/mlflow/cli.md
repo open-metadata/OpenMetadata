@@ -1,6 +1,6 @@
 ---
 title: Run Mlflow Connector using the CLI
-slug: /openmetadata/connectors/ml-model/mlflow/cli
+slug: /connectors/ml-model/mlflow/cli
 ---
 
 # Run Mlflow using the metadata CLI
@@ -39,7 +39,7 @@ the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following
-[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
+[JSON Schema](https://github.com/open-metadata/OpenMetadatablob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 

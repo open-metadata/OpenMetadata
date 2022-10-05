@@ -1,6 +1,6 @@
 ---
 title: Run Snowflake Connector using the CLI
-slug: /openmetadata/connectors/database/snowflake/cli
+slug: /connectors/database/snowflake/cli
 ---
 
 # Run Snowflake using the metadata CLI

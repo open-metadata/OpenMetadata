@@ -1,6 +1,6 @@
 ---
 title: PowerBI Account Setup
-slug: /openmetadata/connectors/dashboard/powerbi/powerbi-account-setup
+slug: /connectors/dashboard/powerbi/powerbi-account-setup
 ---
 
 # PowerBI Account Setup

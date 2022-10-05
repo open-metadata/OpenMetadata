@@ -1,6 +1,6 @@
 ---
 title: Oracle
-slug: /openmetadata/connectors/database/oracle
+slug: /connectors/database/oracle
 ---
 
 # Oracle
@@ -21,14 +21,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/database/oracle/airflow"
+    link="/connectors/database/oracle/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/database/oracle/cli"
+    link="/connectors/database/oracle/cli"
     size="half"
   />
 </TileContainer>
@@ -225,7 +225,7 @@ From the Connection tab, you can also Edit the Service if needed.
 icon="schema"
 title="Profiler Workflow"
 text="Learn more about how to configure the Data Profiler from the UI."
-link="/openmetadata/ingestion/workflows/profiler"
+link="/connectors/ingestion/workflows/profiler"
 />
 
 ## Data Quality
@@ -234,7 +234,7 @@ link="/openmetadata/ingestion/workflows/profiler"
 icon="air"
 title="Data Quality Workflow"
 text="Learn more about how to configure the Data Quality tests from the UI."
-link="/openmetadata/ingestion/workflows/data-quality"
+link="/connectors/ingestion/workflows/data-quality"
 />
 
 ## DBT Integration
@@ -243,6 +243,6 @@ link="/openmetadata/ingestion/workflows/data-quality"
 icon="mediation"
 title="DBT Integration"
 text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/openmetadata/ingestion/workflows/metadata/dbt"
+link="/connectors/ingestion/workflows/metadata/dbt"
 />
 

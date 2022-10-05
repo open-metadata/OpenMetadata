@@ -1,6 +1,6 @@
 ---
 title: DBT Integration
-slug: /openmetadata/ingestion/workflows/metadata/dbt
+slug: /connectors/ingestion/workflows/metadata/dbt
 ---
 
 # DBT Integration
@@ -12,7 +12,7 @@ You can ingest DBT Metadata both with the UI or by writing down your Workflow co
     color="violet-70"
     bold="DBT UI ingestion"
     icon="cable"
-    href="/openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui"
+    href="/connectors/ingestion/workflows/metadata/dbt/ingest-dbt-ui"
   >
     Configure the DBT ingestion directly in the UI.
   </InlineCallout>

@@ -1,6 +1,6 @@
 ---
 title: Change Feeds
-slug: /openmetadata/ingestion/versioning/change-feeds
+slug: /connectors/ingestion/versioning/change-feeds
 ---
 
 # Change Feeds

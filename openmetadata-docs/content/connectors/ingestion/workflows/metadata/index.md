@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion Workflow
-slug: /openmetadata/ingestion/workflows/metadata
+slug: /connectors/ingestion/workflows/metadata
 ---
 
 # Metadata Ingestion Workflow
@@ -12,7 +12,7 @@ The easiest way to extract metadata is to use any of our connectors!
     color="violet-70"
     bold="Metadata Connectors"
     icon="add_moderator"
-    href="/openmetadata/connectors"
+    href="/connectors"
   >
     Configure your automated Metadata extraction.
   </InlineCallout>
@@ -25,7 +25,7 @@ If you want to learn more about how to extract metadata from DBT, we have you co
     color="violet-70"
     bold="DBT Ingestion"
     icon="add_moderator"
-    href="/openmetadata/ingestion/workflows/metadata/dbt"
+    href="/connectors/ingestion/workflows/metadata/dbt"
   >
     Extract Metadata and ingest your DBT models.
   </InlineCallout>

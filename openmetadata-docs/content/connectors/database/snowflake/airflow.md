@@ -1,6 +1,6 @@
 ---
 title: Run Snowflake Connector using Airflow SDK
-slug: /openmetadata/connectors/database/snowflake/airflow
+slug: /connectors/database/snowflake/airflow
 ---
 
 # Run Snowflake using the Airflow SDK

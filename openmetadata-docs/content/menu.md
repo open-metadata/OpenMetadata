@@ -157,13 +157,11 @@ site_menu:
   - category: Deployment / Airflow
     url: /deployment/airflow
     
-  - category: Ingest Metadata
-    url: /ingest-metadata
+  - category: Connectors
+    url: /connectors
     color: violet-70
     icon: openmetadata
 
-  - category: Connectors
-    url: connectors
   - category:  Connectors / Database
     url: /connectors/database
   - category:  Connectors / Database / Athena
@@ -433,50 +431,50 @@ site_menu:
   - category: Connectors / Managing Credentials
     url: /connectors/credentials
 
-  - category: Ingestion
-    url: /ingestion
-  - category: Ingestion / Workflows
-    url: /ingestion/workflows
-  - category: Ingestion / Workflows / Metadata
-    url: /ingestion/workflows/metadata
+  - category: Connectors / Ingestion
+    url: /connectors/ingestion
+  - category: Connectors / Ingestion / Workflows
+    url: /connectors/ingestion/workflows
+  - category: Connectors / Ingestion / Workflows / Metadata
+    url: /connectors/ingestion/workflows/metadata
 
-  - category: Ingestion / Workflows/ Metadata / DBT
-    url: /ingestion/workflows/metadata/dbt
-  - category: Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
-    url: /ingestion/workflows/metadata/dbt/ingest-dbt-ui
-  - category: Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
-    url: /ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
-  - category: Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
-    url: /ingestion/workflows/metadata/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows/ Metadata / DBT
+    url: /connectors/ingestion/workflows/metadata/dbt
+  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
+    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-ui
+  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
+    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
+  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
+    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-owner
 
-  - category: Ingestion / Workflows / Usage
-    url: /ingestion/workflows/usage
-  - category: Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
-    url: /ingestion/workflows/usage/usage-workflow-query-logs
-  - category: Ingestion / Workflows / Lineage
-    url: /ingestion/workflows/lineage
-  - category: Ingestion / Workflows / Profiler
-    url: /ingestion/workflows/profiler
-  - category: Ingestion / Workflows / Profiler / Metrics
-    url: /ingestion/workflows/profiler/metrics
-  - category: Ingestion / Workflows / Data Quality
-    url: /ingestion/workflows/data-quality
-  - category: Ingestion / Workflows / Data Quality / Tests
-    url: /ingestion/workflows/data-quality/tests
-  - category: Ingestion / Lineage
-    url: /ingestion/lineage
-  - category: Ingestion / Lineage / Edit Data Lineage Manually
-    url: /ingestion/lineage/edit-lineage-manually
-  - category: Ingestion / Versioning
-    url: /ingestion/versioning
-  - category: Ingestion / Versioning / Change Feeds
-    url: /ingestion/versioning/change-feeds
-  - category: Ingestion / Versioning / Change Events
-    url: /ingestion/versioning/change-events
-  - category: Ingestion / Versioning / Event Notification via Webhooks
-    url: /ingestion/versioning/event-notification-via-webhooks
-  - category: Ingestion / Ingestion Pipeline UI Deployment
-    url: /ingestion/ingestion-pipeline
+  - category: Connectors / Ingestion / Workflows / Usage
+    url: /connectors/ingestion/workflows/usage
+  - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
+    url: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
+  - category: Connectors / Ingestion / Workflows / Lineage
+    url: /connectors/ingestion/workflows/lineage
+  - category: Connectors / Ingestion / Workflows / Profiler
+    url: /connectors/ingestion/workflows/profiler
+  - category: Connectors / Ingestion / Workflows / Profiler / Metrics
+    url: /connectors/ingestion/workflows/profiler/metrics
+  - category: Connectors / Ingestion / Workflows / Data Quality
+    url: /connectors/ingestion/workflows/data-quality
+  - category: Connectors / Ingestion / Workflows / Data Quality / Tests
+    url: /connectors/ingestion/workflows/data-quality/tests
+  - category: Connectors / Ingestion / Lineage
+    url: /connectors/ingestion/lineage
+  - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually
+    url: /connectors/ingestion/lineage/edit-lineage-manually
+  - category: Connectors / Ingestion / Versioning
+    url: /connectors/ingestion/versioning
+  - category: Connectors / Ingestion / Versioning / Change Feeds
+    url: /connectors/ingestion/versioning/change-feeds
+  - category: Connectors / Ingestion / Versioning / Change Events
+    url: /connectors/ingestion/versioning/change-events
+  - category: Connectors / Ingestion / Versioning / Event Notification via Webhooks
+    url: /connectors/ingestion/versioning/event-notification-via-webhooks
+  - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
+    url: /connectors/ingestion/ingestion-pipeline
 
 
   - category: How to guides
@@ -492,25 +490,25 @@ site_menu:
     url: /how-to-guides/cli-ingestion-with-basic-auth
 
 
-   - category: Features
+  - category: Features
     url: /openmetadata
     color: violet-70
     icon: openmetadata
   
-  - category: OpenMetadata / Discovery & Collaboration
+  - category: Features / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
 
-  - category: OpenMetadata / Teams & Users
+  - category: Features / Teams & Users
     url: /openmetadata/users
 
-  - category: OpenMetadata / Integrations
+  - category: Features / Integrations
     url: /openmetadata/integrations
-  - category: OpenMetadata / Integrations / Great Expectations
+  - category: Features / Integrations / Great Expectations
     url: /openmetadata/integrations/great-expectations
-  - category: OpenMetadata / Integrations / Prefect
+  - category: Features / Integrations / Prefect
     url: /openmetadata/integrations/prefect
 
-  - category: OpenMetadata / Glossaries
+  - category: Features / Glossaries
     url: /openmetadata/glossaries
 
   - category: Main Concepts

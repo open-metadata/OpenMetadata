@@ -1,6 +1,6 @@
 ---
 title: Run Dagster Connector using Airflow SDK
-slug: /openmetadata/connectors/pipeline/dagster/airflow
+slug: /connectors/pipeline/dagster/airflow
 ---
 
 # Run Dagster using the Airflow SDK

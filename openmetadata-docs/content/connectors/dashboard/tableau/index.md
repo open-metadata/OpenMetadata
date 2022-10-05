@@ -1,6 +1,6 @@
 ---
 title: Tableau
-slug: /openmetadata/connectors/dashboard/tableau
+slug: /connectors/dashboard/tableau
 ---
 
 # Tableau
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/dashboard/tableau/airflow"
+    link="/connectors/dashboard/tableau/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/dashboard/tableau/cli"
+    link="/connectors/dashboard/tableau/cli"
     size="half"
   />
 </TileContainer>

@@ -1,18 +1,18 @@
 ---
 title: Usage Workflow
-slug: /openmetadata/ingestion/workflows/usage
+slug: /connectors/ingestion/workflows/usage
 ---
 
 # Usage Workflow
 Learn how to configure the Usage workflow from the UI to ingest Query history and Lineage data from your data sources.
 
 This workflow is available ONLY for the following connectors:
-- [BigQuery](/openmetadata/connectors/database/bigquery)
-- [Snowflake](/openmetadata/connectors/database/snowflake)
-- [MSSQL](/openmetadata/connectors/database/mssql)
-- [Redshift](/openmetadata/connectors/database/redshift)
-- [Clickhouse](/openmetadata/connectors/database/clickhouse)
-- [Postgres](/openmetadata/connectors/database/postgres)
+- [BigQuery](/connectors/database/bigquery)
+- [Snowflake](/connectors/database/snowflake)
+- [MSSQL](/connectors/database/mssql)
+- [Redshift](/connectors/database/redshift)
+- [Clickhouse](/connectors/database/clickhouse)
+- [Postgres](/connectors/database/postgres)
 
 If your database service is not yet supported, you can use this same workflow by providing a Query Log file!
 
@@ -23,7 +23,7 @@ Learn how to do so 👇
     color="violet-70"
     bold="Usage Workflow through Query Logs"
     icon="add_moderator"
-    href="/openmetadata/ingestion/workflows/usage/usage-workflow-query-logs"
+    href="/connectors/ingestion/workflows/usage/usage-workflow-query-logs"
   >
     Configure the usage workflow by providing a Query Log file.
   </InlineCallout>

@@ -1,6 +1,6 @@
 ---
 title: Kafka
-slug: /openmetadata/connectors/messaging/kafka
+slug: /connectors/messaging/kafka
 ---
 
 # Kafka
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/messaging/kafka/airflow"
+    link="/connectors/messaging/kafka/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/messaging/kafka/cli"
+    link="/connectors/messaging/kafka/cli"
     size="half"
   />
 </TileContainer>

@@ -1,6 +1,6 @@
 ---
 title: DBT Ingestion from Workflow config
-slug: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
+slug: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
 ---
 
 # Add DBT to your Workflow config

@@ -1,10 +1,10 @@
 ---
 title: Messaging Services
-slug: /openmetadata/connectors/messaging
+slug: /connectors/messaging
 ---
 
 # Messaging Services
 
-- [Kafka](/openmetadata/connectors/messaging/kafka)
+- [Kafka](/connectors/messaging/kafka)
 
-- [Redpanda](/openmetadata/connectors/messaging/redpanda) 
+- [Redpanda](/connectors/messaging/redpanda) 

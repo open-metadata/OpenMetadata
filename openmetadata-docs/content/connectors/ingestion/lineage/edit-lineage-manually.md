@@ -1,6 +1,6 @@
 ---
 title: Edit Data Lineage Manually
-slug: /openmetadata/ingestion/lineage/edit-lineage-manually
+slug: /connectors/ingestion/lineage/edit-lineage-manually
 ---
 
 # Edit Data Lineage Manually

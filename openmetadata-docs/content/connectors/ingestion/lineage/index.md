@@ -1,6 +1,6 @@
 ---
 title: Lineage Ingestion
-slug: /openmetadata/ingestion/lineage
+slug: /connectors/ingestion/lineage
 ---
 
 # Lineage Ingestion
@@ -79,16 +79,16 @@ From 0.12 onwards, there is a separated Lineage Workflow that will take care of 
 The main difference here is between those sources that provide internal access to query logs and those that do not. For
 services such as:
 
-- [BigQuery](/openmetadata/connectors/database/bigquery)
-- [Snowflake](/openmetadata/connectors/database/snowflake)
-- [MSSQL](/openmetadata/connectors/database/mssql)
-- [Redshift](/openmetadata/connectors/database/redshift)
-- [Clickhouse](/openmetadata/connectors/database/clickhouse)
-- [Postgres](/openmetadata/connectors/database/postgres)
+- [BigQuery](/connectors/database/bigquery)
+- [Snowflake](/connectors/database/snowflake)
+- [MSSQL](/connectors/database/mssql)
+- [Redshift](/connectors/database/redshift)
+- [Clickhouse](/connectors/database/clickhouse)
+- [Postgres](/connectors/database/postgres)
 
 There are specific workflows (Usage & Lineage) that will use the query log information. An alternative for sources not
 listed here is to run the workflow by providing the Query Logs that you have previously exported and then running
-the [workflow](/openmetadata/ingestion/workflows/usage/usage-workflow-query-logs).
+the [workflow](/connectors/ingestion/workflows/usage/usage-workflow-query-logs).
 
 #### Process
 
@@ -139,13 +139,13 @@ PowerBI), and prepare the lineage information.
 
 ## Pipeline Services
 
-The supported services here are [Airflow](/openmetadata/connectors/pipeline/airflow), 
-[Fivetran](/openmetadata/connectors/pipeline/fivetran), [Dagster](/openmetadata/connectors/pipeline/dagster) 
-and [Airbyte](/openmetadata/connectors/pipeline/airbyte).
+The supported services here are [Airflow](/connectors/pipeline/airflow), 
+[Fivetran](/connectors/pipeline/fivetran), [Dagster](/connectors/pipeline/dagster) 
+and [Airbyte](/connectors/pipeline/airbyte).
 
 All of them ingest the lineage information out of the box. The only special case is Airflow, where one needs to
 setup `inlets` and `outlets`. You can find more information about it
-[here](https://docs.open-metadata.org/openmetadata/connectors/pipeline/airflow/lineage-backend#adding-lineage).
+[here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend#adding-lineage).
 
 ## Manual Lineage
 

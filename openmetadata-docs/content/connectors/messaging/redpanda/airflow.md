@@ -1,6 +1,6 @@
 ---
 title: Run Redpanda Connector using Airflow SDK
-slug: /openmetadata/connectors/messaging/redpanda/airflow
+slug: /connectors/messaging/redpanda/airflow
 ---
 
 # Run Redpanda using the Airflow SDK

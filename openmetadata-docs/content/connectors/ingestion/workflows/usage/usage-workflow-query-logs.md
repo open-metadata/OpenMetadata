@@ -1,16 +1,16 @@
 ---
 title: Usage Workflow Through Query Logs
-slug: /openmetadata/ingestion/workflows/usage/usage-workflow-query-logs
+slug: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
 ---
 
 # Usage Workflow Through Query Logs
 
 The following database connectors supports usage workflow in OpenMetadata:
-- [BigQuery](/openmetadata/connectors/database/bigquery)
-- [Snowflake](/openmetadata/connectors/database/snowflake)
-- [MSSQL](/openmetadata/connectors/database/mssql)
-- [Redshift](/openmetadata/connectors/database/redshift)
-- [Clickhouse](/openmetadata/connectors/database/clickhouse)
+- [BigQuery](/connectors/database/bigquery)
+- [Snowflake](/connectors/database/snowflake)
+- [MSSQL](/connectors/database/mssql)
+- [Redshift](/connectors/database/redshift)
+- [Clickhouse](/connectors/database/clickhouse)
 
 If you are using any other database connector, direct execution of usage workflow is not possible. This is mainly because these database connectors does not maintain query execution logs which is required for usage workflow. This documentation will help you to learn, how to execute the usage workflow using a query log file for all the database connectors.
 

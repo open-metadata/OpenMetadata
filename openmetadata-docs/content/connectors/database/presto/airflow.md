@@ -1,6 +1,6 @@
 ---
 title: Run Presto Connector using Airflow SDK
-slug: /openmetadata/connectors/database/presto/airflow
+slug: /connectors/database/presto/airflow
 ---
 
 # Run Presto using the Airflow SDK

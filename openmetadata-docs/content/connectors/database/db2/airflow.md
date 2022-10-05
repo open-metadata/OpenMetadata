@@ -1,6 +1,6 @@
 ---
 title: Run DB2 Connector using Airflow SDK
-slug: /openmetadata/connectors/database/db2/airflow
+slug: /connectors/database/db2/airflow
 ---
 
 # Run DB2 using the Airflow SDK

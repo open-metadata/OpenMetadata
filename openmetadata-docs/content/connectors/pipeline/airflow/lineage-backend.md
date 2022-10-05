@@ -1,6 +1,6 @@
 ---
 title: Airflow Lineage Backend
-slug: /openmetadata/connectors/pipeline/airflow/lineage-backend
+slug: /connectors/pipeline/airflow/lineage-backend
 ---
 
 # Airflow Lineage Backend

@@ -1,6 +1,6 @@
 ---
 title: Run Looker Connector using the CLI
-slug: /openmetadata/connectors/dashboard/looker/cli
+slug: /connectors/dashboard/looker/cli
 ---
 
 # Run Looker using the metadata CLI

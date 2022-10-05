@@ -1,6 +1,6 @@
 ---
 title: Glue
-slug: /openmetadata/connectors/database/glue
+slug: /connectors/database/glue
 ---
 
 # Glue
@@ -20,14 +20,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/database/glue/airflow"
+    link="/connectors/database/glue/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/database/glue/cli"
+    link="/connectors/database/glue/cli"
     size="half"
   />
 </TileContainer>
@@ -217,7 +217,7 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-## DBT Integration
+p## DBT Integration
 
 <Tile
 icon="mediation"

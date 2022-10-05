@@ -1,6 +1,6 @@
 ---
 title: Run Redpanda Connector using the CLI
-slug: /openmetadata/connectors/messaging/redpanda/cli
+slug: /connectors/messaging/redpanda/cli
 ---
 
 # Run Redpanda using the metadata CLI

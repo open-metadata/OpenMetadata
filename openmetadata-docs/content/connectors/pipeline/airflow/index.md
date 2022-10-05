@@ -1,6 +1,6 @@
 ---
 title: Airflow
-slug: /openmetadata/connectors/pipeline/airflow
+slug: /connectors/pipeline/airflow
 ---
 
 # Airflow
@@ -18,7 +18,7 @@ extract metadata directly from your Airflow instance or via the CLI:
   title="Ingest directly from your Airflow"
   text="Configure the ingestion with a DAG on your own Airflow instance"
   link={
-    "/openmetadata/connectors/pipeline/airflow/gcs"
+    "/connectors/pipeline/airflow/gcs"
   }
   size="half"
 />
@@ -27,7 +27,7 @@ extract metadata directly from your Airflow instance or via the CLI:
   title="Ingest with the CLI"
   text="Run a one-time ingestion using the metadata CLI"
   link={
-    "/openmetadata/connectors/pipeline/airflow/cli"
+    "/connectors/pipeline/airflow/cli"
   }
   size="half"
 />

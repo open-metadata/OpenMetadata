@@ -1,6 +1,6 @@
 ---
 title: Run Vertica Connector using Airflow SDK
-slug: /openmetadata/connectors/database/vertica/airflow
+slug: /connectors/database/vertica/airflow
 ---
 
 # Run Vertica using the Airflow SDK

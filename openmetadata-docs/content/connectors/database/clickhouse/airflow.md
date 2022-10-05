@@ -1,6 +1,6 @@
 ---
 title: Run Clickhouse Connector using Airflow SDK
-slug: /openmetadata/connectors/database/clickhouse/airflow
+slug: /connectors/database/clickhouse/airflow
 ---
 
 # Run Clickhouse using the Airflow SDK

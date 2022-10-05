@@ -1,6 +1,6 @@
 ---
 title: Run Airflow Connector using the CLI
-slug: /openmetadata/connectors/pipeline/airflow/cli
+slug: /connectors/pipeline/airflow/cli
 ---
 
 # Run Airflow using the metadata CLI

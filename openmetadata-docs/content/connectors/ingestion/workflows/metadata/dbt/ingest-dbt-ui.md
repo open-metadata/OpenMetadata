@@ -1,6 +1,6 @@
 ---
 title: DBT Ingestion UI
-slug: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
+slug: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-ui
 ---
 
 # Add DBT while ingesting from UI

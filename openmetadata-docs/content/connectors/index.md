@@ -9,7 +9,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 
 ## Database Services
 
-- [Athena](/connectors/database/athena)
+ [Athena](/connectors/database/athena)
 - [AzureSQL](/connectors/database/azuresql)
 - [BigQuery](/connectors/database/bigquery)
 - [Clickhouse](/connectors/database/clickhouse)
@@ -53,7 +53,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 
 - [Airbyte](/connectors/pipeline/airbyte)
 - [Airflow](/connectors/pipeline/airflow)
-- [Glue](/connectors/pipeline/glue)
+- [Glue](/connectors/pipeline/glue-pipeline)
 - [Fivetran](/connectors/pipeline/fivetran)
 - [Dagster](/connectors/pipeline/dagster)
 

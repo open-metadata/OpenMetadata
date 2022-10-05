@@ -1,6 +1,6 @@
 ---
 title: Mlflow
-slug: /openmetadata/connectors/ml-model/mlflow
+slug: /connectors/ml-model/mlflow
 ---
 
 # Mlflow
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/ml-model/mlflow/airflow"
+    link="/connectors/ml-model/mlflow/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/ml-model/mlflow/cli"
+    link="/connectors/ml-model/mlflow/cli"
     size="half"
   />
 </TileContainer>

@@ -1,6 +1,6 @@
 ---
 title: Run PowerBI Connector using the CLI
-slug: /openmetadata/connectors/dashboard/powerbi/cli
+slug: /connectors/dashboard/powerbi/cli
 ---
 
 # Run PowerBI using the metadata CLI

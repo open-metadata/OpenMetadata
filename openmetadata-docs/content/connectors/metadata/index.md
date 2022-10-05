@@ -1,9 +1,9 @@
 ---
 title: Metadata Services
-slug: /openmetadata/connectors/metadata
+slug: /connectors/metadata
 ---
 
 # Metadata Services
 
-- [Amundsen](/openmetadata/connectors/metadata/amundsen)
-- [Atlas](/openmetadata/connectors/metadata/atlas)
+- [Amundsen](/connectors/metadata/amundsen)
+- [Atlas](/connectors/metadata/atlas)

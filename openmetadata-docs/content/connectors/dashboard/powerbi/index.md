@@ -1,6 +1,6 @@
 ---
 title: PowerBI
-slug: /openmetadata/connectors/dashboard/powerbi
+slug: /connectors/dashboard/powerbi
 ---
 
 # PowerBI
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/dashboard/powerbi/airflow"
+    link="/connectors/dashboard/powerbi/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/dashboard/powerbi/cli"
+    link="/connectors/dashboard/powerbi/cli"
     size="half"
   />
 </TileContainer>

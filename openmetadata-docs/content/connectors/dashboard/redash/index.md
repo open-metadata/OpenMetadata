@@ -1,6 +1,6 @@
 ---
 title: Redash
-slug: /openmetadata/connectors/dashboard/redash
+slug: /connectors/dashboard/redash
 ---
 
 # Redash
@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/dashboard/redash/airflow"
+    link="/connectors/dashboard/redash/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/dashboard/redash/cli"
+    link="/connectors/dashboard/redash/cli"
     size="half"
   />
 </TileContainer>

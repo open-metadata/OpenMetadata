@@ -1,6 +1,6 @@
 ---
 title: DeltaLake
-slug: /openmetadata/connectors/database/deltalake
+slug: /connectors/database/deltalake
 ---
 
 # Deltalake
@@ -20,14 +20,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/database/deltalake/airflow"
+    link="/connectors/database/deltalake/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/database/deltalake/cli"
+    link="/connectors/database/deltalake/cli"
     size="half"
   />
 </TileContainer>
@@ -248,6 +248,6 @@ From the Connection tab, you can also Edit the Service if needed.
 icon="mediation"
 title="DBT Integration"
 text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/openmetadata/ingestion/workflows/metadata/dbt"
+link="/connectors/ingestion/workflows/metadata/dbt"
 />
 

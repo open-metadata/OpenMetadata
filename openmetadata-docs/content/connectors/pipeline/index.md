@@ -1,12 +1,12 @@
 ---
 title: Pipeline Services
-slug: /openmetadata/connectors/pipeline
+slug: /connectors/pipeline
 ---
 
 # Pipeline Services
 
-- [Airbyte](/openmetadata/connectors/pipeline/airbyte)
-- [Airflow](/openmetadata/connectors/pipeline/airflow)
-- [Glue Pipeline](/openmetadata/connectors/pipeline/glue-pipeline)
-- [Fivetran](/openmetadata/connectors/pipeline/fivetran)
-- [Dagster](/openmetadata/connectors/pipeline/dagster)
+- [Airbyte](/connectors/pipeline/airbyte)
+- [Airflow](/connectors/pipeline/airflow)
+- [Glue Pipeline](/connectors/pipeline/glue-pipeline)
+- [Fivetran](/connectors/pipeline/fivetran)
+- [Dagster](/connectors/pipeline/dagster)

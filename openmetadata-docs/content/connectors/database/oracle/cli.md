@@ -1,6 +1,6 @@
 ---
 title: Run Oracle Connector using the CLI
-slug: /openmetadata/connectors/database/oracle/cli
+slug: /connectors/database/oracle/cli
 ---
 
 # Run Oracle using the metadata CLI

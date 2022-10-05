@@ -1,6 +1,6 @@
 ---
 title: Run BigQuery Connector using Airflow SDK
-slug: /openmetadata/connectors/database/bigquery/airflow
+slug: /connectors/database/bigquery/airflow
 ---
 
 # Run BigQuery using the Airflow SDK 

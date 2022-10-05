@@ -1,6 +1,6 @@
 ---
 title: Run MariaDB Connector using Airflow SDK
-slug: /openmetadata/connectors/database/mariadb/airflow
+slug: /connectors/database/mariadb/airflow
 ---
 
 # Run MariaDB using the Airflow SDK

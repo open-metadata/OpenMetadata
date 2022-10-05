@@ -1,6 +1,6 @@
 ---
 title: Run Databricks Connector using the CLI
-slug: /openmetadata/connectors/database/databricks/cli
+slug: /connectors/database/databricks/cli
 ---
 
 # Run Databricks using the metadata CLI

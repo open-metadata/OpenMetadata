@@ -1,6 +1,6 @@
 ---
 title: Redshift Connector Troubleshooting
-slug: /openmetadata/connectors/database/redshift/troubleshooting
+slug: /connectors/database/redshift/troubleshooting
 ---
 
 # Troubleshooting

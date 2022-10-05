@@ -48,7 +48,7 @@ OpenMetadata uses MySQL for the metadata catalog. The catalog code is located in
 The database entity tables are created using the command [`OpenMetadata/bootstrap/bootstrap_storage.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/bootstrap_storage.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
 
 ### Elasticsearch
-OpenMetadata uses Elasticsearch to store the Entity change events and makes it searchable by search index. The [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventHandler.java`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/elasticsearch/ElasticSearchEventHandler.java) is responsible for capturing the change events and updating Elasticsearch.
+OpenMetadata uses Elasticsearch to store the Entity change events and makes it searchable by search index. The [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/service/elasticsearch/ElasticSearchEventPublisher.java`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/elasticsearch/ElasticSearchEventPublisher.java) is responsible for capturing the change events and updating Elasticsearch.
 
 Elasticsearch indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
 
@@ -71,7 +71,7 @@ OpenMetadata defines and uses a set of components called `Connectors` for metada
 5. Stage [`OpenMetadata/ingestion/src/metadata/ingestion/api/stage.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/stage.py)
 6. BulkSink [`OpenMetadata/ingestion/src/metadata/ingestion/api/bulk_sink.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/bulk_sink.py)
 
-Workflow is a simple orchestration job that runs `Source`, `Processor`, `Sink`, `Stage` and `BulkSink` based on the configurations present under [`OpenMetadata/ingestion/examples/workflows`](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows).
+Workflow is a simple orchestration job that runs `Source`, `Processor`, `Sink`, `Stage` and `BulkSink` based on the configurations present under [`OpenMetadata/ingestion/examples/workflows`](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/examples/workflows).
 
 There are some popular connectors already developed and can be found under:
 
@@ -89,4 +89,4 @@ See the directory [`OpenMetadata/ingestion/examples/airflow/dags`](https://githu
 
 **JsonSchema python typings**
 
-You can generate Python types for OpenMetadata models defined using Json Schema using the make generate command of the [`Makefile`](https://github.com/open-metadata/OpenMetadata/blob/main/Makefile/README.md). Generated files are located in the directory `OpenMetadata/ingestion/src/metadata/generated`
+You can generate Python types for OpenMetadata models defined using Json Schema using the make generate command of the [`Makefile`](https://github.com/open-metadata/OpenMetadata/blob/main/Makefile). Generated files are located in the directory `OpenMetadata/ingestion/src/metadata/generated`

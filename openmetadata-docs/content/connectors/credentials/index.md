@@ -1,6 +1,6 @@
 ---
 title: Managing Credentials
-slug: /openmetadata/connectors/credentials
+slug: /connectors/credentials
 ---
 
 # Manging Credentials in the CLI
@@ -8,7 +8,7 @@ slug: /openmetadata/connectors/credentials
 When running Workflow with the CLI or your favourite scheduler, it's safer to not have the services' credentials
 at plain sight. For the CLI, the ingestion package can load sensitive information from environment variables.
 
-For example, if you are using the [Glue](/openmetadata/connectors/database/glue) connector you could specify the
+For example, if you are using the [Glue](/connectors/database/glue) connector you could specify the
 AWS configurations as follows in the case of a JSON config file
 
 ```json

@@ -1,6 +1,6 @@
 ---
 title: Run Salesforce Connector using Airflow SDK
-slug: /openmetadata/connectors/database/salesforce/airflow
+slug: /connectors/database/salesforce/airflow
 ---
 
 # Run Salesforce using the Airflow SDK

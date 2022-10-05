@@ -1,6 +1,6 @@
 ---
 title: Run Presto Connector using the CLI
-slug: /openmetadata/connectors/database/presto/cli
+slug: /connectors/database/presto/cli
 ---
 
 # Run Presto using the metadata CLI

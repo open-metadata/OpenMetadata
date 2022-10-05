@@ -1,6 +1,6 @@
 ---
 title: Run SingleStore Connector using Airflow SDK
-slug: /openmetadata/connectors/database/singlestore/airflow
+slug: /connectors/database/singlestore/airflow
 ---
 
 # Run Singlestore using the Airflow SDK
@@ -33,7 +33,7 @@ pip3 install "openmetadata-ingestion[singlestore]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/singlestoreConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/singleStoreConnection.json)
 you can find the structure to create a connection to Singlestore.
 
 In order to create and run a Metadata Ingestion workflow, we will follow

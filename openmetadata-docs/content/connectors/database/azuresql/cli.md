@@ -1,6 +1,6 @@
 ---
 title: Run AzureSQL Connector using the CLI
-slug: /openmetadata/connectors/database/azuresql/cli
+slug: /connectors/database/azuresql/cli
 ---
 
 # Run AzureSQL using the metadata CLI
@@ -33,7 +33,7 @@ pip3 install "openmetadata-ingestion[azuresql]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/azuresqlConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/azureSQLConnection.json)
 you can find the structure to create a connection to AzureSQL.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
