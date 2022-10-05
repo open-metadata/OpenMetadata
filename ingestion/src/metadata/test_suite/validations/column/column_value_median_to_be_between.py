@@ -86,7 +86,7 @@ def column_value_median_to_be_between(
         (
             float(param.value)
             for param in test_case.parameterValues
-            if param.name == "maxValueForMedianInCol"
+            if param.name == "maxColValue"
         )
     )
 
