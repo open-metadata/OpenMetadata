@@ -162,12 +162,16 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+  - category: How to guides / CLI Ingestion with basic auth
+    url: /how-to-guides/cli-ingestion-with-basic-auth
+  - category: How to guides / Feature configurations
+    url: /how-to-guides/feature-configurations
+  - category: How to guides / Feature configurations / Bots
+    url: /how-to-guides/feature-configurations/bots
   - category: How to guides / Teams and Users
     url: /how-to-guides/teams-and-users
   - category: How to guides / Teams and Users / How to Organise Teams and Users
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
-  - category: How to guides / CLI Ingestion with basic auth
-    url: /how-to-guides/cli-ingestion-with-basic-auth
 
   - category: OpenMetadata
     url: /openmetadata
