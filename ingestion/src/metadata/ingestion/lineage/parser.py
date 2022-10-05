@@ -37,7 +37,9 @@ DictConfigurator.configure = configure
 logger = ingestion_logger()
 
 
-def get_involved_tables_from_parser(parser: LineageRunner) -> Optional[List[models.Table]]:
+def get_involved_tables_from_parser(
+    parser: LineageRunner,
+) -> Optional[List[models.Table]]:
     """
     Use the LineageRunner parser and combine
     source and intermediate tables into

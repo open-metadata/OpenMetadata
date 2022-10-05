@@ -35,7 +35,9 @@ LRU_CACHE_SIZE = 4096
 def split_raw_table_name(database: str, raw_name: str) -> dict:
     database_schema = None
     if "." in raw_name:
-        database_schema, table = fqn.split(raw_name)[-2:]  # pylint: disable=unbalanced-tuple-unpacking
+        database_schema, table = fqn.split(raw_name)[
+            -2:
+        ]  # pylint: disable=unbalanced-tuple-unpacking
         if database_schema == "<default>":
             database_schema = None
     return {"database": database, "database_schema": database_schema, "table": table}
@@ -52,6 +54,7 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
             return tbl_column.fullyQualifiedName.__root__
 
     return None
+
 
 search_cache = LRUCache(LRU_CACHE_SIZE)
 
@@ -150,6 +153,7 @@ def get_table_entities_from_query(
         return table_entities
 
     return None
+
 
 def get_column_lineage(
     to_entity: Table,
@@ -319,7 +323,9 @@ def get_lineage_by_query(
     # Disable the DictConfigurator.configure method while importing LineageRunner
     configure = DictConfigurator.configure
     DictConfigurator.configure = lambda _: None
-    from sqllineage.runner import LineageRunner  # pylint: disable=import-outside-toplevel
+    from sqllineage.runner import (
+        LineageRunner,  # pylint: disable=import-outside-toplevel
+    )
 
     # Reverting changes after import is done
     DictConfigurator.configure = configure
@@ -401,7 +407,9 @@ def get_lineage_via_table_entity(
     # Disable the DictConfigurator.configure method while importing LineageRunner
     configure = DictConfigurator.configure
     DictConfigurator.configure = lambda _: None
-    from sqllineage.runner import LineageRunner  # pylint: disable=import-outside-toplevel
+    from sqllineage.runner import (
+        LineageRunner,  # pylint: disable=import-outside-toplevel
+    )
 
     # Reverting changes after import is done
     DictConfigurator.configure = configure
