@@ -184,7 +184,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
   @Test
   void post_IngestionPipelineWithConfig_200_ok(TestInfo test) throws IOException {
-	createAndCheckEntity(createRequest(test).withSourceConfig(DATABASE_METADATA_CONFIG), ADMIN_AUTH_HEADERS);
+    createAndCheckEntity(createRequest(test).withSourceConfig(DATABASE_METADATA_CONFIG), ADMIN_AUTH_HEADERS);
   }
 
   @Test
