@@ -31,7 +31,7 @@ pip3 install "openmetadata-ingestion[glue]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/glueConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/glueConnection.json)
 you can find the structure to create a connection to Glue.
 
 In order to create and run a Metadata Ingestion workflow, we will follow

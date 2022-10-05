@@ -16,14 +16,7 @@ You can ingest DBT Metadata both with the UI or by writing down your Workflow co
   >
     Configure the DBT ingestion directly in the UI.
   </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="DBT CLI ingestion"
-    icon="cable"
-    href="/openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-cli"
-  >
-    Prepare the DBT ingestion with the CLI or your favourite scheduler.
-  </InlineCallout>
+
 </InlineCalloutContainer>
 
 ### What is DBT?

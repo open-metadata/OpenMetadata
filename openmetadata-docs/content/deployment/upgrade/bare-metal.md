@@ -37,7 +37,7 @@ Before proceeding, pleae make sure you made a backup of your MySQL/Postgres DB b
 OpenMetadata release binaries are maintained as GitHub releases.
 
 To download a specific release binary:
-1. Visit [github.com/open-metadata/OpenMetadata/releases](github.com/open-metadata/OpenMetadata/releases). The latest
+1. Visit [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest
   release will be at the top of this page. 
 2. Locate the Assets' section for the release you want to upgrade to. 
 3. Download the release binaries. The release binaries will be in a compressed tar file named using the following 
@@ -157,13 +157,6 @@ MySQL) and index (in Elasticsearch).
 ./bootstrap/bootstrap_storage.sh migrate-all
 ```
 
-<Note>
-
-This step will be different in the 0.9 to 0.10 upgrade as it is a backward incompatible change.
-
-Find specific instructions [here](/deployment/upgrades/versions/090-to-010).
-
-</Note>
 
 ### 7. Restart the OpenMetadata server
 

@@ -19,14 +19,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/openmetadata/connectors/pipeline/glue/airflow"
+    link="/connectors/pipeline/glue-pipeine/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/openmetadata/connectors/pipeline/glue/cli"
+    link="/connectors/pipeline/glue-pipeline/cli"
     size="half"
   />
 </TileContainer>

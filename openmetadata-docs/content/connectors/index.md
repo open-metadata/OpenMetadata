@@ -1,6 +1,6 @@
 ---
 title: Connectors
-slug: /openmetadata/connectors
+slug: /connectors
 ---
 
 # Connectors
@@ -9,59 +9,59 @@ OpenMetadata can extract metadata from the following list of connectors:
 
 ## Database Services
 
-- [Athena](/openmetadata/connectors/database/athena)
-- [AzureSQL](/openmetadata/connectors/database/azuresql)
-- [BigQuery](/openmetadata/connectors/database/bigquery)
-- [Clickhouse](/openmetadata/connectors/database/clickhouse)
-- [Databricks](/openmetadata/connectors/database/databricks)
-- [Datalake](/openmetadata/connectors/database/datalake)
-- [DB2](/openmetadata/connectors/database/db2)
-- [DeltaLake](/openmetadata/connectors/database/deltalake)
-- [Druid](/openmetadata/connectors/database/druid)
-- [DynamoDB](/openmetadata/connectors/database/dynamocb)
-- [Glue](/openmetadata/connectors/database/glue)
-- [Hive](/openmetadata/connectors/database/hive)
-- [MariaDB](/openmetadata/connectors/database/mariadb)
-- [MSSQL](/openmetadata/connectors/database/mssql)
-- [MySQL](/openmetadata/connectors/database/mysql)
-- [Oracle](/openmetadata/connectors/database/oracle)
-- [Postgres](/openmetadata/connectors/database/postgres)
-- [Presto](/openmetadata/connectors/database/presto)
-- [Redshift](/openmetadata/connectors/database/redshift)
-- [Salesforce](/openmetadata/connectors/database/salesforce)
-- [SingleStore](/openmetadata/connectors/database/singlestore)
-- [Snowflake](/openmetadata/connectors/database/snowflake)
-- [Trino](/openmetadata/connectors/database/trino)
-- [Vertica](/openmetadata/connectors/database/vertica)
+- [Athena](/connectors/database/athena)
+- [AzureSQL](/connectors/database/azuresql)
+- [BigQuery](/connectors/database/bigquery)
+- [Clickhouse](/connectors/database/clickhouse)
+- [Databricks](/connectors/database/databricks)
+- [Datalake](/connectors/database/datalake)
+- [DB2](/connectors/database/db2)
+- [DeltaLake](/connectors/database/deltalake)
+- [Druid](/connectors/database/druid)
+- [DynamoDB](/connectors/database/dynamodb)
+- [Glue](/connectors/database/glue)
+- [Hive](/connectors/database/hive)
+- [MariaDB](/connectors/database/mariadb)
+- [MSSQL](/connectors/database/mssql)
+- [MySQL](/connectors/database/mysql)
+- [Oracle](/connectors/database/oracle)
+- [Postgres](/connectors/database/postgres)
+- [Presto](/connectors/database/presto)
+- [Redshift](/connectors/database/redshift)
+- [Salesforce](/connectors/database/salesforce)
+- [SingleStore](/connectors/database/singlestore)
+- [Snowflake](/connectors/database/snowflake)
+- [Trino](/connectors/database/trino)
+- [Vertica](/connectors/database/vertica)
 
 ## Dashboard Services
 
-- [Looker](/openmetadata/connectors/dashboard/looker)
-- [Metabase](/openmetadata/connectors/dashboard/metabase)
-- [Mode](/openmetadata/connectors/dashboard/mode)
-- [PowerBI](/openmetadata/connectors/dashboard/powerbi)
-- [Redash](/openmetadata/connectors/dashboard/redash)
-- [Superset](/openmetadata/connectors/dashboard/superset)
-- [Tableau](/openmetadata/connectors/dashboard/tableau)
+- [Looker](/connectors/dashboard/looker)
+- [Metabase](/connectors/dashboard/metabase)
+- [Mode](/connectors/dashboard/mode)
+- [PowerBI](/connectors/dashboard/powerbi)
+- [Redash](/connectors/dashboard/redash)
+- [Superset](/connectors/dashboard/superset)
+- [Tableau](/connectors/dashboard/tableau)
 
 ## Messaging Services
 
-- [Kafka](/openmetadata/connectors/messaging/kafka)
-- [Redpanda](/openmetadata/connectors/messaging/redpanda)
+- [Kafka](/connectors/messaging/kafka)
+- [Redpanda](/connectors/messaging/redpanda)
 
 ## Pipeline Services
 
-- [Airbyte](/openmetadata/connectors/pipeline/airbyte)
-- [Airflow](/openmetadata/connectors/pipeline/airflow)
-- [Glue](/openmetadata/connectors/pipeline/glue)
-- [Fivetran](/openmetadata/connectors/pipeline/fivetran)
-- [Dagster](/openmetadata/connectors/pipeline/dagster)
+- [Airbyte](/connectors/pipeline/airbyte)
+- [Airflow](/connectors/pipeline/airflow)
+- [Glue](/connectors/pipeline/glue)
+- [Fivetran](/connectors/pipeline/fivetran)
+- [Dagster](/connectors/pipeline/dagster)
 
 ## ML Model Services
 
-- [Mlflow](/openmetadata/connectors/ml-model/mlflow)
+- [Mlflow](/connectors/ml-model/mlflow)
 
 ## Metadata Services
 
-- [Amundsen](/openmetadata/connectors/metadata/amundsen)
-- [Atlas](/openmetadata/connectors/metadata/atlas)
+- [Amundsen](/connectors/metadata/amundsen)
+- [Atlas](/connectors/metadata/atlas)
