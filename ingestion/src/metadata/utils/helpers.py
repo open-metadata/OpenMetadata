@@ -11,6 +11,7 @@
 
 import re
 from datetime import datetime, timedelta
+from functools import wraps
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -66,6 +67,7 @@ om_chart_type_dict = {
 
 
 def calculate_execution_time(func):
+    @wraps(func)
     def calculate_debug_time(*args, **kwargs):
         start = perf_counter()
         func(*args, **kwargs)
