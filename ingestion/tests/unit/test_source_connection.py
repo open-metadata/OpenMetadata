@@ -143,6 +143,23 @@ class SouceConnectionTest(TestCase):
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
+    def test_hive_url_conn_options_with_db(self):
+        expected_result = "hive://localhost:10000/test_db?Key=Value"
+        hive_conn_obj = HiveConnection(
+            hostPort="localhost:10000",
+            databaseSchema="test_db",
+            connectionOptions={"Key": "Value"},
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_hive_url_conn_options_without_db(self):
+        expected_result = "hive://localhost:10000?Key=Value"
+        hive_conn_obj = HiveConnection(
+            hostPort="localhost:10000",
+            connectionOptions={"Key": "Value"},
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
+
     def test_hive_url_with_kerberos_auth(self):
         expected_result = "hive://localhost:10000"
         hive_conn_obj = HiveConnection(

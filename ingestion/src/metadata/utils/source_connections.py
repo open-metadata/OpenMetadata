@@ -340,9 +340,6 @@ def _(connection: HiveConnection):
     )
 
     if options:
-        if not connection.databaseSchema:
-            url += "/"
-        url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
