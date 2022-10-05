@@ -247,7 +247,7 @@ public class TeamRepository extends EntityRepository<Team> {
     List<Team> allTeams = resultList.getData();
     List<Team> joinableTeams =
         allTeams.stream()
-            .filter(isJoinable ? Team::getIsJoinable : t -> true)
+            .filter(Boolean.TRUE.equals(isJoinable) ? Team::getIsJoinable : t -> true)
             .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
             .collect(Collectors.toList());
     // build hierarchy of joinable teams
