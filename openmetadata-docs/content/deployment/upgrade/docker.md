@@ -26,7 +26,7 @@ wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-r
 ```
 or if you wish to use postgres as the database
 ```
-wget https://github.com/open-metadata/OpenMetadata/releases/download/0.12.0-release/docker-compose-postgres.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-release/docker-compose-postgres.yml
 ```
 
 ### 2. Backup your Data [IMPORTANT]
