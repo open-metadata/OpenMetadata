@@ -242,7 +242,7 @@ public final class TablesInitializer {
             config.getDataSourceFactory().getPassword());
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
-            .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
       case CREATE:
@@ -301,7 +301,7 @@ public final class TablesInitializer {
         createIngestionBot(config, jdbi);
         break;
       case UPDATE_INGESTION_BOT:
-        updateIngestionBot(config);
+        updateIngestionBot(config, jdbi);
         break;
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
@@ -364,15 +364,7 @@ public final class TablesInitializer {
     }
   }
 
-  private static void updateIngestionBot(OpenMetadataApplicationConfig config) {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+  private static void updateIngestionBot(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     String domain =
         config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
             ? DEFAULT_PRINCIPAL_DOMAIN
