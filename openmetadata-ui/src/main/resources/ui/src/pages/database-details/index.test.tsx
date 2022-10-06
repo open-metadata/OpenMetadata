@@ -100,6 +100,85 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
+const mockAllFeeds = {
+  data: [
+    {
+      id: 'ac2e6128-9f23-4f28-acf8-31d50b06f8cc',
+      type: 'Task',
+      href: 'http://localhost:8585/api/v1/feed/ac2e6128-9f23-4f28-acf8-31d50b06f8cc',
+      threadTs: 1664445686074,
+      about: '<#E::table::sample_data.ecommerce_db.shopify.raw_order::tags>',
+      entityId: 'c514ca18-2ea4-44b1-aa06-0c66bc0cd355',
+      createdBy: 'bharatdussa',
+      updatedAt: 1664445691373,
+      updatedBy: 'bharatdussa',
+      resolved: false,
+      message: 'Update tags for table',
+      postsCount: 1,
+      posts: [
+        {
+          id: 'd497bea2-0bfe-4a9f-9ce6-d560129fef4a',
+          message: 'Resolved the Task with Tag(s) - PersonalData.Personal',
+          postTs: 1664445691368,
+          from: 'bharatdussa',
+          reactions: [],
+        },
+      ],
+      reactions: [],
+      task: {
+        id: 11,
+        type: 'UpdateTag',
+        assignees: [
+          {
+            id: 'f187364d-114c-4426-b941-baf6a15f70e4',
+            type: 'user',
+            name: 'bharatdussa',
+            fullyQualifiedName: 'bharatdussa',
+            displayName: 'Bharat Dussa',
+            deleted: false,
+          },
+        ],
+        status: 'Closed',
+        closedBy: 'bharatdussa',
+        closedAt: 1664445691340,
+        oldValue:
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+        suggestion:
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+        newValue:
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+      },
+    },
+  ],
+  paging: { after: 'MTY2NDQ0NDcyODY1MA==', total: 134 },
+};
+
+const mockFeedCount = {
+  totalCount: 6,
+  counts: [
+    {
+      count: 3,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::columns::comments::tags>',
+    },
+    {
+      count: 1,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::owner>',
+    },
+    {
+      count: 1,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::tags>',
+    },
+    {
+      count: 1,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::description>',
+    },
+  ],
+};
+
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
@@ -150,6 +229,19 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
   getDatabaseSchemas: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockSchemaData)),
+}));
+
+jest.mock('../../axiosAPIs/feedsAPI', () => ({
+  getAllFeeds: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockAllFeeds)),
+  getFeedCount: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockFeedCount)),
+
+  postFeedById: jest.fn().mockImplementation(() => Promise.resolve({})),
+
+  postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
 jest.mock('../../components/containers/PageContainer', () => {

@@ -34,7 +34,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const { Option } = Select;
 
-interface RuleFormProps {
+export interface RuleFormProps {
   ruleData: Rule;
   setRuleData: (value: React.SetStateAction<Rule>) => void;
 }

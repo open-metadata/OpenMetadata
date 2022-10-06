@@ -49,9 +49,14 @@ const mockCustomEdgeProp = {
 
 describe('Test CustomEdge Component', () => {
   it('Check if CustomEdge has all child elements', async () => {
-    const { container } = render(<CustomEdge {...mockCustomEdgeProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <svg>
+        <CustomEdge {...mockCustomEdgeProp} />
+      </svg>,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const deleteButton = await findByTestId(container, 'delete-button');
     const edgePathElement = await findAllByTestId(
@@ -65,7 +70,9 @@ describe('Test CustomEdge Component', () => {
 
   it('Check if CustomEdge has selected as false', async () => {
     const { container } = render(
-      <CustomEdge {...mockCustomEdgeProp} selected={false} />,
+      <svg>
+        <CustomEdge {...mockCustomEdgeProp} selected={false} />
+      </svg>,
       {
         wrapper: MemoryRouter,
       }

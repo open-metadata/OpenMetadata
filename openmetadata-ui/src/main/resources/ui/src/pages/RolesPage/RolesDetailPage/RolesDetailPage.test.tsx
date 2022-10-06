@@ -12,8 +12,11 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { ColumnsType } from 'antd/lib/table';
 import React from 'react';
 import { getRoleByName } from '../../../axiosAPIs/rolesAPIV1';
+import { Column } from '../../../generated/api/data/createTable';
+import { Role } from '../../../generated/entity/teams/role';
 import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
@@ -75,6 +78,32 @@ jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
       EditCustomFields: true,
     }),
   }),
+}));
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Table: jest.fn().mockImplementation(({ columns, dataSource }) => (
+    <table data-testid="list-table">
+      <thead>
+        <tr>
+          {(columns as ColumnsType<Role>).map((col) => (
+            <th key={col.key}>{col.title}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody key="tbody">
+        {dataSource.map((row: Column, i: number) => (
+          <tr key={i}>
+            {(columns as ColumnsType<Role>).map((col, index) => (
+              <td key={col.key}>
+                {col.render ? col.render(row, dataSource, index) : 'alt'}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )),
 }));
 
 describe('Test Roles Details Page', () => {

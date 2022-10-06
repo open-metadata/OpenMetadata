@@ -12,7 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { ColumnsType } from 'antd/lib/table';
 import React from 'react';
+import { Column } from '../../../generated/api/data/createTable';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesList from './PoliciesList';
@@ -79,6 +81,32 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 jest.mock('../../../utils/RouterUtils', () => ({
   getPolicyWithFqnPath: jest.fn(),
   getRoleWithFqnPath: jest.fn(),
+}));
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Table: jest.fn().mockImplementation(({ columns, dataSource }) => (
+    <table data-testid="policies-list-table">
+      <thead>
+        <tr>
+          {(columns as ColumnsType<Policy>).map((col) => (
+            <th key={col.key}>{col.title}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody key="tbody">
+        {dataSource.map((row: Column, i: number) => (
+          <tr key={i}>
+            {(columns as ColumnsType<Policy>).map((col, index) => (
+              <td key={col.key}>
+                {col.render ? col.render(row, dataSource, index) : 'alt'}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )),
 }));
 
 const mockProps = {
