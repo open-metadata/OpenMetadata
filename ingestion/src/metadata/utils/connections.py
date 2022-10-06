@@ -48,7 +48,7 @@ from metadata.clients.connection_clients import (
     RedashClient,
     SalesforceClient,
     SupersetClient,
-    TableauClient,
+    TableauClient, DemoClientWrapper,
 )
 from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
@@ -107,6 +107,7 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
+from metadata.generated.schema.entity.services.connections.mlmodel.demoConnection import DemoConnection
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
@@ -838,8 +839,28 @@ def _(connection: MlflowConnection, verbose: bool = False):
     )
 
 
+@get_connection.register
+def _(connection: DemoConnection, verbose: bool = False):
+    from mlflow.tracking import MlflowClient
+
+    return DemoClientWrapper(
+        MlflowClient(
+            tracking_uri=connection.trackingUri,
+            registry_uri=connection.registryUri,
+        )
+    )
+
+
 @test_connection.register
 def _(connection: MlflowClientWrapper) -> None:
+    try:
+        connection.client.list_registered_models()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+@test_connection.register
+def _(connection: DemoClientWrapper) -> None:
     try:
         connection.client.list_registered_models()
     except Exception as exc:

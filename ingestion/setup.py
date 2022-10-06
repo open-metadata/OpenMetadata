@@ -78,6 +78,7 @@ plugins: Dict[str, Set[str]] = {
         "pyarrow==6.0.1",
         "boto3~=1.19.12",
     },
+    "demo": {"mlflow-skinny~=1.26.1"},
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch==7.13.1", "requests-aws4auth==1.1.2"},
