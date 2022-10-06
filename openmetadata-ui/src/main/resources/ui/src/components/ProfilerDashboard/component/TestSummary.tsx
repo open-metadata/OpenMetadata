@@ -14,7 +14,7 @@
 import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Legend,
@@ -85,7 +85,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       }, {});
 
       chartData.push({
-        name: moment.unix(result.timestamp || 0).format('DD/MMM HH:mm'),
+        name: DateTime.fromSeconds(result.timestamp || 0).toFormat(
+          'dd/MMM HH:mm'
+        ),
         status: result.testCaseStatus || '',
         ...values,
       });
@@ -126,10 +128,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (isEmpty(data)) return;
 
     try {
-      const startTs = moment()
-        .subtract(PROFILER_FILTER_RANGE[selectedTimeRange].days, 'days')
-        .unix();
-      const endTs = moment().unix();
+      const startTs = DateTime.local()
+        .minus({ days: PROFILER_FILTER_RANGE[selectedTimeRange].days })
+        .toSeconds();
+
+      const endTs = DateTime.local().toSeconds();
       const { data: chartData } = await getListTestCaseResults(
         getEncodedFqn(data.fullyQualifiedName || ''),
         {

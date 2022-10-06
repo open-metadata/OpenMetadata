@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import moment from 'moment';
+import { DateTime } from 'luxon';
 
 const msPerSecond = 1000;
 const msPerMinute = 60 * msPerSecond;
@@ -18,6 +18,40 @@ const msPerHour = msPerMinute * 60;
 const msPerDay = msPerHour * 24;
 const msPerMonth = msPerDay * 30;
 const msPerYear = msPerDay * 365;
+
+const formattingObj = {
+  sameDay: "'Today'",
+  lastDay: "'Yesterday'",
+  lastWeek: 'dd MMMM yyyy',
+  sameElse: 'dd MMMM yyyy',
+};
+
+const activityFeedTimeFormat = {
+  sameDay: "'Today at' t a",
+  lastDay: "'Yesterday at' t a",
+  lastWeek: "'Last' EEEE 'at' t a",
+  sameElse: 'dd/MM/yyyy',
+};
+
+/**
+ * If the difference between the two dates is less than -1, return 'lastWeek'. If the difference is
+ * less than 0, return 'lastDay'. If the difference is less than 1, return 'sameDay'. Otherwise, return
+ * 'sameElse'.
+ * @param {DateTime} myDateTime - The date you want to format.
+ * @param {DateTime} now - The current date and time.
+ * @returns A string
+ */
+const getCalendarFormat = (myDateTime: DateTime, now: DateTime): string => {
+  const diff = myDateTime.diff(now.startOf('day'), 'days').as('days');
+
+  if (diff < -1) return 'lastWeek';
+
+  if (diff < 0) return 'lastDay';
+
+  if (diff < 1) return 'sameDay';
+
+  return 'sameElse';
+};
 
 export const getRelativeTimeDifference = (
   current: number,
@@ -85,27 +119,37 @@ export const getRelativeTime = (timestamp: number): string => {
   return getRelativeTimeDifference(Date.now(), timestamp);
 };
 
+const getFormattedDateTime = (
+  dt1: DateTime,
+  dt2: DateTime,
+  formattingRulesObj: Record<string, string>
+) => {
+  const format = getCalendarFormat(dt1, dt2) || 'sameElse';
+
+  return dt1.toFormat(formattingRulesObj[format]);
+};
+
 export const getRelativeDay = (timestamp: number): string => {
   return getRelativeDayDifference(Date.now(), timestamp);
 };
 
 export const getRelativeDateByTimeStamp = (timeStamp: number): string => {
-  return moment(timeStamp).calendar(null, {
-    sameDay: '[Today]',
-    nextDay: 'DD MMMM YYYY',
-    nextWeek: 'DD MMMM YYYY',
-    lastDay: '[Yesterday]',
-    lastWeek: 'DD MMMM YYYY',
-    sameElse: 'DD MMMM YYYY',
-  });
+  return getFormattedDateTime(
+    DateTime.fromMillis(timeStamp),
+    DateTime.now(),
+    formattingObj
+  );
 };
 
-export const getTimeByTimeStamp = (timeStamp: number): string => {
-  return moment(timeStamp, 'x').format('hh:mm A');
-};
+export const getTimeByTimeStamp = (timeStamp: number): string =>
+  DateTime.fromMillis(timeStamp).toFormat('hh:mm a');
 
 export const getDayTimeByTimeStamp = (timeStamp: number): string => {
-  return moment(timeStamp, 'x').calendar();
+  return getFormattedDateTime(
+    DateTime.fromMillis(timeStamp),
+    DateTime.now(),
+    activityFeedTimeFormat
+  );
 };
 
 export const getUTCDateTime = (dateTime: string) => {
@@ -122,11 +166,11 @@ export const getUTCDateTime = (dateTime: string) => {
 };
 
 export const getDateTimeByTimeStamp = (timeStamp: number): string => {
-  return moment(timeStamp, 'x').format('DD MMMM YYYY hh:mm A');
+  return DateTime.fromMillis(timeStamp).toFormat('dd MMM yyyy hh:mm a');
 };
 
 export const getLocaleDate = (timeStamp: number): string => {
-  return moment(timeStamp, 'x').format('yyyy-MM-DDThh:mm');
+  return DateTime.fromMillis(timeStamp).toISO({ includeOffset: false });
 };
 
 export const getTimeZone = (): string => {
@@ -146,7 +190,7 @@ export const getTimeZone = (): string => {
 };
 
 export const getDateTimeByTimeStampWithZone = (timeStamp: number): string => {
-  return `${moment(timeStamp, 'x').format(
-    'DD MMM YYYY, hh:mm'
+  return `${DateTime.fromMillis(timeStamp).toFormat(
+    'dd MMM yyyy, hh:mm'
   )} ${getTimeZone()}`;
 };

@@ -14,7 +14,7 @@
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import React, {
   FC,
   Fragment,
@@ -75,10 +75,11 @@ const PipelineStatusList: FC<Prop> = ({
 
   const fetchPipelineStatus = async () => {
     try {
-      const startTs = moment()
-        .subtract(PROFILER_FILTER_RANGE.last60days.days, 'days')
-        .unix();
-      const endTs = moment().unix();
+      const startTs = DateTime.now()
+        .minus({ days: PROFILER_FILTER_RANGE.last60days.days })
+        .toSeconds();
+
+      const endTs = DateTime.now().toSeconds();
 
       const response = await getPipelineStatus(pipelineFQN, {
         startTs,

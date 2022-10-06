@@ -18,8 +18,8 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import _ from 'lodash';
+import { DateTime } from 'luxon';
 import { ScrollHandle } from 'Models';
-import moment from 'moment';
 import React, {
   HTMLAttributes,
   useEffect,
@@ -57,8 +57,8 @@ const ExecutionStrip = ({
 
   const getExecutionTooltip = (execution: PipelineStatus) => {
     const executionDate = execution.timestamp as number;
-    const momentDate = moment.unix(executionDate).format('DD MMM YYYY');
-    const momentTime = moment.unix(executionDate).format('hh:mm A');
+    const momentDate = DateTime.fromSeconds(executionDate).toFormat('DD');
+    const momentTime = DateTime.fromSeconds(executionDate).toFormat('hh:mm a');
 
     return (
       <>

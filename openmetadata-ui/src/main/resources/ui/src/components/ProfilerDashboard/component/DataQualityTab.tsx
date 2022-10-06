@@ -14,7 +14,7 @@
 import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
@@ -76,7 +76,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'lastRun',
         render: (result: TestCaseResult) =>
           result?.timestamp
-            ? moment.unix(result.timestamp || 0).format('DD/MMM HH:mm')
+            ? DateTime.fromSeconds(result.timestamp || 0).toFormat(
+                'dd/MMM HH:mm'
+              )
             : '--',
       },
       {

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
-import moment from 'moment';
+import { isUndefined, toNumber } from 'lodash';
+import { DateTime } from 'luxon';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationMechanism } from '../generated/api/teams/createUser';
 import { SsoServiceType } from '../generated/entity/teams/authN/ssoAuth';
@@ -92,9 +92,9 @@ export const getTokenExpiryText = (expiry: string) => {
   } else if (expiry === JWTTokenExpiry.OneHour) {
     return `The token will expire in ${expiry}`;
   } else {
-    return `The token will expire on ${moment()
-      .add(expiry, 'days')
-      .format('ddd Do MMMM, YYYY')}`;
+    return `The token will expire on ${DateTime.now()
+      .plus({ days: toNumber(expiry) })
+      .toFormat("cccc d'th' MMMM, yyyy")}`;
   }
 };
 
@@ -110,7 +110,9 @@ export const getTokenExpiry = (expiry: number) => {
   const isTokenExpired = currentTimeStamp >= expiry;
 
   return {
-    tokenExpiryDate: moment(expiry).format('ddd Do MMMM, YYYY,hh:mm A'),
+    tokenExpiryDate: DateTime.fromMillis(expiry).toFormat(
+      "ccc d'th' MMMM, yyyy,hh:mm a"
+    ),
     isTokenExpired,
   };
 };

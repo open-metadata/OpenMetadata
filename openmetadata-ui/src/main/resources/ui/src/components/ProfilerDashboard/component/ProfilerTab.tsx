@@ -14,7 +14,7 @@
 import { Card, Col, Row, Statistic } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getListTestCase } from '../../../axiosAPIs/testAPI';
@@ -105,7 +105,9 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     const mathMetricData: MetricChartType['data'] = [];
     const sumMetricData: MetricChartType['data'] = [];
     updateProfilerData.forEach((col) => {
-      const x = moment.unix(col.timestamp || 0).format('DD/MMM HH:mm');
+      const x = DateTime.fromSeconds(col.timestamp || 0).toFormat(
+        'dd/MMM HH:mm'
+      );
 
       countMetricData.push({
         name: x,

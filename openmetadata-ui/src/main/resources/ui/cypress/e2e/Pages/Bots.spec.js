@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import moment from 'moment';
+import { DateTime } from "luxon";
 import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_TERM, LOGIN } from '../../constants/constants';
-
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
@@ -32,10 +31,10 @@ const expirationTime = {
 };
 
 const createExpiryDate = (expiry, days) => {
-  const currentDate = Date.now();
-  const endDate = moment(currentDate, 'x')
-    .add(expiry, days)
-    .format(`ddd Do MMMM, YYYY,hh:mm A.`);
+  const endDate = DateTime.now()
+      .plus({ [days]: toNumber(expiry) })
+      .toFormat("cccc d'th' MMMM, yyyy,")
+      ;
 
   return endDate;
 };

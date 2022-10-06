@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -86,8 +86,9 @@ const ProfilerDashboardPage = () => {
 
   const fetchProfilerData = async (fqn: string, days = 3) => {
     try {
-      const startTs = moment().subtract(days, 'days').unix();
-      const endTs = moment().unix();
+      const startTs = DateTime.local().minus({ days: days }).toSeconds();
+
+      const endTs = DateTime.local().toSeconds();
 
       const { data } = await getColumnProfilerList(fqn, {
         startTs,

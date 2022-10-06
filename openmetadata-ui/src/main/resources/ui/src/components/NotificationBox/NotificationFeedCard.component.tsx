@@ -13,7 +13,7 @@
 
 import { List, Space, Typography } from 'antd';
 import { toString } from 'lodash';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import React, { FC } from 'react';
 import { Link } from 'react-router-dom';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -68,8 +68,10 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             </Typography.Paragraph>
             <Typography.Text
               style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
-              title={moment(timestamp).format('MMM, DD, YYYY hh:mm:ss')}>
-              {moment(timestamp).fromNow()}
+              title={DateTime.fromMillis(timestamp as number).toFormat(
+                'MMM, dd, yyyy hh:mm:ss'
+              )}>
+              {DateTime.fromMillis(timestamp as number).toRelative()}
             </Typography.Text>
           </Space>
         }
