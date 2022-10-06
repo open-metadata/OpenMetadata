@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion Filter Patterns
-slug: /openmetadata/ingestion/workflows/metadata/filter-patterns
+slug: /connectors/ingestion/workflows/metadata/filter-patterns
 ---
 
 # Metadata Ingestion Filter Patterns
@@ -17,7 +17,7 @@ Following documents will guide you on how to configure filters based on the type
     color="violet-70"
     bold="Database Filter Patterns"
     icon="cable"
-    href="/openmetadata/ingestion/workflows/metadata/filter-patterns/database"
+    href="/connectors/ingestion/workflows/metadata/filter-patterns/database"
   >
     Learn more about how to configure filters for database sources.
   </InlineCallout>
