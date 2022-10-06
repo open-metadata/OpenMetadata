@@ -113,6 +113,7 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(DeleteTable, self.delete_table)
         self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
         self.write_record.register(DataModelLink, self.write_datamodel)
+        self.write_record.register(TableLocationLink, self.write_table_location_link)
         self.write_record.register(DashboardUsage, self.write_dashboard_usage)
         self.write_record.register(
             OMetaTableProfileSampleData, self.write_profile_sample_data
