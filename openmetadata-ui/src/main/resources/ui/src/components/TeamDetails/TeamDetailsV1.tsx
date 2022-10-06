@@ -163,6 +163,7 @@ const TeamDetailsV1 = ({
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+  const [loading, setLoading] = useState<boolean>(false);
   const [selectedEntity, setEntity] = useState<{
     attribute: 'defaultRoles' | 'policies';
     record: EntityReference;
@@ -491,6 +492,7 @@ const TeamDetailsV1 = ({
   };
 
   const fetchPermissions = async () => {
+    setLoading(true);
     try {
       const perms = await getEntityPermission(
         ResourceEntity.TEAM,
@@ -502,6 +504,8 @@ const TeamDetailsV1 = ({
         error as AxiosError,
         jsonData['api-error-messages']['fetch-user-permission-error']
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -858,6 +862,10 @@ const TeamDetailsV1 = ({
 
   const viewPermission =
     entityPermissions.ViewAll || entityPermissions.ViewBasic;
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return viewPermission ? (
     <div

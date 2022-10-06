@@ -67,9 +67,12 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Add user to created team', () => {
+    interceptURL('GET', '/api/v1/users*', 'getUsers');
+
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
+    verifyResponseStatusCode('@getUsers', 200);
     //Clicking on users tab
     cy.get('[data-testid="Users"]')
       .should('exist')
@@ -140,8 +143,11 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Join team should work properly', () => {
+    interceptURL('GET', '/api/v1/users*', 'getUsers');
     //Click on created team
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+
+    verifyResponseStatusCode('@getUsers', 200);
 
     //Click on join teams button
     cy.get('[data-testid="join-teams"]').should('be.visible').click();
@@ -172,11 +178,10 @@ describe('Teams flow should work properly', () => {
       .clear()
       .type(TEAM_DETAILS.updatedname);
 
-    interceptURL('PATCH', 'api/v1/teams/*', 'saveTeamName');
     interceptURL(
       'GET',
       `api/v1/users?fields=teams,roles&team=${TEAM_DETAILS.name}&limit=15`,
-      'getTeam'
+      'getTeamDetails'
     );
     //Save the updated display name
     cy.get('[data-testid="saveAssociatedTag"]')
@@ -184,15 +189,22 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
+    verifyResponseStatusCode('@getTeamDetails', 200);
     //Validate the updated display name
     cy.get('[data-testid="team-heading"]').then(($el) => {
       cy.wrap($el).should('have.text', TEAM_DETAILS.updatedname);
     });
-    verifyResponseStatusCode('@saveTeamName', 200);
-    verifyResponseStatusCode('@getTeam', 200);
+
+    cy.get('[data-testid="inactive-link"]')
+      .should('be.visible')
+      .should('contain', TEAM_DETAILS.updatedname);
 
     //Click on edit description button
-    cy.get('[data-testid="edit-description"]').should('be.visible').click();
+    cy.get('[data-testid="edit-description"]')
+      .should('exist')
+      .then(($editDescription) => {
+        cy.wrap($editDescription).should('be.visible').click();
+      });
 
     //Entering updated description
     cy.get(descriptionBox).clear().type(updateddescription);

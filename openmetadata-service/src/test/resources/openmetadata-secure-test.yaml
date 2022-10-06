@@ -182,18 +182,6 @@ email:
   password: ""
   transportationStrategy: "SMTP_TLS"
 
-elasticsearch:
-  host: "localhost"
-  port: "9200"
-  scheme: "http"
-  username: ""
-  password: ""
-  truststorePath: ""
-  truststorePassword: ""
-  connectionTimeoutSecs: 5
-  socketTimeoutSecs: 60
-  batchSize: 10
-
 slackChat:
   slackUrl: "http://localhost:8080"
 
