@@ -111,6 +111,3 @@ DELETE FROM policy_entity;
 DELETE FROM field_relationship WHERE fromType IN ('role', 'policy') OR toType IN ('role', 'policy');
 DELETE FROM entity_relationship WHERE fromEntity IN ('role', 'policy') OR toEntity IN ('role', 'policy');
 ALTER TABLE role_entity DROP COLUMN defaultRole;
-
-ALTER TABLE `entity_extension_time_series` modify entityFQN varchar(768);
-ALTER TABLE `entity_extension_time_series` ADD INDEX `entity_fqn_index` (`entityFQN`);
