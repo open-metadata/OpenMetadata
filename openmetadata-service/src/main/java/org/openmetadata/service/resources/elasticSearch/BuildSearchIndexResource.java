@@ -1,14 +1,7 @@
 package org.openmetadata.service.resources.elasticSearch;
 
-import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.MLMODEL;
-import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.Entity.TOPIC;
-import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.annotations.Api;
@@ -55,6 +48,7 @@ import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConf
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.EventPublisherJob;
 import org.openmetadata.schema.settings.FailureDetails;
+import org.openmetadata.schema.settings.Stats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
@@ -104,13 +98,13 @@ public class BuildSearchIndexResource {
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
-  private BulkProcessor getBulkProcessor(BulkProcessorListener listener) {
+  private BulkProcessor getBulkProcessor(BulkProcessorListener listener, int bulkSize, int flushIntervalInSeconds) {
     BiConsumer<BulkRequest, ActionListener<BulkResponse>> bulkConsumer =
         (request, bulkListener) -> client.bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
     BulkProcessor.Builder builder = BulkProcessor.builder(bulkConsumer, listener, "es-reindex");
-    builder.setBulkActions(100);
+    builder.setBulkActions(bulkSize);
     builder.setConcurrentRequests(2);
-    builder.setFlushInterval(TimeValue.timeValueSeconds(60L));
+    builder.setFlushInterval(TimeValue.timeValueSeconds(flushIntervalInSeconds));
     builder.setBackoffPolicy(BackoffPolicy.constantBackoff(TimeValue.timeValueSeconds(1L), 3));
     return builder.build();
   }
@@ -198,20 +192,8 @@ public class BuildSearchIndexResource {
 
   private synchronized void submitStreamJob(UriInfo uriInfo, String startedBy, CreateEventPublisherJob createRequest) {
     try {
-      if (createRequest.getEntities().contains("all")) {
-        updateEntityStream(uriInfo, TABLE, createRequest);
-        updateEntityStream(uriInfo, TOPIC, createRequest);
-        updateEntityStream(uriInfo, DASHBOARD, createRequest);
-        updateEntityStream(uriInfo, PIPELINE, createRequest);
-        updateEntityStream(uriInfo, USER, createRequest);
-        updateEntityStream(uriInfo, TEAM, createRequest);
-        updateEntityStream(uriInfo, GLOSSARY_TERM, createRequest);
-        updateEntityStream(uriInfo, MLMODEL, createRequest);
-        updateEntityStream(uriInfo, TAG, createRequest);
-      } else {
-        for (String entityName : createRequest.getEntities()) {
-          updateEntityStream(uriInfo, entityName, createRequest);
-        }
+      for (String entityName : createRequest.getEntities()) {
+        updateEntityStream(uriInfo, entityName, createRequest);
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -237,23 +219,32 @@ public class BuildSearchIndexResource {
 
     // Update Listener for only Batch
     BulkProcessorListener bulkProcessorListener = new BulkProcessorListener(dao);
-    BulkProcessor processor = getBulkProcessor(bulkProcessorListener);
+    BulkProcessor processor =
+        getBulkProcessor(bulkProcessorListener, createRequest.getBatchSize(), createRequest.getFlushIntervalInSec());
 
-    if (createRequest.getEntities().contains("all")) {
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TABLE, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TOPIC, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, DASHBOARD, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, PIPELINE, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, MLMODEL, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, USER, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TEAM, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, GLOSSARY_TERM, createRequest);
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, TAG, createRequest);
-    } else {
-      for (String entityName : createRequest.getEntities()) {
-        updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
-      }
+    for (String entityName : createRequest.getEntities()) {
+      updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
     }
+
+    // mark the job as done
+    EventPublisherJob lastReadRecord =
+        JsonUtils.readValue(
+            dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_BATCH, ELASTIC_SEARCH_EXTENSION),
+            EventPublisherJob.class);
+    long lastRecordTimestamp = lastReadRecord.getTimestamp();
+    lastReadRecord.setStatus(EventPublisherJob.Status.IDLE);
+    lastReadRecord.setTimestamp(Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime());
+    lastReadRecord.setStats(
+        new Stats()
+            .withTotal(bulkProcessorListener.getTotalRequests())
+            .withSuccess(bulkProcessorListener.getTotalSuccessCount())
+            .withFailed(bulkProcessorListener.getTotalFailedCount()));
+    dao.entityExtensionTimeSeriesDao()
+        .update(
+            ELASTIC_SEARCH_ENTITY_FQN_BATCH,
+            ELASTIC_SEARCH_EXTENSION,
+            JsonUtils.pojoToJson(lastReadRecord),
+            lastRecordTimestamp);
   }
 
   private synchronized void updateEntityBatch(
@@ -294,6 +285,7 @@ public class BuildSearchIndexResource {
                 after);
         listener.addRequests(result.getPaging().getTotal());
         updateElasticSearchForEntityBatch(indexType, processor, entityType, result.getData());
+        processor.flush();
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
