@@ -240,6 +240,9 @@ public final class TablesInitializer {
             config.getDataSourceFactory().getUrl(),
             config.getDataSourceFactory().getUser(),
             config.getDataSourceFactory().getPassword());
+    jdbi.installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class)
+            .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
       case CREATE:
@@ -325,9 +328,6 @@ public final class TablesInitializer {
   }
 
   private static void createIngestionBot(OpenMetadataApplicationConfig config, Jdbi jdbi) {
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     String domain =
         config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
             ? DEFAULT_PRINCIPAL_DOMAIN
