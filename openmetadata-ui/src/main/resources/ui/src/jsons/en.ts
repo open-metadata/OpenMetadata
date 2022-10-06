@@ -200,6 +200,7 @@ const jsonData = {
       'Once you delete this entity, it will be removed permanently.',
     'email-confirmation':
       'Please confirm your email, confirmation has been sent to your email',
+    'special-character-error': 'Special character is not allowed!',
   },
   message: {
     'no-services': 'No services',
