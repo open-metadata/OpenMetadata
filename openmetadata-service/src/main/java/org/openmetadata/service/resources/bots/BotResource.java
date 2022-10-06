@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -74,6 +75,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   final SecretsManager secretsManager;
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH_SM)
   public BotResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(Bot.class, new BotRepository(dao, secretsManager), authorizer);
     this.secretsManager = secretsManager;

@@ -16,6 +16,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UtilRepository;
 import org.openmetadata.service.resources.Collection;
@@ -32,6 +33,7 @@ public class UtilResource {
   private final UtilRepository utilRepository;
   private final Authorizer authorizer;
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public UtilResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UtilRepository must not be null");
     this.utilRepository = new UtilRepository(dao.utilDAO());

@@ -27,6 +27,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowConfigurationForAPI;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.sandbox.SandboxConfiguration;
 import org.openmetadata.service.security.jwt.JWKSResponse;
@@ -40,6 +41,7 @@ public class ConfigResource {
   private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_CONFIG)
   public ConfigResource(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     this.openMetadataApplicationConfig = openMetadataApplicationConfig;
     this.jwtTokenGenerator = JWTTokenGenerator.getInstance();

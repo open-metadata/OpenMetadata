@@ -6,22 +6,24 @@ import com.google.common.cache.LoadingCache;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.service.util.ConfigurationHolder;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class LoginAttemptCache {
-  private final int MAX_ATTEMPT;
+  private int MAX_ATTEMPT = 3;
   private final LoadingCache<String, Integer> attemptsCache;
 
-  public LoginAttemptCache() {
+  public LoginAttemptCache(OpenMetadataApplicationConfig config) {
     super();
-    LoginConfiguration loginConfiguration =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.LOGIN_CONFIG, LoginConfiguration.class);
-    MAX_ATTEMPT = 3;
+    LoginConfiguration loginConfiguration = config.getLoginSettings();
+    long ACCESS_BLOCK_TIME = 600;
+    if (loginConfiguration != null) {
+      MAX_ATTEMPT = loginConfiguration.getMaxLoginFailAttempts();
+      ACCESS_BLOCK_TIME = loginConfiguration.getAccessBlockTime();
+    }
     attemptsCache =
         CacheBuilder.newBuilder()
             .maximumSize(1000)
-            .expireAfterWrite(loginConfiguration.getAccessBlockTime(), TimeUnit.SECONDS)
+            .expireAfterWrite(ACCESS_BLOCK_TIME, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
                   public Integer load(String key) {
@@ -50,7 +52,7 @@ public class LoginAttemptCache {
   }
 
   public void recordFailedLogin(String key) {
-    int attempts = 0;
+    int attempts;
     try {
       attempts = attemptsCache.get(key);
     } catch (ExecutionException e) {

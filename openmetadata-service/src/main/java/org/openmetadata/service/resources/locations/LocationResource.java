@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.LocationRepository;
@@ -78,6 +79,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return location;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public LocationResource(CollectionDAO dao, Authorizer authorizer) {
     super(Location.class, new LocationRepository(dao), authorizer);
   }

@@ -74,7 +74,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.resources.CollectionRegistry;
-import org.openmetadata.service.resources.search.SearchResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerMigrationService;
@@ -85,7 +84,6 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.ConfigurationHolder;
 import org.openmetadata.service.util.EmailUtil;
 
 /** Main catalog application */
@@ -97,8 +95,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
-    // This should be first only as this holder has some config
-    ConfigurationHolder.getInstance().init(catalogConfig);
     // init email Util for handling
     EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
@@ -277,9 +273,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerResources(
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi, SecretsManager secretsManager) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, secretsManager);
-    if (config.getElasticSearchConfiguration() != null) {
-      environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
-    }
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

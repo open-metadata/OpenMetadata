@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -78,6 +79,7 @@ public class DashboardServiceResource
     return service;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH_SM)
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         DashboardService.class,

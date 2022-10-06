@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -84,6 +85,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @Inject
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public GlossaryTermResource(CollectionDAO dao, Authorizer authorizer) {
     super(GlossaryTerm.class, new GlossaryTermRepository(dao), authorizer);
   }

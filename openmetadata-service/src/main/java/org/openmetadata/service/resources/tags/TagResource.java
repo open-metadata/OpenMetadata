@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagCategoryRepository;
@@ -86,6 +87,7 @@ public class TagResource {
     }
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
     this.dao = new TagRepository(collectionDAO);

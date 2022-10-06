@@ -50,6 +50,7 @@ import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -75,6 +76,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return dashboard;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public DashboardResource(CollectionDAO dao, Authorizer authorizer) {
     super(Dashboard.class, new DashboardRepository(dao), authorizer);
   }

@@ -50,6 +50,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -76,6 +77,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return chart;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public ChartResource(CollectionDAO dao, Authorizer authorizer) {
     super(Chart.class, new ChartRepository(dao), authorizer);
   }

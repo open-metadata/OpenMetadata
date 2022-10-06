@@ -50,6 +50,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -76,6 +77,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return db;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
     super(Database.class, new DatabaseRepository(dao), authorizer);
   }

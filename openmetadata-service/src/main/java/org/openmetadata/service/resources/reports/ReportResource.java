@@ -39,6 +39,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
@@ -56,6 +57,7 @@ import org.openmetadata.service.util.ResultList;
 public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public ReportResource(CollectionDAO dao, Authorizer authorizer) {
     super(Report.class, new ReportRepository(dao), authorizer);
   }

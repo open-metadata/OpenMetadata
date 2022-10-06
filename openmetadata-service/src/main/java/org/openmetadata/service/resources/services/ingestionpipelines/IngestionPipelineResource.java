@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowRESTClient;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -98,6 +99,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH_SM)
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao, secretsManager), authorizer);
     this.secretsManager = secretsManager;

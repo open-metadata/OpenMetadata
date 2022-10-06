@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.Collection;
@@ -66,6 +67,7 @@ public class LineageResource {
   private final LineageRepository dao;
   private final Authorizer authorizer;
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public LineageResource(@NonNull CollectionDAO dao, Authorizer authorizer) {
     this.dao = new LineageRepository(dao);
     this.authorizer = authorizer;

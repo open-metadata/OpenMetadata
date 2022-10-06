@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.Webhook.Status;
 import org.openmetadata.schema.type.WebhookType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.WebhookDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -86,6 +87,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     }
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
     super(Webhook.class, new WebhookRepository(dao), authorizer);
     webhookDAO = dao.webhookDAO();

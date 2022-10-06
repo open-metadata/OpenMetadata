@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
@@ -78,6 +79,7 @@ public class MlModelServiceResource
     return service;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH_SM)
   public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         MlModelService.class,

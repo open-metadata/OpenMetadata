@@ -34,6 +34,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity.EntityList;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
@@ -61,6 +62,7 @@ public class EventResource {
     }
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public EventResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);

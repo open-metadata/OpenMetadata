@@ -41,6 +41,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricsRepository;
@@ -57,6 +58,7 @@ import org.openmetadata.service.util.ResultList;
 public class MetricsResource extends EntityResource<Metrics, MetricsRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
     super(Metrics.class, new MetricsRepository(dao), authorizer);
   }

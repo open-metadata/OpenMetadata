@@ -64,6 +64,7 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -114,6 +115,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return operations.toArray(new MetadataOperation[0]);
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
     allowedFields.add("tests");

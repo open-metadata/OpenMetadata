@@ -47,6 +47,7 @@ import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
@@ -73,6 +74,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
     return service;
   }
 
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public StorageServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(StorageService.class, new StorageServiceRepository(dao), authorizer);
   }

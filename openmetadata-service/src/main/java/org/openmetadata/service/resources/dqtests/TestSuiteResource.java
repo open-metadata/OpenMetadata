@@ -39,6 +39,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
@@ -67,6 +68,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @Inject
+  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
   public TestSuiteResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestSuite.class, new TestSuiteRepository(dao), authorizer);
   }
