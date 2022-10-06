@@ -387,7 +387,7 @@ const Users = ({
             key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
             <Typography.Text
-              className="ant-typography-ellipsis-custom tw-w-48"
+              className="ant-typography-ellipsis-custom w-48"
               ellipsis={{ tooltip: true }}>
               {getEntityName(team)}
             </Typography.Text>
@@ -522,7 +522,7 @@ const Users = ({
           <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <Typography.Text
-              className="ant-typography-ellipsis-custom tw-w-48"
+              className="ant-typography-ellipsis-custom w-48"
               ellipsis={{ tooltip: true }}>
               {getEntityName(role)}
             </Typography.Text>
@@ -665,7 +665,7 @@ const Users = ({
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
 
                   <Typography.Text
-                    className="ant-typography-ellipsis-custom tw-w-48"
+                    className="ant-typography-ellipsis-custom w-48"
                     ellipsis={{ tooltip: true }}>
                     {getEntityName(inheritedRole)}
                   </Typography.Text>

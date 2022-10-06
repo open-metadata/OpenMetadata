@@ -70,7 +70,7 @@ const TestSuitePage = () => {
         width: 300,
         render: (_, record) => (
           <Typography.Paragraph
-            className="ant-typography-ellipsis-custom tw-w-11/12"
+            className="ant-typography-ellipsis-custom w-11-12"
             ellipsis={{ tooltip: true }}>
             {record.description}
           </Typography.Paragraph>

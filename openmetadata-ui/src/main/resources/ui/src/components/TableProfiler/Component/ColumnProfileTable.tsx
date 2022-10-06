@@ -82,7 +82,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (dataTypeDisplay: string) => {
           return (
             <Typography.Text
-              className="ant-typography-ellipsis-custom tw-w-24"
+              className="ant-typography-ellipsis-custom w-24"
               ellipsis={{ tooltip: true }}>
               {dataTypeDisplay || 'N/A'}
             </Typography.Text>
