@@ -21,30 +21,6 @@ Following documents will guide you on how to configure filters based on the type
   >
     Learn more about how to configure filters for database sources.
   </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Dashboard Filter Patterns"
-    icon="cable"
-    href="/openmetadata/ingestion/workflows/metadata/filter-patterns/dashboard"
-  >
-    Learn more about how to configure filters for dashboard sources.
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Pipeline Filter Patterns"
-    icon="cable"
-    href="/openmetadata/ingestion/workflows/metadata/filter-patterns/pipeline"
-  >
-    Learn more about how to configure filters for pipeline sources.
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Topic Filter Patterns"
-    icon="cable"
-    href="/openmetadata/ingestion/workflows/lineage"
-  >
-    Learn more about how to configure filters for messaging  sources.
-  </InlineCallout>
 </InlineCalloutContainer>
 
 
