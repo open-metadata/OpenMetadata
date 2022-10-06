@@ -107,11 +107,7 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
           dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_BATCH, ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
-      if (totalRequests == totalFailedCount + totalSuccessCount) {
-        lastRecord.setStatus(EventPublisherJob.Status.IDLE);
-      } else {
-        lastRecord.setStatus(status);
-      }
+      lastRecord.setStatus(status);
       lastRecord.setTimestamp(updateTime);
       if (failDetails != null) {
         lastRecord.setFailureDetails(
@@ -127,5 +123,17 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
     } catch (Exception e) {
       LOG.error("Failed to Update Elastic Search Job Info");
     }
+  }
+
+  public int getTotalSuccessCount() {
+    return totalSuccessCount;
+  }
+
+  public int getTotalFailedCount() {
+    return totalFailedCount;
+  }
+
+  public int getTotalRequests() {
+    return totalRequests;
   }
 }
