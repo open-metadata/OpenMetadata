@@ -722,12 +722,12 @@ const DashboardDetails = ({
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
                     entityType={EntityType.DASHBOARD}
-                    isLoading={isLineageLoading}
-                    isNodeLoading={isNodeLoading}
-                    isOwner={
+                    hasEditAccess={
                       dashboardPermissions.EditAll ||
                       dashboardPermissions.EditLineage
                     }
+                    isLoading={isLineageLoading}
+                    isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
