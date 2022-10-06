@@ -190,7 +190,7 @@ const Appbar: React.FC = (): JSX.Element => {
           {' '}
           <Typography.Paragraph
             className="ant-typography-ellipsis-custom font-medium cursor-pointer text-primary"
-            ellipsis={{ rows: 1, tooltip: { name } }}>
+            ellipsis={{ rows: 1, tooltip: true }}>
             {name}
           </Typography.Paragraph>
         </Link>

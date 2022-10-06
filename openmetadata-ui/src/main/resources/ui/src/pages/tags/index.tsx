@@ -489,11 +489,10 @@ const TagsPage = () => {
                   history.push(getTagPath(category.name));
                 }}>
                 <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom tag-category label-category tw-self-center tw-w-32"
+                  className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
                   data-testid="tag-name"
                   ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category as unknown as EntityReference)}
-                  Gupta
                 </Typography.Paragraph>
                 {getCountBadge(
                   currentCategory?.name === category.name

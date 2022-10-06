@@ -113,7 +113,7 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       <Typography.Text
-                        className="ant-typography-ellipsis-custom tw-w-48 tw-text-left"
+                        className="ant-typography-ellipsis-custom w-48 text-left"
                         ellipsis={{ tooltip: true }}>
                         {getEntityName(item as unknown as EntityReference)}
                       </Typography.Text>
