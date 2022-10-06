@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -137,13 +138,15 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
   @Override
   public void validateCreatedEntity(
-      IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders) {
+      IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders)
+      throws HttpResponseException {
     assertEquals(createRequest.getAirflowConfig().getConcurrency(), ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSourceConfig(), ingestion);
   }
 
   @Override
-  public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders) {
+  public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders)
+      throws HttpResponseException {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSourceConfig(), updated.getSourceConfig());
@@ -177,6 +180,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
     create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
   }
 
   @Test
@@ -591,6 +595,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     fieldAdded(change, FIELD_OWNER, USER1_REF);
     updateAndCheckEntity(
         request.withDescription("newDescription").withOwner(USER1_REF), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertNotNull(change);
   }
 
   private IngestionPipeline updateIngestionPipeline(
