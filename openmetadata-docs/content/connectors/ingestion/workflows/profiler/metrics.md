@@ -1,6 +1,6 @@
 ---
 title: Metrics
-slug: /openmetadata/ingestion/workflows/profiler/metrics
+slug: /connectors/ingestion/workflows/profiler/metrics
 ---
 
 # Metrics
