@@ -222,8 +222,7 @@ const TagsPage = () => {
       createTagCategory(data)
         .then((res) => {
           if (res) {
-            setCurrentCategory(res);
-            fetchCategories();
+            history.push(getTagPath(res.name));
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -268,9 +267,12 @@ const TagsPage = () => {
           const updatedCategory = categories.filter(
             (data) => data.id !== categoryId
           );
-          setCurrentCategory(updatedCategory[0]);
-          setCategoreis(updatedCategory);
-          setIsLoading(false);
+          const currentCategory = updatedCategory[0];
+          history.push(
+            getTagPath(
+              currentCategory?.fullyQualifiedName || currentCategory?.name
+            )
+          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['delete-tag-category-error']
@@ -283,7 +285,10 @@ const TagsPage = () => {
           jsonData['api-error-messages']['delete-tag-category-error']
         );
       })
-      .finally(() => setDeleteTags({ data: undefined, state: false }));
+      .finally(() => {
+        setDeleteTags({ data: undefined, state: false });
+        setIsLoading(false);
+      });
   };
 
   /**
