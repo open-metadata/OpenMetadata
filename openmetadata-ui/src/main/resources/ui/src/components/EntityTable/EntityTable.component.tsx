@@ -365,9 +365,9 @@ const EntityTable = ({
       : null;
 
     return (
-      <>
+      <span data-testid="constraints">
         {columnConstraintEl} {tableConstraintEl}
-      </>
+      </span>
     );
   };
 
