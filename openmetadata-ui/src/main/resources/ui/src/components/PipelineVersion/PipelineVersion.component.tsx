@@ -289,7 +289,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                     />
                   </div>
                   <div className="m-y-md tw-col-span-full">
-                    AK Gupta
                     <Table
                       columns={tableColumn}
                       data-testid="schema-table"

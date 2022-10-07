@@ -297,7 +297,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                     />
                   </div>
                   <div className="m-y-md tw-col-span-full">
-                    Ashish Gupta
                     <Table
                       columns={tableColumn}
                       data-testid="schema-table"
