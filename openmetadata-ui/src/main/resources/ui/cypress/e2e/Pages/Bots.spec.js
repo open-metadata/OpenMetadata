@@ -34,8 +34,7 @@ const expirationTime = {
 const createExpiryDate = (expiry, days) => {
   const endDate = DateTime.now()
       .plus({ [days]: toNumber(expiry) })
-      .toFormat("ccc d'th' MMMM, yyyy,hh:mm a")
-      ;
+      .toFormat("ccc d'th' MMMM, yyyy,hh:mm a");
 
   return endDate;
 };
@@ -104,7 +103,6 @@ describe('Bots Page should work properly', () => {
   });
 
   it('Create new Bot', () => {
-    const endhour = createExpiryDate('1', 'hour');
 
     cy.get('[data-testid="add-bot"]')
       .should('exist')
@@ -138,6 +136,7 @@ describe('Bots Page should work properly', () => {
     cy.get('table').should('contain', botName).and('contain', description);
 
     getCreatedBot();
+    const endhour = createExpiryDate('1', 'hour');
     cy.get('[data-testid="revoke-button"]')
       .should('be.visible')
       .should('contain', 'Revoke token');
