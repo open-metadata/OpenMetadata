@@ -696,8 +696,8 @@ const TagsPage = () => {
               columns={tableColumn}
               data-testid="table"
               dataSource={currentCategory?.children as TagClass[]}
-              key="id"
               pagination={false}
+              rowKey="id"
               size="small"
             />
             {isEditTag && (
