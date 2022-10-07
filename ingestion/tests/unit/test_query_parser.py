@@ -25,6 +25,7 @@ from metadata.ingestion.lineage.parser import (
     get_parser_table_aliases,
     get_table_joins,
 )
+from metadata.ingestion.lineage.sql_lineage import clean_raw_query
 
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
@@ -148,4 +149,14 @@ class QueryParserTests(TestCase):
                     ],
                 ),
             ],
+        )
+
+    def test_clean_raw_query(self):
+        """
+        Validate query cleaning logic
+        """
+        query = "create or replace view my_view copy grants as select * from my_table"
+        self.assertEqual(
+            clean_raw_query(query),
+            "create or replace view my_view as select * from my_table",
         )
