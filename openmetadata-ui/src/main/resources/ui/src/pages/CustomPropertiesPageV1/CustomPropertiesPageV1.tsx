@@ -202,6 +202,7 @@ const CustomEntityDetailV1 = () => {
                     </ButtonAntd>
                   </Tooltip>
                 }
+                dataTestId="custom-properties-no-data"
                 heading="Property"
                 type="ADD_DATA"
               />
