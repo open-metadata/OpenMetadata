@@ -55,7 +55,6 @@
     "luxon": "^3.0.4",
     "mobx": "6.6.1",
     "mobx-react": "6.1.4",
-    "moment": "2.29.4",
     "oidc-client": "^1.11.5",
     "pako": "^2.0.4",
     "path-browserify": "^1.0.1",
