@@ -18,6 +18,7 @@ import { SEARCH_INDEX } from '../constants/constants';
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
+const RETRY_TIMES = 30;
 
 const ADMIN = 'admin';
 
@@ -51,7 +52,7 @@ export const handleIngestionRetry = (
 ) => {
   const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
-  const retryTimes = 30;
+  
   let retryCount = count;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -76,7 +77,7 @@ export const handleIngestionRetry = (
         if (
           ($ingestionStatus.text() === 'Running' ||
             $ingestionStatus.text() === 'Queued') &&
-          retryCount <= retryTimes
+          retryCount <= RETRY_TIMES
         ) {
           // retry after waiting for 20 seconds
           cy.wait(20000);
@@ -927,7 +928,6 @@ export const addTeam = (TEAM_DETAILS) => {
 };
 
 export const retryIngestionRun = () => {
-  const retryTimes = 10;
   let retryCount = 0;
 
   const testIngestionsTab = () => {
@@ -951,7 +951,7 @@ export const retryIngestionRun = () => {
         if (
           ($ingestionStatus.text() === 'Running' ||
             $ingestionStatus.text() === 'Queued') &&
-          retryCount <= retryTimes
+          retryCount <= RETRY_TIMES
         ) {
           // retry after waiting for 20 seconds
           cy.wait(20000);
