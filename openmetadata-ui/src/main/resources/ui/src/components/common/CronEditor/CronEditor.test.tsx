@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import CronEditor from './CronEditor';
+import { CronEditorProp } from './CronEditor.interface';
+
+const mockProps: CronEditorProp = {
+  onChange: jest.fn,
+};
 
 describe('Test CronEditor component', () => {
   it('CronEditor component should render', async () => {
-    render(<CronEditor />);
+    render(<CronEditor {...mockProps} />);
 
     expect(await screen.findByTestId('cron-container')).toBeInTheDocument();
     expect(
@@ -121,13 +126,15 @@ describe('Test CronEditor component', () => {
   });
 
   it('None option should render corresponding component', async () => {
-    render(<CronEditor disabled={false} onChange={jest.fn} />);
+    render(<CronEditor {...mockProps} />);
 
     const ingestionType = await screen.findByTestId('ingestion-type');
-    userEvent.selectOptions(ingestionType, '');
+    act(async () => {
+      await userEvent.selectOptions(ingestionType, '');
 
-    expect(
-      await screen.findByTestId('manual-segment-container')
-    ).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('manual-segment-container')
+      ).toBeInTheDocument();
+    });
   });
 });
