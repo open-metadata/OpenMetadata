@@ -14,6 +14,7 @@
 import { Badge, Dropdown, Image, Input, Space } from 'antd';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
@@ -70,6 +71,7 @@ const NavBar = ({
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
   const history = useHistory();
+  const { t } = useTranslation();
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
@@ -239,7 +241,7 @@ const NavBar = ({
                 to={{
                   pathname: '/explore/tables',
                 }}>
-                Explore
+                {t('label.explore')}
               </NavLink>
 
               <NavLink
@@ -249,7 +251,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.GLOSSARY,
                 }}>
-                Glossary
+                {t('label.glossary')}
               </NavLink>
 
               <NavLink
@@ -259,7 +261,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.TAGS,
                 }}>
-                Tags
+                {t('label.tags')}
               </NavLink>
 
               <NavLink
@@ -269,7 +271,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.SETTINGS,
                 }}>
-                Settings
+                {t('label.settings')}
               </NavLink>
             </Space>
           </div>
@@ -281,7 +283,7 @@ const NavBar = ({
               className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
-              placeholder="Search for Tables, Topics, Dashboards, Pipelines and ML Models"
+              placeholder={t('label.search-global')}
               style={{
                 borderRadius: '0.24rem',
                 boxShadow: 'none',
