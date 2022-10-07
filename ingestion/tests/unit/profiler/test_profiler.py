@@ -38,7 +38,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
@@ -79,8 +79,8 @@ class ProfilerTest(TestCase):
             )
         ],
     )
-    sqa_profiler_interface = SQAInterface(
-        sqlite_conn, table=User, table_entity=table_entity
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, table=User, table_entity=table_entity, ometa_client=None
     )
 
     @classmethod
