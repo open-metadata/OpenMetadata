@@ -13,9 +13,12 @@
 
 /// <reference types="cypress" />
 
+import { SEARCH_INDEX } from '../constants/constants';
+
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
+const RETRY_TIMES = 30;
 
 const ADMIN = 'admin';
 
@@ -49,7 +52,7 @@ export const handleIngestionRetry = (
 ) => {
   const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
-  const retryTimes = 30;
+  
   let retryCount = count;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -74,7 +77,7 @@ export const handleIngestionRetry = (
         if (
           ($ingestionStatus.text() === 'Running' ||
             $ingestionStatus.text() === 'Queued') &&
-          retryCount <= retryTimes
+          retryCount <= RETRY_TIMES
         ) {
           // retry after waiting for 20 seconds
           cy.wait(20000);
@@ -403,12 +406,23 @@ export const searchEntity = (term, suggestionOverly = true) => {
 
 export const visitEntityDetailsPage = (term, serviceName, entity) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
-  interceptURL('GET', '/api/v1/search/*', 'explorePageSearch');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*&from=*&size=*&index=${SEARCH_INDEX[entity]}`,
+    'explorePageTabSearch'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/search/suggest?q=*&index=dashboard_search_index,table_search_index,topic_search_index,pipeline_search_index,mlmodel_search_index`,
+    'searchQuery'
+  );
+  interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
 
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
   cy.get('[data-testid="suggestion-overlay"]').should('exist');
+  verifyResponseStatusCode('@searchQuery', 200);
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
     if (
@@ -425,12 +439,13 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       // if term is not available in search suggestion, hitting enter to search box so it will redirect to explore page
       cy.get('body').click(1, 1);
       cy.get('[data-testid="searchBox"]').type('{enter}');
+      verifyResponseStatusCode('@explorePageSearch', 200);
 
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
       cy.get(`[data-testid="${entity}-tab"]`)
         .should('be.visible')
         .should('have.class', 'active');
-      verifyResponseStatusCode('@explorePageSearch', 200);
+      verifyResponseStatusCode('@explorePageTabSearch', 200);
 
       cy.get(`[data-testid="${serviceName}-${term}"]`)
         .scrollIntoView()
@@ -811,7 +826,9 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
   //Checking if property got deleted successfully
-  cy.get('[data-testid="add-field-button"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="add-field-button"]')
+    .scrollIntoView()
+    .should('be.visible');
 };
 
 export const updateOwner = () => {
@@ -911,7 +928,6 @@ export const addTeam = (TEAM_DETAILS) => {
 };
 
 export const retryIngestionRun = () => {
-  const retryTimes = 10;
   let retryCount = 0;
 
   const testIngestionsTab = () => {
@@ -935,7 +951,7 @@ export const retryIngestionRun = () => {
         if (
           ($ingestionStatus.text() === 'Running' ||
             $ingestionStatus.text() === 'Queued') &&
-          retryCount <= retryTimes
+          retryCount <= RETRY_TIMES
         ) {
           // retry after waiting for 20 seconds
           cy.wait(20000);
