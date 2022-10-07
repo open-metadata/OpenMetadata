@@ -11,26 +11,19 @@
  *  limitations under the License.
  */
 
-import { AggregationType, FilterObject } from 'Models';
+import { Aggregations } from '../../../interface/search.interface';
+import { FilterObject } from '../../AdvancedSearch/AdvancedSearch.interface';
 
-export type FacetProp = {
-  aggregations: Array<AggregationType>;
-  filters: FilterObject;
-  showDeletedOnly?: boolean;
-  onSelectHandler: (
-    checked: boolean,
-    name: string,
-    type: keyof FilterObject
-  ) => void;
-  onClearFilter?: (value: keyof FilterObject) => void;
-  onSelectAllFilter?: (
-    type: keyof FilterObject,
-    filters: Array<string>
-  ) => void;
-  onSelectDeleted?: (checked: boolean) => void;
-};
+export interface FacetFilterProps {
+  aggregations?: Aggregations;
+  filters?: FilterObject;
+  showDeleted?: boolean;
+  onSelectHandler: (checked: boolean, name: string, key: string) => void;
+  onClearFilter: (value: keyof FilterObject) => void;
+  onChangeShowDeleted: (checked: boolean) => void;
+}
 
-export type FilterContainerProp = {
+export interface FilterContainerProp {
   name: string;
   count?: number;
   onSelect: (checked: boolean, name: string, type: keyof FilterObject) => void;
@@ -38,4 +31,4 @@ export type FilterContainerProp = {
   type?: keyof FilterObject;
   isDisabled?: boolean;
   label?: string;
-};
+}

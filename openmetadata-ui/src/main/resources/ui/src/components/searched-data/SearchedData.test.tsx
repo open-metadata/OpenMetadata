@@ -17,52 +17,51 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
-import { FormattedTableData } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
+import { SearchedDataProps } from './SearchedData.interface';
 
-const mockData = [
+const mockData: SearchedDataProps['data'] = [
   {
-    id: 'id1',
-    name: 'name1',
-    description: 'description1',
-    fullyQualifiedName: 'fullyQualifiedName1',
-    owner: {
-      deleted: false,
-      displayName: 'Customer_Support',
-      name: 'Customer_Support',
-      description: 'This is Customer_Support description.',
-      id: '32a6706e-8862-48e5-b3f3-ff280045ae32',
-      href: 'http://localhost:8585/api/v1/teams/32a6706e-8862-48e5-b3f3-ff280045ae32',
-      type: 'team',
-      fullyQualifiedName: 'Customer_Support',
+    _index: SearchIndex.TABLE,
+    _source: {
+      name: 'name1',
+      description: 'description1',
+      fullyQualifiedName: 'fullyQualifiedName1',
+      owner: {
+        name: 'Customer_Support',
+      },
+      tags: ['tags1', 'tags2', 'tags3'],
+      tier: {
+        tagFQN: 'tier1',
+      },
     },
-    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
-    tier: { tagFQN: 'tier1' },
-    index: 'index1',
   },
   {
-    id: 'id2',
-    name: 'name2',
-    description: 'description2',
-    fullyQualifiedName: 'fullyQualifiedName2',
-    owner: 'owner2',
-    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
-    tier: { tagFQN: 'tier2' },
-    index: 'index1',
+    _index: SearchIndex.TABLE,
+    _source: {
+      name: 'name2',
+      description: 'description2',
+      fullyQualifiedName: 'fullyQualifiedName2',
+      owner: { name: 'owner2' },
+      tags: ['tags1', 'tags2', 'tags3'],
+      tier: { tagFQN: 'tier2' },
+    },
   },
   {
-    id: 'id3',
-    name: 'name3',
-    description: 'description3',
-    fullyQualifiedName: 'fullyQualifiedName3',
-    owner: 'owner3',
-    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
-    tier: { tagFQN: 'tier3' },
-    index: 'index1',
+    _index: SearchIndex.TABLE,
+    _source: {
+      name: 'name3',
+      description: 'description3',
+      fullyQualifiedName: 'fullyQualifiedName3',
+      owner: { name: 'owner3' },
+      tags: ['tags1', 'tags2', 'tags3'],
+      tier: { tagFQN: 'tier3' },
+    },
   },
-] as FormattedTableData[];
+];
 
 const mockPaginate = jest.fn();
 

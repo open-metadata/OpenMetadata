@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { noop } from 'lodash';
 import { observer } from 'mobx-react';
 import { LeafNodes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -24,9 +25,15 @@ import NavBar from '../../components/nav-bar/NavBar';
 import Tour from '../../components/tour/Tour';
 import { ROUTES, TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
+  INITIAL_SORT_FIELD,
+  INITIAL_SORT_ORDER,
+} from '../../constants/explore.constants';
+import {
   mockDatasetData,
   mockFeedData,
+  mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
@@ -41,12 +48,11 @@ import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
 
 const exploreCount = {
-  table: 4,
-  topic: 0,
-  dashboard: 0,
-  pipeline: 0,
-  dbtModel: 0,
-  mlmodel: 0,
+  [SearchIndex.TABLE]: 4,
+  [SearchIndex.TOPIC]: 0,
+  [SearchIndex.DASHBOARD]: 0,
+  [SearchIndex.PIPELINE]: 0,
+  [SearchIndex.MLMODEL]: 0,
 };
 
 const TourPage = () => {
@@ -64,14 +70,6 @@ const TourPage = () => {
 
   const handleCountChange = async () => {
     setExplorePageCounts(exploreCount);
-  };
-
-  /**
-   *
-   * @returns void
-   */
-  const handleFilterChange = () => {
-    return;
   };
 
   const mockPromiseFunction = (): Promise<void> => {
@@ -154,20 +152,19 @@ const TourPage = () => {
       case CurrentTourPageType.EXPLORE_PAGE:
         return (
           <Explore
-            isFilterSelected
-            fetchCount={handleCountChange}
-            handleFilterChange={handleFilterChange}
-            handlePathChange={handleCountChange}
-            handleTabCounts={handleCountChange}
-            searchQuery=""
-            searchText=""
+            searchIndex={SearchIndex.TABLE}
+            searchResults={exploreSearchData}
             showDeleted={false}
-            sortValue=""
-            tab=""
+            sortOrder={INITIAL_SORT_ORDER}
+            sortValue={INITIAL_SORT_FIELD}
             tabCounts={explorePageCounts}
-            onShowDeleted={() => {
-              return;
-            }}
+            onChangeAdvancedSearchJsonTree={noop}
+            onChangeAdvancedSearchQueryFilter={noop}
+            onChangePostFilter={noop}
+            onChangeSearchIndex={noop}
+            onChangeShowDeleted={noop}
+            onChangeSortOder={noop}
+            onChangeSortValue={noop}
           />
         );
 
