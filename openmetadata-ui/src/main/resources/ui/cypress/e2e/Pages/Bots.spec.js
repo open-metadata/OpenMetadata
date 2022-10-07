@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { toNumber } from "lodash";
 import { DateTime } from "luxon";
 import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_TERM, LOGIN } from '../../constants/constants';
@@ -33,7 +34,7 @@ const expirationTime = {
 const createExpiryDate = (expiry, days) => {
   const endDate = DateTime.now()
       .plus({ [days]: toNumber(expiry) })
-      .toFormat("cccc d'th' MMMM, yyyy,")
+      .toFormat("ccc d'th' MMMM, yyyy,hh:mm a")
       ;
 
   return endDate;

@@ -182,8 +182,8 @@ describe('Entity Details Page', () => {
   };
 
   const addAnnouncement = (value) => {
-    const startDate = DateTime.now().toISO();
-    const endDate = DateTime.now().plus({ days: 5}).toISO();
+    const startDate = DateTime.now().toISO({includeOffset:false});
+    const endDate = DateTime.now().plus({ days: 5}).toISO({includeOffset:false});
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
