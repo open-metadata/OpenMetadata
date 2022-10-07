@@ -493,7 +493,7 @@ processor:
 ```
 
 `tableConfig` allows you to set up some configuration at the table level.
-All the properties are optional. `metrics` should be one of the metrics listed [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler/metrics)
+All the properties are optional. `metrics` should be one of the metrics listed [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler/metrics)
 
 #### Workflow Configuration
 
@@ -555,4 +555,4 @@ with DAG(
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/dbt).

@@ -1,6 +1,6 @@
 ---
 title: Ingestion Pipeline UI Deployment
-slug: /connectors/ingestion/ingestion-pipeline
+slug: /connectors/ingestion/deployment
 ---
 
 # Ingestion Pipeline UI Deployment
