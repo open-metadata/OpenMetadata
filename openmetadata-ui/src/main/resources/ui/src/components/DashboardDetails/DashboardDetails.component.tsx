@@ -554,7 +554,7 @@ const DashboardDetails = ({
       width: 300,
       render: (text, record, index) => (
         <div
-          className="tw-group tw-relative tableBody-cell"
+          className="relative tableBody-cell"
           data-testid="tags-wrapper"
           onClick={() => handleTagContainerClick(record, index)}>
           {deleted ? (
