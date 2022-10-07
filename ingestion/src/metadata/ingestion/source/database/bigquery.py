@@ -175,7 +175,7 @@ class BigquerySource(CommonDbSourceService):
         return []
 
     def get_column_tag_labels(
-            self, table_name: str, column: dict
+        self, table_name: str, column: dict
     ) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
@@ -202,7 +202,7 @@ class BigquerySource(CommonDbSourceService):
         yield self.project_id
 
     def get_view_definition(
-            self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
+        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         if table_type == TableType.View:
             try:
@@ -219,7 +219,7 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def get_table_partition_details(
-            self, table_name: str, schema_name: str, inspector: Inspector
+        self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, TablePartition]:
         """
         check if the table is partitioned table and return the partition details
@@ -245,12 +245,12 @@ class BigquerySource(CommonDbSourceService):
                 intervalType=IntervalType.INTEGER_RANGE.value,
             )
             if hasattr(table.range_partitioning, "range_") and hasattr(
-                    table.range_partitioning.range_, "interval"
+                table.range_partitioning.range_, "interval"
             ):
                 table_partition.interval = table.range_partitioning.range_.interval
             if (
-                    hasattr(table.range_partitioning, "field")
-                    and table.range_partitioning.field
+                hasattr(table.range_partitioning, "field")
+                and table.range_partitioning.field
             ):
                 table_partition.columns = [table.range_partitioning.field]
             return True, table_partition
