@@ -15,7 +15,10 @@ supporting sqlalchemy abstraction layer
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Union
+
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
@@ -31,6 +34,9 @@ from metadata.utils.connections import create_and_bind_session, get_connection
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import sqa_interface_registry_logger
 from metadata.utils.timeout import cls_timeout
+from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.orm_profiler.profiler.sampler import Sampler
+
 
 logger = sqa_interface_registry_logger()
 
@@ -73,6 +79,38 @@ class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
 
         self._sampler = self._create_sampler()
         self._runner = self._create_runner()
+
+    @property
+    def sample(self) -> Union[DeclarativeMeta, AliasedClass]:
+        """_summary_
+
+        Returns:
+            Union[DeclarativeMeta, AliasedClass]: _description_
+        """
+        if not self.sampler:
+            raise RuntimeError(
+                "You must create a sampler first `<instance>.create_sampler(...)`."
+            )
+
+        return self.sampler.random_sample()
+
+    @property
+    def runner(self) -> QueryRunner:
+        """getter method for the QueryRunner object
+
+        Returns:
+            QueryRunner: runner object
+        """
+        return self._runner
+
+    @property
+    def sampler(self) -> Sampler:
+        """getter method for the Runner object
+
+        Returns:
+            Sampler: sampler object
+        """
+        return self._sampler
 
     def _create_sampler(self) -> Sampler:
         """Create sampler instance"""
