@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { toNumber } from 'lodash';
 import { DateTime } from 'luxon';
 
 const msPerSecond = 1000;
@@ -165,13 +166,46 @@ export const getUTCDateTime = (dateTime: string) => {
   );
 };
 
-export const getDateTimeByTimeStamp = (timeStamp: number): string => {
-  return DateTime.fromMillis(timeStamp).toFormat('dd MMM yyyy hh:mm a');
+/**
+ * It takes a timestamp and returns a formatted date string
+ * @param {number} timeStamp - The timestamp you want to convert to a date.
+ * @param {string} [format] - The format of the date time string.
+ * @returns A string
+ */
+export const getDateTimeByTimeStamp = (
+  timeStamp: number,
+  format?: string
+): string => {
+  return DateTime.fromMillis(timeStamp).toFormat(
+    format || 'dd MMM yyyy hh:mm a'
+  );
 };
 
-export const getLocaleDate = (timeStamp: number): string => {
+/**
+ * It takes a timestamp and returns a relative date time string
+ * @param {number} timestamp - number - The timestamp to convert to a relative date time.
+ */
+export const getRelativeDateTimeByTimeStamp = (timestamp: number) =>
+  DateTime.fromMillis(timestamp as number).toRelative();
+
+export const getLocaleDateFromTimeStamp = (timeStamp: number): string => {
   return DateTime.fromMillis(timeStamp).toISO({ includeOffset: false });
 };
+
+/**
+ * It returns the current date in ISO format, without the timezone offset
+ */
+export const getCurrentLocaleDate = () =>
+  DateTime.now().toISO({ includeOffset: false });
+
+/**
+ * "Get a future date from the current date by adding a number of days to it."
+ *
+ * The function takes a number of days as an argument and returns a future date
+ * @param {number} days - number - The number of days to add to the current date.
+ */
+export const getFutureLocaleDateFromCurrentDate = (days: number) =>
+  DateTime.now().plus({ days: days }).toISO({ includeOffset: false });
 
 export const getTimeZone = (): string => {
   // Getting local time zone
@@ -194,3 +228,67 @@ export const getDateTimeByTimeStampWithZone = (timeStamp: number): string => {
     'dd MMM yyyy, hh:mm'
   )} ${getTimeZone()}`;
 };
+
+/**
+ * It takes a number, a time unit and a format and returns a formatted date time string
+ * @param {number | string} expiry - The number of days/months/years/hours/minutes/seconds you want to
+ * add to the current date.
+ * @param {string} timeUnit - This is the time unit that you want to add to the current date. It can be
+ * any of the following:
+ * @param {string} [format] - The format of the date you want to return like 'year' | 'quarter'
+ * | 'month' | 'week' | 'day'.
+ */
+
+export const getExpiryDateTimeFromDate = (
+  expiry: number | string,
+  timeUnit: string,
+  format?: string
+) =>
+  DateTime.now()
+    .plus({ [timeUnit]: toNumber(expiry) })
+    .toFormat(format || "ccc d'th' MMMM, yyyy,hh:mm a");
+
+/**
+ * It takes a timestamp and returns a formatted date string
+ * @param {number | string} expiry - The expiry time in milliseconds.
+ * @param {string} [format] - The format of the date you want to return
+ * and default format is 'ccc d'th' MMMM, yyyy,hh:mm a'.
+ */
+export const getExpiryDateTimeFromTimeStamp = (
+  expiry: number | string,
+  format?: string
+) =>
+  DateTime.fromMillis(toNumber(expiry)).toFormat(
+    format || "ccc d'th' MMMM, yyyy,hh:mm a"
+  );
+
+/**
+ * It takes a number of seconds and returns a formatted date or time string
+ * @param {number} seconds - number - The number of seconds to convert to a date or time.
+ * @param {string} [format] - The format of the date or time you want to get by default format is 'DD'.
+ */
+export const getDateOrTimeFromSeconds = (seconds: number, format?: string) =>
+  DateTime.fromSeconds(seconds).toFormat(format || 'DD');
+
+/**
+ * It returns the number of seconds since the Unix Epoch for a date that is pastDayCount days before
+ * the current date
+ * @param {number} pastDayCount - The number of days you want to go back from the current date.
+ */
+export const getPastDatesToSecondsFromCurrentDate = (pastDayCount: number) =>
+  DateTime.now().minus({ days: pastDayCount }).toSeconds();
+
+/**
+ * Get the current date and time in seconds.
+ */
+export const getDateToSecondsOfCurrentDate = () => DateTime.now().toSeconds();
+
+/**
+ * It takes a timestamp in seconds and returns a formatted date string
+ * @param {number} timeStamp - The timeStamp in seconds.
+ * @param {string} [format] - The format of the date you want to get default format is 'dd/MMM HH:mm'.
+ */
+export const getFormattedDateFromSeconds = (
+  timeStamp: number,
+  format?: string
+) => DateTime.fromSeconds(timeStamp || 0).toFormat(format || 'dd/MMM HH:mm');

@@ -18,7 +18,6 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import _ from 'lodash';
-import { DateTime } from 'luxon';
 import { ScrollHandle } from 'Models';
 import React, {
   HTMLAttributes,
@@ -28,6 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { Pipeline, PipelineStatus } from '../../generated/entity/data/pipeline';
+import { getDateOrTimeFromSeconds } from '../../utils/TimeUtils';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   executions: Pipeline['pipelineStatus'];
@@ -57,8 +57,8 @@ const ExecutionStrip = ({
 
   const getExecutionTooltip = (execution: PipelineStatus) => {
     const executionDate = execution.timestamp as number;
-    const momentDate = DateTime.fromSeconds(executionDate).toFormat('DD');
-    const momentTime = DateTime.fromSeconds(executionDate).toFormat('hh:mm a');
+    const momentDate = getDateOrTimeFromSeconds(executionDate);
+    const momentTime = getDateOrTimeFromSeconds(executionDate, 'hh:mm a');
 
     return (
       <>

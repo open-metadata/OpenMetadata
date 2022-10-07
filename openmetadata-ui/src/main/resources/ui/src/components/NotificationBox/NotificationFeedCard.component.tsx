@@ -13,12 +13,15 @@
 
 import { List, Space, Typography } from 'antd';
 import { toString } from 'lodash';
-import { DateTime } from 'luxon';
 import React, { FC } from 'react';
 import { Link } from 'react-router-dom';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
+import {
+  getDateTimeByTimeStamp,
+  getRelativeDateTimeByTimeStamp,
+} from '../../utils/TimeUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
 
@@ -68,10 +71,11 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             </Typography.Paragraph>
             <Typography.Text
               style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
-              title={DateTime.fromMillis(timestamp as number).toFormat(
+              title={getDateTimeByTimeStamp(
+                timestamp as number,
                 'MMM, dd, yyyy hh:mm:ss'
               )}>
-              {DateTime.fromMillis(timestamp as number).toRelative()}
+              {getRelativeDateTimeByTimeStamp(timestamp as number)}
             </Typography.Text>
           </Space>
         }

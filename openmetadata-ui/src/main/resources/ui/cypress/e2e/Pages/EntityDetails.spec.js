@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DateTime } from 'luxon';
+import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from "../../../src/utils/TimeUtils";
 import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
@@ -182,8 +182,8 @@ describe('Entity Details Page', () => {
   };
 
   const addAnnouncement = (value) => {
-    const startDate = DateTime.now().toISO({includeOffset:false});
-    const endDate = DateTime.now().plus({ days: 5}).toISO({includeOffset:false});
+    const startDate = getCurrentLocaleDate();
+    const endDate = getFutureLocaleDateFromCurrentDate(5);
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
