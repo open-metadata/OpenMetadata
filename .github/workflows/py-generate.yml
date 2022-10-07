@@ -15,8 +15,9 @@ on:
   pull_request:
     branches:
       - main
+      - '0.[0-9]+.[0-9]+'
     paths:
-      - 'catalog-rest-service/src/main/resources/json/**'
+      - 'openmetadata-service/src/main/resources/json/**'
 
 concurrency: 
   group: py-generate-${{ github.head_ref }}

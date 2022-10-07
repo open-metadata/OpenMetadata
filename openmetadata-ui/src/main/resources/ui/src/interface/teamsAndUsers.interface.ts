@@ -101,7 +101,7 @@ export interface TeamDetailsProp {
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => Promise<void>;
   handleTeamUsersSearchAction: (text: string) => void;
-  updateTeamHandler: (data: Team) => Promise<void>;
+  updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
   handleCurrentUserPage: (value?: number) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,
@@ -113,6 +113,8 @@ export interface TeamDetailsProp {
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   childTeams: Team[];
+  showDeletedTeam: boolean;
+  onShowDeletedTeamChange: (checked: boolean) => void;
   onTeamExpand: (
     isPageLoading?: boolean,
     parentTeam?: string,

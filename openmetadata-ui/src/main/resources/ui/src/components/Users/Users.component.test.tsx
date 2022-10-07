@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  queryByTestId,
+  render,
+  screen,
+} from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -105,6 +111,144 @@ const mockUserData = {
   ],
 };
 
+const mockTeamsData = {
+  data: [
+    {
+      id: '28aebba3-9399-46b5-af3a-7fcd852bbec9',
+      teamType: 'Group',
+      name: 'Cloud_Infra',
+      fullyQualifiedName: 'Cloud_Infra',
+      displayName: 'Cloud_Infra',
+      description: 'This is Cloud_Infra description.',
+      version: 0.3,
+      updatedAt: 1664444252977,
+      updatedBy: 'bharatdussa',
+      href: 'http://localhost:8585/api/v1/teams/28aebba3-9399-46b5-af3a-7fcd852bbec9',
+      childrenCount: 0,
+      userCount: 18,
+      isJoinable: true,
+      changeDescription: {
+        fieldsAdded: [],
+        fieldsUpdated: [
+          { name: 'teamType', oldValue: 'Department', newValue: 'Group' },
+        ],
+        fieldsDeleted: [],
+        previousVersion: 0.2,
+      },
+      deleted: false,
+      defaultRoles: [],
+      inheritedRoles: [
+        {
+          id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+          type: 'role',
+          name: 'DataConsumer',
+          fullyQualifiedName: 'DataConsumer',
+          description:
+            'Users with Data Consumer role use different data assets for their day to day work.',
+          displayName: 'Data Consumer',
+          deleted: false,
+          href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+        },
+      ],
+    },
+    {
+      id: 'd03d909c-fad6-4d71-b9b4-797187b69f80',
+      teamType: 'Department',
+      name: 'Customer_Support',
+      fullyQualifiedName: 'Customer_Support',
+      displayName: 'Customer_Support',
+      description: 'This is Customer_Support description.',
+      version: 0.1,
+      updatedAt: 1663830444887,
+      updatedBy: 'anonymous',
+      href: 'http://localhost:8585/api/v1/teams/d03d909c-fad6-4d71-b9b4-797187b69f80',
+      childrenCount: 1,
+      userCount: 22,
+      isJoinable: true,
+      deleted: false,
+      defaultRoles: [],
+      inheritedRoles: [
+        {
+          id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+          type: 'role',
+          name: 'DataConsumer',
+          fullyQualifiedName: 'DataConsumer',
+          description:
+            'Users with Data Consumer role use different data assets for their day to day work.',
+          displayName: 'Data Consumer',
+          deleted: false,
+          href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+        },
+      ],
+    },
+    {
+      id: '3f188b91-049f-44e5-8d12-b11047ddfcbc',
+      teamType: 'Group',
+      name: 'Data_Platform',
+      fullyQualifiedName: 'Data_Platform',
+      displayName: 'Data_Platform',
+      description: 'This is Data_Platform description.',
+      version: 0.2,
+      updatedAt: 1664444283179,
+      updatedBy: 'bharatdussa',
+      href: 'http://localhost:8585/api/v1/teams/3f188b91-049f-44e5-8d12-b11047ddfcbc',
+      childrenCount: 0,
+      userCount: 17,
+      isJoinable: true,
+      changeDescription: {
+        fieldsAdded: [],
+        fieldsUpdated: [
+          { name: 'teamType', oldValue: 'Department', newValue: 'Group' },
+        ],
+        fieldsDeleted: [],
+        previousVersion: 0.1,
+      },
+      deleted: false,
+      defaultRoles: [],
+      inheritedRoles: [
+        {
+          id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+          type: 'role',
+          name: 'DataConsumer',
+          fullyQualifiedName: 'DataConsumer',
+          description:
+            'Users with Data Consumer role use different data assets for their day to day work.',
+          displayName: 'Data Consumer',
+          deleted: false,
+          href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+        },
+      ],
+    },
+  ],
+  paging: { total: 7 },
+};
+
+const mockUserRole = {
+  data: [
+    {
+      id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+      name: 'DataConsumer',
+      fullyQualifiedName: 'DataConsumer',
+      displayName: 'Data Consumer',
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      version: 0.1,
+      updatedAt: 1663825430544,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
+      allowDelete: false,
+      deleted: false,
+    },
+  ],
+  paging: {
+    total: 1,
+  },
+};
+
+jest.mock('../../axiosAPIs/rolesAPIV1.ts', () => ({
+  getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
+}));
+
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
@@ -122,13 +266,7 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
 });
 
 jest.mock('../../axiosAPIs/teamsAPI', () => ({
-  getTeams: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        data: [],
-      },
-    })
-  ),
+  getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
 jest.mock('../containers/PageLayout', () =>
@@ -268,14 +406,12 @@ describe('Test User Component', () => {
   });
 
   it('Should not render deleted teams', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
-
-    const deletedTeam = queryByTestId(container, 'Customer_Support');
+      });
+    });
+    const deletedTeam = screen.queryByTestId('Customer_Support');
 
     expect(deletedTeam).not.toBeInTheDocument();
   });

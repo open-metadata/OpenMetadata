@@ -23,7 +23,6 @@ from sqlalchemy.types import (
     INTEGER,
     JSON,
     SMALLINT,
-    TEXT,
     TIMESTAMP,
     VARCHAR,
 )

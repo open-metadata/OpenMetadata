@@ -13,6 +13,8 @@
 
 import { uuid } from '../common/common';
 
+const id = uuid();
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -21,14 +23,24 @@ export const MYDATA_SUMMARY_OPTIONS = {
   service: 'service',
   user: 'user',
   terms: 'terms',
+  mlmodels:'mlmodels'
 };
 
 export const SEARCH_ENTITY_TABLE = {
-  table_1: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
-  table_2: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  table_1: {
+    term: 'raw_customer',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+  },
+  table_2: {
+    term: 'fact_session',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+  },
   table_3: {
     term: 'raw_product_catalog',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
   },
 };
 
@@ -36,33 +48,50 @@ export const SEARCH_ENTITY_TOPIC = {
   topic_1: {
     term: 'shop_products',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
   },
-  topic_2: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
+  topic_2: {
+    term: 'orders',
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
+  },
 };
 
 export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
     term: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    serviceName: 'sample_superset',
   },
   dashboard_2: {
     term: 'Unicode Test',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    serviceName: 'sample_superset',
   },
 };
-
+// Note:- Please do not change term name of pipeline
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
-    term: 'Snowflake',
+    term: 'dim_product_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: 'sample_airflow',
   },
   pipeline_2: {
-    term: 'Hive',
+    term: 'dim_location_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: 'sample_airflow',
   },
-  pipeline_3: {
-    term: 'Trino',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+};
+export const SEARCH_ENTITY_MLMODEL = {
+  mlmodel_1: {
+    term: 'forecast_sales',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
+  },
+  mlmodel_2: {
+    term: 'eta_predictions',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
   },
 };
 
@@ -70,10 +99,12 @@ export const DELETE_ENTITY = {
   table: {
     term: 'fact_sale',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
   },
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
   },
 };
 
@@ -81,6 +112,7 @@ export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
+export const TEAM_ENTITY = 'team_entity';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';
@@ -90,6 +122,25 @@ export const TEAMS = {
   Cloud_Infra: { name: 'Cloud_Infra', users: 15 },
   Customer_Support: { name: 'Customer_Support', users: 20 },
   Data_Platform: { name: 'Data_Platform', users: 16 },
+};
+
+export const NEW_TEST_SUITE = {
+  name: `mysql_matrix`,
+  description: 'mysql critical matrix',
+};
+
+export const NEW_TABLE_TEST_CASE = {
+  type: 'tableColumnNameToExist',
+  field: 'id',
+  description: 'New table test case for TableColumnNameToExist',
+};
+
+export const NEW_COLUMN_TEST_CASE = {
+  column: 'id',
+  type: 'columnValueLengthsToBeBetween',
+  min: 3,
+  max: 6,
+  description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
 export const NEW_TEAM = {
@@ -104,7 +155,7 @@ export const NEW_TEAM = {
     description: 'Service department',
   },
 };
-const id = uuid();
+
 export const NEW_USER = {
   email: `test_${id}@gmail.com`,
   display_name: `Test user ${id}`,
@@ -147,7 +198,7 @@ export const service = {
   name: 'Glue',
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
-  Owner: 'Cloud_Infra',
+  Owner: 'Aaron Johnson',
 };
 
 export const SERVICE_TYPE = {
@@ -165,6 +216,7 @@ export const ENTITIES = {
     integerValue: '45',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_TABLE.table_1,
   },
   entity_topic: {
     name: 'topic',
@@ -172,6 +224,7 @@ export const ENTITIES = {
     integerValue: '23',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_TOPIC.topic_1,
   },
   entity_dashboard: {
     name: 'dashboard',
@@ -179,6 +232,7 @@ export const ENTITIES = {
     integerValue: '14',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
   },
   entity_pipeline: {
     name: 'pipeline',
@@ -186,5 +240,11 @@ export const ENTITIES = {
     integerValue: '78',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
   },
+};
+
+export const LOGIN = {
+  username: 'admin@openmetadata.org',
+  password: 'admin',
 };

@@ -12,10 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
-import { flatten } from 'lodash';
-import { EntityTags, TableColumn, TagOption } from 'Models';
+import { flatten, isEmpty } from 'lodash';
+import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
+import { TAG_VIEW_CAP } from '../constants/constants';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
 export const getTagCategories = async (fields?: Array<string> | string) => {
   try {
@@ -87,4 +89,32 @@ export const getTagOptionsFromFQN = (
   return tagFQNs.map((tag) => {
     return { fqn: tag, source: 'Tag' };
   });
+};
+
+export const getTagOptions = (tags: Array<string>): Array<EntityTags> => {
+  return tags.map((tag) => {
+    return {
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+      tagFQN: tag,
+      source: TagSource.Tag,
+    };
+  });
+};
+
+// Will add a label of value in the data object without it's FQN
+export const getTagsWithLabel = (tags: Array<Bucket>) => {
+  return tags.map((tag) => {
+    const containQuotes = tag.key.split('"')[1];
+
+    return {
+      ...tag,
+      label: isEmpty(containQuotes) ? tag.key.split('.').pop() : containQuotes,
+    };
+  });
+};
+
+//  Will return tag with ellipses if it exceeds the limit
+export const getTagDisplay = (tag: string) => {
+  return tag.length > TAG_VIEW_CAP ? `${tag.slice(0, TAG_VIEW_CAP)}...` : tag;
 };

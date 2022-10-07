@@ -12,7 +12,8 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Column, TableType
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
@@ -34,6 +35,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -80,6 +82,8 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
+        self.data_models = {}
+        self.dbt_tests = {}
 
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
@@ -104,10 +108,6 @@ class DeltalakeSource(DatabaseServiceSource):
         if not isinstance(connection, DeltaLakeConnection):
             raise InvalidSourceException(
                 f"Expected DeltaLakeConnection, but got {connection}"
-            )
-        if not connection.metastoreFilePath and not connection.metastoreHostPort:
-            raise MetaStoreNotFoundException(
-                "Either of metastoreFilePath or metastoreHostPort is required"
             )
         return cls(config, metadata_config)
 
@@ -142,10 +142,20 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         schemas = self.spark.catalog.listDatabases()
         for schema in schemas:
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema.name,
+            )
             if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern, schema.name
+                self.config.sourceConfig.config.schemaFilterPattern,
+                schema_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else schema.name,
             ):
-                self.status.filter(schema.name, "Schema pattern not allowed")
+                self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema.name
 
@@ -174,12 +184,21 @@ class DeltalakeSource(DatabaseServiceSource):
         for table in self.spark.catalog.listTables(schema_name):
             try:
                 table_name = table.name
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table.name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table_name
+                    self.source_config.tableFilterPattern,
+                    table_fqn if self.source_config.useFqnForFiltering else table.name,
                 ):
                     self.status.filter(
-                        f"{table_name}",
-                        "Table pattern not allowed",
+                        table_fqn,
+                        "Table Filtered Out",
                     )
                     continue
                 if (

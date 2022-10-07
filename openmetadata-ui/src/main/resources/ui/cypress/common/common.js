@@ -13,21 +13,49 @@
 
 /// <reference types="cypress" />
 
+export const descriptionBox =
+  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
 
-const AARON_JOHNSON = 'Aaron Johnson';
+const ADMIN = 'admin';
+
+const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
 
 const isDatabaseService = (type) => type === 'database';
 
-export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
+const checkTeamTypeOptions = () => {
+  for (const teamType of TEAM_TYPES) {
+    cy.get(`.ant-select-dropdown [title="${teamType}"]`)
+      .should('exist')
+      .should('be.visible');
+  }
+};
+
+//intercepting URL with cy.intercept
+export const interceptURL = (method, url, alias) => {
+  cy.intercept({ method: method, url: url }).as(alias);
+};
+
+//waiting for response and validating the response status code
+export const verifyResponseStatusCode = (alias, responseCode) => {
+  cy.wait(alias).its('response.statusCode').should('eq', responseCode);
+};
+
+export const handleIngestionRetry = (
+  type,
+  testIngestionButton,
+  count = 0,
+  ingestionType = 'metadata'
+) => {
+  const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
-  const retryTimes = 25;
+  const retryTimes = 30;
   let retryCount = count;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
     cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
       'have.text',
-      1
+      rowIndex
     );
     // click on the tab only for the first time
     if (retryCount === 0) {
@@ -41,23 +69,43 @@ export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
     testIngestionsTab();
     retryCount++;
     // the latest run should be success
-    cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-      if (
-        ($ingestionStatus.text() === 'Running' ||
-          $ingestionStatus.text() === 'Queued') &&
-        retryCount <= retryTimes
-      ) {
-        // retry after waiting for 20 seconds
-        cy.wait(20000);
-        cy.reload();
-        checkSuccessState();
-      } else {
-        cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
+    cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+      ($ingestionStatus) => {
+        if (
+          ($ingestionStatus.text() === 'Running' ||
+            $ingestionStatus.text() === 'Queued') &&
+          retryCount <= retryTimes
+        ) {
+          // retry after waiting for 20 seconds
+          cy.wait(20000);
+          cy.reload();
+          checkSuccessState();
+        } else {
+          cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
+            'have.text',
+            'Success'
+          );
+        }
       }
-    });
+    );
   };
 
   checkSuccessState();
+};
+
+export const scheduleIngestion = () => {
+  // Schedule & Deploy
+  cy.contains('Schedule for Ingestion').should('be.visible');
+  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
+  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+
+  // check success
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
+    'be.visible'
+  );
+  cy.contains('has been created and deployed successfully').should(
+    'be.visible'
+  );
 };
 
 //Storing the created service name and the type of service for later use
@@ -90,10 +138,13 @@ export const testServiceCreationAndIngestion = (
 
   connectionInput();
 
+  // check for the ip-address widget
+  cy.get('[data-testid="ip-address"]').should('exist');
+
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(500);
+  cy.wait(5000);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -131,19 +182,9 @@ export const testServiceCreationAndIngestion = (
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
   }
 
-  // Schedule & Deploy
-  cy.contains('Schedule for Ingestion').should('be.visible');
-  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
-  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+  scheduleIngestion();
 
-  // check success
-  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
-    'be.visible'
-  );
   cy.contains(`${serviceName}_metadata`).should('be.visible');
-  cy.contains('has been created and deployed successfully').should(
-    'be.visible'
-  );
   // On the Right panel
   cy.contains('Metadata Ingestion Added & Deployed Successfully').should(
     'be.visible'
@@ -160,16 +201,18 @@ export const testServiceCreationAndIngestion = (
 };
 
 export const deleteCreatedService = (typeOfService, service_Name) => {
-  cy.goToHomePage();
-
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page
+  interceptURL('GET', '/api/v1/services/*', 'getServices');
+
   cy.get('.ant-menu-title-content')
     .contains(typeOfService)
     .should('be.visible')
     .click();
+
+  verifyResponseStatusCode('@getServices', 200);
 
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
@@ -185,13 +228,12 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
       expect(text).to.equal(service_Name);
     });
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@getServices', 200);
 
   cy.get('[data-testid="service-delete"]')
     .should('exist')
     .should('be.visible')
     .click();
-
 
   //Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
@@ -202,19 +244,23 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
     .type('DELETE');
+  interceptURL(
+    'DELETE',
+    '/api/v1/services/*/*?hardDelete=true&recursive=true',
+    'deleteService'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/*/name/*?fields=owner',
+    'serviceDetails'
+  );
 
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-  cy.wait(2000);
-  cy.get('[class="Toastify__toast-body"] >div')
-    .eq(1)
-    .should('exist')
-    .should('be.visible')
-    .should('have.text', `${typeOfService} Service deleted successfully!`);
-
+  verifyResponseStatusCode('@deleteService', 200);
+  cy.reload();
+  verifyResponseStatusCode('@serviceDetails', 404);
+  cy.contains(`instance for ${service_Name} not found`);
   //Checking if the service got deleted successfully
-  cy.clickOnLogo();
-
-  cy.wait(1000);
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -228,8 +274,6 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 };
 
 export const editOwnerforCreatedService = (service_type, service_Name) => {
-  cy.goToHomePage();
-
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -239,13 +283,25 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
     .should('be.visible')
     .click();
 
+  interceptURL(
+    'GET',
+    `/api/v1/services/*/name/${service_Name}*`,
+    'getSelectedService'
+  );
+
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
     .should('exist')
     .should('be.visible')
     .click();
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@getSelectedService', 200);
+
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    'waitForTeams'
+  );
 
   //Click on edit owner button
   cy.get('[data-testid="edit-Owner-icon"]')
@@ -253,7 +309,8 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
     .should('be.visible')
     .click();
 
-  cy.wait(500);
+  verifyResponseStatusCode('@waitForTeams', 200);
+
   //Clicking on users tab
   cy.get('[data-testid="dropdown-tab"]')
     .contains('Users')
@@ -263,25 +320,20 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
 
   //Selecting the user
   cy.get('[data-testid="list-item"]')
+    .first()
     .should('exist')
     .should('be.visible')
     .click();
-  cy.wait(1000);
 
   cy.get('[data-testid="owner-dropdown"]')
     .invoke('text')
     .then((text) => {
-      expect(text).equal(AARON_JOHNSON);
+      expect(text).equal(ADMIN);
     });
 };
 
 export const goToAddNewServicePage = (service_type) => {
-  cy.visit('/');
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
-  cy.get('[data-testid="closeWhatsNew"]').click();
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
   cy.get('[data-testid="tables"]').should('be.visible');
-
   //Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -341,18 +393,72 @@ export const visitEntityTab = (id) => {
  * Search for entities through the search bar
  * @param {string} term Entity name
  */
-export const searchEntity = (term) => {
+export const searchEntity = (term, suggestionOverly = true) => {
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
-  cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+  if (suggestionOverly) {
+    cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+  }
+};
+
+export const visitEntityDetailsPage = (term, serviceName, entity) => {
+  interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+  interceptURL('GET', '/api/v1/search/*', 'explorePageSearch');
+
+  // searching term in search box
+  cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="searchBox"]').type(term);
+  cy.get('[data-testid="suggestion-overlay"]').should('exist');
+  cy.get('body').then(($body) => {
+    // checking if requested term is available in search suggestion
+    if (
+      $body.find(
+        `[data-testid="${serviceName}-${term}"] [data-testid="data-name"]`
+      ).length
+    ) {
+      // if term is available in search suggestion, redirecting to entity details page
+      cy.get(`[data-testid="${serviceName}-${term}"] [data-testid="data-name"]`)
+        .should('be.visible')
+        .first()
+        .click();
+    } else {
+      // if term is not available in search suggestion, hitting enter to search box so it will redirect to explore page
+      cy.get('body').click(1, 1);
+      cy.get('[data-testid="searchBox"]').type('{enter}');
+
+      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
+      cy.get(`[data-testid="${entity}-tab"]`)
+        .should('be.visible')
+        .should('have.class', 'active');
+      verifyResponseStatusCode('@explorePageSearch', 200);
+
+      cy.get(`[data-testid="${serviceName}-${term}"]`)
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
+    }
+  });
+
+  verifyResponseStatusCode('@getEntityDetails', 200);
+  cy.get('body').then(($body) => {
+    if ($body.find('[data-testid="suggestion-overlay"]').length) {
+      cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
+    }
+  });
+  cy.get('body').click(1, 1);
+  cy.get('[data-testid="searchBox"]').clear();
 };
 
 // add new tag to entity and its table
-export const addNewTagToEntity = (entity, term) => {
-  searchEntity(entity);
+export const addNewTagToEntity = (entityObj, term) => {
+  visitEntityDetailsPage(
+    entityObj.term,
+    entityObj.serviceName,
+    entityObj.entity
+  );
   cy.wait(500);
-  cy.get('[data-testid="table-link"]').first().contains(entity).click();
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]').eq(0)
+  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+    .eq(0)
     .should('be.visible')
     .scrollIntoView()
     .click();
@@ -400,24 +506,30 @@ export const addUser = (username, email) => {
     .should('exist')
     .should('be.visible')
     .type(username);
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+  cy.get(descriptionBox)
     .should('exist')
     .should('be.visible')
     .type('Adding user');
+  interceptURL('GET', ' /api/v1/users/generateRandomPwd', 'generatePassword');
+  cy.get('[data-testid="password-generator"]').should('be.visible').click();
+  verifyResponseStatusCode('@generatePassword', 200);
+  cy.wait(1000);
+  interceptURL('POST', ' /api/v1/users', 'add-user');
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
 };
 
 export const softDeleteUser = (username) => {
   //Search the created user
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
   cy.get('[data-testid="searchbar"]')
     .should('exist')
     .should('be.visible')
     .type(username);
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@searchUser', 200);
 
   //Click on delete button
-  cy.get('.ant-table-row .ant-table-cell button')
+  cy.get(`[data-testid="delete-user-btn-${username}"]`)
     .should('exist')
     .should('be.visible')
     .click();
@@ -425,12 +537,15 @@ export const softDeleteUser = (username) => {
   //Soft deleting the user
   cy.get('[data-testid="soft-delete"]').click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+
+  interceptURL('DELETE', '/api/v1/users/*', 'softdeleteUser');
+  interceptURL('GET', '/api/v1/users*', 'userDeleted');
   cy.get('[data-testid="confirm-button"]')
     .should('exist')
     .should('be.visible')
     .click();
-
-  cy.wait(1000);
+  verifyResponseStatusCode('@softdeleteUser', 200);
+  verifyResponseStatusCode('@userDeleted', 200);
 
   cy.get('.Toastify__toast-body > :nth-child(2)').should(
     'have.text',
@@ -443,6 +558,8 @@ export const softDeleteUser = (username) => {
     .should('be.visible')
     .click();
 
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
+
   //Verifying the deleted user
   cy.get('[data-testid="searchbar"]')
     .should('exist')
@@ -450,7 +567,7 @@ export const softDeleteUser = (username) => {
     .clear()
     .type(username);
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@searchUser', 200);
   cy.get('.ant-table-placeholder > .ant-table-cell').should(
     'not.contain',
     username
@@ -459,19 +576,24 @@ export const softDeleteUser = (username) => {
 
 export const restoreUser = (username) => {
   //Click on deleted user toggle
+  interceptURL('GET', '/api/v1/users*', 'deletedUser');
   cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
-  cy.wait(1000);
+  verifyResponseStatusCode('@deletedUser', 200);
 
-  cy.get('button [alt="Restore"]').should('exist').should('be.visible').click();
+  cy.get(`[data-testid="restore-user-btn-${username}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
   cy.get('.ant-modal-body > p').should(
     'contain',
     `Are you sure you want to restore ${username}?`
   );
+  interceptURL('PUT', '/api/v1/users', 'restoreUser');
   cy.get('.ant-modal-footer > .ant-btn-primary')
     .should('exist')
     .should('be.visible')
     .click();
-  cy.wait(1000);
+  verifyResponseStatusCode('@restoreUser', 200);
   cy.get('.Toastify__toast-body > :nth-child(2)').should(
     'contain',
     'User restored successfully!'
@@ -486,12 +608,13 @@ export const restoreUser = (username) => {
   //Verifying the restored user
   cy.get('.ant-switch').should('exist').should('be.visible').click();
 
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
   cy.get('[data-testid="searchbar"]')
     .should('exist')
     .should('be.visible')
     .type(username);
+  verifyResponseStatusCode('@searchUser', 200);
 
-  cy.wait(1000);
   cy.get('.ant-table-row > :nth-child(1)').should('contain', username);
 };
 
@@ -500,7 +623,10 @@ export const deleteSoftDeletedUser = (username) => {
 
   cy.wait(1000);
 
-  cy.get('button [alt="Delete"]').should('exist').should('be.visible').click();
+  cy.get(`[data-testid="delete-user-btn-${username}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
   cy.get('[data-testid="confirm-button"]')
     .should('exist')
@@ -517,15 +643,6 @@ export const deleteSoftDeletedUser = (username) => {
   //Closing toast message
   cy.get('.Toastify__close-button > svg')
     .should('exist')
-    .should('be.visible')
-    .click();
-
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
-
-  cy.get('.ant-table-placeholder > .ant-table-cell')
     .should('be.visible')
     .click();
 
@@ -548,7 +665,13 @@ export const toastNotification = (msg) => {
   cy.get('.Toastify__close-button').should('be.visible').click();
 };
 
-export const addCustomPropertiesForEntity = (entityType, customType, value) => {
+export const addCustomPropertiesForEntity = (
+  entityType,
+  customType,
+  value,
+  entityObj,
+  entityName
+) => {
   const propertyName = `entity${entityType.name}test${uuid()}`;
 
   //Add Custom property for selected entity
@@ -561,41 +684,36 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
     .should('be.visible')
     .type(entityType.description);
+  //Check if the property got added
+  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
+    'customProperties'
+  );
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
-  //Check if the property got added
-  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as("customProperties");
-  cy.wait("@customProperties");
+  cy.wait('@customProperties');
   cy.get('[data-testid="data-row"]').should('contain', propertyName);
 
   //Navigating to home page
   cy.clickOnLogo();
 
   //Checking the added property in Entity
-  //cy.contains(entityType.name).scrollIntoView().should('be.visible').click();
 
-  cy.get(`[data-testid*="${entityType.name}"] > .ant-btn > span`)
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-
-  cy.wait(1000);
-  cy.get('[data-testid="table-link"]')
-    .first()
-    .should('exist')
-    .should('be.visible')
-    .click();
+  visitEntityDetailsPage(
+    entityName || entityObj.term,
+    entityObj.serviceName,
+    entityObj.entity
+  );
 
   cy.get('[data-testid="Custom Properties"]')
     .should('exist')
     .should('be.visible')
     .click();
-  cy.get('[data-testid="table-body"]').should('contain', propertyName);
+  cy.get('tbody').should('contain', propertyName);
 
   //Adding value for the custom property
 
   //Navigating through the created custom property for adding value
-  cy.get('[data-testid="data-row"]')
+  cy.get('tbody')
     .contains(propertyName)
     .scrollIntoView()
     .next('td')
@@ -625,13 +743,17 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   });
 
   //Checking the added value to the property
-  cy.get('[data-testid="data-row"]')
+  cy.get('tbody')
     .contains(propertyName)
     .scrollIntoView()
     .next('td')
     .as('value');
 
-  cy.get('@value').should('contain', value);
+  cy.get('tbody')
+    .contains(propertyName)
+    .scrollIntoView()
+    .next('td')
+    .should('contain', value);
 
   //returning the property name since it needs to be deleted and updated
   return propertyName;
@@ -639,7 +761,7 @@ export const addCustomPropertiesForEntity = (entityType, customType, value) => {
 
 export const editCreatedProperty = (propertyName) => {
   //Fetching for edit button
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .scrollIntoView()
@@ -649,14 +771,18 @@ export const editCreatedProperty = (propertyName) => {
 
   cy.get('@editbutton').click();
 
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+  cy.get(descriptionBox)
     .should('be.visible')
     .clear()
     .type('This is new description');
 
+  interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
+
   cy.get('[data-testid="save"]').should('be.visible').click();
 
-  cy.wait(1000);
+  verifyResponseStatusCode('@checkPatchForDescription', 200);
+
+  cy.get('.tw-modal-container').should('not.exist');
 
   //Fetching for updated descriptions for the created custom property
   cy.get('[data-testid="table-body"]')
@@ -670,7 +796,7 @@ export const editCreatedProperty = (propertyName) => {
 export const deleteCreatedProperty = (propertyName) => {
   //Fetching for delete button
 
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .nextUntil('button')
@@ -685,7 +811,7 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
   //Checking if property got deleted successfully
-  cy.get('[data-testid="add-field-button"]').should('be.visible');
+  cy.get('[data-testid="add-field-button"]').scrollIntoView().should('be.visible');
 };
 
 export const updateOwner = () => {
@@ -695,11 +821,15 @@ export const updateOwner = () => {
     .invoke('text')
     .then((text) => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
-
+      interceptURL(
+        'GET',
+        '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+        'getTeams'
+      );
       //Clicking on edit owner button
       cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-      cy.wait(1000);
+      verifyResponseStatusCode('@getTeams', 200);
 
       //Clicking on users tab
       cy.get('button[data-testid="dropdown-tab"]')
@@ -708,14 +838,182 @@ export const updateOwner = () => {
         .contains('Users')
         .click();
 
-      cy.get('[data-testid="list-item"]').first()
+      cy.get('[data-testid="list-item"]')
+        .first()
         .should('contain', text.trim())
         .click();
 
       //Asserting the added name
-      cy.get('[data-testid="owner-link"]').should(
-        'contain',
-        text.trim()
-      );
+      cy.get('[data-testid="owner-link"]').should('contain', text.trim());
     });
-}
+};
+
+export const mySqlConnectionInput = () => {
+  cy.get('#root_username').type(Cypress.env('mysqlUsername'));
+  cy.get('#root_password').type(Cypress.env('mysqlPassword'));
+  cy.get('#root_hostPort').type(Cypress.env('mysqlHostPort'));
+  cy.get('#root_databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
+};
+
+export const login = (username, password) => {
+  cy.visit('/');
+  cy.get('[id="email"]').should('be.visible').clear().type(username);
+  cy.get('[id="password"]').should('be.visible').clear().type(password);
+  cy.get('.ant-btn').contains('Login').should('be.visible').click();
+};
+
+export const addTeam = (TEAM_DETAILS) => {
+  interceptURL('GET', '/api/v1/teams*', 'addTeam');
+  //Fetching the add button and clicking on it
+  cy.get('[data-testid="add-team"]').should('be.visible').click();
+
+  verifyResponseStatusCode('@addTeam', 200);
+
+  //Entering team details
+  cy.get('[data-testid="name"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.name);
+
+  cy.get('[data-testid="display-name"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.displayName);
+
+  cy.get('[data-testid="team-selector"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  checkTeamTypeOptions();
+
+  cy.get(`.ant-select-dropdown [title="${TEAM_DETAILS.teamType}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.get(descriptionBox)
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.description);
+
+  interceptURL('POST', '/api/v1/teams', 'saveTeam');
+  interceptURL('GET', '/api/v1/team*', 'createTeam');
+
+  //Saving the created team
+  cy.get('[form="add-team-form"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  verifyResponseStatusCode('@saveTeam', 201);
+  verifyResponseStatusCode('@createTeam', 200);
+};
+
+export const retryIngestionRun = () => {
+  const retryTimes = 10;
+  let retryCount = 0;
+
+  const testIngestionsTab = () => {
+    cy.get('[data-testid="Ingestions"]').should('be.visible');
+    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
+      'have.text',
+      '1'
+    );
+    if (retryCount === 0) {
+      cy.wait(1000);
+      cy.get('[data-testid="Ingestions"]').should('be.visible');
+    }
+  };
+
+  const checkSuccessState = () => {
+    testIngestionsTab();
+    retryCount++;
+    // the latest run should be success
+    cy.get('[aria-describedby*="tippy-tooltip"] > .tw-h-5').then(
+      ($ingestionStatus) => {
+        if (
+          ($ingestionStatus.text() === 'Running' ||
+            $ingestionStatus.text() === 'Queued') &&
+          retryCount <= retryTimes
+        ) {
+          // retry after waiting for 20 seconds
+          cy.wait(20000);
+          cy.reload();
+          checkSuccessState();
+        } else {
+          cy.get('[aria-describedby*="tippy-tooltip"] > .tw-h-5').should(
+            'have.text',
+            'Success'
+          );
+        }
+      }
+    );
+  };
+
+  checkSuccessState();
+};
+
+export const updateDescriptionForIngestedTables = (
+  serviceName,
+  tableName,
+  description,
+  type,
+  entity
+) => {
+  //Navigate to ingested table
+
+  visitEntityDetailsPage(tableName, serviceName, entity);
+
+  //update description
+  cy.get('[data-testid="edit-description"]')
+    .should('be.visible')
+    .click({ force: true });
+  cy.get(descriptionBox).should('be.visible').click().clear().type(description);
+  interceptURL('PATCH', '/api/v1/*/*', 'updateEntity');
+  cy.get('[data-testid="save"]').click();
+  verifyResponseStatusCode('@updateEntity', 200);
+
+  //re-run ingestion flow
+
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
+  // Services page
+  cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
+
+  interceptURL(
+    'GET',
+    `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${serviceName}`,
+    'getSelectedService'
+  );
+
+  //click on created service
+  cy.get(`[data-testid="service-name-${serviceName}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  verifyResponseStatusCode('@getSelectedService', 200);
+
+  cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/trigger/*',
+    'checkRun'
+  );
+  cy.get('[data-testid="run"]').should('be.visible').click();
+  verifyResponseStatusCode('@checkRun', 200);
+
+  //Close the toast message
+  cy.get('.Toastify__close-button').should('be.visible').click();
+
+  //Wait for success
+  retryIngestionRun();
+
+  //Navigate to table name
+  visitEntityDetailsPage(tableName, serviceName, entity);
+  cy.get('[data-testid="markdown-parser"]')
+    .first()
+    .invoke('text')
+    .should('contain', description);
+};

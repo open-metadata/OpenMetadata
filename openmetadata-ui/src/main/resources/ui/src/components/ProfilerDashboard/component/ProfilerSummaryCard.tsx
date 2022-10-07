@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Statistic } from 'antd';
 import React from 'react';
-import { TestCaseStatus } from '../../../generated/tests/tableTest';
+import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { formTwoDigitNmber } from '../../../utils/CommonUtils';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ProfilerSummaryCardProps } from '../profilerDashboard.interface';

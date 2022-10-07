@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Statistic } from 'antd';
+import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import moment from 'moment';
@@ -30,7 +30,6 @@ import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Ellipses from '../../common/Ellipses/Ellipses';
 import { TableTestsType } from '../../TableProfiler/TableProfiler.interface';
 import {
   MetricChartType,
@@ -134,9 +133,9 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       proportionMetricData.push({
         name: x,
         timestamp: col.timestamp || 0,
-        distinctProportion: col?.distinctProportion || 0,
-        nullProportion: col?.nullProportion || 0,
-        uniqueProportion: col?.uniqueProportion || 0,
+        distinctProportion: Math.round((col?.distinctProportion || 0) * 100),
+        nullProportion: Math.round((col?.nullProportion || 0) * 100),
+        uniqueProportion: Math.round((col?.uniqueProportion || 0) * 100),
       });
     });
 
@@ -226,9 +225,12 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
           <Row gutter={16}>
             <Col span={16}>
               <p className="tw-font-medium tw-text-base">Column summary</p>
-              <Ellipses className="tw-text-grey-muted" rows={4}>
+
+              <Typography.Paragraph
+                className="ant-typography-ellipsis-custom tw-text-grey-muted"
+                ellipsis={{ tooltip: true, rows: 4 }}>
                 {activeColumnDetails.description || 'No Description'}
-              </Ellipses>
+              </Typography.Paragraph>
             </Col>
             <Col span={8}>
               <Statistic

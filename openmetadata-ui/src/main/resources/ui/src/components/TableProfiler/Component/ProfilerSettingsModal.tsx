@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Modal, Select, Slider, TreeSelect } from 'antd';
+import { Button, InputNumber, Modal, Select, Slider, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -47,6 +47,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   visible,
   onVisibilityChange,
 }) => {
+  const [form] = Form.useForm();
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
   const [profileSample, setProfileSample] = useState<number>(100);
@@ -94,6 +95,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
         return col;
       });
+      form.setFieldsValue({ includeColumns: includeColValue });
       setIncludeCol(includeColValue);
     }
   };
@@ -193,22 +195,38 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <Col data-testid="profile-sample-container" span={24}>
           <p>Profile Sample %</p>
           <div className="tw-px-2 tw-mb-1.5">
-            <Slider
-              className="profiler-slider"
-              marks={{
-                0: '0%',
-                100: '100%',
-                [profileSample as number]: `${profileSample}%`,
-              }}
-              max={100}
-              min={0}
-              tooltipPlacement="bottom"
-              tooltipVisible={false}
-              value={profileSample}
-              onChange={(value) => {
-                setProfileSample(value);
-              }}
-            />
+            <Row gutter={20}>
+              <Col span={20}>
+                <Slider
+                  className="profiler-slider"
+                  marks={{
+                    0: '0%',
+                    100: '100%',
+                    [profileSample as number]: `${profileSample}%`,
+                  }}
+                  max={100}
+                  min={0}
+                  tooltipPlacement="bottom"
+                  tooltipVisible={false}
+                  value={profileSample}
+                  onChange={(value) => {
+                    setProfileSample(value);
+                  }}
+                />
+              </Col>
+              <Col span={4}>
+                <InputNumber
+                  formatter={(value) => `${value}%`}
+                  max={100}
+                  min={0}
+                  step={1}
+                  value={profileSample}
+                  onChange={(value) => {
+                    setProfileSample(value);
+                  }}
+                />
+              </Col>
+            </Row>
           </div>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
@@ -245,6 +263,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <Col span={24}>
           <Form
             autoComplete="off"
+            form={form}
             initialValues={{
               includeColumns: includeCol,
             }}

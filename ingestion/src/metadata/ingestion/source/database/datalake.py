@@ -24,6 +24,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
+    Table,
     TableData,
     TableType,
 )
@@ -49,6 +50,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.gcs_utils import (
@@ -85,6 +87,8 @@ class DatalakeSource(DatabaseServiceSource):
         self.connection = get_connection(self.service_connection)
         self.client = self.connection.client
         self.table_constraints = None
+        self.data_models = {}
+        self.dbt_tests = {}
         self.database_source_state = set()
         super().__init__()
 
@@ -174,12 +178,24 @@ class DatalakeSource(DatabaseServiceSource):
             if isinstance(self.service_connection.configSource, GCSConfig):
                 bucket = self.client.get_bucket(bucket_name)
                 for key in bucket.list_blobs(prefix=prefix):
+                    table_name = self.standardize_table_name(bucket_name, key.name)
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
+                    )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, key.name
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
                     ):
                         self.status.filter(
-                            "{}".format(key.name),
-                            "Object pattern not allowed",
+                            table_fqn,
+                            "Object Filtered Out",
                         )
                         continue
                     if not self.check_valid_file_type(key.name):
@@ -187,19 +203,32 @@ class DatalakeSource(DatabaseServiceSource):
                             f"Object filtered due to unsupported file type: {key.name}"
                         )
                         continue
-                    table_name = self.standardize_table_name(bucket_name, key.name)
+
                     yield table_name, TableType.Regular
             if isinstance(self.service_connection.configSource, S3Config):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
                 for key in self._list_s3_objects(**kwargs):
+                    table_name = self.standardize_table_name(bucket_name, key["Key"])
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
+                    )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, key["Key"]
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
                     ):
+
                         self.status.filter(
-                            "{}".format(key["Key"]),
-                            "Object pattern not allowed",
+                            table_fqn,
+                            "Object Filtered Out",
                         )
                         continue
                     if not self.check_valid_file_type(key["Key"]):
@@ -207,7 +236,7 @@ class DatalakeSource(DatabaseServiceSource):
                             f"Object filtered due to unsupported file type: {key['Key']}"
                         )
                         continue
-                    table_name = self.standardize_table_name(bucket_name, key["Key"])
+
                     yield table_name, TableType.Regular
 
     def yield_table(

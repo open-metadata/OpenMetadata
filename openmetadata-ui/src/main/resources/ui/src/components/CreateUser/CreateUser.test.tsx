@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
@@ -33,7 +33,11 @@ jest.mock('../TeamsSelectable/TeamsSelectable', () => {
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditor', () => {
-  return jest.fn().mockReturnValue(<p>MarkdownWithPreview component</p>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }, ref) => {
+      return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;
+    })
+  );
 });
 
 const propsValue: CreateUserProps = {
@@ -53,7 +57,6 @@ describe('Test CreateUser component', () => {
     const PageLayout = await findByTestId(container, 'PageLayout');
     const email = await findByTestId(container, 'email');
     const admin = await findByTestId(container, 'admin');
-    const bot = await findByTestId(container, 'bot');
     const cancelButton = await findByTestId(container, 'cancel-user');
     const saveButton = await findByTestId(container, 'save-user');
     const description = await findByText(
@@ -68,7 +71,6 @@ describe('Test CreateUser component', () => {
 
     expect(PageLayout).toBeInTheDocument();
     expect(email).toBeInTheDocument();
-    expect(bot).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(dropdown).toBeInTheDocument();

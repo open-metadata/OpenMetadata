@@ -12,7 +12,6 @@
 """
 Helper to parse workflow configurations
 """
-import traceback
 from typing import Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
@@ -74,7 +73,6 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
-    SourceConfig,
     WorkflowConfig,
 )
 from metadata.ingestion.ometa.provider_registry import PROVIDER_CLASS_MAP
@@ -86,6 +84,10 @@ T = TypeVar("T", bound=BaseModel)
 
 # Sources which contain inner connections to validate
 HAS_INNER_CONNECTION = {"Airflow"}
+
+
+class ParsingConfigurationError(Exception):
+    """A parsing configuration error has happened"""
 
 
 class InvalidWorkflowException(Exception):
@@ -196,11 +198,23 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
     """
     Convert the validation error into a message to log
     """
-    errors = [
-        f"{err.get('msg')} in {err.get('loc')}" for err in validation_error.errors()
+    missing_fields = [
+        f"Extra parameter '{err.get('loc')[0]}'"
+        if len(err.get("loc")) == 1
+        else f"Extra parameter in {err.get('loc')}"
+        for err in validation_error.errors()
+        if err.get("type") == "value_error.extra"
     ]
 
-    return "\n".join(errors)
+    extra_fields = [
+        f"Missing parameter '{err.get('loc')[0]}'"
+        if len(err.get("loc")) == 1
+        else f"Missing parameter in {err.get('loc')}"
+        for err in validation_error.errors()
+        if err.get("type") == "value_error.missing"
+    ]
+
+    return "\t - " + "\n\t - ".join(missing_fields + extra_fields)
 
 
 def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
@@ -213,8 +227,7 @@ def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
     try:
         cls.parse_obj(config)
     except ValidationError as err:
-        logger.debug(traceback.format_exc())
-        logger.error(
+        logger.debug(
             f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
         )
         raise err
@@ -251,7 +264,7 @@ def parse_service_connection(config_dict: dict) -> None:
     if source_type is None:
         raise InvalidWorkflowException("Missing type in the serviceConnection config")
 
-    logger.warning(
+    logger.debug(
         f"Error parsing the Workflow Configuration for {source_type} ingestion"
     )
 
@@ -316,7 +329,7 @@ def parse_server_config(config_dict: dict) -> None:
     auth_provider = config_dict["workflowConfig"]["openMetadataServerConfig"][
         "authProvider"
     ]
-    logger.warning(
+    logger.debug(
         f"Error parsing the Workflow Server Configuration with {auth_provider} auth provider"
     )
 
@@ -365,16 +378,25 @@ def parse_workflow_config_gracefully(
             parse_workflow_source(config_dict)
             parse_server_config(config_dict)
         except (ValidationError, InvalidWorkflowException) as scoped_error:
+            if isinstance(scoped_error, ValidationError):
+                object_error = (
+                    scoped_error.model.__name__ if scoped_error.model else "workflow"
+                )
+                raise ParsingConfigurationError(
+                    f"We encountered an error parsing the configuration of your {object_error}.\n"
+                    "You might need to review your config based on the original cause of this failure:\n"
+                    f"{_parse_validation_err(scoped_error)}"
+                )
             raise scoped_error
         except Exception as runtime_error:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"We encountered an error {runtime_error} when trying to verify the serviceConnection,"
-                " sourceConfig and securityConfig parameters in your workflow.\n"
-                " You might need to review your config based on the original cause of this failure:"
-                f" [{_parse_validation_err(original_error)}]"
+            runtime_error = (
+                runtime_error.model.__name__ if runtime_error.model else "workflow"
             )
-            raise original_error
+            raise ParsingConfigurationError(
+                f"We encountered an error parsing the configuration of your workflow.\n"
+                "You might need to review your config based on the original cause of this failure:\n"
+                f"{_parse_validation_err(original_error)}"
+            )
 
 
 def parse_test_connection_request_gracefully(
@@ -394,7 +416,6 @@ def parse_test_connection_request_gracefully(
         return test_service_connection
 
     except ValidationError as err:
-        logger.debug(traceback.format_exc())
         # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
         source_type = config_dict["connection"]["config"]["type"]
         logger.warning(

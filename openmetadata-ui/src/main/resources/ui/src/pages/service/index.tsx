@@ -162,7 +162,7 @@ const ServicePage: FunctionComponent = () => {
         return 'Topics';
       case ServiceCategory.PIPELINE_SERVICES:
         return 'Pipelines';
-      case ServiceCategory.ML_MODAL_SERVICES:
+      case ServiceCategory.ML_MODEL_SERVICES:
         return 'Models';
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -503,7 +503,7 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         fetchMlModal(paging);
 
         break;
@@ -524,7 +524,7 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.PIPELINE_SERVICES:
         return getEntityLink(SearchIndex.PIPELINE, fqn);
 
-      case ServiceCategory.ML_MODAL_SERVICES:
+      case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
@@ -575,7 +575,7 @@ const ServicePage: FunctionComponent = () => {
           </>
         );
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         return (
           <>
             <th className="tableHead-cell">Model Name</th>
@@ -659,7 +659,7 @@ const ServicePage: FunctionComponent = () => {
           </td>
         );
       }
-      case ServiceCategory.ML_MODAL_SERVICES: {
+      case ServiceCategory.ML_MODEL_SERVICES: {
         const mlmodal = data as Mlmodel;
 
         return (
@@ -690,7 +690,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll) {
+    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       setIsLoading(true);
       getServiceByFQN(serviceName, serviceFQN, 'owner')
         .then((resService) => {
@@ -738,7 +738,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceFQN, serviceName, servicePermission, serviceType]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll) {
+    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       const currentTab = getCurrentServiceTab(tab);
       const currentTabIndex = currentTab - 1;
 
@@ -915,7 +915,7 @@ const ServicePage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {servicePermission.ViewAll ? (
+          {servicePermission.ViewAll || servicePermission.ViewBasic ? (
             <Col span={24}>
               <div
                 className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"

@@ -50,7 +50,7 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
-    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
+    col = elements.clauses.clauses[0].name
     return "approx_percentile(%s, 0.5)" % col
 
 
@@ -59,6 +59,13 @@ def _(elements, compiler, **kwargs):
     """Median computation for MSSQL"""
     col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
     return "percentile_cont(0.5)  WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
+
+
+@compiles(MedianFn, Dialects.Hive)
+def _(elements, compiler, **kwargs):
+    """Median computation for Hive"""
+    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return "percentile(cast(%s as BIGINT), 0.5)" % col
 
 
 @compiles(MedianFn, Dialects.MySQL)

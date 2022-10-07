@@ -14,36 +14,41 @@
 import {
   Button,
   Col,
+  Form,
   Radio,
   RadioChangeEvent,
   Row,
+  Select,
   Space,
+  Switch,
   Tooltip,
 } from 'antd';
+import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
+import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
-import { getListTestCase } from '../../axiosAPIs/testAPI';
+import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
-import { TestCase } from '../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
+import { EntityType as TestType } from '../../generated/tests/testDefinition';
+import { Include } from '../../generated/type/include';
 import {
   formatNumberWithComma,
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
-import {
-  getAddDataQualityTableTestPath,
-  getProfilerDashboardWithFqnPath,
-} from '../../utils/RouterUtils';
+import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
@@ -54,25 +59,59 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({
-  table,
-  onAddTestClick,
-  permissions,
-}) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
   const { profile, columns = [] } = table;
-  const history = useHistory();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
-  const [activeTab] = useState<ProfilerDashboardTab>(
+  const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
     ProfilerDashboardTab.SUMMARY
   );
+  const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
+    useState<string>('');
+  const [selectedTestType, setSelectedTestType] = useState('');
+  const [deleted, setDeleted] = useState<boolean>(false);
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+  const isSummary = activeTab === ProfilerDashboardTab.SUMMARY;
+  const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
 
-  const viewTest = permissions.ViewAll || permissions.ViewTests;
-  const viewProfiler = permissions.ViewAll || permissions.ViewDataProfile;
+  const testCaseStatusOption = useMemo(() => {
+    const testCaseStatus: SelectableOption[] = Object.values(
+      TestCaseStatus
+    ).map((value) => ({
+      label: value,
+      value: value,
+    }));
+    testCaseStatus.unshift({
+      label: 'All',
+      value: '',
+    });
+
+    return testCaseStatus;
+  }, []);
+
+  const testCaseTypeOption = useMemo(() => {
+    const testCaseStatus: SelectableOption[] = Object.entries(TestType).map(
+      ([key, value]) => ({
+        label: key,
+        value: value,
+      })
+    );
+    testCaseStatus.unshift({
+      label: 'All',
+      value: '',
+    });
+
+    return testCaseStatus;
+  }, []);
+
+  const viewTest =
+    permissions.ViewAll || permissions.ViewBasic || permissions.ViewTests;
+  const viewProfiler =
+    permissions.ViewAll || permissions.ViewBasic || permissions.ViewDataProfile;
   const editTest = permissions.EditAll || permissions.EditTests;
 
   const handleSettingModal = (value: boolean) => {
@@ -125,24 +164,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   const handleTabChange = (e: RadioChangeEvent) => {
     const value = e.target.value as ProfilerDashboardTab;
-    if (ProfilerDashboardTab.DATA_QUALITY === value) {
-      history.push(
-        getProfilerDashboardWithFqnPath(
-          ProfilerDashboardType.TABLE,
-          table.fullyQualifiedName || '',
-          ProfilerDashboardTab.DATA_QUALITY
-        )
-      );
-    }
+    setActiveTab(value);
   };
 
-  const fetchAllTests = async () => {
+  const fetchAllTests = async (params?: ListTestCaseParams) => {
+    setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCase({
-        fields: 'testCaseResult',
+        fields: 'testCaseResult,entityLink,testDefinition,testSuite',
         entityLink: generateEntityLink(table.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
+        include: deleted ? Include.Deleted : Include.NonDeleted,
+        ...params,
       });
       const columnTestsCase: TestCase[] = [];
       const tableTests: TableTestsType = {
@@ -166,7 +200,43 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       setColumnTests(columnTestsCase);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsTestCaseLoading(false);
     }
+  };
+
+  const handleTestCaseStatusChange = (value: string) => {
+    if (value !== selectedTestCaseStatus) {
+      setSelectedTestCaseStatus(value);
+    }
+  };
+
+  const handleTestCaseTypeChange = (value: string) => {
+    if (value !== selectedTestType) {
+      setSelectedTestType(value);
+    }
+  };
+
+  const getFilterTestCase = () => {
+    let tests: TestCase[] = [];
+    if (selectedTestType === TestType.Table) {
+      tests = tableTests.tests;
+    } else if (selectedTestType === TestType.Column) {
+      tests = columnTests;
+    } else {
+      tests = [...tableTests.tests, ...columnTests];
+    }
+
+    return tests.filter(
+      (data) =>
+        selectedTestCaseStatus === '' ||
+        data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
+    );
+  };
+
+  const handleDeletedTestCaseClick: SwitchChangeEventHandler = (value) => {
+    setDeleted(value);
+    fetchAllTests({ include: value ? Include.Deleted : Include.NonDeleted });
   };
 
   useEffect(() => {
@@ -184,6 +254,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         <Radio.Group
           buttonStyle="solid"
           className="profiler-switch"
+          data-testid="profiler-switch"
           optionType="button"
           options={tabOptions}
           value={activeTab}
@@ -191,6 +262,31 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         />
 
         <Space>
+          {isDataQuality && (
+            <>
+              <Form.Item className="m-0 " label="Deleted Tests">
+                <Switch
+                  checked={deleted}
+                  onClick={handleDeletedTestCaseClick}
+                />
+              </Form.Item>
+              <Form.Item className="m-0 w-40" label="Type">
+                <Select
+                  options={testCaseTypeOption}
+                  value={selectedTestType}
+                  onChange={handleTestCaseTypeChange}
+                />
+              </Form.Item>
+              <Form.Item className="m-0 w-40" label="Status">
+                <Select
+                  options={testCaseStatusOption}
+                  value={selectedTestCaseStatus}
+                  onChange={handleTestCaseStatusChange}
+                />
+              </Form.Item>
+            </>
+          )}
+
           <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
             <Link
               to={
@@ -210,31 +306,34 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
-            <Button
-              className={classNames(
-                'profiler-setting-btn tw-border tw-rounded tw-text-primary',
-                { 'tw-border-primary': editTest }
-              )}
-              data-testid="profiler-setting-btn"
-              disabled={!editTest}
-              icon={
-                <SVGIcons
-                  alt="setting"
-                  className={classNames({ 'tw-mb-1 tw-mr-2': editTest })}
-                  icon={editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY}
-                />
-              }
-              type="default"
-              onClick={() => handleSettingModal(true)}>
-              Settings
-            </Button>
-          </Tooltip>
+          {isSummary && (
+            <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+              <Button
+                ghost
+                data-testid="profiler-setting-btn"
+                disabled={!editTest}
+                icon={
+                  <SVGIcons
+                    alt="setting"
+                    className="mr-2"
+                    icon={
+                      editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY
+                    }
+                  />
+                }
+                type="primary"
+                onClick={() => handleSettingModal(true)}>
+                Settings
+              </Button>
+            </Tooltip>
+          )}
         </Space>
       </Row>
 
       {isUndefined(profile) && (
-        <div className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4">
+        <div
+          className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+          data-testid="no-profiler-placeholder">
           <NoDataIcon />
           <p className="tw-mb-0 tw-ml-2">
             Data Profiler is an optional configuration in Ingestion. Please
@@ -273,15 +372,26 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         ))}
       </Row>
 
-      <ColumnProfileTable
-        columnTests={columnTests}
-        columns={columns.map((col) => ({
-          ...col,
-          key: col.name,
-        }))}
-        hasEditAccess={editTest}
-        onAddTestClick={onAddTestClick}
-      />
+      {isSummary && (
+        <ColumnProfileTable
+          columnTests={columnTests}
+          columns={columns.map((col) => ({
+            ...col,
+            key: col.name,
+          }))}
+          hasEditAccess={editTest}
+        />
+      )}
+
+      {isDataQuality && (
+        <DataQualityTab
+          deletedTable={deleted}
+          hasAccess={permissions.EditAll}
+          isLoading={isTestCaseLoading}
+          testCases={getFilterTestCase()}
+          onTestUpdate={fetchAllTests}
+        />
+      )}
 
       {settingModalVisible && (
         <ProfilerSettingsModal

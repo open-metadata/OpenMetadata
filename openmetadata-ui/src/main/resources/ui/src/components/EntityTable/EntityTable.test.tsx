@@ -19,7 +19,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../generated/api/data/createTable';
 import { Table } from '../../generated/entity/data/table';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
-import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 import EntityTableV1 from './EntityTable.component';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -114,7 +113,7 @@ const mockEntityTableProp = {
       tags: [],
       ordinalPosition: 6,
     },
-  ] as ModifiedTableColumn[],
+  ] as Column[],
   searchText: '',
   hasEditAccess: false,
   joins: [],
@@ -273,7 +272,7 @@ jest.mock('antd', () => ({
         </tr>
       </thead>
       <tbody key="tbody">
-        {dataSource.map((row: ModifiedTableColumn | Column, i: number) => (
+        {dataSource.map((row: Column, i: number) => (
           <tr key={i}>
             {(columns as ColumnsType<ColumnDataType>).map((col, index) => (
               <td key={col.key}>

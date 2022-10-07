@@ -14,22 +14,26 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getBots } from '../../axiosAPIs/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import {
+  INGESTION_BOT_CANT_BE_DELETED,
+  NO_PERMISSION_FOR_ACTION,
+} from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
-import { Bot } from '../../generated/entity/bot';
+import { Bot, BotType } from '../../generated/entity/bot';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { getEntityName } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -37,6 +41,7 @@ import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -55,11 +60,17 @@ const BotListV1 = ({
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
+  const [searchedData, setSearchedData] = useState<Bot[]>([]);
 
-  const createPermission = checkPermission(
-    Operation.Create,
-    ResourceEntity.BOT,
-    permissions
+  /**
+   * Bot creation is two step process so here we should check for
+   * Create User and Create Bot both permissions
+   */
+  const createPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.BOT, permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.USER, permissions),
+    [permissions]
   );
 
   const deletePermission = useMemo(
@@ -76,11 +87,12 @@ const BotListV1 = ({
       setLoading(true);
       const { data, paging } = await getBots({
         after,
-        limit: PAGE_SIZE_MEDIUM,
+        limit: PAGE_SIZE_LARGE,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       setPaging(paging);
       setBotUsers(data);
+      setSearchedData(data);
       if (!showDeleted && isEmpty(data)) {
         setHandleErrorPlaceholder(true);
       } else {
@@ -102,11 +114,12 @@ const BotListV1 = ({
         title: 'Name',
         dataIndex: 'displayName',
         key: 'displayName',
-        render: (name, record) => (
+        render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
-            to={getBotsPath(record.fullyQualifiedName || record.name)}>
-            {name}
+            data-testid={`bot-link-${getEntityName(record)}`}
+            to={getBotsPath(record?.fullyQualifiedName || record?.name || '')}>
+            {getEntityName(record)}
           </Link>
         ),
       },
@@ -118,7 +131,7 @@ const BotListV1 = ({
           record?.description ? (
             <RichTextEditorPreviewer markdown={record?.description || ''} />
           ) : (
-            'No Description'
+            <span data-testid="no-description">No Description</span>
           ),
       },
       {
@@ -126,26 +139,35 @@ const BotListV1 = ({
         dataIndex: 'id',
         key: 'id',
         width: 90,
-        render: (_, record) => (
-          <Space align="center" size={8}>
-            <Tooltip
-              placement="bottom"
-              title={deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
-              <Button
-                disabled={!deletePermission}
-                icon={
-                  <SVGIcons
-                    alt="Delete"
-                    className="tw-w-4"
-                    icon={Icons.DELETE}
-                  />
-                }
-                type="text"
-                onClick={() => setSelectedUser(record)}
-              />
-            </Tooltip>
-          </Space>
-        ),
+        render: (_, record) => {
+          const isIngestionBot = record.botType === BotType.IngestionBot;
+          const title = isIngestionBot
+            ? INGESTION_BOT_CANT_BE_DELETED
+            : deletePermission
+            ? 'Delete'
+            : NO_PERMISSION_FOR_ACTION;
+          const isDisabled = !deletePermission || isIngestionBot;
+
+          return (
+            <Space align="center" size={8}>
+              <Tooltip placement="bottom" title={title}>
+                <Button
+                  data-testid={`bot-delete-${getEntityName(record)}`}
+                  disabled={isDisabled}
+                  icon={
+                    <SVGIcons
+                      alt="Delete"
+                      className="tw-w-4"
+                      icon={Icons.DELETE}
+                    />
+                  }
+                  type="text"
+                  onClick={() => setSelectedUser(record)}
+                />
+              </Tooltip>
+            </Space>
+          );
+        },
       },
     ],
     []
@@ -166,9 +188,25 @@ const BotListV1 = ({
     fetchBots();
   }, [selectedUser]);
 
+  const handleSearch = (text: string) => {
+    if (text) {
+      const normalizeText = lowerCase(text);
+      const matchedData = botUsers.filter(
+        (bot) =>
+          bot.name.includes(normalizeText) ||
+          bot.displayName?.includes(normalizeText) ||
+          bot.description?.includes(normalizeText)
+      );
+      setSearchedData(matchedData);
+    } else {
+      setSearchedData(botUsers);
+    }
+  };
+
   // Fetch initial bot
   useEffect(() => {
     setBotUsers([]);
+    setSearchedData([]);
     fetchBots(showDeleted);
   }, [showDeleted]);
 
@@ -194,6 +232,7 @@ const BotListV1 = ({
                 title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
                 <Button
                   ghost
+                  data-testid="add-bot"
                   disabled={!createPermission}
                   type="primary"
                   onClick={handleAddBotClick}>
@@ -210,9 +249,16 @@ const BotListV1 = ({
     </Row>
   ) : (
     <Row gutter={[16, 16]}>
-      <Col flex={1} />
-      <Col>
-        <Space size={16}>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder="Search for bots..."
+          typingInterval={500}
+          onSearch={handleSearch}
+        />
+      </Col>
+      <Col span={16}>
+        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}
@@ -225,6 +271,7 @@ const BotListV1 = ({
           <Tooltip
             title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
             <Button
+              data-testid="add-bot"
               disabled={!createPermission}
               type="primary"
               onClick={handleAddBotClick}>
@@ -238,7 +285,7 @@ const BotListV1 = ({
           <Col span={24}>
             <Table
               columns={columns}
-              dataSource={botUsers}
+              dataSource={searchedData}
               loading={{
                 spinning: loading,
                 indicator: <Loader size="small" />,
@@ -248,10 +295,10 @@ const BotListV1 = ({
             />
           </Col>
           <Col span={24}>
-            {paging.total > PAGE_SIZE_MEDIUM && (
+            {paging.total > PAGE_SIZE_LARGE && (
               <NextPrevious
                 currentPage={currentPage}
-                pageSize={PAGE_SIZE_MEDIUM}
+                pageSize={PAGE_SIZE_LARGE}
                 paging={paging}
                 pagingHandler={handlePageChange}
                 totalCount={paging.total}

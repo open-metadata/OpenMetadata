@@ -36,6 +36,7 @@ const ConfigureIngestion = ({
   topicFilterPattern,
   chartFilterPattern,
   pipelineFilterPattern,
+  mlModelFilterPattern,
   includeLineage,
   includeView,
   includeTags,
@@ -51,6 +52,7 @@ const ConfigureIngestion = ({
   showTopicFilter,
   showChartFilter,
   showPipelineFilter,
+  showMlModelFilter,
   queryLogDuration,
   stageFileLocation,
   threadCount,
@@ -75,6 +77,8 @@ const ConfigureIngestion = ({
   handleStageFileLocation,
   handleResultLimit,
   handleThreadCount,
+  useFqnFilter,
+  onUseFqnFilterClick,
   onCancel,
   onNext,
 }: ConfigureIngestionProps) => {
@@ -145,9 +149,7 @@ const ConfigureIngestion = ({
           placeholder="75"
           type="number"
           value={profileSample}
-          onChange={(e) =>
-            handleProfileSampleValidation(parseInt(e.target.value))
-          }
+          onChange={(e) => handleProfileSampleValidation(+e.target.value)}
         />
         {profileSampleError && errorMsg('Value must be between 0 and 99.')}
       </div>
@@ -277,6 +279,26 @@ const ConfigureIngestion = ({
       </div>
     );
   };
+  const getFqnForFilteringToggles = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>Use FQN For Filtering</label>
+          <ToggleSwitchV1
+            checked={useFqnFilter}
+            handleCheck={onUseFqnFilterClick}
+            testId="include-lineage"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">
+          Regex will be applied on fully qualified name (e.g
+          service_name.db_name.schema_name.table_name) instead of raw name (e.g.
+          table_name).
+        </p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
 
   const handleDashBoardServiceNames = (inputValue: string) => {
     const separator = ',';
@@ -359,6 +381,7 @@ const ConfigureIngestion = ({
           <Fragment>
             {getFilterPatterns()}
             {getSeparator('')}
+            {getFqnForFilteringToggles()}
             {getDatabaseFieldToggles()}
           </Fragment>
         );
@@ -434,6 +457,25 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getPipelineFieldToggles()}
+          </Fragment>
+        );
+
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showMlModelFilter}
+              excludePattern={mlModelFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.MLMODEL)
+              }
+              includePattern={mlModelFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.MLMODEL}
+            />
+            {getSeparator('')}
           </Fragment>
         );
       default:

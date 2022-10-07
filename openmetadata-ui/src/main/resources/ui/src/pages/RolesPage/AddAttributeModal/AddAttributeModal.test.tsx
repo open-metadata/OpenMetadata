@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { POLICY_LIST_WITH_PAGING } from '../Roles.mock';
+import { POLICY_LIST_WITH_PAGING, ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import AddAttributeModal from './AddAttributeModal';
 
 jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   getPolicies: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_LIST_WITH_PAGING)),
+  getRoles: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(ROLES_LIST_WITH_PAGING)),
 }));
 
 jest.mock(
@@ -34,6 +37,10 @@ jest.mock('../../../components/Loader/Loader', () =>
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('data'),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 const onSave = jest.fn();
@@ -82,7 +89,9 @@ describe('Test Add attribute modal', () => {
 
     expect(sumbitButton).toBeInTheDocument();
 
-    fireEvent.click(sumbitButton);
+    act(() => {
+      fireEvent.click(sumbitButton);
+    });
 
     expect(onSave).toBeCalled();
   });
@@ -94,7 +103,9 @@ describe('Test Add attribute modal', () => {
 
     expect(cancelButton).toBeInTheDocument();
 
-    fireEvent.click(cancelButton);
+    act(() => {
+      fireEvent.click(cancelButton);
+    });
 
     expect(onCancel).toBeCalled();
   });

@@ -287,7 +287,7 @@ If you want to persist your data, prepare [Named Volumes](/deployment/docker/vol
 ## Next Steps
 
 1. Visit the [Features](/overview/features) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](/openmetadata/connectors) documentation to see what services you can integrate with
+2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.
 
@@ -305,7 +305,7 @@ you can always run `docker compose` manually after picking up the latest `docker
 
 ```commandline
 mkdir openmetadata && cd "$_"
-wget https://github.com/open-metadata/OpenMetadata/releases/download/0.11.3-release/docker-compose.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-release/docker-compose.yml
 docker compose up -d
 ```
 
@@ -347,3 +347,7 @@ WARNING! This will remove all custom networks not used by at least one container
 ```
 
 So be careful if you want to keep up some (unused) networks from your laptop.
+
+### Connect to a Container from the Host
+
+Do you want to connect to a container from the host [Refer](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)

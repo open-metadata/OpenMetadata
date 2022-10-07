@@ -448,14 +448,16 @@ const Ingestion: React.FC<IngestionProps> = ({
                       {airflowEndpoint ? (
                         <Tooltip
                           title={
-                            permissions.ViewAll
+                            permissions.ViewAll || permissions.ViewBasic
                               ? 'View Dag'
                               : NO_PERMISSION_TO_VIEW
                           }>
                           <Button
                             className="tw-mr-2"
                             data-testid="airflow-tree-view"
-                            disabled={!permissions.ViewAll}
+                            disabled={
+                              !(permissions.ViewAll || permissions.ViewBasic)
+                            }
                             href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
                             rel="noopener noreferrer"
                             target="_blank"

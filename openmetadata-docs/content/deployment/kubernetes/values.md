@@ -14,14 +14,16 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
-| global.authentication.provider | string | `no-auth` |
-| global.authentication.publicKeys | list | `[]` |
-| global.authentication.authority | string | `Empty String` |
+| global.authentication.provider | string | `basic` |
+| global.authentication.publicKeys | list | `[http://openmetadata:8585/api/v1/config/jwks]` |
+| global.authentication.authority | string | `https://accounts.google.com` |
 | global.authentication.clientId | string | `Empty String` |
 | global.authentication.callbackUrl | string | `Empty String` |
+| global.authentication.enableSelfSignup | bool | `true` |
 | global.authentication.jwtPrincipalClaims | list | `[email,preferred_username,sub]` |
-| global.authorizer.className | string | `org.openmetadata.catalog.security.NoopAuthorizer` |
-| global.authorizer.containerRequestFilter | string | `org.openmetadata.catalog.security.NoopFilter` |
+| global.authorizer.allowedEmailRegistrationDomains | list | `[all]` |
+| global.authorizer.className | string | `org.openmetadata.service.security.DefaultAuthorizer` |
+| global.authorizer.containerRequestFilter | string | `org.openmetadata.service.security.JwtFilter` |
 | global.authorizer.enforcePrincipalDomain | bool | `false` |
 | global.authorizer.enableSecureSocketConnection | bool | `false` |
 | global.authorizer.initialAdmins | list | `[admin]` |
@@ -56,6 +58,11 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.airflow.openmetadata.authConfig.openMetadata.jwtToken.secretKey| string | `openmetadata-jwt-secret` |
 | global.airflow.openmetadata.authConfig.openMetadata.jwtToken.secretRef| string | `openmetadata-jwt-secret` |
 | global.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api` |
+| global.airflow.sslCertificatePath | string | `/no/path` |
+| global.airflow.verifySsl | string | `no-ssl` |
+| global.basicLogin.maxLoginFailAttempts | int | 3 |
+| global.basicLogin.accessBlockTime | int | 600 |
+| global.clusterName | string | `openmetadata` |
 | global.database.auth.password.secretRef | string | `mysql-secrets` |
 | global.database.auth.password.secretKey | string | `openmetadata-mysql-password` |
 | global.database.auth.username | string | `openmetadata_user` |
@@ -76,16 +83,33 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.elasticsearch.trustStore.path | string | `Empty String` |
 | global.elasticsearch.trustStore.password.secretRef | string | `elasticsearch-truststore-secrets` |
 | global.elasticsearch.trustStore.password.secretKey | string | `openmetadata-elasticsearch-truststore-password` |
-| global.jwtTokenConfiguration.enabled | bool | `false` |
 | global.fernetKey | string | `jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=` |
-| global.jwtTokenConfiguration.rsapublicKeyFilePath | string | `Empty String` |
-| global.jwtTokenConfiguration.rsaprivateKeyFilePath | string | `Empty String` |
+| global.jwtTokenConfiguration.enabled | bool | `true` |
+| global.jwtTokenConfiguration.rsapublicKeyFilePath | string | `./conf/public_key.der` |
+| global.jwtTokenConfiguration.rsaprivateKeyFilePath | string | `./conf/private_key.der` |
 | global.jwtTokenConfiguration.jwtissuer | string | `open-metadata.org` |
 | global.jwtTokenConfiguration.keyId | string | `Gb389a-9f76-gdjs-a92j-0242bk94356` |
 | global.logLevel | string | `INFO` |
 | global.openmetadata.adminPort | int | 8586 |
 | global.openmetadata.host | string | `openmetadata` |
 | global.openmetadata.port | int | 8585 |
+| global.secretsManager.provider | string | `noop` |
+| global.secretsManager.additionalParameters.enabled | bool | `false` |
+| global.secretsManager.additionalParameters.accessKeyId.secretRef | string | `aws-access-key-secret` |
+| global.secretsManager.additionalParameters.accessKeyId.secretKey | string | `aws-key-secret` |
+| global.secretsManager.additionalParameters.region | string | `Empty String` |
+| global.secretsManager.additionalParameters.secretAccessKey.secretRef | string | `aws-secret-access-key-secret` |
+| global.secretsManager.additionalParameters.secretAccessKey.secretKey | string | `aws-key-secret` |
+| global.smtpConfig.enableSmtpServer | bool | `false` |
+| global.smtpConfig.emailingEntity | string | `OpenMetadata` |
+| global.smtpConfig.openMetadataUrl | string | `Empty String` |
+| global.smtpConfig.password.secretKey | string | `Empty String` |
+| global.smtpConfig.password.secretRef | string | `Empty String` |
+| global.smtpConfig.serverEndpoint | string | `Empty String` |
+| global.smtpConfig.serverPort | string | `Empty String` |
+| global.smtpConfig.supportUrl | string | `https://slack.open-metadata.org` |
+| global.smtpConfig.transportationStrategy | string | `SMTP_TLS` |
+| global.smtpConfig.username | string | `Empty String` |
 
 </Table>
 
@@ -102,7 +126,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | fullnameOverride | string | `"openmetadata"` |
 | image.pullPolicy | string | `"Always"` |
 | image.repository | string | `"openmetadata/server"` |
-| image.tag | string | `0.11.4` |
+| image.tag | string | `0.12.1` |
 | imagePullSecrets | list | `[]` |
 | ingress.annotations | object | `{}` |
 | ingress.className | string | `""` |

@@ -21,14 +21,14 @@ export const getTabs = (
   teamUserPagin: Paging,
   isGroupType: boolean,
   isOrganization: boolean,
-  teamsCount?: number
+  teamsCount: number
 ) => {
   const tabs = {
     teams: {
       name: 'Teams',
       isProtected: false,
       position: 1,
-      count: isUndefined(teamsCount) ? currentTeam.childrenCount : teamsCount,
+      count: teamsCount,
     },
     users: {
       name: 'Users',

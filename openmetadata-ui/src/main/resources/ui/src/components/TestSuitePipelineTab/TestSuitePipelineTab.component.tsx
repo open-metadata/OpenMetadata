@@ -19,6 +19,7 @@ import cronstrue from 'cronstrue';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  checkAirflowStatus,
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -34,10 +35,11 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
 import { getIngestionStatuses } from '../../utils/CommonUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import PopOver from '../common/popover/PopOver';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -67,11 +69,11 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
 
   const viewPermission = useMemo(
     () =>
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         ResourceEntity.INGESTION_PIPELINE,
         permissions
       ),
@@ -201,13 +203,16 @@ const TestSuitePipelineTab = () => {
     }
   };
 
-  const handleDeployIngestion = async (id: string) => {
+  const handleDeployIngestion = async (id: string, reDeployed: boolean) => {
     setCurrDeployId({ id, state: 'waiting' });
 
     try {
       await deployIngestionPipelineById(id);
       setCurrDeployId({ id, state: 'success' });
       setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
+      showSuccessToast(
+        `Pipeline ${reDeployed ? 'Re Deployed' : 'Deployed'} successfully`
+      );
     } catch (error) {
       setCurrDeployId({ id: '', state: '' });
       showErrorToast(
@@ -220,25 +225,48 @@ const TestSuitePipelineTab = () => {
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
-        <Tooltip title={editPermission ? 'Run' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            data-testid="run"
-            disabled={!editPermission}
-            type="link"
-            onClick={() =>
-              handleTriggerIngestion(ingestion.id as string, ingestion.name)
-            }>
-            {currTriggerId.id === ingestion.id ? (
-              currTriggerId.state === 'success' ? (
-                <FontAwesomeIcon icon="check" />
+        <>
+          <Tooltip title={editPermission ? 'Run' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              data-testid="run"
+              disabled={!editPermission}
+              type="link"
+              onClick={() =>
+                handleTriggerIngestion(ingestion.id as string, ingestion.name)
+              }>
+              {currTriggerId.id === ingestion.id ? (
+                currTriggerId.state === 'success' ? (
+                  <FontAwesomeIcon icon="check" />
+                ) : (
+                  <Loader size="small" type="default" />
+                )
               ) : (
-                <Loader size="small" type="default" />
-              )
-            ) : (
-              'Run'
-            )}
-          </Button>
-        </Tooltip>
+                'Run'
+              )}
+            </Button>
+          </Tooltip>
+          {separator}
+          <Tooltip
+            title={editPermission ? 'Re Deploy' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              data-testid="re-deploy-btn"
+              disabled={!editPermission}
+              type="link"
+              onClick={() =>
+                handleDeployIngestion(ingestion.id as string, true)
+              }>
+              {currDeployId.id === ingestion.id ? (
+                currDeployId.state === 'success' ? (
+                  <FontAwesomeIcon icon="check" />
+                ) : (
+                  <Loader size="small" type="default" />
+                )
+              ) : (
+                'Re Deploy'
+              )}
+            </Button>
+          </Tooltip>
+        </>
       );
     } else {
       return (
@@ -247,7 +275,9 @@ const TestSuitePipelineTab = () => {
             data-testid="deploy"
             disabled={!editPermission}
             type="link"
-            onClick={() => handleDeployIngestion(ingestion.id as string)}>
+            onClick={() =>
+              handleDeployIngestion(ingestion.id as string, false)
+            }>
             {currDeployId.id === ingestion.id ? (
               currDeployId.state === 'success' ? (
                 <FontAwesomeIcon icon="check" />
@@ -266,6 +296,20 @@ const TestSuitePipelineTab = () => {
   useEffect(() => {
     getAllIngestionWorkflows();
     fetchAirFlowEndPoint();
+  }, []);
+
+  useEffect(() => {
+    checkAirflowStatus()
+      .then((res) => {
+        if (res.status === 200) {
+          setIsAirflowRunning(true);
+        } else {
+          setIsAirflowRunning(false);
+        }
+      })
+      .catch(() => {
+        setIsAirflowRunning(false);
+      });
   }, []);
 
   const pipelineColumns = useMemo(() => {
@@ -491,13 +535,22 @@ const TestSuitePipelineTab = () => {
     ];
 
     return column;
-  }, [airFlowEndPoint, isKillModalOpen, isLogsModalOpen, selectedPipeline]);
+  }, [
+    airFlowEndPoint,
+    isKillModalOpen,
+    isLogsModalOpen,
+    selectedPipeline,
+    currDeployId,
+    currTriggerId,
+  ]);
 
   if (isLoading) {
     return <Loader />;
   }
 
-  return (
+  return !isAirflowRunning ? (
+    <ErrorPlaceHolderIngestion />
+  ) : (
     <TestCaseCommonTabContainer
       buttonName="Add Ingestion"
       hasAccess={createPermission}

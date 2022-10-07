@@ -1,0 +1,20 @@
+source:
+  type: dagster
+  serviceName: dagster_source
+  serviceConnection:
+    config:
+      type: Dagster
+      hostPort: https://localhost:3000
+      numberOfStatus: 10
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+sink:
+  type: metadata-rest
+  config: { }
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+  

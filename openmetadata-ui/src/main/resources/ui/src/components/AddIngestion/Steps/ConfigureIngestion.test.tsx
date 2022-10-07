@@ -58,6 +58,10 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     includes: [],
     excludes: [],
   },
+  mlModelFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
   includeLineage: false,
   includeView: false,
   includeTags: false,
@@ -73,6 +77,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   showTopicFilter: false,
   showChartFilter: false,
   showPipelineFilter: false,
+  showMlModelFilter: false,
   handleIncludeLineage: jest.fn(),
   handleIncludeView: jest.fn(),
   handleIncludeTags: jest.fn(),
@@ -96,6 +101,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleDatasetServiceName: jest.fn(),
   threadCount: 5,
   handleThreadCount: jest.fn(),
+  useFqnFilter: false,
+  onUseFqnFilterClick: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {
@@ -124,6 +131,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(3);
-    expect(toggleSwitchs.length).toBe(4);
+    expect(toggleSwitchs.length).toBe(5);
   });
 });

@@ -1,6 +1,7 @@
 import re
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
 
@@ -59,6 +60,7 @@ class ColumnTypeParser:
         # Custom wrapper types enriching SQA type system
         sqa_types.SQAMap: "MAP",
         sqa_types.SQAStruct: "STRUCT",
+        BYTEA: "BYTEA",
     }
 
     _SOURCE_TYPE_TO_OM_TYPE = {
@@ -92,6 +94,7 @@ class ColumnTypeParser:
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
         "GEOGRAPHY": "GEOGRAPHY",
+        "GEOMETRY": "GEOMETRY",
         "HYPERLOGLOG": "BINARY",
         "IMAGE": "BINARY",
         "INT": "INT",
@@ -169,6 +172,9 @@ class ColumnTypeParser:
         "XML": "BINARY",
         "XMLTYPE": "BINARY",
         "UUID": "UUID",
+        "POINT": "POINT",
+        "POLYGON": "POLYGON",
+        "BYTEA": "BYTEA",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")

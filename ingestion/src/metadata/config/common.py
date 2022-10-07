@@ -19,10 +19,6 @@ from typing import IO, Any, Optional
 import yaml
 from pydantic import BaseModel
 
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
-
 
 class ConfigModel(BaseModel):
     class Config:
@@ -56,9 +52,9 @@ class YamlConfigurationMechanism(ConfigurationMechanism):
             config = yaml.safe_load(config_fp)
             return config
         except yaml.error.YAMLError:
-            msg = f"YAML Configuration file [{config_fp}] is not a valid YAML"
-            logger.error(msg)
-            raise ConfigurationError(msg)
+            raise ConfigurationError(
+                f"YAML Configuration file [{config_fp}] is not a valid YAML"
+            )
 
 
 class JsonConfigurationMechanism(ConfigurationMechanism):
@@ -69,9 +65,9 @@ class JsonConfigurationMechanism(ConfigurationMechanism):
             config = json.load(config_fp)
             return config
         except json.decoder.JSONDecodeError:
-            msg = f"JSON Configuration file [{config_fp}] is not a valid JSON"
-            logger.error(msg)
-            raise ConfigurationError(msg)
+            raise ConfigurationError(
+                f"JSON Configuration file [{config_fp}] is not a valid JSON"
+            )
 
 
 def load_config_file(config_file: pathlib.Path) -> dict:

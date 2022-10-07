@@ -37,14 +37,12 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location, LocationType
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     MlFeature,
@@ -69,14 +67,12 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.teams.team import TeamType
+from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
-from metadata.generated.schema.tests.columnTest import ColumnTestCase
-from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -84,10 +80,8 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -358,6 +352,9 @@ class SampleDataSource(Source[Entity]):
                 self.service_connection.sampleDataFolder + "/lineage/lineage.json", "r"
             )
         )
+        self.teams = json.load(
+            open(self.service_connection.sampleDataFolder + "/teams/teams.json", "r")
+        )
         self.users = json.load(
             open(self.service_connection.sampleDataFolder + "/users/users.json", "r")
         )
@@ -424,11 +421,11 @@ class SampleDataSource(Source[Entity]):
         pass
 
     def next_record(self) -> Iterable[Entity]:
+        yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_locations()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
-        yield from self.ingest_table_tests()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
         yield from self.ingest_dashboards()
@@ -440,6 +437,32 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
+
+    def ingest_teams(self):
+        for team in self.teams["teams"]:
+
+            team_to_ingest = CreateTeamRequest(
+                name=team["name"], teamType=team["teamType"]
+            )
+            if team["parent"] != None:
+                parent_list_id = []
+                for parent in team["parent"]:
+                    tries = 3
+                    parent_object = self.metadata.get_by_name(entity=Team, fqn=parent)
+                    while not parent_object and tries > 0:
+                        logger.info(f"Trying to GET {parent} Parent Team")
+                        parent_object = self.metadata.get_by_name(
+                            entity=Team,
+                            fqn=parent,
+                        )
+                        tries -= 1
+
+                    if parent_object:
+                        parent_list_id.append(parent_object.id)
+
+                team_to_ingest.parents = parent_list_id
+
+            yield team_to_ingest
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
@@ -766,7 +789,7 @@ class SampleDataSource(Source[Entity]):
                         name=user["teams"],
                         displayName=user["teams"],
                         description=f"This is {user['teams']} description.",
-                        teamType=TeamType.Department,
+                        teamType=user["teamType"],
                     )
                 ]
                 if not self.list_policies:
@@ -794,40 +817,6 @@ class SampleDataSource(Source[Entity]):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error ingesting users: {exc}")
-
-    def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
-        """
-        Iterate over all tables and fetch
-        the sample test data. For each table test and column
-        test, prepare all TestCaseResults
-        """
-        try:
-            for test_def in self.table_tests:
-                table_name = test_def["table"]
-
-                for table_test in test_def["tableTests"]:
-                    create_table_test = CreateTableTestRequest(
-                        description=table_test.get("description"),
-                        testCase=TableTestCase.parse_obj(table_test["testCase"]),
-                        result=TestCaseResult.parse_obj(table_test["result"]),
-                    )
-                    yield OMetaTableTest(
-                        table_name=table_name, table_test=create_table_test
-                    )
-
-                for col_test in test_def["columnTests"]:
-                    create_column_test = CreateColumnTestRequest(
-                        description=col_test.get("description"),
-                        columnName=col_test["columnName"],
-                        testCase=ColumnTestCase.parse_obj(col_test["testCase"]),
-                        result=TestCaseResult.parse_obj(col_test["result"]),
-                    )
-                    yield OMetaTableTest(
-                        table_name=table_name, column_test=create_column_test
-                    )
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error ingesting table tests: {exc}")
 
     def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
         """Iterate over all the profile data and ingest them"""

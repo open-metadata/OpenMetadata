@@ -12,7 +12,7 @@
  */
 
 import { isNil } from 'lodash';
-import { EntityReference } from '../generated/entity/teams/team';
+import { EntityReference, Team } from '../generated/entity/teams/team';
 
 /**
  * To get filtered list of non-deleted(active) users
@@ -21,4 +21,16 @@ import { EntityReference } from '../generated/entity/teams/team';
  */
 export const getActiveUsers = (users?: Array<EntityReference>) => {
   return !isNil(users) ? users.filter((item) => !item.deleted) : [];
+};
+
+export const filterChildTeams = (
+  teamsList: Team[],
+  showDeletedTeams: boolean
+) => teamsList.filter((d) => d.deleted === showDeletedTeams);
+
+export const getDeleteMessagePostFix = (
+  teamName: string,
+  deleteType: string
+) => {
+  return `Any teams under "${teamName}" will be ${deleteType} deleted as well.`;
 };

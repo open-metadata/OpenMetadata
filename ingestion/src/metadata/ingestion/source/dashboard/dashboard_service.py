@@ -47,6 +47,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
@@ -285,14 +286,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     f"Cannot extract dashboard details from {dashboard}: {exc}"
                 )
                 continue
+            dashboard_name = self.get_dashboard_name(dashboard_details)
 
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
-                self.get_dashboard_name(dashboard_details),
+                dashboard_name,
             ):
                 self.status.filter(
-                    self.get_dashboard_name(dashboard_details),
-                    "Dashboard Pattern not Allowed",
+                    dashboard_name,
+                    "Dashboard Fltered Out",
                 )
                 continue
             yield dashboard_details

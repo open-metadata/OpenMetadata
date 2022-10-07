@@ -24,12 +24,14 @@ import { WebStorageStateStore } from 'oidc-client';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
+import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
 const DATE_NOW = Date.now();
-const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 100;
+
+export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
 
 export const getOidcExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 24 * 1000);
@@ -70,10 +72,16 @@ export const getUserManagerConfig = (
 };
 
 export const getAuthConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthenticationConfiguration
 ): Record<string, string | boolean> => {
-  const { authority, clientId, callbackUrl, provider, providerName } =
-    authClient;
+  const {
+    authority,
+    clientId,
+    callbackUrl,
+    provider,
+    providerName,
+    enableSelfSignup,
+  } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
@@ -140,6 +148,23 @@ export const getAuthConfig = (
 
       break;
     }
+    case AuthTypes.BASIC: {
+      config = {
+        auth: {
+          authority,
+          clientId,
+          callbackUrl,
+          postLogoutRedirectUri: '/',
+        },
+        cache: {
+          cacheLocation: BrowserCacheLocation.LocalStorage,
+        },
+        provider,
+        enableSelfSignUp: enableSelfSignup,
+      } as Configuration;
+
+      break;
+    }
     case AuthTypes.AZURE:
       {
         config = {
@@ -186,10 +211,16 @@ export const getNameFromEmail = (email: string) => {
 
 export const isProtectedRoute = (pathname: string) => {
   return (
-    pathname !== ROUTES.SIGNUP &&
-    pathname !== ROUTES.SIGNIN &&
-    pathname !== ROUTES.CALLBACK &&
-    pathname !== ROUTES.SILENT_CALLBACK
+    [
+      ROUTES.SIGNUP,
+      ROUTES.SIGNIN,
+      ROUTES.FORGOT_PASSWORD,
+      ROUTES.CALLBACK,
+      ROUTES.SILENT_CALLBACK,
+      ROUTES.REGISTER,
+      ROUTES.RESET_PASSWORD,
+      ROUTES.ACCOUNT_ACTIVATION,
+    ].indexOf(pathname) === -1
   );
 };
 
@@ -201,6 +232,10 @@ export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
 };
 
+export const getUrlPathnameExpiryAfterRoute = () => {
+  return new Date(Date.now() + 1000);
+};
+
 /**
  * @exp expiry of token
  * @isExpired wether token is already expired or not
@@ -210,22 +245,23 @@ export const getUrlPathnameExpiry = () => {
  */
 export const extractDetailsFromToken = () => {
   const token = localStorage.getItem(oidcTokenKey) || '';
+  if (token) {
+    try {
+      const { exp } = jwtDecode<JwtPayload>(token);
 
-  try {
-    const { exp } = jwtDecode<JwtPayload>(token);
+      const diff = exp && exp * 1000 - DATE_NOW;
+      const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
 
-    const diff = exp && exp * 1000 - DATE_NOW;
-    const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
-
-    return {
-      exp,
-      isExpired: exp && DATE_NOW >= exp * 1000,
-      diff,
-      timeoutExpiry,
-    };
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Error parsing id token.', error);
+      return {
+        exp,
+        isExpired: exp && DATE_NOW >= exp * 1000,
+        diff,
+        timeoutExpiry,
+      };
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error parsing id token.', error);
+    }
   }
 
   return {

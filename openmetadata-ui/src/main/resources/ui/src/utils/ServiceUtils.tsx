@@ -68,6 +68,7 @@ import {
   PRESTO,
   PULSAR,
   REDASH,
+  REDPANDA,
   REDSHIFT,
   SALESFORCE,
   SCIKIT,
@@ -191,6 +192,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case MessagingServiceType.Pulsar:
       return PULSAR;
+
+    case MessagingServiceType.Redpanda:
+      return REDPANDA;
 
     case DashboardServiceType.Superset:
       return SUPERSET;
@@ -521,7 +525,14 @@ export const getIngestionName = (
 };
 
 export const shouldTestConnection = (serviceType: string) => {
-  return serviceType !== DatabaseServiceType.SampleData;
+  return (
+    serviceType !== DatabaseServiceType.SampleData &&
+    serviceType !== DatabaseServiceType.CustomDatabase &&
+    serviceType !== MessagingServiceType.CustomMessaging &&
+    serviceType !== DashboardServiceType.CustomDashboard &&
+    serviceType !== MlModelServiceType.CustomMlModel &&
+    serviceType !== PipelineServiceType.CustomPipeline
+  );
 };
 
 export const getTestConnectionType = (serviceCat: ServiceCategory) => {
@@ -657,7 +668,7 @@ export const getOptionalFields = (
       );
     }
 
-    case ServiceCategory.ML_MODAL_SERVICES: {
+    case ServiceCategory.ML_MODEL_SERVICES: {
       const mlmodel = service as MlmodelService;
 
       return (
@@ -758,7 +769,7 @@ export const getResourceEntityFromServiceCategory = (
       return ResourceEntity.DATABASE_SERVICE;
 
     case 'mlModels':
-    case ServiceCategory.ML_MODAL_SERVICES:
+    case ServiceCategory.ML_MODEL_SERVICES:
       return ResourceEntity.ML_MODEL_SERVICE;
 
     case 'messaging':

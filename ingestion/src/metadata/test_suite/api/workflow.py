@@ -15,12 +15,12 @@ Workflow definition for the test suite
 
 from __future__ import annotations
 
+import sys
 import traceback
 from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
-import click
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
@@ -53,6 +53,7 @@ from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcesso
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.workflow_output_handler import print_test_suite_status
 
 logger: Logger = test_suite_logger()
 
@@ -154,11 +155,23 @@ class TestSuiteWorkflow:
                     )
                 )
                 service_connection_config = deepcopy(service_connection.__root__.config)
-                if (
-                    hasattr(service_connection_config, "supportsDatabase")
-                    and not service_connection_config.database
-                ):
-                    service_connection_config.database = table_fqn.split(".")[1]
+                if hasattr(service_connection_config, "supportsDatabase"):
+                    if (
+                        hasattr(
+                            service_connection_config,
+                            "database",
+                        )
+                        and not service_connection_config.database
+                    ):
+                        service_connection_config.database = table_fqn.split(".")[1]
+                    if (
+                        hasattr(
+                            service_connection_config,
+                            "catalog",
+                        )
+                        and not service_connection_config.catalog
+                    ):
+                        service_connection_config.catalog = table_fqn.split(".")[1]
                 return service_connection_config
 
             logger.error(
@@ -277,8 +290,9 @@ class TestSuiteWorkflow:
         processor.config.testSuites
         """
         test_suite_entities = []
+        test_suites = self.processor_config.testSuites or []
 
-        for test_suite in self.processor_config.testSuites:
+        for test_suite in test_suites:
             test_suite_entity = self.metadata.get_by_name(
                 entity=TestSuite,
                 fqn=test_suite.name,
@@ -388,6 +402,10 @@ class TestSuiteWorkflow:
             self.get_test_suite_entity_for_ui_workflow()
             or self.get_or_create_test_suite_entity_for_cli_workflow()
         )
+        if not test_suites:
+            logger.warning("No testSuite found in configuration file. Exiting.")
+            sys.exit(1)
+
         test_cases = self.get_test_cases_from_test_suite(test_suites)
         if self.processor_config.testSuites:
             cli_config_test_cases_def = self.get_test_case_from_cli_config()
@@ -426,26 +444,20 @@ class TestSuiteWorkflow:
                 logger.warning(f"Could not run test case {test_case.name}: {exc}")
                 self.status.failure(test_case.fullyQualifiedName.__root__)
 
-    def print_status(self) -> int:
+    def print_status(self) -> None:
         """
-        Runs click echo to print the
-        workflow results
+        Print the workflow results with click
         """
-        click.echo()
-        click.secho("Processor Status:", bold=True)
-        click.echo(self.status.as_string())
-        if hasattr(self, "sink"):
-            click.secho("Sink Status:", bold=True)
-            click.echo(self.sink.get_status().as_string())
-            click.echo()
+        print_test_suite_status(self)
 
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
         if self.status.failures or (
             hasattr(self, "sink") and self.sink.get_status().failures
         ):
-            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-
-        click.secho("Workflow finished successfully", fg="green", bold=True)
         return 0
 
     def raise_from_status(self, raise_warnings=False):

@@ -20,6 +20,8 @@ import {
   facetFilterPlaceholder,
   LIST_SIZE,
 } from '../../../constants/constants';
+import { checkSelected } from '../../../utils/FilterUtils';
+import { getTagsWithLabel } from '../../../utils/TagsUtils';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
 
@@ -114,8 +116,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
       case 'Service':
         return getBuckets(buckets, showAllServices, true);
       case 'Tags':
-        return getBuckets(buckets, showAllTags, true);
-
+        return getTagsWithLabel(getBuckets(buckets, showAllTags, true));
       case 'Tier':
         return getBuckets(buckets, showAllTier);
       case 'Database':
@@ -128,6 +129,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return [];
     }
   };
+
   const getFilterItems = (aggregation: AggregationType) => {
     return (
       <>
@@ -135,10 +137,12 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           (bucket: Bucket, index: number) => (
             <FilterContainer
               count={bucket.doc_count}
-              isSelected={filters[
-                toLower(aggregation.title) as keyof FilterObject
-              ].includes(bucket.key.replace(/ /g, '+'))}
+              isSelected={checkSelected(
+                filters[toLower(aggregation.title) as keyof FilterObject],
+                bucket.key.replace(/ /g, '+')
+              )}
               key={index}
+              label={bucket.label}
               name={bucket.key}
               type={toLower(aggregation.title) as keyof FilterObject}
               onSelect={onSelectHandler}

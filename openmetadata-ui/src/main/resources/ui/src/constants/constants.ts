@@ -14,6 +14,7 @@
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { WebhookType } from '../generated/api/events/createWebhook';
 import { getSettingPath } from '../utils/RouterUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
@@ -28,12 +29,14 @@ export const SUCCESS_COLOR = '#008376';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
+export const TAG_VIEW_CAP = 35;
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 12;
 export const PAGE_SIZE_MEDIUM = 15;
+export const PAGE_SIZE_LARGE = 100;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
@@ -45,6 +48,8 @@ export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
+export const refreshTokenKey = 'refreshToken';
+export const accessToken = 'accessToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -188,7 +193,11 @@ export const ROUTES = {
   TAGS: '/tags',
   TAG_DETAILS: `/tags/${PLACEHOLDER_TAG_NAME}`,
   SIGNUP: '/signup',
+  REGISTER: '/register',
   SIGNIN: '/signin',
+  FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/users/password/reset',
+  ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
@@ -279,7 +288,7 @@ export const getVersionPath = (
 export const getTableTabPath = (tableFQN: string, tab = 'schema') => {
   let path = ROUTES.TABLE_DETAILS_WITH_TAB;
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -488,3 +497,4 @@ export const configOptions = {
 };
 
 export const NOTIFICATION_READ_TIMER = 2500;
+export const TIER_CATEGORY = 'Tier';

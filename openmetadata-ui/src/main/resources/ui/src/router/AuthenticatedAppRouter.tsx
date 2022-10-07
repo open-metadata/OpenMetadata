@@ -19,7 +19,7 @@ import { usePermissionProvider } from '../components/PermissionProvider/Permissi
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { Operation } from '../generated/entity/policies/policy';
-import { checkPermission } from '../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -214,27 +214,34 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   const glossaryPermission = useMemo(
     () =>
-      checkPermission(Operation.ViewAll, ResourceEntity.GLOSSARY, permissions),
+      userPermissions.hasViewPermissions(ResourceEntity.GLOSSARY, permissions),
     [permissions]
   );
 
   const glossaryTermPermission = useMemo(
     () =>
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         ResourceEntity.GLOSSARY_TERM,
         permissions
       ),
+
     [permissions]
   );
 
   const tagCategoryPermission = useMemo(
     () =>
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         ResourceEntity.TAG_CATEGORY,
         permissions
       ),
+
+    [permissions]
+  );
+
+  const createBotPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.USER, permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.BOT, permissions),
     [permissions]
   );
 
@@ -276,6 +283,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
+
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <AdminProtectedRoute
         exact
@@ -411,11 +419,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.BOT,
-          permissions
-        )}
+        hasPermission={createBotPermission}
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <Route exact component={BotDetailsPage} path={ROUTES.BOTS_PROFILE} />
@@ -485,6 +489,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={TestSuiteIngestionPage}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
       />
+      <Route exact path={ROUTES.HOME}>
+        <Redirect to={ROUTES.MY_DATA} />
+      </Route>
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

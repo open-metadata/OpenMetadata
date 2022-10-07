@@ -16,9 +16,10 @@ import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
+import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
 import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
-import glueConnection from '../jsons/connectionSchemas/connections/pipeline/glueConnection.json';
+import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
@@ -36,8 +37,8 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
 
       break;
     }
-    case PipelineServiceType.Glue: {
-      schema = glueConnection;
+    case PipelineServiceType.GluePipeline: {
+      schema = gluePipelineConnection;
 
       break;
     }
@@ -53,6 +54,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Nifi: {
       schema = nifiConnection;
+
+      break;
+    }
+    case PipelineServiceType.CustomPipeline: {
+      schema = customPipelineConnection;
 
       break;
     }

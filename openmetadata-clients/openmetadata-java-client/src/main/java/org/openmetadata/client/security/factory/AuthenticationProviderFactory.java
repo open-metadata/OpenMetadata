@@ -13,7 +13,6 @@
 
 package org.openmetadata.client.security.factory;
 
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.Auth0AuthenticationProvider;
 import org.openmetadata.client.security.AzureAuthenticationProvider;
 import org.openmetadata.client.security.CustomOIDCAuthenticationProvider;
@@ -22,6 +21,7 @@ import org.openmetadata.client.security.NoOpAuthenticationProvider;
 import org.openmetadata.client.security.OktaAuthenticationProvider;
 import org.openmetadata.client.security.OpenMetadataAuthenticationProvider;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 public class AuthenticationProviderFactory {
   public AuthenticationProvider getAuthProvider(OpenMetadataServerConnection serverConfig) {

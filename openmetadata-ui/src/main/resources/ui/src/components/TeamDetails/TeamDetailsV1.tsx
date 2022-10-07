@@ -15,7 +15,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
-  Empty,
   Modal,
   Row,
   Space,
@@ -69,10 +68,13 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import {
+  filterChildTeams,
+  getDeleteMessagePostFix,
+} from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
-import Ellipses from '../common/Ellipses/Ellipses';
 import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -124,6 +126,8 @@ const TeamDetailsV1 = ({
   updateTeamHandler,
   onDescriptionUpdate,
   descriptionHandler,
+  showDeletedTeam,
+  onShowDeletedTeamChange,
   handleTeamUsersSearchAction,
   handleCurrentUserPage,
   teamUserPaginHandler,
@@ -158,6 +162,7 @@ const TeamDetailsV1 = ({
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+  const [loading, setLoading] = useState<boolean>(false);
   const [selectedEntity, setEntity] = useState<{
     attribute: 'defaultRoles' | 'policies';
     record: EntityReference;
@@ -172,7 +177,7 @@ const TeamDetailsV1 = ({
         teamUserPagin,
         isGroupType,
         isOrganization,
-        searchTerm ? table.length : undefined
+        table.length
       ),
     [currentTeam, teamUserPagin, searchTerm, table]
   );
@@ -328,7 +333,7 @@ const TeamDetailsV1 = ({
         ...currentTeam,
         isJoinable: !currentTeam.isJoinable,
       };
-      updateTeamHandler(updatedData);
+      updateTeamHandler(updatedData, false);
     }
   };
 
@@ -431,9 +436,11 @@ const TeamDetailsV1 = ({
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(searchTeam(childTeams, value));
+      setTable(
+        filterChildTeams(searchTeam(childTeams, value), showDeletedTeam)
+      );
     } else {
-      setTable(childTeams ?? []);
+      setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
   };
 
@@ -484,6 +491,7 @@ const TeamDetailsV1 = ({
   };
 
   const fetchPermissions = async () => {
+    setLoading(true);
     try {
       const perms = await getEntityPermission(
         ResourceEntity.TEAM,
@@ -495,6 +503,8 @@ const TeamDetailsV1 = ({
         error as AxiosError,
         jsonData['api-error-messages']['fetch-user-permission-error']
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -526,8 +536,9 @@ const TeamDetailsV1 = ({
   }, [currentTeam]);
 
   useEffect(() => {
-    setTable(childTeams ?? []);
-  }, [childTeams]);
+    setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
+    setSearchTerm('');
+  }, [childTeams, showDeletedTeam]);
 
   useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
@@ -572,7 +583,7 @@ const TeamDetailsV1 = ({
               <Row className="tw-mb-1" justify="space-between">
                 <Col>
                   <p className="tw-font-medium" data-testid="open-group-label">
-                    Open Group
+                    {`${currentTeam.isJoinable ? 'Close' : 'Open'} Group`}
                   </p>
                 </Col>
                 <Col>
@@ -809,9 +820,9 @@ const TeamDetailsV1 = ({
           </div>
         ) : (
           <div className="tw-flex tw-group" data-testid="team-heading">
-            <Ellipses tooltip rows={1}>
+            <Typography.Title ellipsis={{ rows: 1, tooltip: true }} level={5}>
               {heading}
-            </Ellipses>
+            </Typography.Title>
             {isActionAllowed() && (
               <div className={classNames('tw-w-5 tw-min-w-max')}>
                 <Tooltip
@@ -848,7 +859,12 @@ const TeamDetailsV1 = ({
     );
   };
 
-  const viewPermission = entityPermissions.ViewAll;
+  const viewPermission =
+    entityPermissions.ViewAll || entityPermissions.ViewBasic;
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return viewPermission ? (
     <div
@@ -872,6 +888,7 @@ const TeamDetailsV1 = ({
                   )}
                 {entityPermissions.EditAll && (
                   <ManageButton
+                    isRecursiveDelete
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!currentTeam.deleted}
                     buttonClassName="tw-p-4"
@@ -882,6 +899,14 @@ const TeamDetailsV1 = ({
                     }
                     entityType="team"
                     extraDropdownContent={extraDropdownContent}
+                    hardDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName || currentTeam.name,
+                      'permanently'
+                    )}
+                    softDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName || currentTeam.name,
+                      'soft'
+                    )}
                   />
                 )}
               </Space>
@@ -937,7 +962,7 @@ const TeamDetailsV1 = ({
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
               {currentTab === 1 &&
-                (isEmpty(table) && !searchTerm ? (
+                (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
                     title: createTeamPermission
                       ? 'Add Team'
@@ -946,9 +971,13 @@ const TeamDetailsV1 = ({
                     onClick: () => handleAddTeam(true),
                     disabled: !createTeamPermission,
                     heading: 'Team',
+                    datatestid: 'add-team',
                   })
                 ) : (
-                  <Row className="team-list-container" gutter={[16, 16]}>
+                  <Row
+                    className="team-list-container"
+                    gutter={[8, 8]}
+                    justify="space-between">
                     <Col span={8}>
                       <Searchbar
                         removeMargin
@@ -958,12 +987,16 @@ const TeamDetailsV1 = ({
                         onSearch={handleTeamSearch}
                       />
                     </Col>
-                    <Col span={16}>
-                      <Space
-                        align="end"
-                        className="tw-w-full"
-                        direction="vertical">
+                    <Col>
+                      <Space align="center">
+                        <Switch
+                          checked={showDeletedTeam}
+                          data-testid="show-deleted-switch"
+                          onChange={onShowDeletedTeamChange}
+                        />
+                        <span>Deleted Teams</span>
                         <ButtonAntd
+                          data-testid="add-team"
                           disabled={!createTeamPermission}
                           title={
                             createTeamPermission
@@ -1091,6 +1124,7 @@ const TeamDetailsV1 = ({
           buttons={
             <div className="tw-text-lg tw-text-center">
               <Button
+                data-testid="add-team"
                 disabled={!createTeamPermission}
                 size="small"
                 theme="primary"
@@ -1158,7 +1192,9 @@ const TeamDetailsV1 = ({
   ) : (
     <Row align="middle" className="tw-h-full">
       <Col span={24}>
-        <Empty description={NO_PERMISSION_TO_VIEW} />
+        <ErrorPlaceHolder>
+          <p>{NO_PERMISSION_TO_VIEW}</p>
+        </ErrorPlaceHolder>
       </Col>
     </Row>
   );

@@ -12,14 +12,14 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { camelCase, isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
+  checkAirflowStatus,
   deployIngestionPipelineById,
-  patchIngestionPipeline,
+  updateIngestionPipeline as putIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
@@ -34,6 +34,10 @@ import {
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
+import {
+  getIngestionFrequency,
+  replaceSpaceWith_,
+} from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -77,6 +81,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       </span>
     );
   }, [ingestionData, showDeployButton]);
+  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
 
   const handleIngestionDeploy = (id?: string) => {
     setShowDeployModal(true);
@@ -103,13 +108,15 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const createIngestionPipeline = async (repeatFrequency: string) => {
+    const updatedName = replaceSpaceWith_(testSuite.name);
+
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
       },
-      name: `${testSuite.name}_${PipelineType.TestSuite}`,
+      name: `${updatedName}_${PipelineType.TestSuite}`,
       pipelineType: PipelineType.TestSuite,
       service: {
         id: testSuite.id || '',
@@ -129,32 +136,45 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const updateIngestionPipeline = async (repeatFrequency: string) => {
-    const updatedPipeline = {
-      ...ingestionPipeline,
+    const {
+      airflowConfig,
+      description,
+      displayName,
+      loggerLevel,
+      name,
+      owner,
+      pipelineType,
+      service,
+      sourceConfig,
+    } = ingestionPipeline as IngestionPipeline;
+
+    const updatedPipelineData = {
       airflowConfig: {
-        ...ingestionPipeline?.airflowConfig,
+        ...airflowConfig,
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
       },
+      description,
+      displayName,
+      loggerLevel,
+      name,
+      owner,
+      pipelineType,
+      service,
+      sourceConfig,
     };
-    const jsonPatch = compare(
-      ingestionPipeline as IngestionPipeline,
-      updatedPipeline
-    );
-    if (jsonPatch.length) {
-      try {
-        const response = await patchIngestionPipeline(
-          ingestionPipeline?.id || '',
-          jsonPatch
-        );
-        handleIngestionDeploy(response.id);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          jsonData['api-error-messages']['update-ingestion-error']
-        );
-      }
+
+    try {
+      const response = await putIngestionPipeline(
+        updatedPipelineData as CreateIngestionPipeline
+      );
+      handleIngestionDeploy(response.id);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-ingestion-error']
+      );
     }
   };
 
@@ -175,32 +195,54 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     handleIngestionDeploy();
   };
 
+  const handleAirflowStatusCheck = (): Promise<void> => {
+    return checkAirflowStatus()
+      .then((res) => {
+        if (res.status === 200) {
+          setIsAirflowRunning(true);
+        } else {
+          setIsAirflowRunning(false);
+        }
+      })
+      .catch(() => {
+        setIsAirflowRunning(false);
+      });
+  };
+
+  useEffect(() => {
+    handleAirflowStatusCheck();
+  }, []);
+
   return (
     <Row className="tw-form-container" gutter={[16, 16]}>
       <Col span={24}>
         <Typography.Paragraph
           className="tw-heading tw-text-base"
           data-testid="header">
-          Schedule Ingestion
+          Schedule for Ingestion
         </Typography.Paragraph>
       </Col>
 
       <Col span={24}>
         {isIngestionCreated ? (
           <SuccessScreen
-            isAirflowSetup
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewTestSuiteClick}
+            isAirflowSetup={isAirflowRunning}
             name={`${testSuite?.name}_${PipelineType.TestSuite}`}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={FormSubmitType.ADD}
             successMessage={getSuccessMessage}
             viewServiceText="View Test Suite"
+            onCheckAirflowStatus={handleAirflowStatusCheck}
           />
         ) : (
           <TestSuiteScheduler
-            initialData={ingestionPipeline?.airflowConfig.scheduleInterval}
+            initialData={
+              ingestionPipeline?.airflowConfig.scheduleInterval ||
+              getIngestionFrequency(PipelineType.TestSuite)
+            }
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />

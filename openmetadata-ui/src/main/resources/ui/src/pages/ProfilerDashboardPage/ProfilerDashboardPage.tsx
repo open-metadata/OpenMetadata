@@ -22,7 +22,7 @@ import {
   getTableDetailsByFQN,
   patchTableDetails,
 } from '../../axiosAPIs/tableAPI';
-import { getListTestCase } from '../../axiosAPIs/testAPI';
+import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -37,12 +37,14 @@ import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { Include } from '../../generated/type/include';
 import jsonData from '../../jsons/en';
 import {
   getNameFromFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -52,10 +54,12 @@ const ProfilerDashboardPage = () => {
     dashboardType: ProfilerDashboardType;
     tab: ProfilerDashboardTab;
   }>();
+  const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [table, setTable] = useState<Table>({} as Table);
   const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [error, setError] = useState(false);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
 
@@ -88,7 +92,6 @@ const ProfilerDashboardPage = () => {
       const { data } = await getColumnProfilerList(fqn, {
         startTs,
         endTs,
-        limit: API_RES_MAX_SIZE,
       });
       setProfilerData(data || []);
     } catch (error) {
@@ -98,13 +101,15 @@ const ProfilerDashboardPage = () => {
     }
   };
 
-  const fetchTestCases = async (fqn: string) => {
+  const fetchTestCases = async (fqn: string, params?: ListTestCaseParams) => {
+    setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCase({
         fields: 'testDefinition,testCaseResult,testSuite',
         entityLink: fqn,
         includeAllTests: !isColumnView,
         limit: API_RES_MAX_SIZE,
+        ...params,
       });
       setTestCases(data);
     } catch (error) {
@@ -114,18 +119,21 @@ const ProfilerDashboardPage = () => {
       );
     } finally {
       setIsLoading(false);
+      setIsTestCaseLoading(false);
     }
   };
 
-  const handleTestCaseUpdate = () => {
-    fetchTestCases(generateEntityLink(entityTypeFQN, isColumnView));
+  const handleTestCaseUpdate = (deleted = false) => {
+    fetchTestCases(generateEntityLink(decodedEntityFQN, isColumnView), {
+      include: deleted ? Include.Deleted : Include.NonDeleted,
+    });
   };
 
   const fetchTableEntity = async () => {
     try {
       const fqn = isColumnView
-        ? getTableFQNFromColumnFQN(entityTypeFQN)
-        : entityTypeFQN;
+        ? getTableFQNFromColumnFQN(decodedEntityFQN)
+        : decodedEntityFQN;
       const field = `tags, usageSummary, owner, followers${
         isColumnView ? ', profile' : ''
       }`;
@@ -158,10 +166,14 @@ const ProfilerDashboardPage = () => {
   const getProfilerDashboard = (permission: OperationPermission) => {
     if (
       tab === ProfilerDashboardTab.DATA_QUALITY &&
-      (permission.ViewAll || permission.ViewTests)
+      (permission.ViewAll || permission.ViewBasic || permission.ViewTests)
     ) {
-      fetchTestCases(generateEntityLink(entityTypeFQN));
-    } else if (permission.ViewAll || permission.ViewDataProfile) {
+      fetchTestCases(generateEntityLink(decodedEntityFQN));
+    } else if (
+      permission.ViewAll ||
+      permission.ViewBasic ||
+      permission.ViewDataProfile
+    ) {
       fetchProfilerData(entityTypeFQN);
     } else {
       setIsLoading(false);
@@ -169,13 +181,13 @@ const ProfilerDashboardPage = () => {
   };
 
   useEffect(() => {
-    if (entityTypeFQN) {
+    if (decodedEntityFQN) {
       fetchTableEntity();
     } else {
       setIsLoading(false);
       setError(true);
     }
-  }, [entityTypeFQN]);
+  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (!isEmpty(table)) {
@@ -198,7 +210,9 @@ const ProfilerDashboardPage = () => {
       <ErrorPlaceHolder>
         <p className="tw-text-center">
           No data found{' '}
-          {entityTypeFQN ? `for column ${getNameFromFQN(entityTypeFQN)}` : ''}
+          {decodedEntityFQN
+            ? `for column ${getNameFromFQN(decodedEntityFQN)}`
+            : ''}
         </p>
       </ErrorPlaceHolder>
     );
@@ -209,6 +223,7 @@ const ProfilerDashboardPage = () => {
       <ProfilerDashboard
         fetchProfilerData={fetchProfilerData}
         fetchTestCases={fetchTestCases}
+        isTestCaseLoading={isTestCaseLoading}
         profilerData={profilerData}
         table={table}
         testCases={testCases}

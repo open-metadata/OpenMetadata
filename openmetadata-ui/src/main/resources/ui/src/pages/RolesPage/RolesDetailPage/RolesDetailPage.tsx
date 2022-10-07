@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Empty,
-  Modal,
-  Space,
-  Table,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Modal, Space, Table, Tabs, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -161,6 +152,7 @@ const List = ({
       columns={columns}
       dataSource={list}
       pagination={false}
+      rowKey="id"
       size="small"
     />
   );
@@ -342,7 +334,7 @@ const RolesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (rolePermission.ViewAll) {
+    if (rolePermission.ViewAll || rolePermission.ViewBasic) {
       fetchRole();
     }
   }, [rolePermission, fqn]);
@@ -354,19 +346,21 @@ const RolesDetailPage = () => {
   return (
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {rolePermission.ViewAll ? (
+      {rolePermission.ViewAll || rolePermission.ViewBasic ? (
         <>
           {isEmpty(role) ? (
-            <Empty
-              data-testid="no-data"
-              description={`No roles found for ${fqn}`}>
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => history.push(rolesPath)}>
-                Go Back
-              </Button>
-            </Empty>
+            <ErrorPlaceHolder dataTestId="no-data">
+              <div className="text-center">
+                <p>No roles found for {fqn}</p>
+                <Button
+                  className="m-t-sm"
+                  size="small"
+                  type="primary"
+                  onClick={() => history.push(rolesPath)}>
+                  Go Back
+                </Button>
+              </div>
+            </ErrorPlaceHolder>
           ) : (
             <div className="roles-detail" data-testid="role-details">
               <div className="tw--ml-5">

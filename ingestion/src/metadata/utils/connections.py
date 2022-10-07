@@ -31,6 +31,7 @@ from sqlalchemy.pool import QueuePool
 
 from metadata.clients.connection_clients import (
     AirByteClient,
+    DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
@@ -124,8 +125,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
-    GlueConnection as GluePipelineConnection,
+from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
+    GluePipelineConnection as GluePipelineConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
@@ -297,7 +298,7 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
     from delta import configure_spark_with_delta_pip
 
     builder = (
-        pyspark.sql.SparkSession.builder.appName("random")
+        pyspark.sql.SparkSession.builder.appName(connection.appName or "OpenMetadata")
         .enableHiveSupport()
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
@@ -307,19 +308,37 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
         # Download delta-core jars when creating the SparkSession
         .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
     )
-    if connection.metastoreHostPort:
+
+    # Check that the attribute exists and is properly informed
+    if (
+        hasattr(connection.metastoreConnection, "metastoreHostPort")
+        and connection.metastoreConnection.metastoreHostPort
+    ):
         builder.config(
             "hive.metastore.uris",
-            f"thrift://{connection.metastoreHostPort}",
+            f"thrift://{connection.metastoreConnection.metastoreHostPort}",
         )
-    elif connection.metastoreFilePath:
+
+    if (
+        hasattr(connection.metastoreConnection, "metastoreDb")
+        and connection.metastoreConnection.metastoreDb
+    ):
+        builder.config(
+            "spark.hadoop.javax.jdo.option.ConnectionURL",
+            connection.metastoreConnection.metastoreDb,
+        )
+
+    if (
+        hasattr(connection.metastoreConnection, "metastoreFilePath")
+        and connection.metastoreConnection.metastoreFilePath
+    ):
         # From https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell
         # derby.system.home is the one in charge of the path for `metastore_db` dir and `derby.log`
         # We can use this option to control testing, as well as to properly point to the right
         # local database when ingesting data
         builder.config(
             "spark.driver.extraJavaOptions",
-            f"-Dderby.system.home={connection.metastoreFilePath}",
+            f"-Dderby.system.home={connection.metastoreConnection.metastoreFilePath}",
         )
 
     if connection.connectionArguments:
@@ -444,7 +463,9 @@ def _(connection: GlueDBClient) -> None:
     from botocore.client import ClientError
 
     try:
-        connection.client.list_workflows()
+        pagitator = connection.client.get_paginator("get_databases")
+        pagitator.paginate()
+
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg)
@@ -463,7 +484,7 @@ def _(connection: GluePipelineClient) -> None:
     from botocore.client import ClientError
 
     try:
-        connection.client.get_paginator("get_databases")
+        connection.client.list_workflows()
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg)
@@ -860,19 +881,30 @@ def _(_: BackendConnection, verbose: bool = False):
         return session.get_bind()
 
 
-@test_connection.register
+@get_connection.register
 def _(connection: DagsterConnection) -> None:
+    from urllib.parse import urlparse
+
+    from dagster_graphql import DagsterGraphQLClient
+
     try:
-        test_connection(connection.dbConnection)
+        host_port = connection.hostPort
+        host_port = urlparse(host_port)
+        connection = DagsterGraphQLClient(
+            hostname=host_port.hostname, port_number=host_port.port
+        )
+        return DagsterClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)
 
 
-@get_connection.register
-def _(connection: DagsterConnection) -> None:
+@test_connection.register
+def _(connection: DagsterClient) -> None:
+    from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
+
     try:
-        return get_connection(connection.dbConnection)
+        connection.client._execute(TEST_QUERY_GRAPHQL)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)

@@ -12,10 +12,12 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import {
   EditorContentRef,
+  EntityTags,
   FormattedGlossaryTermData,
   FormattedUsersData,
 } from 'Models';
@@ -30,6 +32,7 @@ import {
   requiredField,
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
@@ -73,6 +76,7 @@ const AddGlossaryTerm = ({
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [tags, setTags] = useState<EntityTags[]>([]);
   const [relatedTerms, setRelatedTerms] = useState<
     Array<FormattedGlossaryTermData>
   >([]);
@@ -215,9 +219,10 @@ const AddGlossaryTerm = ({
     }));
 
     if (validateForm(updatedReference)) {
+      const updatedName = name.trim();
       const data: CreateGlossaryTerm = {
-        name,
-        displayName: name,
+        name: updatedName,
+        displayName: updatedName,
         description: getDescription(),
         reviewers: reviewer.map((r) => ({
           id: r.id,
@@ -236,6 +241,7 @@ const AddGlossaryTerm = ({
           id: glossaryData.id,
           type: 'glossary',
         },
+        tags: tags,
       };
 
       onSave(data);
@@ -342,6 +348,16 @@ const AddGlossaryTerm = ({
               ref={markdownRef}
             />
             {showErrorMsg.description && errorMsg('Description is required.')}
+          </Field>
+
+          <Field>
+            <Space className="w-full" direction="vertical">
+              <label htmlFor="tags">Tags:</label>
+              <AddTags
+                data-testid="tags"
+                setTags={(tag: EntityTags[]) => setTags(tag)}
+              />
+            </Space>
           </Field>
 
           <Field>

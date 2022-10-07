@@ -18,8 +18,8 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { oidcTokenKey } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import localState from '../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 
@@ -31,19 +31,17 @@ interface Props {
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { setIsAuthenticated, authConfig } = useAuthContext();
-    const {
-      loginWithRedirect,
-      logout,
-      getAccessTokenSilently,
-      getIdTokenClaims,
-    } = useAuth0();
+    const { loginWithRedirect, getAccessTokenSilently, getIdTokenClaims } =
+      useAuth0();
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
-        loginWithRedirect();
+        loginWithRedirect().catch((error) => {
+          // eslint-disable-next-line no-console
+          console.error(error);
+        });
       },
       invokeLogout() {
-        logout();
         setIsAuthenticated(false);
         onLogoutSuccess();
       },
@@ -59,7 +57,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
                     .then((token) => {
                       if (token !== undefined) {
                         idToken = token.__raw;
-                        localStorage.setItem(oidcTokenKey, idToken);
+                        localState.setOidcToken(idToken);
                         resolve(idToken);
                       }
                     })

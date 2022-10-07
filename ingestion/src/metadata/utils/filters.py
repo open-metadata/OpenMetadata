@@ -18,7 +18,13 @@ code.
 import re
 from typing import List, Optional
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.models.topology import TopologyContext
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 
 
 class InvalidPatternException(Exception):
@@ -86,7 +92,7 @@ def filter_by_schema(
     Include takes precedence over exclude
 
     :param schema_filter_pattern: Model defining schema filtering logic
-    :param schema_name: table schema name
+    :param schema fqn: table schema fqn
     :return: True for filtering, False otherwise
     """
     return _filter(schema_filter_pattern, schema_name)
@@ -101,7 +107,7 @@ def filter_by_table(
     Include takes precedence over exclude
 
     :param table_filter_pattern: Model defining schema filtering logic
-    :param table_name: table name
+    :param table_fqn: table fqn
     :return: True for filtering, False otherwise
     """
     return _filter(table_filter_pattern, table_name)
@@ -116,13 +122,15 @@ def filter_by_chart(
     Include takes precedence over exclude
 
     :param chart_filter_pattern: Model defining chart filtering logic
-    :param chart_name: table chart name
+    :param chart_name: chart name
     :return: True for filtering, False otherwise
     """
     return _filter(chart_filter_pattern, chart_name)
 
 
-def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic: str) -> bool:
+def filter_by_topic(
+    topic_filter_pattern: Optional[FilterPattern], topic_name: str
+) -> bool:
     """
     Return True if the topic needs to be filtered, False otherwise
 
@@ -132,7 +140,7 @@ def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic: str) -
     :param topic_name: topic name
     :return: True for filtering, False otherwise
     """
-    return _filter(topic_filter_pattern, topic)
+    return _filter(topic_filter_pattern, topic_name)
 
 
 def filter_by_dashboard(
@@ -144,7 +152,7 @@ def filter_by_dashboard(
     Include takes precedence over exclude
 
     :param dashboard_filter_pattern: Model defining dashboard filtering logic
-    :param dashboard_name: table dashboard name
+    :param dashboard_name: dashboard name
     :return: True for filtering, False otherwise
     """
     return _filter(dashboard_filter_pattern, dashboard_name)
@@ -172,7 +180,7 @@ def filter_by_database(
     Include takes precedence over exclude
 
     :param database_filter_pattern: Model defining database filtering logic
-    :param database_name: table database name
+    :param database_name: database name
     :return: True for filtering, False otherwise
     """
     return _filter(database_filter_pattern, database_name)

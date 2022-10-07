@@ -19,16 +19,15 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.client.security.interfaces.CustomOIDCAccessTokenApi;
+import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class CustomOIDCAuthenticationProvider implements AuthenticationProvider {
-  private OpenMetadataServerConnection serverConfig;
   private final CustomOIDCSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
@@ -39,7 +38,6 @@ public class CustomOIDCAuthenticationProvider implements AuthenticationProvider 
       LOG.error("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
       throw new RuntimeException("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
     }
-    serverConfig = iConfig;
 
     securityConfig = (CustomOIDCSSOClientConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {

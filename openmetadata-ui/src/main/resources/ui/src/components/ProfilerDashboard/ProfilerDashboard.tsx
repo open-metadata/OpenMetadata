@@ -10,8 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Radio, Row, Select, Space, Tooltip } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  Radio,
+  Row,
+  Select,
+  Space,
+  Switch,
+  Tooltip,
+} from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
+import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -31,12 +42,8 @@ import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
-import {
-  Column,
-  Table,
-  TestCaseStatus,
-} from '../../generated/entity/data/table';
-import { EntityType as TestType } from '../../generated/tests/testDefinition';
+import { Column, Table } from '../../generated/entity/data/table';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -53,6 +60,7 @@ import {
   getProfilerDashboardWithFqnPath,
 } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   generateEntityLink,
   getTagsWithoutTier,
@@ -82,6 +90,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   fetchProfilerData,
   fetchTestCases,
   onTestCaseUpdate,
+  isTestCaseLoading,
   profilerData,
   onTableChange,
 }) => {
@@ -92,15 +101,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     dashboardType: ProfilerDashboardType;
     tab: ProfilerDashboardTab;
   }>();
+  const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [showDeletedTest, setShowDeletedTest] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
     tab ?? ProfilerDashboardTab.PROFILER
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
-  const [selectedTestType, setSelectedTestType] = useState('');
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
@@ -156,26 +166,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     return testCaseStatus;
   }, []);
 
-  const testCaseTypeOption = useMemo(() => {
-    const testCaseStatus: Record<string, string>[] = Object.entries(
-      TestType
-    ).map(([key, value]) => ({
-      label: key,
-      value: value,
-    }));
-    testCaseStatus.unshift({
-      label: 'All',
-      value: '',
-    });
-
-    return testCaseStatus;
-  }, []);
-
   const tier = useMemo(() => getTierTags(table.tags ?? []), [table]);
   const breadcrumb = useMemo(() => {
     const serviceName = getEntityName(table.service);
     const fqn = table.fullyQualifiedName || '';
-    const columnName = getPartialNameFromTableFQN(entityTypeFQN, [
+    const columnName = getPartialNameFromTableFQN(decodedEntityFQN, [
       FqnPart.NestedColumn,
     ]);
 
@@ -353,17 +348,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       return;
     } else if (
       ProfilerDashboardTab.DATA_QUALITY === value &&
-      (tablePermissions.ViewAll || tablePermissions.ViewTests)
+      (tablePermissions.ViewAll ||
+        tablePermissions.ViewBasic ||
+        tablePermissions.ViewTests)
     ) {
-      fetchTestCases(generateEntityLink(entityTypeFQN, true));
+      fetchTestCases(generateEntityLink(decodedEntityFQN, true));
     } else if (
       ProfilerDashboardTab.PROFILER === value &&
-      (tablePermissions.ViewAll || tablePermissions.ViewDataProfile)
+      (tablePermissions.ViewAll ||
+        tablePermissions.ViewBasic ||
+        tablePermissions.ViewDataProfile)
     ) {
       fetchProfilerData(entityTypeFQN);
     }
     setSelectedTestCaseStatus('');
     setActiveTab(value);
+    setShowDeletedTest(false);
     history.push(
       getProfilerDashboardWithFqnPath(dashboardType, entityTypeFQN, value)
     );
@@ -395,12 +395,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
   };
 
-  const handleTestCaseTypeChange = (value: string) => {
-    if (value !== selectedTestType) {
-      setSelectedTestType(value);
-    }
-  };
-
   const getFilterTestCase = () => {
     const dataByStatus = testCases.filter(
       (data) =>
@@ -408,22 +402,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
     );
 
-    return isColumnView
-      ? dataByStatus
-      : dataByStatus.filter(
-          (data) =>
-            selectedTestType === '' ||
-            (selectedTestType === TestType.Table &&
-              entityTypeFQN === data.entityFQN) ||
-            (selectedTestType === TestType.Column &&
-              entityTypeFQN !== data.entityFQN)
-        );
+    return dataByStatus;
+  };
+
+  const handleDeletedTestCaseClick: SwitchChangeEventHandler = (value) => {
+    setShowDeletedTest(value);
+    onTestCaseUpdate(value);
+  };
+
+  const handleTestUpdate = () => {
+    onTestCaseUpdate(showDeletedTest);
   };
 
   useEffect(() => {
     if (table) {
       if (isColumnView) {
-        const columnName = getNameFromFQN(entityTypeFQN);
+        const columnName = getNameFromFQN(decodedEntityFQN);
         const selectedColumn = table.columns.find(
           (col) => col.name === columnName
         );
@@ -475,6 +469,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Radio.Group
               buttonStyle="solid"
               className="profiler-switch"
+              data-testid="profiler-switch"
               optionType="button"
               options={tabOptions}
               value={activeTab}
@@ -482,24 +477,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             />
 
             <Space size={16}>
-              {activeTab === ProfilerDashboardTab.DATA_QUALITY &&
-                !isColumnView && (
-                  <Form.Item className="tw-mb-0 tw-w-40" label="Type">
-                    <Select
-                      options={testCaseTypeOption}
-                      value={selectedTestType}
-                      onChange={handleTestCaseTypeChange}
+              {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
+                <>
+                  <Form.Item className="m-0 " label="Deleted Tests">
+                    <Switch
+                      checked={showDeletedTest}
+                      onClick={handleDeletedTestCaseClick}
                     />
                   </Form.Item>
-                )}
-              {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
-                <Form.Item className="tw-mb-0 tw-w-40" label="Status">
-                  <Select
-                    options={testCaseStatusOption}
-                    value={selectedTestCaseStatus}
-                    onChange={handleTestCaseStatusChange}
-                  />
-                </Form.Item>
+                  <Form.Item className="tw-mb-0 tw-w-40" label="Status">
+                    <Select
+                      options={testCaseStatusOption}
+                      value={selectedTestCaseStatus}
+                      onChange={handleTestCaseStatusChange}
+                    />
+                  </Form.Item>
+                </>
               )}
               {activeTab === ProfilerDashboardTab.PROFILER && (
                 <Select
@@ -540,9 +533,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
+              deletedTable={showDeletedTest}
               hasAccess={tablePermissions.EditAll}
+              isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
-              onTestUpdate={onTestCaseUpdate}
+              onTestUpdate={handleTestUpdate}
             />
           </Col>
         )}

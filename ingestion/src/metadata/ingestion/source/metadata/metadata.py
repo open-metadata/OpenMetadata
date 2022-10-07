@@ -134,7 +134,7 @@ class MetadataSource(Source[Entity]):
         if self.service_connection.includeTeams:
             yield from self.fetch_entities(
                 entity_class=Team,
-                fields=["users", "owns"],
+                fields=["users", "owns", "parents"],
             )
 
         if self.service_connection.includeGlossaryTerms:

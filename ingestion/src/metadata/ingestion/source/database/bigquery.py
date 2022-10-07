@@ -20,12 +20,9 @@ from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy_bigquery import _types
+from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._struct import STRUCT
-from sqlalchemy_bigquery._types import (
-    _get_sqla_column_type,
-    _get_transitive_schema_fields,
-)
+from sqlalchemy_bigquery._types import _get_sqla_column_type
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
@@ -60,9 +57,8 @@ _types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
 
 def get_columns(bq_schema):
-    fields = _get_transitive_schema_fields(bq_schema)
     col_list = []
-    for field in fields:
+    for field in bq_schema:
         col_obj = {
             "name": field.name,
             "type": _get_sqla_column_type(field)
@@ -94,6 +90,18 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
+@staticmethod
+def _build_formatted_table_id(table):
+    """We overide the methid as it returns both schema and table name if dataset_id is None. From our
+    investigation, this method seems to be used only in `_get_table_or_view_names()` of bigquery sqalchemy
+    https://github.com/googleapis/python-bigquery-sqlalchemy/blob/2b1f5c464ad2576e4512a0407bb044da4287c65e/sqlalchemy_bigquery/base.py
+    """
+    return f"{table.table_id}"
+
+
+BigQueryDialect._build_formatted_table_id = _build_formatted_table_id
+
+
 class BigquerySource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
@@ -114,14 +122,6 @@ class BigquerySource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
-        segments = fqn.split(table)
-        if len(segments) != 2:
-            raise ValueError(f"expected table to contain schema name already {table}")
-        if segments[0] != schema:
-            raise ValueError(f"schema {schema} does not match table {table}")
-        return segments[1]
-
     @staticmethod
     def set_project_id():
         _, project_id = auth.default()
@@ -133,24 +133,28 @@ class BigquerySource(CommonDbSourceService):
         :param _:
         :return:
         """
-        taxonomies = PolicyTagManagerClient().list_taxonomies(
-            parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
-        )
-        for taxonomy in taxonomies:
-            policiy_tags = PolicyTagManagerClient().list_policy_tags(
-                parent=taxonomy.name
+        try:
+            taxonomies = PolicyTagManagerClient().list_taxonomies(
+                parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
             )
-            for tag in policiy_tags:
-                yield OMetaTagAndCategory(
-                    category_name=CreateTagCategoryRequest(
-                        name=self.service_connection.tagCategoryName,
-                        description="",
-                        categoryType="Classification",
-                    ),
-                    category_details=CreateTagRequest(
-                        name=tag.display_name, description="Bigquery Policy Tag"
-                    ),
+            for taxonomy in taxonomies:
+                policiy_tags = PolicyTagManagerClient().list_policy_tags(
+                    parent=taxonomy.name
                 )
+                for tag in policiy_tags:
+                    yield OMetaTagAndCategory(
+                        category_name=CreateTagCategoryRequest(
+                            name=self.service_connection.tagCategoryName,
+                            description="",
+                            categoryType="Classification",
+                        ),
+                        category_details=CreateTagRequest(
+                            name=tag.display_name, description="Bigquery Policy Tag"
+                        ),
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Skipping Policy Tag: {exc}")
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
@@ -212,16 +216,18 @@ class BigquerySource(CommonDbSourceService):
         database = self.context.database.name.__root__
         table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
         if table.time_partitioning is not None:
-            table_partition = TablePartition(
-                interval=str(table.partitioning_type),
-                intervalType=IntervalType.TIME_UNIT.value,
-            )
-            if (
-                hasattr(table.time_partitioning, "field")
-                and table.time_partitioning.field
-            ):
+            if table.time_partitioning.field:
+                table_partition = TablePartition(
+                    interval=str(table.time_partitioning.type_),
+                    intervalType=IntervalType.TIME_UNIT.value,
+                )
                 table_partition.columns = [table.time_partitioning.field]
-            return True, table_partition
+                return True, table_partition
+            else:
+                return True, TablePartition(
+                    interval=str(table.time_partitioning.type_),
+                    intervalType=IntervalType.INGESTION_TIME.value,
+                )
         elif table.range_partitioning:
             table_partition = TablePartition(
                 intervalType=IntervalType.INTEGER_RANGE.value,
@@ -245,3 +251,4 @@ class BigquerySource(CommonDbSourceService):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
+        os.environ.pop("GOOGLE_CLOUD_PROJECT", "")

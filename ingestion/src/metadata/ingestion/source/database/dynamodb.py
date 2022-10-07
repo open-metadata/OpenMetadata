@@ -7,7 +7,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Column, TableType
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -29,6 +29,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -48,6 +49,8 @@ class DynamodbSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
         self.dynamodb = self.connection.client
+        self.data_models = {}
+        self.dbt_tests = {}
         self.database_source_state = set()
         super().__init__()
 
@@ -124,15 +127,24 @@ class DynamodbSource(DatabaseServiceSource):
         if self.source_config.includeTables:
             tables = self.dynamodb.tables.all()
             for table in tables:
+                table_name = self.standardize_table_name(schema_name, table.name)
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table_name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table.name
+                    self.source_config.tableFilterPattern,
+                    table_fqn if self.source_config.useFqnForFiltering else table_name,
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{table.name}",
-                        "Table pattern not allowed",
+                        table_fqn,
+                        "Table Filtered Out",
                     )
                     continue
-                table_name = self.standardize_table_name(schema_name, table.name)
                 yield table_name, TableType.Regular
 
     def get_columns(self, column_data):

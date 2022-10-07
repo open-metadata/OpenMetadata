@@ -15,13 +15,11 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     DataModel,
@@ -29,7 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
     TableJoins,
-    TableProfile,
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -66,7 +63,7 @@ class OMetaTableMixin:
 
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData
-    ) -> TableData:
+    ) -> Optional[TableData]:
         """
         PUT sample data for a table
 
@@ -98,6 +95,8 @@ class OMetaTableMixin:
                 logger.warning(
                     f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
                 )
+
+        return None
 
     def ingest_profile_data(
         self, table: Table, profile_request: CreateTableProfileRequest
@@ -196,47 +195,6 @@ class OMetaTableMixin:
             data=table_profiler_config.json(),
         )
         return Table(**resp)
-
-    def _add_tests(
-        self,
-        table: Table,
-        test: Union[CreateTableTestRequest, CreateColumnTestRequest],
-        path: str,
-    ) -> Table:
-        """
-        Internal function to add test data
-
-        :param table: Table instance
-        :param test: TableTest or ColumnTest to add
-        :param path: tableTest or columnTest str
-        :return: Updated Table instance
-        """
-        resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/{path}", data=test.json()
-        )
-        return Table(**resp)
-
-    def add_table_test(self, table: Table, table_test: CreateTableTestRequest) -> Table:
-        """
-        For a given table, PUT new TableTest definitions and results
-
-        :param table: Table instance
-        :param table_test: table test data
-        :return: Updates Table instance
-        """
-
-        return self._add_tests(table=table, test=table_test, path="tableTest")
-
-    def add_column_test(self, table: Table, col_test: CreateColumnTestRequest) -> Table:
-        """
-        For a given table, PUT new TableTest definitions and results
-
-        :param table: Table instance
-        :param col_test: column test data
-        :return: Updates Table instance
-        """
-
-        return self._add_tests(table=table, test=col_test, path="columnTest")
 
     def create_or_update_table_profiler_config(
         self, fqn: str, table_profiler_config: TableProfilerConfig

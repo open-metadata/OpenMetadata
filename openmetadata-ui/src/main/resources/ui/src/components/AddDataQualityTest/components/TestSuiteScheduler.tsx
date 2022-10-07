@@ -43,6 +43,7 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
         <Space className="tw-w-full tw-justify-end" size={16}>
           <Button onClick={onCancel}>Back</Button>
           <Button
+            data-testid="deploy-button"
             type="primary"
             onClick={() => onSubmit(repeatFrequency || '')}>
             Submit

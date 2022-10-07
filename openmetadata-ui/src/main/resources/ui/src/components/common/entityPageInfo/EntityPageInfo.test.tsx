@@ -12,11 +12,13 @@
  */
 
 import {
+  act,
   findByTestId,
   findByText,
   fireEvent,
   queryByTestId,
   render,
+  screen,
 } from '@testing-library/react';
 import { flatten } from 'lodash';
 import { FormattedGlossaryTermData, TagOption } from 'Models';
@@ -613,29 +615,29 @@ describe('Test EntityPageInfo component', () => {
   });
 
   it('Check that tags and glossary terms are not present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getByTestId, queryByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-      {
+    await act(async () => {
+      (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject()
+      );
+      (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject()
+      );
+
+      render(<EntityPageInfo {...mockEntityInfoProp} isTagEditable />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+      const tagWrapper = screen.getByTestId('tags-wrapper');
 
-    const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+      fireEvent.click(
+        tagWrapper,
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
 
-    const tag1 = queryByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryByText('Glossary.Tag1');
+      const tag1 = screen.queryByText('TagCat1.Tag1');
+      const glossaryTerm1 = screen.queryByText('Glossary.Tag1');
 
-    expect(tag1).not.toBeInTheDocument();
-    expect(glossaryTerm1).not.toBeInTheDocument();
+      expect(tag1).not.toBeInTheDocument();
+      expect(glossaryTerm1).not.toBeInTheDocument();
+    });
   });
 });

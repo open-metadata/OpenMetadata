@@ -35,22 +35,28 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
 
 export type DbtConfigCloud = Pick<
   DbtConfigSource,
-  'dbtCloudAccountId' | 'dbtCloudAuthToken'
+  'dbtCloudAccountId' | 'dbtCloudAuthToken' | 'dbtUpdateDescriptions'
 >;
 
 export type DbtConfigLocal = Pick<
   DbtConfigSource,
-  'dbtCatalogFilePath' | 'dbtManifestFilePath' | 'dbtRunResultsFilePath'
+  | 'dbtCatalogFilePath'
+  | 'dbtManifestFilePath'
+  | 'dbtRunResultsFilePath'
+  | 'dbtUpdateDescriptions'
 >;
 
 export type DbtConfigHttp = Pick<
   DbtConfigSource,
-  'dbtCatalogHttpPath' | 'dbtManifestHttpPath' | 'dbtRunResultsHttpPath'
+  | 'dbtCatalogHttpPath'
+  | 'dbtManifestHttpPath'
+  | 'dbtRunResultsHttpPath'
+  | 'dbtUpdateDescriptions'
 >;
 
 export type DbtConfigS3GCS = Pick<
   DbtConfigSource,
-  'dbtSecurityConfig' | 'dbtPrefixConfig'
+  'dbtSecurityConfig' | 'dbtPrefixConfig' | 'dbtUpdateDescriptions'
 >;
 
 export type DbtS3Creds = Pick<
@@ -63,6 +69,11 @@ export type DbtS3Creds = Pick<
 >;
 
 export type DbtS3CredsReq = Pick<DbtS3Creds, 'awsRegion'>;
+
+export type DbtConfigCloudReq = Pick<
+  DbtConfigCloud,
+  'dbtCloudAccountId' | 'dbtCloudAuthToken'
+>;
 
 export interface DbtSourceTypes {
   sourceType: DBT_SOURCES;

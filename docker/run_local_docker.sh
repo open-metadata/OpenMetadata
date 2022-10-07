@@ -37,6 +37,7 @@ done
 mode="${mode:=ui}"
 database="${database:=mysql}"
 skipMaven="${skipMaven:=false}"
+authorizationToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
 
 echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven]"
 
@@ -54,20 +55,19 @@ else
     echo "Skipping Maven Build"
 fi
 
-cd docker/local-metadata || exit
+#cd docker/local-metadata || exit
 
 echo "Stopping any previous Local Docker Containers"
-docker compose -f docker-compose-postgres.yml down
-docker compose down
+docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
+docker compose -f docker/local-metadata/docker-compose.yml down
 
 echo "Starting Local Docker Containers"
-
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
-    docker compose -f docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker-compose-postgres.yml up -d
+    docker compose -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose-postgres.yml up -d
 else
-    docker compose build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose up --build -d
+    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up --build -d
 fi
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
@@ -90,9 +90,9 @@ printf 'Validate sample data DAG...'
 sleep 5
 python validate_compose.py
 
-until curl -s -f "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
+until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
   printf 'Waiting on Sample Data Ingestion to complete...\n'
-  curl -v "http://localhost:8585/api/v1/tables"
+  curl -v --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"
   sleep 5
 done
 sleep 5

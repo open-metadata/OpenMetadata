@@ -49,13 +49,7 @@ mock_dagster_config = {
         "serviceConnection": {
             "config": {
                 "type": "Dagster",
-                "hostPort": "http://localhost:3000",
-                "dbConnection": {
-                    "username": "dagster_user",
-                    "password": "dagter_pass",
-                    "databaseSchema": "dagster_db",
-                    "hostPort": "localhost:3306",
-                },
+                "hostPort": "http://lolhost:3000",
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
@@ -64,14 +58,48 @@ mock_dagster_config = {
     "workflowConfig": {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
-            "authProvider": "no-auth",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
         }
     },
 }
 
 
-EXPECTED_DAGSTER_DETAILS = mock_data[6]["pipeline_code_origin"]
+EXPECTED_DAGSTER_DETAILS = mock_data["assetNodes"]
 
+EXPECTED_CREATED_PIPELINES = [
+    CreatePipelineRequest(
+        name="cereals",
+        displayName=None,
+        description="cereals",
+        pipelineUrl=None,
+        concurrency=None,
+        pipelineLocation=None,
+        startDate=None,
+        tasks=[
+            Task(
+                name="__ASSET_JOB",
+                displayName=None,
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=None,
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            )
+        ],
+        tags=None,
+        owner=None,
+        service=EntityReference(
+            id="86ff3c40-7c51-4ff5-9727-738cead28d9a", type="pipelineService"
+        ),
+    ),
+]
 MOCK_CONNECTION_URI_PATH = "/workspace/__repository__do_it_all_with_default_config@cereal.py/jobs/do_it_all_with_default_config/"
 MOCK_LOG_URL = (
     "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
@@ -113,25 +141,6 @@ EXPECTED_PIPELINE_STATUS = [
     ),
 ]
 
-
-EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
-    name="a6ebb16c-505f-446d-8642-171c3320ccef",
-    displayName="do_it_all_with_default_configs",
-    description="do_it_all_with_default_config",
-    pipelineUrl=MOCK_CONNECTION_URI_PATH,
-    tasks=[
-        Task(
-            name="do_it_all_with_default_config",
-            displayName="",
-            description="",
-            taskUrl="",
-        )
-    ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
-)
-
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
     name="dagster_source_test",
@@ -163,24 +172,29 @@ MOCK_PIPELINE = Pipeline(
 
 class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    @patch("sqlalchemy.engine.base.Engine.connect")
-    def __init__(self, methodName, mock_connect, test_connection) -> None:
+    @patch("dagster_graphql.DagsterGraphQLClient")
+    def __init__(self, methodName, graphql_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-
         config = OpenMetadataWorkflowConfig.parse_obj(mock_dagster_config)
-
         self.dagster = DagsterSource.create(
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.engine = mock_connect.return_value
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
 
     def test_pipeline_name(self):
-
         assert (
             self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
-            == mock_data[6]["pipeline_code_origin"]["pipeline_name"]
+            == mock_data["assetNodes"]["opName"]
         )
+
+    def test_yield_pipeline(self):
+        result = self.dagster.yield_pipeline(mock_data["assetNodes"])
+        self.pipelines_list = []
+        for r in result:
+            self.pipelines_list.append(r)
+
+        for i in range(len(self.pipelines_list)):
+            assert self.pipelines_list[i] == EXPECTED_CREATED_PIPELINES[i]

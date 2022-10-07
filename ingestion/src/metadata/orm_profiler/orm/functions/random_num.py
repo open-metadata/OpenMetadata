@@ -41,6 +41,7 @@ def _(*_, **__):
     return "ABS(RANDOM()) * 100"
 
 
+@compiles(RandomNumFn, Dialects.Hive)
 @compiles(RandomNumFn, Dialects.MySQL)
 def _(*_, **__):
     return "ABS(RAND()) * 100"
@@ -89,3 +90,12 @@ def _(*_, **__):
 def _(*_, **__):
     """Oracle random logic"""
     return "ABS(DBMS_RANDOM.VALUE) * 100"
+
+
+@compiles(RandomNumFn, Dialects.Snowflake)
+def _(*_, **__):
+    """We use FROM <table> SAMPLE SYSTEM (n) for sampling
+    in snowflake. We'll return 0 to make sure we get all the rows
+    from the already sampled results when executing row::MOD(0, 100) < profile_sample.
+    """
+    return "0"

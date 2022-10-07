@@ -13,15 +13,9 @@
 
 import { Column, Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
-import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface TableProfilerProps {
-  onAddTestClick: (
-    tabValue: number,
-    testMode?: DatasetTestModeType,
-    columnName?: string
-  ) => void;
   table: Table;
   permissions: OperationPermission;
 }
@@ -35,6 +29,10 @@ export type TableTestsType = {
   };
 };
 
+export type ModifiedColumn = Column & {
+  testCount?: number;
+};
+
 export type columnTestResultType = {
   [key: string]: { results: TableTestsType['results']; count: number };
 };
@@ -43,11 +41,6 @@ export interface ColumnProfileTableProps {
   columns: Column[];
   hasEditAccess: boolean;
   columnTests: TestCase[];
-  onAddTestClick: (
-    tabValue: number,
-    testMode?: DatasetTestModeType,
-    columnName?: string
-  ) => void;
 }
 
 export interface ProfilerProgressWidgetProps {

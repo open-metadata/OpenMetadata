@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
     FeatureType,
     MlFeature,
     MlHyperParameter,
+    MlModel,
     MlStore,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -38,6 +39,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
 
@@ -58,7 +60,7 @@ class MlflowSource(MlModelServiceSource):
         connection: MlflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MlflowConnection):
             raise InvalidSourceException(
-                f"Expected MysqlConnection, but got {connection}"
+                f"Expected MlFlowConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -67,12 +69,11 @@ class MlflowSource(MlModelServiceSource):
         List and filters models from the registry
         """
         for model in cast(RegisteredModel, self.client.list_registered_models()):
-
             if filter_by_mlmodel(
                 self.source_config.mlModelFilterPattern, mlmodel_name=model.name
             ):
                 self.status.filter(
-                    f"{self.config.serviceName}.{model.name}",
+                    model.name,
                     "MlModel name pattern not allowed",
                 )
                 continue

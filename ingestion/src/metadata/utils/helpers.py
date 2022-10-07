@@ -11,6 +11,7 @@
 
 import re
 from datetime import datetime, timedelta
+from functools import wraps
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -66,6 +67,7 @@ om_chart_type_dict = {
 
 
 def calculate_execution_time(func):
+    @wraps(func)
     def calculate_debug_time(*args, **kwargs):
         start = perf_counter()
         func(*args, **kwargs)
@@ -334,3 +336,21 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
         (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
     ]
     return dict(split_original)
+
+
+def clean_up_starting_ending_double_quotes_in_string(string: str) -> str:
+    """Remove start and ending double quotes in a string
+
+    Args:
+        string (str): a string
+
+    Raises:
+        TypeError: An error occure checking the type of `string`
+
+    Returns:
+        str: a string with no double quotes
+    """
+    if not isinstance(string, str):
+        raise TypeError(f"{string}, must be of type str, instead got `{type(string)}`")
+
+    return string.strip('"')

@@ -66,6 +66,7 @@ export interface ConfigureIngestionProps {
   topicFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
   pipelineFilterPattern: FilterPattern;
+  mlModelFilterPattern: FilterPattern;
   includeLineage: boolean;
   includeView: boolean;
   includeTags: boolean;
@@ -74,6 +75,7 @@ export interface ConfigureIngestionProps {
   enableDebugLog: boolean;
   profileSample?: number;
   ingestSampleData: boolean;
+  useFqnFilter: boolean;
   pipelineType: PipelineType;
   showDatabaseFilter: boolean;
   showDashboardFilter: boolean;
@@ -82,6 +84,7 @@ export interface ConfigureIngestionProps {
   showTopicFilter: boolean;
   showChartFilter: boolean;
   showPipelineFilter: boolean;
+  showMlModelFilter: boolean;
   threadCount: number;
   queryLogDuration: number;
   stageFileLocation: string;
@@ -90,6 +93,7 @@ export interface ConfigureIngestionProps {
   handleDatasetServiceName: (value: string[]) => void;
   handleDescription?: (value: string) => void;
   handleIncludeLineage: () => void;
+  onUseFqnFilterClick: () => void;
   handleIncludeView: () => void;
   handleIncludeTags: () => void;
   handleMarkDeletedTables?: () => void;

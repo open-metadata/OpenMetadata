@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import ManageButton from './ManageButton';
 
@@ -29,6 +29,7 @@ const mockProps = {
   allowSoftDelete: true,
   entityName: 'string',
   entityId: 'string-id',
+  canDelete: true,
   entityType: 'table',
   entityFQN: 'x.y.z',
   isRecursiveDelete: true,
@@ -38,62 +39,74 @@ const mockProps = {
 
 describe('Test manage button component', () => {
   it('Should render manage button component', async () => {
-    render(<ManageButton {...mockProps} />);
+    await act(async () => {
+      render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+      const manageButton = await screen.findByTestId('manage-button');
 
-    expect(manageButton).toBeInTheDocument();
+      expect(manageButton).toBeInTheDocument();
+    });
   });
 
   it('Should render dropdown component on click of manage button', async () => {
-    render(<ManageButton {...mockProps} />);
+    await act(async () => {
+      render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+      const manageButton = await screen.findByTestId('manage-button');
 
-    expect(manageButton).toBeInTheDocument();
+      expect(manageButton).toBeInTheDocument();
 
-    fireEvent.click(manageButton);
+      fireEvent.click(manageButton);
 
-    const deleteOption = await screen.findByTestId('delete-button');
-    const announcementOption = await screen.findByTestId('announcement-button');
+      const deleteOption = await screen.findByTestId('delete-button');
+      const announcementOption = await screen.findByTestId(
+        'announcement-button'
+      );
 
-    expect(deleteOption).toBeInTheDocument();
-    expect(announcementOption).toBeInTheDocument();
+      expect(deleteOption).toBeInTheDocument();
+      expect(announcementOption).toBeInTheDocument();
+    });
   });
 
   it('Should render delete modal component on click of delete option', async () => {
-    render(<ManageButton {...mockProps} />);
+    await act(async () => {
+      render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+      const manageButton = await screen.findByTestId('manage-button');
 
-    expect(manageButton).toBeInTheDocument();
+      expect(manageButton).toBeInTheDocument();
 
-    fireEvent.click(manageButton);
+      fireEvent.click(manageButton);
 
-    const deleteOption = await screen.findByTestId('delete-button');
+      const deleteOption = await screen.findByTestId('delete-button');
 
-    expect(deleteOption).toBeInTheDocument();
+      expect(deleteOption).toBeInTheDocument();
 
-    fireEvent.click(deleteOption);
+      fireEvent.click(deleteOption);
 
-    expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
+      expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
+    });
   });
 
   it('Should call announcement callback on click of announcement option', async () => {
-    render(<ManageButton {...mockProps} />);
+    await act(async () => {
+      render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+      const manageButton = await screen.findByTestId('manage-button');
 
-    expect(manageButton).toBeInTheDocument();
+      expect(manageButton).toBeInTheDocument();
 
-    fireEvent.click(manageButton);
+      fireEvent.click(manageButton);
 
-    const announcementOption = await screen.findByTestId('announcement-button');
+      const announcementOption = await screen.findByTestId(
+        'announcement-button'
+      );
 
-    expect(announcementOption).toBeInTheDocument();
+      expect(announcementOption).toBeInTheDocument();
 
-    fireEvent.click(announcementOption);
+      fireEvent.click(announcementOption);
 
-    expect(mockAnnouncementClick).toBeCalled();
+      expect(mockAnnouncementClick).toBeCalled();
+    });
   });
 });

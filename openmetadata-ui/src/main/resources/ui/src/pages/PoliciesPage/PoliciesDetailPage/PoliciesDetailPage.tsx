@@ -17,7 +17,6 @@ import {
   Card,
   Col,
   Dropdown,
-  Empty,
   Menu,
   Modal,
   Row,
@@ -420,7 +419,7 @@ const PoliciesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (policyPermission.ViewAll) {
+    if (policyPermission.ViewAll || policyPermission.ViewBasic) {
       fetchPolicy();
     }
   }, [policyPermission, fqn]);
@@ -432,17 +431,20 @@ const PoliciesDetailPage = () => {
   return (
     <div data-testid="policy-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {policyPermission.ViewAll ? (
+      {policyPermission.ViewAll || policyPermission.ViewBasic ? (
         <>
           {isEmpty(policy) ? (
-            <Empty description={`No policy found for ${fqn}`}>
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => history.push(policiesPath)}>
-                Go Back
-              </Button>
-            </Empty>
+            <ErrorPlaceHolder>
+              <div className="text-center">
+                <p>No policy found for ${fqn}</p>
+                <Button
+                  size="small"
+                  type="primary"
+                  onClick={() => history.push(policiesPath)}>
+                  Go Back
+                </Button>
+              </div>
+            </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
               <div className="tw--ml-5">
@@ -463,7 +465,9 @@ const PoliciesDetailPage = () => {
               <Tabs defaultActiveKey="rules">
                 <TabPane key="rules" tab="Rules">
                   {isEmpty(policy.rules) ? (
-                    <Empty description="No rules found" />
+                    <ErrorPlaceHolder>
+                      <p>No rules found</p>
+                    </ErrorPlaceHolder>
                   ) : (
                     <Space
                       className="tw-w-full tabpane-space"
@@ -490,7 +494,9 @@ const PoliciesDetailPage = () => {
                         direction="vertical"
                         size={20}>
                         {policy.rules.map((rule) => (
-                          <Card key={rule.name || 'rule'}>
+                          <Card
+                            data-testid="rule-card"
+                            key={rule.name || 'rule'}>
                             <Space
                               align="baseline"
                               className="tw-w-full tw-justify-between tw-pb-5"

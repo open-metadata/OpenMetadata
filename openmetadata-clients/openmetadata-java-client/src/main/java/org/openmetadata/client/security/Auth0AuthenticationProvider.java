@@ -18,20 +18,16 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.interceptors.Auth0AccessTokenRequestInterceptor;
 import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.Auth0AccessTokenApi;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
 public class Auth0AuthenticationProvider implements AuthenticationProvider {
-  private OpenMetadataServerConnection serverConfig;
-
-  private final Auth0SSOClientConfig securityConfig;
-
   private String generatedAuthToken;
   private Long expirationTimeMillis;
   private final Auth0AccessTokenApi auth0SSOClient;
@@ -41,9 +37,8 @@ public class Auth0AuthenticationProvider implements AuthenticationProvider {
       LOG.error("Required type to invoke is Auth0 for Auth0Authentication Provider");
       throw new RuntimeException("Required type to invoke is Auth0 for Auth0Authentication Provider");
     }
-    serverConfig = iConfig;
 
-    securityConfig = (Auth0SSOClientConfig) iConfig.getSecurityConfig();
+    Auth0SSOClientConfig securityConfig = (Auth0SSOClientConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {
       LOG.error("Security Config is missing, it is required");
       throw new RuntimeException("Security Config is missing, it is required");

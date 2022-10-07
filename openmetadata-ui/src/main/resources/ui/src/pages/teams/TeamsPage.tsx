@@ -162,33 +162,6 @@ const TeamsPage = () => {
   };
 
   /**
-   * Take Team data as input and create the team
-   * @param data - Team Data
-   */
-  const createNewTeam = async (data: Team) => {
-    try {
-      const teamData: CreateTeam = {
-        name: data.name,
-        displayName: data.displayName,
-        description: data.description,
-        teamType: data.teamType as TeamType,
-        parents: fqn ? [selectedTeam.id] : undefined,
-      };
-      const res = await createTeam(teamData);
-      if (res) {
-        const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
-        handleAddTeam(false);
-        fetchAllTeams(true, parent);
-      }
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['create-team-error']
-      );
-    }
-  };
-
-  /**
    * Make API call to fetch current team user data
    */
   const getCurrentTeamUsers = (
@@ -242,6 +215,35 @@ const TeamsPage = () => {
     setIsPageLoading(false);
   };
 
+  /**
+   * Take Team data as input and create the team
+   * @param data - Team Data
+   */
+  const createNewTeam = async (data: Team) => {
+    try {
+      const teamData: CreateTeam = {
+        name: data.name,
+        displayName: data.displayName,
+        description: data.description,
+        teamType: data.teamType as TeamType,
+        parents: fqn ? [selectedTeam.id] : undefined,
+      };
+      const res = await createTeam(teamData);
+      if (res) {
+        const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
+        fetchAllTeams(true, parent);
+        fetchTeamByFqn(selectedTeam.name);
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['create-team-error']
+      );
+    } finally {
+      handleAddTeam(false);
+    }
+  };
+
   const searchUsers = (text: string, currentPage: number) => {
     setIsDataLoading(true);
     searchData(
@@ -266,14 +268,18 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading(false));
   };
 
-  const updateTeamHandler = (updatedData: Team) => {
+  const updateTeamHandler = (updatedData: Team, fetchTeam = true) => {
     const jsonPatch = compare(selectedTeam, updatedData);
 
     return new Promise<void>((resolve, reject) => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            fetchTeamByFqn(selectedTeam.name);
+            if (fetchTeam) {
+              fetchTeamByFqn(selectedTeam.name);
+            } else {
+              setSelectedTeam((previous) => ({ ...previous, ...res }));
+            }
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -464,7 +470,7 @@ const TeamsPage = () => {
   };
 
   useEffect(() => {
-    if (entityPermissions.ViewAll) {
+    if (entityPermissions.ViewAll || entityPermissions.ViewBasic) {
       if (fqn) {
         fetchTeamByFqn(fqn);
       }
@@ -482,7 +488,7 @@ const TeamsPage = () => {
 
   return (
     <>
-      {entityPermissions.ViewAll ? (
+      {entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
         <>
           {isUndefined(fqn) ? (
             <Teams
@@ -510,11 +516,13 @@ const TeamsPage = () => {
               isDescriptionEditable={isDescriptionEditable}
               isTeamMemberLoading={isDataLoading}
               removeUserFromTeam={removeUserFromTeam}
+              showDeletedTeam={showDeletedTeam}
               teamUserPagin={userPaging}
               teamUserPaginHandler={userPagingHandler}
               teamUsersSearchText={userSearchValue}
               updateTeamHandler={updateTeamHandler}
               onDescriptionUpdate={onDescriptionUpdate}
+              onShowDeletedTeamChange={handleShowDeletedTeam}
               onTeamExpand={fetchAllTeams}
             />
           )}

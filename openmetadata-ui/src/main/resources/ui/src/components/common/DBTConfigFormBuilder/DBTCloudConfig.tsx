@@ -26,21 +26,25 @@ import {
   DBTFormCommonProps,
   ErrorDbtCloud,
 } from './DBTConfigForm.interface';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAccountIdChange: (value: string) => void;
   handleCloudAuthTokenChange: (value: string) => void;
+  handleUpdateDescriptions: (value: boolean) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudAccountId = '',
   dbtCloudAuthToken = '',
+  dbtUpdateDescriptions = false,
   okText,
   cancelText,
   onCancel,
   onSubmit,
   handleCloudAccountIdChange,
   handleCloudAuthTokenChange,
+  handleUpdateDescriptions,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -52,7 +56,11 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtCloudAccountId, dbtCloudAuthToken };
+    const submitData = {
+      dbtCloudAccountId,
+      dbtCloudAuthToken,
+      dbtUpdateDescriptions,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -100,6 +108,14 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         />
         {errors?.dbtCloudAuthToken && errorMsg(errors.dbtCloudAuthToken)}
       </Field>
+      {getSeparator('')}
+
+      <SwitchField
+        dbtUpdateDescriptions={dbtUpdateDescriptions}
+        handleUpdateDescriptions={handleUpdateDescriptions}
+        id="cloud-update-description"
+      />
+
       {getSeparator('')}
 
       <Field className="tw-flex tw-justify-end">

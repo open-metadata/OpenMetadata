@@ -19,6 +19,8 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
@@ -63,6 +65,8 @@ class GlueSource(DatabaseServiceSource):
         self.status = SQLSourceStatus()
         self.connection = get_connection(self.service_connection)
         self.glue = self.connection.client
+        self.data_models = {}
+        self.dbt_tests = {}
 
         self.database_name = None
         self.next_db_token = None
@@ -108,13 +112,21 @@ class GlueSource(DatabaseServiceSource):
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page["DatabaseList"]:
                 try:
-                    if filter_by_database(
-                        database_filter_pattern=self.config.sourceConfig.config.databaseFilterPattern,
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.database_service.name.__root__,
                         database_name=schema["CatalogId"],
+                    )
+                    if filter_by_database(
+                        self.config.sourceConfig.config.databaseFilterPattern,
+                        database_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema["CatalogId"],
                     ):
                         self.status.filter(
-                            schema["CatalogId"],
-                            "Database (Catalog ID) pattern not allowed",
+                            database_fqn,
+                            "Database (Catalog ID) Filtered Out",
                         )
                         continue
                     if schema["CatalogId"] in database_names:
@@ -150,11 +162,20 @@ class GlueSource(DatabaseServiceSource):
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page["DatabaseList"]:
                 try:
-                    if filter_by_schema(
-                        schema_filter_pattern=self.config.sourceConfig.config.schemaFilterPattern,
+                    schema_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
                         schema_name=schema["Name"],
+                    )
+                    if filter_by_schema(
+                        self.config.sourceConfig.config.schemaFilterPattern,
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema["Name"],
                     ):
-                        self.status.filter(schema["Name"], "Schema pattern not allowed")
+                        self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
                     yield schema["Name"]
                 except Exception as exc:
@@ -195,13 +216,24 @@ class GlueSource(DatabaseServiceSource):
         for table in all_tables:
             try:
                 table_name = table.get("Name")
+                table_name = self.standardize_table_name(schema_name, table_name)
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table_name,
+                )
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
-                    table_name,
+                    table_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else table_name,
                 ):
                     self.status.filter(
-                        "{}".format(table["Name"]),
-                        "Table pattern not allowed",
+                        table_fqn,
+                        "Table Filtered Out",
                     )
                     continue
 
@@ -223,7 +255,6 @@ class GlueSource(DatabaseServiceSource):
                 elif table["TableType"] == "VIRTUAL_VIEW":
                     table_type = TableType.View
 
-                table_name = self.standardize_table_name(schema_name, table_name)
                 self.context.table_data = table
                 yield table_name, table_type
             except Exception as exc:

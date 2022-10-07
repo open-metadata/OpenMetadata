@@ -1,0 +1,157 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestDefinition",
+  "description": "TestDefinition is a test definition to capture data quality tests against data entities.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.tests.TestDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "testPlatform": {
+      "javaType": "org.openmetadata.schema.tests.TestPlatform",
+      "description": "This schema defines the platform where tests are defined and ran.",
+      "type": "string",
+      "enum": [
+        "OpenMetadata",
+        "GreatExpectations",
+        "DBT",
+        "Deequ",
+        "Soda",
+        "Other"
+      ]
+    },
+    "testDataType": {
+      "javaType": "org.openmetadata.schema.type.TestCaseParameterDataType",
+      "description": "This enum defines the type of data stored in a column.",
+      "type": "string",
+      "enum": [
+        "NUMBER",
+        "INT",
+        "FLOAT",
+        "DOUBLE",
+        "DECIMAL",
+        "TIMESTAMP",
+        "TIME",
+        "DATE",
+        "DATETIME",
+        "ARRAY",
+        "MAP",
+        "SET",
+        "STRING",
+        "BOOLEAN"
+      ]
+    },
+    "entityType": {
+      "javaType": "org.openmetadata.schema.type.TestDefinitionEntityType",
+      "description": "This enum defines the type for which this test definition applies to.",
+      "type": "string",
+      "enum": [
+        "TABLE",
+        "COLUMN"
+      ]
+    },
+    "testCaseParameterDefinition": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.tests.TestCaseParameter",
+      "description": "This schema defines the parameters that can be passed for a Test Case.",
+      "properties": {
+        "name": {
+          "description": "name of the parameter.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this parameter name.",
+          "type": "string"
+        },
+        "dataType": {
+          "description": "Data type of the parameter (int, date etc.).",
+          "$ref": "#/definitions/testDataType"
+        },
+        "description": {
+          "description": "Description of the parameter.",
+          "$ref": "../type/basic.json#/definitions/markdown"
+        },
+        "required": {
+          "description": "Is this parameter required.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this test case definition instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this test case.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test case.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "entityType": {
+      "$ref": "#/definitions/entityType"
+    },
+    "testPlatforms": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testPlatform"
+      }
+    },
+    "supportedDataTypes": {
+      "type": "array",
+      "items": {
+        "$ref": "../entity/data/table.json#/definitions/dataType"
+      }
+    },
+    "parameterDefinition": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testCaseParameterDefinition"
+      }
+    },
+    "owner": {
+      "description": "Owner of this TestCase definition.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "description", "testPlatforms"],
+  "additionalProperties": false
+}

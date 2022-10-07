@@ -16,7 +16,11 @@ import { Operation } from 'fast-json-patch';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
-import { EntityType, TestDefinition } from '../generated/tests/testDefinition';
+import {
+  EntityType,
+  TestDefinition,
+  TestPlatform,
+} from '../generated/tests/testDefinition';
 import { TestSuite } from '../generated/tests/testSuite';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
@@ -38,6 +42,8 @@ export type ListTestCaseParams = ListParams & {
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
+  testPlatform: TestPlatform;
+  supportedDataType?: string;
 };
 
 export type ListTestCaseResultsParams = Omit<

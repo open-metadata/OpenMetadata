@@ -74,7 +74,7 @@
                     ]
                 },
                 {
-                    "result": "columnCount should not be None for TableColumnCountToEqual",
+                    "result": "columnCount should not be None for tableColumnCountToEqual",
                     "testCaseStatus": "Aborted",
                     "testResultValues": [
                         {

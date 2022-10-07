@@ -12,6 +12,7 @@
 """
 Hosts the singledispatch to build source URLs
 """
+import os
 from functools import singledispatch
 from urllib.parse import quote_plus
 
@@ -339,9 +340,6 @@ def _(connection: HiveConnection):
     )
 
     if options:
-        if not connection.databaseSchema:
-            url += "/"
-        url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
@@ -356,10 +354,18 @@ def _(connection: BigQueryConnection):
     from google import auth
 
     _, project_id = auth.default()
-    if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
-        project_id = connection.credentials.gcsConfig.projectId
-    if project_id:
-        return f"{connection.scheme.value}://{project_id}"
+    if isinstance(connection.credentials.gcsConfig, GCSValues):
+        if not project_id:
+            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
+        else:
+            if (
+                not connection.credentials.gcsConfig.privateKey
+                and connection.credentials.gcsConfig.projectId
+            ):
+                # Setting environment variable based on project id given by user / set in ADC
+                project_id = connection.credentials.gcsConfig.projectId
+                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+            return f"{connection.scheme.value}://{project_id}"
     return f"{connection.scheme.value}://"
 
 
