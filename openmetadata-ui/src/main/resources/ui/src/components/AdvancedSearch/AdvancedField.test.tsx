@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { AdvanceField } from '../Explore/explore.interface';
 import AdvancedField from './AdvancedField';
@@ -84,81 +84,87 @@ const mockProps = {
 
 describe('Test AdvancedField Component', () => {
   it('Should render advancedfield component', async () => {
-    const { findByTestId } = render(<AdvancedField {...mockProps} />);
+    await act(async () => {
+      const { findByTestId } = render(<AdvancedField {...mockProps} />);
 
-    const label = await findByTestId('field-label');
+      const label = await findByTestId('field-label');
 
-    expect(label).toBeInTheDocument();
+      expect(label).toBeInTheDocument();
 
-    expect(label).toHaveTextContent('Owner:');
+      expect(label).toHaveTextContent('Owner:');
 
-    const searchSelect = await findByTestId('field-select');
+      const searchSelect = await findByTestId('field-select');
 
-    expect(searchSelect).toBeInTheDocument();
+      expect(searchSelect).toBeInTheDocument();
 
-    const removeButton = await findByTestId('field-remove-button');
+      const removeButton = await findByTestId('field-remove-button');
 
-    expect(removeButton).toBeInTheDocument();
+      expect(removeButton).toBeInTheDocument();
+    });
   });
 
   it('Should call remove method on click of remove button', async () => {
-    const { findByTestId } = render(<AdvancedField {...mockProps} />);
+    await act(async () => {
+      const { findByTestId } = render(<AdvancedField {...mockProps} />);
 
-    const label = await findByTestId('field-label');
+      const label = await findByTestId('field-label');
 
-    expect(label).toBeInTheDocument();
+      expect(label).toBeInTheDocument();
 
-    expect(label).toHaveTextContent('Owner:');
+      expect(label).toHaveTextContent('Owner:');
 
-    const searchSelect = await findByTestId('field-select');
+      const searchSelect = await findByTestId('field-select');
 
-    expect(searchSelect).toBeInTheDocument();
+      expect(searchSelect).toBeInTheDocument();
 
-    const removeButton = await findByTestId('field-remove-button');
+      const removeButton = await findByTestId('field-remove-button');
 
-    expect(removeButton).toBeInTheDocument();
+      expect(removeButton).toBeInTheDocument();
 
-    fireEvent.click(removeButton);
+      fireEvent.click(removeButton);
 
-    expect(onFieldRemove).toHaveBeenCalledWith(field.key);
+      expect(onFieldRemove).toHaveBeenCalledWith(field.key);
+    });
   });
 
   it('Should call select method on click of option', async () => {
-    const { findByTestId, findByRole, findAllByTestId } = render(
-      <AdvancedField {...mockProps} />
-    );
+    await act(async () => {
+      const { findByTestId, findByRole, findAllByTestId } = render(
+        <AdvancedField {...mockProps} />
+      );
 
-    const label = await findByTestId('field-label');
+      const label = await findByTestId('field-label');
 
-    expect(label).toBeInTheDocument();
+      expect(label).toBeInTheDocument();
 
-    expect(label).toHaveTextContent('Owner:');
+      expect(label).toHaveTextContent('Owner:');
 
-    const searchSelect = await findByTestId('field-select');
+      const searchSelect = await findByTestId('field-select');
 
-    expect(searchSelect).toBeInTheDocument();
+      expect(searchSelect).toBeInTheDocument();
 
-    const removeButton = await findByTestId('field-remove-button');
+      const removeButton = await findByTestId('field-remove-button');
 
-    expect(removeButton).toBeInTheDocument();
+      expect(removeButton).toBeInTheDocument();
 
-    const searchInput = await findByRole('combobox');
+      const searchInput = await findByRole('combobox');
 
-    expect(searchInput).toBeInTheDocument();
+      expect(searchInput).toBeInTheDocument();
 
-    fireEvent.change(searchInput, { target: { value: 'cloud' } });
+      fireEvent.change(searchInput, { target: { value: 'cloud' } });
 
-    const fieldOptions = await findAllByTestId('field-option');
+      const fieldOptions = await findAllByTestId('field-option');
 
-    expect(fieldOptions).toHaveLength(
-      mockData['metadata-suggest'][0].options.length
-    );
+      expect(fieldOptions).toHaveLength(
+        mockData['metadata-suggest'][0].options.length
+      );
 
-    fireEvent.click(fieldOptions[0]);
+      fireEvent.click(fieldOptions[0]);
 
-    expect(onFieldValueSelect).toHaveBeenCalledWith({
-      key: 'owner.name',
-      value: 'Cloud_Infra',
+      expect(onFieldValueSelect).toHaveBeenCalledWith({
+        key: 'owner.name',
+        value: 'Cloud_Infra',
+      });
     });
   });
 });

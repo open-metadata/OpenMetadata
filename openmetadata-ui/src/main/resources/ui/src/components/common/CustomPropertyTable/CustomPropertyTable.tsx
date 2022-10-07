@@ -86,6 +86,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
           data-testid="custom-properties-table"
           dataSource={entityTypeDetail.customProperties || []}
           pagination={false}
+          rowKey="name"
           size="small"
         />
       )}

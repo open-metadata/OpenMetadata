@@ -447,6 +447,11 @@ site_menu:
   - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
     url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-owner
 
+  - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns
+    url: /connectors/ingestion/workflows/metadata/filter-patterns
+  - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns / Database
+    url: /connectors/ingestion/workflows/metadata/filter-patterns/database
+
   - category: Connectors / Ingestion / Workflows / Usage
     url: /connectors/ingestion/workflows/usage
   - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
@@ -488,6 +493,7 @@ site_menu:
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
   - category: How to guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
+
 
 
   - category: Features

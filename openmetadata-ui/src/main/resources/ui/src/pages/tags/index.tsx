@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Tooltip } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
@@ -28,7 +28,6 @@ import {
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import Description from '../../components/common/description/Description';
-import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -222,8 +221,7 @@ const TagsPage = () => {
       createTagCategory(data)
         .then((res) => {
           if (res) {
-            setCurrentCategory(res);
-            fetchCategories();
+            history.push(getTagPath(res.name));
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -268,9 +266,12 @@ const TagsPage = () => {
           const updatedCategory = categories.filter(
             (data) => data.id !== categoryId
           );
-          setCurrentCategory(updatedCategory[0]);
-          setCategoreis(updatedCategory);
-          setIsLoading(false);
+          const currentCategory = updatedCategory[0];
+          history.push(
+            getTagPath(
+              currentCategory?.fullyQualifiedName || currentCategory?.name
+            )
+          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['delete-tag-category-error']
@@ -283,7 +284,10 @@ const TagsPage = () => {
           jsonData['api-error-messages']['delete-tag-category-error']
         );
       })
-      .finally(() => setDeleteTags({ data: undefined, state: false }));
+      .finally(() => {
+        setDeleteTags({ data: undefined, state: false });
+        setIsLoading(false);
+      });
   };
 
   /**
@@ -489,14 +493,12 @@ const TagsPage = () => {
                 onClick={() => {
                   history.push(getTagPath(category.name));
                 }}>
-                <Ellipses
-                  tooltip
-                  className="tag-category label-category tw-self-center tw-w-32"
+                <Typography.Paragraph
+                  className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
                   data-testid="tag-name"
-                  rows={1}>
+                  ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category as unknown as EntityReference)}
-                </Ellipses>
-
+                </Typography.Paragraph>
                 {getCountBadge(
                   currentCategory?.name === category.name
                     ? currentCategory.children?.length

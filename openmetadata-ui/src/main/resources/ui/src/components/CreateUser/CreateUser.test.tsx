@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
@@ -33,7 +33,11 @@ jest.mock('../TeamsSelectable/TeamsSelectable', () => {
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditor', () => {
-  return jest.fn().mockReturnValue(<p>MarkdownWithPreview component</p>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }, ref) => {
+      return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;
+    })
+  );
 });
 
 const propsValue: CreateUserProps = {
