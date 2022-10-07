@@ -14,21 +14,16 @@
 import { isEmpty, toNumber } from 'lodash';
 import React, { FC, useState } from 'react';
 import { pluralize } from '../../../utils/CommonUtils';
+import { getCron } from '../../../utils/CronUtils';
 import {
   combinations,
-  getDayCron,
   getDayOptions,
-  getHourCron,
   getHourOptions,
-  getMinuteCron,
   getMinuteOptions,
   getMinuteSegmentOptions,
-  getMonthCron,
   getMonthDaysOptions,
   getMonthOptions,
   getPeriodOptions,
-  getWeekCron,
-  getYearCron,
   toDisplay,
 } from './CronEditor.constant';
 import {
@@ -42,35 +37,6 @@ import {
   StateValue,
   ToDisplay,
 } from './CronEditor.interface';
-
-const getCron = (state: StateValue) => {
-  const {
-    selectedPeriod,
-    selectedMinOption,
-    selectedHourOption,
-    selectedDayOption,
-    selectedWeekOption,
-    selectedMonthOption,
-    selectedYearOption,
-  } = state;
-
-  switch (selectedPeriod) {
-    case 'minute':
-      return getMinuteCron(selectedMinOption);
-
-    case 'day':
-      return getDayCron(selectedDayOption);
-    case 'week':
-      return getWeekCron(selectedWeekOption);
-    case 'month':
-      return getMonthCron(selectedMonthOption);
-    case 'year':
-      return getYearCron(selectedYearOption);
-    case 'hour':
-    default:
-      return getHourCron(selectedHourOption);
-  }
-};
 
 const CronEditor: FC<CronEditorProp> = (props) => {
   const getCronType = (cronStr: string) => {
@@ -170,8 +136,8 @@ const CronEditor: FC<CronEditorProp> = (props) => {
   const changeValue = (state: StateValue) => {
     const { onChange } = props;
 
-    setCronValue(getCron(state));
-    onChange(getCron(state));
+    setCronValue(getCron(state) ?? '');
+    onChange(getCron(state) ?? '');
   };
 
   const onPeriodSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
