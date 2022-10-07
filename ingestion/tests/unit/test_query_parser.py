@@ -18,6 +18,8 @@ Validate query parser logic
 from logging.config import DictConfigurator
 from unittest import TestCase
 
+from metadata.ingestion.lineage.sql_lineage import clean_raw_query
+
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.parser import (
     get_clean_parser_table_list,
@@ -149,3 +151,10 @@ class QueryParserTests(TestCase):
                 ),
             ],
         )
+
+    def test_clean_raw_query(self):
+        """
+        Validate query cleaning logic
+        """
+        query = "create or replace view my_view copy grants as select * from my_table"
+        self.assertEqual(clean_raw_query(query), "create or replace view my_view as select * from my_table")

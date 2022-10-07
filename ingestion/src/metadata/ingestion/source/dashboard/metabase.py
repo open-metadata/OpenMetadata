@@ -42,7 +42,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.lineage.sql_lineage import search_table_entities, clean_raw_query
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils import fqn
@@ -206,7 +206,7 @@ class MetabaseSource(DashboardServiceSource):
                     database = resp_database.json()
 
                     query = chart_details["dataset_query"]["native"]["query"]
-                    table_list = LineageRunner(query)
+                    table_list = LineageRunner(clean_raw_query(query))
                     for table in table_list.source_tables:
                         database_schema_name, table = fqn.split(str(table))[-2:]
                         database_schema_name = (

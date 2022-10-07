@@ -43,7 +43,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
-    get_lineage_via_table_entity,
+    get_lineage_via_table_entity, clean_raw_query,
 )
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -405,7 +405,7 @@ class CommonDbSourceService(
             DictConfigurator.configure = configure
 
             try:
-                result = LineageRunner(view_definition)
+                result = LineageRunner(clean_raw_query(view_definition))
                 if result.source_tables and result.target_tables:
                     yield from get_lineage_by_query(
                         self.metadata,
