@@ -62,7 +62,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         table_sample_precentage: Optional[float] = None,
         table_sample_query: Optional[str] = None,
         table_partition_config: Optional[TablePartitionConfig] = None,
-        **kwargs,
     ):
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count
@@ -77,10 +76,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             else None
         )
 
-        # Allows SQA Interface to be used without OM server config
-        self.table = kwargs.get("table") or self._convert_table_to_orm_object(
-            sqa_metadata_obj
-        )
+        self.table = self._convert_table_to_orm_object(sqa_metadata_obj)
 
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()

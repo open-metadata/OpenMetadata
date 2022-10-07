@@ -16,6 +16,7 @@ Validate workflow e2e
 import os
 import unittest
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
@@ -168,13 +169,14 @@ class TestE2EWorkflow(unittest.TestCase):
                 ),
             )
         )
-
-        sqa_profiler_interface = SQAProfilerInterface(
-            cls.sqlite_conn.config,
-            table=User,
-            table_entity=table,
-            ometa_client=None,
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                cls.sqlite_conn.config,
+                table_entity=table,
+                ometa_client=None,
+            )
         engine = sqa_profiler_interface.session.get_bind()
         session = sqa_profiler_interface.session
 

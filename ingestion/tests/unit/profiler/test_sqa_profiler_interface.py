@@ -16,6 +16,7 @@ Test SQA Interface
 import os
 from datetime import datetime, timezone
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from pytest import raises
@@ -74,9 +75,12 @@ class SQAInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        self.sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, table=User, table_entity=table_entity, ometa_client=None
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            self.sqa_profiler_interface = SQAProfilerInterface(
+                sqlite_conn, table_entity=table_entity, ometa_client=None
+            )
         self.table = User
 
     def test_init_interface(self):
@@ -105,9 +109,12 @@ class SQAInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn, table=User, table_entity=table_entity, ometa_client=None
-    )
+    with patch.object(
+        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQAProfilerInterface(
+            sqlite_conn, table_entity=table_entity, ometa_client=None
+        )
 
     @classmethod
     def setUpClass(cls) -> None:

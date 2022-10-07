@@ -18,6 +18,7 @@ Each test should validate the Success, Failure and Aborted statuses
 import os
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import sqlalchemy as sqa
@@ -78,12 +79,14 @@ class testSuiteValidation(unittest.TestCase):
         databaseMode=db_path + "?check_same_thread=False",
     )
 
-    sqa_profiler_interface = SQATestSuiteInterface(
-        sqlite_conn,
-        table=User,
-        table_entity=TABLE,
-        ometa_client=None,
-    )
+    with patch.object(
+        SQATestSuiteInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQATestSuiteInterface(
+            sqlite_conn,
+            table_entity=TABLE,
+            ometa_client=None,
+        )
     runner = sqa_profiler_interface.runner
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session

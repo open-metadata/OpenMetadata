@@ -15,6 +15,7 @@ Test Profiler behavior
 import os
 from datetime import datetime, timezone
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -79,9 +80,12 @@ class ProfilerTest(TestCase):
             )
         ],
     )
-    sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn, table=User, table_entity=table_entity, ometa_client=None
-    )
+    with patch.object(
+        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQAProfilerInterface(
+            sqlite_conn, table_entity=table_entity, ometa_client=None
+        )
 
     @classmethod
     def setUpClass(cls) -> None:

@@ -14,6 +14,7 @@ Test Sample behavior
 """
 import os
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
@@ -68,9 +69,12 @@ class SampleTest(TestCase):
         ],
     )
 
-    sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn, table=User, table_entity=table_entity, ometa_client=None
-    )
+    with patch.object(
+        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQAProfilerInterface(
+            sqlite_conn, table_entity=table_entity, ometa_client=None
+        )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
 
@@ -125,13 +129,15 @@ class SampleTest(TestCase):
         """
 
         # Randomly pick table_count to init the Profiler, we don't care for this test
-        sqa_profiler_interface = SQAProfilerInterface(
-            self.sqlite_conn,
-            table=User,
-            table_entity=self.table_entity,
-            table_sample_precentage=50,
-            ometa_client=None,
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                self.sqlite_conn,
+                table_entity=self.table_entity,
+                table_sample_precentage=50,
+                ometa_client=None,
+            )
 
         sample = sqa_profiler_interface._create_thread_safe_sampler(
             self.session, User
@@ -162,16 +168,18 @@ class SampleTest(TestCase):
         """
 
         count = Metrics.COUNT.value
-        profiler = Profiler(
-            count,
-            profiler_interface=SQAProfilerInterface(
-                self.sqlite_conn,
-                table=User,
-                table_entity=self.table_entity,
-                table_sample_precentage=50,
-                ometa_client=None,
-            ),
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            profiler = Profiler(
+                count,
+                profiler_interface=SQAProfilerInterface(
+                    self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    table_sample_precentage=50,
+                    ometa_client=None,
+                ),
+            )
         res = profiler.compute_metrics()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
 
@@ -180,16 +188,18 @@ class SampleTest(TestCase):
         Histogram should run correctly
         """
         hist = Metrics.HISTOGRAM.value
-        profiler = Profiler(
-            hist,
-            profiler_interface=SQAProfilerInterface(
-                self.sqlite_conn,
-                table=User,
-                table_entity=self.table_entity,
-                table_sample_precentage=50,
-                ometa_client=None,
-            ),
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            profiler = Profiler(
+                hist,
+                profiler_interface=SQAProfilerInterface(
+                    self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    table_sample_precentage=50,
+                    ometa_client=None,
+                ),
+            )
         res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled

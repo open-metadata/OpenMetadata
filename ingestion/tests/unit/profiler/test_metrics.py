@@ -15,6 +15,7 @@ Test Metrics behavior
 import datetime
 import os
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
@@ -71,19 +72,23 @@ class MetricsTest(TestCase):
             )
         ],
     )
-    sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn,
-        table=User,
-        table_entity=table_entity,
-        ometa_client=None,
-    )
-    engine = sqa_profiler_interface.session.get_bind()
 
     @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare Ingredients
         """
+
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            cls.sqa_profiler_interface = SQAProfilerInterface(
+                cls.sqlite_conn,
+                table_entity=cls.table_entity,
+                ometa_client=None,
+            )
+        cls.engine = cls.sqa_profiler_interface.session.get_bind()
+
         User.__table__.create(bind=cls.engine)
 
         data = [
@@ -691,12 +696,14 @@ class MetricsTest(TestCase):
 
         EmptyUser.__table__.create(bind=self.engine)
 
-        sqa_profiler_interface = SQAProfilerInterface(
-            self.sqlite_conn,
-            table=EmptyUser,
-            table_entity=self.table_entity,
-            ometa_client=None,
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=EmptyUser
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                self.sqlite_conn,
+                table_entity=self.table_entity,
+                ometa_client=None,
+            )
 
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
         res = (

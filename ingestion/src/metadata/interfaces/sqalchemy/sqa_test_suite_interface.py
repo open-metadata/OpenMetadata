@@ -54,7 +54,6 @@ class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
         table_sample_query: str = None,
         table_partition_config: dict = None,
         table_entity: Table = None,
-        **kwargs,
     ):
         self.ometa_client = ometa_client
         self.table_entity = table_entity
@@ -71,9 +70,7 @@ class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
             get_connection(self.service_connection_config)
         )
 
-        self.table = (
-            kwargs.get("table") or self._convert_table_to_orm_object()
-        )  # Allows SQA Interface to be used without OM server config
+        self.table = self._convert_table_to_orm_object()
         self.set_session_tag(self.session)
 
         self._sampler = self._create_sampler()
