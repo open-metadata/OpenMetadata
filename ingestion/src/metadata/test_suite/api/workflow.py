@@ -23,6 +23,7 @@ from typing import List, Optional, Set, Tuple
 
 from pydantic import ValidationError
 
+from metadata.utils.helpers import create_ometa_client
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -48,6 +49,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
@@ -115,27 +117,27 @@ class TestSuiteWorkflow:
             )
             raise err
 
-    def _filter_test_cases_for_table_entity(
-        self, table_fqn: str, test_cases: List[TestCase]
+    def _filter_test_cases_for_entity(
+        self, entity_fqn: str, test_cases: List[TestCase]
     ) -> list[TestCase]:
         """Filter test cases for specific entity"""
         return [
             test_case
             for test_case in test_cases
             if test_case.entityLink.__root__.split("::")[2].replace(">", "")
-            == table_fqn
+            == entity_fqn
         ]
 
-    def _get_unique_table_entities(self, test_cases: List[TestCase]) -> Set:
+    def _get_unique_entities_from_test_cases(self, test_cases: List[TestCase]) -> Set:
         """from a list of test cases extract unique table entities"""
-        table_fqns = [
+        entity_fqns = [
             test_case.entityLink.__root__.split("::")[2].replace(">", "")
             for test_case in test_cases
         ]
 
-        return set(table_fqns)
+        return set(entity_fqns)
 
-    def _get_service_connection_from_test_case(self, table_fqn: str):
+    def _get_service_connection_from_test_case(self, entity_fqn: str):
         """given an entityLink return the service connection
 
         Args:
@@ -144,7 +146,7 @@ class TestSuiteWorkflow:
         if self.config.source.type not in {"sample-data", "sample-usage"}:
             service = self.metadata.get_by_name(
                 entity=DatabaseService,
-                fqn=table_fqn.split(".")[0],
+                fqn=entity_fqn.split(".")[0],
             )
 
             if service:
@@ -159,7 +161,7 @@ class TestSuiteWorkflow:
                     hasattr(service_connection_config, "supportsDatabase")
                     and not service_connection_config.database
                 ):
-                    service_connection_config.database = table_fqn.split(".")[1]
+                    service_connection_config.database = entity_fqn.split(".")[1]
                 return service_connection_config
 
             logger.error(
@@ -167,7 +169,7 @@ class TestSuiteWorkflow:
             )
             raise ValueError()
 
-    def _get_table_entity_from_test_case(self, table_fqn: str):
+    def _get_table_entity_from_test_case(self, entity_fqn: str):
         """given an entityLink return the table entity
 
         Args:
@@ -175,7 +177,7 @@ class TestSuiteWorkflow:
         """
         return self.metadata.get_by_name(
             entity=Table,
-            fqn=table_fqn,
+            fqn=entity_fqn,
             fields=["profile"],
         )
 
@@ -231,22 +233,22 @@ class TestSuiteWorkflow:
 
         return None
 
-    def _create_sqa_tests_runner_interface(self, table_fqn: str):
+    def _create_runner_interface(self, table_fqn: str):
         """create the interface to execute test against SQA sources"""
         table_entity = self._get_table_entity_from_test_case(table_fqn)
-        return SQAInterface(
+        return SQATestSuiteInterface(
             service_connection_config=self._get_service_connection_from_test_case(
                 table_fqn
             ),
-            metadata_config=self.metadata_config,
+            ometa_client=create_ometa_client(self.metadata_config),
             table_entity=table_entity,
-            profile_sample=self._get_profile_sample(table_entity)
+            table_sample_precentage=self._get_profile_sample(table_entity)
             if not self._get_profile_query(table_entity)
             else None,
-            profile_query=self._get_profile_query(table_entity)
+            table_sample_query=self._get_profile_query(table_entity)
             if not self._get_profile_sample(table_entity)
             else None,
-            partition_config=self._get_partition_details(table_entity)
+            table_partition_config=self._get_partition_details(table_entity)
             if not self._get_profile_query(table_entity)
             else None,
         )
@@ -384,6 +386,15 @@ class TestSuiteWorkflow:
 
         return created_test_case
 
+    def add_test_cases_from_cli_config(self, test_cases: list) -> list:
+        cli_config_test_cases_def = self.get_test_case_from_cli_config()
+        runtime_created_test_cases = self.compare_and_create_test_cases(
+            cli_config_test_cases_def, test_cases
+        )
+        if runtime_created_test_cases:
+            return runtime_created_test_cases
+        return []
+
     def execute(self):
         """Execute test suite workflow"""
         test_suites = (
@@ -396,23 +407,17 @@ class TestSuiteWorkflow:
 
         test_cases = self.get_test_cases_from_test_suite(test_suites)
         if self.processor_config.testSuites:
-            cli_config_test_cases_def = self.get_test_case_from_cli_config()
-            runtime_created_test_cases = self.compare_and_create_test_cases(
-                cli_config_test_cases_def, test_cases
-            )
-            if runtime_created_test_cases:
-                test_cases.extend(runtime_created_test_cases)
+            test_cases.extend(self.add_test_cases_from_cli_config(test_cases))
 
-        unique_table_fqns = self._get_unique_table_entities(test_cases)
+        unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
 
-        for table_fqn in unique_table_fqns:
+        for entity_fqn in unique_entity_fqns:
             try:
-                sqa_interface = self._create_sqa_tests_runner_interface(table_fqn)
-                for test_case in self._filter_test_cases_for_table_entity(
-                    table_fqn, test_cases
-                ):
+                runner_interface = self._create_runner_interface(entity_fqn)
+                data_test_runner = self._create_data_tests_runner(runner_interface)
+
+                for test_case in self._filter_test_cases_for_entity(entity_fqn, test_cases):
                     try:
-                        data_test_runner = self._create_data_tests_runner(sqa_interface)
                         test_result = data_test_runner.run_and_handle(test_case)
                         if not test_result:
                             continue

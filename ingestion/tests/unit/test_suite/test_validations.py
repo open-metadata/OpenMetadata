@@ -32,7 +32,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.test_suite.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -78,10 +78,11 @@ class testSuiteValidation(unittest.TestCase):
         databaseMode=db_path + "?check_same_thread=False",
     )
 
-    sqa_profiler_interface = SQAInterface(
+    sqa_profiler_interface = SQATestSuiteInterface(
         sqlite_conn,
         table=User,
         table_entity=TABLE,
+        ometa_client=None,
     )
     runner = sqa_profiler_interface.runner
     engine = sqa_profiler_interface.session.get_bind()

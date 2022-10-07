@@ -12,8 +12,10 @@
 import re
 from datetime import datetime, timedelta
 from time import perf_counter
+import traceback
 from typing import Any, Dict, Iterable, List, Optional
 
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -334,3 +336,25 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
         (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
     ]
     return dict(split_original)
+
+
+def create_ometa_client(metadata_config: OpenMetadataConnection) -> Optional[OpenMetadata]:
+    """Create an OpenMetadata client
+
+    Args:
+        metadata_config (OpenMetadataConnection): OM connection config
+
+    Returns:
+        OpenMetadata: an OM client
+    """
+    try:
+        metadata = OpenMetadata(metadata_config)
+        metadata.health_check()
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"No OpenMetadata server configuration found. "
+            f"Setting client to `None`. You won't be able to access the server from the client: {exc}"
+        )
+        metadata = None
+    return metadata
