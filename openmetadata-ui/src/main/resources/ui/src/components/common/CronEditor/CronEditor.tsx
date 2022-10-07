@@ -596,13 +596,13 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       <div className="">
         <div className="tw-grid tw-grid-cols-2 tw-gap-4">
           <div className="tw-mb-1.5" data-testid="time-dropdown-container">
-            <label htmlFor="ingestionType">Every:</label>
+            <label htmlFor="cronType">Every:</label>
             <select
               className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="ingestion-type"
+              data-testid="cron-type"
               disabled={disabled}
-              id="ingestionType"
-              name="ingestionType"
+              id="cronType"
+              name="cronType"
               value={selectedPeriod}
               onChange={(e) => {
                 e.persist();
