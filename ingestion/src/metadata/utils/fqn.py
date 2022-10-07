@@ -115,12 +115,12 @@ def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[st
     :param kwargs: required to build the FQN
     :return: FQN as a string
     """
-    fn = fqn_build_registry.registry.get(entity_type.__name__)
-    if not fn:
+    func = fqn_build_registry.registry.get(entity_type.__name__)
+    if not func:
         raise FQNBuildingException(
             f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
         )
-    return fn(metadata, **kwargs)
+    return func(metadata, **kwargs)
 
 
 @fqn_build_registry.add(Table)
@@ -394,14 +394,13 @@ def _(
             column_name,
             test_case_name,
         )
-    else:
-        return _build(
-            service_name,
-            database_name,
-            schema_name,
-            table_name,
-            test_case_name,
-        )
+    return _build(
+        service_name,
+        database_name,
+        schema_name,
+        table_name,
+        test_case_name,
+    )
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:

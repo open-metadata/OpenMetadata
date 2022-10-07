@@ -37,6 +37,10 @@ DBT_RUN_RESULTS_FILE_NAME = "run_results.json"
 
 @singledispatch
 def get_dbt_details(config):
+    """
+    Single dispatch method to get the DBT files from different sources
+    """
+
     if config:
         raise NotImplementedError(
             f"Config not implemented for type {type(config)}: {config}"
@@ -61,7 +65,7 @@ def _(config: DbtLocalConfig):
                 dbt_manifest = manifest.read()
         if (
             config.dbtRunResultsFilePath is not None
-            and config.dbtRunResultsFilePath is not ""
+            and config.dbtRunResultsFilePath != ""
         ):
             logger.debug(
                 f"Reading [dbtRunResultsFilePath] from: {config.dbtRunResultsFilePath}"
@@ -91,7 +95,7 @@ def _(config: DbtHttpConfig):
         dbt_run_results = None
         if (
             config.dbtRunResultsHttpPath is not None
-            and config.dbtRunResultsHttpPath is not ""
+            and config.dbtRunResultsHttpPath != ""
         ):
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"

@@ -61,9 +61,8 @@ def get_secrets_manager(
         or secrets_manager_provider == SecretsManagerProvider.noop
     ):
         return NoopSecretsManager(cluster_name)
-    elif secrets_manager_provider == SecretsManagerProvider.aws:
+    if secrets_manager_provider == SecretsManagerProvider.aws:
         return AWSSecretsManager(credentials, cluster_name)
-    elif secrets_manager_provider == SecretsManagerProvider.aws_ssm:
+    if secrets_manager_provider == SecretsManagerProvider.aws_ssm:
         return AWSSSMSecretsManager(credentials, cluster_name)
-    else:
-        raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
+    raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
