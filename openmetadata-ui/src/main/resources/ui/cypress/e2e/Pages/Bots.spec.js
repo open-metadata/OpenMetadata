@@ -30,11 +30,6 @@ const expirationTime = {
   threemonths: '90',
 };
 
-const createExpiryDate = (expiry, days) => {
-  const endDate = getExpiryDateTimeFromDate(expiry, days);
-
-  return endDate;
-};
 
 const getCreatedBot = () => {
   interceptURL('GET', `/api/v1/bots/name/${botName}`, 'getCreatedBot');
@@ -133,7 +128,7 @@ describe('Bots Page should work properly', () => {
     cy.get('table').should('contain', botName).and('contain', description);
 
     getCreatedBot();
-    const endhour = createExpiryDate('1', 'hour');
+    const endhour = getExpiryDateTimeFromDate('1', 'hour');
     cy.get('[data-testid="revoke-button"]')
       .should('be.visible')
       .should('contain', 'Revoke token');
@@ -151,7 +146,7 @@ describe('Bots Page should work properly', () => {
   Object.values(expirationTime).forEach((expiry) => {
     it(`Update token expiration for ${expiry} days`, () => {
       getCreatedBot();
-      const expiryDate = createExpiryDate(expiry, 'days');
+      const expiryDate = getExpiryDateTimeFromDate(expiry, 'days');
       revokeToken();
       //Click on token expiry dropdown
       cy.get('[data-testid="token-expiry"]').should('be.visible').click();
