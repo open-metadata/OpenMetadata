@@ -10,12 +10,11 @@
 #  limitations under the License.
 
 import re
+import traceback
 from datetime import datetime, timedelta
 from time import perf_counter
-import traceback
 from typing import Any, Dict, Iterable, List, Optional
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -30,6 +29,9 @@ from metadata.generated.schema.api.services.createStorageService import (
 )
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -338,7 +340,9 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
     return dict(split_original)
 
 
-def create_ometa_client(metadata_config: OpenMetadataConnection) -> Optional[OpenMetadata]:
+def create_ometa_client(
+    metadata_config: OpenMetadataConnection,
+) -> Optional[OpenMetadata]:
     """Create an OpenMetadata client
 
     Args:

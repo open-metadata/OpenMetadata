@@ -17,21 +17,24 @@ supporting sqlalchemy abstraction layer
 
 from typing import Dict, Optional
 
-from sqlalchemy import MetaData
+from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy import Column, inspect
 
-from metadata.utils.helpers import get_start_and_end
-from metadata.orm_profiler.profiler.handle_partition import get_partition_cols
-from metadata.orm_profiler.profiler.handle_partition import is_partitioned
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
-from metadata.orm_profiler.api.models import TablePartitionConfig
-from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
-from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
+from metadata.orm_profiler.api.models import TablePartitionConfig
+from metadata.orm_profiler.orm.converter import ometa_to_orm
+from metadata.orm_profiler.profiler.handle_partition import (
+    get_partition_cols,
+    is_partitioned,
+)
 from metadata.utils.connections import get_connection
+from metadata.utils.helpers import get_start_and_end
+from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 
 
 class SQAInterfaceMixin:
@@ -50,7 +53,8 @@ class SQAInterfaceMixin:
         return engine
 
     def _convert_table_to_orm_object(
-        self, sqa_metadata_obj: Optional[MetaData] = None,
+        self,
+        sqa_metadata_obj: Optional[MetaData] = None,
     ) -> DeclarativeMeta:
         """Given a table entity return a SQA ORM object
 
@@ -83,7 +87,9 @@ class SQAInterfaceMixin:
                 )
             )
 
-    def get_partition_details(self, partition_config: TablePartitionConfig) -> Optional[Dict]:
+    def get_partition_details(
+        self, partition_config: TablePartitionConfig
+    ) -> Optional[Dict]:
         """From partition config, get the partition table for a table entity
 
         Args:
@@ -92,7 +98,10 @@ class SQAInterfaceMixin:
         Returns:
             dict or None: dictionnary with all the elements constituing the a partition
         """
-        if self.table_entity.serviceType == DatabaseServiceType.BigQuery and is_partitioned(self.session, self.table):
+        if (
+            self.table_entity.serviceType == DatabaseServiceType.BigQuery
+            and is_partitioned(self.session, self.table)
+        ):
             start, end = get_start_and_end(partition_config.partitionQueryDuration)
             return {
                 "partition_field": partition_config.partitionField

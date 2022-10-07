@@ -23,7 +23,6 @@ from typing import List, Optional, Set, Tuple
 
 from pydantic import ValidationError
 
-from metadata.utils.helpers import create_ometa_client
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -53,6 +52,7 @@ from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
+from metadata.utils.helpers import create_ometa_client
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.workflow_output_handler import print_test_suite_status
 
@@ -415,7 +415,9 @@ class TestSuiteWorkflow:
                 runner_interface = self._create_runner_interface(entity_fqn)
                 data_test_runner = self._create_data_tests_runner(runner_interface)
 
-                for test_case in self._filter_test_cases_for_entity(entity_fqn, test_cases):
+                for test_case in self._filter_test_cases_for_entity(
+                    entity_fqn, test_cases
+                ):
                     try:
                         test_result = data_test_runner.run_and_handle(test_case)
                         if not test_result:

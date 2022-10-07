@@ -24,13 +24,16 @@ from typing import Dict, Optional
 from sqlalchemy import Column, MetaData
 from sqlalchemy.orm import Session
 
-from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
+from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
 from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.metrics.sqa_metrics_computation_registry import (
+    compute_metrics_registry,
+)
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.utils.connections import (
@@ -38,8 +41,6 @@ from metadata.utils.connections import (
     get_connection,
 )
 from metadata.utils.logger import sqa_interface_registry_logger
-from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
-from metadata.orm_profiler.metrics.sqa_metrics_computation_registry import compute_metrics_registry
 
 logger = sqa_interface_registry_logger()
 thread_local = threading.local()
@@ -77,7 +78,9 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         )
 
         # Allows SQA Interface to be used without OM server config
-        self.table = kwargs.get("table") or self._convert_table_to_orm_object(sqa_metadata_obj)
+        self.table = kwargs.get("table") or self._convert_table_to_orm_object(
+            sqa_metadata_obj
+        )
 
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()
@@ -131,7 +134,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 profile_sample_query=self.profile_query,
             )
         return thread_local.runner
-
 
     def compute_metrics_in_thread(
         self,
@@ -215,7 +217,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 "You must create a sampler first `<instance>.create_sampler(...)`."
             )
         return self.sampler.fetch_sample_data()
-
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict

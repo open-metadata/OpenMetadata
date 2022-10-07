@@ -15,14 +15,16 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Union, Dict
+from typing import Dict, Union
 
 from sqlalchemy import Column
 
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import DatalakeConnection
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.orm_profiler.metrics.registry import Metrics
 
 
 class ProfilerProtocol(ABC):
@@ -43,7 +45,9 @@ class ProfilerProtocol(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict) -> dict:
+    def get_composed_metrics(
+        self, column: Column, metric: Metrics, column_results: Dict
+    ) -> dict:
         """run profiler metrics"""
         raise NotImplementedError
 

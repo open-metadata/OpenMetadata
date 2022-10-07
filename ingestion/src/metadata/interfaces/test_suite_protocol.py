@@ -16,13 +16,14 @@ supporting sqlalchemy abstraction layer
 
 from abc import ABC, abstractmethod
 from typing import Optional, Union
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import DatalakeConnection
-
-from metadata.generated.schema.tests.testCase import TestCase
-
 from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 class TestSuiteProtocol(ABC):

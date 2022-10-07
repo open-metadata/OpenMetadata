@@ -72,7 +72,10 @@ class MetricsTest(TestCase):
         ],
     )
     sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn, table=User, table_entity=table_entity, ometa_client=None,
+        sqlite_conn,
+        table=User,
+        table_entity=table_entity,
+        ometa_client=None,
     )
     engine = sqa_profiler_interface.session.get_bind()
 
@@ -689,7 +692,10 @@ class MetricsTest(TestCase):
         EmptyUser.__table__.create(bind=self.engine)
 
         sqa_profiler_interface = SQAProfilerInterface(
-            self.sqlite_conn, table=EmptyUser, table_entity=self.table_entity, ometa_client=None
+            self.sqlite_conn,
+            table=EmptyUser,
+            table_entity=self.table_entity,
+            ometa_client=None,
         )
 
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)

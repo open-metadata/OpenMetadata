@@ -130,10 +130,12 @@ class SampleTest(TestCase):
             table=User,
             table_entity=self.table_entity,
             table_sample_precentage=50,
-            ometa_client=None
+            ometa_client=None,
         )
 
-        sample = sqa_profiler_interface._create_thread_safe_sampler(self.session,User).random_sample()
+        sample = sqa_profiler_interface._create_thread_safe_sampler(
+            self.session, User
+        ).random_sample()
 
         res = self.session.query(func.count()).select_from(sample).first()
         assert res[0] < 30
@@ -167,7 +169,7 @@ class SampleTest(TestCase):
                 table=User,
                 table_entity=self.table_entity,
                 table_sample_precentage=50,
-                ometa_client=None
+                ometa_client=None,
             ),
         )
         res = profiler.compute_metrics()._column_results
@@ -185,7 +187,7 @@ class SampleTest(TestCase):
                 table=User,
                 table_entity=self.table_entity,
                 table_sample_precentage=50,
-                ometa_client=None
+                ometa_client=None,
             ),
         )
         res = profiler.compute_metrics()._column_results

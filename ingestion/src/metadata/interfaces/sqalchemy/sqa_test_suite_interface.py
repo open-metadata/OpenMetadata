@@ -17,8 +17,8 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
@@ -34,9 +34,6 @@ from metadata.utils.connections import create_and_bind_session, get_connection
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import sqa_interface_registry_logger
 from metadata.utils.timeout import cls_timeout
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.profiler.sampler import Sampler
-
 
 logger = sqa_interface_registry_logger()
 
@@ -74,7 +71,9 @@ class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
             get_connection(self.service_connection_config)
         )
 
-        self.table = kwargs.get("table") or self._convert_table_to_orm_object()  # Allows SQA Interface to be used without OM server config
+        self.table = (
+            kwargs.get("table") or self._convert_table_to_orm_object()
+        )  # Allows SQA Interface to be used without OM server config
         self.set_session_tag(self.session)
 
         self._sampler = self._create_sampler()
@@ -162,4 +161,3 @@ class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
                 f"TestDefintion registry. Skipping test case {test_case.name.__root__} - {err}"
             )
             return None
-    
