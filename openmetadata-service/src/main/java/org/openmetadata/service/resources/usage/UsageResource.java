@@ -40,7 +40,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.Collection;
@@ -57,7 +56,7 @@ public class UsageResource {
   private final UsageRepository dao;
 
   @Inject
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public UsageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UsageRepository must not be null");
     this.dao = new UsageRepository(dao);

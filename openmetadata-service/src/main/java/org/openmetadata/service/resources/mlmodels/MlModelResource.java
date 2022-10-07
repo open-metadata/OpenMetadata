@@ -51,7 +51,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelRepository;
@@ -79,7 +78,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return mlmodel;
   }
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public MlModelResource(CollectionDAO dao, Authorizer authorizer) {
     super(MlModel.class, new MlModelRepository(dao), authorizer);
   }

@@ -50,7 +50,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
@@ -80,7 +79,7 @@ public class MessagingServiceResource
     return service;
   }
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH_SM)
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         MessagingService.class,

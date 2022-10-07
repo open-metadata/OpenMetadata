@@ -110,7 +110,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -167,7 +166,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH_SM_CONFIG)
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM_CONFIG)
   public UserResource(
       CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager, OpenMetadataApplicationConfig config) {
     super(User.class, new UserRepository(dao, secretsManager), authorizer);

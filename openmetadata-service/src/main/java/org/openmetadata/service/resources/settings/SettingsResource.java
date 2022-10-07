@@ -48,7 +48,6 @@ import org.openmetadata.schema.filter.EventFilter;
 import org.openmetadata.schema.filter.Filters;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.filter.FilterRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SettingsRepository;
@@ -121,7 +120,7 @@ public class SettingsResource {
     }
   }
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public SettingsResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "SettingsRepository must not be null");
     this.settingsRepository = new SettingsRepository(dao);

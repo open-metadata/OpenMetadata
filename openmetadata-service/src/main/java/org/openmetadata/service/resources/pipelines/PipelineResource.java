@@ -53,7 +53,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
@@ -81,7 +80,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return pipeline;
   }
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public PipelineResource(CollectionDAO dao, Authorizer authorizer) {
     super(Pipeline.class, new PipelineRepository(dao), authorizer);
   }

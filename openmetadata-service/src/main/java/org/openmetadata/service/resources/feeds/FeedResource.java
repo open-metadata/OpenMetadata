@@ -64,7 +64,6 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -101,7 +100,7 @@ public class FeedResource {
     return thread;
   }
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public FeedResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = new FeedRepository(dao);

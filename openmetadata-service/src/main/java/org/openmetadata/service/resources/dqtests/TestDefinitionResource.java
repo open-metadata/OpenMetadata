@@ -46,7 +46,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
@@ -78,7 +77,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   }
 
   @Inject
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
     this.daoTestDefinition = new TestDefinitionRepository(dao);

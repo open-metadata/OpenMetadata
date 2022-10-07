@@ -33,7 +33,6 @@ import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.Collection;
@@ -49,7 +48,7 @@ public class PermissionsResource {
   private final Authorizer authorizer;
 
   @SuppressWarnings("unused")
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public PermissionsResource(CollectionDAO dao, @NonNull Authorizer authorizer) {
     this.authorizer = authorizer;
   }

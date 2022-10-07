@@ -41,7 +41,6 @@ import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
@@ -268,27 +267,27 @@ public final class CollectionRegistry {
     // present,
     // for multiple constructor we can use order as the priority to qualify amongst multiple constructors
     for (Constructor<?> constructor : clz.getConstructors()) {
-      ResourceConstructor c = constructor.getAnnotation(ResourceConstructor.class);
+      Collection c = constructor.getAnnotation(Collection.class);
       if (c != null) {
-        switch (c.type()) {
-          case WITH_DAO_AUTH:
+        switch (c.constructorType()) {
+          case DAO_AUTH:
             resource =
                 clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
             break;
-          case WITH_DAO_AUTH_SM:
+          case DAO_AUTH_SM:
             resource =
                 clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, SecretsManager.class)
                     .newInstance(daoObject, authorizer, secretsManager);
             break;
-          case WITH_CONFIG:
+          case CONFIG:
             resource = clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
             break;
-          case WITH_DAO_AUTH_CONFIG:
+          case DAO_AUTH_CONFIG:
             resource =
                 clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, OpenMetadataApplicationConfig.class)
                     .newInstance(daoObject, authorizer, config);
             break;
-          case WITH_DAO_AUTH_SM_CONFIG:
+          case DAO_AUTH_SM_CONFIG:
             resource =
                 clz.getDeclaredConstructor(
                         CollectionDAO.class,

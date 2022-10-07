@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -88,7 +87,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public TeamResource(CollectionDAO dao, Authorizer authorizer) {
     super(Team.class, new TeamRepository(dao), authorizer);
   }

@@ -15,15 +15,15 @@ public class LoginAttemptCache {
   public LoginAttemptCache(OpenMetadataApplicationConfig config) {
     super();
     LoginConfiguration loginConfiguration = config.getLoginSettings();
-    long ACCESS_BLOCK_TIME = 600;
+    long accessBlockTime = 600;
     if (loginConfiguration != null) {
       MAX_ATTEMPT = loginConfiguration.getMaxLoginFailAttempts();
-      ACCESS_BLOCK_TIME = loginConfiguration.getAccessBlockTime();
+      accessBlockTime = loginConfiguration.getAccessBlockTime();
     }
     attemptsCache =
         CacheBuilder.newBuilder()
             .maximumSize(1000)
-            .expireAfterWrite(ACCESS_BLOCK_TIME, TimeUnit.SECONDS)
+            .expireAfterWrite(accessBlockTime, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
                   public Integer load(String key) {

@@ -56,7 +56,6 @@ import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 
@@ -74,7 +73,7 @@ public class SearchResource {
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_CONFIG)
+  @Collection(constructorType = Collection.ConstructorType.CONFIG)
   public SearchResource(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());

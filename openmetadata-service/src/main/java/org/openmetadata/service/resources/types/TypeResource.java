@@ -58,7 +58,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
@@ -86,7 +85,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @Inject
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH)
+  @Collection
   public TypeResource(CollectionDAO dao, Authorizer authorizer) {
     super(Type.class, new TypeRepository(dao), authorizer);
   }

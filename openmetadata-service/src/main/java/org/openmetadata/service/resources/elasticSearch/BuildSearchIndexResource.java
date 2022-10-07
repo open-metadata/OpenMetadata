@@ -51,7 +51,6 @@ import org.openmetadata.schema.settings.Stats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.annotations.ResourceConstructor;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -80,7 +79,7 @@ public class BuildSearchIndexResource {
   private final Authorizer authorizer;
   private final ExecutorService threadScheduler;
 
-  @ResourceConstructor(type = ResourceConstructor.ConstructorType.WITH_DAO_AUTH_CONFIG)
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_CONFIG)
   public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer, OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
