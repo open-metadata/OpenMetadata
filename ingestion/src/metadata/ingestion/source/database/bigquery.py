@@ -53,18 +53,21 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
-_types._type_map["GEOGRAPHY"] = GEOGRAPHY
+_types._type_map["GEOGRAPHY"] = GEOGRAPHY  # pylint: disable=protected-access
 
 
 def get_columns(bq_schema):
+    """
+    get_columns method overwritten to include tag details
+    """
     col_list = []
     for field in bq_schema:
         col_obj = {
             "name": field.name,
             "type": _get_sqla_column_type(field)
-            if "STRUCT" or "RECORD" not in field
+            if "STRUCT" not in field or "RECORD" not in field
             else STRUCT,
-            "nullable": field.mode == "NULLABLE" or field.mode == "REPEATED",
+            "nullable": field.mode in ("NULLABLE", "REPEATED"),
             "comment": field.description,
             "default": None,
             "precision": field.precision,
@@ -99,18 +102,22 @@ def _build_formatted_table_id(table):
     return f"{table.table_id}"
 
 
-BigQueryDialect._build_formatted_table_id = _build_formatted_table_id
+BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-access
+    _build_formatted_table_id
+)
 
 
 class BigquerySource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Bigquery Source
+    """
+
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
         self.temp_credentials = None
-        self.project_id = self.set_project_id()
-
-    def prepare(self):
         self.client = Client()
-        return super().prepare()
+        self.project_id = self.set_project_id()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -170,9 +177,7 @@ class BigquerySource(CommonDbSourceService):
         This will only get executed if the tags context
         is properly informed
         """
-        if not self.source_config.includeTags:
-            return
-        if column.get("policy_tags"):
+        if self.source_config.includeTags and column.get("policy_tags"):
             return [
                 TagLabel(
                     tagFQN=fqn.build(
@@ -186,6 +191,7 @@ class BigquerySource(CommonDbSourceService):
                     source="Tag",
                 )
             ]
+        return None
 
     def get_database_names(self) -> Iterable[str]:
         self.inspector = inspect(self.engine)
@@ -206,6 +212,7 @@ class BigquerySource(CommonDbSourceService):
                 logger.warning("View definition not implemented")
                 view_definition = ""
             return view_definition
+        return None
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
@@ -216,6 +223,7 @@ class BigquerySource(CommonDbSourceService):
         database = self.context.database.name.__root__
         table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
         if table.time_partitioning is not None:
+
             if table.time_partitioning.field:
                 table_partition = TablePartition(
                     interval=str(table.time_partitioning.type_),
@@ -223,12 +231,12 @@ class BigquerySource(CommonDbSourceService):
                 )
                 table_partition.columns = [table.time_partitioning.field]
                 return True, table_partition
-            else:
-                return True, TablePartition(
-                    interval=str(table.time_partitioning.type_),
-                    intervalType=IntervalType.INGESTION_TIME.value,
-                )
-        elif table.range_partitioning:
+
+            return True, TablePartition(
+                interval=str(table.time_partitioning.type_),
+                intervalType=IntervalType.INGESTION_TIME.value,
+            )
+        if table.range_partitioning:
             table_partition = TablePartition(
                 intervalType=IntervalType.INTEGER_RANGE.value,
             )

@@ -32,6 +32,11 @@ logger = ingestion_logger()
 
 
 class MssqlSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from MSSQL Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""

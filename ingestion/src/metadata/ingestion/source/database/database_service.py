@@ -199,17 +199,23 @@ class SQLSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
     """
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
+    filtered: List[str] = []
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
         logger.info(f"Scanned [{record}]")
 
-    def filter(self, record: str, err: str) -> None:
-        logger.info(f"Filtered [{record}] due to {err}")
-        self.filtered.append({record: err})
+    def filter(self, key: str, reason: str) -> None:
+        logger.warning(f"Filtered [{key}] due to {reason}")
+        self.filtered.append({key: reason})
 
 
-class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
+class DatabaseServiceSource(
+    DBTMixin, TopologyRunnerMixin, Source, ABC
+):  # pylint: disable=too-many-public-methods
     """
     Base class for Database Services.
     It implements the topology and context.
@@ -348,7 +354,8 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
 
     def yield_location(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
     ) -> Iterable[CreateLocationRequest]:
         """
         From topology.
@@ -412,7 +419,8 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             )
 
     def yield_table_location_link(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
     ) -> Iterable[TableLocationLink]:
         """
         Gets the current location being processed, fetches its data model

@@ -36,69 +36,84 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def _get_column_type(self, name, spec):
+def _get_column_type(
+    self, name, spec
+):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
     if spec.startswith("Array"):
         inner = spec[6:-1]
         coltype = self.ischema_names["_array"]
-        return coltype(self._get_column_type(name, inner))
+        return coltype(
+            self._get_column_type(name, inner)  # pylint: disable=protected-access
+        )
 
-    elif spec.startswith("FixedString"):
+    if spec.startswith("FixedString"):
         return self.ischema_names["FixedString"]
 
-    elif spec.startswith("Nullable"):
+    if spec.startswith("Nullable"):
         inner = spec[9:-1]
         coltype = self.ischema_names["_nullable"]
-        return self._get_column_type(name, inner)
+        return self._get_column_type(name, inner)  # pylint: disable=protected-access
 
-    elif spec.startswith("LowCardinality"):
+    if spec.startswith("LowCardinality"):
         inner = spec[15:-1]
         coltype = self.ischema_names["_lowcardinality"]
-        return coltype(self._get_column_type(name, inner))
+        return coltype(
+            self._get_column_type(name, inner)  # pylint: disable=protected-access
+        )
 
-    elif spec.startswith("Tuple"):
+    if spec.startswith("Tuple"):
         inner = spec[6:-1]
         coltype = self.ischema_names["_tuple"]
-        inner_types = [self._get_column_type(name, t.strip()) for t in inner.split(",")]
+        inner_types = [
+            self._get_column_type(name, t.strip())  # pylint: disable=protected-access
+            for t in inner.split(",")
+        ]
         return coltype(*inner_types)
 
-    elif spec.startswith("Map"):
+    if spec.startswith("Map"):
         inner = spec[4:-1]
         coltype = self.ischema_names["_map"]
-        inner_types = [self._get_column_type(name, t.strip()) for t in inner.split(",")]
+        inner_types = [
+            self._get_column_type(name, t.strip())  # pylint: disable=protected-access
+            for t in inner.split(",")
+        ]
         return coltype(*inner_types)
 
-    elif spec.startswith("Enum"):
+    if spec.startswith("Enum"):
         pos = spec.find("(")
-        type = spec[:pos]
-        coltype = self.ischema_names[type]
+        coltype = self.ischema_names[spec[:pos]]
 
-        options = dict()
+        options = {}
         if pos >= 0:
-            options = self._parse_options(spec[pos + 1 : spec.rfind(")")])
+            options = self._parse_options(  # pylint: disable=protected-access
+                spec[pos + 1 : spec.rfind(")")]
+            )
         if not options:
             return sqltypes.NullType
 
-        type_enum = enum.Enum("%s_enum" % name, options)
+        type_enum = enum.Enum(f"{name}_enum", options)
         return lambda: coltype(type_enum)
 
-    elif spec.startswith("DateTime64"):
+    if spec.startswith("DateTime64"):
         return self.ischema_names["DateTime64"]
 
-    elif spec.startswith("DateTime"):
+    if spec.startswith("DateTime"):
         return self.ischema_names["DateTime"]
 
-    elif spec.startswith("IP"):
+    if spec.startswith("IP"):
         return self.ischema_names["String"]
 
-    elif spec.lower().startswith("decimal"):
+    if spec.lower().startswith("decimal"):
         coltype = self.ischema_names["Decimal"]
-        return coltype(*self._parse_decimal_params(spec))
-    else:
-        try:
-            return self.ischema_names[spec]
-        except KeyError:
-            warn("Did not recognize type '%s' of column '%s'" % (spec, name))
-            return sqltypes.NullType
+        return coltype(
+            *self._parse_decimal_params(spec)  # pylint: disable=protected-access
+        )
+
+    try:
+        return self.ischema_names[spec]
+    except KeyError:
+        warn(f"Did not recognize type '{spec}' of column '{name}'")
+        return sqltypes.NullType
 
 
 def execute(self, query, params=None):
@@ -106,8 +121,10 @@ def execute(self, query, params=None):
     Query is returning rows and these rows should be parsed or
     there is nothing to return.
     """
-    r = self._send(query, params=params, stream=True)
-    lines = r.iter_lines()
+    req = self._send(  # pylint: disable=protected-access
+        query, params=params, stream=True
+    )
+    lines = req.iter_lines()
     try:
         names = parse_tsv(next(lines), self.unicode_errors)
         types = parse_tsv(next(lines), self.unicode_errors)
@@ -128,23 +145,34 @@ def execute(self, query, params=None):
 
 
 @reflection.cache
-def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+def get_unique_constraints(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
     return []
 
 
 @reflection.cache
-def get_pk_constraint(self, bind, table_name, schema=None, **kw):
+def get_pk_constraint(
+    self, bind, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
     return {"constrained_columns": [], "name": "undefined"}
 
 
 @reflection.cache
-def get_table_comment(self, connection, table_name, schema=None, **kw):
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
     return {"text": None}
 
 
 @reflection.cache
-def get_view_definition(self, connection, view_name, schema=None, **kw):
-    query = f"select create_table_query from system.tables where engine = 'View' and name='{view_name}' and database='{schema}'"
+def get_view_definition(
+    self, connection, view_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    query = (
+        "select create_table_query from system.tables where engine = 'View'"
+        f"and name='{view_name}' and database='{schema}'"
+    )
     try:
         result = connection.execute(query)
         view_definition = result.fetchone()
@@ -157,16 +185,15 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
 
 ClickHouseDialect.get_unique_constraints = get_unique_constraints
 ClickHouseDialect.get_pk_constraint = get_pk_constraint
-ClickHouseDialect._get_column_type = _get_column_type
+ClickHouseDialect._get_column_type = (  # pylint: disable=protected-access
+    _get_column_type
+)
 ClickHouseDialect.get_table_comment = get_table_comment
 RequestsTransport.execute = execute
 ClickHouseDialect.get_view_definition = get_view_definition
 
 
 class ClickhouseSource(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

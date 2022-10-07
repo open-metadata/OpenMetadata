@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""Athena source module"""
+
 from typing import Iterable, Optional, Tuple
 
 from pyathena.sqlalchemy_athena import AthenaDialect
@@ -34,12 +36,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def _get_column_type(self, type_):
+def _get_column_type(self, type_):  # pylint: disable=too-many-branches
     """
     Function overwritten from AthenaDialect
     to add custom SQA typing.
     """
-    match = self._pattern_column_type.match(type_)
+    match = self._pattern_column_type.match(type_)  # pylint: disable=protected-access
     if match:
         name = match.group(1).lower()
         length = match.group(2)
@@ -91,12 +93,14 @@ def _get_column_type(self, type_):
     return col_type(*args)
 
 
-AthenaDialect._get_column_type = _get_column_type
+AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
 
 
 class AthenaSource(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    """
+    Implements the necessary methods to extract
+    Database metadata from Athena Source
+    """
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
