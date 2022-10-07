@@ -122,6 +122,11 @@ services:
       # Airflow SSL Configurations
       AIRFLOW_VERIFY_SSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"}
       AIRFLOW_SSL_CERT_PATH: ${AIRFLOW_SSL_CERT_PATH:-""}
+      # ElasticSearch Configurations
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
+      ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-http}
+      ELASTICSEARCH_USER: ${ELASTICSEARCH_USER:-""}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
     expose:
       - 8585
       - 8586
