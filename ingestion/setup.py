@@ -146,7 +146,7 @@ test = {
     "pylint",
     "pytest==7.0.0",
     "pytest-cov",
-    "faker",
+    "pytest-order" "faker",
     "coverage",
     # sklearn integration
     "scikit-learn==1.0.2",

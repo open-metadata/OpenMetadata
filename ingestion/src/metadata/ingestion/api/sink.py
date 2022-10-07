@@ -10,8 +10,10 @@
 #  limitations under the License.
 
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Generic, List
+
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -21,11 +23,10 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 
-@dataclass
-class SinkStatus(Status):
-    records: List[str] = field(default_factory=list)
-    warnings: List[Any] = field(default_factory=list)
-    failures: List[Any] = field(default_factory=list)
+class SinkStatus(BaseModel, Status):
+    records: List[str] = list()
+    warnings: List[Any] = list()
+    failures: List[Any] = list()
 
     def records_written(self, record: str) -> None:
         self.records.append(record)
