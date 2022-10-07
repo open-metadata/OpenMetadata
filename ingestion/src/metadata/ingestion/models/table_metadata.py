@@ -59,6 +59,7 @@ class TableESDocument(BaseModel):
     id: str
     name: str
     fullyQualifiedName: str
+    description: Optional[str] = None
     displayName: str
     version: float
     updatedAt: Optional[int]
