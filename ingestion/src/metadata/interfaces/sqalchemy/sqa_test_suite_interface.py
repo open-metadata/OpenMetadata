@@ -57,21 +57,21 @@ class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
     ):
         self.ometa_client = ometa_client
         self.table_entity = table_entity
+        self.service_connection_config = service_connection_config
+        self.session = create_and_bind_session(
+            get_connection(self.service_connection_config)
+        )
+        self.set_session_tag(self.session)
+
+        self.table = self._convert_table_to_orm_object()
+
         self.table_sample_precentage = table_sample_precentage
         self.table_sample_query = table_sample_query
-        self.service_connection_config = service_connection_config
         self.table_partition_config = (
             self.get_partition_details(table_partition_config)
             if not self.table_sample_query
             else None
         )
-
-        self.session = create_and_bind_session(
-            get_connection(self.service_connection_config)
-        )
-
-        self.table = self._convert_table_to_orm_object()
-        self.set_session_tag(self.session)
 
         self._sampler = self._create_sampler()
         self._runner = self._create_runner()

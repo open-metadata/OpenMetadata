@@ -52,6 +52,6 @@ class ProfilerProtocol(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self) -> dict:
+    def fetch_sample_data(self, table) -> dict:
         """run profiler metrics"""
         raise NotImplementedError

@@ -207,12 +207,23 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 )
         return profile_results
 
-    def fetch_sample_data(self) -> TableData:
-        if not self.sampler:
-            raise RuntimeError(
-                "You must create a sampler first `<instance>.create_sampler(...)`."
-            )
-        return self.sampler.fetch_sample_data()
+    def fetch_sample_data(self, table) -> TableData:
+        """Fetch sample data from database
+
+        Args:
+            table: ORM declarative table
+
+        Returns:
+            TableData: sample table data
+        """
+        sampler = Sampler(
+            session=self.session,
+            table=table,
+            profile_sample=self.profile_sample,
+            partition_details=self.partition_details,
+            profile_sample_query=self.profile_query,
+        )
+        return sampler.fetch_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
