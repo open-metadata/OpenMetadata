@@ -479,7 +479,7 @@ site_menu:
   - category: Connectors / Ingestion / Versioning / Event Notification via Webhooks
     url: /connectors/ingestion/versioning/event-notification-via-webhooks
   - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
-    url: /connectors/ingestion/ingestion-pipeline
+    url: /connectors/ingestion/deployment
 
 
   - category: How to guides
