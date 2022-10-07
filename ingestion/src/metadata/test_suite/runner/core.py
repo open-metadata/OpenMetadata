@@ -15,7 +15,7 @@ Main class to run data tests
 
 
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
 from metadata.test_suite.runner.models import TestCaseResultResponse
 from metadata.utils.logger import test_suite_logger
 
@@ -25,7 +25,7 @@ logger = test_suite_logger()
 class DataTestsRunner:
     """class to execute the test validation"""
 
-    def __init__(self, test_runner_interface: SQAInterface):
+    def __init__(self, test_runner_interface: TestSuiteProtocol):
         self.test_runner_interace = test_runner_interface
 
     def run_and_handle(self, test_case: TestCase):

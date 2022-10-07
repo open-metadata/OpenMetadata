@@ -48,7 +48,6 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig

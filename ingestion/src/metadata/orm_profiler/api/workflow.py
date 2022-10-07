@@ -37,7 +37,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
-    DatabaseServiceType,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
@@ -51,7 +50,8 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import (
     ProfilerProcessorConfig,
     TableConfig,
@@ -68,6 +68,7 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
+from metadata.utils.helpers import create_ometa_client
 
 logger = profiler_logger()
 
@@ -237,25 +238,25 @@ class ProfilerWorkflow:
         sqa_metadata_obj: Optional[MetaData] = None,
     ):
         """Creates a profiler interface object"""
-        return SQAInterface(
+        return SQAProfilerInterface(
             service_connection_config,
             sqa_metadata_obj=sqa_metadata_obj,
-            metadata_config=self.metadata_config,
+            ometa_client=create_ometa_client(self.metadata_config),
             thread_count=self.source_config.threadCount,
             table_entity=table_entity,
-            profile_sample=self.get_profile_sample(table_entity)
+            table_sample_precentage=self.get_profile_sample(table_entity)
             if not self.get_profile_query(table_entity)
             else None,
-            profile_query=self.get_profile_query(table_entity)
+            table_sample_query=self.get_profile_query(table_entity)
             if not self.get_profile_sample(table_entity)
             else None,
-            partition_config=self.get_partition_details(table_entity)
+            table_partition_config=self.get_partition_details(table_entity)
             if not self.get_profile_query(table_entity)
             else None,
         )
 
     def create_profiler_obj(
-        self, table_entity: Table, profiler_interface: SQAInterface
+        self, table_entity: Table, profiler_interface: ProfilerProtocol
     ):
         """Profile a single entity"""
         if not self.profiler_config.profiler:

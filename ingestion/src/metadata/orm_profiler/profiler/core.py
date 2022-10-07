@@ -15,14 +15,12 @@ Main Profile definition and queries to execute
 from __future__ import annotations
 
 import traceback
-import warnings
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
 from pydantic import ValidationError
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -32,13 +30,11 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     TableProfile,
 )
-from metadata.interfaces.interface_protocol import InterfaceProtocol
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    Metric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
@@ -74,7 +70,7 @@ class Profiler(Generic[TMetric]):
     def __init__(
         self,
         *metrics: Type[TMetric],
-        profiler_interface: InterfaceProtocol,
+        profiler_interface: ProfilerProtocol,
         profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
         include_columns: List[Optional[ColumnProfilerConfig]] = None,
         exclude_columns: List[Optional[str]] = None,
@@ -101,21 +97,6 @@ class Profiler(Generic[TMetric]):
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
-
-    @property
-    def session(self) -> Session:
-        """Kept for backward compatibility"""
-        warnings.warn(
-            "`<instance>`.session will be retired as platform specific. Instead use"
-            "`<instance>.profiler_interface` to see if session is supported by the profiler interface",
-            DeprecationWarning,
-        )
-        if isinstance(self.profiler_interface, SQAInterface):
-            return self.profiler_interface.session
-
-        raise ValueError(
-            f"session is not supported for profiler interface {self.profiler_interface.__class__.__name__}"
-        )
 
     @property
     def table(self) -> DeclarativeMeta:
