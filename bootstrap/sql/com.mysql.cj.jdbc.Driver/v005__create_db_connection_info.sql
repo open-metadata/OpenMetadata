@@ -303,3 +303,6 @@ SET JSON = JSON_INSERT(
 		'$.serviceType','GluePipeline'
 	)
 where serviceType='Glue';
+
+ALTER TABLE tag_usage
+ADD COLUMN targetFQNType VARCHAR(36);

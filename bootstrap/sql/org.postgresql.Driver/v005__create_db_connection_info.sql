@@ -345,3 +345,6 @@ SET json = jsonb_set(
       true
   )
 WHERE serviceType = 'Glue';
+
+ALTER TABLE tag_usage
+ADD targetFQNType VARCHAR(36) NOT NULL;

@@ -21,6 +21,9 @@
     },
     "categoryType": {
       "$ref": "../../entity/tags/tagCategory.json#/definitions/tagCategoryType"
+    },
+    "categoryLevel": {
+      "$ref": "../../entity/tags/tagCategory.json#/definitions/tagCategoryLevel"
     }
   },
   "required": ["name", "description", "categoryType"],

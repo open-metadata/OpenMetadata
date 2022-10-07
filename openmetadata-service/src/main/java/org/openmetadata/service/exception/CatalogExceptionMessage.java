@@ -140,6 +140,10 @@ public final class CatalogExceptionMessage {
     return String.format("%s is not empty", entityType);
   }
 
+  public static String systemLevelTagCategory(String entityType, String entity) {
+    return String.format("%s %s cannot be deleted!", entityType, entity);
+  }
+
   public static String invalidEntity(String entity) {
     return String.format("Invalid entity %s", entity);
   }

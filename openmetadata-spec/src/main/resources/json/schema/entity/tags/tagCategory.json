@@ -16,7 +16,7 @@
     "tagCategoryType": {
       "description": "Type of tag category.",
       "type": "string",
-      "enum": ["Descriptive", "Classification"],
+      "enum": ["Descriptive", "Classification", "System"],
       "javaEnums": [
         {
           "name": "Descriptive",
@@ -25,6 +25,25 @@
         {
           "name": "Classification",
           "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitive."
+        },
+        {
+          "name": "System",
+          "description": "Tag category used for system category tags."
+        }
+      ]
+    },
+    "tagCategoryLevel": {
+      "description": "Level of tag category.",
+      "type": "string",
+      "enum": ["System", "Local"],
+      "javaEnums": [
+        {
+          "name": "System",
+          "description": "Tag category level used for tag categories provided by OpenMetadata."
+        },
+        {
+          "name": "Local",
+          "description": "Tag category level used for tag categories created by users."
         }
       ]
     },
@@ -132,6 +151,9 @@
     },
     "categoryType": {
       "$ref": "#/definitions/tagCategoryType"
+    },
+    "categoryLevel": {
+      "$ref": "#/definitions/tagCategoryLevel"
     },
     "href": {
       "description": "Link to the resource corresponding to the tag category.",

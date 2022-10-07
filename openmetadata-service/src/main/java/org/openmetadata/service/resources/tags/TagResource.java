@@ -15,6 +15,9 @@ package org.openmetadata.service.resources.tags;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -48,10 +51,12 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.tags.CreateTag;
 import org.openmetadata.schema.api.tags.CreateTagCategory;
 import org.openmetadata.schema.entity.tags.Tag;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagCategoryRepository;
@@ -483,7 +488,14 @@ public class TagResource {
       @Parameter(description = "Tag category id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    TagCategory tagCategory = daoCategory.delete(uriInfo, id);
+    TagCategory tagCategory =
+        daoCategory.get(uriInfo, id, new Fields(getEntityFields(TagCategory.class)), Include.NON_DELETED);
+    if (tagCategory.getCategoryLevel() != null
+        && tagCategory.getCategoryLevel().equals(CreateTagCategory.TagCategoryLevel.System)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemLevelTagCategory(Entity.TAG_CATEGORY, tagCategory.getFullyQualifiedName()));
+    }
+    dao.deleteTagCategoryAndReindexEntities(uriInfo, tagCategory);
     addHref(uriInfo, tagCategory);
     return new RestUtil.DeleteResponse<>(tagCategory, RestUtil.ENTITY_DELETED).toResponse();
   }
@@ -502,7 +514,15 @@ public class TagResource {
       @Parameter(description = "Tag id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Tag tag = dao.delete(uriInfo, id);
+    Tag tag = dao.get(uriInfo, id, new Fields(ALLOWED_FIELDS), Include.NON_DELETED);
+    EntityReference categoryJson = getEntityReferenceByName(Entity.TAG_CATEGORY, category, Include.NON_DELETED);
+    TagCategory tagCategory = getEntity(categoryJson, new Fields(ALLOWED_FIELDS), Include.ALL);
+    if (tagCategory.getCategoryLevel() != null
+        && tagCategory.getCategoryLevel().equals(CreateTagCategory.TagCategoryLevel.System)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemLevelTagCategory(Entity.TAG, tag.getFullyQualifiedName()));
+    }
+    dao.deleteTagsAndReindexEntities(uriInfo, tag);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     addHref(categoryHref, tag);
     return new RestUtil.DeleteResponse<>(tag, RestUtil.ENTITY_DELETED).toResponse();
@@ -532,6 +552,7 @@ public class TagResource {
         .withName(create.getName())
         .withFullyQualifiedName(create.getName())
         .withCategoryType(create.getCategoryType())
+        .withCategoryLevel(create.getCategoryLevel())
         .withDescription(create.getDescription())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
