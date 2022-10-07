@@ -359,14 +359,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlHyperParameters = () => {
     return (
-      <div className="tw-flex tw-flex-col tw-mt-2">
-        <h6 className="tw-font-medium tw-text-base">Hyper Parameters</h6>
-        <div className="tw-mt-2">
+      <div className="flex flex-col m-t-xs">
+        <h6 className="font-medium text-base">Hyper Parameters</h6>
+        <div className="m-t-xs">
           <Table
             columns={getMlHyperParametersColumn}
             data-testid="hyperparameters-table"
             dataSource={mlModelDetail.mlHyperParameters}
             pagination={false}
+            rowKey="name"
             size="small"
           />
         </div>
@@ -376,10 +377,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlModelStore = () => {
     return (
-      <div className="tw-flex tw-flex-col tw-mt-2">
-        <h6 className="tw-font-medium tw-text-base">Model Store</h6>
+      <div className="flex flex-col m-t-xs">
+        <h6 className="font-medium text-base">Model Store</h6>
         {mlModelDetail.mlStore ? (
-          <div className="tw-mt-2 tw-table-container">
+          <div className="m-t-xs tw-table-container">
             <table
               className="tw-w-full"
               data-testid="model-store-table"

@@ -431,6 +431,19 @@ const TagsPage = () => {
     }
   };
 
+  const handleActionDeleteTag = (record: TagClass) => {
+    setDeleteTags({
+      data: {
+        id: record.id as string,
+        name: record.name,
+        categoryName: currentCategory?.name,
+        isCategory: false,
+        status: 'waiting',
+      },
+      state: true,
+    });
+  };
+
   useEffect(() => {
     if (currentCategory) {
       fetchCurrentCategoryPermission();
@@ -525,8 +538,8 @@ const TagsPage = () => {
         dataIndex: 'description',
         key: 'description',
         render: (text: string, record: TagClass) => (
-          <td className="tw-group tableBody-cell">
-            <div className="tw-cursor-pointer tw-flex">
+          <div className="tw-group tableBody-cell">
+            <div className="cursor-pointer flex">
               <div>
                 {text ? (
                   <RichTextEditorPreviewer markdown={text} />
@@ -568,7 +581,7 @@ const TagsPage = () => {
                 </span>
               )}
             </div>
-          </td>
+          </div>
         ),
       },
       {
@@ -578,39 +591,26 @@ const TagsPage = () => {
         width: 120,
         align: 'center',
         render: (_, record: TagClass) => (
-          <div className="tw-text-center">
-            <button
-              className="link-text"
-              data-testid="delete-tag"
-              disabled={!categoryPermissions.EditAll}
-              onClick={() =>
-                setDeleteTags({
-                  data: {
-                    id: record.id as string,
-                    name: record.name,
-                    categoryName: currentCategory?.name,
-                    isCategory: false,
-                    status: 'waiting',
-                  },
-                  state: true,
-                })
-              }>
-              {deleteTags.data?.id === record.id ? (
-                deleteTags.data?.status === 'success' ? (
-                  <FontAwesomeIcon icon="check" />
-                ) : (
-                  <Loader size="small" type="default" />
-                )
+          <button
+            className="link-text"
+            data-testid="delete-tag"
+            disabled={!categoryPermissions.EditAll}
+            onClick={() => handleActionDeleteTag(record)}>
+            {deleteTags.data?.id === record.id ? (
+              deleteTags.data?.status === 'success' ? (
+                <FontAwesomeIcon icon="check" />
               ) : (
-                <SVGIcons
-                  alt="delete"
-                  icon="icon-delete"
-                  title="Delete"
-                  width="16px"
-                />
-              )}
-            </button>
-          </div>
+                <Loader size="small" type="default" />
+              )
+            ) : (
+              <SVGIcons
+                alt="delete"
+                icon="icon-delete"
+                title="Delete"
+                width="16px"
+              />
+            )}
+          </button>
         ),
       },
     ],
@@ -695,11 +695,8 @@ const TagsPage = () => {
             <Table
               columns={tableColumn}
               data-testid="table"
-              dataSource={
-                isEmpty(currentCategory?.children)
-                  ? []
-                  : (currentCategory?.children as TagClass[])
-              }
+              dataSource={currentCategory?.children as TagClass[]}
+              key="id"
               pagination={false}
               size="small"
             />
