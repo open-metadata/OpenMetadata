@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { uuid } from '../common/common';
-
+export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
 
 export const MYDATA_SUMMARY_OPTIONS = {
@@ -23,7 +22,15 @@ export const MYDATA_SUMMARY_OPTIONS = {
   service: 'service',
   user: 'user',
   terms: 'terms',
-  mlmodels:'mlmodels'
+  mlmodels: 'mlmodels',
+};
+
+export const SEARCH_INDEX = {
+  tables: 'table_search_index',
+  topics: 'topic_search_index',
+  dashboards: 'dashboard_search_index',
+  pipelines: 'pipeline_search_index',
+  mlmodels: 'mlmodel_search_index',
 };
 
 export const SEARCH_ENTITY_TABLE = {
