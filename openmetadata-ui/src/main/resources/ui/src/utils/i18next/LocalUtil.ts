@@ -11,18 +11,15 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import ReactDOM from 'react-dom';
-import App from './App';
-import './styles/index.js';
-import { initLocale } from './utils/i18next/LocalUtil';
+import i18n from 'i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+import { initReactI18next } from 'react-i18next';
+import { getInitOptions } from './i18nextUtil';
 
-// Initialize locale
-initLocale();
-
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+export const initLocale = (): void => {
+  // Initialize i18next (language)
+  i18n
+    .use(LanguageDetector) // Detects system language
+    .use(initReactI18next)
+    .init(getInitOptions());
+};
