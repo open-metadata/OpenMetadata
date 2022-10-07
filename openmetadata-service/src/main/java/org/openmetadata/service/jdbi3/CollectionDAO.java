@@ -24,9 +24,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -1869,29 +1867,21 @@ public interface CollectionDAO {
   interface TagUsageDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state, targetFQNType) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state, :targetFQNType)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, targetFQN, labelType, state, targetFQNType) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state, :targetFQNType) ON CONFLICT (source, tagFQN, targetFQN) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, targetFQN, labelType, state) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state) ON CONFLICT (source, tagFQN, targetFQN) DO NOTHING",
         connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
         @Bind("tagFQN") String tagFQN,
         @Bind("targetFQN") String targetFQN,
         @Bind("labelType") int labelType,
-        @Bind("state") int state,
-        @Bind("targetFQNType") String targetFQNType);
+        @Bind("state") int state);
 
     @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
     List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
-
-    @RegisterRowMapper(TagMapper.class)
-    @SqlQuery("SELECT targetFQN, targetFQNType FROM tag_usage WHERE tagFQN = :tagFQN")
-    List<Map<String, String>> tagTargetRelation(@Bind("tagFQN") String tagFQN);
-
-    @SqlQuery("SELECT targetFQNType FROM tag_usage WHERE targetFQN = :targetFQN")
-    String tagTargetType(@Bind("targetFQN") String targetFQN);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1941,15 +1931,6 @@ public interface CollectionDAO {
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"))
             .withDescription(description1 == null ? description2 : description1);
-      }
-    }
-
-    class TagMapper implements RowMapper<Map<String, String>> {
-      @Override
-      public Map<String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        Map<String, String> hashMap = new HashMap<>();
-        hashMap.put(rs.getString("targetFQN"), rs.getString("targetFQNType"));
-        return hashMap;
       }
     }
   }

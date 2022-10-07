@@ -25,14 +25,11 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityFields;
-import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
-import static org.openmetadata.service.util.EntityUtil.getChangeEvent;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
@@ -48,10 +45,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -79,12 +74,10 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -825,37 +818,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               tagLabel.getTagFQN(),
               targetFQN,
               tagLabel.getLabelType().ordinal(),
-              tagLabel.getState().ordinal(),
-              this.entityType);
-    }
-  }
-
-  public void deleteTagsAndReindexEntities(UriInfo uriInfo, Tag tag) throws IOException {
-    String tagFQN = tag.getFullyQualifiedName();
-    Map<String, String> map = new HashMap<>();
-    List<Map<String, String>> tagRelations = daoCollection.tagUsageDAO().tagTargetRelation(tagFQN);
-    TagRepository tagRepository = new TagRepository(daoCollection);
-    tagRepository.delete(uriInfo, tag.getId());
-    for (Map<String, String> tagRelation : tagRelations) {
-      map.putAll(tagRelation);
-    }
-    for (Entry<String, String> entry : map.entrySet()) {
-      EntityReference categoryJson = getEntityReferenceByName(entry.getValue(), entry.getKey(), Include.NON_DELETED);
-      T entity = getEntity(categoryJson, new Fields(List.of(FIELD_TAGS), FIELD_TAGS), Include.ALL);
-      EventPubSub.publish(getChangeEvent(EventType.ENTITY_UPDATED, entry.getValue(), entity));
-    }
-  }
-
-  public void deleteTagCategoryAndReindexEntities(UriInfo uriInfo, TagCategory tagCategory) throws IOException {
-    TagRepository tagRepository = new TagRepository(daoCollection);
-    if (tagCategory.getChildren() == null || tagCategory.getChildren().isEmpty()) {
-      tagRepository.delete(uriInfo, tagCategory.getId());
-    } else {
-      List<Tag> tagList = tagCategory.getChildren();
-      for (Tag tag : tagList) {
-        deleteTagsAndReindexEntities(uriInfo, tag);
-      }
-      tagRepository.delete(uriInfo, tagCategory.getId());
+              tagLabel.getState().ordinal());
     }
   }
 

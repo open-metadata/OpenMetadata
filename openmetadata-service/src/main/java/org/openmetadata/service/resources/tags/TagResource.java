@@ -495,7 +495,7 @@ public class TagResource {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemLevelTagCategory(Entity.TAG_CATEGORY, tagCategory.getFullyQualifiedName()));
     }
-    dao.deleteTagCategoryAndReindexEntities(uriInfo, tagCategory);
+    tagCategory = daoCategory.delete(uriInfo, id);
     addHref(uriInfo, tagCategory);
     return new RestUtil.DeleteResponse<>(tagCategory, RestUtil.ENTITY_DELETED).toResponse();
   }
@@ -522,7 +522,7 @@ public class TagResource {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemLevelTagCategory(Entity.TAG, tag.getFullyQualifiedName()));
     }
-    dao.deleteTagsAndReindexEntities(uriInfo, tag);
+    tag = dao.delete(uriInfo, id);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     addHref(categoryHref, tag);
     return new RestUtil.DeleteResponse<>(tag, RestUtil.ENTITY_DELETED).toResponse();

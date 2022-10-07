@@ -461,16 +461,4 @@ public final class EntityUtil {
     FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
     change.getFieldsUpdated().add(fieldChange);
   }
-
-  public static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
-    return new ChangeEvent()
-        .withEventType(eventType)
-        .withEntityId(entityInterface.getId())
-        .withEntityType(entityType)
-        .withUserName(entityInterface.getUpdatedBy())
-        .withTimestamp(entityInterface.getUpdatedAt())
-        .withChangeDescription(entityInterface.getChangeDescription())
-        .withCurrentVersion(entityInterface.getVersion())
-        .withEntity(entityInterface);
-  }
 }

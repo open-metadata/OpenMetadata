@@ -16,7 +16,7 @@
     "tagCategoryType": {
       "description": "Type of tag category.",
       "type": "string",
-      "enum": ["Descriptive", "Classification", "System"],
+      "enum": ["Descriptive", "Classification"],
       "javaEnums": [
         {
           "name": "Descriptive",
@@ -25,10 +25,6 @@
         {
           "name": "Classification",
           "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitive."
-        },
-        {
-          "name": "System",
-          "description": "Tag category used for system category tags."
         }
       ]
     },
