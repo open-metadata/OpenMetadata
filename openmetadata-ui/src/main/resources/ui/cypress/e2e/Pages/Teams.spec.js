@@ -26,6 +26,13 @@ const TEAM_DETAILS = {
   ownername: 'Aaron Johnson',
   assetname: 'dim_address',
 };
+const hardDeleteTeamName = `team-ct-test-${uuid()}`;
+const HARD_DELETE_TEAM_DETAILS = {
+  name: hardDeleteTeamName,
+  displayName: hardDeleteTeamName,
+  teamType: 'Department',
+  description: `This is ${hardDeleteTeamName} description`,
+};
 
 describe('Teams flow should work properly', () => {
   before(() => {
@@ -35,6 +42,11 @@ describe('Teams flow should work properly', () => {
     cy.saveLocalStorage('localstorage');
   });
   beforeEach(() => {
+    interceptURL(
+      'GET',
+      `/api/v1/users?fields=*`,
+      'getUserDetails'
+    );
     cy.log('Restoring local storage snapshot');
     cy.restoreLocalStorage('localstorage');
     cy.clickOnLogo();
@@ -73,6 +85,7 @@ describe('Teams flow should work properly', () => {
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getUsers', 200);
+    cy.get('[data-testid="team-heading"]').should("be.visible").contains(TEAM_DETAILS.name);
     //Clicking on users tab
     cy.get('[data-testid="Users"]')
       .should('exist')
@@ -286,6 +299,8 @@ describe('Teams flow should work properly', () => {
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
+    cy.get('[data-testid="team-heading"]').should("be.visible").contains(TEAM_DETAILS.name);
+    verifyResponseStatusCode('@getUserDetails', 200);
     // //Click on Leave team
     cy.get('[data-testid="leave-team-button"]').should('be.visible').click();
 
@@ -308,7 +323,8 @@ describe('Teams flow should work properly', () => {
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-
+    cy.get('[data-testid="team-heading"]').should("be.visible").contains(TEAM_DETAILS.updatedname);
+    verifyResponseStatusCode('@getUserDetails', 200);
     cy.get('[data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
@@ -324,23 +340,6 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="confirm-button"]')
       .should('exist')
       .should('be.disabled');
-
-    cy.get('[data-testid="discard-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-
-    cy.get('[data-testid="delete-button-title"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
 
     //Click on soft delete option
     cy.get('[data-testid="soft-delete-option"]')
@@ -378,6 +377,8 @@ describe('Teams flow should work properly', () => {
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
+    cy.get('[data-testid="team-heading"]').should("be.visible").contains(TEAM_DETAILS.updatedname);
+    verifyResponseStatusCode('@getUserDetails', 200);
 
     cy.get('[data-testid="manage-button"]')
       .should('exist')
@@ -420,18 +421,18 @@ describe('Teams flow should work properly', () => {
 
   it('Permanently deleting a team without soft deleting should work properly', () => {
     //Add a new team
-    addTeam(TEAM_DETAILS);
+    addTeam(HARD_DELETE_TEAM_DETAILS);
 
     interceptURL(
       'GET',
-      `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
+      `/api/v1/teams/name/${HARD_DELETE_TEAM_DETAILS.name}*`,
       'getSelectedTeam'
     );
     //Click on created team
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+    cy.get('table').find('.ant-table-row').contains(HARD_DELETE_TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-
+    verifyResponseStatusCode('@getUserDetails', 200);
     cy.get('[data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
@@ -450,12 +451,12 @@ describe('Teams flow should work properly', () => {
 
     //Check if soft delete option is present
     cy.get('[data-testid="soft-delete-option"]')
-      .should('contain', TEAM_DETAILS.name)
+      .should('contain', HARD_DELETE_TEAM_DETAILS.name)
       .should('be.visible');
 
     //Click on permanent delete option
     cy.get('[data-testid="hard-delete-option"]')
-      .should('contain', TEAM_DETAILS.name)
+      .should('contain', HARD_DELETE_TEAM_DETAILS.name)
       .should('be.visible')
       .click();
 
@@ -474,6 +475,6 @@ describe('Teams flow should work properly', () => {
 
     //Validating the deleted team
 
-    cy.get('table').should('not.contain', TEAM_DETAILS.name);
+    cy.get('table').should('not.contain', HARD_DELETE_TEAM_DETAILS.name);
   });
 });
