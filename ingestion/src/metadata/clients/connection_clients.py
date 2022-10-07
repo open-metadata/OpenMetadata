@@ -130,6 +130,12 @@ class DagsterClient:
 
 
 @dataclass
+class DomoClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class NifiClientWrapper:
     def __init__(self, client) -> None:
         self.client = client
