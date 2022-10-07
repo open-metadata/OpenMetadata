@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, fireEvent, render } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { addPropertyToEntity } from '../../../axiosAPIs/metadataTypeAPI';
 import AddCustomProperty from './AddCustomProperty';
@@ -206,9 +206,19 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="richtext-editor">RichTextEditor</div>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }) => {
+      return (
+        <div
+          data-testid="richtext-editor"
+          ref={(input) => {
+            input;
+          }}>
+          {initialValue}MarkdownWithPreview component
+        </div>
+      );
+    })
+  );
 });
 
 jest.mock('../../containers/PageContainer', () => {

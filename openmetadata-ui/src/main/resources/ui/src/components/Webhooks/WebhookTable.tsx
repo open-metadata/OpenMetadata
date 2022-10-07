@@ -180,6 +180,7 @@ const WebhookTable: FC<Props> = ({ onEdit, webhookList, onDelete }) => {
       data-testid="webhook-list-table"
       dataSource={webhookList}
       pagination={false}
+      rowKey="id"
       size="middle"
     />
   );

@@ -1,4 +1,4 @@
-import { act, findByText, render } from '@testing-library/react';
+import { act, findByText, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import EntityVersionPage from './EntityVersionPage.component';
@@ -52,14 +52,12 @@ jest.mock('../../axiosAPIs/topicsAPI', () => ({
 }));
 
 describe('Test EntityVersionPage component', () => {
-  it('Checks if the DatasetVersion component renderst if respective data pass', () => {
-    const { container } = render(<EntityVersionPage />, {
-      wrapper: MemoryRouter,
-    });
-
-    act(async () => {
-      const datasetVersion = await findByText(
-        container,
+  it('Checks if the DatasetVersion component renderst if respective data pass', async () => {
+    await act(async () => {
+      render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
+      const datasetVersion = await screen.findByText(
         /DatasetVersion component/i
       );
 
@@ -67,18 +65,18 @@ describe('Test EntityVersionPage component', () => {
     });
   });
 
-  it('Checks if the DashboardVersion component renderst if respective data pass', () => {
+  it('Checks if the DashboardVersion component render if respective data pass', async () => {
     mockParams = {
       entityType: 'dashboard',
       version: '0.2',
       entityFQN: 'sample_superset.forecast_sales_performance',
     };
 
-    const { container } = render(<EntityVersionPage />, {
-      wrapper: MemoryRouter,
-    });
+    await act(async () => {
+      const { container } = render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
 
-    act(async () => {
       const DashboardVersion = await findByText(
         container,
         /DashboardVersion component/i
@@ -88,18 +86,18 @@ describe('Test EntityVersionPage component', () => {
     });
   });
 
-  it('Checks if the PipelineVersion component renderst if respective data pass', () => {
+  it('Checks if the PipelineVersion component render if respective data pass', async () => {
     mockParams = {
       entityType: 'pipeline',
       version: '0.1',
       entityFQN: 'sample_airflow.snowflake_etl',
     };
 
-    const { container } = render(<EntityVersionPage />, {
-      wrapper: MemoryRouter,
-    });
+    await act(async () => {
+      const { container } = render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
 
-    act(async () => {
       const PipelineVersion = await findByText(
         container,
         /PipelineVersion component/i
@@ -109,18 +107,18 @@ describe('Test EntityVersionPage component', () => {
     });
   });
 
-  it('Checks if the TopicVersion component renderst if respective data pass', () => {
+  it('Checks if the TopicVersion component render if respective data pass', async () => {
     mockParams = {
       entityType: 'topic',
       version: '0.1',
       entityFQN: 'sample_kafka.sales',
     };
 
-    const { container } = render(<EntityVersionPage />, {
-      wrapper: MemoryRouter,
-    });
+    await act(async () => {
+      const { container } = render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
 
-    act(async () => {
       const TopicVersion = await findByText(
         container,
         /TopicVersion component/i
