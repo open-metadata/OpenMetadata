@@ -42,8 +42,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.sql_lineage import (
+    clean_raw_query,
     get_lineage_by_query,
-    get_lineage_via_table_entity, clean_raw_query,
+    get_lineage_via_table_entity,
 )
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

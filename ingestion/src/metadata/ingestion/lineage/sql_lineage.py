@@ -12,7 +12,6 @@
 Helper functions to handle SQL lineage operations
 """
 import traceback
-import re
 from logging.config import DictConfigurator
 from typing import Any, Iterable, Iterator, List, Optional
 
