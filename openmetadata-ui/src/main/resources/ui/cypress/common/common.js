@@ -96,7 +96,7 @@ export const handleIngestionRetry = (
 export const scheduleIngestion = () => {
   // Schedule & Deploy
   cy.contains('Schedule for Ingestion').should('be.visible');
-  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
+  cy.get('[data-testid="cron-type"]').should('be.visible').select('hour');
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
