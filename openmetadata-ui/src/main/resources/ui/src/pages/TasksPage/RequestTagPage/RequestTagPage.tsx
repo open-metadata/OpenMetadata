@@ -11,18 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Input } from 'antd';
+import { Button, Card, Form, FormProps, Input, Space } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { capitalize, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
-import React, {
-  ChangeEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { postThread } from '../../../axiosAPIs/feedsAPI';
@@ -61,7 +56,7 @@ import { EntityData, Option } from '../TasksPage.interface';
 const RequestTag = () => {
   const location = useLocation();
   const history = useHistory();
-
+  const [form] = useForm();
   const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
   const queryParams = new URLSearchParams(location.search);
 
@@ -71,7 +66,6 @@ const RequestTag = () => {
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Option[]>([]);
-  const [title, setTitle] = useState<string>('');
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
 
   const entityTier = useMemo(() => {
@@ -88,7 +82,9 @@ const RequestTag = () => {
 
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
-  const message = `Request tags for ${getSanitizeValue || entityType}`;
+  const message = `Request tags for ${getSanitizeValue || entityType} ${
+    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
+  }`;
 
   // get current user details
   const currentUser = useMemo(
@@ -134,16 +130,11 @@ const RequestTag = () => {
     }
   };
 
-  const onTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { value: newValue } = e.target;
-    setTitle(newValue);
-  };
-
-  const onCreateTask = () => {
+  const onCreateTask: FormProps['onFinish'] = (value) => {
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
-        message: title || message,
+        message: value.title || message,
         about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
@@ -188,7 +179,7 @@ const RequestTag = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    setTitle(message);
+    form.setFieldsValue({ title: message.trimEnd() });
   }, [entityData]);
 
   return (
@@ -205,42 +196,48 @@ const RequestTag = () => {
           key="request-tags"
           style={{ ...cardStyles }}
           title="Create Task">
-          <div data-testid="title">
-            <span>Title:</span>{' '}
-            <Input
-              placeholder="Task title"
-              style={{ margin: '4px 0px' }}
-              value={title}
-              onChange={onTitleChange}
-            />
-          </div>
+          <Form form={form} layout="vertical" onFinish={onCreateTask}>
+            <Form.Item data-testid="title" label="Title:" name="title">
+              <Input placeholder="Task title" style={{ margin: '4px 0px' }} />
+            </Form.Item>
+            <Form.Item
+              data-testid="assignees"
+              label="Assignees:"
+              name="assignees">
+              <Assignees
+                assignees={assignees}
+                options={options}
+                onChange={setAssignees}
+                onSearch={onSearch}
+              />
+            </Form.Item>
+            <Form.Item
+              data-testid="tags-label"
+              label="Suggest tags:"
+              name="suggestTags">
+              <TagSuggestion
+                selectedTags={suggestion}
+                onChange={setSuggestion}
+              />
+            </Form.Item>
 
-          <div data-testid="assignees">
-            <span>Assignees:</span>{' '}
-            <Assignees
-              assignees={assignees}
-              options={options}
-              onChange={setAssignees}
-              onSearch={onSearch}
-            />
-          </div>
-
-          <p data-testid="tags-label">
-            <span>Suggest tags:</span>{' '}
-          </p>
-          <TagSuggestion selectedTags={suggestion} onChange={setSuggestion} />
-
-          <div className="tw-flex tw-justify-end" data-testid="cta-buttons">
-            <Button className="ant-btn-link-custom" type="link" onClick={back}>
-              Back
-            </Button>
-            <Button
-              className="ant-btn-primary-custom"
-              type="primary"
-              onClick={onCreateTask}>
-              {suggestion ? 'Suggest' : 'Submit'}
-            </Button>
-          </div>
+            <Form.Item>
+              <Space
+                className="w-full justify-end"
+                data-testid="cta-buttons"
+                size={16}>
+                <Button type="link" onClick={back}>
+                  Back
+                </Button>
+                <Button
+                  data-testid="submit-test"
+                  htmlType="submit"
+                  type="primary">
+                  {suggestion ? 'Suggest' : 'Submit'}
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
         </Card>
 
         <div className="tw-pl-2" data-testid="entity-details">

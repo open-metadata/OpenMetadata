@@ -15,7 +15,7 @@ import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table } from 'antd';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isNil, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, {
   Fragment,
@@ -349,18 +349,26 @@ const EntityTable = ({
     columnName: string,
     columnConstraint?: string
   ) => {
-    if (!isNil(columnConstraint)) {
-      return getConstraintIcon(columnConstraint, 'tw-mr-2');
-    } else {
-      const flag = tableConstraints?.find((constraint) =>
-        constraint.columns?.includes(columnName)
-      );
-      if (!isUndefined(flag)) {
-        return getConstraintIcon(flag.constraintType, 'tw-mr-2');
-      } else {
-        return null;
-      }
-    }
+    // get the table constraint for column
+    const tableConstraint = tableConstraints?.find((constraint) =>
+      constraint.columns?.includes(columnName)
+    );
+
+    // prepare column constraint element
+    const columnConstraintEl = columnConstraint
+      ? getConstraintIcon(columnConstraint, 'tw-mr-2')
+      : null;
+
+    // prepare table constraint element
+    const tableConstraintEl = tableConstraint
+      ? getConstraintIcon(tableConstraint.constraintType, 'tw-mr-2')
+      : null;
+
+    return (
+      <span data-testid="constraints">
+        {columnConstraintEl} {tableConstraintEl}
+      </span>
+    );
   };
 
   const handleUpdate = (column: Column, index: number) => {

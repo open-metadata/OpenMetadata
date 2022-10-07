@@ -893,6 +893,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // put again user with same bot name
     CreateUser createDifferentBotUser = creatBotUserRequest("test-bot-user-ok", true).withBotName(botName);
     updateEntity(createDifferentBotUser, OK, ADMIN_AUTH_HEADERS);
+    assertNotNull(createDifferentBotUser);
   }
 
   private DecodedJWT decodedJWT(String token) {

@@ -23,6 +23,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   service: 'service',
   user: 'user',
   terms: 'terms',
+  mlmodels:'mlmodels'
 };
 
 export const SEARCH_ENTITY_TABLE = {
@@ -79,6 +80,18 @@ export const SEARCH_ENTITY_PIPELINE = {
     term: 'dim_location_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+  },
+};
+export const SEARCH_ENTITY_MLMODEL = {
+  mlmodel_1: {
+    term: 'forecast_sales',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
+  },
+  mlmodel_2: {
+    term: 'eta_predictions',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
   },
 };
 

@@ -180,6 +180,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         data-testid="policies-list-table"
         dataSource={policies}
         pagination={false}
+        rowKey="id"
         size="small"
       />
       {selectedPolicy && deletePolicyPermission && (

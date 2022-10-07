@@ -31,3 +31,8 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: jest.fn(),
   })),
 });
+
+Object.defineProperty(window, 'DOMMatrixReadOnly', {
+  is2D: true,
+  isIdentity: true,
+});

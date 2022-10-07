@@ -8,218 +8,220 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Defines the Elasticsearch mapping for Pipelines
+"""
 import textwrap
 
 PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
-     {
-    "mappings":{
-          "properties": {
-            "id": {
-              "type": "text"
-            },
-            "name": {
-              "type":"text",
-              "fields": {
-                "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                }
-              }
-            },
-            "fullyQualifiedName": {
-              "type":"text"
-            },
-            "displayName": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                }
-              }
-            },
-            "description": {
-              "type": "text"
-            },
-            "version": {
-              "type": "float"
-            },
-            "updatedAt": {
-               "type": "date",
-              "format": "epoch_second"
-            },
-            "updatedBy": {
-               "type": "text"
-            },
-            "href": {
-              "type": "text"
-            },
-            "pipelineUrl": {
-                "type": "text"
-            },
-            "tasks": {
-               "properties": {
-                "name": {
-                  "type": "text"
-                },
-                "displayName": {
-                   "type": "text"
-                },
-               "description": {
-                 "type": "text"
-               },
-               "taskUrl": {
-                 "type": "text"
-               },
-               "taskType": {
-                "type": "text"
-               }
-             }
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "text"
+      },
+      "name": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "fullyQualifiedName": {
+        "type": "text"
+      },
+      "displayName": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "description": {
+        "type": "text"
+      },
+      "version": {
+        "type": "float"
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "updatedBy": {
+        "type": "text"
+      },
+      "href": {
+        "type": "text"
+      },
+      "pipelineUrl": {
+        "type": "text"
+      },
+      "tasks": {
+        "properties": {
+          "name": {
+            "type": "text"
           },
-          "owner": {
-              "properties": {
-                "id": {
-                  "type": "keyword",
-                  "fields": {
-                    "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 36
-                    }
-                  }
-                },
-                "type": {
-                  "type": "keyword"
-                },
-                "name": {
-                  "type": "keyword",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                        "ignore_above": 256
-                    }
-                 }
-               },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-               "type": "text"
-              },
-              "href": {
-               "type": "text"
+          "displayName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "taskUrl": {
+            "type": "text"
+          },
+          "taskType": {
+            "type": "text"
+          }
+        }
+      },
+      "owner": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
               }
-             }
-            },
-          "service": {
-            "properties": {
-               "id": {
-                 "type": "keyword",
-                 "fields": {
-                   "keyword": {
-                       "type": "keyword",
-                       "ignore_above": 36
-                   }
-                 }
-               },
-               "type": {
-                 "type": "keyword"
-               },
-               "name": {
-                 "type": "keyword",
-                 "fields": {
-                   "keyword": {
-                     "type": "keyword",
-                       "ignore_above": 256
-                   }
-                }
-              },
-             "fullyQualifiedName": {
-               "type": "text"
-             },
-             "description": {
-               "type": "text"
-             },
-             "deleted": {
-              "type": "text"
-             },
-             "href": {
-              "type": "text"
-             }
             }
-           },
-           "deleted": {
-              "type": "text"
-            },
-            "followers": {
-              "type": "keyword"
-            },
-            "tier": {
-              "properties": {
-                        "tagFQN": {
-                          "type": "keyword"
-                        },
-                        "labelType": {
-                          "type": "keyword"
-                        },
-                        "description": {
-                          "type": "text"
-                        },
-                        "source": {
-                          "type": "keyword"
-                        },
-                        "state": {
-                          "type": "keyword"
-                        }
-                      }
-            },
-            "tags": {
-              "properties": {
-                        "tagFQN": {
-                          "type": "keyword"
-                        },
-                        "labelType": {
-                          "type": "keyword"
-                        },
-                        "description": {
-                          "type": "text"
-                        },
-                        "source": {
-                          "type": "keyword"
-                        },
-                        "state": {
-                          "type": "keyword"
-                        }
-                      }
-            },
-            "serviceType": {
-              "type": "keyword"
-            },
-            "entityType": {
-              "type": "keyword"
-            },
-            "suggest": {
-              "type": "completion",
-              "contexts": [
-                {
-                    "name": "deleted",
-                    "type": "category",
-                    "path": "deleted"
-                }
-             ]
-            },
-             "task_suggest": {
-              "type": "completion"
-            },
-            "service_suggest": {
-              "type": "completion"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
             }
-         }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "service": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "deleted": {
+        "type": "text"
+      },
+      "followers": {
+        "type": "keyword"
+      },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
+      "tags": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
+      "serviceType": {
+        "type": "keyword"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
+      "task_suggest": {
+        "type": "completion"
+      },
+      "service_suggest": {
+        "type": "completion"
       }
-   }
-    """
+    }
+  }
+}
+"""
 )

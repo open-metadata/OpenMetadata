@@ -74,9 +74,6 @@ jest.mock('antd', () => ({
 jest.mock('../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
 }));
-jest.mock('../../common/Ellipses/Ellipses', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
 jest.mock('../../common/searchbar/Searchbar', () => {
   return jest
     .fn()

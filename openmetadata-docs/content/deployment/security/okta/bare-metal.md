@@ -26,9 +26,9 @@ Then,
 
 ```yaml
 authorizerConfiguration:
-  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
   # JWT Filter
-  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
   adminPrincipals:
     - "user1"
     - "user2"
@@ -38,7 +38,11 @@ authorizerConfiguration:
   principalDomain: "open-metadata.org"
 ```
 
+In `0.12.1` the `className` and `containerRequestFilter` must replace `org.openmetadata.catalog` by `org.openmetadata.service`.
+
 Finally, update the Airflow information:
+
+**Before 0.12.1**
 
 ```yaml
 airflowConfiguration:
@@ -55,3 +59,16 @@ airflowConfiguration:
       email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
       scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
 ```
+
+**After 0.12.1**
+
+```yaml
+airflowConfiguration:
+  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
+  username: ${AIRFLOW_USERNAME:-admin}
+  password: ${AIRFLOW_PASSWORD:-admin}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+```
+
+**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+ingesting data from Airflow.

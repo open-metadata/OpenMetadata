@@ -13,7 +13,10 @@ Test helpers module
 """
 from unittest import TestCase
 
-from metadata.utils.helpers import list_to_dict
+from metadata.utils.helpers import (
+    clean_up_starting_ending_double_quotes_in_string,
+    list_to_dict,
+)
 
 
 class TestHelpers(TestCase):
@@ -27,3 +30,9 @@ class TestHelpers(TestCase):
         self.assertEqual(list_to_dict(original=original), {"key": "value", "a": "b"})
         self.assertEqual(list_to_dict([]), {})
         self.assertEqual(list_to_dict(None), {})
+
+    def test_clean_up_starting_ending_double_quotes_in_string(self):
+        input_ = '"password"'
+        output_ = "password"
+
+        assert clean_up_starting_ending_double_quotes_in_string(input_) == output_

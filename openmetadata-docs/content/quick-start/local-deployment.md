@@ -287,7 +287,7 @@ If you want to persist your data, prepare [Named Volumes](/deployment/docker/vol
 ## Next Steps
 
 1. Visit the [Features](/overview/features) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](/openmetadata/connectors) documentation to see what services you can integrate with
+2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.
 
@@ -305,7 +305,7 @@ you can always run `docker compose` manually after picking up the latest `docker
 
 ```commandline
 mkdir openmetadata && cd "$_"
-wget https://github.com/open-metadata/OpenMetadata/releases/download/0.11.3-release/docker-compose.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-release/docker-compose.yml
 docker compose up -d
 ```
 

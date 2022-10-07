@@ -12,10 +12,12 @@ To enable security for the Docker deployment, follow the next steps:
 Create an `openmetadata_onelogin.env` file and add the following contents as an example. Use the information
 generated when setting up the account.
 
+### 1.1 Before 0.12.1
+
 ```shell
 # OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.catalog.security.JwtFilter
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
 AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
@@ -34,6 +36,26 @@ OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID=Client Id # Update with your Client ID
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH=Secret Key Path # Update with your Secret Key Path
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL=endpoint
 ```
+
+### 1.2 After 0.12.1
+
+```shell
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
+AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+
+AUTHENTICATION_PROVIDER=custom-oidc
+AUTHENTICATION_PUBLIC_KEYS={public key url} # Update with your Public Key URL
+AUTHENTICATION_AUTHORITY={issuer url} # Update with your Issuer URL
+AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+```
+
+**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+ingesting data from Airflow.
 
 ## 2. Start Docker
 

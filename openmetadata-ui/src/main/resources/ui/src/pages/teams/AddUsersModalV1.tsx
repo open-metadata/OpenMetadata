@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
-import Ellipses from '../../components/common/Ellipses/Ellipses';
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import Loader from '../../components/Loader/Loader';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
@@ -158,9 +158,11 @@ const AddUsersModalV1 = ({
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-max-h-90vh tw-max-w-3xl">
         <div className="tw-modal-header" data-testid="header">
-          <Ellipses tooltip className="tw-modal-title">
+          <Typography.Text
+            className="ant-typography-ellipsis-custom tw-modal-title"
+            ellipsis={{ tooltip: true }}>
             {header}
-          </Ellipses>
+          </Typography.Text>
         </div>
         <div className="tw-modal-body">
           <Searchbar

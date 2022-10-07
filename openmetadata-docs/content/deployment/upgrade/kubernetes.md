@@ -17,6 +17,12 @@ We also assume that your helm chart release names are `openmetadata` and `openme
 
 ## Procedure
 
+<Warning>
+
+It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+
+</Warning>
+
 Below document is valid for upgrading Helm Charts from **0.11.5 to 0.12.X**.
 
 ### Back up metadata
@@ -141,7 +147,7 @@ We have added a conditional suggestion mapping for all of the elasticsearch inde
 
 ### Go to Settings -> Event Publishers -> ElasticSearch
 
-<Image src="/images/deployment/upgrade/elasticseach-re-index.png" alt="create-project" caption="Create a New Project"/>
+<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project"/>
 
 ### Make sure you select "Recreate Indexes"
 
@@ -157,7 +163,7 @@ Click on the "Recreate Indexes" lable and click "Re Index All"
 If you are facing an issue similar to below when openmetadata pod keeps on restarting.
 
 ```
-java.lang.ClassNotFoundException: org.openmetadata.catalog.security.DefaultAuthorizer
+java.lang.ClassNotFoundException: org.openmetadata.service.security.DefaultAuthorizer
 	at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:581)
 	at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
 	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:522)
@@ -175,7 +181,7 @@ java.lang.ClassNotFoundException: org.openmetadata.catalog.security.DefaultAutho
 
 The root cause of the issue is the default helm values which are upgraded in helm charts but are getting overridden by your custom helm values. Please verify the config for Authorizer Class Name and Container Request Filter. 
 
-We have changed `org.openmetadata.catalog.security.*` to `org.openmetadata.service.security.*`.
+We have changed `org.openmetadata.service.security.*` to `org.openmetadata.service.security.*`.
 Make sure to verify your helm values and update the below content.
 
 ```
@@ -195,7 +201,7 @@ release is backward incompatible.
 ```commandline
 [I/O dispatcher 1] DEBUG org.apache.http.impl.nio.client.InternalIODispatch - http-outgoing-0 [ACTIVE] [content length: 263; pos: 263; completed: true]
 [main] DEBUG org.elasticsearch.client.RestClient - request [PUT http://elasticsearch:9200/glossary_search_index/_mapping?master_timeout=30s&ignore_unavailable=false&expand_wildcards=open%2Cclosed&allow_no_indices=false&ignore_throttled=false&timeout=30s] returned [HTTP/1.1 400 Bad Request]
-[main] ERROR org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition - Failed to update Elastic Search indexes due to
+[main] ERROR org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition - Failed to update Elastic Search indexes due to
 org.elasticsearch.ElasticsearchStatusException: Elasticsearch exception [type=illegal_argument_exception, reason=can't merge a non object mapping [owner] with an object mapping]
     at org.elasticsearch.rest.BytesRestResponse.errorFromXContent(BytesRestResponse.java:176)
     at org.elasticsearch.client.RestHighLevelClient.parseEntity(RestHighLevelClient.java:1933)
@@ -204,10 +210,10 @@ org.elasticsearch.ElasticsearchStatusException: Elasticsearch exception [type=il
     at org.elasticsearch.client.RestHighLevelClient.performRequest(RestHighLevelClient.java:1639)
     at org.elasticsearch.client.RestHighLevelClient.performRequestAndParseEntity(RestHighLevelClient.java:1606)
     at org.elasticsearch.client.IndicesClient.putMapping(IndicesClient.java:342)
-    at org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.updateIndex(ElasticSearchIndexDefinition.java:139)
-    at org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.updateIndexes(ElasticSearchIndexDefinition.java:91)
-    at org.openmetadata.catalog.util.TablesInitializer.execute(TablesInitializer.java:227)
-    at org.openmetadata.catalog.util.TablesInitializer.main(TablesInitializer.java:149)
+    at org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.updateIndex(ElasticSearchIndexDefinition.java:139)
+    at org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.updateIndexes(ElasticSearchIndexDefinition.java:91)
+    at org.openmetadata.service.util.TablesInitializer.execute(TablesInitializer.java:227)
+    at org.openmetadata.service.util.TablesInitializer.main(TablesInitializer.java:149)
     Suppressed: org.elasticsearch.client.ResponseException: method [PUT], host [http://elasticsearch:9200], URI [/glossary_search_index/_mapping?master_timeout=30s&ignore_unavailable=false&expand_wildcards=open%2Cclosed&allow_no_indices=false&ignore_throttled=false&timeout=30s], status line [HTTP/1.1 400 Bad Request]
 {"error":{"root_cause":[{"type":"illegal_argument_exception","reason":"can't merge a non object mapping [owner] with an object mapping"}],"type":"illegal_argument_exception","reason":"can't merge a non object mapping [owner] with an object mapping"},"status":400}
         at org.elasticsearch.client.RestClient.convertResponse(RestClient.java:326)
