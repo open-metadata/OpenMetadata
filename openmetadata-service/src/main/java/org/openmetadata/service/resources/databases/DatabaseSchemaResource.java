@@ -75,6 +75,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return schema;
   }
 
+  @Collection
   public DatabaseSchemaResource(CollectionDAO dao, Authorizer authorizer) {
     super(DatabaseSchema.class, new DatabaseSchemaRepository(dao), authorizer);
   }

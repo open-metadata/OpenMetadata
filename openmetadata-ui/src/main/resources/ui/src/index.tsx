@@ -15,6 +15,10 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';
 import './styles/index.js';
+import { initLocale } from './utils/i18next/LocalUtil';
+
+// Initialize locale
+initLocale();
 
 ReactDOM.render(
   <React.StrictMode>
