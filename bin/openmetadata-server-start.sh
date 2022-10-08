@@ -71,26 +71,24 @@ else
   JAVA="$JAVA_HOME/bin/java"
 fi
 
-
+OPENMETADATA_DEBUG="true"
 # Set Debug options if enabled
-if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
-
     # Use default ports
-    DEFAULT_JAVA_DEBUG_PORT="5005"
+DEFAULT_JAVA_DEBUG_PORT="5005"
 
-    if [ -z "$JAVA_DEBUG_PORT" ]; then
-        JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
-    fi
+if [ -z "$JAVA_DEBUG_PORT" ]; then
+    JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
+fi
 
     # Use the defaults if JAVA_DEBUG_OPTS was not set
-    DEFAULT_JAVA_DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=${DEBUG_SUSPEND_FLAG:-n},address=$JAVA_DEBUG_PORT"
-    if [ -z "$JAVA_DEBUG_OPTS" ]; then
-        JAVA_DEBUG_OPTS="$DEFAULT_JAVA_DEBUG_OPTS"
-    fi
-
-    echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
-    OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
+DEFAULT_JAVA_DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=${DEBUG_SUSPEND_FLAG:-n},address=$JAVA_DEBUG_PORT"
+if [ -z "$JAVA_DEBUG_OPTS" ]; then
+    JAVA_DEBUG_OPTS="$DEFAULT_JAVA_DEBUG_OPTS"
 fi
+
+echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
+OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
+
 
 # GC options
 GC_LOG_FILE_NAME='openmetadata-gc.log'
@@ -111,7 +109,7 @@ fi
 
 #Application classname
 APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
-
+echo $OPENMETADATA_OPTS
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
     nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
