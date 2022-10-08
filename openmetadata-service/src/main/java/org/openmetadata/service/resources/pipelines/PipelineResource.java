@@ -80,6 +80,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return pipeline;
   }
 
+  @Collection
   public PipelineResource(CollectionDAO dao, Authorizer authorizer) {
     super(Pipeline.class, new PipelineRepository(dao), authorizer);
   }

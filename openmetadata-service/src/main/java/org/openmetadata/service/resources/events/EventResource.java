@@ -61,6 +61,7 @@ public class EventResource {
     }
   }
 
+  @Collection
   public EventResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);

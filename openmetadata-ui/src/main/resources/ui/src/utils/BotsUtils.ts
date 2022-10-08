@@ -12,11 +12,14 @@
  */
 
 import { isUndefined } from 'lodash';
-import moment from 'moment';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationMechanism } from '../generated/api/teams/createUser';
 import { SsoServiceType } from '../generated/entity/teams/authN/ssoAuth';
 import { AuthType, JWTTokenExpiry, User } from '../generated/entity/teams/user';
+import {
+  getExpiryDateTimeFromDate,
+  getExpiryDateTimeFromTimeStamp,
+} from './TimeUtils';
 
 export const getJWTTokenExpiryOptions = () => {
   return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -92,9 +95,11 @@ export const getTokenExpiryText = (expiry: string) => {
   } else if (expiry === JWTTokenExpiry.OneHour) {
     return `The token will expire in ${expiry}`;
   } else {
-    return `The token will expire on ${moment()
-      .add(expiry, 'days')
-      .format('ddd Do MMMM, YYYY')}`;
+    return `The token will expire on ${getExpiryDateTimeFromDate(
+      expiry,
+      'days',
+      "cccc d'th' MMMM, yyyy"
+    )}`;
   }
 };
 
@@ -110,7 +115,7 @@ export const getTokenExpiry = (expiry: number) => {
   const isTokenExpired = currentTimeStamp >= expiry;
 
   return {
-    tokenExpiryDate: moment(expiry).format('ddd Do MMMM, YYYY,hh:mm A'),
+    tokenExpiryDate: getExpiryDateTimeFromTimeStamp(expiry),
     isTokenExpired,
   };
 };

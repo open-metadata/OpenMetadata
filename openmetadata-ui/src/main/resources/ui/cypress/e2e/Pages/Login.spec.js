@@ -24,7 +24,7 @@ const invalidPassword = 'testUsers@123';
 
 const baseURL = location.origin;
 
-const ERROR_MESSAGE = 'You have entered an invalid username or password.'
+const ERROR_MESSAGE = 'You have entered an invalid username or password.';
 
 describe('Login flow should work properly', () => {
   it('Signup and Login with signed up credentials', () => {
@@ -57,9 +57,7 @@ describe('Login flow should work properly', () => {
       .type(CREDENTIALS.password);
     //Click on create account button
     cy.get('.ant-btn').contains('Create Account').should('be.visible').click();
-    cy.url()
-      .should('eq', `${baseURL}/signin`)
-      .and('contain', 'signin');
+    cy.url().should('eq', `${baseURL}/signin`).and('contain', 'signin');
 
     //Login with the created user
 
@@ -75,7 +73,9 @@ describe('Login flow should work properly', () => {
       .invoke('text')
       .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
     interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
-    cy.get('[data-testid="user-name"]').should('be.visible').click({force: true});
+    cy.get('[data-testid="user-name"]')
+      .should('be.visible')
+      .click({ force: true });
     verifyResponseStatusCode('@getUserPage', 200);
     cy.get('[data-testid="left-panel"]').should(
       'contain',
@@ -104,7 +104,11 @@ describe('Login flow should work properly', () => {
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
     //Click on Forgot button
-    cy.get('[data-testid="forgot-password"]').should('be.visible').click();
+    cy.get('[data-testid="forgot-password"]')
+      .should('be.visible')
+      .trigger('mouseover')
+      .click();
+
     cy.url()
       .should('eq', `${baseURL}/forgot-password`)
       .and('contain', 'forgot-password');

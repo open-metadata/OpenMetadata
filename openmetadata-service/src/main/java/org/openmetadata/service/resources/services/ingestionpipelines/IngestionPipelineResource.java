@@ -98,6 +98,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao, secretsManager), authorizer);
     this.secretsManager = secretsManager;

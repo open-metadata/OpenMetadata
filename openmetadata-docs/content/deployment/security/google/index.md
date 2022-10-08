@@ -93,7 +93,7 @@ This is a guide to create ingestion bot service account.
 
 <Note>
 
-Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AND CONTINUE**. If you chose a different Service Account Id, add it to the default bots list in [Configure OpenMetadata Server](https://github.com/StreamlineData/catalog/tree/3d53fa7c645ea55f846b06d0210ac63f8c38463f/docs/install/install/google-catalog-config.md)
+Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AND CONTINUE**. If you chose a different Service Account Id, add it to the default bots in OpenMetadata Server Configuration -> authorizerConfig section 
 
 </Note>
 <Image src="/images/deployment/security/google/required-account-details.png" alt="required-account-details"/>

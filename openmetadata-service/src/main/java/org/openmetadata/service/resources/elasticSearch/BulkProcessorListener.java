@@ -6,6 +6,7 @@ import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexR
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
@@ -15,6 +16,7 @@ import org.openmetadata.schema.settings.EventPublisherJob;
 import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.settings.Stats;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -24,9 +26,11 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
   private volatile int totalFailedCount = 0;
   private volatile int totalRequests = 0;
   private final CollectionDAO dao;
+  private final UUID startedBy;
 
-  public BulkProcessorListener(CollectionDAO dao) {
+  public BulkProcessorListener(CollectionDAO dao, UUID startedBy) {
     this.dao = dao;
+    this.startedBy = startedBy;
     this.resetCounters();
   }
 
@@ -107,7 +111,11 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
           dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_BATCH, ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
-      lastRecord.setStatus(status);
+      if (totalRequests == totalFailedCount + totalSuccessCount) {
+        lastRecord.setStatus(EventPublisherJob.Status.IDLE);
+      } else {
+        lastRecord.setStatus(status);
+      }
       lastRecord.setTimestamp(updateTime);
       if (failDetails != null) {
         lastRecord.setFailureDetails(
@@ -120,20 +128,10 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
               ELASTIC_SEARCH_EXTENSION,
               JsonUtils.pojoToJson(lastRecord),
               originalLastUpdate);
+      WebSocketManager.getInstance()
+          .sendToOne(this.startedBy, WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(lastRecord));
     } catch (Exception e) {
       LOG.error("Failed to Update Elastic Search Job Info");
     }
-  }
-
-  public int getTotalSuccessCount() {
-    return totalSuccessCount;
-  }
-
-  public int getTotalFailedCount() {
-    return totalFailedCount;
-  }
-
-  public int getTotalRequests() {
-    return totalRequests;
   }
 }
