@@ -73,22 +73,24 @@ fi
 
 OPENMETADATA_DEBUG="true"
 # Set Debug options if enabled
-    # Use default ports
-DEFAULT_JAVA_DEBUG_PORT="5005"
+if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 
-if [ -z "$JAVA_DEBUG_PORT" ]; then
-    JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
-fi
+    # Use default ports
+    DEFAULT_JAVA_DEBUG_PORT="0.0.0.0:5005"
+
+    if [ -z "$JAVA_DEBUG_PORT" ]; then
+        JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
+    fi
 
     # Use the defaults if JAVA_DEBUG_OPTS was not set
-DEFAULT_JAVA_DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=${DEBUG_SUSPEND_FLAG:-n},address=$JAVA_DEBUG_PORT"
-if [ -z "$JAVA_DEBUG_OPTS" ]; then
-    JAVA_DEBUG_OPTS="$DEFAULT_JAVA_DEBUG_OPTS"
+    DEFAULT_JAVA_DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=${DEBUG_SUSPEND_FLAG:-n},address=$JAVA_DEBUG_PORT"
+    if [ -z "$JAVA_DEBUG_OPTS" ]; then
+        JAVA_DEBUG_OPTS="$DEFAULT_JAVA_DEBUG_OPTS"
+    fi
+
+    echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
+    OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
 fi
-
-echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
-OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
-
 
 # GC options
 GC_LOG_FILE_NAME='openmetadata-gc.log'
