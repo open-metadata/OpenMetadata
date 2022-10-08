@@ -76,6 +76,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return db;
   }
 
+  @Collection
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
     super(Database.class, new DatabaseRepository(dao), authorizer);
   }

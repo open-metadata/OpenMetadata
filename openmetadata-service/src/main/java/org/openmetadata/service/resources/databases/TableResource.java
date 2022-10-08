@@ -114,6 +114,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return operations.toArray(new MetadataOperation[0]);
   }
 
+  @Collection
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
     allowedFields.add("tests");

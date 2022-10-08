@@ -1,17 +1,16 @@
 export const WORKFLOWS_PROFILER_DOCS =
-  'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler';
 
 export const DATA_QUALITY_DOCS =
-  'https://docs.open-metadata.org/openmetadata/data-quality';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality';
 
 export const GLOSSARIES_DOCS =
   'https://docs.open-metadata.org/openmetadata/glossaries';
 
-export const CONNECTORS_DOCS =
-  'https://docs.open-metadata.org/openmetadata/connectors';
+export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
 
 export const WORKFLOWS_METADATA_DOCS =
-  'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata';
 
 export const BOTS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';

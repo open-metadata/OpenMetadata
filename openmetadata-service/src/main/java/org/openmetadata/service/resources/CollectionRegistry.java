@@ -18,6 +18,7 @@ import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import java.io.File;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -259,24 +260,50 @@ public final class CollectionRegistry {
       SecretsManager secretsManager)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
-    Object resource;
+    Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
-    // Create the resource identified by resourceClass
-    try {
-      resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
-    } catch (NoSuchMethodException e) {
-      try {
-        resource =
-            clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, SecretsManager.class)
-                .newInstance(daoObject, authorizer, secretsManager);
-      } catch (NoSuchMethodException ex) {
-        try {
-          resource = clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
-        } catch (NoSuchMethodException exc) {
-          resource = Class.forName(resourceClass).getConstructor().newInstance();
+    // NOTE: Currently this will work fine for One Constructor scenario since per resource only one constructor is
+    // present,
+    // for multiple constructor we can use order as the priority to qualify amongst multiple constructors
+    for (Constructor<?> constructor : clz.getConstructors()) {
+      Collection c = constructor.getAnnotation(Collection.class);
+      if (c != null) {
+        switch (c.constructorType()) {
+          case DAO_AUTH:
+            resource =
+                clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
+            break;
+          case DAO_AUTH_SM:
+            resource =
+                clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, SecretsManager.class)
+                    .newInstance(daoObject, authorizer, secretsManager);
+            break;
+          case CONFIG:
+            resource = clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
+            break;
+          case DAO_AUTH_CONFIG:
+            resource =
+                clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, OpenMetadataApplicationConfig.class)
+                    .newInstance(daoObject, authorizer, config);
+            break;
+          case DAO_AUTH_SM_CONFIG:
+            resource =
+                clz.getDeclaredConstructor(
+                        CollectionDAO.class,
+                        Authorizer.class,
+                        SecretsManager.class,
+                        OpenMetadataApplicationConfig.class)
+                    .newInstance(daoObject, authorizer, secretsManager, config);
+            break;
+          default:
+            resource = Class.forName(resourceClass).getConstructor().newInstance();
         }
       }
+    }
+
+    if (resource == null) {
+      resource = Class.forName(resourceClass).getConstructor().newInstance();
     }
 
     // Call initialize method, if it exists

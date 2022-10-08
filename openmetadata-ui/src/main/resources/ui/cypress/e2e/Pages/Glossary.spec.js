@@ -325,7 +325,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="section-related-terms"] [data-testid="edit-button"]')
       .scrollIntoView()
       .should('be.visible')
-      .click();
+      .click({ force: true });
     interceptURL(
       'GET',
       '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',

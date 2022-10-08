@@ -275,7 +275,6 @@ def docker(
     "--upload",
     help="S3 endpoint, bucket & key to upload the backup file",
     nargs=3,
-    type=click.Tuple([str, str, str]),
     default=None,
     required=False,
 )
