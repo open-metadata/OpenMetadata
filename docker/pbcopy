@@ -1,0 +1,84 @@
+diff --git a/bin/openmetadata-server-start.sh b/bin/openmetadata-server-start.sh
+index eb0d119f1..7ddae5488 100644
+--- a/bin/openmetadata-server-start.sh
++++ b/bin/openmetadata-server-start.sh
+@@ -71,27 +71,25 @@ else
+   JAVA="$JAVA_HOME/bin/java"
+ fi
+ 
+-
++OPENMETADATA_DEBUG="true"
+ # Set Debug options if enabled
+-if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
+-
+     # Use default ports
+-    DEFAULT_JAVA_DEBUG_PORT="5005"
++DEFAULT_JAVA_DEBUG_PORT="5005"
+ 
+-    if [ -z "$JAVA_DEBUG_PORT" ]; then
+-        JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
+-    fi
++if [ -z "$JAVA_DEBUG_PORT" ]; then
++    JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
++fi
+ 
+     # Use the defaults if JAVA_DEBUG_OPTS was not set
+-    DEFAULT_JAVA_DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=${DEBUG_SUSPEND_FLAG:-n},address=$JAVA_DEBUG_PORT"
+-    if [ -z "$JAVA_DEBUG_OPTS" ]; then
+-        JAVA_DEBUG_OPTS="$DEFAULT_JAVA_DEBUG_OPTS"
+-    fi
+-
+-    echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
+-    OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
++DEFAULT_JAVA_DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=${DEBUG_SUSPEND_FLAG:-n},address=$JAVA_DEBUG_PORT"
++if [ -z "$JAVA_DEBUG_OPTS" ]; then
++    JAVA_DEBUG_OPTS="$DEFAULT_JAVA_DEBUG_OPTS"
+ fi
+ 
++echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
++OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
++
++
+ # GC options
+ GC_LOG_FILE_NAME='openmetadata-gc.log'
+ if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
+@@ -111,7 +109,7 @@ fi
+ 
+ #Application classname
+ APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
+-
++echo $OPENMETADATA_OPTS
+ # Launch mode
+ if [ "x$DAEMON_MODE" = "xtrue" ]; then
+     nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+diff --git a/conf/openmetadata.yaml b/conf/openmetadata.yaml
+index f2d172be7..c1e97dc79 100644
+--- a/conf/openmetadata.yaml
++++ b/conf/openmetadata.yaml
+@@ -89,9 +89,8 @@ server:
+ # Logging settings.
+ # https://logback.qos.ch/manual/layouts.html#conversionWord
+ logging:
+-  level: ${LOG_LEVEL:-DEBUG}
++  level: ${LOG_LEVEL:-INFO}
+   loggers:
+-    org.openmetadata.service.events: DEBUG
+     io.swagger: ERROR
+   appenders:
+     - type: console
+diff --git a/docker/local-metadata/docker-compose.yml b/docker/local-metadata/docker-compose.yml
+index 2090c7b34..fd9d3285b 100644
+--- a/docker/local-metadata/docker-compose.yml
++++ b/docker/local-metadata/docker-compose.yml
+@@ -125,9 +125,11 @@ services:
+     expose:
+       - 8585
+       - 8586
++      - 5005
+     ports:
+       - "8585:8585"
+       - "8586:8586"
++      - "5005:5005"
+     depends_on:
+       elasticsearch:
+         condition: service_started

@@ -129,9 +129,11 @@ services:
     expose:
       - 8585
       - 8586
+      - 5005
     ports:
       - "8585:8585"
       - "8586:8586"
+      - "5005:5005"
     depends_on:
       elasticsearch:
         condition: service_started
