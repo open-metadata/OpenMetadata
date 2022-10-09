@@ -13,6 +13,7 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { ReactionType } from '../../generated/type/reaction';
 import Emoji from './Emoji';
 
 const onReactionSelect = jest.fn();
@@ -33,10 +34,10 @@ jest.mock('../../AppState', () => ({
 }));
 
 const mockProps = {
-  reaction: 'thumbsUp',
+  reaction: ReactionType.ThumbsUp,
   reactionList: [
     {
-      reactionType: 'thumbsUp',
+      reactionType: ReactionType.ThumbsUp,
       user: {
         id: '2e424734-761a-443f-bf2a-a5b361823c80',
         type: 'user',
@@ -66,7 +67,7 @@ describe('Test Emoji Component', () => {
 
     expect(emojiCount).toBeInTheDocument();
 
-    expect(emojiCount).toHaveTextContent(mockProps.reactionList.length);
+    expect(emojiCount).toHaveTextContent(`${mockProps.reactionList.length}`);
   });
 
   it('Should render the tooltip component on hovering the emoji', async () => {
