@@ -74,6 +74,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   final SecretsManager secretsManager;
 
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public BotResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(Bot.class, new BotRepository(dao, secretsManager), authorizer);
     this.secretsManager = secretsManager;

@@ -17,17 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.generated.schema.entity.bot import BotType
-from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
-from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
-from metadata.ingestion.ometa.ssl_registry import (
-    InvalidSSLVerificationException,
-    ssl_verification_registry,
-)
-from metadata.utils.secrets.secrets_manager_factory import (
-    get_secrets_manager_from_om_connection,
-)
-
 try:
     from typing import get_args
 except ImportError:
@@ -37,6 +26,7 @@ from pydantic import BaseModel
 from requests.utils import quote
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -74,9 +64,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
+from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
@@ -89,7 +81,14 @@ from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
+from metadata.ingestion.ometa.ssl_registry import (
+    InvalidSSLVerificationException,
+    ssl_verification_registry,
+)
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
+from metadata.utils.secrets.secrets_manager_factory import (
+    get_secrets_manager_from_om_connection,
+)
 
 logger = ometa_logger()
 
@@ -559,7 +558,7 @@ class OpenMetadata(
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                "GET %s for %s." "Error %s - %s",
+                "GET %s for %s. Error %s - %s",
                 entity.__name__,
                 path,
                 err.status_code,

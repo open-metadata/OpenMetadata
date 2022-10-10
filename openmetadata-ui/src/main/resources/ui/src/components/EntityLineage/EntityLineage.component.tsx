@@ -1149,6 +1149,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 'tw-bg-primary-hover-lite': !isEditMode,
               }
             )}
+            data-testid="edit-lineage"
             disabled={!hasEditAccess}
             title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
             onClick={() => {
@@ -1165,7 +1166,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               <SVGIcons
                 alt="icon-edit-lineag"
                 className="tw--mt-1"
-                data-testid="edit-lineage"
                 icon={
                   !isEditMode ? 'icon-edit-lineage-color' : 'icon-edit-lineage'
                 }

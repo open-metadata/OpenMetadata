@@ -516,12 +516,12 @@ const PipelineDetails = ({
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
                     entityType={EntityType.PIPELINE}
-                    isLoading={isLineageLoading}
-                    isNodeLoading={isNodeLoading}
-                    isOwner={
+                    hasEditAccess={
                       pipelinePermissions.EditAll ||
                       pipelinePermissions.EditLineage
                     }
+                    isLoading={isLineageLoading}
+                    isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}

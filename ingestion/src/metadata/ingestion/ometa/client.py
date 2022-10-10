@@ -182,7 +182,7 @@ class REST:
             except RetryException:
                 retry_wait = self._retry_wait * (total_retries - retry + 1)
                 logger.warning(
-                    "sleep %s seconds and retrying %s " "%s more time(s)...",
+                    "sleep %s seconds and retrying %s %s more time(s)...",
                     retry_wait,
                     url,
                     retry,

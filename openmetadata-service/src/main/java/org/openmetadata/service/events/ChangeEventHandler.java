@@ -104,7 +104,7 @@ public class ChangeEventHandler implements EventHandler {
         if (filterEnabled) {
           for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message
-            if (!thread.getMessage().isEmpty()) {
+            if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
               EntityInterface entity;
               // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
               if (responseContext.getEntity() instanceof ChangeEvent) {

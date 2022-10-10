@@ -16,6 +16,12 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/011-to-012) for the specific details related to upgrading to 0.12 
 
+<Warning>
+
+It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+
+</Warning>
+
 ### 1. Download docker-compose.yaml file
 
 Go to [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest release will be at the top of this page.
@@ -26,12 +32,12 @@ wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-r
 ```
 or if you wish to use postgres as the database
 ```
-wget https://github.com/open-metadata/OpenMetadata/releases/download/0.12.0-release/docker-compose-postgres.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-release/docker-compose-postgres.yml
 ```
 
 ### 2. Backup your Data [IMPORTANT]
 
-Make a backup of your database. You can find the steps to follow [here](=/deployment/upgrade/backup-metadata#backup-metadata). Please note this is an important step as it would allow you to revert to a stable state if any issues were to happen during your upgrade.
+Make a backup of your database. You can find the steps to follow [here](/deployment/upgrade/backup-metadata#backup-metadata). Please note this is an important step as it would allow you to revert to a stable state if any issues were to happen during your upgrade.
 
 ### 3. Add Volumes and Publish Ports
 

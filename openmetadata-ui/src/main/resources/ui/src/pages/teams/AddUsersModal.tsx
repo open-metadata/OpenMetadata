@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { toLower } from 'lodash';
 import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
-import Ellipses from '../../components/common/Ellipses/Ellipses';
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -98,9 +98,11 @@ const AddUsersModal = ({
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-max-h-90vh tw-max-w-3xl">
         <div className="tw-modal-header" data-testid="header">
-          <Ellipses tooltip className="tw-modal-title">
+          <Typography.Text
+            className="ant-typography-ellipsis-custom tw-modal-title"
+            ellipsis={{ tooltip: true }}>
             {header}
-          </Ellipses>
+          </Typography.Text>
         </div>
         <div className="tw-modal-body">
           <Searchbar

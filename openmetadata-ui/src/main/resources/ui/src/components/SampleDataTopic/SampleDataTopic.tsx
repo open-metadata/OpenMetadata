@@ -59,13 +59,13 @@ const MessageCard = ({ message }: { message: string }) => {
             />
           </div>
         ) : (
-          <p>
+          <div>
             <p
               className="tw-my-1 topic-sample-data-message"
               style={{ color: '#450de2' }}>
               {message}
             </p>
-          </p>
+          </div>
         )}
       </div>
     </div>

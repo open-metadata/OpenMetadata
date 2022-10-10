@@ -11,10 +11,48 @@
  *  limitations under the License.
  */
 
+/* eslint-disable @typescript-eslint/camelcase */
+
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import ExplorePage from './ExplorePage.component';
+
+const mockData = {
+  key: 1,
+  data: {
+    took: 2,
+    timed_out: false,
+    _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+    hits: { total: { value: 16, relation: 'eq' }, max_score: null, hits: [] },
+    aggregations: {
+      'sterms#EntityType': {
+        doc_count_error_upper_bound: 0,
+        sum_other_doc_count: 0,
+        buckets: [{ key: 'table', doc_count: 16 }],
+      },
+
+      'sterms#Tags': {
+        doc_count_error_upper_bound: 0,
+        sum_other_doc_count: 0,
+        buckets: [
+          { key: 'PII.NonSensitive', doc_count: 2 },
+          { key: 'PII.None', doc_count: 2 },
+          { key: 'PersonalData.Personal', doc_count: 2 },
+          { key: 'PersonalData.SpecialCategory', doc_count: 2 },
+          { key: 'PII.Sensitive', doc_count: 1 },
+          { key: 'test-category.test-glossary-term-tag', doc_count: 1 },
+          { key: 'test-glossary.test-glossary-term', doc_count: 1 },
+        ],
+      },
+      'sterms#DatabaseSchema': {
+        doc_count_error_upper_bound: 0,
+        sum_other_doc_count: 0,
+        buckets: [{ key: 'shopify', doc_count: 16 }],
+      },
+    },
+  },
+};
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ searchQuery: '' })),
@@ -24,12 +62,16 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(() => ({ search: '', pathname: '/explore' })),
 }));
 
+jest.mock('../../AppState', () => ({
+  updateExplorePageTab: jest.fn().mockReturnValue(''),
+}));
+
 jest.mock('../../components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
 
 jest.mock('../../axiosAPIs/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() => Promise.resolve()),
+  searchData: jest.fn().mockImplementation(() => Promise.resolve(mockData)),
 }));
 
 describe('Test Explore page', () => {

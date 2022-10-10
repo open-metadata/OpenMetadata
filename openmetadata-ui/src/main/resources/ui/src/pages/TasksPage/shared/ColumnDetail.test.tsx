@@ -40,12 +40,6 @@ const mockColumnData = {
   ordinalPosition: 2,
 } as Column;
 
-jest.mock('../../../components/common/Ellipses/Ellipses', () =>
-  jest.fn().mockImplementation(({ children }) => {
-    return <p>{children}</p>;
-  })
-);
-
 describe('Test column detail component', () => {
   it('Should render the component', async () => {
     render(<ColumnDetail column={mockColumnData} />);
