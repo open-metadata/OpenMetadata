@@ -47,7 +47,7 @@ workflowConfig:
 
 
 with models.DAG(
-    "ingestion-operator",
+    "ingestion-docker-operator",
     schedule_interval="@once",
     start_date=datetime(2021, 1, 1),
     catchup=False,
