@@ -40,9 +40,9 @@ import {
 } from '../../../generated/tests/testCase';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
-  getDateToSecondsOfCurrentDate,
+  getDateToMilliSecondsOfCurrentDate,
   getFormattedDateFromSeconds,
-  getPastDatesToSecondsFromCurrentDate,
+  getPastDatesToMilliSecondsFromCurrentDate,
 } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
@@ -130,11 +130,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (isEmpty(data)) return;
 
     try {
-      const startTs = getPastDatesToSecondsFromCurrentDate(
+      const startTs = getPastDatesToMilliSecondsFromCurrentDate(
         PROFILER_FILTER_RANGE[selectedTimeRange].days
       );
 
-      const endTs = getDateToSecondsOfCurrentDate();
+      const endTs = getDateToMilliSecondsOfCurrentDate();
 
       const { data: chartData } = await getListTestCaseResults(
         getEncodedFqn(data.fullyQualifiedName || ''),
