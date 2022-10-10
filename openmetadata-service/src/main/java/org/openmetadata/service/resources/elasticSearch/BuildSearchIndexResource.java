@@ -60,6 +60,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -83,14 +84,15 @@ public class BuildSearchIndexResource {
   private final ExecutorService threadScheduler;
   private final UserRepository userRepository;
 
-  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_CONFIG)
-  public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer, OpenMetadataApplicationConfig config) {
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM_CONFIG)
+  public BuildSearchIndexResource(
+      CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager, OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
       this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
     }
     this.dao = dao;
-    this.userRepository = new UserRepository(dao);
+    this.userRepository = new UserRepository(dao, secretsManager);
     this.authorizer = authorizer;
     this.threadScheduler =
         new ThreadPoolExecutor(

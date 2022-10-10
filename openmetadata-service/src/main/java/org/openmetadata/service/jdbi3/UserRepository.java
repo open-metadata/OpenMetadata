@@ -74,10 +74,6 @@ public class UserRepository extends EntityRepository<User> {
     return new Fields(allowedFields, fields);
   }
 
-  public UserRepository(CollectionDAO dao) {
-    this(dao, null);
-  }
-
   @Override
   public EntityReference getOriginalOwner(User entity) {
     // For User entity, the entity and the owner are the same
