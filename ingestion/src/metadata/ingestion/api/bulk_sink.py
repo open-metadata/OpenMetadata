@@ -39,7 +39,7 @@ class BulkSinkStatus(Status):
 class BulkSink(Closeable, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "BulkSink":
+    def create(cls, config_dict: dict, metadata_config: dict) -> "BulkSink":
         pass
 
     @abstractmethod
