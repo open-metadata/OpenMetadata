@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +36,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 @ExtendWith(MockitoExtension.class)
 public class IngestionPipelineRepositoryUnitTest {
@@ -50,14 +50,15 @@ public class IngestionPipelineRepositoryUnitTest {
   protected IngestionPipelineRepository ingestionPipelineRepository;
 
   @BeforeEach
-  void beforeEach() {
+  void before() {
+    SecretsManagerFactory.setSecretsManager(secretsManager);
     when(collectionDAO.ingestionPipelineDAO()).thenReturn(dao);
-    ingestionPipelineRepository = new IngestionPipelineRepository(collectionDAO, secretsManager);
+    ingestionPipelineRepository = new IngestionPipelineRepository(collectionDAO);
   }
 
   @AfterEach
-  void afterEach() {
-    reset(secretsManager);
+  void after() {
+    SecretsManagerFactory.setSecretsManager(null);
   }
 
   @Test

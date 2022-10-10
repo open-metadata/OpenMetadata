@@ -82,7 +82,6 @@ public class DefaultAuthorizer implements Authorizer {
   private Set<String> botPrincipalUsers;
   private Set<String> testUsers;
   private String principalDomain;
-  private SecretsManager secretsManager;
 
   private String providerType;
 
@@ -95,10 +94,6 @@ public class DefaultAuthorizer implements Authorizer {
         new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getBotPrincipals());
     this.testUsers = new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getTestPrincipals());
     this.principalDomain = openMetadataApplicationConfig.getAuthorizerConfiguration().getPrincipalDomain();
-    this.secretsManager =
-        SecretsManagerFactory.createSecretsManager(
-            openMetadataApplicationConfig.getSecretsManagerConfiguration(),
-            openMetadataApplicationConfig.getClusterName());
     this.providerType = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
     SubjectCache.initialize();
     PolicyCache.initialize();
@@ -413,6 +408,7 @@ public class DefaultAuthorizer implements Authorizer {
       User originalUser =
           userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
       AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (authMechanism != null) {
         Object config =
             secretsManager.encryptOrDecryptBotUserCredentials(user.getName(), authMechanism.getConfig(), false);

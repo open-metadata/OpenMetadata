@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,6 +59,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.PipelineServiceClient;
 
@@ -93,7 +95,13 @@ public class IngestionPipelineResourceUnitTest {
     lenient().when(relationshipDAO.findFrom(any(), any(), anyInt())).thenReturn(List.of(entityRelationshipRecord));
     when(collectionDAO.ingestionPipelineDAO()).thenReturn(entityDAO);
     lenient().when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
-    ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer, secretsManager);
+    ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer);
+    SecretsManagerFactory.setSecretsManager(secretsManager);
+  }
+
+  @AfterEach
+  void afterEach() {
+    SecretsManagerFactory.setSecretsManager(null);
   }
 
   @Test

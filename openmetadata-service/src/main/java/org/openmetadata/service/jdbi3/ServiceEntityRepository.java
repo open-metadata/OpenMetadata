@@ -22,6 +22,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -32,8 +33,6 @@ public abstract class ServiceEntityRepository<
 
   @Getter private final Class<S> serviceConnectionClass;
 
-  protected final SecretsManager secretsManager;
-
   @Getter private final ServiceType serviceType;
 
   protected ServiceEntityRepository(
@@ -41,10 +40,9 @@ public abstract class ServiceEntityRepository<
       String service,
       CollectionDAO dao,
       EntityDAO<T> entityDAO,
-      SecretsManager secretsManager,
       Class<S> serviceConnectionClass,
       ServiceType serviceType) {
-    this(collectionPath, service, dao, entityDAO, secretsManager, serviceConnectionClass, UPDATE_FIELDS, serviceType);
+    this(collectionPath, service, dao, entityDAO, serviceConnectionClass, UPDATE_FIELDS, serviceType);
   }
 
   protected ServiceEntityRepository(
@@ -52,12 +50,10 @@ public abstract class ServiceEntityRepository<
       String service,
       CollectionDAO dao,
       EntityDAO<T> entityDAO,
-      SecretsManager secretsManager,
       Class<S> serviceConnectionClass,
       String updatedFields,
       ServiceType serviceType) {
     super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
-    this.secretsManager = secretsManager;
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
   }
@@ -83,6 +79,7 @@ public abstract class ServiceEntityRepository<
     service.withOwner(null).withHref(null);
 
     // encrypt connection config in case of local secret manager
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager.isLocal()) {
       service
           .getConnection()
@@ -135,6 +132,7 @@ public abstract class ServiceEntityRepository<
     }
 
     private void updateConnection() throws IOException {
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (secretsManager.isLocal()) {
         ServiceConnectionEntityInterface origConn = original.getConnection();
         ServiceConnectionEntityInterface updatedConn = updated.getConnection();

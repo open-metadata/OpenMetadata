@@ -83,7 +83,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @Inject
-  @Collection
   public TestCaseResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestCase.class, new TestCaseRepository(dao), authorizer);
   }

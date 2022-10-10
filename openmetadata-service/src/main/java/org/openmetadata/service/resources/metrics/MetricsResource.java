@@ -57,7 +57,6 @@ import org.openmetadata.service.util.ResultList;
 public class MetricsResource extends EntityResource<Metrics, MetricsRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
 
-  @Collection
   public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
     super(Metrics.class, new MetricsRepository(dao), authorizer);
   }
