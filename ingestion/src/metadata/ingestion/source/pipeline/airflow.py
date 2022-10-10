@@ -121,7 +121,9 @@ class AirflowSource(PipelineServiceSource):
         return self._session
 
     def get_pipeline_status(self, dag_id: str) -> List[DagRun]:
-
+        """
+        Return the DagRuns of given dag
+        """
         dag_run_list = (
             self.session.query(
                 DagRun.dag_id,
@@ -153,9 +155,7 @@ class AirflowSource(PipelineServiceSource):
             for elem in dag_run_dict
         ]
 
-    def get_task_instances(
-        self, dag_id: str, run_id: str, execution_date: datetime
-    ) -> List[OMTaskInstance]:
+    def get_task_instances(self, dag_id: str, run_id: str) -> List[OMTaskInstance]:
         """
         We are building our own scoped TaskInstance
         class to only focus on core properties required
@@ -211,9 +211,7 @@ class AirflowSource(PipelineServiceSource):
                     dag_run.run_id
                 ):  # Airflow dags can have old task which are turned off/commented out in code
                     tasks = self.get_task_instances(
-                        dag_id=dag_run.dag_id,
-                        run_id=dag_run.run_id,
-                        execution_date=dag_run.execution_date,  # Used for Airflow 2.1.4 query fallback
+                        dag_id=dag_run.dag_id, run_id=dag_run.run_id
                     )
 
                     task_statuses = [
@@ -257,7 +255,7 @@ class AirflowSource(PipelineServiceSource):
         """
 
         json_data_column = (
-            SerializedDagModel._data  # For 2.3.0 onwards
+            SerializedDagModel._data  # For 2.3.0 onwards # pylint: disable=protected-access
             if hasattr(SerializedDagModel, "_data")
             else SerializedDagModel.data  # For 2.2.5 and 2.1.4
         )
