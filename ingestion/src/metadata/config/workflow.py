@@ -38,8 +38,7 @@ def fetch_type_class(_type: str, is_file: bool):
     """
     if is_file:
         return _type.replace("-", "_")
-    else:
-        return "".join([i.title() for i in _type.replace("-", "_").split("_")])
+    return "".join([i.title() for i in _type.replace("-", "_").split("_")])
 
 
 def get_class(key: str) -> Type[T]:
@@ -71,11 +70,7 @@ def get_sink(
     :param _from: From where do we load the sink class. Ingestion by default.
     """
     sink_class = get_class(
-        "metadata.{}.sink.{}.{}Sink".format(
-            _from,
-            fetch_type_class(sink_type, is_file=True),
-            fetch_type_class(sink_type, is_file=False),
-        )
+        f"metadata.{_from}.sink.{fetch_type_class(sink_type, is_file=True)}.{fetch_type_class(sink_type, is_file=False)}Sink"
     )
 
     sink: Sink = sink_class.create(
@@ -109,11 +104,7 @@ def get_processor(
     :param _from: From where do we load the sink class. Ingestion by default.
     """
     processor_class = get_class(
-        "metadata.{}.processor.{}.{}Processor".format(
-            _from,
-            fetch_type_class(processor_type, is_file=True),
-            fetch_type_class(processor_type, is_file=False),
-        )
+        f"metadata.{_from}.processor.{fetch_type_class(processor_type, is_file=True)}.{fetch_type_class(processor_type, is_file=False)}Processor"
     )
 
     processor: Processor = processor_class.create(
