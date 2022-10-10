@@ -199,6 +199,7 @@ class SQLSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
     """
+
     success: List[str] = []
     failures: List[str] = []
     warnings: List[str] = []
