@@ -66,6 +66,7 @@ public class LineageResource {
   private final LineageRepository dao;
   private final Authorizer authorizer;
 
+  @Collection
   public LineageResource(@NonNull CollectionDAO dao, Authorizer authorizer) {
     this.dao = new LineageRepository(dao);
     this.authorizer = authorizer;

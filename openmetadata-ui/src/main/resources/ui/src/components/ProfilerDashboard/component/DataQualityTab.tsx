@@ -14,7 +14,6 @@
 import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
-import moment from 'moment';
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
@@ -32,6 +31,7 @@ import {
   getEntityFqnFromEntityLink,
   getTestResultBadgeIcon,
 } from '../../../utils/TableUtils';
+import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
@@ -76,7 +76,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'lastRun',
         render: (result: TestCaseResult) =>
           result?.timestamp
-            ? moment.unix(result.timestamp || 0).format('DD/MMM HH:mm')
+            ? getFormattedDateFromSeconds(result.timestamp)
             : '--',
       },
       {

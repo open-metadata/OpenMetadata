@@ -78,6 +78,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return location;
   }
 
+  @Collection
   public LocationResource(CollectionDAO dao, Authorizer authorizer) {
     super(Location.class, new LocationRepository(dao), authorizer);
   }

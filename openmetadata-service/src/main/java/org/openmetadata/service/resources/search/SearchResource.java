@@ -55,15 +55,17 @@ import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 
 @Slf4j
 @Path("/v1/search")
 @Api(value = "Search collection", tags = "Search collection")
 @Produces(MediaType.APPLICATION_JSON)
+@Collection(name = "search")
 public class SearchResource {
-  private final RestHighLevelClient client;
+  private RestHighLevelClient client;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
@@ -71,8 +73,11 @@ public class SearchResource {
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
-  public SearchResource(ElasticSearchConfiguration esConfig) {
-    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
+  @Collection(constructorType = Collection.ConstructorType.CONFIG)
+  public SearchResource(OpenMetadataApplicationConfig config) {
+    if (config.getElasticSearchConfiguration() != null) {
+      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+    }
   }
 
   @GET

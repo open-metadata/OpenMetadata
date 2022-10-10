@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import moment from 'moment';
+import { getExpiryDateTimeFromDate } from "../../../src/utils/TimeUtils.ts";
 import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_TERM, LOGIN } from '../../constants/constants';
-
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
@@ -31,14 +30,6 @@ const expirationTime = {
   threemonths: '90',
 };
 
-const createExpiryDate = (expiry, days) => {
-  const currentDate = Date.now();
-  const endDate = moment(currentDate, 'x')
-    .add(expiry, days)
-    .format(`ddd Do MMMM, YYYY,hh:mm A.`);
-
-  return endDate;
-};
 
 const getCreatedBot = () => {
   interceptURL('GET', `/api/v1/bots/name/${botName}`, 'getCreatedBot');
@@ -104,7 +95,6 @@ describe('Bots Page should work properly', () => {
   });
 
   it('Create new Bot', () => {
-    const endhour = createExpiryDate('1', 'hour');
 
     cy.get('[data-testid="add-bot"]')
       .should('exist')
@@ -138,6 +128,7 @@ describe('Bots Page should work properly', () => {
     cy.get('table').should('contain', botName).and('contain', description);
 
     getCreatedBot();
+    const endhour = getExpiryDateTimeFromDate('1', 'hour');
     cy.get('[data-testid="revoke-button"]')
       .should('be.visible')
       .should('contain', 'Revoke token');
@@ -155,7 +146,7 @@ describe('Bots Page should work properly', () => {
   Object.values(expirationTime).forEach((expiry) => {
     it(`Update token expiration for ${expiry} days`, () => {
       getCreatedBot();
-      const expiryDate = createExpiryDate(expiry, 'days');
+      const expiryDate = getExpiryDateTimeFromDate(expiry, 'days');
       revokeToken();
       //Click on token expiry dropdown
       cy.get('[data-testid="token-expiry"]').should('be.visible').click();
