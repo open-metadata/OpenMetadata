@@ -40,6 +40,11 @@ from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 class SQAInterfaceMixin:
     """SQLAlchemy inteface mixin grouping shared methods between sequential and threaded executor"""
 
+    @property
+    def table(self):
+        """OM Table entity"""
+        return self._table
+
     def _get_engine(self):
         """Get engine for database
 

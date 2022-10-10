@@ -46,7 +46,7 @@ logger = sqa_interface_registry_logger()
 thread_local = threading.local()
 
 
-class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
+class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -57,7 +57,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         service_connection_config,
         ometa_client: OpenMetadata,
         sqa_metadata_obj: Optional[MetaData] = None,
-        thread_count: Optional[int] = 5,
+        thread_count: Optional[float] = 5,
         table_entity: Optional[Table] = None,
         table_sample_precentage: Optional[float] = None,
         table_sample_query: Optional[str] = None,
@@ -76,7 +76,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             else None
         )
 
-        self.table = self._convert_table_to_orm_object(sqa_metadata_obj)
+        self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
 
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()

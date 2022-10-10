@@ -38,7 +38,7 @@ from metadata.utils.timeout import cls_timeout
 logger = sqa_interface_registry_logger()
 
 
-class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
+class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow
@@ -63,7 +63,7 @@ class SQATestSuiteInterface(TestSuiteProtocol, SQAInterfaceMixin):
         )
         self.set_session_tag(self.session)
 
-        self.table = self._convert_table_to_orm_object()
+        self._table = self._convert_table_to_orm_object()
 
         self.table_sample_precentage = table_sample_precentage
         self.table_sample_query = table_sample_query

@@ -59,8 +59,8 @@ class DefaultProfiler(Profiler):
     def __init__(
         self,
         profiler_interface: ProfilerProtocol,
-        include_columns: List[Optional[ColumnProfilerConfig]] = None,
-        exclude_columns: List[Optional[str]] = None,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,
+        exclude_columns: Optional[List[str]] = None,
     ):
 
         _metrics = get_default_metrics(profiler_interface.table)

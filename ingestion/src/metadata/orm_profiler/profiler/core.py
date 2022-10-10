@@ -72,8 +72,8 @@ class Profiler(Generic[TMetric]):
         *metrics: Type[TMetric],
         profiler_interface: ProfilerProtocol,
         profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
-        include_columns: List[Optional[ColumnProfilerConfig]] = None,
-        exclude_columns: List[Optional[str]] = None,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,
+        exclude_columns: Optional[List[str]] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -376,7 +376,7 @@ class Profiler(Generic[TMetric]):
 
         return self
 
-    def process(self, generate_sample_data: bool) -> ProfilerResponse:
+    def process(self, generate_sample_data: Optional[bool]) -> ProfilerResponse:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers

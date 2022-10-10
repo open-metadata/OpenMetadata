@@ -33,10 +33,16 @@ class ProfilerProtocol(ABC):
     @abstractmethod
     def __init__(
         self,
-        ometa_client: OpenMetadata = None,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection] = None,
+        ometa_client: OpenMetadata,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
     ):
         """Required attribute for the interface"""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def table(self):
+        """OM Table entity"""
         raise NotImplementedError
 
     @abstractmethod

@@ -388,7 +388,7 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
 
 def create_ometa_client(
     metadata_config: OpenMetadataConnection,
-) -> Optional[OpenMetadata]:
+) -> OpenMetadata:
     """Create an OpenMetadata client
 
     Args:
@@ -400,14 +400,14 @@ def create_ometa_client(
     try:
         metadata = OpenMetadata(metadata_config)
         metadata.health_check()
+        return metadata
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
             f"No OpenMetadata server configuration found. "
             f"Setting client to `None`. You won't be able to access the server from the client: {exc}"
         )
-        metadata = None
-    return metadata
+        raise ValueError(exc)
 
 
 def clean_up_starting_ending_double_quotes_in_string(string: str) -> str:
