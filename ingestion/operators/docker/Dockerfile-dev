@@ -1,8 +1,9 @@
-FROM python:3.9-slim
+FROM python:3.9-buster
 
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get update \
     && apt-get install -y build-essential \
+    ca-certificates \
     default-libmysqlclient-dev \
     freetds-bin \
     freetds-dev \
@@ -11,7 +12,6 @@ RUN apt-get update \
     libevent-dev \
     libffi-dev \
     libpq-dev \
-    librdkafka-dev \
     libsasl2-dev \
     libsasl2-modules \
     libssl-dev \
@@ -23,17 +23,30 @@ RUN apt-get update \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
-    wget --no-install-recommends \
-    # Accept MSSQL ODBC License
-    # && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
-    && rm -rf /var/lib/apt/lists/*
+    wget --no-install-recommends
+
+# Prep to install msodbcsql18
+RUN apt-get update && \
+    apt-get install -y apt-transport-https && \
+    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install msodbcsql18 unixodbc-dev -y
+
+# Prep to install confluent-kafka https://github.com/confluentinc/confluent-kafka-python/issues/1326
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc git libssl-dev g++ make && \
+    cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
+    cd librdkafka && git checkout tags/v1.9.0 && \
+    ./configure && make && make install && \
+    cd ../ && rm -rf librdkafka
 
 WORKDIR ingestion/
 
 # Only copy the necessary source files to execute Workflows
-COPY src/ src/
-COPY setup.* ./
-COPY README.md .
+COPY ingestion/src/ src/
+COPY ingestion/setup.* ./
+COPY ingestion/README.md .
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/main.py .
