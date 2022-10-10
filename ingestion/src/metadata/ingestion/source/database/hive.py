@@ -47,9 +47,9 @@ def get_columns(
     """
     Method to handle table columns
     """
-    rows = self._get_table_columns(
+    rows = self._get_table_columns(  # pylint: disable=protected-access
         connection, table_name, schema
-    )  # pylint: disable=protected-access
+    )
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []

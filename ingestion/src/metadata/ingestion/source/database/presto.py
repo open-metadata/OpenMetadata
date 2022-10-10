@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Presto source module
+"""
 
 import re
 import traceback
@@ -43,8 +46,15 @@ _type_map.update(
 
 
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
-    rows = self._get_table_columns(connection, table_name, schema)
+def get_columns(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    Handle columns for presto
+    """
+    rows = self._get_table_columns(  # pylint: disable=protected-access
+        connection, table_name, schema
+    )
     result = []
     for row in rows:
         try:
@@ -64,9 +74,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         except KeyError as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error reading row [{row}]: {err}")
-            util.warn(
-                "Did not recognize type '%s' of column '%s'" % (row.Type, row.Column)
-            )
+            util.warn(f"Did not recognize type '{row.Type}' of column '{row.Column}'")
             coltype = types.NullType
         result.append(
             {
@@ -87,9 +95,6 @@ class PrestoSource(CommonDbSourceService):
     """
     Presto does not support querying by table type: Getting views is not supported.
     """
-
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

@@ -285,9 +285,9 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _parse_primitive_datatype_string(
+    def _parse_primitive_datatype_string(  # pylint: disable=too-many-return-statements
         data_type: str,
-    ) -> Dict[str, object]:  # pylint: disable=too-many-return-statements
+    ) -> Dict[str, object]:
         if data_type.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
             return {
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[data_type.upper()],

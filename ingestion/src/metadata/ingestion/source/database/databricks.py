@@ -59,9 +59,9 @@ _type_map.update({"struct": STRUCT, "array": ARRAY, "map": MAP})
 
 def _get_column_rows(self, connection, table_name, schema):
     # get columns and strip whitespace
-    table_columns = self._get_table_columns(
+    table_columns = self._get_table_columns(  # pylint: disable=protected-access
         connection, table_name, schema
-    )  # pylint: disable=protected-access
+    )
     column_rows = [
         [col.strip() if col else None for col in row] for row in table_columns
     ]

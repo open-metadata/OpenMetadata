@@ -372,8 +372,8 @@ class DatalakeSource(DatabaseServiceSource):
         pass
 
     def standardize_table_name(
-        self, schema: str, table: str
-    ) -> str:  # pylint: disable=unused-argument
+        self, schema: str, table: str  # pylint: disable=unused-argument
+    ) -> str:
         return table
 
     def check_valid_file_type(self, key_name):
