@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Helpers module for ingestion related methods
+"""
+
 import re
 from datetime import datetime, timedelta
 from functools import wraps
@@ -67,6 +71,10 @@ om_chart_type_dict = {
 
 
 def calculate_execution_time(func):
+    """
+    Method to calculate workflow execution time
+    """
+
     @wraps(func)
     def calculate_debug_time(*args, **kwargs):
         start = perf_counter()
@@ -80,6 +88,10 @@ def calculate_execution_time(func):
 
 
 def calculate_execution_time_generator(func):
+    """
+    Generator method to calculate workflow execution time
+    """
+
     def calculate_debug_time(*args, **kwargs):
         start = perf_counter()
         yield from func(*args, **kwargs)
@@ -92,6 +104,10 @@ def calculate_execution_time_generator(func):
 
 
 def pretty_print_time_duration(duration: int) -> str:
+    """
+    Method to format and display the time
+    """
+
     days = divmod(duration, 86400)[0]
     hours = divmod(duration, 3600)[0]
     minutes = divmod(duration, 60)[0]
@@ -106,6 +122,10 @@ def pretty_print_time_duration(duration: int) -> str:
 
 
 def get_start_and_end(duration):
+    """
+    Method to return start and end time based on duration
+    """
+
     today = datetime.utcnow()
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
@@ -115,17 +135,24 @@ def get_start_and_end(duration):
     return start, end
 
 
-def snake_to_camel(s):
-    a = s.split("_")
-    a[0] = a[0].capitalize()
-    if len(a) > 1:
-        a[1:] = [u.title() for u in a[1:]]
-    return "".join(a)
+def snake_to_camel(snake_str):
+    """
+    Method to convert snake case text to camel case
+    """
+    split_str = snake_str.split("_")
+    split_str[0] = split_str[0].capitalize()
+    if len(split_str) > 1:
+        split_str[1:] = [u.title() for u in split_str[1:]]
+    return "".join(split_str)
 
 
 def get_database_service_or_create(
     config: WorkflowSource, metadata_config, service_name=None
 ) -> DatabaseService:
+    """
+    Get an existing database service or create a new one based on the config provided
+    """
+
     metadata = OpenMetadata(metadata_config)
     if not service_name:
         service_name = config.serviceName
@@ -190,19 +217,22 @@ def get_messaging_service_or_create(
     config: dict,
     metadata_config,
 ) -> MessagingService:
+    """
+    Get an existing messaging service or create a new one based on the config provided
+    """
+
     metadata = OpenMetadata(metadata_config)
     service: MessagingService = metadata.get_by_name(
         entity=MessagingService, fqn=service_name
     )
     if service is not None:
         return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateMessagingServiceRequest(
-                name=service_name, serviceType=message_service_type, connection=config
-            )
+    created_service = metadata.create_or_update(
+        CreateMessagingServiceRequest(
+            name=service_name, serviceType=message_service_type, connection=config
         )
-        return created_service
+    )
+    return created_service
 
 
 def get_dashboard_service_or_create(
@@ -211,36 +241,42 @@ def get_dashboard_service_or_create(
     config: dict,
     metadata_config,
 ) -> DashboardService:
+    """
+    Get an existing dashboard service or create a new one based on the config provided
+    """
+
     metadata = OpenMetadata(metadata_config)
     service: DashboardService = metadata.get_by_name(
         entity=DashboardService, fqn=service_name
     )
     if service is not None:
         return service
-    else:
-        dashboard_config = {"config": config}
-        created_service = metadata.create_or_update(
-            CreateDashboardServiceRequest(
-                name=service_name,
-                serviceType=dashboard_service_type,
-                connection=dashboard_config,
-            )
+    dashboard_config = {"config": config}
+    created_service = metadata.create_or_update(
+        CreateDashboardServiceRequest(
+            name=service_name,
+            serviceType=dashboard_service_type,
+            connection=dashboard_config,
         )
-        return created_service
+    )
+    return created_service
 
 
 def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
+    """
+    Get an existing storage service or create a new one based on the config provided
+    """
+
     metadata = OpenMetadata(metadata_config)
     service: StorageService = metadata.get_by_name(
         entity=StorageService, fqn=service_json["name"]
     )
     if service is not None:
         return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateStorageServiceRequest(**service_json)
-        )
-        return created_service
+    created_service = metadata.create_or_update(
+        CreateStorageServiceRequest(**service_json)
+    )
+    return created_service
 
 
 def datetime_to_ts(date: Optional[datetime]) -> Optional[int]:
@@ -251,6 +287,10 @@ def datetime_to_ts(date: Optional[datetime]) -> Optional[int]:
 
 
 def get_formatted_entity_name(name: str) -> Optional[str]:
+    """
+    Method to get formatted entity name
+    """
+
     return (
         name.replace("[", "").replace("]", "").replace("<default>.", "")
         if name
@@ -290,12 +330,16 @@ def get_standard_chart_type(raw_chart_type: str) -> str:
 def get_chart_entities_from_id(
     chart_ids: List[str], metadata: OpenMetadata, service_name: str
 ) -> List[EntityReferenceList]:
+    """
+    Method to get the chart entity using get_by_name api
+    """
+
     entities = []
-    for id in chart_ids:
+    for chart_id in chart_ids:
         chart: Chart = metadata.get_by_name(
             entity=Chart,
             fqn=fqn.build(
-                metadata, Chart, chart_name=str(id), service_name=service_name
+                metadata, Chart, chart_name=str(chart_id), service_name=service_name
             ),
         )
         if chart:

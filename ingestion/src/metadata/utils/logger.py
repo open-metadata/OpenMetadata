@@ -25,6 +25,10 @@ logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
 
 class Loggers(Enum):
+    """
+    Enum for loggers
+    """
+
     OMETA = "OMetaAPI"
     CLI = "Metadata"
     PROFILER = "Profiler"
@@ -36,34 +40,66 @@ class Loggers(Enum):
 
 
 def ometa_logger():
+    """
+    Method to get the OMETA logger
+    """
+
     return logging.getLogger(Loggers.OMETA.value)
 
 
 def cli_logger():
+    """
+    Method to get the CLI logger
+    """
+
     return logging.getLogger(Loggers.CLI.value)
 
 
 def profiler_logger():
+    """
+    Method to get the PROFILER logger
+    """
+
     return logging.getLogger(Loggers.PROFILER.value)
 
 
 def test_suite_logger():
+    """
+    Method to get the TEST SUITE logger
+    """
+
     return logging.getLogger(Loggers.TEST_SUITE.value)
 
 
 def sqa_interface_registry_logger():
+    """
+    Method to get the SQA PROFILER INTERFACE logger
+    """
+
     return logging.getLogger(Loggers.SQA_PROFILER_INTERFACE.value)
 
 
 def ingestion_logger():
+    """
+    Method to get the INGESTION logger
+    """
+
     return logging.getLogger(Loggers.INGESTION.value)
 
 
 def utils_logger():
+    """
+    Method to get the UTILS logger
+    """
+
     return logging.getLogger(Loggers.UTILS.value)
 
 
 def great_expectations_logger():
+    """
+    Method to get the GREAT EXPECTATIONS logger
+    """
+
     return logging.getLogger(Loggers.GREAT_EXPECTATIONS.value)
 
 

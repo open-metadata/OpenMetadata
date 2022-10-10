@@ -200,18 +200,13 @@ class SQLSourceStatus(SourceStatus):
     Reports the source status after ingestion
     """
 
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
-    filtered: List[str] = list()
-
     def scanned(self, record: str) -> None:
         self.success.append(record)
         logger.info(f"Scanned [{record}]")
 
     def filter(self, record: str, err: str) -> None:
-        self.filtered.append(record)
-        logger.warning(f"Filtered [{record}] due to {err}")
+        logger.info(f"Filtered [{record}] due to {err}")
+        self.filtered.append({record: err})
 
 
 class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
