@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
@@ -152,35 +153,25 @@ class TestSuiteWorkflow:
                     service,
                     "databaseservice",
                 )
-                service_connection_config = deepcopy(service_connection.__root__.config)
-                if hasattr(service_connection_config, "supportsDatabase"):
-                    if (
-                        hasattr(
-                            service_connection_config,
-                            "database",
-                        )
-                        and not service_connection_config.database
-                    ):
-                        service_connection_config.database = table_fqn.split(".")[1]
-                    if (
-                        hasattr(
-                            service_connection_config,
-                            "catalog",
-                        )
-                        and not service_connection_config.catalog
-                    ):
-                        service_connection_config.catalog = table_fqn.split(".")[1]
-                return service_connection_config
-
-            logger.error(
-                f"Could not retrive connection details for entity {entity_link}"
             )
             service_connection_config = deepcopy(service_connection.__root__.config)
-            if (
-                hasattr(service_connection_config, "supportsDatabase")
-                and not service_connection_config.database
-            ):
-                service_connection_config.database = table_fqn.split(".")[1]
+            if hasattr(service_connection_config, "supportsDatabase"):
+                if (
+                    hasattr(
+                        service_connection_config,
+                        "database",
+                    )
+                    and not service_connection_config.database
+                ):
+                    service_connection_config.database = table_fqn.split(".")[1]
+                if (
+                    hasattr(
+                        service_connection_config,
+                        "catalog",
+                    )
+                    and not service_connection_config.catalog
+                ):
+                    service_connection_config.catalog = table_fqn.split(".")[1]
             return service_connection_config
 
         logger.error(f"Could not retrive connection details for entity {entity_link}")
