@@ -25,16 +25,10 @@ logger = ingestion_logger()
 
 
 class OpenmetadataSource(MetadataSource):
+    """Metadata source Class"""
 
     config: WorkflowSource
     report: SourceStatus
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

@@ -16,7 +16,6 @@ import { ColumnsType } from 'antd/lib/table';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getListTestSuites } from '../../axiosAPIs/testAPI';
-import Ellipses from '../../components/common/Ellipses/Ellipses';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import {
   INITIAL_PAGING_VALUE,
@@ -70,9 +69,11 @@ const TestSuitePage = () => {
         key: 'description',
         width: 300,
         render: (_, record) => (
-          <Ellipses tooltip className="tw-w-11/12">
+          <Typography.Paragraph
+            className="ant-typography-ellipsis-custom w-11-12"
+            ellipsis={{ tooltip: true }}>
             {record.description}
-          </Ellipses>
+          </Typography.Paragraph>
         ),
       },
       {

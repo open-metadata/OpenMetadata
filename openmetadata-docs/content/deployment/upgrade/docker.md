@@ -5,7 +5,7 @@ slug: /deployment/upgrade/docker
 
 # Upgrade on Docker
 
-To run OpenMetadata with Docker, you can simply downloaded the `docker-compose.yml` file. Optionally, we added some
+To run OpenMetadata with Docker, you can simply download the `docker-compose.yml` file. Optionally, we added some
 Named Volumes to handle data persistence.
 
 <Note>
@@ -14,9 +14,15 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 </Note>
 
-Below we have highlited the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/011-to-012) for the general details related to upgrading to 0.12 
+Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/011-to-012) for the specific details related to upgrading to 0.12 
 
-### 1. Download `docker-compose.yaml` file
+<Warning>
+
+It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+
+</Warning>
+
+### 1. Download docker-compose.yaml file
 
 Go to [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest release will be at the top of this page.
 
@@ -26,12 +32,12 @@ wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-r
 ```
 or if you wish to use postgres as the database
 ```
-wget https://github.com/open-metadata/OpenMetadata/releases/download/0.12.0-release/docker-compose-postgres.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-release/docker-compose-postgres.yml
 ```
 
 ### 2. Backup your Data [IMPORTANT]
 
-Make a backup of your database. You can find the steps to follow [here](=/deployment/upgrade/backup-metadata#backup-metadata). Please note this is an important step as it would allow you to revert to a stable state if any issues were to happen during your upgrade.
+Make a backup of your database. You can find the steps to follow [here](/deployment/upgrade/backup-metadata#backup-metadata). Please note this is an important step as it would allow you to revert to a stable state if any issues were to happen during your upgrade.
 
 ### 3. Add Volumes and Publish Ports
 
@@ -64,8 +70,8 @@ If you are using `openmetadata/ingestion` Docker image in 0.12.1 and migrated ei
 You can run 6.1 and 6.2 together using the following command `metadata openmetadata-imports-migration --change-config-file-path`.
 
 ### Troubleshooting
-#### Permision Denied when running `metadata openmetadata-imports-migration`
-If you have a `Permission Denied` error thrown when runnign `metadata openmetadata-imports-migration --change-config-file-path` you might need to change the permission on the `/opt/airflow/dags` folder. SSH into the ingestion container and check the permission on the folder running the below commands
+#### Permission Denied when running `metadata openmetadata-imports-migration`
+If you have a `Permission Denied` error thrown when running `metadata openmetadata-imports-migration --change-config-file-path` you might need to change the permission on the `/opt/airflow/dags` folder. SSH into the ingestion container and check the permission on the folder running the below commands
 ```
 ls -l /opt/airflow
 ```

@@ -76,19 +76,25 @@ helm install openmetadata-dependencies open-metadata/openmetadata-dependencies -
 
 </Note>
 
-Run `kubectl get pods` to check whether all the pods for the dependencies are running. You should get a result similar to
-below.
+Run `kubectl get pods` to check whether all the pods for the dependencies are running. You should get a result similar to below.
 
 ```commandline
-NAME                              READY   STATUS    RESTARTS   AGE
-elasticsearch-0                   1/1     Running   0          4m56s
-mysql-0                           1/1     Running   0          4m56s
+NAME                                                       READY   STATUS     RESTARTS   AGE
+elasticsearch-0                                            1/1     Running   0          4m26s
+mysql-0                                                    1/1     Running   0          4m26s
+openmetadata-dependencies-db-migrations-5984f795bc-t46wh   1/1     Running   0          4m26s
+openmetadata-dependencies-scheduler-5b574858b6-75clt       1/1     Running   0          4m26s
+openmetadata-dependencies-sync-users-654b7d58b5-2z5sf      1/1     Running   0          4m26s
+openmetadata-dependencies-triggerer-8d498cc85-wjn69        1/1     Running   0          4m26s
+openmetadata-dependencies-web-64bc79d7c6-7n6v2             1/1     Running   0          4m26s
 ```
+
+Please note that the pods names above as openmetadata-dependencies-* are part of airflow deployments.
 
 Helm Chart for OpenMetadata Dependencies uses the following helm charts:
 - [Bitnami MySQL](https://artifacthub.io/packages/helm/bitnami/mysql/8.8.23) (helm chart version 8.8.23)
 - [ElasticSearch](https://artifacthub.io/packages/helm/elastic/elasticsearch/7.10.2) (helm chart version 7.10.2)
-- [Airflow](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.5.3) (helm chart version 8.5.3)
+- [Airflow](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.6.1) (helm chart version 8.6.1)
 
 If you want to customise helm values for the dependencies as per your cluster, you can follow the above links and update
 your custom helm `values.yaml`.
@@ -117,13 +123,11 @@ If you deployed helm chart using different release name, make sure to update `va
 
 </Note>
 
-Run `kubectl get pods` to check the status of pods running. You should get a result similar to the output below:
+Run `kubectl get pods --selector=app.kubernetes.io/name=openmetadata` to check the status of pods running. You should get a result similar to the output below:
 
 ```commandline
 NAME                            READY   STATUS    RESTARTS   AGE
-elasticsearch-0                 1/1     Running   0          5m34s
-mysql-0                         1/1     Running   0          5m34s
-openmetadata-5566f4d8b9-544gb   1/1     Running   0          98s
+openmetadata-5c55f6759c-52dvq   1/1     Running   0          90s
 ```
 
 ## Port Forwarding

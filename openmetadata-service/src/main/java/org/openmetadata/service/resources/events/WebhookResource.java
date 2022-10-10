@@ -86,6 +86,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     }
   }
 
+  @Collection
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
     super(Webhook.class, new WebhookRepository(dao), authorizer);
     webhookDAO = dao.webhookDAO();

@@ -19,10 +19,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(value = ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.CONSTRUCTOR})
 public @interface Collection {
-  String name();
+  enum ConstructorType {
+    CONFIG,
+    DAO_AUTH,
+    DAO_AUTH_SM,
+    DAO_AUTH_CONFIG,
+    DAO_AUTH_SM_CONFIG,
+  }
 
+  String name() default "";
   /** Only order from 0 to 9 (inclusive) are allowed */
   int order() default 9;
+
+  ConstructorType constructorType() default ConstructorType.DAO_AUTH;
 }

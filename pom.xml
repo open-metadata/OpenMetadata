@@ -73,7 +73,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.7.0</mockito.version>
+    <mockito.version>4.8.0</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.3</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
@@ -82,44 +82,44 @@
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
-    <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
-    <maven-surefire.version>3.0.0-M5</maven-surefire.version>
-    <maven-shade-plugin.version>2.4.1</maven-shade-plugin.version>
-    <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
-    <maven-src-plugin.version>2.2.1</maven-src-plugin.version>
+    <maven-dependency-plugin.version>3.3.0</maven-dependency-plugin.version>
+    <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+    <maven-surefire.version>3.0.0-M7</maven-surefire.version>
+    <maven-javadoc-plugin.version>3.4.1</maven-javadoc-plugin.version>
+    <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
     <jakarta.version>3.0.2</jakarta.version>
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.32.0</jdbi3.version>
+    <jdbi3.version>3.33.0</jdbi3.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
     <flyway.version>8.5.11</flyway.version>
     <redshift-jdbc.version>2.1.0.9</redshift-jdbc.version>
     <gson.version>2.9.1</gson.version>
     <mysql.connector.version>8.0.30</mysql.connector.version>
-    <postgres.connector.version>42.4.2</postgres.connector.version>
+    <postgres.connector.version>42.5.0</postgres.connector.version>
     <jsonschema2pojo.version>1.1.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
-    <tomcat-jdbc.version>10.0.8</tomcat-jdbc.version>
+    <tomcat-jdbc.version>10.1.0</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
     <elasticsearch.version>7.13.4</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.2.2</openapiswagger.version>
+    <openapiswagger.version>2.2.3</openapiswagger.version>
     <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.13</httpclient.version>
-    <spring.version>5.3.22</spring.version>
-    <log4j.version>2.18.0</log4j.version>
-    <org.junit.jupiter.version>5.9.0</org.junit.jupiter.version>
+    <spring.version>5.3.23</spring.version>
+    <log4j.version>2.19.0</log4j.version>
+    <org.junit.jupiter.version>5.9.1</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.2</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
     <!--  upgrade only when we find how to import esnext modules in nodejs  -->
-    <antlr.version>4.10.1</antlr.version>
+    <antlr.version>4.11.1</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -127,19 +127,18 @@
     <sonar.organization>open-metadata</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     <sonar.working.directory>target/sonar</sonar.working.directory>
-    <maven.sonar-plugin.version>3.7.0.1746</maven.sonar-plugin.version>
+    <maven.sonar-plugin.version>3.9.1.2184</maven.sonar-plugin.version>
     <sonar.language>java</sonar.language>
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
-    <json-schema-validator.version>1.0.72</json-schema-validator.version>
-    <spring-expression.version>5.3.22</spring-expression.version>
+    <json-schema-validator.version>1.0.73</json-schema-validator.version>
     <java-jwt.version>3.19.2</java-jwt.version>
-    <jwks-rsa.version>0.21.1</jwks-rsa.version>
+    <jwks-rsa.version>0.21.2</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
-    <freemarker.version>2.3.28</freemarker.version>
+    <freemarker.version>2.3.31</freemarker.version>
     <passay.version>1.6.2</passay.version>
     <bcrypt.version>0.9.0</bcrypt.version>
     <simplejavamail.version>7.5.0</simplejavamail.version>
@@ -328,11 +327,6 @@
         <version>${httpasyncclient.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.openapitools.swagger</groupId>
-        <artifactId>swagger-maven-plugin</artifactId>
-        <version>${openapiswagger.version}</version>
-      </dependency>
-      <dependency>
         <groupId>io.swagger.core.v3</groupId>
         <artifactId>swagger-core</artifactId>
         <version>${openapiswagger.version}</version>
@@ -485,7 +479,7 @@
       <dependency>
         <groupId>org.apache.johnzon</groupId>
         <artifactId>johnzon-core</artifactId>
-        <version>1.2.18</version>
+        <version>1.2.19</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -502,7 +496,7 @@
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
-        <version>9.4.39.v20210325</version>
+        <version>9.4.40.v20210413</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
@@ -607,7 +601,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jxr-plugin</artifactId>
-        <version>3.1.1</version>
+        <version>3.3.0</version>
       </plugin>
     </plugins>
   </reporting>
@@ -647,11 +641,11 @@
                <includeTestSourceDirectory>true</includeTestSourceDirectory>
            </configuration>
            <dependencies>
-            <dependency>
-              <groupId>com.puppycrawl.tools</groupId>
-              <artifactId>checkstyle</artifactId>
-              <version>10.3.2</version>
-            </dependency>
+             <dependency>
+               <groupId>com.puppycrawl.tools</groupId>
+               <artifactId>checkstyle</artifactId>
+               <version>10.3.4</version>
+             </dependency>
           </dependencies>
         </plugin>
         <plugin>
@@ -678,7 +672,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-source-plugin</artifactId>
-          <version>${maven-src-plugin.version}</version>
+          <version>${maven-source-plugin.version}</version>
           <executions>
             <execution>
               <id>attach-sources</id>
@@ -798,8 +792,14 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
-        <version>2.2</version>
+        <version>${maven-dependency-plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>io.openapitools.swagger</groupId>
+        <artifactId>swagger-maven-plugin</artifactId>
+        <version>2.1.6</version>
       </plugin>
     </plugins>
   </build>

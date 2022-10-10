@@ -78,6 +78,7 @@ public class DashboardServiceResource
     return service;
   }
 
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         DashboardService.class,

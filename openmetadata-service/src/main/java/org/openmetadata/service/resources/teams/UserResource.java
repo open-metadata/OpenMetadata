@@ -109,6 +109,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -126,8 +127,6 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
-import org.openmetadata.service.util.ConfigurationHolder;
-import org.openmetadata.service.util.ConfigurationHolder.ConfigurationType;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -147,18 +146,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
-
   private final TokenRepository tokenRepository;
-
   @Getter private final UserRepository userRepository;
-
   private final SecretsManager secretsManager;
-
-  private final String providerType;
-
   private final boolean isEmailServiceEnabled;
-
   private final LoginAttemptCache loginAttemptCache;
+
+  private final AuthenticationConfiguration authenticationConfiguration;
+
+  private final AuthorizerConfiguration authorizerConfiguration;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -170,22 +166,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM_CONFIG)
+  public UserResource(
+      CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager, OpenMetadataApplicationConfig config) {
     super(User.class, new UserRepository(dao, secretsManager), authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
     userRepository = new UserRepository(dao, secretsManager);
     this.secretsManager = secretsManager;
-    this.providerType =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-            .getProvider();
-    this.isEmailServiceEnabled =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationType.SMTP_CONFIG, SmtpSettings.class)
-            .getEnableSmtpServer();
-    this.loginAttemptCache = new LoginAttemptCache();
+    this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authorizerConfiguration = config.getAuthorizerConfiguration();
+    SmtpSettings smtpSettings = config.getSmtpSettings();
+    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
+    this.loginAttemptCache = new LoginAttemptCache(config);
   }
 
   public static class UserList extends ResultList<User> {
@@ -535,7 +529,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isBasicAuth() {
-    return providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
+    return authenticationConfiguration.getProvider().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
   }
 
   @PUT
@@ -789,23 +783,21 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
-    if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-        .getEnableSelfSignup()) {
+    if (Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup())) {
       User registeredUser = registerUser(uriInfo, create);
       if (isEmailServiceEnabled) {
         try {
           sendEmailVerification(uriInfo, registeredUser);
         } catch (Exception e) {
           LOG.error("Error in sending mail to the User : {}", e.getMessage());
-          return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
+          return Response.status(424, EMAIL_SENDING_ISSUE).build();
         }
       }
-      return Response.status(Response.Status.CREATED).entity("User Registration Successful.").build();
-    } else {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new ErrorMessage(400, "Signup is not Available"))
+      return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
+          .entity(registeredUser)
           .build();
+    } else {
+      return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Signup is not available").build();
     }
   }
 
@@ -848,7 +840,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           String user)
       throws IOException {
     User registeredUser = dao.getByName(uriInfo, user, getFields("isEmailVerified"));
-    if (registeredUser.getIsEmailVerified()) {
+    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       // no need to do anything
       return Response.status(Response.Status.OK).entity("Email Already Verified For User.").build();
     }
@@ -1101,7 +1093,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .build();
       }
 
-      if (storedUser != null && storedUser.getIsBot() != null && storedUser.getIsBot()) {
+      if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {
         return Response.status(BAD_REQUEST)
             .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), INVALID_USERNAME_PASSWORD))
             .build();
@@ -1205,10 +1197,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String[] tokens = newRegistrationRequest.getEmail().split("@");
     String userName = tokens[0];
     String emailDomain = tokens[1];
-    Set<String> allowedDomains =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
-            .getAllowedEmailRegistrationDomains();
+    Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
     if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
       LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
       throw new BadRequestException("Email with the given domain is not allowed. Contact Administrator");
@@ -1217,13 +1206,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     PasswordUtil.validatePassword(newRegistrationRequest.getPassword());
     LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
     User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
-    if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
-        .getAdminPrincipals()
-        .contains(userName)) {
+    if (authorizerConfiguration.getAdminPrincipals().contains(userName)) {
       newUser.setIsAdmin(true);
     }
-    return dao.create(uriInfo, newUser);
+    // remove auth mechanism from the user
+    User registeredUser = dao.create(uriInfo, newUser);
+    registeredUser.setAuthenticationMechanism(null);
+    return registeredUser;
   }
 
   public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
@@ -1233,7 +1222,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     User registeredUser =
         dao.get(uriInfo, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
-    if (registeredUser.getIsEmailVerified()) {
+    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
     }
@@ -1257,7 +1246,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User extendRegistrationToken(UriInfo uriInfo, String existingToken) throws IOException {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(existingToken);
     User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("isEmailVerified"));
-    if (registeredUser.getIsEmailVerified()) {
+    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       // no need to do anything
       return registeredUser;
     }
@@ -1398,7 +1387,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new RuntimeException(
           "Password Reset Token" + token.getToken() + "Expired token. Please issue a new request");
     }
-    if (!token.getIsActive()) {
+    if (Boolean.FALSE.equals(token.getIsActive())) {
       throw new RuntimeException("Password Reset Token" + token.getToken() + "Token was marked inactive");
     }
   }

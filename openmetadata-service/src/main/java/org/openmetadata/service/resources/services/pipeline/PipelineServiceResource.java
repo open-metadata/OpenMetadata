@@ -77,6 +77,7 @@ public class PipelineServiceResource
     return service;
   }
 
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         PipelineService.class,

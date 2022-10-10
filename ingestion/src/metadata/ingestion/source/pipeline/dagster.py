@@ -12,12 +12,7 @@
 Dagster source to extract metadata from OM UI
 """
 import traceback
-from collections.abc import Iterable
 from typing import Dict, Iterable, List, Optional
-
-from dagster_graphql import DagsterGraphQLClient
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -42,7 +37,6 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.graphql_queries import DAGSTER_PIPELINE_DETAILS_GRAPHQL
-from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -84,10 +78,12 @@ class DagsterSource(PipelineServiceSource):
 
     def get_run_list(self):
         try:
-            result = self.client.client._execute(DAGSTER_PIPELINE_DETAILS_GRAPHQL)
+            result = self.client.client._execute(
+                DAGSTER_PIPELINE_DETAILS_GRAPHQL
+            )  # pylint: disable=protected-access
         except ConnectionError as conerr:
-            logger.error("Cannot connect to dagster client", conerr)
-            logger.debug("Failed due to : ", traceback.format_exc())
+            logger.error(f"Cannot connect to dagster client {conerr}")
+            logger.debug(f"Failed due to : {traceback.format_exc()}")
 
         return result["assetNodes"]
 

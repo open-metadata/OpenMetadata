@@ -11,7 +11,6 @@
 """
 Generic source to build SQL connectors.
 """
-
 import traceback
 from abc import ABC
 from copy import deepcopy
@@ -450,6 +449,7 @@ class CommonDbSourceService(
     def close(self):
         if self.connection is not None:
             self.connection.close()
+        self.engine.dispose()
 
     def fetch_table_tags(
         self, table_name: str, schema_name: str, inspector: Inspector

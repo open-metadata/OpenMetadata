@@ -33,6 +33,10 @@ class EntityLinkBuildingException(Exception):
 
 
 def split(s: str) -> List[str]:
+    """
+    Method to handle the splitting logic
+    """
+
     lexer = EntityLinkLexer(InputStream(s))
     stream = CommonTokenStream(lexer)
     parser = EntityLinkParser(stream)

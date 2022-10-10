@@ -75,7 +75,6 @@ plugins: Dict[str, Set[str]] = {
         "pandas==1.3.5",
         "gcsfs==2022.5.0",
         "s3fs==0.4.2",
-        "dask==2022.2.0",
         "pyarrow==6.0.1",
         "boto3~=1.19.12",
     },
@@ -147,6 +146,7 @@ test = {
     "pylint",
     "pytest==7.0.0",
     "pytest-cov",
+    "pytest-order",
     "faker",
     "coverage",
     # sklearn integration

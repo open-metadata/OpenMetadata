@@ -91,6 +91,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return policy;
   }
 
+  @Collection
   public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
     super(Policy.class, new PolicyRepository(dao), authorizer);
   }
