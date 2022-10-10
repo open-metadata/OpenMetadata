@@ -36,7 +36,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def _get_column_type(self, type_):  # pylint: disable=too-many-branches
+def _get_column_type(self, type_):
     """
     Function overwritten from AthenaDialect
     to add custom SQA typing.
@@ -50,15 +50,28 @@ def _get_column_type(self, type_):  # pylint: disable=too-many-branches
         length = None
 
     args = []
-    if name in ["boolean"]:
-        col_type = types.BOOLEAN
-    elif name in ["float", "double", "real"]:
-        col_type = types.FLOAT
-    elif name in ["tinyint", "smallint", "integer", "int"]:
-        col_type = types.INTEGER
-    elif name in ["bigint"]:
-        col_type = types.BIGINT
-    elif name in ["decimal"]:
+    col_map = {
+        "boolean": types.BOOLEAN,
+        "float": types.FLOAT,
+        "double": types.FLOAT,
+        "real": types.FLOAT,
+        "tinyint": types.INTEGER,
+        "smallint": types.INTEGER,
+        "integer": types.INTEGER,
+        "int": types.INTEGER,
+        "bigint": types.BIGINT,
+        "string": types.String,
+        "date": types.DATE,
+        "timestamp": types.TIMESTAMP,
+        "binary": types.BINARY,
+        "varbinary": types.BINARY,
+        "array": types.ARRAY,
+        "json": types.JSON,
+        "struct": sqa_types.SQAStruct,
+        "row": sqa_types.SQAStruct,
+        "map": sqa_types.SQAMap,
+    }
+    if name in ["decimal"]:
         col_type = types.DECIMAL
         if length:
             precision, scale = length.split(",")
@@ -71,22 +84,8 @@ def _get_column_type(self, type_):  # pylint: disable=too-many-branches
         col_type = types.VARCHAR
         if length:
             args = [int(length)]
-    elif name in ["string"]:
-        col_type = types.String
-    elif name in ["date"]:
-        col_type = types.DATE
-    elif name in ["timestamp"]:
-        col_type = types.TIMESTAMP
-    elif name in ["binary", "varbinary"]:
-        col_type = types.BINARY
-    elif name in ["array"]:
-        col_type = types.ARRAY
-    elif name in ["json"]:
-        col_type = types.JSON
-    elif name in ["struct", "row"]:
-        col_type = sqa_types.SQAStruct
-    elif name in ["map"]:
-        col_type = sqa_types.SQAMap
+    elif col_map.get(name):
+        col_type = col_map.get(name)
     else:
         logger.warning(f"Did not recognize type '{type_}'")
         col_type = types.NullType
