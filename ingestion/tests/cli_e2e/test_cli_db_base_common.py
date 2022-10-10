@@ -24,7 +24,7 @@ from metadata.ingestion.api.workflow import Workflow
 from .test_cli_db_base import PATH_TO_RESOURCES, CliDBBase
 
 
-class CliCommonDB(object):
+class CliCommonDB:
     class TestSuite(CliDBBase.TestSuite, ABC):
 
         engine: Engine

@@ -13,7 +13,8 @@ Currently, it runs CLI tests for any database connector.
 class must extend from `CliCommonDB.TestSuite` if the connector's source implement the `CommonDbSourceService` class, otherwise, from `CliDBBase.TestSuite`.
 
 2. Add an ingestion YAML file with the service and the credentials of it. Use when possible a Dockerized environment, otherwise, remember to use environment
-variables for sensitive information in case of external resources.
+variables for sensitive information in case of external resources. On each test, the YAML file will be modified by the `build_yaml` method which will create
+a copy of the file and prepare it for the tests. This way, we avoid adding (and maintaining) an extra YAML for each test.
 
 3. The `{connector}` name must be added in the list of connectors in the GH Action: `.github/workflows/py-cli-e2e-tests.yml`
 
