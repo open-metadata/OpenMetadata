@@ -21,7 +21,7 @@ from base64 import b64encode
 from datetime import timedelta
 
 import click
-import requests as requests
+import requests
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -36,8 +36,8 @@ from metadata.utils.client_version import get_client_version
 from metadata.utils.logger import cli_logger, ometa_logger
 
 logger = cli_logger()
-calc_gb = 1024 * 1024 * 1024
-min_memory_limit = 6 * calc_gb
+CALC_GB = 1024 * 1024 * 1024
+MIN_MEMORY_LIMIT = 6 * CALC_GB
 RELEASE_BRANCH_VERSION = get_client_version()
 
 DOCKER_URL_ROOT = f"https://raw.githubusercontent.com/open-metadata/OpenMetadata/{RELEASE_BRANCH_VERSION}/docker/metadata/"
@@ -51,6 +51,10 @@ DEFUALT_JWT_TOKEN = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ
 
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
+    """
+    Method for starting up the docker containers
+    """
+
     logger.info("Running docker compose for OpenMetadata..")
     click.secho("It may take some time on the first run", fg="bright_yellow")
     if file_path:
@@ -120,15 +124,20 @@ It helps OpenMetadata reach wider audience and helps our community.\n""",
 
 
 def env_file_check(env_file_path):
+    """
+    Method for checking if the env file path is valid
+    """
     if env_file_path is not None:
         if env_file_path == "":
             raise ValueError("Please provide path to env file")
-        else:
-            logger.info(f"Using env file from {env_file_path}")
-            return pathlib.Path(env_file_path)
+        logger.info(f"Using env file from {env_file_path}")
+        return pathlib.Path(env_file_path)
 
 
 def file_path_check(file_path, database: str):
+    """
+    Method for checking if the file path is valid
+    """
 
     docker_compose_file_name = BACKEND_DATABASES.get(database) or DEFAULT_COMPOSE_FILE
 
@@ -140,16 +149,15 @@ def file_path_check(file_path, database: str):
             logger.info(
                 f"Downloading latest docker compose file {docker_compose_file_name} from openmetadata repository..."
             )
-            r = requests.get(f"{DOCKER_URL_ROOT}{docker_compose_file_name}")
+            resp = requests.get(f"{DOCKER_URL_ROOT}{docker_compose_file_name}")
             with open(docker_compose_file_path, "wb") as docker_compose_file_handle:
-                docker_compose_file_handle.write(r.content)
+                docker_compose_file_handle.write(resp.content)
                 docker_compose_file_handle.close()
     else:
         if file_path == "":
             raise ValueError("Please Provide Path to local docker-compose.yml file")
-        else:
-            logger.info(f"Using docker compose file from {file_path}")
-            docker_compose_file_path = pathlib.Path(file_path)
+        logger.info(f"Using docker compose file from {file_path}")
+        docker_compose_file_path = pathlib.Path(file_path)
     return docker_compose_file_path
 
 
@@ -165,6 +173,9 @@ def run_docker(
     ingest_sample_data: bool,
     database: str,
 ):
+    """
+    Main method for the OpenMetadata docker commands
+    """
     try:
         from python_on_whales import DockerClient
 
@@ -181,7 +192,7 @@ def run_docker(
             raise Exception("Docker Service is not up and running.")
 
         logger.info("Checking openmetadata memory constraints...")
-        if docker_info.mem_total < min_memory_limit:
+        if docker_info.mem_total < MIN_MEMORY_LIMIT:
             raise MemoryError
 
         # Check for -f <Path>
@@ -225,7 +236,7 @@ def run_docker(
         logger.debug(traceback.format_exc())
         click.secho(
             f"Please Allocate More memory to Docker.\nRecommended: 6GB+\nCurrent: "
-            f"{round(float(dict(docker_info).get('mem_total')) / calc_gb)}",
+            f"{round(float(dict(docker_info).get('mem_total')) / CALC_GB)}",
             fg="red",
         )
     except Exception as exc:
@@ -234,6 +245,10 @@ def run_docker(
 
 
 def reset_db_om(docker):
+    """
+    Reset the OpenMetadata Database and clear everything in the DB
+    """
+
     if docker.container.inspect("openmetadata_server").state.running:
         click.secho(
             f"Resetting OpenMetadata.\nThis will clear out all the data",
@@ -263,10 +278,9 @@ def wait_for_containers(docker) -> None:
         )
         if running:
             break
-        else:
-            sys.stdout.write(".")
-            sys.stdout.flush()
-            time.sleep(5)
+        sys.stdout.write(".")
+        sys.stdout.flush()
+        time.sleep(5)
 
 
 def run_sample_data() -> None:
@@ -293,7 +307,7 @@ def run_sample_data() -> None:
             resp = client.get("/dags")
             if resp:
                 break
-            elif time.time() > timeout:
+            if time.time() > timeout:
                 raise TimeoutError("Ingestion container timed out")
         except TimeoutError as err:
             logger.debug(traceback.format_exc())
@@ -304,4 +318,4 @@ def run_sample_data() -> None:
             time.sleep(5)
     for dag in dags:
         json_sample_data = {"is_paused": False}
-        client.patch("/dags/{}".format(dag), data=json.dumps(json_sample_data))
+        client.patch(f"/dags/{dag}", data=json.dumps(json_sample_data))

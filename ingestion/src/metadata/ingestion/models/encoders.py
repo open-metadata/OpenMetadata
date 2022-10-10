@@ -22,7 +22,7 @@ def show_secrets_encoder(obj):
     :param obj: Pydantic Model
     :return: JSON repr
     """
-    if type(obj) == SecretStr:
+    if isinstance(obj, SecretStr):
         return obj.get_secret_value() if obj else None
-    else:
-        return pydantic_encoder(obj)
+
+    return pydantic_encoder(obj)

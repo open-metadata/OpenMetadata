@@ -120,6 +120,7 @@ public class SettingsResource {
     }
   }
 
+  @Collection
   public SettingsResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "SettingsRepository must not be null");
     this.settingsRepository = new SettingsRepository(dao);

@@ -80,6 +80,7 @@ public class DatabaseServiceResource
     return service;
   }
 
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         DatabaseService.class,

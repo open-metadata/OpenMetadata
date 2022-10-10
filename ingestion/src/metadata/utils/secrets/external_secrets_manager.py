@@ -25,11 +25,7 @@ from metadata.generated.schema.entity.services.connections.metadata.secretsManag
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
-from metadata.generated.schema.entity.teams.authN.jwtAuth import JWTAuthMechanism
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
 from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
@@ -48,6 +44,10 @@ NULL_VALUE = "null"
 
 
 class ExternalSecretsManager(SecretsManager, ABC):
+    """
+    Abstract class for third party secrets' manager implementations
+    """
+
     def __init__(
         self,
         cluster_prefix: str,
@@ -115,7 +115,7 @@ class ExternalSecretsManager(SecretsManager, ABC):
                 ).parse_obj(config_object)
             except KeyError as err:
                 msg = f"No client implemented for auth provider [{config.authProvider}]: {err}"
-                raise NotImplementedError(msg)
+                raise NotImplementedError(msg) from err
 
     def retrieve_dbt_source_config(
         self, source_config: SourceConfig, pipeline_name: str

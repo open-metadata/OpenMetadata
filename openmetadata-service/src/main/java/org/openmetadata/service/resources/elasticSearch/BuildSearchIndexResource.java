@@ -45,7 +45,6 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.api.CreateEventPublisherJob.RunMode;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.EventPublisherJob;
@@ -53,6 +52,7 @@ import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.settings.Stats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -60,8 +60,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ConfigurationHolder;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -84,19 +84,15 @@ public class BuildSearchIndexResource {
   private final ExecutorService threadScheduler;
   private final UserRepository userRepository;
 
-  public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer) {
-    if (ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.ELASTICSEARCH_CONFIG, ElasticSearchConfiguration.class)
-        != null) {
-      this.client =
-          ElasticSearchClientUtils.createElasticSearchClient(
-              ConfigurationHolder.getInstance()
-                  .getConfig(
-                      ConfigurationHolder.ConfigurationType.ELASTICSEARCH_CONFIG, ElasticSearchConfiguration.class));
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM_CONFIG)
+  public BuildSearchIndexResource(
+      CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager, OpenMetadataApplicationConfig config) {
+    if (config.getElasticSearchConfiguration() != null) {
+      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
       this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
     }
     this.dao = dao;
-    this.userRepository = new UserRepository(dao);
+    this.userRepository = new UserRepository(dao, secretsManager);
     this.authorizer = authorizer;
     this.threadScheduler =
         new ThreadPoolExecutor(

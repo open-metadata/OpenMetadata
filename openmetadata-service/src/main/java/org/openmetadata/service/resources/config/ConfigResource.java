@@ -40,6 +40,7 @@ public class ConfigResource {
   private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;
 
+  @Collection(constructorType = Collection.ConstructorType.CONFIG)
   public ConfigResource(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     this.openMetadataApplicationConfig = openMetadataApplicationConfig;
     this.jwtTokenGenerator = JWTTokenGenerator.getInstance();

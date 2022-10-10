@@ -8,10 +8,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Abstract Source definition to build a Workflow
+"""
 import time
 from abc import ABCMeta, abstractmethod
-from typing import Any, Generic, Iterable, List
+from typing import Any, Dict, Generic, Iterable, List
 
 from pydantic import BaseModel
 
@@ -31,16 +33,22 @@ class InvalidSourceException(Exception):
 
 
 class SourceStatus(BaseModel, Status):
+    """
+    Class to handle processed records
+    and success %
+    """
+
     records = 0
     source_start_time = time.time()
 
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
-    filtered: List[str] = list()
+    success: List[Any] = []
+    failures: List[Dict[str, str]] = []
+    warnings: List[Dict[str, str]] = []
+    filtered: List[Dict[str, str]] = []
 
     def scanned(self, record: Any) -> None:
         self.records += 1
+        self.success.append(record)
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
@@ -60,6 +68,11 @@ class SourceStatus(BaseModel, Status):
 
 
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
+    """
+    Abstract source implementation. The workflow will run
+    its next_record and pass them to the next step.
+    """
+
     @classmethod
     @abstractmethod
     def create(

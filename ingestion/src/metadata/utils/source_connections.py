@@ -93,6 +93,10 @@ CX_ORACLE_LIB_VERSION = "8.3.0"
 
 
 def get_connection_url_common(connection):
+    """
+    Common method for building the source connection urls
+    """
+
     url = f"{connection.scheme.value}://"
 
     if connection.username:
@@ -128,7 +132,11 @@ def get_connection_url_common(connection):
 
 @singledispatch
 def get_connection_url(connection):
-    raise NotImplemented(
+    """
+    Single dispatch method to get the source connection url
+    """
+
+    raise NotImplementedError(
         f"Connection URL build not implemented for type {type(connection)}: {connection}"
     )
 
@@ -256,6 +264,10 @@ def _(connection: PrestoConnection):
 
 @singledispatch
 def get_connection_args(connection):
+    """
+    Single dispatch method to get the connection arguments
+    """
+
     return connection.connectionArguments or {}
 
 
@@ -268,10 +280,8 @@ def _(connection: TrinoConnection):
             connection_args = connection.connectionArguments.dict()
             connection_args.update({"http_session": session})
             return connection_args
-        else:
-            return {"http_session": session}
-    else:
-        return connection.connectionArguments if connection.connectionArguments else {}
+        return {"http_session": session}
+    return connection.connectionArguments if connection.connectionArguments else {}
 
 
 @get_connection_url.register
