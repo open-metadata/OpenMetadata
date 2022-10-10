@@ -20,7 +20,7 @@ import {
   validateMessages,
 } from '../../../utils/AnnouncementsUtils';
 import {
-  getLocaleDate,
+  getLocaleDateFromTimeStamp,
   getTimeZone,
   getUTCDateTime,
 } from '../../../utils/TimeUtils';
@@ -45,10 +45,10 @@ const EditAnnouncementModal: FC<Props> = ({
 }) => {
   const [title, setTitle] = useState<string>(announcementTitle);
   const [startDate, setStartDate] = useState<string>(
-    getLocaleDate(announcement.startTime * 1000)
+    getLocaleDateFromTimeStamp(announcement.startTime * 1000)
   );
   const [endDate, setEndDate] = useState<string>(
-    getLocaleDate(announcement.endTime * 1000)
+    getLocaleDateFromTimeStamp(announcement.endTime * 1000)
   );
   const [description, setDescription] = useState<string>(
     announcement.description || ''

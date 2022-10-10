@@ -157,7 +157,7 @@ the possible knowledge, you can also add lineage manually with our UI editor.
     color="violet-70"
     icon="celebration"
     bold="Manual Lineage"
-    href="/openmetadata/ingestion/lineage/edit-lineage-manually"
+    href="/connectors/ingestion/lineage/edit-lineage-manually"
   >
     Capture Lineage knowledge with the UI editor.
   </InlineCallout>

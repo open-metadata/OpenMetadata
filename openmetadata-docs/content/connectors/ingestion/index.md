@@ -78,7 +78,7 @@ Understand how OpenMetadata deploys the workflows that are created from the UI.
     color="violet-70"
     bold="Ingestion Pipeline UI Deployment"
     icon="360"
-    href="/connectors/ingestion/ingestion_deployment"
+    href="/connectors/ingestion/deployment"
   >
     Learn about the Pipeline Service interface and how OpenMetadata handles workflow deployments.
   </InlineCallout>

@@ -83,6 +83,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();
+    cy.get('[data-testid="profileSample"]').should('be.visible').type(0.01);
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
@@ -107,7 +108,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.goToHomePage();
     goToProfilerTab();
     cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
-  })
+  });
 
   it('Add table test case with new test suite', () => {
     login(LOGIN.username, LOGIN.password);

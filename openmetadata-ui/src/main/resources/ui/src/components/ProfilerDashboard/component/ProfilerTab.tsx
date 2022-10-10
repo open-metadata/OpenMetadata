@@ -14,7 +14,6 @@
 import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
-import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getListTestCase } from '../../../axiosAPIs/testAPI';
@@ -29,6 +28,7 @@ import {
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
+import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TableTestsType } from '../../TableProfiler/TableProfiler.interface';
 import {
@@ -104,7 +104,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     const mathMetricData: MetricChartType['data'] = [];
     const sumMetricData: MetricChartType['data'] = [];
     updateProfilerData.forEach((col) => {
-      const x = moment.unix(col.timestamp || 0).format('DD/MMM HH:mm');
+      const x = getFormattedDateFromSeconds(col.timestamp);
 
       countMetricData.push({
         name: x,

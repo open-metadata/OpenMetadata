@@ -70,16 +70,13 @@ class DatabaseServiceWrapper:
 
 
 class MigrateSource(MetadataSource):
+    """
+    Metadata Migrate source module
+    to migrate from 0.9 from 0.10
+    """
 
     config: WorkflowSource
     report: SourceStatus
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -92,6 +89,9 @@ class MigrateSource(MetadataSource):
         return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[Entity]:
+        """
+        Fetch all relebvent entities
+        """
         if self.service_connection.includeTables:
             yield from self.fetch_tables(
                 fields=[
