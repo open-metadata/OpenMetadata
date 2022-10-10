@@ -160,7 +160,7 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
 jest.mock(
   '../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () => {
-    return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+    return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
   }
 );
 
@@ -227,23 +227,23 @@ jest.mock(
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
-      .mockReturnValue(<p>ModalWithMarkdownEditor</p>),
+      .mockReturnValue(<div>ModalWithMarkdownEditor</div>),
   })
 );
 
 jest.mock(
   '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
-  () => jest.fn().mockReturnValue(<p>EntitySummaryDetails</p>)
+  () => jest.fn().mockReturnValue(<div>EntitySummaryDetails</div>)
 );
 
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
-  return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
+  return jest.fn().mockReturnValue(<div>ServiceConfig</div>);
 });
 
 jest.mock(
   '../../components/common/entityPageInfo/ManageButton/ManageButton',
   () => {
-    return jest.fn().mockReturnValue(<p>ManageButton</p>);
+    return jest.fn().mockReturnValue(<div>ManageButton</div>);
   }
 );
 
@@ -258,8 +258,8 @@ jest.mock('../../utils/TableUtils', () => ({
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
-  Row: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
-  Col: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({

@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Glue pipeline source to extract metadata
+"""
+
 import traceback
 from typing import Any, Iterable, List, Optional
 
@@ -52,6 +56,11 @@ STATUS_MAP = {
 
 
 class GluepipelineSource(PipelineServiceSource):
+    """
+    Implements the necessary methods ot extract
+    Pipeline metadata from Glue Pipeline's metadata db
+    """
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.task_id_mapping = {}

@@ -1,0 +1,17 @@
+{
+  "label": {
+    "docs": "Docs",
+    "api-uppercase": "API",
+    "slack": "Slack",
+    "logout": "Logout",
+    "version": "Version",
+    "explore": "Explore",
+    "glossary": "Glossary",
+    "tags": "Tags",
+    "settings": "Settings",
+    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models"
+  },
+  "message": {},
+  "server": {},
+  "url": {}
+}

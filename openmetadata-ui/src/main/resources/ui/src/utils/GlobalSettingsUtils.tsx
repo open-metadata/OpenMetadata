@@ -222,7 +222,7 @@ export const getGlobalSettingsMenuWithPermission = (
       category: 'Event Publishers',
       items: [
         {
-          label: 'Elastic search',
+          label: 'Elasticsearch',
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.ALL,
             permissions

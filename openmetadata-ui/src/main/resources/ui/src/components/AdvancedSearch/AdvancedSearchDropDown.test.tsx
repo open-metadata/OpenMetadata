@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import {
   COMMON_DROPDOWN_ITEMS,
@@ -40,75 +40,81 @@ const mockPorps = {
 
 describe('Test AdvancedSearch DropDown Component', () => {
   it('Should render dropdown component', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <AdvancedSearchDropDown {...mockPorps} />
-    );
+    await act(async () => {
+      const { findByTestId, findAllByTestId } = render(
+        <AdvancedSearchDropDown {...mockPorps} />
+      );
 
-    const dropdownLabel = await findByTestId('dropdown-label');
+      const dropdownLabel = await findByTestId('dropdown-label');
 
-    expect(dropdownLabel).toBeInTheDocument();
+      expect(dropdownLabel).toBeInTheDocument();
 
-    fireEvent.click(dropdownLabel);
+      fireEvent.click(dropdownLabel);
 
-    const dropdownMenu = await findByTestId('dropdown-menu');
+      const dropdownMenu = await findByTestId('dropdown-menu');
 
-    expect(dropdownMenu).toBeInTheDocument();
+      expect(dropdownMenu).toBeInTheDocument();
 
-    const menuItems = await findAllByTestId('dropdown-menu-item');
+      const menuItems = await findAllByTestId('dropdown-menu-item');
 
-    expect(menuItems).toHaveLength(mockItems.length);
+      expect(menuItems).toHaveLength(mockItems.length);
+    });
   });
 
   it('Should call onSelect method on onClick option', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <AdvancedSearchDropDown {...mockPorps} />
-    );
+    await act(async () => {
+      const { findByTestId, findAllByTestId } = render(
+        <AdvancedSearchDropDown {...mockPorps} />
+      );
 
-    const dropdownLabel = await findByTestId('dropdown-label');
+      const dropdownLabel = await findByTestId('dropdown-label');
 
-    expect(dropdownLabel).toBeInTheDocument();
+      expect(dropdownLabel).toBeInTheDocument();
 
-    fireEvent.click(dropdownLabel);
+      fireEvent.click(dropdownLabel);
 
-    const dropdownMenu = await findByTestId('dropdown-menu');
+      const dropdownMenu = await findByTestId('dropdown-menu');
 
-    expect(dropdownMenu).toBeInTheDocument();
+      expect(dropdownMenu).toBeInTheDocument();
 
-    const menuItems = await findAllByTestId('dropdown-menu-item');
+      const menuItems = await findAllByTestId('dropdown-menu-item');
 
-    expect(menuItems).toHaveLength(mockItems.length);
+      expect(menuItems).toHaveLength(mockItems.length);
 
-    fireEvent.click(menuItems[0]);
+      fireEvent.click(menuItems[0]);
 
-    expect(onSelect).toHaveBeenCalledWith(mockItems[0].key);
+      expect(onSelect).toHaveBeenCalledWith(mockItems[0].key);
+    });
   });
 
   it('Selected option should be disabled', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <AdvancedSearchDropDown
-        {...mockPorps}
-        selectedItems={[{ key: mockItems[0].key, value: undefined }]}
-      />
-    );
+    await act(async () => {
+      const { findByTestId, findAllByTestId } = render(
+        <AdvancedSearchDropDown
+          {...mockPorps}
+          selectedItems={[{ key: mockItems[0].key, value: undefined }]}
+        />
+      );
 
-    const dropdownLabel = await findByTestId('dropdown-label');
+      const dropdownLabel = await findByTestId('dropdown-label');
 
-    expect(dropdownLabel).toBeInTheDocument();
+      expect(dropdownLabel).toBeInTheDocument();
 
-    fireEvent.click(dropdownLabel);
+      fireEvent.click(dropdownLabel);
 
-    const dropdownMenu = await findByTestId('dropdown-menu');
+      const dropdownMenu = await findByTestId('dropdown-menu');
 
-    expect(dropdownMenu).toBeInTheDocument();
+      expect(dropdownMenu).toBeInTheDocument();
 
-    const menuItems = await findAllByTestId('dropdown-menu-item');
+      const menuItems = await findAllByTestId('dropdown-menu-item');
 
-    expect(menuItems).toHaveLength(mockItems.length);
+      expect(menuItems).toHaveLength(mockItems.length);
 
-    expect(menuItems[0]).toHaveAttribute('aria-disabled', 'true');
+      expect(menuItems[0]).toHaveAttribute('aria-disabled', 'true');
 
-    fireEvent.click(menuItems[0]);
+      fireEvent.click(menuItems[0]);
 
-    expect(onSelect).not.toHaveBeenCalledWith(mockItems[0].key);
+      expect(onSelect).not.toHaveBeenCalledWith(mockItems[0].key);
+    });
   });
 });

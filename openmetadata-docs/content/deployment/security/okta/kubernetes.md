@@ -10,13 +10,16 @@ Check the Helm information [here](https://artifacthub.io/packages/search?repo=op
 Once the `Client Id` and `Client Secret` are generated, see the snippet below for an example of where to
 place the client id value and update the authorizer configurations in the `values.yaml`.
 
-Note: Make sure to add the Ingestion Client ID for the Service application in `botPrincipals`. This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
+Note: Make sure to add the Ingestion Client ID for the Service application in `botPrincipals`. 
+This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
+
+### Before 0.12.1
 
 ```yaml
 global:
   authorizer:
-    className: "org.openmetadata.catalog.security.DefaultAuthorizer"
-    containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "user1"
       - "user2"
@@ -43,3 +46,29 @@ global:
         email: ""
         scopes: [ ]
 ```
+
+### After 0.12.1
+
+```yaml
+global:
+  authorizer:
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+    initialAdmins:
+      - "user1"
+      - "user2"
+    botPrincipals:
+      - ingestion-bot
+      - "<service_application_client_id>"
+    principalDomain: "open-metadata.org"
+  authentication:
+    provider: "okta"
+    publicKeys:
+      - "{ISSUER_URL}/v1/keys"
+    authority: "{ISSUER_URL}"
+    clientId: "{CLIENT_ID - SPA APP}"
+    callbackUrl: "http://localhost:8585/callback"
+```
+
+**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+ingesting data from Airflow.

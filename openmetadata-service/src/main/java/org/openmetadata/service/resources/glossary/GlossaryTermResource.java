@@ -84,6 +84,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @Inject
+  @Collection
   public GlossaryTermResource(CollectionDAO dao, Authorizer authorizer) {
     super(GlossaryTerm.class, new GlossaryTermRepository(dao), authorizer);
   }

@@ -50,7 +50,7 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
-    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
+    col = elements.clauses.clauses[0].name
     return "approx_percentile(%s, 0.5)" % col
 
 

@@ -89,9 +89,9 @@ class MlModelSourceStatus(SourceStatus):
     ML Model specific Status
     """
 
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
 
     def scanned(self, record: str) -> None:
         """

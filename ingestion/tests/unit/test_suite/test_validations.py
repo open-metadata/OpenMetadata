@@ -225,7 +225,7 @@ class testSuiteValidation(unittest.TestCase):
             testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
                 TestCaseParameterValue(name="minValueForMedianInCol", value="1"),
-                TestCaseParameterValue(name="maxValueForMedianInCol", value="10"),
+                TestCaseParameterValue(name="maxColValue", value="10"),
             ],
         )
 

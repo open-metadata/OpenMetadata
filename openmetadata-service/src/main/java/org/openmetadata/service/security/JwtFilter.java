@@ -135,7 +135,7 @@ public class JwtFilter implements ContainerRequestFilter {
     String userName = validateAndReturnUsername(claims);
 
     // validate bot token
-    if (claims.containsKey(BOT_CLAIM) && claims.get(BOT_CLAIM).asBoolean()) {
+    if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
       validateBotToken(tokenFromHeader, userName);
     }
 

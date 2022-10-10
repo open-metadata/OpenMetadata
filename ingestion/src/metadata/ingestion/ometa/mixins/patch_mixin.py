@@ -51,7 +51,7 @@ class OMetaPatchMixin(Generic[T]):
     client: REST
 
     def _validate_instance_description(
-        self, entity: Type[T], entity_id: Union[str, basic.Uuid], force: bool = False
+        self, entity: Type[T], entity_id: Union[str, basic.Uuid]
     ) -> Optional[T]:
         """
         Validates if we can update a description or not. Will return
@@ -97,14 +97,15 @@ class OMetaPatchMixin(Generic[T]):
             Updated Entity
         """
         instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id, force=force
+            entity=entity, entity_id=entity_id
         )
         if not instance:
             return None
 
         if instance.description and not force:
             logger.warning(
-                f"The entity with id [{str(entity_id)}] already has a description. To overwrite it, set `force` to True."
+                f"The entity with id [{str(entity_id)}] already has a description."
+                " To overwrite it, set `force` to True."
             )
             return None
 
@@ -129,6 +130,8 @@ class OMetaPatchMixin(Generic[T]):
                 f"Error trying to PATCH description for {entity.__class__.__name__} [{entity_id}]: {exc}"
             )
 
+        return None
+
     def patch_column_description(
         self,
         entity_id: Union[str, basic.Uuid],
@@ -149,7 +152,7 @@ class OMetaPatchMixin(Generic[T]):
             Updated Entity
         """
         table: Table = self._validate_instance_description(
-            entity=Table, entity_id=entity_id, force=force
+            entity=Table, entity_id=entity_id
         )
         if not table:
             return None
@@ -169,7 +172,8 @@ class OMetaPatchMixin(Generic[T]):
 
         if col.description and not force:
             logger.warning(
-                f"The column '{column_name}' in '{table.displayName}' already has a description. To overwrite it, set `force` to True."
+                f"The column '{column_name}' in '{table.displayName}' already has a description."
+                " To overwrite it, set `force` to True."
             )
             return None
 
@@ -193,3 +197,5 @@ class OMetaPatchMixin(Generic[T]):
             logger.warning(
                 f"Error trying to PATCH description for Table Column: {entity_id}, {column_name}: {exc}"
             )
+
+        return None

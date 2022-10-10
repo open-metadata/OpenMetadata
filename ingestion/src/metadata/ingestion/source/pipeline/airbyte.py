@@ -111,7 +111,10 @@ class AirbyteSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from airbyte
         :return: Create Pipeline request with tasks
         """
-        connection_url = f"/workspaces/{pipeline_details.workspace.get('workspaceId')}/connections/{pipeline_details.connection.get('connectionId')}"
+        connection_url = (
+            f"/workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"/connections/{pipeline_details.connection.get('connectionId')}"
+        )
         yield CreatePipelineRequest(
             name=pipeline_details.connection.get("connectionId"),
             displayName=pipeline_details.connection.get("name"),
@@ -134,8 +137,8 @@ class AirbyteSource(PipelineServiceSource):
 
         # Airbyte does not offer specific attempt link, just at pipeline level
         log_link = (
-            f"{self.service_connection.hostPort}/workspaces/{pipeline_details.workspace.get('workspaceId')}/connections/"
-            f"{pipeline_details.connection.get('connectionId')}/status"
+            f"{self.service_connection.hostPort}/workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"/connections/{pipeline_details.connection.get('connectionId')}/status"
         )
 
         for job in self.client.list_jobs(

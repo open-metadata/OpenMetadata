@@ -8,10 +8,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Workflow definition for metadata related ingestions: metadata, lineage and usage.
+"""
+# module building strings read better with .format instead of f-strings
+# pylint: disable=consider-using-f-string
 import importlib
 import traceback
-from typing import Type, TypeVar
+from typing import Optional, Type, TypeVar
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -53,6 +57,13 @@ class InvalidWorkflowJSONException(Exception):
 
 
 class Workflow:
+    """
+    Ingestion workflow implementation.
+
+    It gets the data from the sources and passes it to
+    the processor + sink or stage + bulk sink.
+    """
+
     config: OpenMetadataWorkflowConfig
     source: Source
     processor: Processor
@@ -61,7 +72,12 @@ class Workflow:
     bulk_sink: BulkSink
     report = {}
 
-    def __init__(self, config: OpenMetadataWorkflowConfig):
+    def __init__(
+        self, config: OpenMetadataWorkflowConfig
+    ):  # pylint: disable=too-many-locals
+        """
+        Disabling pylint to wait for workflow reimplementation as a topology
+        """
         self.config = config
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
@@ -87,8 +103,8 @@ class Workflow:
             if source_type.startswith("custom")
             else "metadata.ingestion.source.{}.{}.{}Source".format(
                 service_type.name.lower(),
-                self.typeClassFetch(source_type, True),
-                self.typeClassFetch(source_type, False),
+                self.type_class_fetch(source_type, True),
+                self.type_class_fetch(source_type, False),
             )
         )
 
@@ -103,8 +119,8 @@ class Workflow:
             processor_type = self.config.processor.type
             processor_class = self.get(
                 "metadata.ingestion.processor.{}.{}Processor".format(
-                    self.typeClassFetch(processor_type, True),
-                    self.typeClassFetch(processor_type, False),
+                    self.type_class_fetch(processor_type, True),
+                    self.type_class_fetch(processor_type, False),
                 )
             )
             processor_config = self.config.processor.dict().get("config", {})
@@ -119,8 +135,8 @@ class Workflow:
             stage_type = self.config.stage.type
             stage_class = self.get(
                 "metadata.ingestion.stage.{}.{}Stage".format(
-                    self.typeClassFetch(stage_type, True),
-                    self.typeClassFetch(stage_type, False),
+                    self.type_class_fetch(stage_type, True),
+                    self.type_class_fetch(stage_type, False),
                 )
             )
             stage_config = self.config.stage.dict().get("config", {})
@@ -131,8 +147,8 @@ class Workflow:
             sink_type = self.config.sink.type
             sink_class = self.get(
                 "metadata.ingestion.sink.{}.{}Sink".format(
-                    self.typeClassFetch(sink_type, True),
-                    self.typeClassFetch(sink_type, False),
+                    self.type_class_fetch(sink_type, True),
+                    self.type_class_fetch(sink_type, False),
                 )
             )
             sink_config = self.config.sink.dict().get("config", {})
@@ -143,8 +159,8 @@ class Workflow:
             bulk_sink_type = self.config.bulkSink.type
             bulk_sink_class = self.get(
                 "metadata.ingestion.bulksink.{}.{}BulkSink".format(
-                    self.typeClassFetch(bulk_sink_type, True),
-                    self.typeClassFetch(bulk_sink_type, False),
+                    self.type_class_fetch(bulk_sink_type, True),
+                    self.type_class_fetch(bulk_sink_type, False),
                 )
             )
             bulk_sink_config = self.config.bulkSink.dict().get("config", {})
@@ -155,19 +171,21 @@ class Workflow:
                 f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured"
             )
 
-    def typeClassFetch(self, type: str, isFile: bool):
-        if isFile:
-            return type.replace("-", "_")
-        else:
-            return "".join([i.title() for i in type.replace("-", "_").split("_")])
+    def type_class_fetch(self, type_: str, is_file: bool):
+        if is_file:
+            return type_.replace("-", "_")
 
-    def get(self, key: str) -> Type[T]:
+        return "".join([i.title() for i in type_.replace("-", "_").split("_")])
+
+    def get(self, key: str) -> Optional[Type[T]]:
         if key.find(".") >= 0:
-            # If the key contains a dot, we treat it as a import path and attempt
+            # If the key contains a dot, we treat it as an import path and attempt
             # to load it dynamically.
             module_name, class_name = key.rsplit(".", 1)
-            MyClass = getattr(importlib.import_module(module_name), class_name)
-            return MyClass
+            my_class = getattr(importlib.import_module(module_name), class_name)
+            return my_class
+
+        return None
 
     @classmethod
     def create(cls, config_dict: dict) -> "Workflow":
@@ -237,8 +255,8 @@ class Workflow:
             hasattr(self, "sink") and self.sink.get_status().failures
         ):
             return 1
-        else:
-            return 0
+
+        return 0
 
     def _retrieve_service_connection_if_needed(
         self, metadata_config: OpenMetadataConnection, service_type: ServiceType
@@ -271,7 +289,8 @@ class Workflow:
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error getting dbtConfigSource for service name [{service_name}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
+                    f"Error getting dbtConfigSource for service name [{service_name}]"
+                    f" using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     def _retrieve_dbt_config_source_if_needed(
@@ -307,7 +326,8 @@ class Workflow:
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error getting dbtConfigSource for config [{config}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
+                    f"Error getting dbtConfigSource for config [{config}] using the secrets manager"
+                    f" provider [{metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     @staticmethod

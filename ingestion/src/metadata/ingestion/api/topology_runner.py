@@ -167,7 +167,9 @@ class TopologyRunnerMixin(Generic[C]):
             self.context.__dict__[dependency].name.__root__
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
-        return fqn._build(*context_names, entity_request.name.__root__)
+        return fqn._build(  # pylint: disable=protected-access
+            *context_names, entity_request.name.__root__
+        )
 
     def sink_request(self, stage: NodeStage, entity_request: C) -> Iterable[Entity]:
         """
