@@ -86,6 +86,7 @@ public class TagResource {
     }
   }
 
+  @Collection
   public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
     this.dao = new TagRepository(collectionDAO);

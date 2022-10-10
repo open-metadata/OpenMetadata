@@ -78,6 +78,7 @@ public class MlModelServiceResource
     return service;
   }
 
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         MlModelService.class,

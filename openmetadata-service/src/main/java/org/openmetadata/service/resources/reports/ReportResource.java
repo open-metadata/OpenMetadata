@@ -56,6 +56,7 @@ import org.openmetadata.service.util.ResultList;
 public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
+  @Collection
   public ReportResource(CollectionDAO dao, Authorizer authorizer) {
     super(Report.class, new ReportRepository(dao), authorizer);
   }

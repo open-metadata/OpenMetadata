@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -43,7 +45,6 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import Ellipses from '../common/Ellipses/Ellipses';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
 
@@ -52,6 +53,7 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
+  const { t } = useTranslation();
   const { isFirstTimeUser } = useAuth(location.pathname);
   const {
     isAuthDisabled,
@@ -82,7 +84,7 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       name: (
         <span>
-          <span className="tw-text-grey-muted">{`Version ${
+          <span className="tw-text-grey-muted">{`${t('label.version')} ${
             (version ? version : '?').split('-')[0]
           }`}</span>
         </span>
@@ -100,7 +102,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: `Docs`,
+      name: t('label.docs'),
       to: urlGitbookDocs,
       isOpenNewTab: true,
       disabled: false,
@@ -114,7 +116,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: `API`,
+      name: t('label.api-uppercase'),
       to: ROUTES.SWAGGER,
       disabled: false,
       icon: (
@@ -127,7 +129,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: `Slack`,
+      name: t('label.slack'),
       to: urlJoinSlack,
       disabled: false,
       isOpenNewTab: true,
@@ -147,9 +149,12 @@ const Appbar: React.FC = (): JSX.Element => {
       <div>
         <div className="tw-text-grey-muted tw-text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
-          <Ellipses tooltip className="tw-font-medium" key={i}>
+          <Typography.Paragraph
+            className="ant-typography-ellipsis-custom font-medium"
+            ellipsis={{ tooltip: true }}
+            key={i}>
             {userRole}
-          </Ellipses>
+          </Typography.Paragraph>
         ))}
         <hr className="tw-my-1.5" />
       </div>
@@ -185,13 +190,11 @@ const Appbar: React.FC = (): JSX.Element => {
           data-testid="user-name"
           to={getUserPath(currentUser?.name as string)}>
           {' '}
-          <Ellipses
-            tooltip
-            className="tw-font-medium tw-cursor-pointer"
-            rows={1}
-            style={{ color: '#7147E8' }}>
+          <Typography.Paragraph
+            className="ant-typography-ellipsis-custom font-medium cursor-pointer text-primary"
+            ellipsis={{ rows: 1, tooltip: true }}>
             {name}
-          </Ellipses>
+          </Typography.Paragraph>
         </Link>
         <hr className="tw-my-1.5" />
         {roles.length > 0 ? getUsersRoles(roles, 'Roles') : null}
@@ -202,11 +205,14 @@ const Appbar: React.FC = (): JSX.Element => {
           <div>
             <span className="tw-text-grey-muted tw-text-xs">Teams</span>
             {teams.map((t, i) => (
-              <Ellipses tooltip className="tw-text-xs" key={i}>
+              <Typography.Paragraph
+                className="ant-typography-ellipsis-custom text-xs"
+                ellipsis={{ tooltip: true }}
+                key={i}>
                 <Link to={getTeamAndUserDetailsPath(t.name as string)}>
                   {t.displayName || t.name}
                 </Link>
-              </Ellipses>
+              </Typography.Paragraph>
             ))}
             <hr className="tw-mt-1.5" />
           </div>
@@ -224,7 +230,7 @@ const Appbar: React.FC = (): JSX.Element => {
       isText: true,
     },
     {
-      name: 'Logout',
+      name: t('label.logout'),
       to: '',
       disabled: false,
       method: onLogoutHandler,

@@ -109,6 +109,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -126,8 +127,6 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
-import org.openmetadata.service.util.ConfigurationHolder;
-import org.openmetadata.service.util.ConfigurationHolder.ConfigurationType;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -147,18 +146,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
-
   private final TokenRepository tokenRepository;
-
   @Getter private final UserRepository userRepository;
-
   private final SecretsManager secretsManager;
-
-  private final String providerType;
-
   private final boolean isEmailServiceEnabled;
-
   private final LoginAttemptCache loginAttemptCache;
+
+  private final AuthenticationConfiguration authenticationConfiguration;
+
+  private final AuthorizerConfiguration authorizerConfiguration;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -170,21 +166,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM_CONFIG)
+  public UserResource(
+      CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager, OpenMetadataApplicationConfig config) {
     super(User.class, new UserRepository(dao, secretsManager), authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
     userRepository = new UserRepository(dao, secretsManager);
     this.secretsManager = secretsManager;
-    this.providerType =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-            .getProvider();
-    SmtpSettings smtpSettings =
-        ConfigurationHolder.getInstance().getConfig(ConfigurationType.SMTP_CONFIG, SmtpSettings.class);
+    this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authorizerConfiguration = config.getAuthorizerConfiguration();
+    SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    this.loginAttemptCache = new LoginAttemptCache();
+    this.loginAttemptCache = new LoginAttemptCache(config);
   }
 
   public static class UserList extends ResultList<User> {
@@ -534,7 +529,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isBasicAuth() {
-    return providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
+    return authenticationConfiguration.getProvider().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
   }
 
   @PUT
@@ -788,10 +783,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
-    if (Boolean.TRUE.equals(
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-            .getEnableSelfSignup())) {
+    if (Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup())) {
       User registeredUser = registerUser(uriInfo, create);
       if (isEmailServiceEnabled) {
         try {
@@ -1205,10 +1197,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String[] tokens = newRegistrationRequest.getEmail().split("@");
     String userName = tokens[0];
     String emailDomain = tokens[1];
-    Set<String> allowedDomains =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
-            .getAllowedEmailRegistrationDomains();
+    Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
     if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
       LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
       throw new BadRequestException("Email with the given domain is not allowed. Contact Administrator");
@@ -1217,10 +1206,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     PasswordUtil.validatePassword(newRegistrationRequest.getPassword());
     LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
     User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
-    if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
-        .getAdminPrincipals()
-        .contains(userName)) {
+    if (authorizerConfiguration.getAdminPrincipals().contains(userName)) {
       newUser.setIsAdmin(true);
     }
     // remove auth mechanism from the user

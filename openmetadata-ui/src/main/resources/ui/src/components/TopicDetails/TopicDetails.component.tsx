@@ -552,11 +552,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     entityLineage={lineageTabData.entityLineage}
                     entityLineageHandler={lineageTabData.entityLineageHandler}
                     entityType={EntityType.TOPIC}
-                    isLoading={lineageTabData.isLineageLoading}
-                    isNodeLoading={lineageTabData.isNodeLoading}
-                    isOwner={
+                    hasEditAccess={
                       topicPermissions.EditAll || topicPermissions.EditLineage
                     }
+                    isLoading={lineageTabData.isLineageLoading}
+                    isNodeLoading={lineageTabData.isNodeLoading}
                     lineageLeafNodes={lineageTabData.lineageLeafNodes}
                     loadNodeHandler={lineageTabData.loadNodeHandler}
                     removeLineageHandler={lineageTabData.removeLineageHandler}

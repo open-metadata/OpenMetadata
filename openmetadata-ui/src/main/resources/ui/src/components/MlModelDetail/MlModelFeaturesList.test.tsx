@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { findAllByTestId, findByTestId, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -134,6 +134,7 @@ jest.mock('../../utils/TableUtils', () => ({
 jest.mock('../../utils/TagsUtils', () => ({
   getTagCategories: jest.fn(),
   getTaglist: jest.fn().mockReturnValue([]),
+  getTagDisplay: jest.fn(),
 }));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -146,6 +147,10 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
     .mockReturnValue(<p> ModalWithMarkdownEditor</p>),
 }));
 
+jest.mock('../tags/tags', () => {
+  return jest.fn().mockImplementation(({ tag }) => <span>{tag}</span>);
+});
+
 const handleFeaturesUpdate = jest.fn();
 
 const mockProp = {
@@ -156,22 +161,22 @@ const mockProp = {
 
 describe('Test MlModel feature list', () => {
   it('Should render MlModel feature list component', async () => {
-    const { container } = render(<MlModelFeaturesList {...mockProp} />, {
+    render(<MlModelFeaturesList {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const featureList = await findByTestId(container, 'feature-list');
+    const featureList = await screen.findByTestId('feature-list');
 
     expect(featureList).toBeInTheDocument();
   });
 
   it('Should render proper feature cards', async () => {
-    const { container } = render(<MlModelFeaturesList {...mockProp} />, {
+    render(<MlModelFeaturesList {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const featureList = await findByTestId(container, 'feature-list');
-    const featureCards = await findAllByTestId(container, 'feature-card');
+    const featureList = await screen.findByTestId('feature-list');
+    const featureCards = await screen.findAllByTestId('feature-card');
 
     expect(featureList).toBeInTheDocument();
     expect(featureCards).toHaveLength(mockData['mlFeatures'].length);

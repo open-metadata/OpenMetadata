@@ -11,19 +11,29 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import React, { forwardRef } from 'react';
 import { DescriptionTabs } from './DescriptionTabs';
 
 jest.mock('../../../utils/TasksUtils', () => ({
   getDescriptionDiff: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="richTextEditor">RichTextEditor</div>)
-);
+jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () => {
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }) => {
+      return (
+        <div
+          data-testid="richTextEditor"
+          ref={(input) => {
+            return { getEditorContent: input };
+          }}>
+          {initialValue}RichTextEditor
+        </div>
+      );
+    })
+  );
+});
 
 jest.mock(
   '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
@@ -71,17 +81,23 @@ describe('Test Description Tabs Component', () => {
 
     expect(tabs).toHaveLength(tabList.length);
 
-    fireEvent.click(tabs[0]);
+    act(() => {
+      fireEvent.click(tabs[0]);
+    });
 
     expect(
       await screen.findByTestId('richTextEditorPreviewer')
     ).toBeInTheDocument();
 
-    fireEvent.click(tabs[1]);
+    act(() => {
+      fireEvent.click(tabs[1]);
+    });
 
     expect(await screen.findByTestId('DiffView')).toBeInTheDocument();
 
-    fireEvent.click(tabs[2]);
+    act(() => {
+      fireEvent.click(tabs[2]);
+    });
 
     expect(await screen.findByTestId('richTextEditor')).toBeInTheDocument();
   });

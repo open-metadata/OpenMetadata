@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     FeatureType,
     MlFeature,
     MlHyperParameter,
-    MlModel,
     MlStore,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -39,7 +38,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
-from metadata.utils import fqn
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
 
@@ -64,7 +62,11 @@ class MlflowSource(MlModelServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_mlmodels(self) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:
+    def get_mlmodels(
+        self,
+    ) -> Iterable[
+        Tuple[RegisteredModel, ModelVersion]
+    ]:  # pylint: disable=arguments-differ
         """
         List and filters models from the registry
         """
@@ -93,11 +95,11 @@ class MlflowSource(MlModelServiceSource):
 
             yield model, latest_version
 
-    def _get_algorithm(self) -> str:
+    def _get_algorithm(self) -> str:  # pylint: disable=arguments-differ
         logger.info("Setting algorithm with default value `mlmodel` for Mlflow")
         return "mlmodel"
 
-    def yield_mlmodel(
+    def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model_and_version: Tuple[RegisteredModel, ModelVersion]
     ) -> Iterable[CreateMlModelRequest]:
         """
@@ -123,7 +125,11 @@ class MlflowSource(MlModelServiceSource):
         )
 
     @staticmethod
-    def _get_hyper_params(data: RunData) -> Optional[List[MlHyperParameter]]:
+    def _get_hyper_params(
+        data: RunData,
+    ) -> Optional[
+        List[MlHyperParameter]
+    ]:  # pylint: disable=arguments-differ,arguments-renamed
         """
         Get the hyper parameters from the parameters
         logged in the run data object.
@@ -148,7 +154,9 @@ class MlflowSource(MlModelServiceSource):
         return None
 
     @staticmethod
-    def _get_ml_store(version: ModelVersion) -> Optional[MlStore]:
+    def _get_ml_store(
+        version: ModelVersion,
+    ) -> Optional[MlStore]:  # pylint: disable=arguments-differ, arguments-renamed
         """
         Get the Ml Store from the model version object
         """
@@ -167,7 +175,7 @@ class MlflowSource(MlModelServiceSource):
             )
         return None
 
-    def _get_ml_features(
+    def _get_ml_features(  # pylint: disable=arguments-differ
         self, data: RunData, run_id: str, model_name: str
     ) -> Optional[List[MlFeature]]:
         """

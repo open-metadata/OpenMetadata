@@ -14,6 +14,12 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 ## Procedure
 
+<Warning>
+
+It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+
+</Warning>
+
 ### 1. Download the binaries for the release you want to install
 
 OpenMetadata release binaries are maintained as GitHub releases.

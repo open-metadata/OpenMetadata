@@ -78,6 +78,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return mlmodel;
   }
 
+  @Collection
   public MlModelResource(CollectionDAO dao, Authorizer authorizer) {
     super(MlModel.class, new MlModelRepository(dao), authorizer);
   }
