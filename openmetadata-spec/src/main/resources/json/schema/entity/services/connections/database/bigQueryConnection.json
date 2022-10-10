@@ -79,7 +79,7 @@
         "type": "string"
       },
       "uniqueItems": true,
-      "default": []
+      "default": null
     },
     "taxonomyLocation": {
       "title": "Taxonomy Location",
