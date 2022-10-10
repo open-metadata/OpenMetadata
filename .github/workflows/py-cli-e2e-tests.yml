@@ -13,6 +13,7 @@ name: py-cli-e2e-tests
 on:
   schedule:
     - cron:  '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   py-cli-e2e-tests:
