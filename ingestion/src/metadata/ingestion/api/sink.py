@@ -26,9 +26,9 @@ from metadata.ingestion.api.status import Status
 
 
 class SinkStatus(BaseModel, Status):
-    records: List[str] = list()
-    warnings: List[Any] = list()
-    failures: List[Any] = list()
+    records: List[str] = []
+    warnings: List[Any] = []
+    failures: List[Any] = []
 
     def records_written(self, record: str) -> None:
         self.records.append(record)
