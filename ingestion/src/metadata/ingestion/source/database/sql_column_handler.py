@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -128,6 +129,18 @@ class SqlColumnHandlerMixin:
         for constraint in unique_constraints:
             if constraint.get("column_names"):
                 unique_columns.extend(constraint.get("column_names"))
+        pk_columns = [
+            clean_up_starting_ending_double_quotes_in_string(pk_column)
+            for pk_column in pk_columns
+        ]
+        unique_columns = [
+            clean_up_starting_ending_double_quotes_in_string(unique_column)
+            for unique_column in unique_columns
+        ]
+        foreign_columns = [
+            clean_up_starting_ending_double_quotes_in_string(foreign_column)
+            for foreign_column in foreign_columns
+        ]
         return pk_columns, unique_columns, foreign_columns
 
     def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:

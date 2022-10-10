@@ -64,6 +64,7 @@ const TeamsPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const { fqn } = useParams<{ [key: string]: string }>();
+  const [currentFqn, setCurrentFqn] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
   const [users, setUsers] = useState<User[]>([]);
@@ -470,11 +471,15 @@ const TeamsPage = () => {
   };
 
   useEffect(() => {
-    if (entityPermissions.ViewAll || entityPermissions.ViewBasic) {
+    if (
+      (entityPermissions.ViewAll || entityPermissions.ViewBasic) &&
+      currentFqn !== fqn
+    ) {
       if (fqn) {
         fetchTeamByFqn(fqn);
       }
       fetchAllTeams(false, fqn);
+      setCurrentFqn(fqn);
     }
   }, [entityPermissions, fqn]);
 

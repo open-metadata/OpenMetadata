@@ -193,48 +193,49 @@ class SupersetSource(DashboardServiceSource):
         """
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
             chart_json = self.all_charts.get(chart_id)
-            datasource_fqn = (
-                self._get_datasource_fqn(
-                    chart_json.get("datasource_id"), db_service_name
-                )
-                if chart_json.get("datasource_id")
-                else None
-            )
-            if not datasource_fqn:
-                continue
-            from_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=datasource_fqn,
-            )
-            try:
-                dashboard_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Lineage_Dashboard,
-                    service_name=self.config.serviceName,
-                    dashboard_name=str(dashboard_details["id"]),
-                )
-                to_entity = self.metadata.get_by_name(
-                    entity=Lineage_Dashboard,
-                    fqn=dashboard_fqn,
-                )
-                if from_entity and to_entity:
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__, type="dashboard"
-                            ),
-                        )
+            if chart_json:
+                datasource_fqn = (
+                    self._get_datasource_fqn(
+                        chart_json.get("datasource_id"), db_service_name
                     )
-                    yield lineage
-
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+                    if chart_json.get("datasource_id")
+                    else None
                 )
+                if not datasource_fqn:
+                    continue
+                from_entity = self.metadata.get_by_name(
+                    entity=Table,
+                    fqn=datasource_fqn,
+                )
+                try:
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Lineage_Dashboard,
+                        service_name=self.config.serviceName,
+                        dashboard_name=str(dashboard_details["id"]),
+                    )
+                    to_entity = self.metadata.get_by_name(
+                        entity=Lineage_Dashboard,
+                        fqn=dashboard_fqn,
+                    )
+                    if from_entity and to_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id.__root__, type="table"
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_entity.id.__root__, type="dashboard"
+                                ),
+                            )
+                        )
+                        yield lineage
+
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+                    )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict

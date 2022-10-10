@@ -7,7 +7,7 @@ slug: /sdk/python
 
 We are now going to present a high-level Python API as a type-safe and gentle wrapper for the OpenMetadata backend.
 
-In the [OpenMetadata Design](/developers/architecture/design), we have been dissecting the internals of OpenMetadata. The main conclusion here is twofold:
+In the [OpenMetadata Design](/developers/architecture), we have been dissecting the internals of OpenMetadata. The main conclusion here is twofold:
 
 - **Everything** is handled via the API, and
 - **Data structures** (Entity definitions) are at the heart of the solution.

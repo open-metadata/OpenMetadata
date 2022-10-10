@@ -17,11 +17,13 @@ kubectl create secret generic custom-oidc-key-secret --namespace=dev-open-metada
 
 The configuration below already uses the presets shown in the example of keycloak configurations, you can change to yours.
 
+### Before 0.12.1
+
 ```yaml
 global:
   authorizer:
-    className: "org.openmetadata.catalog.security.DefaultAuthorizer"
-    containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "admin-user"
     botPrincipals:
@@ -45,3 +47,28 @@ global:
           secretKey: custom-oidc-key-secret
         tokenEndpoint: "http://localhost:8080/realms/data-sec/protocol/openid-connect/token"
 ```
+
+### After 0.12.1
+
+```yaml
+global:
+  authorizer:
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+    initialAdmins:
+      - "admin-user"
+    botPrincipals:
+      - "ingestion-bot"
+      - "service-account-open-metadata"
+    principalDomain: "open-metadata.org"
+  authentication:
+    provider: "custom-oidc"
+    publicKeys:
+      - "http://localhost:8080/realms/data-sec/protocol/openid-connect/certs"
+    authority: "http://localhost:8080/realms/data-sec"
+    clientId: "{Client ID}"
+    callbackUrl: "http://localhost:8585/callback"
+```
+
+**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+ingesting data from Airflow.

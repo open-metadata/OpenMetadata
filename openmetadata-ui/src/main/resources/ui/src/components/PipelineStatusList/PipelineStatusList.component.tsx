@@ -14,7 +14,6 @@
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
-import moment from 'moment';
 import React, {
   FC,
   Fragment,
@@ -29,6 +28,10 @@ import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { Pipeline, PipelineStatus } from '../../generated/entity/data/pipeline';
 import jsonData from '../../jsons/en';
 import { STATUS_OPTIONS } from '../../utils/PipelineDetailsUtils';
+import {
+  getDateToMilliSecondsOfCurrentDate,
+  getPastDatesToMilliSecondsFromCurrentDate,
+} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import ExecutionStrip from '../ExecutionStrip/ExecutionStrip';
@@ -75,10 +78,11 @@ const PipelineStatusList: FC<Prop> = ({
 
   const fetchPipelineStatus = async () => {
     try {
-      const startTs = moment()
-        .subtract(PROFILER_FILTER_RANGE.last60days.days, 'days')
-        .unix();
-      const endTs = moment().unix();
+      const startTs = getPastDatesToMilliSecondsFromCurrentDate(
+        PROFILER_FILTER_RANGE.last60days.days
+      );
+
+      const endTs = getDateToMilliSecondsOfCurrentDate();
 
       const response = await getPipelineStatus(pipelineFQN, {
         startTs,

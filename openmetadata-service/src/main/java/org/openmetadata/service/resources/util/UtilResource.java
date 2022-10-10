@@ -32,6 +32,7 @@ public class UtilResource {
   private final UtilRepository utilRepository;
   private final Authorizer authorizer;
 
+  @Collection
   public UtilResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UtilRepository must not be null");
     this.utilRepository = new UtilRepository(dao.utilDAO());

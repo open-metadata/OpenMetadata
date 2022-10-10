@@ -73,6 +73,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
     return service;
   }
 
+  @Collection
   public StorageServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(StorageService.class, new StorageServiceRepository(dao), authorizer);
   }

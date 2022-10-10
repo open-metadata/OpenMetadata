@@ -85,6 +85,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @Inject
+  @Collection
   public TypeResource(CollectionDAO dao, Authorizer authorizer) {
     super(Type.class, new TypeRepository(dao), authorizer);
   }

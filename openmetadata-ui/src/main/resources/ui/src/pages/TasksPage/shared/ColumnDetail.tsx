@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
-import Ellipses from '../../../components/common/Ellipses/Ellipses';
 import { Column } from '../../../generated/entity/data/table';
 import SVGIcons from '../../../utils/SvgUtils';
 
@@ -26,9 +26,11 @@ const ColumnDetail = ({ column }: { column: Column }) => {
           data-testid="column-type">
           Column type:
         </span>{' '}
-        <Ellipses tooltip rows={1}>
+        <Typography.Paragraph
+          className="ant-typography-ellipsis-custom"
+          ellipsis={{ rows: 1, tooltip: true }}>
           {column.dataTypeDisplay}
-        </Ellipses>
+        </Typography.Paragraph>
       </div>
       {column.tags && column.tags.length ? (
         <div className="tw-flex tw-mt-4" data-testid="column-tags">

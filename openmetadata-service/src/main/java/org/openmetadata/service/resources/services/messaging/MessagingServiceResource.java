@@ -79,6 +79,7 @@ public class MessagingServiceResource
     return service;
   }
 
+  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
   public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(
         MessagingService.class,

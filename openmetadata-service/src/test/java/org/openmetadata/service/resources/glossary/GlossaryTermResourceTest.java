@@ -246,7 +246,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     TagLabel t1Label = EntityUtil.getTagLabel(t1);
 
     // Create glossary term t11 under t1
-    create = createRequest("t11", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef1);
+    create = createRequest("t11with'quote", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef1);
     GlossaryTerm t11 = createEntity(create, ADMIN_AUTH_HEADERS);
     EntityReference tRef11 = t11.getEntityReference();
     TagLabel t11Label = EntityUtil.getTagLabel(t11);

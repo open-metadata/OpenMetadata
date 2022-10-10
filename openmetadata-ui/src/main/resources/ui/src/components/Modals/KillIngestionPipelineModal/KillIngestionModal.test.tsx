@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { postkillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
@@ -65,16 +65,18 @@ describe('Test Kill Ingestion Modal component', () => {
   });
 
   it('Should call kill api on click of confirm button', async () => {
-    render(<KillIngestionModal {...mockProps} />);
+    await act(async () => {
+      render(<KillIngestionModal {...mockProps} />);
 
-    const confirmButton = await screen.findByText('Confirm');
+      const confirmButton = await screen.findByText('Confirm');
 
-    expect(confirmButton).toBeInTheDocument();
+      expect(confirmButton).toBeInTheDocument();
 
-    fireEvent.click(confirmButton);
+      fireEvent.click(confirmButton);
 
-    expect(postkillIngestionPipelineById).toHaveBeenCalledWith(
-      mockProps.pipelineId
-    );
+      expect(postkillIngestionPipelineById).toHaveBeenCalledWith(
+        mockProps.pipelineId
+      );
+    });
   });
 });

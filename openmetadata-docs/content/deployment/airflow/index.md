@@ -25,7 +25,7 @@ well. Here we will guide you on the different aspects to consider when configuri
 
 There are three different angles here:
 
-1. Installing the ingestion modules directly on the host to enable the [Airflow Lineage Backend](/openmetadata/connectors/pipeline/airflow/lineage-backend).
+1. Installing the ingestion modules directly on the host to enable the [Airflow Lineage Backend](/connectors/pipeline/airflow/lineage-backend).
 2. Installing connector modules on the host to run specific workflows. 
 3. Installing the Airflow APIs to enable the workflow deployment through the UI.
 
@@ -40,7 +40,7 @@ Goals:
 - Track DAG and Task status. 
 - Document lineage as code directly on the DAG definition and ingest it when the DAGs run.
 
-Get the necessary information to install and extract metadata from the Lineage Backend [here](/openmetadata/connectors/pipeline/airflow/lineage-backend).
+Get the necessary information to install and extract metadata from the Lineage Backend [here](/connectors/pipeline/airflow/lineage-backend).
 
 ### Connector Modules
 
@@ -57,7 +57,7 @@ You will need to install:
 pip3 install "openmetadata-ingestion[<connector-name>]"
 ```
 
-And then run the DAG as explained in each [Connector](/openmetadata/connectors).
+And then run the DAG as explained in each [Connector](/connectors).
 
 ### Airflow APIs
 
