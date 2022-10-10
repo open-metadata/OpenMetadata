@@ -40,7 +40,9 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
 
     filters: str
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(
+        self, config: WorkflowSource, metadata_config: OpenMetadataConnection
+    ):  # pylint: disable=super-init-not-called
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)

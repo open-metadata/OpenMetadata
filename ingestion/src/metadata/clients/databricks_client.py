@@ -17,13 +17,17 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
 class DatabricksClient:
+    """
+    DatabricksClient creates a Databricks connection based on DatabricksCredentials.
+    """
+
     def __init__(self, config: DatabricksConnection):
         self.config = config
         base_url, _ = self.config.hostPort.split(":")
@@ -50,8 +54,8 @@ class DatabricksClient:
                 data = {}
                 if next_page_token:
                     data["page_token"] = next_page_token
-                response = self.client.get(f"/sql/history/queries", data=data)
-                query_details.extend([i for i in response.get("res")])
+                response = self.client.get("/sql/history/queries", data=data)
+                query_details.extend(list(response.get("res")))
                 next_page_token = response.get("next_page_token", None)
                 has_next_page = response.get("has_next_page", None)
                 if not has_next_page:

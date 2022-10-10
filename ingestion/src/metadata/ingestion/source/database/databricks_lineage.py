@@ -27,6 +27,10 @@ logger = ingestion_logger()
 
 
 class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
+    """
+    Databricks Lineage Source
+    """
+
     def get_table_query(self) -> Optional[Iterator[TableQuery]]:
         """
         If queryLogFilePath available in config iterate through log file
@@ -36,7 +40,9 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
         """
         if self.config.sourceConfig.config.queryLogFilePath:
 
-            with open(self.config.sourceConfig.config.queryLogFilePath, "r") as file:
+            with open(
+                self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
+            ) as file:
                 for row in csv.DictReader(file):
                     query_dict = dict(row)
                     yield TableQuery(

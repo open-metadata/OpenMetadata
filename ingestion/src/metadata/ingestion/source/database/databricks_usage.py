@@ -27,17 +27,23 @@ logger = ingestion_logger()
 
 
 class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
+    """
+    Databricks Usage Source
+    """
+
     def get_table_query(self) -> Iterable[TableQuery]:
 
         try:
             if self.config.sourceConfig.config.queryLogFilePath:
                 table_query_list = []
                 with open(
-                    self.config.sourceConfig.config.queryLogFilePath, "r"
+                    self.config.sourceConfig.config.queryLogFilePath,
+                    "r",
+                    encoding="utf-8",
                 ) as query_log_file:
 
-                    for i in csv.DictReader(query_log_file):
-                        query_dict = dict(i)
+                    for raw in csv.DictReader(query_log_file):
+                        query_dict = dict(raw)
 
                         analysis_date = (
                             datetime.utcnow()
@@ -76,6 +82,9 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
             logger.debug(traceback.format_exc())
 
     def process_table_query(self) -> Optional[Iterable[TableQuery]]:
+        """
+        Method to yield TableQueries
+        """
         try:
             queries = []
             data = self.client.list_query_history()
