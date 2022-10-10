@@ -286,37 +286,37 @@ class ColumnTypeParser:
 
     @staticmethod
     def _parse_primitive_datatype_string(  # pylint: disable=too-many-return-statements
-        data_type: str,
+        dtype: str,
     ) -> Dict[str, object]:
-        if data_type.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
+        if dtype.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
             return {
-                "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[data_type.upper()],
-                "dataTypeDisplay": data_type,
+                "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
+                "dataTypeDisplay": dtype,
             }
-        if ColumnTypeParser._FIXED_STRING.match(data_type):
-            return {"dataType": "STRING", "dataTypeDisplay": data_type}
-        if ColumnTypeParser._FIXED_DECIMAL.match(data_type):
-            match = ColumnTypeParser._FIXED_DECIMAL.match(data_type)
+        if ColumnTypeParser._FIXED_STRING.match(dtype):
+            return {"dataType": "STRING", "dataTypeDisplay": dtype}
+        if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
+            match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
             if match.group(2) is not None:  # type: ignore
                 return {
                     "dataType": ColumnTypeParser.get_column_type(match.group(0)),
-                    "dataTypeDisplay": data_type,
+                    "dataTypeDisplay": dtype,
                     "dataLength": int(match.group(3)),  # type: ignore
                 }
             return {
                 "dataType": ColumnTypeParser.get_column_type(match.group(0)),
-                "dataTypeDisplay": data_type,
+                "dataTypeDisplay": dtype,
             }
-        if data_type == "date":
-            return {"dataType": "DATE", "dataTypeDisplay": data_type}
-        if data_type == "timestamp":
-            return {"dataType": "TIMESTAMP", "dataTypeDisplay": data_type}
-        data_type = ColumnTypeParser.get_column_type(data_type)
+        if dtype == "date":
+            return {"dataType": "DATE", "dataTypeDisplay": dtype}
+        if dtype == "timestamp":
+            return {"dataType": "TIMESTAMP", "dataTypeDisplay": dtype}
+        data_type = ColumnTypeParser.get_column_type(dtype)
         if not data_type:
-            return {"dataType": "NULL", "dataTypeDisplay": data_type}
+            return {"dataType": "NULL", "dataTypeDisplay": dtype}
         data_length = 1
-        if re.match(r".*(\([\w]*\))", data_type):
-            data_length = re.match(r".*\(([\w]*)\)", data_type).groups()[0]
+        if re.match(r".*(\([\w]*\))", dtype):
+            data_length = re.match(r".*\(([\w]*)\)", dtype).groups()[0]
         return {
             "dataType": data_type,
             "dataTypeDisplay": data_type,
