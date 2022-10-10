@@ -52,7 +52,7 @@ export const handleIngestionRetry = (
 ) => {
   const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
-  
+
   let retryCount = count;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -145,9 +145,14 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="ip-address"]').should('exist');
 
   // Test the connection
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/testConnection',
+    'testConnection'
+  );
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(5000);
+  verifyResponseStatusCode('@testConnection', 200);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -676,7 +681,7 @@ export const deleteSoftDeletedUser = (username) => {
 
 export const toastNotification = (msg) => {
   cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
-  cy.wait(1000);
+  cy.wait(200);
   cy.get('.Toastify__close-button').should('be.visible').click();
 };
 

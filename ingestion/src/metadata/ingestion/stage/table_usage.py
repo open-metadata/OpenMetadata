@@ -8,7 +8,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Given query data about tables, store the results
+in a temporary file (i.e., the stage)
+to be further processed by the BulkSink.
+"""
 import json
 import os
 import shutil
@@ -22,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.stage import Stage, StageStatus
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -32,6 +37,13 @@ class TableStageConfig(ConfigModel):
 
 
 class TableUsageStage(Stage[QueryParserData]):
+    """
+    Stage implementation for Table Usage data.
+
+    Converts QueryParserData into TableUsageCount
+    and stores it in files partitioned by date.
+    """
+
     config: TableStageConfig
     status: StageStatus
 
@@ -64,19 +76,19 @@ class TableUsageStage(Stage[QueryParserData]):
         else:
             self.table_queries[(table, record.date)] = [SqlQuery(query=record.sql)]
 
-    def stage_record(self, data: QueryParserData) -> None:
-        if not data or not data.parsedData:
+    def stage_record(self, record: QueryParserData) -> None:
+        if not record or not record.parsedData:
             return
         self.table_usage = {}
         self.table_queries = {}
-        for record in data.parsedData:
-            if record is None:
+        for parsed_data in record.parsedData:
+            if parsed_data is None:
                 continue
-            for table in record.tables:
-                table_joins = record.joins.get(table)
+            for table in parsed_data.tables:
+                table_joins = parsed_data.joins.get(table)
                 try:
-                    self._add_sql_query(record=record, table=table)
-                    table_usage_count = self.table_usage.get((table, record.date))
+                    self._add_sql_query(record=parsed_data, table=table)
+                    table_usage_count = self.table_usage.get((table, parsed_data.date))
                     if table_usage_count is not None:
                         table_usage_count.count = table_usage_count.count + 1
                         if table_joins:
@@ -88,18 +100,18 @@ class TableUsageStage(Stage[QueryParserData]):
 
                         table_usage_count = TableUsageCount(
                             table=table,
-                            databaseName=record.databaseName,
-                            date=record.date,
+                            databaseName=parsed_data.databaseName,
+                            date=parsed_data.date,
                             joins=joins,
-                            serviceName=record.serviceName,
+                            serviceName=parsed_data.serviceName,
                             sqlQueries=[],
-                            databaseSchema=record.databaseSchema,
+                            databaseSchema=parsed_data.databaseSchema,
                         )
 
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error in staging record: {exc}")
-                self.table_usage[(table, record.date)] = table_usage_count
+                self.table_usage[(table, parsed_data.date)] = table_usage_count
                 logger.info(f"Successfully record staged for {table}")
         self.dump_data_to_file()
 
@@ -114,9 +126,12 @@ class TableUsageStage(Stage[QueryParserData]):
                 with open(
                     os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),
                     "a+",
+                    encoding=UTF_8,
                 ) as file:
                     file.write(json.dumps(data))
                     file.write("\n")
 
     def close(self) -> None:
-        return super().close()
+        """
+        Nothing to close. Data is being dumped inside a context manager
+        """

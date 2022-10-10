@@ -18,13 +18,7 @@ code.
 import re
 from typing import List, Optional
 
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.filterPattern import FilterPattern
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.models.topology import TopologyContext
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
 
 
 class InvalidPatternException(Exception):
@@ -43,7 +37,7 @@ def validate_regex(regex_list: List[str]) -> None:
             re.compile(regex)
         except re.error as err:
             msg = f"Invalid regex [{regex}]: {err}"
-            raise InvalidPatternException(msg)
+            raise InvalidPatternException(msg) from err
 
 
 def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
