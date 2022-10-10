@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+To be deprecated https://github.com/open-metadata/OpenMetadata/issues/7960
+"""
 from typing import Optional
 
 from pydantic import BaseModel
