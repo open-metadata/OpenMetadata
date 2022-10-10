@@ -44,8 +44,6 @@ Our `main.py` Python file will then be in charge of:
 
 To try this locally, you can build the DEV image with `make build-ingestion-base-local` from the project root.
 
-TODO: Bring chmod 666 to /var/run/docker.sock in the ingestion container
-
 ## Further improvements
 
 We have two operator to leverage if we don't want to run the ingestion from Airflow's host environment:
