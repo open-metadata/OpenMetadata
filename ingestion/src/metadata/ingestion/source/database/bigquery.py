@@ -21,7 +21,6 @@ from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import BigQueryDialect, _types
-from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
@@ -64,9 +63,7 @@ def get_columns(bq_schema):
     for field in bq_schema:
         col_obj = {
             "name": field.name,
-            "type": _get_sqla_column_type(field)
-            if "STRUCT" not in field or "RECORD" not in field
-            else STRUCT,
+            "type": _get_sqla_column_type(field),
             "nullable": field.mode in ("NULLABLE", "REPEATED"),
             "comment": field.description,
             "default": None,
@@ -116,8 +113,12 @@ class BigquerySource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
         self.temp_credentials = None
-        self.client = Client()
+        self.client = None
         self.project_id = self.set_project_id()
+
+    def prepare(self):
+        self.client = Client()
+        return super().prepare()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
