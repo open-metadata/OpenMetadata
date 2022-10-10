@@ -251,7 +251,7 @@ const SigninPage = () => {
 
                     <div className="mt-4 flex flex-center">
                       <Typography.Text className="mr-4">
-                        New on the platform?
+                        New to the platform?
                       </Typography.Text>
                       <Button
                         ghost
