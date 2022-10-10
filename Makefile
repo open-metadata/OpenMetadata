@@ -54,6 +54,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
 	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
 	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
+	pylint $(PY_SOURCE) --ignore-paths $(PY_SOURCE)/metadata/generated
 
 ## Ingestion models generation
 .PHONY: generate
