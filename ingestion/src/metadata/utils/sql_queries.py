@@ -373,11 +373,6 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
 """
 )
 
-DATABRICKS_SQL_STATEMENT = textwrap.dedent(
-    """
-"""
-)
-
 CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
     """
         Select

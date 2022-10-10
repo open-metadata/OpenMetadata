@@ -11,15 +11,92 @@
 """
 Databricks usage module
 """
+import csv
+import traceback
+from datetime import datetime
+from typing import Iterable, Optional
+
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.databricks_query_parser import (
     DatabricksQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import DATABRICKS_SQL_STATEMENT
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
-class MssqlUsageSource(DatabricksQueryParserSource, UsageSource):
+class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
+    def get_table_query(self) -> Iterable[TableQuery]:
 
-    sql_stmt = DATABRICKS_SQL_STATEMENT
+        try:
+            if self.config.sourceConfig.config.queryLogFilePath:
+                table_query_list = []
+                with open(
+                    self.config.sourceConfig.config.queryLogFilePath, "r"
+                ) as query_log_file:
 
-    filters = ""  # No filtering in the queries
+                    for i in csv.DictReader(query_log_file):
+                        query_dict = dict(i)
+
+                        analysis_date = (
+                            datetime.utcnow()
+                            if not query_dict.get("session_start_time")
+                            else datetime.strptime(
+                                query_dict.get("session_start_time"),
+                                "%Y-%m-%d %H:%M:%S+%f",
+                            )
+                        )
+
+                        query_dict["aborted"] = query_dict["sql_state_code"] == "00000"
+                        if "statement" in query_dict["message"]:
+                            query_dict["message"] = query_dict["message"].split(":")[1]
+
+                        table_query_list.append(
+                            TableQuery(
+                                query=query_dict["message"],
+                                userName=query_dict.get("user_name", ""),
+                                startTime=query_dict.get("session_start_time", ""),
+                                endTime=query_dict.get("log_time", ""),
+                                analysisDate=analysis_date,
+                                aborted=self.get_aborted_status(query_dict),
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        )
+                yield TableQueries(queries=table_query_list)
+
+            else:
+
+                yield from self.process_table_query()
+
+        except Exception as err:
+            logger.error(f"Source usage processing error - {err}")
+            logger.debug(traceback.format_exc())
+
+    def process_table_query(self) -> Optional[Iterable[TableQuery]]:
+        try:
+            queries = []
+            data = self.client.list_query_history()
+            for row in data:
+                try:
+                    queries.append(
+                        TableQuery(
+                            query=row["query_text"],
+                            userName=row["user_name"],
+                            startTime=row["query_start_time_ms"],
+                            endTime=row["execution_end_time_ms"],
+                            analysisDate=datetime.now(),
+                            serviceName=self.config.serviceName,
+                            databaseName="default",  # In databricks databaseName is always default
+                        )
+                    )
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(str(err))
+
+            yield TableQueries(queries=queries)
+        except Exception as err:
+            logger.error(f"Source usage processing error - {err}")
+            logger.debug(traceback.format_exc())
