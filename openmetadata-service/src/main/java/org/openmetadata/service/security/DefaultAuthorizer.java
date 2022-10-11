@@ -71,7 +71,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -150,9 +149,7 @@ public class DefaultAuthorizer implements Authorizer {
         String[] tokens = adminUser.split(COLON_DELIMITER);
         addUserForBasicAuth(tokens[0], tokens[1], domain);
       } else {
-        boolean isDefaultAdmin = adminUser.equals(DEFAULT_ADMIN);
-        String token = isDefaultAdmin ? DEFAULT_ADMIN : PasswordUtil.generateRandomPassword();
-        addUserForBasicAuth(adminUser, token, domain);
+        addUserForBasicAuth(adminUser, DEFAULT_ADMIN, domain);
       }
     }
   }
