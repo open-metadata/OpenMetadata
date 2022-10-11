@@ -16,7 +16,7 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
@@ -28,7 +28,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -42,12 +41,9 @@ POWERBI_APP_URL = "https://app.powerbi.com"
 
 
 class PowerbiSource(DashboardServiceSource):
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
+    """
+    PowerBi Source Class
+    """
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -63,8 +59,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        self.dashboards = self.client.fetch_dashboards().get("value")
-        return self.dashboards
+        return self.client.fetch_dashboards().get("value")
 
     def get_dashboard_name(self, dashboard_details: dict) -> str:
         """
@@ -138,18 +133,9 @@ class PowerbiSource(DashboardServiceSource):
                             entity=Dashboard,
                             fqn=to_fqn,
                         )
-                        if from_entity and to_entity:
-                            lineage = AddLineageRequest(
-                                edge=EntitiesEdge(
-                                    fromEntity=EntityReference(
-                                        id=from_entity.id.__root__, type="database"
-                                    ),
-                                    toEntity=EntityReference(
-                                        id=to_entity.id.__root__, type="dashboard"
-                                    ),
-                                )
-                            )
-                            yield lineage
+                        yield self._get_add_lineage_request(
+                            to_entity=to_entity, from_entity=from_entity
+                        )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(

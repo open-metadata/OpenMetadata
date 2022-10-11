@@ -65,8 +65,6 @@ class Profiler(Generic[TMetric]):
     - A tuple of metrics, from which we will construct queries.
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-public-methods
-
     def __init__(
         self,
         *metrics: Type[TMetric],

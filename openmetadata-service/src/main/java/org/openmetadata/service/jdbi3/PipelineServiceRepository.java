@@ -18,17 +18,15 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 
 public class PipelineServiceRepository extends ServiceEntityRepository<PipelineService, PipelineConnection> {
 
-  public PipelineServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
+  public PipelineServiceRepository(CollectionDAO dao) {
     super(
         PipelineServiceResource.COLLECTION_PATH,
         Entity.PIPELINE_SERVICE,
         dao,
         dao.pipelineServiceDAO(),
-        secretsManager,
         PipelineConnection.class,
         ServiceType.PIPELINE);
   }

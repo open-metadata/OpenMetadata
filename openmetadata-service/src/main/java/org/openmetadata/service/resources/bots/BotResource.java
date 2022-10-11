@@ -60,6 +60,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
@@ -72,12 +73,8 @@ import org.openmetadata.service.util.ResultList;
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
-  final SecretsManager secretsManager;
-
-  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM)
-  public BotResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(Bot.class, new BotRepository(dao, secretsManager), authorizer);
-    this.secretsManager = secretsManager;
+  public BotResource(CollectionDAO dao, Authorizer authorizer) {
+    super(Bot.class, new BotRepository(dao), authorizer);
   }
 
   @Override
@@ -269,6 +266,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     Response response = createOrUpdate(uriInfo, securityContext, bot, false);
     // ensures the secrets' manager store the credentials even when the botUser does not change
     bot = (Bot) response.getEntity();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (!BotType.BOT.equals(bot.getBotType())) {
       secretsManager.encryptOrDecryptBotCredentials(bot.getBotType().value(), bot.getBotUser().getName(), true);
     }

@@ -30,12 +30,14 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     IntervalType,
     Table,
-    TableProfile,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -86,6 +88,7 @@ class ProfilerWorkflow:
     metadata: OpenMetadata
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
+        self.profiler_obj = None  # defined in `create_profiler_obj()``
         self.config = config
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
@@ -215,24 +218,29 @@ class ProfilerWorkflow:
         Args:
             entity: table entity
         """
+        if (
+            not hasattr(entity, "serviceType")
+            or entity.serviceType != DatabaseServiceType.BigQuery
+        ):
+            return None
+
         entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
         if entity_config:
             return entity_config.partitionConfig
 
         if hasattr(entity, "tablePartition") and entity.tablePartition:
-            try:
-                if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
-                    return TablePartitionConfig(
-                        partitionField=entity.tablePartition.columns[0]
-                    )
-                elif entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
-                    if entity.tablePartition.interval == "DAY":
-                        return TablePartitionConfig(partitionField="_PARTITIONDATE")
-                    return TablePartitionConfig(partitionField="_PARTITIONTIME")
-            except Exception:
-                raise TypeError(
-                    f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
+            if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
+                return TablePartitionConfig(
+                    partitionField=entity.tablePartition.columns[0]
                 )
+            if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
+                if entity.tablePartition.interval == "DAY":
+                    return TablePartitionConfig(partitionField="_PARTITIONDATE")
+                return TablePartitionConfig(partitionField="_PARTITIONTIME")
+            raise TypeError(
+                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
+            )
+        return None
 
     def create_profiler_interface(
         self,
@@ -297,8 +305,7 @@ class ProfilerWorkflow:
                 database.name.__root__, "Database pattern not allowed"
             )
             return None
-        else:
-            return database
+        return database
 
     def filter_entities(self, tables: Iterable[Table]) -> Iterable[Table]:
         """
@@ -470,8 +477,7 @@ class ProfilerWorkflow:
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
             return 1
-        else:
-            return 0
+        return 0
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -535,4 +541,4 @@ class ProfilerWorkflow:
 
     @staticmethod
     def _is_sample_source(service_type):
-        return service_type == "sample-data" or service_type == "sample-usage"
+        return service_type in {"sample-data", "sample-usage"}

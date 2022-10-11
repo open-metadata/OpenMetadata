@@ -71,7 +71,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -82,7 +81,6 @@ public class DefaultAuthorizer implements Authorizer {
   private Set<String> botPrincipalUsers;
   private Set<String> testUsers;
   private String principalDomain;
-  private SecretsManager secretsManager;
 
   private String providerType;
 
@@ -95,10 +93,6 @@ public class DefaultAuthorizer implements Authorizer {
         new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getBotPrincipals());
     this.testUsers = new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getTestPrincipals());
     this.principalDomain = openMetadataApplicationConfig.getAuthorizerConfiguration().getPrincipalDomain();
-    this.secretsManager =
-        SecretsManagerFactory.createSecretsManager(
-            openMetadataApplicationConfig.getSecretsManagerConfiguration(),
-            openMetadataApplicationConfig.getClusterName());
     this.providerType = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
     SubjectCache.initialize();
     PolicyCache.initialize();
@@ -155,9 +149,7 @@ public class DefaultAuthorizer implements Authorizer {
         String[] tokens = adminUser.split(COLON_DELIMITER);
         addUserForBasicAuth(tokens[0], tokens[1], domain);
       } else {
-        boolean isDefaultAdmin = adminUser.equals(DEFAULT_ADMIN);
-        String token = isDefaultAdmin ? DEFAULT_ADMIN : PasswordUtil.generateRandomPassword();
-        addUserForBasicAuth(adminUser, token, domain);
+        addUserForBasicAuth(adminUser, DEFAULT_ADMIN, domain);
       }
     }
   }
@@ -413,6 +405,7 @@ public class DefaultAuthorizer implements Authorizer {
       User originalUser =
           userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
       AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (authMechanism != null) {
         Object config =
             secretsManager.encryptOrDecryptBotUserCredentials(user.getName(), authMechanism.getConfig(), false);

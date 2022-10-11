@@ -11,25 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { findByTestId, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { act } from 'react-test-renderer';
 import { EntityType } from '../../enums/entity.enum';
 import EntityLineage from './EntityLineage.component';
-
-/**
- * mock implementation of ResizeObserver
- */
-window.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
@@ -211,17 +198,15 @@ describe('Test EntityLineage Component', () => {
   });
 
   it('Check if EntityLineage has deleted as true', async () => {
-    const { container } = render(
-      <EntityLineage {...mockEntityLineageProp} deleted />,
-      {
+    await act(() => {
+      render(<EntityLineage {...mockEntityLineageProp} deleted />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const lineageContainer = queryByTestId(container, 'lineage-container');
-    const reactFlowElement = queryByTestId(container, 'react-flow-component');
-    const deletedMessage = await findByText(
-      container,
+    const lineageContainer = screen.queryByTestId('lineage-container');
+    const reactFlowElement = screen.queryByTestId('react-flow-component');
+    const deletedMessage = await screen.findByText(
       /Lineage data is not available for deleted entities/i
     );
 

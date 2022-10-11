@@ -60,10 +60,9 @@ def column_values_missing_count_to_be_equal(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        null_count_value_dict = dict(
+        null_count_value_res = dict(
             runner.dispatch_query_select_first(Metrics.NULL_COUNT.value(col).fn())
-        )
-        null_count_value_res = null_count_value_dict.get(Metrics.NULL_COUNT.name)
+        ).get(Metrics.NULL_COUNT.name)
 
     except Exception as exc:
         msg = (
@@ -99,7 +98,9 @@ def column_values_missing_count_to_be_equal(
 
         try:
             set_count_dict = dict(
-                runner.dispatch_query_select_first(set_count(col).fn())
+                runner.dispatch_query_select_first(
+                    set_count(col).fn()
+                )  # pylint: disable=abstract-class-instantiated
             )
             set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
