@@ -19,33 +19,33 @@ from metadata.generated.antlr.FqnParser import FqnParser
 
 class FqnSplitListener(FqnListener):
     def __init__(self):
-        self.xs = []
+        self._list = []
 
     def enterQuotedName(self, ctx: FqnParser.QuotedNameContext):
-        self.xs.append(ctx.getText())
+        self._list.append(ctx.getText())
 
     def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):
-        self.xs.append(ctx.getText())
+        self._list.append(ctx.getText())
 
     def split(self):
-        return self.xs
+        return self._list
 
 
 class EntityLinkSplitListener(EntityLinkListener):
     def __init__(self):
-        self.xs = []
+        self._list = []
 
     def enterEntityAttribute(self, ctx: EntityLinkParser.EntityAttributeContext):
-        self.xs.append(ctx.getText())
+        self._list.append(ctx.getText())
 
     def enterEntityType(self, ctx: EntityLinkParser.EntityTypeContext):
-        self.xs.append(ctx.getText())
+        self._list.append(ctx.getText())
 
     def enterEntityField(self, ctx: EntityLinkParser.EntityFieldContext):
-        self.xs.append(ctx.getText())
+        self._list.append(ctx.getText())
 
     def enterEntityFqn(self, ctx: EntityLinkParser.EntityFqnContext):
-        self.xs.append(ctx.getText())
+        self._list.append(ctx.getText())
 
     def split(self):
-        return self.xs
+        return self._list
