@@ -42,9 +42,7 @@ def _get_column_type(
     if spec.startswith("Array"):
         inner = spec[6:-1]
         coltype = self.ischema_names["_array"]
-        return coltype(
-            self._get_column_type(name, inner)  # pylint: disable=protected-access
-        )
+        return coltype(self._get_column_type(name, inner))
 
     if spec.startswith("FixedString"):
         return self.ischema_names["FixedString"]
@@ -52,31 +50,23 @@ def _get_column_type(
     if spec.startswith("Nullable"):
         inner = spec[9:-1]
         coltype = self.ischema_names["_nullable"]
-        return self._get_column_type(name, inner)  # pylint: disable=protected-access
+        return self._get_column_type(name, inner)
 
     if spec.startswith("LowCardinality"):
         inner = spec[15:-1]
         coltype = self.ischema_names["_lowcardinality"]
-        return coltype(
-            self._get_column_type(name, inner)  # pylint: disable=protected-access
-        )
+        return coltype(self._get_column_type(name, inner))
 
     if spec.startswith("Tuple"):
         inner = spec[6:-1]
         coltype = self.ischema_names["_tuple"]
-        inner_types = [
-            self._get_column_type(name, t.strip())  # pylint: disable=protected-access
-            for t in inner.split(",")
-        ]
+        inner_types = [self._get_column_type(name, t.strip()) for t in inner.split(",")]
         return coltype(*inner_types)
 
     if spec.startswith("Map"):
         inner = spec[4:-1]
         coltype = self.ischema_names["_map"]
-        inner_types = [
-            self._get_column_type(name, t.strip())  # pylint: disable=protected-access
-            for t in inner.split(",")
-        ]
+        inner_types = [self._get_column_type(name, t.strip()) for t in inner.split(",")]
         return coltype(*inner_types)
 
     if spec.startswith("Enum"):
@@ -85,9 +75,7 @@ def _get_column_type(
 
         options = {}
         if pos >= 0:
-            options = self._parse_options(  # pylint: disable=protected-access
-                spec[pos + 1 : spec.rfind(")")]
-            )
+            options = self._parse_options(spec[pos + 1 : spec.rfind(")")])
         if not options:
             return sqltypes.NullType
 
@@ -105,9 +93,7 @@ def _get_column_type(
 
     if spec.lower().startswith("decimal"):
         coltype = self.ischema_names["Decimal"]
-        return coltype(
-            *self._parse_decimal_params(spec)  # pylint: disable=protected-access
-        )
+        return coltype(*self._parse_decimal_params(spec))
 
     try:
         return self.ischema_names[spec]

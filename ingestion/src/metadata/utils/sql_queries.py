@@ -30,7 +30,6 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
           LIMIT {result_limit}
-          
   ),
   full_queries AS (
     SELECT
@@ -196,7 +195,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
 
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
-        SELECT 
+        SELECT
           query_type,
           query_text,
           user_name,
@@ -318,7 +317,7 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
         SELECT column_name, data_type, column_default, is_nullable, comment
-        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id and com.object_type='COLUMN' and col.column_name=com.child_object  
+        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id and com.object_type='COLUMN' and col.column_name=com.child_object # pylint: disable=line-too-long
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
         UNION ALL
@@ -420,7 +419,7 @@ select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and T
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
     """
     select COMMENT
-    from information_schema.TABLES 
+    from information_schema.TABLES
     WHERE TABLE_SCHEMA = '{schema_name}'
       AND TABLE_NAME = '{table_name}'
 """
@@ -491,29 +490,29 @@ POSTGRES_GET_TABLE_NAMES = """
 
 POSTGRES_PARTITION_DETAILS = textwrap.dedent(
     """
-select 
-    par.relnamespace::regnamespace::text as schema, 
-    par.relname as table_name, 
+select
+    par.relnamespace::regnamespace::text as schema,
+    par.relname as table_name,
     partition_strategy,
     col.column_name
-from   
+from
     (select
          partrelid,
          partnatts,
-         case partstrat 
+         case partstrat
               when 'l' then 'list'
               when 'h' then 'hash'
               when 'r' then 'range' end as partition_strategy,
          unnest(partattrs) column_index
      from
-         pg_partitioned_table) pt 
-join   
-    pg_class par 
-on     
+         pg_partitioned_table) pt
+join
+    pg_class par
+on
     par.oid = pt.partrelid
 left join
     information_schema.columns col
-on  
+on
     col.table_schema = par.relnamespace::regnamespace::text
     and col.table_name = par.relname
     and ordinal_position = pt.column_index

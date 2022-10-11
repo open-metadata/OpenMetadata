@@ -89,9 +89,13 @@ def _(config: DbtLocalConfig):
 def _(config: DbtHttpConfig):
     try:
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_catalog = requests.get(config.dbtCatalogHttpPath)
+        dbt_catalog = requests.get(  # pylint: disable=missing-timeout
+            config.dbtCatalogHttpPath
+        )
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_manifest = requests.get(config.dbtManifestHttpPath)
+        dbt_manifest = requests.get(  # pylint: disable=missing-timeout
+            config.dbtManifestHttpPath
+        )
         dbt_run_results = None
         if (
             config.dbtRunResultsHttpPath is not None
@@ -100,7 +104,9 @@ def _(config: DbtHttpConfig):
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
-            dbt_run_results = requests.get(config.dbtRunResultsHttpPath)
+            dbt_run_results = requests.get(  # pylint: disable=missing-timeout
+                config.dbtRunResultsHttpPath
+            )
         return (
             json.loads(dbt_catalog.text),
             json.loads(dbt_manifest.text),
@@ -118,7 +124,10 @@ def _(config: DbtCloudConfig):
     dbt_manifest = None
     dbt_run_results = None
     try:
-        from metadata.ingestion.ometa.client import REST, ClientConfig
+        from metadata.ingestion.ometa.client import (  # pylint: disable=import-outside-toplevel
+            REST,
+            ClientConfig,
+        )
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -140,15 +149,15 @@ def _(config: DbtCloudConfig):
         runs_data = response.get("data")
         if runs_data:
             run_id = runs_data[0]["id"]
-            logger.debug(f"Requesting [dbt_catalog]")
+            logger.debug("Requesting [dbt_catalog]")
             dbt_catalog = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
             )
-            logger.debug(f"Requesting [dbt_manifest]")
+            logger.debug("Requesting [dbt_manifest]")
             dbt_manifest = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}"
             )
-            logger.debug(f"Requesting [dbt_run_results]")
+            logger.debug("Requesting [dbt_run_results]")
             dbt_run_results = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
             )
@@ -165,7 +174,9 @@ def _(config: DbtS3Config):
     dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from metadata.clients.aws_client import AWSClient
+        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
+            AWSClient,
+        )
 
         aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
 
@@ -206,7 +217,7 @@ def _(config: DbtGCSConfig):
     dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from google.cloud import storage
+        from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
         set_google_credentials(gcs_credentials=config.dbtSecurityConfig)
         client = storage.Client()

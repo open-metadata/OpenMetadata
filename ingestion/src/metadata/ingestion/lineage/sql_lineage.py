@@ -28,6 +28,15 @@ from metadata.utils import fqn
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRUCache
 
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
+from sqllineage.runner import LineageRunner  # pylint: disable=wrong-import-position
+
+# Reverting changes after import is done
+DictConfigurator.configure = configure
+
 logger = utils_logger()
 LRU_CACHE_SIZE = 4096
 
@@ -35,9 +44,9 @@ LRU_CACHE_SIZE = 4096
 def split_raw_table_name(database: str, raw_name: str) -> dict:
     database_schema = None
     if "." in raw_name:
-        database_schema, table = fqn.split(raw_name)[
-            -2:
-        ]  # pylint: disable=unbalanced-tuple-unpacking
+        # pylint: disable=unbalanced-tuple-unpacking
+        database_schema, table = fqn.split(raw_name)[-2:]
+        # pylint: enable=unbalanced-tuple-unpacking
         if database_schema == "<default>":
             database_schema = None
     return {"database": database, "database_schema": database_schema, "table": table}
@@ -319,16 +328,6 @@ def get_lineage_by_query(
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
     """
-    # Prevent sqllineage from modifying the logger config
-    # Disable the DictConfigurator.configure method while importing LineageRunner
-    configure = DictConfigurator.configure
-    DictConfigurator.configure = lambda _: None
-    from sqllineage.runner import (
-        LineageRunner,  # pylint: disable=import-outside-toplevel
-    )
-
-    # Reverting changes after import is done
-    DictConfigurator.configure = configure
     column_lineage = {}
 
     try:
@@ -403,16 +402,6 @@ def get_lineage_via_table_entity(
     Yields:
         Iterator[Optional[Iterator[AddLineageRequest]]]
     """
-    # Prevent sqllineage from modifying the logger config
-    # Disable the DictConfigurator.configure method while importing LineageRunner
-    configure = DictConfigurator.configure
-    DictConfigurator.configure = lambda _: None
-    from sqllineage.runner import (
-        LineageRunner,  # pylint: disable=import-outside-toplevel
-    )
-
-    # Reverting changes after import is done
-    DictConfigurator.configure = configure
     column_lineage = {}
 
     try:

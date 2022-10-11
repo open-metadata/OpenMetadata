@@ -25,6 +25,8 @@ from metadata.utils.connections import get_connection
 from metadata.utils.helpers import list_to_dict
 
 
+# To be fixed in https://github.com/open-metadata/OpenMetadata/issues/8081
+# pylint: disable=too-many-arguments
 def get_engine(host, port, user, password, options, arguments, schema, database):
     """
     Get the database connection engine
