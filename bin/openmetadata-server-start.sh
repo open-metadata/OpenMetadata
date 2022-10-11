@@ -111,7 +111,6 @@ fi
 
 #Application classname
 APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
-echo $OPENMETADATA_OPTS
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
     nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
