@@ -58,6 +58,9 @@ services:
       dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
     environment:
+      # Elasticsearch configuration
+      OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
+      ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
@@ -129,9 +132,11 @@ services:
     expose:
       - 8585
       - 8586
+      - 5005
     ports:
       - "8585:8585"
       - "8586:8586"
+      - "5005:5005"
     depends_on:
       elasticsearch:
         condition: service_started
