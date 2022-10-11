@@ -1,12 +1,13 @@
-import yaml
 import os
 
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+import yaml
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import PipelineType
-
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
 from metadata.ingestion.api.workflow import Workflow
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 WORKFLOW_MAP = {
     PipelineType.metadata.value: Workflow,

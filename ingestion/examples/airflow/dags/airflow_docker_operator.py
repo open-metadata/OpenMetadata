@@ -13,10 +13,12 @@ You can run this DAG from the default OM installation
 """
 from datetime import datetime
 
+from airflow import models
 from airflow.providers.docker.operators.docker import DockerOperator
 
-from airflow import models
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import PipelineType
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
 
 config = """
 source:
@@ -54,16 +56,13 @@ with models.DAG(
     tags=["OpenMetadata"],
 ) as dag:
     DockerOperator(
-        command='python main.py',
-        image='openmetadata/ingestion-base:local',
-        environment={
-            "config": config,
-            "pipelineType": PipelineType.metadata.value
-        },
-        docker_url='unix://var/run/docker.sock',  # To allow to start Docker. Needs chmod 666 permissions
+        command="python main.py",
+        image="openmetadata/ingestion-base:local",
+        environment={"config": config, "pipelineType": PipelineType.metadata.value},
+        docker_url="unix://var/run/docker.sock",  # To allow to start Docker. Needs chmod 666 permissions
         tty=True,
         auto_remove="True",
-        network_mode='host',  # To reach the OM server
-        task_id='ingest',
+        network_mode="host",  # To reach the OM server
+        task_id="ingest",
         dag=dag,
     )
