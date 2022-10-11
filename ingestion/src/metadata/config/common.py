@@ -21,11 +21,15 @@ from pydantic import BaseModel
 
 
 class ConfigModel(BaseModel):
+    """Class definition for config model"""
+
     class Config:
         extra = "forbid"
 
 
 class DynamicTypedConfig(ConfigModel):
+    """Class definition for Dynamic Typed Config"""
+
     type: str
     config: Optional[Any]
 
@@ -39,15 +43,28 @@ class ConfigurationError(Exception):
 
 
 class ConfigurationMechanism(ABC):
+    """
+    Class definition for configuration mechanism
+    """
+
     @abstractmethod
     def load_config(self, config_fp: IO) -> dict:
+        """
+        Abstract method to load configuration from yaml files
+        """
         pass
 
 
 class YamlConfigurationMechanism(ConfigurationMechanism):
-    """load configuration from yaml files"""
+    """
+    load configuration from yaml files
+    """
 
     def load_config(self, config_fp: IO) -> dict:
+        """
+        Method to load configuration from yaml files
+        """
+
         try:
             config = yaml.safe_load(config_fp)
             return config
@@ -58,7 +75,9 @@ class YamlConfigurationMechanism(ConfigurationMechanism):
 
 
 class JsonConfigurationMechanism(ConfigurationMechanism):
-    """load configuration from json files"""
+    """
+    load configuration from json files
+    """
 
     def load_config(self, config_fp: IO) -> dict:
         try:
@@ -71,6 +90,10 @@ class JsonConfigurationMechanism(ConfigurationMechanism):
 
 
 def load_config_file(config_file: pathlib.Path) -> dict:
+    """
+    Method to load configuration from json or yaml,yml files
+    """
+
     if not config_file.is_file():
         raise ConfigurationError(f"Cannot open config file {config_file}")
 
@@ -81,9 +104,7 @@ def load_config_file(config_file: pathlib.Path) -> dict:
         config_mech = JsonConfigurationMechanism()
     else:
         raise ConfigurationError(
-            "Only .json and .yml are supported. Cannot process file type {}".format(
-                config_file.suffix
-            )
+            f"Only .json and .yml are supported. Cannot process file type {config_file.suffix}"
         )
     with config_file.open() as raw_config_file:
         raw_config = raw_config_file.read()

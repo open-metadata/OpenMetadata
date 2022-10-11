@@ -52,7 +52,7 @@ def validate_private_key(private_key: str) -> None:
         serialization.load_pem_private_key(private_key.encode(), password=None)
     except ValueError as err:
         msg = f"Cannot serialise key: {err}"
-        raise InvalidPrivateKeyException(msg)
+        raise InvalidPrivateKeyException(msg) from err
 
 
 def create_credential_tmp_file(credentials: dict) -> str:
@@ -61,11 +61,11 @@ def create_credential_tmp_file(credentials: dict) -> str:
     :param credentials: dictionary to store
     :return: path to find the file
     """
-    with tempfile.NamedTemporaryFile(delete=False) as fp:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        fp.write(cred_json.encode())
+        temp_file.write(cred_json.encode())
 
-        return fp.name
+        return temp_file.name
 
 
 def build_google_credentials_dict(gcs_values: GCSValues) -> Dict[str, str]:

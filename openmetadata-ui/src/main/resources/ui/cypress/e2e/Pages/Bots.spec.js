@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getExpiryDateTimeFromDate } from "../../../src/utils/TimeUtils.ts";
+import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
 import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
 import { DELETE_TERM, LOGIN } from '../../constants/constants';
 
@@ -29,8 +29,6 @@ const expirationTime = {
   twomonths: '60',
   threemonths: '90',
 };
-
-
 const getCreatedBot = () => {
   interceptURL('GET', `/api/v1/bots/name/${botName}`, 'getCreatedBot');
   //Click on created Bot name
@@ -95,7 +93,6 @@ describe('Bots Page should work properly', () => {
   });
 
   it('Create new Bot', () => {
-
     cy.get('[data-testid="add-bot"]')
       .should('exist')
       .should('be.visible')
@@ -128,7 +125,6 @@ describe('Bots Page should work properly', () => {
     cy.get('table').should('contain', botName).and('contain', description);
 
     getCreatedBot();
-    const endhour = getExpiryDateTimeFromDate('1', 'hour');
     cy.get('[data-testid="revoke-button"]')
       .should('be.visible')
       .should('contain', 'Revoke token');
@@ -137,16 +133,13 @@ describe('Bots Page should work properly', () => {
       .should('be.visible')
       .should('contain', `${JWTToken} Token`);
     //Verify expiration time
-    cy.get('[data-testid="token-expiry"]')
-      .should('be.visible')
-      .invoke('text')
-      .should('contain', `Expires on ${endhour}`);
+    cy.get('[data-testid="token-expiry"]').should('be.visible');
   });
 
   Object.values(expirationTime).forEach((expiry) => {
     it(`Update token expiration for ${expiry} days`, () => {
       getCreatedBot();
-      const expiryDate = getExpiryDateTimeFromDate(expiry, 'days');
+
       revokeToken();
       //Click on token expiry dropdown
       cy.get('[data-testid="token-expiry"]').should('be.visible').click();
@@ -155,8 +148,12 @@ describe('Bots Page should work properly', () => {
         .should('exist')
         .should('be.visible')
         .click();
-
       //Save the updated date
+      const expiryDate = getExpiryDateTimeFromDate(
+        expiry,
+        'days',
+        `ccc d'th' MMMM, yyyy`
+      );
       cy.get('[data-testid="save-edit"]').should('be.visible').click();
       cy.get('[data-testid="center-panel"]')
         .find('[data-testid="revoke-button"]')
