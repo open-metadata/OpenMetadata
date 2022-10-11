@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -217,25 +217,25 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const tableColumn: ColumnsType<EntityReference> = useMemo(
     () => [
       {
-        title: ' Chart Name',
-        dataIndex: 'chartName',
-        key: 'chartName',
+        title: 'Chart Name',
+        dataIndex: 'name',
+        key: 'name',
         render: (text, record) => (
           <Link target="_blank" to={{ pathname: text }}>
-            <span className="tw-flex">
-              <span className="tw-mr-1">{record.displayName}</span>
+            <Space>
+              <span>{record.displayName}</span>
               <SVGIcons
                 alt="external-link"
                 className="tw-align-middle"
                 icon="external-link"
                 width="16px"
               />
-            </span>
+            </Space>
           </Link>
         ),
       },
       {
-        title: ' Chart Type',
+        title: 'Chart Type',
         dataIndex: 'type',
         key: 'type',
       },

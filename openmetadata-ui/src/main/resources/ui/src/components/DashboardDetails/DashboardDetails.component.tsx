@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { Table, Tooltip } from 'antd';
+import { Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -480,42 +486,42 @@ const DashboardDetails = ({
     [paging]
   );
 
-  const tableColumn: ColumnsType<ChartType> = [
-    {
-      title: ' Chart Name',
-      dataIndex: 'chartName',
-      key: 'chartName',
-      width: 200,
-      render: (_, record) => (
-        <Link target="_blank" to={{ pathname: record.chartUrl }}>
-          <span className="tw-flex">
-            <span className="tw-mr-1">
-              {getEntityName(record as unknown as EntityReference)}
-            </span>
-            <SVGIcons
-              alt="external-link"
-              className="tw-align-middle"
-              icon="external-link"
-              width="16px"
-            />
-          </span>
-        </Link>
-      ),
-    },
-    {
-      title: ' Chart Type',
-      dataIndex: 'chartType',
-      key: 'chartType',
-      width: 100,
-    },
-    {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      width: 300,
-      render: (text, record, index) => (
-        <div className="tw-inline-block">
-          <div className="tw-cursor-pointer tw-flex" data-testid="description">
+  const tableColumn: ColumnsType<ChartType> = useMemo(
+    () => [
+      {
+        title: 'Chart Name',
+        dataIndex: 'chartName',
+        key: 'chartName',
+        width: 200,
+        render: (_, record) => (
+          <Link target="_blank" to={{ pathname: record.chartUrl }}>
+            <Space>
+              <span>{getEntityName(record as unknown as EntityReference)}</span>
+              <SVGIcons
+                alt="external-link"
+                className="tw-align-middle"
+                icon="external-link"
+                width="16px"
+              />
+            </Space>
+          </Link>
+        ),
+      },
+      {
+        title: 'Chart Type',
+        dataIndex: 'chartType',
+        key: 'chartType',
+        width: 100,
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        width: 300,
+        render: (text, record, index) => (
+          <Space
+            className="w-full tw-group cursor-pointer"
+            data-testid="description">
             <div>
               {text ? (
                 <RichTextEditorPreviewer markdown={text} />
@@ -543,50 +549,57 @@ const DashboardDetails = ({
                 </button>
               </Tooltip>
             )}
+          </Space>
+        ),
+      },
+      {
+        title: 'Tags',
+        dataIndex: 'tags',
+        key: 'tags',
+        width: 300,
+        render: (text, record, index) => (
+          <div
+            className="relative tableBody-cell"
+            data-testid="tags-wrapper"
+            onClick={() => handleTagContainerClick(record, index)}>
+            {deleted ? (
+              <div className="tw-flex tw-flex-wrap">
+                <TagsViewer sizeCap={-1} tags={text || []} />
+              </div>
+            ) : (
+              <TagsContainer
+                editable={editChartTags?.index === index}
+                isLoading={isTagLoading && editChartTags?.index === index}
+                selectedTags={text as EntityTags[]}
+                showAddTagButton={
+                  dashboardPermissions.EditAll || dashboardPermissions.EditTags
+                }
+                size="small"
+                tagList={tagList}
+                type="label"
+                onCancel={() => {
+                  handleChartTagSelection();
+                }}
+                onSelectionChange={(tags) => {
+                  handleChartTagSelection(tags, {
+                    chart: record,
+                    index,
+                  });
+                }}
+              />
+            )}
           </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Tags',
-      dataIndex: 'tags',
-      key: 'tags',
-      width: 300,
-      render: (text, record, index) => (
-        <div
-          className="relative tableBody-cell"
-          data-testid="tags-wrapper"
-          onClick={() => handleTagContainerClick(record, index)}>
-          {deleted ? (
-            <div className="tw-flex tw-flex-wrap">
-              <TagsViewer sizeCap={-1} tags={text || []} />
-            </div>
-          ) : (
-            <TagsContainer
-              editable={editChartTags?.index === index}
-              isLoading={isTagLoading && editChartTags?.index === index}
-              selectedTags={text as EntityTags[]}
-              showAddTagButton={
-                dashboardPermissions.EditAll || dashboardPermissions.EditTags
-              }
-              size="small"
-              tagList={tagList}
-              type="label"
-              onCancel={() => {
-                handleChartTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleChartTagSelection(tags, {
-                  chart: record,
-                  index,
-                });
-              }}
-            />
-          )}
-        </div>
-      ),
-    },
-  ];
+        ),
+      },
+    ],
+    [
+      dashboardPermissions.EditAll,
+      dashboardPermissions.EditTags,
+      editChartTags,
+      tagList,
+      deleted,
+    ]
+  );
 
   return (
     <PageContainer>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -222,15 +222,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'displayName',
         render: (text, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
-            <span className="flex">
-              <span className="m-r-xs">{text}</span>
+            <Space>
+              <span>{text}</span>
               <SVGIcons
                 alt="external-link"
                 className="tw-align-middle"
                 icon="external-link"
                 width="16px"
               />
-            </span>
+            </Space>
           </Link>
         ),
       },
