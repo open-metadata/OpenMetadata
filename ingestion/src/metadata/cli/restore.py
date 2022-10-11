@@ -25,9 +25,12 @@ logger = cli_logger()
 
 
 def execute_sql_file(engine: Engine, input: Path, schema: str = None) -> None:
+    """
+    Method to create the connection and execute the sql query
+    """
 
-    with open(input, encoding="utf-8") as f:
-        for query in f.readlines():
+    with open(input, encoding="utf-8") as file:
+        for query in file.readlines():
             # `%` is a reserved syntax in SQLAlchemy to bind parameters. Escaping it with `%%`
             clean_query = query.replace("%", "%%")
 

@@ -18,6 +18,7 @@ import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -52,6 +53,7 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
+  const { t } = useTranslation();
   const { isFirstTimeUser } = useAuth(location.pathname);
   const {
     isAuthDisabled,
@@ -82,7 +84,7 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       name: (
         <span>
-          <span className="tw-text-grey-muted">{`Version ${
+          <span className="tw-text-grey-muted">{`${t('label.version')} ${
             (version ? version : '?').split('-')[0]
           }`}</span>
         </span>
@@ -100,7 +102,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: `Docs`,
+      name: t('label.docs'),
       to: urlGitbookDocs,
       isOpenNewTab: true,
       disabled: false,
@@ -114,7 +116,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: `API`,
+      name: t('label.api-uppercase'),
       to: ROUTES.SWAGGER,
       disabled: false,
       icon: (
@@ -127,7 +129,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: `Slack`,
+      name: t('label.slack'),
       to: urlJoinSlack,
       disabled: false,
       isOpenNewTab: true,
@@ -228,7 +230,7 @@ const Appbar: React.FC = (): JSX.Element => {
       isText: true,
     },
     {
-      name: 'Logout',
+      name: t('label.logout'),
       to: '',
       disabled: false,
       method: onLogoutHandler,

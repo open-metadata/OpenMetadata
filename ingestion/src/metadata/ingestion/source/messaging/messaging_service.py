@@ -39,7 +39,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_topic
 
@@ -84,8 +83,8 @@ class MessagingSourceStatus(SourceStatus):
     Reports the source status after ingestion
     """
 
-    topics_scanned: List[str] = list()
-    filtered: List[str] = list()
+    topics_scanned: List[str] = []
+    filtered: List[str] = []
 
     def topic_scanned(self, topic: str) -> None:
         self.topics_scanned.append(topic)
@@ -101,7 +100,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     @abstractmethod
-    def yield_topic(self, messaging_details: Any) -> Iterable[CreateTopicRequest]:
+    def yield_topic(self, topic_details: Any) -> Iterable[CreateTopicRequest]:
         """
         Method to Get Messaging Entity
         """

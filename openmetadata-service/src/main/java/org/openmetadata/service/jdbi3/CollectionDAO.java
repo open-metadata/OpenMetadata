@@ -24,7 +24,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,6 +38,7 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -1454,12 +1457,14 @@ public interface CollectionDAO {
 
     default void deleteAllByPrefix(String fqnPrefix) {
       String prefix = String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR);
-      String cond = String.format("WHERE (toFQN LIKE '%s' OR fromFQN LIKE '%s')", prefix, prefix);
-      deleteAllByPrefixInternal(cond);
+      String condition = "WHERE (toFQN LIKE :prefix OR fromFQN LIKE :prefix)";
+      Map<String, String> bindMap = new HashMap<>();
+      bindMap.put("prefix", prefix);
+      deleteAllByPrefixInternal(condition, bindMap);
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")
-    void deleteAllByPrefixInternal(@Define("cond") String cond);
+    void deleteAllByPrefixInternal(@Define("cond") String cond, @BindMap Map<String, String> bindings);
 
     @SqlUpdate(
         "DELETE from field_relationship WHERE fromFQN = :fromFQN AND toFQN = :toFQN AND fromType = :fromType "

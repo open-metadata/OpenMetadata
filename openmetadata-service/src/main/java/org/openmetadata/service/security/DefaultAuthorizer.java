@@ -69,7 +69,6 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.ConfigurationHolder;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.PasswordUtil;
@@ -83,8 +82,9 @@ public class DefaultAuthorizer implements Authorizer {
   private Set<String> botPrincipalUsers;
   private Set<String> testUsers;
   private String principalDomain;
-
   private SecretsManager secretsManager;
+
+  private String providerType;
 
   @Override
   public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi dbi) {
@@ -99,7 +99,7 @@ public class DefaultAuthorizer implements Authorizer {
         SecretsManagerFactory.createSecretsManager(
             openMetadataApplicationConfig.getSecretsManagerConfiguration(),
             openMetadataApplicationConfig.getClusterName());
-
+    this.providerType = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
     SubjectCache.initialize();
     PolicyCache.initialize();
     RoleCache.initialize();
@@ -110,10 +110,7 @@ public class DefaultAuthorizer implements Authorizer {
   private void initializeUsers(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     LOG.debug("Checking user entries for admin users");
     String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
-    if (!ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-        .getProvider()
-        .equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+    if (!providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
       for (String adminUser : adminUsers) {
         User user = user(adminUser, domain, adminUser).withIsAdmin(true);
         addOrUpdateUser(user);

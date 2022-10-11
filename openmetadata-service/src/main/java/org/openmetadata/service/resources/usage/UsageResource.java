@@ -56,6 +56,7 @@ public class UsageResource {
   private final UsageRepository dao;
 
   @Inject
+  @Collection
   public UsageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UsageRepository must not be null");
     this.dao = new UsageRepository(dao);
