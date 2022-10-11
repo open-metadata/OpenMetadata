@@ -96,13 +96,13 @@ logging:
   appenders:
     - type: console
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       timeZone: UTC
     - type: file
       filterFactories:
         - type: audit-exclude-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/openmetadata.log
       archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
@@ -112,7 +112,7 @@ logging:
       filterFactories:
         - type: audit-only-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/audit.log
       archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 25
