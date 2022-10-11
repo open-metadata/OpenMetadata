@@ -30,15 +30,13 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SecretsManagerMigrationException;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
-import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.CollectionRegistry.CollectionDetails;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
-import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -64,16 +62,16 @@ public class SecretsManagerMigrationService {
 
   private final ChangeEventRepository changeEventRepository;
 
-  private final IngestionPipelineRepository ingestionPipelineRepository;
+  private final EntityRepository<IngestionPipeline> ingestionPipelineRepository;
 
-  private final UserRepository userRepository;
+  private final EntityRepository<User> userRepository;
 
   public SecretsManagerMigrationService(SecretsManager secretsManager, String clusterName) {
     this.newSecretManager = secretsManager;
     this.connectionTypeRepositoriesMap = retrieveConnectionTypeRepositoriesMap();
     this.changeEventRepository = retrieveChangeEventRepository();
-    this.ingestionPipelineRepository = retrieveIngestionPipelineRepository();
-    this.userRepository = retrieveUserRepository();
+    this.ingestionPipelineRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    this.userRepository = Entity.getEntityRepository(Entity.USER);
     // by default, it is going to be LOCAL
     this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null, clusterName);
   }
@@ -332,27 +330,7 @@ public class SecretsManagerMigrationService {
         .orElseThrow(() -> new SecretsManagerMigrationException("Unexpected error: ChangeEventRepository not found."));
   }
 
-  private UserRepository retrieveUserRepository() {
-    return CollectionRegistry.getInstance().getCollectionMap().values().stream()
-        .map(collectionDetails -> retrieveResource(collectionDetails, UserResource.class))
-        .filter(Optional::isPresent)
-        .map(res -> res.get().getUserRepository())
-        .findFirst()
-        .orElseThrow(
-            () -> new SecretsManagerMigrationException("Unexpected error: IngestionPipelineRepository not found."));
-  }
-
-  private IngestionPipelineRepository retrieveIngestionPipelineRepository() {
-    return CollectionRegistry.getInstance().getCollectionMap().values().stream()
-        .map(collectionDetails -> retrieveResource(collectionDetails, IngestionPipelineResource.class))
-        .filter(Optional::isPresent)
-        .map(res -> res.get().getIngestionPipelineRepository())
-        .findFirst()
-        .orElseThrow(
-            () -> new SecretsManagerMigrationException("Unexpected error: IngestionPipelineRepository not found."));
-  }
-
-  private <T> Optional<T> retrieveResource(CollectionRegistry.CollectionDetails collectionDetails, Class<T> clazz) {
+  private <T> Optional<T> retrieveResource(CollectionDetails collectionDetails, Class<T> clazz) {
     Class<?> collectionDetailsClass = extractCollectionDetailsClass(collectionDetails);
     if (clazz.equals(collectionDetailsClass)) {
       return Optional.of(clazz.cast(collectionDetails.getResource()));
@@ -360,8 +338,7 @@ public class SecretsManagerMigrationService {
     return Optional.empty();
   }
 
-  private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(
-      CollectionRegistry.CollectionDetails collectionDetails) {
+  private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(CollectionDetails collectionDetails) {
     Class<?> collectionDetailsClass = extractCollectionDetailsClass(collectionDetails);
     if (ServiceEntityResource.class.isAssignableFrom(collectionDetailsClass)) {
       return Optional.of(
@@ -370,7 +347,7 @@ public class SecretsManagerMigrationService {
     return Optional.empty();
   }
 
-  private Class<?> extractCollectionDetailsClass(CollectionRegistry.CollectionDetails collectionDetails) {
+  private Class<?> extractCollectionDetailsClass(CollectionDetails collectionDetails) {
     Class<?> collectionDetailsClass;
     try {
       collectionDetailsClass = Class.forName(collectionDetails.getResourceClass());

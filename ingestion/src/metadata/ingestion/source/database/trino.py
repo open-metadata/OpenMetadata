@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Trino source implementation.
+"""
 import logging
 import re
 import sys
@@ -80,9 +82,9 @@ def parse_row_data_type(type_str: str) -> str:
     type_name, type_opts = get_type_name_and_opts(type_str)
     final = type_name.replace(ROW_DATA_TYPE, "struct") + "<"
     if type_opts:
-        for i in datatype.aware_split(type_opts) or []:
+        for data_type in datatype.aware_split(type_opts) or []:
             attr_name, attr_type_str = datatype.aware_split(
-                i.strip(), delimiter=" ", maxsplit=1
+                data_type.strip(), delimiter=" ", maxsplit=1
             )
             if attr_type_str.startswith(ROW_DATA_TYPE):
                 final += attr_name + ":" + parse_row_data_type(attr_type_str) + ","
@@ -93,10 +95,12 @@ def parse_row_data_type(type_str: str) -> str:
     return final[:-1] + ">"
 
 
-def _get_columns(
+def _get_columns(  # pylint: disable=unused-argument
     self, connection: Connection, table_name: str, schema: str = None, **kw
 ) -> List[Dict[str, Any]]:
-    schema = schema or self._get_default_schema_name(connection)
+    schema = schema or self._get_default_schema_name(
+        connection
+    )  # pylint: disable=protected-access
     query = dedent(TRINO_GET_COLUMNS).strip()
     res = connection.execute(sql.text(query), schema=schema, table=table_name)
     columns = []
@@ -132,8 +136,8 @@ class TrinoSource(CommonDbSourceService):
             config.serviceConnection.__root__.config
         )
         try:
-            from trino import (
-                dbapi,  # pylint: disable=import-outside-toplevel,unused-import
+            from trino import (  # pylint: disable=import-outside-toplevel,unused-import
+                dbapi,
             )
         except ModuleNotFoundError:
             click.secho(

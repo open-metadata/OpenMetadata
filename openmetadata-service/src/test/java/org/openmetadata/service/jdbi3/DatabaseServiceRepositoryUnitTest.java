@@ -22,7 +22,6 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.service.secrets.SecretsManager;
 
 public class DatabaseServiceRepositoryUnitTest
     extends ServiceEntityRepositoryTest<DatabaseServiceRepository, DatabaseService, DatabaseConnection> {
@@ -32,8 +31,8 @@ public class DatabaseServiceRepositoryUnitTest
   }
 
   @Override
-  protected DatabaseServiceRepository newServiceRepository(CollectionDAO collectionDAO, SecretsManager secretsManager) {
-    return new DatabaseServiceRepository(collectionDAO, secretsManager);
+  protected DatabaseServiceRepository newServiceRepository(CollectionDAO collectionDAO) {
+    return new DatabaseServiceRepository(collectionDAO);
   }
 
   @Override

@@ -22,7 +22,6 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.type.MessagingConnection;
-import org.openmetadata.service.secrets.SecretsManager;
 
 public class MessagingServiceRepositoryUnitTest
     extends ServiceEntityRepositoryTest<MessagingServiceRepository, MessagingService, MessagingConnection> {
@@ -32,9 +31,8 @@ public class MessagingServiceRepositoryUnitTest
   }
 
   @Override
-  protected MessagingServiceRepository newServiceRepository(
-      CollectionDAO collectionDAO, SecretsManager secretsManager) {
-    return new MessagingServiceRepository(collectionDAO, secretsManager);
+  protected MessagingServiceRepository newServiceRepository(CollectionDAO collectionDAO) {
+    return new MessagingServiceRepository(collectionDAO);
   }
 
   @Override

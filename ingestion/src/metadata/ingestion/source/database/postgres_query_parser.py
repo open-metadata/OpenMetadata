@@ -78,11 +78,13 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             if self.config.sourceConfig.config.queryLogFilePath:
                 table_query_list = []
                 with open(
-                    self.config.sourceConfig.config.queryLogFilePath, "r"
+                    self.config.sourceConfig.config.queryLogFilePath,
+                    "r",
+                    encoding="utf-8",
                 ) as query_log_file:
 
-                    for i in csv.DictReader(query_log_file):
-                        query_dict = dict(i)
+                    for record in csv.DictReader(query_log_file):
+                        query_dict = dict(record)
 
                         analysis_date = (
                             datetime.utcnow()
@@ -132,6 +134,9 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             logger.debug(traceback.format_exc())
 
     def process_table_query(self) -> Optional[Iterable[TableQuery]]:
+        """
+        Process Query
+        """
         try:
             with get_connection(self.connection).connect() as conn:
                 rows = conn.execute(self.get_sql_statement())

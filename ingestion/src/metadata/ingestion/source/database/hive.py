@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Hive source methods.
+"""
 
 import re
 from typing import Tuple
@@ -38,8 +41,15 @@ _type_map.update(
 )
 
 
-def get_columns(self, connection, table_name, schema=None, **kw):
-    rows = self._get_table_columns(connection, table_name, schema)
+def get_columns(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument,too-many-locals
+    """
+    Method to handle table columns
+    """
+    rows = self._get_table_columns(  # pylint: disable=protected-access
+        connection, table_name, schema
+    )
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
@@ -55,9 +65,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             coltype = _type_map[col_type]
 
         except KeyError:
-            util.warn(
-                "Did not recognize type '%s' of column '%s'" % (col_type, col_name)
-            )
+            util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
             coltype = types.NullType
         charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
         if charlen:
@@ -84,7 +92,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return result
 
 
-def get_table_names_older_versions(self, connection, schema=None, **kw):
+def get_table_names_older_versions(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -101,7 +111,9 @@ def get_table_names_older_versions(self, connection, schema=None, **kw):
     return tables
 
 
-def get_table_names(self, connection, schema=None, **kw):
+def get_table_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -121,7 +133,9 @@ def get_table_names(self, connection, schema=None, **kw):
     return [table for table in tables if table not in views]
 
 
-def get_view_names(self, connection, schema=None, **kw):
+def get_view_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -138,7 +152,9 @@ def get_view_names(self, connection, schema=None, **kw):
     return views
 
 
-def get_view_names_older_versions(self, connection, schema=None, **kw):
+def get_view_names_older_versions(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     # Hive does not provide functionality to query tableType for older version
     # This allows reflection to not crash at the cost of being inaccurate
     return []
@@ -151,6 +167,11 @@ HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
 
 
 class HiveSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Hive Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)

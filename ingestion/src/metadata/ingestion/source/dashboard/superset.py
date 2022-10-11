@@ -216,7 +216,7 @@ class SupersetSource(DashboardServiceSource):
                         entity=Lineage_Dashboard,
                         fqn=dashboard_fqn,
                     )
-                    if from_entity and to_entity:    
+                    if from_entity and to_entity:
                         yield self._get_add_lineage_request(
                             to_entity=to_entity, from_entity=from_entity
                         )
