@@ -450,6 +450,7 @@ STANDARD_TABLE_TYPES = {
     "v": TableType.View,
 }
 
+
 class RedshiftSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract

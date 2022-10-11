@@ -37,6 +37,7 @@ class LdapUsersSource(Source[OMetaUserProfile]):
     """
     LDAP connector implementation
     """
+
     config: LDAPUserConfig
     status: SourceStatus
 
@@ -74,7 +75,9 @@ class LdapUsersSource(Source[OMetaUserProfile]):
 
     def ldap_connection(self):
         server = Server(self.config.server, get_info=ALL)
-        connection = Connection(server, user=self.config.username, password=self.config.password)
+        connection = Connection(
+            server, user=self.config.username, password=self.config.password
+        )
         connection.open()
         if not connection.bind():
             logger.info("LDAP Connection Unsuccessful")

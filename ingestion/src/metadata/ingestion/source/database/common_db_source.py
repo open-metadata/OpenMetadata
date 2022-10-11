@@ -467,9 +467,7 @@ class CommonDbSourceService(
         Method to fetch tags associated with table
         """
 
-    def standardize_table_name(
-        self, schema_name: str, table: str
-    ) -> str:
+    def standardize_table_name(self, schema_name: str, table: str) -> str:
         """
         This method is interesting to be maintained in case
         some connector, such as BigQuery, needs to perform
