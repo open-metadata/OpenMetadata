@@ -211,10 +211,10 @@ class DBTMixin:
         self, _: str, mnode: Dict, cnode: Dict
     ) -> List[Column]:
         columns = []
-        ccolumns = cnode.get("columns")
+        catalogue_columns = cnode.get("columns", {})
         manifest_columns = mnode.get("columns", {})
-        for key in ccolumns:
-            ccolumn = ccolumns[key]
+        for key in catalogue_columns:
+            ccolumn = catalogue_columns[key]
             try:
                 ctype = ccolumn["type"]
                 description = manifest_columns.get(key.lower(), {}).get("description")
