@@ -15,7 +15,6 @@ import React, { ReactNode } from 'react';
 
 export interface Props {
   block?: boolean;
-  children?: ReactNode;
   className?: string;
   disabled?: boolean;
   size?: 'large' | 'regular' | 'small' | 'x-small' | 'custom';
