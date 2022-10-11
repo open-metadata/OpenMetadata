@@ -21,7 +21,7 @@ init-hook='from pylint.config import find_pylintrc; import os, sys; sys.path.app
 extension-pkg-allow-list=pydantic
 
 [MESSAGES CONTROL]
-disable=no-name-in-module
+disable=no-name-in-module,import-error,duplicate-code
 enable=useless-suppression
 
 [FORMAT]

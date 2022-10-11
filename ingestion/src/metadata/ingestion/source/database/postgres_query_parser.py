@@ -63,9 +63,10 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata_config)
 
-    def get_sql_statement(self) -> str:
+    def get_sql_statement(self, *_) -> str:
         """
-        returns sql statement to fetch query logs
+        returns sql statement to fetch query logs.
+        We don't use any start or end times as they are not available
         """
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
@@ -163,7 +164,8 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
 
-    def get_database_name(self, data: dict) -> str:
+    @staticmethod
+    def get_database_name(data: dict) -> str:
         """
         Method to get database name
         """

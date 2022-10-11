@@ -44,7 +44,8 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata_config)
 
-    def get_schema_name(self, data: dict) -> str:
+    @staticmethod
+    def get_schema_name(data: dict) -> str:
         """
         Method to fetch schema name from row data
         """

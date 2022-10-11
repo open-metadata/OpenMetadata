@@ -461,7 +461,7 @@ class CommonDbSourceService(
         self,
         table_name: str,
         schema_name: str,
-        inspector: Inspector,  # pylint: disable=unused-argument
+        inspector: Inspector,
     ) -> None:
         """
         Method to fetch tags associated with table
@@ -469,7 +469,7 @@ class CommonDbSourceService(
 
     def standardize_table_name(
         self, schema_name: str, table: str
-    ) -> str:  # pylint: disable=unused-argument
+    ) -> str:
         """
         This method is interesting to be maintained in case
         some connector, such as BigQuery, needs to perform

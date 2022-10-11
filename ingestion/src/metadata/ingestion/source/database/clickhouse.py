@@ -43,7 +43,7 @@ def _get_column_type(
         inner = spec[6:-1]
         coltype = self.ischema_names["_array"]
         return coltype(
-            self._get_column_type(name, inner)  # pylint: disable=protected-access
+            self._get_column_type(name, inner)
         )
 
     if spec.startswith("FixedString"):
@@ -52,20 +52,20 @@ def _get_column_type(
     if spec.startswith("Nullable"):
         inner = spec[9:-1]
         coltype = self.ischema_names["_nullable"]
-        return self._get_column_type(name, inner)  # pylint: disable=protected-access
+        return self._get_column_type(name, inner)
 
     if spec.startswith("LowCardinality"):
         inner = spec[15:-1]
         coltype = self.ischema_names["_lowcardinality"]
         return coltype(
-            self._get_column_type(name, inner)  # pylint: disable=protected-access
+            self._get_column_type(name, inner)
         )
 
     if spec.startswith("Tuple"):
         inner = spec[6:-1]
         coltype = self.ischema_names["_tuple"]
         inner_types = [
-            self._get_column_type(name, t.strip())  # pylint: disable=protected-access
+            self._get_column_type(name, t.strip())
             for t in inner.split(",")
         ]
         return coltype(*inner_types)
@@ -74,7 +74,7 @@ def _get_column_type(
         inner = spec[4:-1]
         coltype = self.ischema_names["_map"]
         inner_types = [
-            self._get_column_type(name, t.strip())  # pylint: disable=protected-access
+            self._get_column_type(name, t.strip())
             for t in inner.split(",")
         ]
         return coltype(*inner_types)
@@ -85,7 +85,7 @@ def _get_column_type(
 
         options = {}
         if pos >= 0:
-            options = self._parse_options(  # pylint: disable=protected-access
+            options = self._parse_options(
                 spec[pos + 1 : spec.rfind(")")]
             )
         if not options:
@@ -106,7 +106,7 @@ def _get_column_type(
     if spec.lower().startswith("decimal"):
         coltype = self.ischema_names["Decimal"]
         return coltype(
-            *self._parse_decimal_params(spec)  # pylint: disable=protected-access
+            *self._parse_decimal_params(spec)
         )
 
     try:
