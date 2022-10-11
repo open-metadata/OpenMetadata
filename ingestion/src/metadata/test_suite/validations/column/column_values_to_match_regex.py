@@ -71,8 +71,8 @@ def column_values_to_match_regex(
         value_count_value_res = value_count_value_dict.get(Metrics.COUNT.name)
         like_count_value_dict = dict(
             runner.dispatch_query_select_first(
-                like_count(col).fn()
-            )  # pylint: disable=abstract-class-instantiated
+                like_count(col).fn()  # pylint: disable=abstract-class-instantiated
+            )
         )
         like_count_value_res = like_count_value_dict.get(Metrics.LIKE_COUNT.name)
 

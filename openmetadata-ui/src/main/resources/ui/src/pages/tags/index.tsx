@@ -12,7 +12,8 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Table, Tooltip, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
@@ -57,7 +58,6 @@ import {
   getActiveCatClass,
   getCountBadge,
   getEntityName,
-  isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import {
@@ -431,6 +431,19 @@ const TagsPage = () => {
     }
   };
 
+  const handleActionDeleteTag = (record: TagClass) => {
+    setDeleteTags({
+      data: {
+        id: record.id as string,
+        name: record.name,
+        categoryName: currentCategory?.name,
+        isCategory: false,
+        status: 'waiting',
+      },
+      state: true,
+    });
+  };
+
   useEffect(() => {
     if (currentCategory) {
       fetchCurrentCategoryPermission();
@@ -513,6 +526,97 @@ const TagsPage = () => {
     );
   };
 
+  const tableColumn: ColumnsType<TagClass> = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string, record: TagClass) => (
+          <div className="tw-group tableBody-cell">
+            <div className="cursor-pointer flex">
+              <div>
+                {text ? (
+                  <RichTextEditorPreviewer markdown={text} />
+                ) : (
+                  <span className="tw-no-description">No description</span>
+                )}
+              </div>
+
+              {(categoryPermissions.EditDescription ||
+                categoryPermissions.EditAll) && (
+                <button
+                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                  onClick={() => {
+                    setIsEditTag(true);
+                    setEditTag(record);
+                  }}>
+                  <SVGIcons
+                    alt="edit"
+                    data-testid="editTagDescription"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+            <div className="tw-mt-1" data-testid="usage">
+              <span className="tw-text-grey-muted tw-mr-1">Usage:</span>
+              {record.usageCount ? (
+                <Link
+                  className="link-text tw-align-middle"
+                  data-testid="usage-count"
+                  to={getUsageCountLink(record.fullyQualifiedName || '')}>
+                  {record.usageCount}
+                </Link>
+              ) : (
+                <span className="tw-no-description" data-testid="usage-count">
+                  Not used
+                </span>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 120,
+        align: 'center',
+        render: (_, record: TagClass) => (
+          <button
+            className="link-text"
+            data-testid="delete-tag"
+            disabled={!categoryPermissions.EditAll}
+            onClick={() => handleActionDeleteTag(record)}>
+            {deleteTags.data?.id === record.id ? (
+              deleteTags.data?.status === 'success' ? (
+                <FontAwesomeIcon icon="check" />
+              ) : (
+                <Loader size="small" type="default" />
+              )
+            ) : (
+              <SVGIcons
+                alt="delete"
+                icon="icon-delete"
+                title="Delete"
+                width="16px"
+              />
+            )}
+          </button>
+        ),
+      },
+    ],
+    [categoryPermissions, deleteTags]
+  );
+
   return (
     <PageContainerV1>
       <PageLayoutV1 leftPanel={fetchLeftPanel()}>
@@ -588,141 +692,14 @@ const TagsPage = () => {
                 onDescriptionUpdate={UpdateCategory}
               />
             </div>
-            <div className="tw-table-container">
-              <table className="tw-w-full" data-testid="table">
-                <thead>
-                  <tr className="tableHead-row">
-                    <th className="tableHead-cell" data-testid="heading-name">
-                      Name
-                    </th>
-                    <th
-                      className="tableHead-cell"
-                      data-testid="heading-description">
-                      Description
-                    </th>
-                    <th
-                      className="tableHead-cell tw-w-10"
-                      data-testid="heading-actions">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="tw-text-sm" data-testid="table-body">
-                  {currentCategory?.children?.length ? (
-                    (currentCategory.children as TagClass[])?.map(
-                      (tag: TagClass, index: number) => {
-                        return (
-                          <tr
-                            className={`tableBody-row ${
-                              !isEven(index + 1) && 'odd-row'
-                            }`}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <p>{tag.name}</p>
-                            </td>
-                            <td className="tw-group tableBody-cell">
-                              <div className="tw-cursor-pointer tw-flex">
-                                <div>
-                                  {tag.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={tag.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
-                                    </span>
-                                  )}
-                                </div>
-
-                                {(categoryPermissions.EditDescription ||
-                                  categoryPermissions.EditAll) && (
-                                  <button
-                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                    onClick={() => {
-                                      setIsEditTag(true);
-                                      setEditTag(tag);
-                                    }}>
-                                    <SVGIcons
-                                      alt="edit"
-                                      data-testid="editTagDescription"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="16px"
-                                    />
-                                  </button>
-                                )}
-                              </div>
-                              <div className="tw-mt-1" data-testid="usage">
-                                <span className="tw-text-grey-muted tw-mr-1">
-                                  Usage:
-                                </span>
-                                {tag.usageCount ? (
-                                  <Link
-                                    className="link-text tw-align-middle"
-                                    data-testid="usage-count"
-                                    to={getUsageCountLink(
-                                      tag.fullyQualifiedName || ''
-                                    )}>
-                                    {tag.usageCount}
-                                  </Link>
-                                ) : (
-                                  <span
-                                    className="tw-no-description"
-                                    data-testid="usage-count">
-                                    Not used
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="tableBody-cell">
-                              <div className="tw-text-center">
-                                <button
-                                  className="link-text"
-                                  data-testid="delete-tag"
-                                  disabled={!categoryPermissions.EditAll}
-                                  onClick={() =>
-                                    setDeleteTags({
-                                      data: {
-                                        id: tag.id as string,
-                                        name: tag.name,
-                                        categoryName: currentCategory.name,
-                                        isCategory: false,
-                                        status: 'waiting',
-                                      },
-                                      state: true,
-                                    })
-                                  }>
-                                  {deleteTags.data?.id === tag.id ? (
-                                    deleteTags.data?.status === 'success' ? (
-                                      <FontAwesomeIcon icon="check" />
-                                    ) : (
-                                      <Loader size="small" type="default" />
-                                    )
-                                  ) : (
-                                    <SVGIcons
-                                      alt="delete"
-                                      icon="icon-delete"
-                                      title="Delete"
-                                      width="16px"
-                                    />
-                                  )}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )
-                  ) : (
-                    <tr className="tableBody-row">
-                      <td className="tableBody-cell tw-text-center" colSpan={4}>
-                        No tags available.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table
+              columns={tableColumn}
+              data-testid="table"
+              dataSource={currentCategory?.children as TagClass[]}
+              pagination={false}
+              rowKey="id"
+              size="small"
+            />
             {isEditTag && (
               <ModalWithMarkdownEditor
                 header={`Edit description for ${editTag?.name}`}
