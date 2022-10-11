@@ -168,7 +168,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="save-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteTag', 200);
     cy.get('.tw-modal-container').should('not.exist');
-    cy.get('.tableBody-cell').contains(NEW_TAG.name).should('not.exist');
+    cy.get('.ant-table-placeholder').should('be.visible');
   });
 
   it('Delete Tag flow should work properly', () => {

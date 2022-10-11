@@ -614,7 +614,7 @@ const TagsPage = () => {
         ),
       },
     ],
-    []
+    [categoryPermissions, deleteTags]
   );
 
   return (
