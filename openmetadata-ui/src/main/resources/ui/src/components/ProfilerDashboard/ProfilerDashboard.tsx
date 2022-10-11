@@ -266,6 +266,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
   };
 
+  const handleOwnerRemove = () => {
+    if (table) {
+      const updatedTableDetails = {
+        ...table,
+        owner: undefined,
+      };
+      onTableChange(updatedTableDetails);
+    }
+  };
+
   const handleTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Table['tags'] = newTier
@@ -438,6 +448,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         <Col span={24}>
           <EntityPageInfo
             isTagEditable
+            currentOwner={table.owner}
             deleted={table.deleted}
             entityFqn={table.fullyQualifiedName}
             entityId={table.id}
@@ -448,6 +459,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followers={follower.length}
             followersList={follower}
             isFollowing={isFollowing}
+            removeOwner={
+              tablePermissions.EditAll || tablePermissions.EditOwner
+                ? handleOwnerRemove
+                : undefined
+            }
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}
             tier={tier}

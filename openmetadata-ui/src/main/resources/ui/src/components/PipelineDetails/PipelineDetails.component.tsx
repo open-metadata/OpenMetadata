@@ -274,6 +274,16 @@ const PipelineDetails = ({
     }
   };
 
+  const onOwnerRemove = () => {
+    if (pipelineDetails) {
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Pipeline['tags'] = newTier
@@ -379,6 +389,7 @@ const PipelineDetails = ({
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
+          currentOwner={pipelineDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -399,6 +410,11 @@ const PipelineDetails = ({
           isFollowing={isFollowing}
           isTagEditable={
             pipelinePermissions.EditAll || pipelinePermissions.EditTags
+          }
+          removeOwner={
+            pipelinePermissions.EditAll || pipelinePermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
           }
           tags={pipelineTags}
           tagsHandler={onTagUpdate}

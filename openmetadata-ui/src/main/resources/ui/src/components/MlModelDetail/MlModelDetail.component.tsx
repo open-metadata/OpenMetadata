@@ -316,6 +316,17 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       settingsUpdateHandler(updatedMlModelDetails);
     }
   };
+
+  const onOwnerRemove = () => {
+    if (mlModelDetail) {
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Mlmodel['tags'] = newTier
@@ -445,6 +456,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
+          currentOwner={mlModelDetail.owner}
           deleted={mlModelDetail.deleted}
           entityFqn={mlModelDetail.fullyQualifiedName}
           entityId={mlModelDetail.id}
@@ -457,6 +469,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           isFollowing={isFollowing}
           isTagEditable={
             mlModelPermissions.EditAll || mlModelPermissions.EditTags
+          }
+          removeOwner={
+            mlModelPermissions.EditAll || mlModelPermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
           }
           tags={mlModelTags}
           tagsHandler={onTagUpdate}

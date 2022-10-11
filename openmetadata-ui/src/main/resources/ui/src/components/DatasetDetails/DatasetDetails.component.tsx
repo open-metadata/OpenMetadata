@@ -459,6 +459,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const onOwnerRemove = () => {
+    if (tableDetails) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedTableDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Table['tags'] = newTier
@@ -581,6 +591,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
+          currentOwner={tableDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -600,6 +611,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           followersList={followers}
           isFollowing={isFollowing}
           isTagEditable={tablePermissions.EditAll || tablePermissions.EditTags}
+          removeOwner={
+            tablePermissions.EditAll || tablePermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
