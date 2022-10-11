@@ -56,7 +56,6 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -246,6 +245,10 @@ public final class TablesInitializer {
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     ElasticSearchIndexDefinition esIndexDefinition;
+
+    // Initialize secrets manager
+    SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
+
     switch (schemaMigrationOption) {
       case CREATE:
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
@@ -356,7 +359,7 @@ public final class TablesInitializer {
       user.setAuthenticationMechanism(authenticationMechanism);
     }
     try {
-      addOrUpdateUser(user, jdbi, config);
+      addOrUpdateUser(user, jdbi);
       if (jwtAuthMechanism != null) {
         printToConsoleMandatory(JsonUtils.pojoToJson(user));
       }
@@ -394,9 +397,7 @@ public final class TablesInitializer {
     }
     try {
       CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-      SecretsManager secretsManager =
-          SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
-      UserRepository userRepository = new UserRepository(daoObject, secretsManager);
+      UserRepository userRepository = new UserRepository(daoObject);
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       printToConsoleInDebug("Updated user entry: " + addedUser.getEntity());
       if (jwtAuthMechanism != null) {
@@ -407,11 +408,9 @@ public final class TablesInitializer {
     }
   }
 
-  private static void addOrUpdateUser(User user, Jdbi jdbi, OpenMetadataApplicationConfig config) throws Exception {
+  private static void addOrUpdateUser(User user, Jdbi jdbi) throws Exception {
     CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-    SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
-    UserRepository userRepository = new UserRepository(daoObject, secretsManager);
+    UserRepository userRepository = new UserRepository(daoObject);
     User addedUser = userRepository.create(null, user);
     printToConsoleInDebug("Added user entry: " + addedUser.getName());
   }

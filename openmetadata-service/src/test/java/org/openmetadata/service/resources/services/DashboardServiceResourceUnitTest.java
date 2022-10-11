@@ -34,7 +34,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 
 public class DashboardServiceResourceUnitTest
@@ -42,9 +41,8 @@ public class DashboardServiceResourceUnitTest
         DashboardServiceResource, DashboardService, DashboardServiceRepository, DashboardConnection> {
 
   @Override
-  protected DashboardServiceResource newServiceResource(
-      CollectionDAO collectionDAO, Authorizer authorizer, SecretsManager secretsManager) {
-    return new DashboardServiceResource(collectionDAO, authorizer, secretsManager);
+  protected DashboardServiceResource newServiceResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    return new DashboardServiceResource(collectionDAO, authorizer);
   }
 
   @Override

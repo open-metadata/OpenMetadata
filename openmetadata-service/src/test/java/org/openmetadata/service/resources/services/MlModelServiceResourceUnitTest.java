@@ -36,7 +36,6 @@ import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,9 +43,8 @@ public class MlModelServiceResourceUnitTest
     extends ServiceResourceTest<MlModelServiceResource, MlModelService, MlModelServiceRepository, MlModelConnection> {
 
   @Override
-  protected MlModelServiceResource newServiceResource(
-      CollectionDAO collectionDAO, Authorizer authorizer, SecretsManager secretsManager) {
-    return new MlModelServiceResource(collectionDAO, authorizer, secretsManager);
+  protected MlModelServiceResource newServiceResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    return new MlModelServiceResource(collectionDAO, authorizer);
   }
 
   @Override

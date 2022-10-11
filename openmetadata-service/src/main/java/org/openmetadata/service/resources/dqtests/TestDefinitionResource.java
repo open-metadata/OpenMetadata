@@ -77,7 +77,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   }
 
   @Inject
-  @Collection
   public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
     this.daoTestDefinition = new TestDefinitionRepository(dao);
