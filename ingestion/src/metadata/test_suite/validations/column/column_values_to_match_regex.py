@@ -70,7 +70,9 @@ def column_values_to_match_regex(
         )
         value_count_value_res = value_count_value_dict.get(Metrics.COUNT.name)
         like_count_value_dict = dict(
-            runner.dispatch_query_select_first(like_count(col).fn())
+            runner.dispatch_query_select_first(
+                like_count(col).fn()
+            )  # pylint: disable=abstract-class-instantiated
         )
         like_count_value_res = like_count_value_dict.get(Metrics.LIKE_COUNT.name)
 
@@ -92,7 +94,10 @@ def column_values_to_match_regex(
         if value_count_value_res == like_count_value_res
         else TestCaseStatus.Failed
     )
-    result = f"Found {like_count_value_res} value(s) matching regex pattern vs {value_count_value_res} value(s) in the column."
+    result = (
+        f"Found {like_count_value_res} value(s) matching regex pattern vs "
+        f"{value_count_value_res} value(s) in the column."
+    )
 
     return TestCaseResult(
         timestamp=execution_date,
