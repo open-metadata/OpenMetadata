@@ -196,8 +196,6 @@ describe('searchAPI tests', () => {
   });
 
   it('searchQuery should not return nulls', async () => {
-    afterEach(() => jest.clearAllMocks());
-
     jest.mock('./index.js', () => ({
       get: jest
         .fn()
