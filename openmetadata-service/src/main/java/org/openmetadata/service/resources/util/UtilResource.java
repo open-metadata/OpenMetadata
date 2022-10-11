@@ -59,11 +59,11 @@ public class UtilResource {
   public EntitiesCount listEntitiesCount(
       @Context UriInfo uriInfo,
       @Parameter(
-          description = "Include all, deleted, or non-deleted entities.",
-          schema = @Schema(implementation = Include.class))
-      @QueryParam("include")
-      @DefaultValue("non-deleted")
-      Include include) {
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
     ListFilter filter = new ListFilter(include);
     return utilRepository.getAllEntitiesCount(filter);
   }
@@ -84,11 +84,11 @@ public class UtilResource {
   public ServicesCount listServicesCount(
       @Context UriInfo uriInfo,
       @Parameter(
-          description = "Include all, deleted, or non-deleted entities.",
-          schema = @Schema(implementation = Include.class))
-      @QueryParam("include")
-      @DefaultValue("non-deleted")
-      Include include) {
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
     ListFilter filter = new ListFilter(include);
     return utilRepository.getAllServicesCount(filter);
   }
