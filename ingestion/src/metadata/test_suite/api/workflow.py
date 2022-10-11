@@ -32,7 +32,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
