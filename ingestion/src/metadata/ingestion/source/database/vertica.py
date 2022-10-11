@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Vertica source implementation.
+"""
 import re
 from textwrap import dedent
 
@@ -44,15 +46,18 @@ class UUID(String):
 
 
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
+def get_columns(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=too-many-locals,unused-argument
+    """
+    Method to handle column details
+    """
     if schema is not None:
-        schema_condition = "lower(table_schema) = '%(schema)s'" % {
-            "schema": schema.lower()
-        }
+        schema_condition = f"lower(table_schema) = '{schema.lower()}'"
     else:
         schema_condition = "1"
 
-    s = sql.text(
+    sql_query = sql.text(
         dedent(
             VERTICA_GET_COLUMNS.format(
                 table=table_name.lower(), schema_condition=schema_condition
@@ -70,7 +75,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     pk_columns = [x[0] for x in connection.execute(spk)]
     columns = []
-    for row in connection.execute(s):
+    for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
         primary_key = name in pk_columns
@@ -78,7 +83,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         nullable = row.is_nullable
         comment = row.comment
 
-        column_info = self._get_column_info(
+        column_info = self._get_column_info(  # pylint: disable=protected-access
             name,
             dtype,
             default,
@@ -91,7 +96,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
-def _get_column_info(
+def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     self,
     name,
     format_type,
@@ -155,14 +160,17 @@ def _get_column_info(
     if coltype:
         coltype = coltype(*args, **kwargs)
     else:
-        util.warn("Did not recognize type '%s' of column '%s'" % (attype, name))
+        util.warn(f"Did not recognize type '{attype}' of column '{name}'")
         coltype = sqltypes.NULLTYPE
     # adjust the default value
     autoincrement = False
     if default is not None:
         match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
         if match is not None:
-            if issubclass(coltype._type_affinity, sqltypes.Integer):
+            if issubclass(
+                coltype._type_affinity,  # pylint: disable=protected-access
+                sqltypes.Integer,
+            ):
                 autoincrement = True
             # the default is related to a Sequence
             sch = schema
@@ -172,7 +180,7 @@ def _get_column_info(
                 # "quote schema"
                 default = (
                     match.group(1)
-                    + ('"%s"' % sch)
+                    + (f'"{sch}"')
                     + "."
                     + match.group(2)
                     + match.group(3)
@@ -190,22 +198,22 @@ def _get_column_info(
 
 
 @reflection.cache
-def get_view_definition(self, connection, view_name, schema=None, **kw):
+def get_view_definition(
+    self, connection, view_name, schema=None, **kw
+):  # pylint: disable=unused-argument,unused-argument
     if schema is not None:
-        schema_condition = "lower(table_schema) = '%(schema)s'" % {
-            "schema": schema.lower()
-        }
+        schema_condition = f"lower(table_schema) = '{schema.lower()}'"
     else:
         schema_condition = "1"
 
-    s = sql.text(
+    sql_query = sql.text(
         dedent(
             VERTICA_VIEW_DEFINITION.format(
                 view_name=view_name.lower(), schema_condition=schema_condition
             )
         )
     )
-    rows = [row for row in connection.execute(s)]
+    rows = list(connection.execute(sql_query))
     if len(rows) >= 1:
         return rows[0][0]
     return None
@@ -213,14 +221,14 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
 
 VerticaDialect.get_columns = get_columns  # pylint: disable=protected-access
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
-VerticaDialect.get_view_definition = (
-    get_view_definition  # pylint: disable=protected-access
-)
+VerticaDialect.get_view_definition = get_view_definition
 
 
 class VerticaSource(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    """
+    Implements the necessary methods to extract
+    Database metadata from Vertica Source
+    """
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
