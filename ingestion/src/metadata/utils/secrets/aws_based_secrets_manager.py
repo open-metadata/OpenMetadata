@@ -29,6 +29,10 @@ NULL_VALUE = "null"
 
 
 class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
+    """
+    AWS Secrets Manager class
+    """
+
     def __init__(
         self,
         credentials: Optional[AWSCredentials],

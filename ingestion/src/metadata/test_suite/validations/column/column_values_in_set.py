@@ -70,7 +70,9 @@ def column_values_in_set(
                 f"Cannot find the configured column {column_name} for test case {test_case.name.__root__}"
             )
 
-        set_count_dict = dict(runner.dispatch_query_select_first(set_count(col).fn()))
+        set_count_dict = dict(
+            runner.dispatch_query_select_first(set_count(col).fn())
+        )  # pylint: disable=abstract-class-instantiated
         set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
     except Exception as exc:  # pylint: disable=broad-except

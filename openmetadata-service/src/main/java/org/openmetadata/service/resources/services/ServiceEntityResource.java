@@ -26,6 +26,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
@@ -37,25 +38,19 @@ public abstract class ServiceEntityResource<
         S extends ServiceConnectionEntityInterface>
     extends EntityResource<T, R> {
 
-  private final SecretsManager secretsManager;
-
   @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
 
   private final ServiceType serviceType;
 
   protected ServiceEntityResource(
-      Class<T> entityClass,
-      R serviceRepository,
-      Authorizer authorizer,
-      SecretsManager secretsManager,
-      ServiceType serviceType) {
+      Class<T> entityClass, R serviceRepository, Authorizer authorizer, ServiceType serviceType) {
     super(entityClass, serviceRepository, authorizer);
     this.serviceEntityRepository = serviceRepository;
-    this.secretsManager = secretsManager;
     this.serviceType = serviceType;
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorizeAdmin(securityContext, secretsManager.isLocal());
     } catch (AuthorizationException e) {
@@ -66,6 +61,7 @@ public abstract class ServiceEntityResource<
   }
 
   private Object retrieveServiceConnectionConfig(T service) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     return secretsManager.encryptOrDecryptServiceConnectionConfig(
         service.getConnection().getConfig(), extractServiceType(service), service.getName(), serviceType, false);
   }

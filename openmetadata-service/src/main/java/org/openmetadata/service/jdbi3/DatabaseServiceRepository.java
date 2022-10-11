@@ -18,16 +18,14 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 
 public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
-  public DatabaseServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
+  public DatabaseServiceRepository(CollectionDAO dao) {
     super(
         DatabaseServiceResource.COLLECTION_PATH,
         Entity.DATABASE_SERVICE,
         dao,
         dao.dbServiceDAO(),
-        secretsManager,
         DatabaseConnection.class,
         ServiceType.DATABASE);
   }

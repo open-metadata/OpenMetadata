@@ -83,18 +83,20 @@ public class BuildSearchIndexResource {
   private final ExecutorService threadScheduler;
   private final UserRepository userRepository;
 
-  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_CONFIG)
-  public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer, OpenMetadataApplicationConfig config) {
-    if (config.getElasticSearchConfiguration() != null) {
-      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
-    }
+  public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = dao;
     this.userRepository = new UserRepository(dao);
     this.authorizer = authorizer;
     this.threadScheduler =
         new ThreadPoolExecutor(
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (config.getElasticSearchConfiguration() != null) {
+      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+    }
   }
 
   private BulkProcessor getBulkProcessor(BulkProcessorListener listener, int bulkSize, int flushIntervalInSeconds) {

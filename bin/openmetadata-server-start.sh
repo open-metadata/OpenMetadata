@@ -71,12 +71,12 @@ else
   JAVA="$JAVA_HOME/bin/java"
 fi
 
-
+OPENMETADATA_DEBUG="true"
 # Set Debug options if enabled
 if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 
     # Use default ports
-    DEFAULT_JAVA_DEBUG_PORT="5005"
+    DEFAULT_JAVA_DEBUG_PORT="0.0.0.0:5005"
 
     if [ -z "$JAVA_DEBUG_PORT" ]; then
         JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
@@ -111,7 +111,6 @@ fi
 
 #Application classname
 APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
-
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
     nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &

@@ -8,13 +8,21 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+BulkSink class used for Usage workflows.
 
+It sends Table queries and usage counts to Entities,
+as well as populating JOIN information.
+
+It picks up the information from reading the files
+produced by the stage. At the end, the path is removed.
+"""
 import json
 import os
 import shutil
 import traceback
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import ValidationError
 
@@ -39,6 +47,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -51,6 +60,13 @@ class MetadataUsageSinkConfig(ConfigModel):
 
 
 class MetadataUsageBulkSink(BulkSink):
+    """
+    BulkSink implementation to send:
+    - table usage
+    - table queries
+    - frequent joins
+    """
+
     config: MetadataUsageSinkConfig
 
     def __init__(
@@ -116,14 +132,10 @@ class MetadataUsageBulkSink(BulkSink):
                     value_dict["table_entity"], table_usage_request
                 )
                 logger.info(
-                    "Successfully table usage published for {}".format(
-                        value_dict["table_entity"].fullyQualifiedName.__root__
-                    )
+                    f"Successfully table usage published for {value_dict['table_entity'].fullyQualifiedName.__root__}"
                 )
                 self.status.records_written(
-                    "Table: {}".format(
-                        value_dict["table_entity"].fullyQualifiedName.__root__
-                    )
+                    f"Table: {value_dict['table_entity'].fullyQualifiedName.__root__}"
                 )
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
@@ -133,15 +145,11 @@ class MetadataUsageBulkSink(BulkSink):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    "Failed to update usage for {} :{}".format(
-                        value_dict["table_entity"].fullyQualifiedName.__root__, exc
-                    )
+                    f"Failed to update usage for {value_dict['table_entity'].fullyQualifiedName.__root__} :{exc}"
                 )
                 self.status.failures.append(table_usage_request)
                 self.status.failures.append(
-                    "Table: {}".format(
-                        value_dict["table_entity"].fullyQualifiedName.__root__
-                    )
+                    f"Table: {value_dict['table_entity'].fullyQualifiedName.__root__}"
                 )
 
     def iterate_files(self):
@@ -154,7 +162,7 @@ class MetadataUsageBulkSink(BulkSink):
                 full_file_name = os.path.join(self.config.filename, filename)
                 if not os.path.isfile(full_file_name):
                     continue
-                with open(full_file_name) as file:
+                with open(full_file_name, encoding=UTF_8) as file:
                     yield file
 
     # Check here how to properly pick up ES and/or table query data
@@ -187,45 +195,7 @@ class MetadataUsageBulkSink(BulkSink):
                     )
                     continue
 
-                for table_entity in table_entities:
-                    if table_entity is not None:
-                        table_join_request = None
-                        try:
-                            self.__populate_table_usage_map(
-                                table_usage=table_usage, table_entity=table_entity
-                            )
-                            table_join_request = self.__get_table_joins(
-                                table_entity=table_entity, table_usage=table_usage
-                            )
-                            logger.debug(
-                                "table join request {}".format(table_join_request)
-                            )
-
-                            if (
-                                table_join_request is not None
-                                and len(table_join_request.columnJoins) > 0
-                            ):
-                                self.metadata.publish_frequently_joined_with(
-                                    table_entity, table_join_request
-                                )
-                        except APIError as err:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                "Failed to update query join for {}: {}".format(
-                                    table_usage.table, err
-                                )
-                            )
-                            self.status.failures.append(table_join_request)
-                        except Exception as exc:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Error getting usage and join information for {table_entity.name.__root__}: {exc}"
-                            )
-                    else:
-                        logger.warning(
-                            f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
-                        )
-                        self.status.warnings.append(f"Table: {table_usage.table}")
+                self.get_table_usage_and_joins(table_entities, table_usage)
 
             self.__publish_usage_records()
         try:
@@ -234,6 +204,50 @@ class MetadataUsageBulkSink(BulkSink):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to publish compute.percentile: {err}")
+
+    def get_table_usage_and_joins(
+        self, table_entities: List[Table], table_usage: TableUsageCount
+    ):
+        """
+        For the list of tables, compute usage with already existing seen
+        tables and publish the join information.
+        """
+        for table_entity in table_entities:
+            if table_entity is not None:
+                table_join_request = None
+                try:
+                    self.__populate_table_usage_map(
+                        table_usage=table_usage, table_entity=table_entity
+                    )
+                    table_join_request = self.__get_table_joins(
+                        table_entity=table_entity, table_usage=table_usage
+                    )
+                    logger.debug(f"table join request {table_join_request}")
+
+                    if (
+                        table_join_request is not None
+                        and len(table_join_request.columnJoins) > 0
+                    ):
+                        self.metadata.publish_frequently_joined_with(
+                            table_entity, table_join_request
+                        )
+                except APIError as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to update query join for {table_usage.table}: {err}"
+                    )
+                    self.status.failures.append(table_join_request)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error getting usage and join information for {table_entity.name.__root__}: {exc}"
+                    )
+            else:
+                logger.warning(
+                    "Could not fetch table"
+                    f" {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
+                )
+                self.status.warnings.append(f"Table: {table_usage.table}")
 
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount
@@ -250,7 +264,7 @@ class MetadataUsageBulkSink(BulkSink):
             if column_join.tableColumn is None or len(column_join.joinedWith) == 0:
                 continue
 
-            if column_join.tableColumn.column in column_joins_dict.keys():
+            if column_join.tableColumn.column in column_joins_dict:
                 joined_with = column_joins_dict[column_join.tableColumn.column]
             else:
                 column_joins_dict[column_join.tableColumn.column] = {}

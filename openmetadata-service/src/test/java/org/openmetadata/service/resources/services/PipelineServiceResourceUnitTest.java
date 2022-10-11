@@ -36,7 +36,6 @@ import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,9 +44,8 @@ public class PipelineServiceResourceUnitTest
         PipelineServiceResource, PipelineService, PipelineServiceRepository, PipelineConnection> {
 
   @Override
-  protected PipelineServiceResource newServiceResource(
-      CollectionDAO collectionDAO, Authorizer authorizer, SecretsManager secretsManager) {
-    return new PipelineServiceResource(collectionDAO, authorizer, secretsManager);
+  protected PipelineServiceResource newServiceResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    return new PipelineServiceResource(collectionDAO, authorizer);
   }
 
   @Override

@@ -100,7 +100,6 @@ public class FeedResource {
     return thread;
   }
 
-  @Collection
   public FeedResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = new FeedRepository(dao);

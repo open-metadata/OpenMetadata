@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Redash source module
+"""
 
 from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
@@ -27,7 +30,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
@@ -40,7 +42,7 @@ from metadata.utils.logger import ingestion_logger
 # Disable the DictConfigurator.configure method while importing LineageRunner
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner
+from sqllineage.runner import LineageRunner  # pylint: disable=C0413
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
@@ -50,12 +52,9 @@ logger = ingestion_logger()
 
 
 class RedashSource(DashboardServiceSource):
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
+    """
+    Redash Source Class
+    """
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -147,18 +146,9 @@ class RedashSource(DashboardServiceSource):
                             dashboard_name=str(dashboard_details.get("id")),
                         ),
                     )
-                    if from_entity and to_entity:
-                        lineage = AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=from_entity.id.__root__, type="table"
-                                ),
-                                toEntity=EntityReference(
-                                    id=to_entity.id.__root__, type="dashboard"
-                                ),
-                            )
-                        )
-                        yield lineage
+                    yield self._get_add_lineage_request(
+                        to_entity=to_entity, from_entity=from_entity
+                    )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict

@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Common Broker for fetching metadata
+"""
+
 import concurrent.futures
 import traceback
 from abc import ABC
@@ -45,6 +49,11 @@ class BrokerTopicDetails(BaseModel):
 
 
 class CommonBrokerSource(MessagingServiceSource, ABC):
+    """
+    Common Broker Source Class
+    to fetch topics from Broker based sources
+    """
+
     def __init__(
         self,
         config: WorkflowSource,
@@ -74,9 +83,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self, topic_details: BrokerTopicDetails
     ) -> Iterable[CreateTopicRequest]:
         try:
-            logger.info("Fetching topic schema {}".format(topic_details.topic_name))
+            logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
-            logger.info("Fetching topic config {}".format(topic_details.topic_name))
+            logger.info(f"Fetching topic config {topic_details.topic_name}")
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
                 service=EntityReference(
@@ -121,7 +130,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 f"Unexpected exception to yield topic [{topic_details.topic_name}]: {exc}"
             )
             self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, topic_details.topic_name)
+                f"{self.config.serviceName}.{topic_details.topic_name}"
             )
 
     @staticmethod
@@ -171,14 +180,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     topic_name + "-value"
                 )
                 return registered_schema.schema
-
-            return None
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to get schema for topic [{topic_name}]: {exc}")
             self.status.warning(
                 topic_name, f"failed to get schema: {exc} for topic {topic_name}"
             )
+        return None
 
     def _get_sample_data(self, topic_name):
         sample_data = []
@@ -198,7 +206,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 for message in messages:
                     sample_data.append(
                         str(
-                            self.consumer_client._serializer.decode_message(
+                            self.consumer_client._serializer.decode_message(  # pylint: disable=protected-access
                                 message.value()
                             )
                         )

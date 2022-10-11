@@ -40,7 +40,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
@@ -103,8 +102,8 @@ class PipelineSourceStatus(SourceStatus):
     Reports the source status after ingestion
     """
 
-    pipelines_scanned: List[str] = list()
-    filtered: List[str] = list()
+    pipelines_scanned: List[str] = []
+    filtered: List[str] = []
 
     def pipeline_scanned(self, topic: str) -> None:
         self.pipelines_scanned.append(topic)

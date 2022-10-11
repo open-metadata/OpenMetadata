@@ -24,6 +24,7 @@ from metadata.utils.logger import ingestion_logger
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
+# pylint: disable=wrong-import-position
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
 from sqllineage.core import models
@@ -36,7 +37,9 @@ DictConfigurator.configure = configure
 logger = ingestion_logger()
 
 
-def get_involved_tables_from_parser(parser: LineageRunner) -> List[models.Table]:
+def get_involved_tables_from_parser(
+    parser: LineageRunner,
+) -> Optional[List[models.Table]]:
     """
     Use the LineageRunner parser and combine
     source and intermediate tables into
@@ -56,6 +59,7 @@ def get_involved_tables_from_parser(parser: LineageRunner) -> List[models.Table]
         logger.warning(
             f"Cannot extract source table information from query [{parser._sql}]: {exc}"  # pylint: disable=protected-access
         )
+        return None
 
 
 def get_clean_parser_table_list(tables: List[models.Table]) -> List[str]:

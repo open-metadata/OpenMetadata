@@ -20,6 +20,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -35,11 +36,8 @@ public class OpenMetadataServerConnectionBuilder {
   private final Object airflowSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
-  private final SecretsManager secretsManager;
 
-  public OpenMetadataServerConnectionBuilder(
-      SecretsManager secretsManager, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    this.secretsManager = secretsManager;
+  public OpenMetadataServerConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
     authProvider =
         "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
@@ -47,6 +45,7 @@ public class OpenMetadataServerConnectionBuilder {
             : OpenMetadataServerConnection.AuthProvider.fromValue(
                 openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
 
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (!OpenMetadataServerConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
       botRepository = BotRepository.class.cast(Entity.getEntityRepository(Entity.BOT));
       userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
@@ -118,6 +117,7 @@ public class OpenMetadataServerConnectionBuilder {
   }
 
   private User retrieveIngestionBotUser(String botName) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       Bot bot1 = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
       if (bot1.getBotUser() == null) {

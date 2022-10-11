@@ -1,3 +1,17 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Generic Column Type Parser.
+"""
+
 import re
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -29,6 +43,10 @@ NUMERIC_TYPES_SUPPORTING_PRECISION = {
 
 
 class ColumnTypeParser:
+    """
+    Column Type Parser Class
+    """
+
     _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}
 
     _COLUMN_TYPE_MAPPING: Dict[Type[types.TypeEngine], str] = {
@@ -188,148 +206,147 @@ class ColumnTypeParser:
         if not ColumnTypeParser._COLUMN_TYPE_MAPPING.get(type(column_type)):
             if not ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(str(column_type)):
                 if not ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(
-                    str(column_type).split("(")[0].split("<")[0].upper()
+                    str(column_type).split("(", maxsplit=1)[0].split("<")[0].upper()
                 ):
                     return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("VARCHAR")
                 return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(
-                    str(column_type).split("(")[0].split("<")[0].upper()
+                    str(column_type).split("(", maxsplit=1)[0].split("<")[0].upper()
                 )
             return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(str(column_type))
         return ColumnTypeParser._COLUMN_TYPE_MAPPING.get(type(column_type))
 
     @staticmethod
     def _parse_datatype_string(
-        s: str, **kwargs: Any
+        data_type: str, **kwargs: Any  # pylint: disable=unused-argument
     ) -> Union[object, Dict[str, object]]:
-        s = s.strip()
-        s = s.replace(" ", "")
-        if s.startswith("array<"):
-            if s[-1] != ">":
-                raise ValueError("expected '>' found: %s" % s)
-            arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(s[6:-1])[
-                "dataType"
-            ]
+        data_type = data_type.strip()
+        data_type = data_type.replace(" ", "")
+        if data_type.startswith("array<"):
+            if data_type[-1] != ">":
+                raise ValueError(f"expected '>' found: {data_type}")
+            arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
+                data_type[6:-1]
+            )["dataType"]
             return {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,
-                "dataTypeDisplay": s,
+                "dataTypeDisplay": data_type,
             }
-        elif s.startswith("map<"):
-            if s[-1] != ">":
-                raise ValueError("expected '>' found: %s" % s)
-            parts = ColumnTypeParser._ignore_brackets_split(s[4:-1], ",")
+        if data_type.startswith("map<"):
+            if data_type[-1] != ">":
+                raise ValueError(f"expected '>' found: {data_type}")
+            parts = ColumnTypeParser._ignore_brackets_split(data_type[4:-1], ",")
             if len(parts) != 2:
                 raise ValueError(
                     "The map type string format is: 'map<key_type,value_type>', "
-                    + "but got: %s" % s
+                    + f"but got: {data_type}"
                 )
-            return {"dataType": "MAP", "dataTypeDisplay": s}
-        elif s.startswith("uniontype<") or s.startswith("union<"):
-            if s[-1] != ">":
-                raise ValueError("'>' should be the last char, but got: %s" % s)
-            parts = ColumnTypeParser._ignore_brackets_split(s[10:-1], ",")
-            t = []
+            return {"dataType": "MAP", "dataTypeDisplay": data_type}
+        if data_type.startswith("uniontype<") or data_type.startswith("union<"):
+            if data_type[-1] != ">":
+                raise ValueError(f"'>' should be the last char, but got: {data_type}")
+            parts = ColumnTypeParser._ignore_brackets_split(data_type[10:-1], ",")
+            temp = []
             for part in parts:
-                t.append(ColumnTypeParser._parse_datatype_string(part))
-            return t
-        elif s.startswith("struct<"):
-            if s[-1] != ">":
-                raise ValueError("expected '>', found: %s" % s)
-            return ColumnTypeParser._parse_struct_fields_string(s[7:-1])
-        elif ":" in s:
-            return ColumnTypeParser._parse_struct_fields_string(s)
-        else:
-            return ColumnTypeParser._parse_primitive_datatype_string(s)
+                temp.append(ColumnTypeParser._parse_datatype_string(part))
+            return temp
+        if data_type.startswith("struct<"):
+            if data_type[-1] != ">":
+                raise ValueError(f"expected '>', found: {data_type}")
+            return ColumnTypeParser._parse_struct_fields_string(data_type[7:-1])
+        if ":" in data_type:
+            return ColumnTypeParser._parse_struct_fields_string(data_type)
+        return ColumnTypeParser._parse_primitive_datatype_string(data_type)
 
     @staticmethod
-    def _parse_struct_fields_string(s: str) -> Dict[str, object]:
-        parts = ColumnTypeParser._ignore_brackets_split(s, ",")
+    def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:
+        parts = ColumnTypeParser._ignore_brackets_split(stuct_type, ",")
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
             if len(name_and_type) != 2:
                 raise ValueError(
-                    "expected format is: 'field_name:field_type', "
-                    + "but got: %s" % part
+                    "expected format is: 'field_name:field_type', " + f"but got: {part}"
                 )
             field_name = name_and_type[0].strip()
             if field_name.startswith("`"):
                 if field_name[-1] != "`":
-                    raise ValueError("'`' should be the last char, but got: %s" % s)
+                    raise ValueError(
+                        f"'`' should be the last char, but got: {stuct_type}"
+                    )
                 field_name = field_name[1:-1]
             field_type = ColumnTypeParser._parse_datatype_string(name_and_type[1])
             field_type["name"] = field_name
             columns.append(field_type)
         return {
             "children": columns,
-            "dataTypeDisplay": "struct<{}>".format(s),
+            "dataTypeDisplay": f"struct<{stuct_type}>",
             "dataType": "STRUCT",
         }
 
     @staticmethod
-    def _parse_primitive_datatype_string(s: str) -> Dict[str, object]:
-        if s.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.keys():
+    def _parse_primitive_datatype_string(  # pylint: disable=too-many-return-statements
+        dtype: str,
+    ) -> Dict[str, object]:
+        if dtype.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
             return {
-                "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[s.upper()],
-                "dataTypeDisplay": s,
+                "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
+                "dataTypeDisplay": dtype,
             }
-        elif ColumnTypeParser._FIXED_STRING.match(s):
-            return {"dataType": "STRING", "dataTypeDisplay": s}
-        elif ColumnTypeParser._FIXED_DECIMAL.match(s):
-            m = ColumnTypeParser._FIXED_DECIMAL.match(s)
-            if m.group(2) is not None:  # type: ignore
+        if ColumnTypeParser._FIXED_STRING.match(dtype):
+            return {"dataType": "STRING", "dataTypeDisplay": dtype}
+        if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
+            match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
+            if match.group(2) is not None:  # type: ignore
                 return {
-                    "dataType": ColumnTypeParser.get_column_type(m.group(0)),
-                    "dataTypeDisplay": s,
-                    "dataLength": int(m.group(3)),  # type: ignore
+                    "dataType": ColumnTypeParser.get_column_type(match.group(0)),
+                    "dataTypeDisplay": dtype,
+                    "dataLength": int(match.group(3)),  # type: ignore
                 }
-            else:
-                return {
-                    "dataType": ColumnTypeParser.get_column_type(m.group(0)),
-                    "dataTypeDisplay": s,
-                }
-        elif s == "date":
-            return {"dataType": "DATE", "dataTypeDisplay": s}
-        elif s == "timestamp":
-            return {"dataType": "TIMESTAMP", "dataTypeDisplay": s}
-        else:
-            data_type = ColumnTypeParser.get_column_type(s)
-            if not data_type:
-                return {"dataType": "NULL", "dataTypeDisplay": s}
-            else:
-                data_length = 1
-                if re.match(".*(\([\w]*\))", s):
-                    data_length = re.match(".*\(([\w]*)\)", s).groups()[0]
-                return {
-                    "dataType": data_type,
-                    "dataTypeDisplay": data_type,
-                    "dataLength": data_length,
-                }
+            return {
+                "dataType": ColumnTypeParser.get_column_type(match.group(0)),
+                "dataTypeDisplay": dtype,
+            }
+        if dtype == "date":
+            return {"dataType": "DATE", "dataTypeDisplay": dtype}
+        if dtype == "timestamp":
+            return {"dataType": "TIMESTAMP", "dataTypeDisplay": dtype}
+        data_type = ColumnTypeParser.get_column_type(dtype)
+        if not data_type:
+            return {"dataType": "NULL", "dataTypeDisplay": dtype}
+        data_length = 1
+        if re.match(r".*(\([\w]*\))", dtype):
+            data_length = re.match(r".*\(([\w]*)\)", dtype).groups()[0]
+        return {
+            "dataType": data_type,
+            "dataTypeDisplay": data_type,
+            "dataLength": data_length,
+        }
 
     @staticmethod
-    def _ignore_brackets_split(s: str, separator: str) -> List[str]:
+    def _ignore_brackets_split(string: str, separator: str) -> List[str]:
         parts = []
         buf = ""
         level = 0
-        for c in s:
-            if c in ColumnTypeParser._BRACKETS.keys():
+        for char in string:
+            if char in ColumnTypeParser._BRACKETS:
                 level += 1
-                buf += c
-            elif c in ColumnTypeParser._BRACKETS.values():
+                buf += char
+            elif char in ColumnTypeParser._BRACKETS.values():
                 if level == 0:
-                    raise ValueError("Brackets are not correctly paired: %s" % s)
+                    raise ValueError(f"Brackets are not correctly paired: {string}")
                 level -= 1
-                buf += c
-            elif c == separator and level > 0:
-                buf += c
-            elif c == separator:
+                buf += char
+            elif char == separator and level > 0:
+                buf += char
+            elif char == separator:
                 parts.append(buf)
                 buf = ""
             else:
-                buf += c
+                buf += char
 
         if len(buf) == 0:
-            raise ValueError("The %s cannot be the last char: %s" % (separator, s))
+            raise ValueError(f"The {separator} cannot be the last char: {string}")
         parts.append(buf)
         return parts
 
@@ -345,6 +362,7 @@ class ColumnTypeParser:
             if args and args.group(1):
                 args = tuple(re.split(r"\s*,\s*", args.group(1)))
                 return args
+        return None
 
     @staticmethod
     def is_primitive_om_type(raw_type: str) -> bool:

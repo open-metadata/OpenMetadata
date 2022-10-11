@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, FormProps, Input, Row, Typography } from 'antd';
+import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -71,21 +71,22 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       const name = selectedDefinition.parameterDefinition[0].name;
       if (name === 'sqlExpression') {
         return (
-          <Row>
-            <Col data-testid="sql-editor-container" span={24}>
-              <Typography.Paragraph className="tw-mb-1.5">
-                Profile Sample Query
-              </Typography.Paragraph>
-              <SchemaEditor
-                mode={{ name: CSMode.SQL }}
-                options={{
-                  readOnly: false,
-                }}
-                value={sqlQuery.value || ''}
-                onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
-              />
-            </Col>
-          </Row>
+          <Form.Item
+            data-testid="sql-editor-container"
+            key={name}
+            label="SQL Query"
+            name={name}
+            tooltip="Queries returning 1 or more rows will result in the test failing.">
+            <SchemaEditor
+              className="profiler-setting-sql-editor"
+              mode={{ name: CSMode.SQL }}
+              options={{
+                readOnly: false,
+              }}
+              value={sqlQuery.value || ''}
+              onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
+            />
+          </Form.Item>
         );
       }
 
@@ -205,6 +206,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       okText="Submit"
       title={`Edit ${testCase?.name}`}
       visible={visible}
+      width={600}
       onCancel={onCancel}
       onOk={() => form.submit()}>
       {isLoading ? (

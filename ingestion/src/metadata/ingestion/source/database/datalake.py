@@ -75,6 +75,11 @@ DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet")
 
 
 class DatalakeSource(DatabaseServiceSource):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Datalake Source
+    """
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.status = SQLSourceStatus()
         self.config = config
@@ -251,10 +256,10 @@ class DatalakeSource(DatabaseServiceSource):
         try:
             table_constraints = None
             if isinstance(self.service_connection.configSource, GCSConfig):
-                df = self.get_gcs_files(key=table_name, bucket_name=schema_name)
+                data_frame = self.get_gcs_files(key=table_name, bucket_name=schema_name)
             if isinstance(self.service_connection.configSource, S3Config):
-                df = self.get_s3_files(key=table_name, bucket_name=schema_name)
-            columns = self.get_columns(df)
+                data_frame = self.get_s3_files(key=table_name, bucket_name=schema_name)
+            columns = self.get_columns(data_frame)
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
@@ -272,9 +277,7 @@ class DatalakeSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def get_gcs_files(self, key, bucket_name):
         try:
@@ -295,6 +298,7 @@ class DatalakeSource(DatabaseServiceSource):
             logger.error(
                 f"Unexpected exception to get GCS files from [{bucket_name}]: {exc}"
             )
+        return None
 
     def get_s3_files(self, key, bucket_name):
         try:
@@ -315,15 +319,16 @@ class DatalakeSource(DatabaseServiceSource):
             logger.error(
                 f"Unexpected exception to get S3 files from [{bucket_name}]: {exc}"
             )
+        return None
 
-    def fetch_sample_data(self, df, table: str) -> Optional[TableData]:
+    def fetch_sample_data(self, data_frame, table: str) -> Optional[TableData]:
         try:
             cols = []
-            table_columns = self.get_columns(df)
+            table_columns = self.get_columns(data_frame)
 
             for col in table_columns:
                 cols.append(col.name.__root__)
-            table_rows = df.values.tolist()
+            table_rows = data_frame.values.tolist()
 
             return TableData(columns=cols, rows=table_rows)
         # Catch any errors and continue the ingestion
@@ -332,16 +337,19 @@ class DatalakeSource(DatabaseServiceSource):
             logger.warning(f"Failed to fetch sample data for {table}: {exc}")
         return None
 
-    def get_columns(self, df):
-        if hasattr(df, "columns"):
-            df_columns = list(df.columns)
+    def get_columns(self, data_frame):
+        """
+        method to process column details
+        """
+        if hasattr(data_frame, "columns"):
+            df_columns = list(data_frame.columns)
             for column in df_columns:
                 try:
                     if (
-                        hasattr(df[column], "dtypes")
-                        and df[column].dtypes.name in DATALAKE_INT_TYPES
+                        hasattr(data_frame[column], "dtypes")
+                        and data_frame[column].dtypes.name in DATALAKE_INT_TYPES
                     ):
-                        if df[column].dtypes.name == "int64":
+                        if data_frame[column].dtypes.name == "int64":
                             data_type = DataType.INT.value
                     else:
                         data_type = DataType.STRING.value
@@ -363,7 +371,9 @@ class DatalakeSource(DatabaseServiceSource):
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
+    def standardize_table_name(
+        self, schema: str, table: str  # pylint: disable=unused-argument
+    ) -> str:
         return table
 
     def check_valid_file_type(self, key_name):
