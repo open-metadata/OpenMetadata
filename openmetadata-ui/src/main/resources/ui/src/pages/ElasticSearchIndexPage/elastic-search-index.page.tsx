@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReloadOutlined } from '@ant-design/icons';
 import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, startCase } from 'lodash';
@@ -249,7 +250,19 @@ const ElasticSearchIndexPage = () => {
           </Card>
         </Col>
         <Col span={24}>
-          <Card loading={streamLoading} size="small" title="ElasticSearch">
+          <Card
+            extra={
+              <Button
+                data-testid="elastic-search-re-fetch-data"
+                disabled={streamLoading}
+                icon={<ReloadOutlined />}
+                size="small"
+                onClick={fetchStreamReIndexedData}
+              />
+            }
+            loading={streamLoading}
+            size="small"
+            title="ElasticSearch">
             <Space direction="horizontal" size={16}>
               <div className="tw-flex">
                 <span className="tw-text-grey-muted">Mode</span> :
