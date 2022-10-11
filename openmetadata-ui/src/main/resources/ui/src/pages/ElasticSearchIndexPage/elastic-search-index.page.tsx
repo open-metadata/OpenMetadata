@@ -133,14 +133,24 @@ const ElasticSearchIndexPage = () => {
         <Col span={24}>
           <Card
             extra={
-              <Button
-                data-testid="elastic-search-re-index-all"
-                disabled={!isAdminUser}
-                size="small"
-                type="primary"
-                onClick={() => setModalOpen(true)}>
-                Re Index All
-              </Button>
+              <Space>
+                <Button
+                  data-testid="elastic-search-re-fetch-data"
+                  disabled={streamLoading}
+                  icon={<ReloadOutlined />}
+                  size="small"
+                  title="Refresh log"
+                  onClick={fetchBatchReIndexedData}
+                />
+                <Button
+                  data-testid="elastic-search-re-index-all"
+                  disabled={!isAdminUser}
+                  size="small"
+                  type="primary"
+                  onClick={() => setModalOpen(true)}>
+                  Re Index All
+                </Button>
+              </Space>
             }
             loading={batchLoading}
             size="small"
@@ -257,6 +267,7 @@ const ElasticSearchIndexPage = () => {
                 disabled={streamLoading}
                 icon={<ReloadOutlined />}
                 size="small"
+                title="Refresh log"
                 onClick={fetchStreamReIndexedData}
               />
             }
