@@ -202,7 +202,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   marks={{
                     0: '0%',
                     100: '100%',
-                    [profileSample as number]: `${profileSample}%`,
                   }}
                   max={100}
                   min={0}
