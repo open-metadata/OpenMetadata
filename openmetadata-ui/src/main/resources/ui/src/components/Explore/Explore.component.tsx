@@ -726,6 +726,7 @@ const Explore: React.FC<ExploreProps> = ({
           {!connectionError && (
             <Tabs
               defaultActiveKey={lowerCase(tabsInfo[0].label)}
+              size="small"
               tabBarExtraContent={getSortingElements()}
               onChange={(tab) => {
                 tab && onTabChange(toNumber(tab));
@@ -736,7 +737,7 @@ const Explore: React.FC<ExploreProps> = ({
                   tab={
                     <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
                       {tabDetail.label}
-                      <span className="pl-1">
+                      <span className="p-l-xs ">
                         {getTabCount(
                           tabDetail.index,
                           tabDetail.tab === currentTab
