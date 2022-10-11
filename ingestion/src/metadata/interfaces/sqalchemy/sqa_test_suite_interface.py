@@ -45,7 +45,6 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
     against a SQAlchemy source.
     """
 
-    # pylint: disable=super-init-not-called
     def __init__(
         self,
         service_connection_config: DatabaseConnection,

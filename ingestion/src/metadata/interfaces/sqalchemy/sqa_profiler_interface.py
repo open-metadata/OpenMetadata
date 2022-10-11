@@ -51,7 +51,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
     sqlalchemy.
     """
 
-    # pylint: disable=super-init-not-called,too-many-arguments
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         service_connection_config,
