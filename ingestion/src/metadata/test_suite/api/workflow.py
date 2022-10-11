@@ -216,29 +216,24 @@ class TestSuiteWorkflow:
         Args:
             entity: table entity
         """
-        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
-        if entity.serviceType != DatabaseServiceType.BigQuery:
+        if (
+            not hasattr(entity, "serviceType")
+            or entity.serviceType != DatabaseServiceType.BigQuery
+        ):
             return None
-        if entity.tablePartition:
-            if entity.tablePartition.intervalType in {
-                IntervalType.TIME_UNIT,
-                IntervalType.INGESTION_TIME,
-            }:
-                try:
-                    partition_field = entity.tablePartition.columns[0]
-                except Exception:
-                    raise TypeError(
-                        "Unsupported ingestion based partition type. Skipping table"
-                    )
 
+        if hasattr(entity, "tablePartition") and entity.tablePartition:
+            if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
                 return TablePartitionConfig(
-                    partitionField=partition_field,
+                    partitionField=entity.tablePartition.columns[0]
                 )
-
+            if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
+                if entity.tablePartition.interval == "DAY":
+                    return TablePartitionConfig(partitionField="_PARTITIONDATE")
+                return TablePartitionConfig(partitionField="_PARTITIONTIME")
             raise TypeError(
                 f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
             )
-
         return None
 
     def _create_sqa_tests_runner_interface(self, table_fqn: str):
@@ -436,8 +431,8 @@ class TestSuiteWorkflow:
                         )
             except TypeError as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Could not run test case {test_case.name}: {exc}")
-                self.status.failure(test_case.fullyQualifiedName.__root__)
+                logger.warning(f"Could not run test case for table {table_fqn}: {exc}")
+                self.status.failure(table_fqn)
 
     def print_status(self) -> None:
         """
