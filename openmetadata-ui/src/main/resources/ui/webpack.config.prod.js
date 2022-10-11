@@ -171,7 +171,7 @@ module.exports = {
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: false, // require.resolve('url/'),
+      url: require.resolve('url/'),
     },
   },
 

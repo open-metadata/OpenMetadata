@@ -23,17 +23,15 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 public class BotRepository extends EntityRepository<Bot> {
 
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  final SecretsManager secretsManager;
-
-  public BotRepository(CollectionDAO dao, SecretsManager secretsManager) {
+  public BotRepository(CollectionDAO dao) {
     super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
-    this.secretsManager = secretsManager;
   }
 
   @Override
@@ -54,6 +52,7 @@ public class BotRepository extends EntityRepository<Bot> {
     entity.withBotUser(null);
     store(entity.getId(), entity, update);
     if (!BotType.BOT.equals(entity.getBotType())) {
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       secretsManager.encryptOrDecryptBotCredentials(entity.getBotType().value(), botUser.getName(), true);
     }
     entity.withBotUser(botUser);

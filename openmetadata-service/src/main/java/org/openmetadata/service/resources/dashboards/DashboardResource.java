@@ -75,7 +75,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return dashboard;
   }
 
-  @Collection
   public DashboardResource(CollectionDAO dao, Authorizer authorizer) {
     super(Dashboard.class, new DashboardRepository(dao), authorizer);
   }

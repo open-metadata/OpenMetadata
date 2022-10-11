@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 
@@ -66,6 +68,7 @@ public abstract class ServiceResourceTest<
 
   @BeforeEach
   void beforeEach() throws IOException {
+    SecretsManagerFactory.setSecretsManager(secretsManager);
     mockServiceResourceSpecific();
     when(collectionDAO.relationshipDAO()).thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
     when(service.getId()).thenReturn(UUID.randomUUID());
@@ -75,13 +78,17 @@ public abstract class ServiceResourceTest<
             secretsManager.encryptOrDecryptServiceConnectionConfig(
                 any(), anyString(), any(), any(ServiceType.class), anyBoolean()))
         .thenReturn(serviceConnectionConfig);
-    serviceResource = newServiceResource(collectionDAO, authorizer, secretsManager);
+    serviceResource = newServiceResource(collectionDAO, authorizer);
+  }
+
+  @AfterEach
+  void afterEach() {
+    SecretsManagerFactory.setSecretsManager(null);
   }
 
   protected abstract void mockServiceResourceSpecific() throws IOException;
 
-  protected abstract T newServiceResource(
-      CollectionDAO collectionDAO, Authorizer authorizer, SecretsManager secretsManager);
+  protected abstract T newServiceResource(CollectionDAO collectionDAO, Authorizer authorizer);
 
   @ParameterizedTest
   @CsvSource({

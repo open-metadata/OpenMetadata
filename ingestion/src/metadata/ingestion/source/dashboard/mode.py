@@ -18,7 +18,7 @@ from metadata.clients import mode_client
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
@@ -31,7 +31,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
@@ -44,7 +43,7 @@ from metadata.utils.logger import ingestion_logger
 # Disable the DictConfigurator.configure method while importing LineageRunner
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner
+from sqllineage.runner import LineageRunner  # pylint: disable=C0413
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
@@ -53,6 +52,10 @@ logger = ingestion_logger()
 
 
 class ModeSource(DashboardServiceSource):
+    """
+    Mode Source Class
+    """
+
     def __init__(
         self,
         config: WorkflowSource,
@@ -76,8 +79,7 @@ class ModeSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        self.dashboards = self.client.fetch_all_reports(self.workspace_name)
-        return self.dashboards
+        return self.client.fetch_all_reports(self.workspace_name)
 
     def get_dashboard_name(self, dashboard_details: dict) -> str:
         """
@@ -130,10 +132,9 @@ class ModeSource(DashboardServiceSource):
             )
             queries = response_queries[mode_client.EMBEDDED][mode_client.QUERIES]
             for query in queries:
-                data_source_id = query.get("data_source_id")
-                if not data_source_id:
+                if not query.get("data_source_id"):
                     continue
-                data_source = self.data_sources.get(data_source_id)
+                data_source = self.data_sources.get(query.get("data_source_id"))
                 if not data_source:
                     continue
                 table_list = LineageRunner(query.get("raw_query"))
@@ -161,18 +162,9 @@ class ModeSource(DashboardServiceSource):
                                 dashboard_name=dashboard_details.get(mode_client.TOKEN),
                             ),
                         )
-                        if from_entity and to_entity:
-                            lineage = AddLineageRequest(
-                                edge=EntitiesEdge(
-                                    fromEntity=EntityReference(
-                                        id=from_entity.id.__root__, type="table"
-                                    ),
-                                    toEntity=EntityReference(
-                                        id=to_entity.id.__root__, type="dashboard"
-                                    ),
-                                )
-                            )
-                            yield lineage
+                        yield self._get_add_lineage_request(
+                            to_entity=to_entity, from_entity=from_entity
+                        )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
