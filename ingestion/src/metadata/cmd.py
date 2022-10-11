@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
 This module defines the CLI commands for OpenMetada
 """
@@ -40,6 +39,8 @@ from metadata.utils.workflow_output_handler import WorkflowType, print_init_erro
 logger = cli_logger()
 
 
+# To be fixed in https://github.com/open-metadata/OpenMetadata/issues/8081
+# pylint: disable=too-many-arguments
 @click.group()
 def check() -> None:
     pass
@@ -148,7 +149,8 @@ def webhook(host: str, port: int) -> None:
     class WebhookHandler(BaseHTTPRequestHandler):
         """WebhookHandler class to define the rest API methods"""
 
-        def do_GET(self):
+        # Overwrite do_GET and do_POST from parent class
+        def do_GET(self):  # pylint: disable=invalid-name
             """WebhookHandler GET API method"""
             self.send_response(200)
             self.send_header("Content-type", "text/html")
@@ -157,7 +159,7 @@ def webhook(host: str, port: int) -> None:
             message = "Hello, World! Here is a GET response"
             self.wfile.write(bytes(message, "utf8"))
 
-        def do_POST(self):
+        def do_POST(self):  # pylint: disable=invalid-name
             """WebhookHandler POST API method"""
             content_len = int(self.headers.get("Content-Length"))
             post_body = self.rfile.read(content_len)
@@ -424,7 +426,7 @@ def restore(
     password: str,
     database: str,
     port: str,
-    input: str,
+    sql_file: str,
     options: List[str],
     arguments: List[str],
     schema: str,
@@ -445,7 +447,7 @@ def restore(
         password,
         database,
         port,
-        input,
+        sql_file,
         options,
         arguments,
         schema,

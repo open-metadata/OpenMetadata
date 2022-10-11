@@ -33,13 +33,15 @@ def _clean(source_type: str):
     return source_type
 
 
-def _get_service_type_from(service_subtype: str) -> ServiceType:
+def _get_service_type_from(  # pylint: disable=inconsistent-return-statements
+    service_subtype: str,
+) -> ServiceType:
 
     for service_type in ServiceType:
         if service_subtype.lower() in [
             subtype.value.lower()
             for subtype in locate(
-                f"metadata.generated.schema.entity.services.{service_type.name.lower()}Service.{service_type.name}ServiceType"
+                f"metadata.generated.schema.entity.services.{service_type.name.lower()}Service.{service_type.name}ServiceType"  # pylint: disable=line-too-long
             )
             or []
         ]:

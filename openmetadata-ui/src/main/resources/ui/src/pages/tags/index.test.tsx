@@ -459,16 +459,14 @@ describe('Test TagsPage page', () => {
   it('Table with respective header should be render', async () => {
     const { container } = render(<TagsPage />);
     const table = await findByTestId(container, 'table');
-    const name = await findByTestId(container, 'heading-name');
-    const description = await findByTestId(container, 'heading-description');
-    const actions = await findByTestId(container, 'heading-actions');
-    const tableBody = await findByTestId(container, 'table-body');
+    const name = await findByText(container, 'Name');
+    const description = await findByText(container, 'Description');
+    const actions = await findByText(container, 'Actions');
 
     expect(table).toBeInTheDocument();
     expect(actions).toBeInTheDocument();
     expect(name).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(tableBody).toBeInTheDocument();
   });
 
   it('Should render error placeholder if categories api fails', async () => {

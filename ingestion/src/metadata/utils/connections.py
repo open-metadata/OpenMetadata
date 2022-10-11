@@ -139,6 +139,8 @@ from metadata.utils.timeout import timeout
 logger = logging.getLogger("Utils")
 
 
+# All imports are happening scoped in their own functions. This is fine here to not force any unused requirement
+# pylint: disable=import-outside-toplevel
 class SourceConnectionException(Exception):
     """
     Raised when we cannot connect to the source
@@ -154,7 +156,9 @@ def render_query_header(ometa_version: str) -> str:
     return f"/* {json.dumps(header_obj)} */"
 
 
-def inject_query_header(conn, cursor, statement, parameters, context, executemany):
+def inject_query_header(
+    conn, cursor, statement, parameters, context, executemany
+):  # pylint: disable=unused-argument
     """
     Inject the query header for OpenMetadata Queries
     """
@@ -261,7 +265,10 @@ def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
 
 
 @get_connection.register
-def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
+def _(
+    connection: DynamoDBConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> DynamoClient:
     from metadata.clients.aws_client import AWSClient
 
     dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
@@ -269,7 +276,10 @@ def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
 
 
 @get_connection.register
-def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
+def _(
+    connection: GlueDBConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> GlueDBClient:
     from metadata.clients.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_db_client()
@@ -278,7 +288,8 @@ def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
 
 @get_connection.register
 def _(
-    connection: GluePipelineConnection, verbose: bool = False
+    connection: GluePipelineConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ) -> GluePipelineConnection:
     from metadata.clients.aws_client import AWSClient
 
@@ -287,7 +298,10 @@ def _(
 
 
 @get_connection.register
-def _(connection: SalesforceConnection, verbose: bool = False) -> SalesforceClient:
+def _(
+    connection: SalesforceConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> SalesforceClient:
     from simple_salesforce import Salesforce
 
     salesforce_connection = SalesforceClient(
@@ -301,7 +315,10 @@ def _(connection: SalesforceConnection, verbose: bool = False) -> SalesforceClie
 
 
 @get_connection.register
-def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient:
+def _(
+    connection: DeltaLakeConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> DeltaLakeClient:
     import pyspark
     from delta import configure_spark_with_delta_pip
 
@@ -541,18 +558,20 @@ def _(connection: DeltaLakeClient) -> None:
 
 
 @get_connection.register
-def _(connection: MetabaseConnection, verbose: bool = False):
+def _(
+    connection: MetabaseConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
     try:
         params = {}
         params["username"] = connection.username
         params["password"] = connection.password.get_secret_value()
 
-        HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
+        headers = {"Content-Type": "application/json", "Accept": "*/*"}
 
-        resp = requests.post(
+        resp = requests.post(  # pylint: disable=missing-timeout
             connection.hostPort + "/api/session/",
             data=json.dumps(params),
-            headers=HEADERS,
+            headers=headers,
         )
 
         session_id = resp.json()["id"]
@@ -568,7 +587,7 @@ def _(connection: MetabaseConnection, verbose: bool = False):
 @test_connection.register
 def _(connection: MetabaseClient) -> None:
     try:
-        requests.get(
+        requests.get(  # pylint: disable=missing-timeout
             connection.client["connection"].hostPort + "/api/dashboard",
             headers=connection.client["metabase_session"],
         )
@@ -596,7 +615,9 @@ def _(connection: AirflowConnection) -> None:
 
 
 @get_connection.register
-def _(connection: AirbyteConnection, verbose: bool = False):
+def _(
+    connection: AirbyteConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
     from metadata.clients.airbyte_client import AirbyteClient
 
     return AirByteClient(AirbyteClient(connection))
@@ -612,7 +633,9 @@ def _(connection: AirByteClient) -> None:
 
 
 @get_connection.register
-def _(connection: FivetranConnection, verbose: bool = False):
+def _(
+    connection: FivetranConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
     from metadata.clients.fivetran_client import FivetranClient as FivetranRestClient
 
     return FivetranClient(FivetranRestClient(connection))
@@ -628,7 +651,9 @@ def _(connection: FivetranClient) -> None:
 
 
 @get_connection.register
-def _(connection: RedashConnection, verbose: bool = False):
+def _(
+    connection: RedashConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
 
     from redash_toolbelt import Redash
 
@@ -652,7 +677,10 @@ def _(connection: RedashClient) -> None:
 
 
 @get_connection.register
-def _(connection: SupersetConnection, verbose: bool = False):
+def _(
+    connection: SupersetConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
 
     superset_connection = SupersetAPIClient(connection)
@@ -670,7 +698,10 @@ def _(connection: SupersetClient) -> None:
 
 
 @get_connection.register
-def _(connection: TableauConnection, verbose: bool = False):
+def _(  # pylint: disable=inconsistent-return-statements
+    connection: TableauConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
 
     from tableau_api_lib import TableauServerConnection
 
@@ -720,7 +751,10 @@ def _(connection: TableauClient) -> None:
 
 
 @get_connection.register
-def _(connection: PowerBIConnection, verbose: bool = False):
+def _(
+    connection: PowerBIConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     from metadata.clients.powerbi_client import PowerBiApiClient
 
     return PowerBiClient(PowerBiApiClient(connection))
@@ -736,7 +770,10 @@ def _(connection: PowerBiClient) -> None:
 
 
 @get_connection.register
-def _(connection: LookerConnection, verbose: bool = False):
+def _(
+    connection: LookerConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     import looker_sdk
 
     if not os.environ.get("LOOKERSDK_CLIENT_ID"):
@@ -790,13 +827,19 @@ def _(connection: DatalakeClient) -> None:
 
 @singledispatch
 def get_datalake_client(config):
+    """
+    Method to retrieve datalake client from the config
+    """
     if config:
         msg = f"Config not implemented for type {type(config)}: {config}"
         raise NotImplementedError(msg)
 
 
 @get_connection.register
-def _(connection: DatalakeConnection, verbose: bool = False) -> DatalakeClient:
+def _(
+    connection: DatalakeConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> DatalakeClient:
     datalake_connection = get_datalake_client(connection.configSource)
     return DatalakeClient(client=datalake_connection, config=connection)
 
@@ -819,7 +862,9 @@ def _(config: GCSConfig):
 
 
 @get_connection.register
-def _(connection: ModeConnection, verbose: bool = False):
+def _(
+    connection: ModeConnection, verbose: bool = False  # pylint: disable=unused-argument
+):
     from metadata.clients.mode_client import ModeApiClient
 
     return ModeClient(ModeApiClient(connection))
@@ -835,7 +880,10 @@ def _(connection: ModeClient) -> None:
 
 
 @get_connection.register
-def _(connection: MlflowConnection, verbose: bool = False):
+def _(
+    connection: MlflowConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     from mlflow.tracking import MlflowClient
 
     return MlflowClientWrapper(
@@ -856,7 +904,9 @@ def _(connection: MlflowClientWrapper) -> None:
 
 
 @get_connection.register
-def _(connection: NifiConnection, verbose: bool = False):
+def _(
+    connection: NifiConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
 
     return NifiClientWrapper(
         NifiClient(
@@ -879,7 +929,7 @@ def _(connection: NifiClientWrapper) -> None:
 
 
 @get_connection.register
-def _(_: BackendConnection, verbose: bool = False):
+def _(_: BackendConnection, verbose: bool = False):  # pylint: disable=unused-argument
     """
     Let's use Airflow's internal connection for this
     """
@@ -912,7 +962,9 @@ def _(connection: DagsterClient) -> None:
     from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
 
     try:
-        connection.client._execute(TEST_QUERY_GRAPHQL)
+        connection.client._execute(  # pylint: disable=protected-access
+            TEST_QUERY_GRAPHQL
+        )
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc

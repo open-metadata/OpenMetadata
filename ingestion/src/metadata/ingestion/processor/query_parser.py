@@ -34,7 +34,7 @@ from metadata.utils.logger import ingestion_logger
 
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner
+from sqllineage.runner import LineageRunner  # pylint: disable=wrong-import-position
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
@@ -112,7 +112,9 @@ class QueryParserProcessor(Processor):
         config = ConfigModel.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def process(self, queries: TableQueries) -> Optional[QueryParserData]:
+    def process(  # pylint: disable=arguments-differ
+        self, queries: TableQueries
+    ) -> Optional[QueryParserData]:
         if queries and queries.queries:
             data = []
             for record in queries.queries:
@@ -124,6 +126,8 @@ class QueryParserProcessor(Processor):
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error processing query [{record.query}]: {exc}")
             return QueryParserData(parsedData=data)
+
+        return None
 
     def close(self):
         pass

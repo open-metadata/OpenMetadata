@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
@@ -39,6 +41,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -338,58 +341,35 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     await updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
   };
 
+  const getMlHyperParametersColumn: ColumnsType<MlHyperParameter> = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+      },
+      {
+        title: 'Value',
+        dataIndex: 'value',
+        key: 'value',
+      },
+    ],
+    []
+  );
+
   const getMlHyperParameters = () => {
     return (
-      <div className="tw-flex tw-flex-col tw-mt-2">
-        <h6 className="tw-font-medium tw-text-base">Hyper Parameters</h6>
-        <div className="tw-table-container tw-mt-2">
-          <table
-            className="tw-w-full"
+      <div className="flex flex-col m-t-xs">
+        <h6 className="font-medium text-base">Hyper Parameters</h6>
+        <div className="m-t-xs">
+          <Table
+            columns={getMlHyperParametersColumn}
             data-testid="hyperparameters-table"
-            id="hyperparameters-table">
-            <thead>
-              <tr className="tableHead-row">
-                <th className="tableHead-cell">Name</th>
-                <th className="tableHead-cell">Value</th>
-              </tr>
-            </thead>
-            <tbody className="tableBody">
-              {mlModelDetail.mlHyperParameters &&
-              mlModelDetail.mlHyperParameters.length ? (
-                <Fragment>
-                  {mlModelDetail.mlHyperParameters.map((param) => (
-                    <tr
-                      className={classNames('tableBody-row')}
-                      data-testid="tableBody-row"
-                      key={uniqueId()}>
-                      <td
-                        className="tableBody-cell"
-                        data-testid="tableBody-cell">
-                        {param.name}
-                      </td>
-                      <td
-                        className="tableBody-cell"
-                        data-testid="tableBody-cell">
-                        {param.value}
-                      </td>
-                    </tr>
-                  ))}
-                </Fragment>
-              ) : (
-                <tr
-                  className={classNames('tableBody-row')}
-                  data-testid="tableBody-row"
-                  key={uniqueId()}>
-                  <td
-                    className="tableBody-cell tw-text-center"
-                    colSpan={2}
-                    data-testid="tableBody-cell">
-                    No Data
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            dataSource={mlModelDetail.mlHyperParameters}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
         </div>
       </div>
     );
@@ -397,10 +377,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlModelStore = () => {
     return (
-      <div className="tw-flex tw-flex-col tw-mt-2">
-        <h6 className="tw-font-medium tw-text-base">Model Store</h6>
+      <div className="flex flex-col m-t-xs">
+        <h6 className="font-medium text-base">Model Store</h6>
         {mlModelDetail.mlStore ? (
-          <div className="tw-mt-2 tw-table-container">
+          <div className="m-t-xs tw-table-container">
             <table
               className="tw-w-full"
               data-testid="model-store-table"

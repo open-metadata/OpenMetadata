@@ -10,11 +10,11 @@ public class UtilRepository {
     this.dao = dao;
   }
 
-  public EntitiesCount getAllEntitiesCount() {
-    return dao.getAggregatedEntitiesCount();
+  public EntitiesCount getAllEntitiesCount(ListFilter filter) {
+    return dao.getAggregatedEntitiesCount(filter.getCondition());
   }
 
-  public ServicesCount getAllServicesCount() {
-    return dao.getAggregatedServicesCount();
+  public ServicesCount getAllServicesCount(ListFilter filter) {
+    return dao.getAggregatedServicesCount(filter.getCondition());
   }
 }
