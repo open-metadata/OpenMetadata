@@ -92,9 +92,8 @@ def table_column_to_match_set(
         None,
     )
     expected_column_names = [item.strip() for item in column_name.split(",")]
-    compare = lambda x, y: collections.Counter(x) == collections.Counter(
-        y
-    )  # pylint: disable=unnecessary-lambda-assignment
+    # pylint: disable=unnecessary-lambda-assignment
+    compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
 
     if ordered:
         _status = expected_column_names == [col.name for col in column_names]
