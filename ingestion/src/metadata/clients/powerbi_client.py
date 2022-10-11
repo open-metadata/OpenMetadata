@@ -12,7 +12,7 @@
 REST Auth & Client for PowerBi
 """
 import traceback
-from typing import Tuple
+from typing import Optional, Tuple
 
 import msal
 
@@ -23,7 +23,13 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
+# Similar inner methods with mode client. That's fine.
+# pylint: disable=duplicate-code
 class PowerBiApiClient:
+    """
+    REST Auth & Client for PowerBi
+    """
+
     client: REST
 
     def __init__(self, config):
@@ -70,7 +76,7 @@ class PowerBiApiClient:
 
         return access_token, expiry
 
-    def fetch_charts(self, dashboard_id: str) -> dict:
+    def fetch_charts(self, dashboard_id: str) -> Optional[dict]:
         """Get charts method
 
         Args:
@@ -85,33 +91,39 @@ class PowerBiApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching charts: {exc}")
 
-    def fetch_dashboards(self) -> dict:
+        return None
+
+    def fetch_dashboards(self) -> Optional[dict]:
         """Get dashboards method
 
         Returns:
             dict
         """
         try:
-            response = self.client.get(f"/myorg/admin/dashboards")
+            response = self.client.get("/myorg/admin/dashboards")
             return response
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching dashboards: {exc}")
 
-    def fetch_datasets(self) -> dict:
+        return None
+
+    def fetch_datasets(self) -> Optional[dict]:
         """Get datasets method
 
         Returns:
             dict
         """
         try:
-            response = self.client.get(f"/myorg/admin/datasets")
+            response = self.client.get("/myorg/admin/datasets")
             return response
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching datasets: {exc}")
 
-    def fetch_data_sources(self, dataset_id: str) -> dict:
+        return None
+
+    def fetch_data_sources(self, dataset_id: str) -> Optional[dict]:
         """Get dataset by id method
         Args:
             dataset_id:
@@ -126,3 +138,5 @@ class PowerBiApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching data sources: {exc}")
+
+        return None
