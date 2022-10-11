@@ -258,6 +258,7 @@ export const SOCKET_EVENTS = {
   ACTIVITY_FEED: 'activityFeed',
   TASK_CHANNEL: 'taskChannel',
   MENTION_CHANNEL: 'mentionChannel',
+  JOB_STATUS: 'jobStatus',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
