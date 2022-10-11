@@ -35,7 +35,7 @@ RUN apt-get update && \
 
 # Prep to install confluent-kafka https://github.com/confluentinc/confluent-kafka-python/issues/1326
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc git libssl-dev g++ make && \
+    apt-get install -y --no-install-recommends git g++ make && \
     cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
     cd librdkafka && git checkout tags/v1.9.0 && \
     ./configure && make && make install && \
