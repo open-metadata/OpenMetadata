@@ -33,7 +33,7 @@ def _clean(source_type: str):
     return source_type
 
 
-def _get_service_type_from( # pylint: disable=inconsistent-return-statements
+def _get_service_type_from(  # pylint: disable=inconsistent-return-statements
     service_subtype: str,
 ) -> ServiceType:
 

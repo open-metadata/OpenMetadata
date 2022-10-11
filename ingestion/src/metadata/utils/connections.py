@@ -219,10 +219,10 @@ def _(connection: DatabricksConnection, verbose: bool = False):
 def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
     if connection.privateKey:
 
-        from cryptography.hazmat.backends import ( # pylint: disable=import-outside-toplevel
+        from cryptography.hazmat.backends import (  # pylint: disable=import-outside-toplevel
             default_backend,
         )
-        from cryptography.hazmat.primitives import ( # pylint: disable=import-outside-toplevel
+        from cryptography.hazmat.primitives import (  # pylint: disable=import-outside-toplevel
             serialization,
         )
 
@@ -268,9 +268,10 @@ def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
 
 @get_connection.register
 def _(
-    connection: DynamoDBConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: DynamoDBConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ) -> DynamoClient:
-    from metadata.clients.aws_client import ( # pylint: disable=import-outside-toplevel
+    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
         AWSClient,
     )
 
@@ -280,9 +281,10 @@ def _(
 
 @get_connection.register
 def _(
-    connection: GlueDBConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: GlueDBConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ) -> GlueDBClient:
-    from metadata.clients.aws_client import ( # pylint: disable=import-outside-toplevel
+    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
         AWSClient,
     )
 
@@ -295,7 +297,7 @@ def _(
     connection: GluePipelineConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ) -> GluePipelineConnection:
-    from metadata.clients.aws_client import ( # pylint: disable=import-outside-toplevel
+    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
         AWSClient,
     )
 
@@ -305,7 +307,8 @@ def _(
 
 @get_connection.register
 def _(
-    connection: SalesforceConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: SalesforceConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ) -> SalesforceClient:
     from simple_salesforce import Salesforce  # pylint: disable=import-outside-toplevel
 
@@ -321,10 +324,11 @@ def _(
 
 @get_connection.register
 def _(
-    connection: DeltaLakeConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: DeltaLakeConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ) -> DeltaLakeClient:
     import pyspark  # pylint: disable=import-outside-toplevel
-    from delta import ( # pylint: disable=import-outside-toplevel
+    from delta import (  # pylint: disable=import-outside-toplevel
         configure_spark_with_delta_pip,
     )
 
@@ -388,13 +392,13 @@ def _(connection, verbose: bool = False) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
-    from confluent_kafka.admin import ( # pylint: disable=import-outside-toplevel
+    from confluent_kafka.admin import (  # pylint: disable=import-outside-toplevel
         AdminClient,
     )
-    from confluent_kafka.avro import ( # pylint: disable=import-outside-toplevel
+    from confluent_kafka.avro import (  # pylint: disable=import-outside-toplevel
         AvroConsumer,
     )
-    from confluent_kafka.schema_registry.schema_registry_client import ( # pylint: disable=import-outside-toplevel
+    from confluent_kafka.schema_registry.schema_registry_client import (  # pylint: disable=import-outside-toplevel
         SchemaRegistryClient,
     )
 
@@ -530,7 +534,7 @@ def _(connection: GluePipelineClient) -> None:
 
 @test_connection.register
 def _(connection: SalesforceClient) -> None:
-    from simple_salesforce.exceptions import ( # pylint: disable=import-outside-toplevel
+    from simple_salesforce.exceptions import (  # pylint: disable=import-outside-toplevel
         SalesforceAuthenticationFailed,
     )
 
@@ -630,7 +634,7 @@ def _(connection: AirflowConnection) -> None:
 def _(
     connection: AirbyteConnection, verbose: bool = False
 ):  # pylint: disable=unused-argument
-    from metadata.clients.airbyte_client import ( # pylint: disable=import-outside-toplevel
+    from metadata.clients.airbyte_client import (  # pylint: disable=import-outside-toplevel
         AirbyteClient,
     )
 
@@ -650,8 +654,8 @@ def _(connection: AirByteClient) -> None:
 def _(
     connection: FivetranConnection, verbose: bool = False
 ):  # pylint: disable=unused-argument
-    from metadata.clients.fivetran_client import ( # pylint: disable=import-outside-toplevel
-        FivetranClient as FivetranRestClient,
+    from metadata.clients.fivetran_client import (
+        FivetranClient as FivetranRestClient,  # pylint: disable=import-outside-toplevel
     )
 
     return FivetranClient(FivetranRestClient(connection))
@@ -694,9 +698,10 @@ def _(connection: RedashClient) -> None:
 
 @get_connection.register
 def _(
-    connection: SupersetConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: SupersetConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ):
-    from metadata.ingestion.ometa.superset_rest import ( # pylint: disable=import-outside-toplevel
+    from metadata.ingestion.ometa.superset_rest import (  # pylint: disable=import-outside-toplevel
         SupersetAPIClient,
     )
 
@@ -715,11 +720,12 @@ def _(connection: SupersetClient) -> None:
 
 
 @get_connection.register
-def _( # pylint: disable=inconsistent-return-statements
-    connection: TableauConnection, verbose: bool = False # pylint: disable=unused-argument
+def _(  # pylint: disable=inconsistent-return-statements
+    connection: TableauConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ):
 
-    from tableau_api_lib import ( # pylint: disable=import-outside-toplevel
+    from tableau_api_lib import (  # pylint: disable=import-outside-toplevel
         TableauServerConnection,
     )
 
@@ -770,9 +776,10 @@ def _(connection: TableauClient) -> None:
 
 @get_connection.register
 def _(
-    connection: PowerBIConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: PowerBIConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ):
-    from metadata.clients.powerbi_client import ( # pylint: disable=import-outside-toplevel
+    from metadata.clients.powerbi_client import (  # pylint: disable=import-outside-toplevel
         PowerBiApiClient,
     )
 
@@ -790,7 +797,8 @@ def _(connection: PowerBiClient) -> None:
 
 @get_connection.register
 def _(
-    connection: LookerConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: LookerConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ):
     import looker_sdk  # pylint: disable=import-outside-toplevel
 
@@ -855,7 +863,8 @@ def get_datalake_client(config):
 
 @get_connection.register
 def _(
-    connection: DatalakeConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: DatalakeConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ) -> DatalakeClient:
     datalake_connection = get_datalake_client(connection.configSource)
     return DatalakeClient(client=datalake_connection, config=connection)
@@ -863,7 +872,7 @@ def _(
 
 @get_datalake_client.register
 def _(config: S3Config):
-    from metadata.clients.aws_client import ( # pylint: disable=import-outside-toplevel
+    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
         AWSClient,
     )
 
@@ -882,9 +891,9 @@ def _(config: GCSConfig):
 
 @get_connection.register
 def _(
-    connection: ModeConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: ModeConnection, verbose: bool = False  # pylint: disable=unused-argument
 ):
-    from metadata.clients.mode_client import ( # pylint: disable=import-outside-toplevel
+    from metadata.clients.mode_client import (  # pylint: disable=import-outside-toplevel
         ModeApiClient,
     )
 
@@ -902,7 +911,8 @@ def _(connection: ModeClient) -> None:
 
 @get_connection.register
 def _(
-    connection: MlflowConnection, verbose: bool = False # pylint: disable=unused-argument
+    connection: MlflowConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ):
     from mlflow.tracking import MlflowClient  # pylint: disable=import-outside-toplevel
 
@@ -963,7 +973,7 @@ def _(_: BackendConnection, verbose: bool = False):  # pylint: disable=unused-ar
 def _(connection: DagsterConnection) -> None:
     from urllib.parse import urlparse  # pylint: disable=import-outside-toplevel
 
-    from dagster_graphql import ( # pylint: disable=import-outside-toplevel
+    from dagster_graphql import (  # pylint: disable=import-outside-toplevel
         DagsterGraphQLClient,
     )
 
@@ -981,12 +991,12 @@ def _(connection: DagsterConnection) -> None:
 
 @test_connection.register
 def _(connection: DagsterClient) -> None:
-    from metadata.utils.graphql_queries import ( # pylint: disable=import-outside-toplevel
+    from metadata.utils.graphql_queries import (  # pylint: disable=import-outside-toplevel
         TEST_QUERY_GRAPHQL,
     )
 
     try:
-        connection.client._execute( # pylint: disable=protected-access
+        connection.client._execute(  # pylint: disable=protected-access
             TEST_QUERY_GRAPHQL
         )
     except Exception as exc:

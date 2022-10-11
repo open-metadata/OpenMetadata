@@ -439,7 +439,7 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
     if len(details) != 6:
         details.insert(4, None)
 
-    ( # pylint: disable=unbalanced-tuple-unpacking
+    (  # pylint: disable=unbalanced-tuple-unpacking
         service,
         database,
         schema,

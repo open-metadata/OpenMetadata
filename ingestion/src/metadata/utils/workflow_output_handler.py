@@ -125,7 +125,9 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
         )
         click.echo("------------")
         click.echo(
-            open(example_path).read() # pylint: disable=consider-using-with, unspecified-encoding
+            open(
+                example_path
+            ).read()  # pylint: disable=consider-using-with, unspecified-encoding
         )
         click.echo("------------")
 

@@ -89,11 +89,11 @@ def _(config: DbtLocalConfig):
 def _(config: DbtHttpConfig):
     try:
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_catalog = requests.get( # pylint: disable=missing-timeout
+        dbt_catalog = requests.get(  # pylint: disable=missing-timeout
             config.dbtCatalogHttpPath
         )
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_manifest = requests.get( # pylint: disable=missing-timeout
+        dbt_manifest = requests.get(  # pylint: disable=missing-timeout
             config.dbtManifestHttpPath
         )
         dbt_run_results = None
@@ -104,7 +104,7 @@ def _(config: DbtHttpConfig):
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
-            dbt_run_results = requests.get( # pylint: disable=missing-timeout
+            dbt_run_results = requests.get(  # pylint: disable=missing-timeout
                 config.dbtRunResultsHttpPath
             )
         return (
@@ -174,7 +174,7 @@ def _(config: DbtS3Config):
     dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from metadata.clients.aws_client import ( # pylint: disable=import-outside-toplevel
+        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
             AWSClient,
         )
 
