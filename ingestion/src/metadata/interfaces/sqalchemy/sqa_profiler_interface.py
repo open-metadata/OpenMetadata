@@ -22,7 +22,6 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from sqlalchemy import Column, MetaData
-from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
@@ -52,6 +51,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
     sqlalchemy.
     """
 
+    # pylint: disable=super-init-not-called,too-many-arguments
     def __init__(
         self,
         service_connection_config,
@@ -79,7 +79,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
 
         self.session_factory = self._session_factory(service_connection_config)
-        self.session: Session = self.session_factory()
+        self.session = self.session_factory()
         self.set_session_tag(self.session)
 
         self.profile_sample = table_sample_precentage
@@ -145,7 +145,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         logger.debug(
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
-        Session = self.session_factory
+        Session = self.session_factory  # pylint: disable=invalid-name
         with Session() as session:
             self.set_session_tag(session)
             sampler = self._create_thread_safe_sampler(
@@ -173,6 +173,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
 
             return row, column
 
+    # pylint: disable=use-dict-literal
     def get_all_metrics(
         self,
         metric_funcs: list,

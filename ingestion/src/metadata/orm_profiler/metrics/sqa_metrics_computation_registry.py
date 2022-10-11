@@ -18,6 +18,7 @@ Note that we are using our own Registry definition
 that allows us to directly call our metrics without
 having the verbosely pass .value all the time...
 """
+# pylint: disable=unused-argument
 
 import traceback
 from typing import Dict, List, Optional, Union
@@ -55,6 +56,7 @@ def get_table_metrics(
 
         if row:
             return dict(row)
+        return None
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -62,6 +64,7 @@ def get_table_metrics(
             f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
         )
         session.rollback()
+        return None
 
 
 def get_static_metrics(
@@ -72,7 +75,7 @@ def get_static_metrics(
     processor_status: ProfilerProcessorStatus,
     *args,
     **kwargs,
-) -> Dict[str, Union[str, int]]:
+) -> Optional[Dict[str, Union[str, int]]]:
     """Given a list of metrics, compute the given results
     and returns the values
 
@@ -98,6 +101,7 @@ def get_static_metrics(
         )
         session.rollback()
         processor_status.failure(f"{column.name}", "Static Metrics", f"{exc}")
+        return None
 
 
 def get_query_metrics(
@@ -129,9 +133,8 @@ def get_query_metrics(
             data = {k: [result[k] for result in results] for k in dict(results[0])}
             return {metric.name(): data}
 
-        else:
-            row = runner.select_first_from_query(metric_query)
-            return dict(row)
+        row = runner.select_first_from_query(metric_query)
+        return dict(row)
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
@@ -139,6 +142,7 @@ def get_query_metrics(
         )
         session.rollback()
         processor_status.failure(f"{column.name}", "Query Metrics", f"{exc}")
+        return None
 
 
 def get_window_metrics(
@@ -171,6 +175,7 @@ def get_window_metrics(
         )
         session.rollback()
         processor_status.failure(f"{column.name}", "Window Metrics", f"{exc}")
+        return None
 
 
 compute_metrics_registry = enum_register()

@@ -339,7 +339,8 @@ class ProfilerWorkflow:
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unexpected error filtering entities for table [{table.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
+                    "Unexpected error filtering entities for table "
+                    f"[{table.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
                 )
                 self.source_status.failure(table.fullyQualifiedName.__root__, f"{exc}")  # type: ignore
 
@@ -419,8 +420,8 @@ class ProfilerWorkflow:
         if not databases:
             raise ValueError(
                 "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
-                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"
-                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"
+                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
+                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
         for database in databases:
@@ -447,10 +448,11 @@ class ProfilerWorkflow:
                     except Exception as exc:  # pylint: disable=broad-except
                         logger.debug(traceback.format_exc())
                         logger.warning(
-                            f"Unexpected exception processing entity [{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
+                            "Unexpected exception processing entity "
+                            f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
                         )
                         self.status.failures.extend(
-                            profiler_interface.processor_status.failures  # type: ignore | handled in object creation function
+                            profiler_interface.processor_status.failures  # type: ignore
                         )
                         self.source_status.failure(
                             entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
