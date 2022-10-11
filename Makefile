@@ -118,12 +118,6 @@ publish:  ## Publish the ingestion module to PyPI
 	  twine check dist/*; \
 	  twine upload dist/*
 
-## Docker operators
-.PHONY: build_docker_base
-build_docker_base:  ## Build the base Docker image for the Ingestion Framework Sources
-	$(MAKE) install_dev generate
-	docker build -f ingestion/connectors/Dockerfile-base ingestion/ -t openmetadata/ingestion-connector-base
-
 .PHONY: build_docker_connectors
 build_docker_connectors:  ## Build all Ingestion Framework Sources Images to be used as Docker Operators in Airflow
 	@echo "Building Docker connectors. Make sure to run build_docker_base first"
@@ -269,3 +263,9 @@ export-snyk-html-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
 	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
+
+# Ingestion Operators
+.PHONY: build-ingestion-base-local
+build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
+	$(MAKE) install_dev generate
+	docker build -f ingestion/operators/docker/Dockerfile-dev . -t openmetadata/ingestion-base:local
