@@ -27,9 +27,9 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def read_csv_from_gcs(
+def read_csv_from_gcs(  # pylint: disable=inconsistent-return-statements
     key: str, bucket_name: str, sample_size: int = 100
-) -> DataFrame:  # pylint: disable=inconsistent-return-statements
+) -> DataFrame:
     """
     Read the csv file from the gcs bucket and return a dataframe
     """
@@ -41,9 +41,9 @@ def read_csv_from_gcs(
         logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_tsv_from_gcs(
+def read_tsv_from_gcs(  # pylint: disable=inconsistent-return-statements
     key: str, bucket_name: str, sample_size: int = 100
-) -> DataFrame:  # pylint: disable=inconsistent-return-statements
+) -> DataFrame:
     """
     Read the tsv file from the gcs bucket and return a dataframe
     """
@@ -68,9 +68,9 @@ def read_json_from_gcs(  # pylint: disable=inconsistent-return-statements
         if isinstance(data, list):
             return pd.DataFrame.from_records(data, nrows=sample_size)
         return pd.DataFrame.from_dict(
-            dict(
+            dict(  # pylint: disable=consider-using-dict-comprehension
                 [(k, pd.Series(v)) for k, v in data.items()]
-            )  # pylint: disable=consider-using-dict-comprehension
+            )
         )
 
     except ValueError as verr:

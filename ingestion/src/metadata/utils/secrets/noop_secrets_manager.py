@@ -39,8 +39,8 @@ class NoopSecretsManager(SecretsManager):
 
     def add_auth_provider_security_config(  # pylint: disable=arguments-renamed, useless-return
         self,
-        open_metadata_connection: OpenMetadataConnection,
-        bot_name: str,  # pylint: disable=unused-argument
+        open_metadata_connection: OpenMetadataConnection, # pylint: disable=unused-argument
+        bot_name: str,
     ) -> None:
         """
         The LocalSecretsManager does not modify the OpenMetadataConnection object

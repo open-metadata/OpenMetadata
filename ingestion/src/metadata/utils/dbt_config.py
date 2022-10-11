@@ -89,13 +89,13 @@ def _(config: DbtLocalConfig):
 def _(config: DbtHttpConfig):
     try:
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_catalog = requests.get(
+        dbt_catalog = requests.get( # pylint: disable=missing-timeout
             config.dbtCatalogHttpPath
-        )  # pylint: disable=missing-timeout
+        )
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_manifest = requests.get(
+        dbt_manifest = requests.get( # pylint: disable=missing-timeout
             config.dbtManifestHttpPath
-        )  # pylint: disable=missing-timeout
+        )
         dbt_run_results = None
         if (
             config.dbtRunResultsHttpPath is not None
@@ -104,9 +104,9 @@ def _(config: DbtHttpConfig):
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
-            dbt_run_results = requests.get(
+            dbt_run_results = requests.get( # pylint: disable=missing-timeout
                 config.dbtRunResultsHttpPath
-            )  # pylint: disable=missing-timeout
+            )
         return (
             json.loads(dbt_catalog.text),
             json.loads(dbt_manifest.text),
@@ -174,8 +174,8 @@ def _(config: DbtS3Config):
     dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from metadata.clients.aws_client import (
-            AWSClient,  # pylint: disable=import-outside-toplevel
+        from metadata.clients.aws_client import ( # pylint: disable=import-outside-toplevel
+            AWSClient,
         )
 
         aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")

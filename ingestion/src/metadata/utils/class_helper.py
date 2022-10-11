@@ -33,9 +33,9 @@ def _clean(source_type: str):
     return source_type
 
 
-def _get_service_type_from(
+def _get_service_type_from( # pylint: disable=inconsistent-return-statements
     service_subtype: str,
-) -> ServiceType:  # pylint: disable=inconsistent-return-statements
+) -> ServiceType:
 
     for service_type in ServiceType:
         if service_subtype.lower() in [
