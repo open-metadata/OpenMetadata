@@ -112,9 +112,9 @@ class QueryParserProcessor(Processor):
         config = ConfigModel.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def process(
+    def process(  # pylint: disable=arguments-differ
         self, queries: TableQueries
-    ) -> Optional[QueryParserData]:  # pylint: disable=arguments-differ
+    ) -> Optional[QueryParserData]:
         if queries and queries.queries:
             data = []
             for record in queries.queries:

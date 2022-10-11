@@ -62,11 +62,9 @@ class MlflowSource(MlModelServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_mlmodels(
+    def get_mlmodels(  # pylint: disable=arguments-differ
         self,
-    ) -> Iterable[
-        Tuple[RegisteredModel, ModelVersion]
-    ]:  # pylint: disable=arguments-differ
+    ) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:
         """
         List and filters models from the registry
         """
@@ -124,12 +122,10 @@ class MlflowSource(MlModelServiceSource):
             ),
         )
 
-    @staticmethod
-    def _get_hyper_params(
+    def _get_hyper_params(  # pylint: disable=arguments-differ
+        self,
         data: RunData,
-    ) -> Optional[
-        List[MlHyperParameter]
-    ]:  # pylint: disable=arguments-differ,arguments-renamed
+    ) -> Optional[List[MlHyperParameter]]:
         """
         Get the hyper parameters from the parameters
         logged in the run data object.
@@ -153,10 +149,10 @@ class MlflowSource(MlModelServiceSource):
 
         return None
 
-    @staticmethod
-    def _get_ml_store(
+    def _get_ml_store(  # pylint: disable=arguments-differ
+        self,
         version: ModelVersion,
-    ) -> Optional[MlStore]:  # pylint: disable=arguments-differ, arguments-renamed
+    ) -> Optional[MlStore]:
         """
         Get the Ml Store from the model version object
         """
