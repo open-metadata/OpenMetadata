@@ -49,4 +49,3 @@ class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
         :param name: The secret name to retrieve
         :return: The value of the secret
         """
-        pass

@@ -64,7 +64,7 @@ def print_more_info(workflow_type: WorkflowType) -> None:
     Click echo print more information message
     """
     click.echo(
-        f"\nFor more information, please visit: {URLS[workflow_type]}\nOr join us in Slack: https://slack.open-metadata.org/"
+        f"\nFor more information, please visit: {URLS[workflow_type]}\nOr join us in Slack: https://slack.open-metadata.org/"  # pylint: disable=line-too-long
     )
 
 
@@ -124,7 +124,9 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
             f"\nMake sure you are following the following format e.g. '{example_file}':"
         )
         click.echo("------------")
-        click.echo(open(example_path).read())
+        click.echo(
+            open(example_path).read()
+        )  # pylint: disable=consider-using-with, unspecified-encoding
         click.echo("------------")
 
 
@@ -186,7 +188,7 @@ def print_status(workflow) -> None:
 
     if workflow.source.get_status().source_start_time:
         click.secho(
-            f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)} ",
+            f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)} ",  # pylint: disable=line-too-long
             fg="bright_cyan",
             bold=True,
         )
