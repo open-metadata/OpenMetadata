@@ -226,7 +226,7 @@ class DatabaseServiceSource(
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
-    database_source_state: Set
+    database_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.__fields__["config"].type_
 
