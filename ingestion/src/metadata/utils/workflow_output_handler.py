@@ -25,6 +25,7 @@ from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
+from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 
 
@@ -124,11 +125,8 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
             f"\nMake sure you are following the following format e.g. '{example_file}':"
         )
         click.echo("------------")
-        click.echo(
-            open(
-                example_path
-            ).read()  # pylint: disable=consider-using-with, unspecified-encoding
-        )
+        with open(example_path, encoding=UTF_8) as file:
+            click.echo(file.read())
         click.echo("------------")
 
 

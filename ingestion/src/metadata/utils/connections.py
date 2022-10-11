@@ -139,6 +139,8 @@ from metadata.utils.timeout import timeout
 logger = logging.getLogger("Utils")
 
 
+# All imports are happening scoped in their own functions. This is fine here to not force any unused requirement
+# pylint: disable=import-outside-toplevel
 class SourceConnectionException(Exception):
     """
     Raised when we cannot connect to the source
@@ -219,12 +221,8 @@ def _(connection: DatabricksConnection, verbose: bool = False):
 def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
     if connection.privateKey:
 
-        from cryptography.hazmat.backends import (  # pylint: disable=import-outside-toplevel
-            default_backend,
-        )
-        from cryptography.hazmat.primitives import (  # pylint: disable=import-outside-toplevel
-            serialization,
-        )
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import serialization
 
         snowflake_private_key_passphrase = (
             connection.snowflakePrivatekeyPassphrase.get_secret_value()
@@ -271,9 +269,7 @@ def _(
     connection: DynamoDBConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ) -> DynamoClient:
-    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
-        AWSClient,
-    )
+    from metadata.clients.aws_client import AWSClient
 
     dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
     return dynomo_connection
@@ -284,9 +280,7 @@ def _(
     connection: GlueDBConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ) -> GlueDBClient:
-    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
-        AWSClient,
-    )
+    from metadata.clients.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_db_client()
     return glue_connection
@@ -297,9 +291,7 @@ def _(
     connection: GluePipelineConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ) -> GluePipelineConnection:
-    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
-        AWSClient,
-    )
+    from metadata.clients.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_pipeline_client()
     return glue_connection
@@ -310,7 +302,7 @@ def _(
     connection: SalesforceConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ) -> SalesforceClient:
-    from simple_salesforce import Salesforce  # pylint: disable=import-outside-toplevel
+    from simple_salesforce import Salesforce
 
     salesforce_connection = SalesforceClient(
         Salesforce(
@@ -327,10 +319,8 @@ def _(
     connection: DeltaLakeConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ) -> DeltaLakeClient:
-    import pyspark  # pylint: disable=import-outside-toplevel
-    from delta import (  # pylint: disable=import-outside-toplevel
-        configure_spark_with_delta_pip,
-    )
+    import pyspark
+    from delta import configure_spark_with_delta_pip
 
     builder = (
         pyspark.sql.SparkSession.builder.appName(connection.appName or "OpenMetadata")
@@ -392,13 +382,9 @@ def _(connection, verbose: bool = False) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
-    from confluent_kafka.admin import (  # pylint: disable=import-outside-toplevel
-        AdminClient,
-    )
-    from confluent_kafka.avro import (  # pylint: disable=import-outside-toplevel
-        AvroConsumer,
-    )
-    from confluent_kafka.schema_registry.schema_registry_client import (  # pylint: disable=import-outside-toplevel
+    from confluent_kafka.admin import AdminClient
+    from confluent_kafka.avro import AvroConsumer
+    from confluent_kafka.schema_registry.schema_registry_client import (
         SchemaRegistryClient,
     )
 
@@ -480,7 +466,7 @@ def _(connection: DynamoClient) -> None:
     :param engine: boto service resource to test
     :return: None or raise an exception if we cannot connect
     """
-    from botocore.client import ClientError  # pylint: disable=import-outside-toplevel
+    from botocore.client import ClientError
 
     try:
         connection.client.tables.all()
@@ -499,7 +485,7 @@ def _(connection: GlueDBClient) -> None:
     :param engine: boto cliet to test
     :return: None or raise an exception if we cannot connect
     """
-    from botocore.client import ClientError  # pylint: disable=import-outside-toplevel
+    from botocore.client import ClientError
 
     try:
         pagitator = connection.client.get_paginator("get_databases")
@@ -520,7 +506,7 @@ def _(connection: GluePipelineClient) -> None:
     :param engine: boto cliet to test
     :return: None or raise an exception if we cannot connect
     """
-    from botocore.client import ClientError  # pylint: disable=import-outside-toplevel
+    from botocore.client import ClientError
 
     try:
         connection.client.list_workflows()
@@ -534,9 +520,7 @@ def _(connection: GluePipelineClient) -> None:
 
 @test_connection.register
 def _(connection: SalesforceClient) -> None:
-    from simple_salesforce.exceptions import (  # pylint: disable=import-outside-toplevel
-        SalesforceAuthenticationFailed,
-    )
+    from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
     try:
         connection.client.describe()
@@ -634,9 +618,7 @@ def _(connection: AirflowConnection) -> None:
 def _(
     connection: AirbyteConnection, verbose: bool = False
 ):  # pylint: disable=unused-argument
-    from metadata.clients.airbyte_client import (  # pylint: disable=import-outside-toplevel
-        AirbyteClient,
-    )
+    from metadata.clients.airbyte_client import AirbyteClient
 
     return AirByteClient(AirbyteClient(connection))
 
@@ -654,9 +636,7 @@ def _(connection: AirByteClient) -> None:
 def _(
     connection: FivetranConnection, verbose: bool = False
 ):  # pylint: disable=unused-argument
-    from metadata.clients.fivetran_client import (
-        FivetranClient as FivetranRestClient,  # pylint: disable=import-outside-toplevel
-    )
+    from metadata.clients.fivetran_client import FivetranClient as FivetranRestClient
 
     return FivetranClient(FivetranRestClient(connection))
 
@@ -675,7 +655,7 @@ def _(
     connection: RedashConnection, verbose: bool = False
 ):  # pylint: disable=unused-argument
 
-    from redash_toolbelt import Redash  # pylint: disable=import-outside-toplevel
+    from redash_toolbelt import Redash
 
     try:
         redash = Redash(connection.hostPort, connection.apiKey.get_secret_value())
@@ -701,9 +681,7 @@ def _(
     connection: SupersetConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ):
-    from metadata.ingestion.ometa.superset_rest import (  # pylint: disable=import-outside-toplevel
-        SupersetAPIClient,
-    )
+    from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
 
     superset_connection = SupersetAPIClient(connection)
     superset_client = SupersetClient(superset_connection)
@@ -725,9 +703,7 @@ def _(  # pylint: disable=inconsistent-return-statements
     verbose: bool = False,  # pylint: disable=unused-argument
 ):
 
-    from tableau_api_lib import (  # pylint: disable=import-outside-toplevel
-        TableauServerConnection,
-    )
+    from tableau_api_lib import TableauServerConnection
 
     tableau_server_config = {
         f"{connection.env}": {
@@ -779,9 +755,7 @@ def _(
     connection: PowerBIConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ):
-    from metadata.clients.powerbi_client import (  # pylint: disable=import-outside-toplevel
-        PowerBiApiClient,
-    )
+    from metadata.clients.powerbi_client import PowerBiApiClient
 
     return PowerBiClient(PowerBiApiClient(connection))
 
@@ -800,7 +774,7 @@ def _(
     connection: LookerConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ):
-    import looker_sdk  # pylint: disable=import-outside-toplevel
+    import looker_sdk
 
     if not os.environ.get("LOOKERSDK_CLIENT_ID"):
         os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
@@ -830,7 +804,7 @@ def _(connection: DatalakeClient) -> None:
     :param engine: boto service resource to test
     :return: None or raise an exception if we cannot connect
     """
-    from botocore.client import ClientError  # pylint: disable=import-outside-toplevel
+    from botocore.client import ClientError
 
     try:
         config = connection.config.configSource
@@ -872,9 +846,7 @@ def _(
 
 @get_datalake_client.register
 def _(config: S3Config):
-    from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
-        AWSClient,
-    )
+    from metadata.clients.aws_client import AWSClient
 
     s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
     return s3_client
@@ -882,7 +854,7 @@ def _(config: S3Config):
 
 @get_datalake_client.register
 def _(config: GCSConfig):
-    from google.cloud import storage  # pylint: disable=import-outside-toplevel
+    from google.cloud import storage
 
     set_google_credentials(gcs_credentials=config.securityConfig)
     gcs_client = storage.Client()
@@ -893,9 +865,7 @@ def _(config: GCSConfig):
 def _(
     connection: ModeConnection, verbose: bool = False  # pylint: disable=unused-argument
 ):
-    from metadata.clients.mode_client import (  # pylint: disable=import-outside-toplevel
-        ModeApiClient,
-    )
+    from metadata.clients.mode_client import ModeApiClient
 
     return ModeClient(ModeApiClient(connection))
 
@@ -914,7 +884,7 @@ def _(
     connection: MlflowConnection,
     verbose: bool = False,  # pylint: disable=unused-argument
 ):
-    from mlflow.tracking import MlflowClient  # pylint: disable=import-outside-toplevel
+    from mlflow.tracking import MlflowClient
 
     return MlflowClientWrapper(
         MlflowClient(
@@ -963,7 +933,7 @@ def _(_: BackendConnection, verbose: bool = False):  # pylint: disable=unused-ar
     """
     Let's use Airflow's internal connection for this
     """
-    from airflow import settings  # pylint: disable=import-outside-toplevel
+    from airflow import settings
 
     with settings.Session() as session:
         return session.get_bind()
@@ -971,11 +941,9 @@ def _(_: BackendConnection, verbose: bool = False):  # pylint: disable=unused-ar
 
 @get_connection.register
 def _(connection: DagsterConnection) -> None:
-    from urllib.parse import urlparse  # pylint: disable=import-outside-toplevel
+    from urllib.parse import urlparse
 
-    from dagster_graphql import (  # pylint: disable=import-outside-toplevel
-        DagsterGraphQLClient,
-    )
+    from dagster_graphql import DagsterGraphQLClient
 
     try:
         host_port = connection.hostPort
@@ -991,9 +959,7 @@ def _(connection: DagsterConnection) -> None:
 
 @test_connection.register
 def _(connection: DagsterClient) -> None:
-    from metadata.utils.graphql_queries import (  # pylint: disable=import-outside-toplevel
-        TEST_QUERY_GRAPHQL,
-    )
+    from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
 
     try:
         connection.client._execute(  # pylint: disable=protected-access
