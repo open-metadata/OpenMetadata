@@ -11,7 +11,7 @@ Learn how to run the OpenMetadata server in development mode by using Docker and
   - For an easy install of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
 ```shell
-docker-compose -f docker/local-metadata/docker-compose-dev.yml up
+docker-compose -f docker/local-metadata/docker-compose.yml -d up mysql elasticsearch
 ```
 
 - Bootstrap MySQL with tables
