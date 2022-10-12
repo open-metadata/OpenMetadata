@@ -73,8 +73,9 @@ public class SearchResource {
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
-  @Collection(constructorType = Collection.ConstructorType.CONFIG)
-  public SearchResource(OpenMetadataApplicationConfig config) {
+  public SearchResource() {}
+
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
     }

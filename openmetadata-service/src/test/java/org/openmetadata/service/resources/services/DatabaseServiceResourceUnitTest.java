@@ -34,7 +34,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 
 public class DatabaseServiceResourceUnitTest
@@ -42,9 +41,8 @@ public class DatabaseServiceResourceUnitTest
         DatabaseServiceResource, DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
 
   @Override
-  protected DatabaseServiceResource newServiceResource(
-      CollectionDAO collectionDAO, Authorizer authorizer, SecretsManager secretsManager) {
-    return new DatabaseServiceResource(collectionDAO, authorizer, secretsManager);
+  protected DatabaseServiceResource newServiceResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    return new DatabaseServiceResource(collectionDAO, authorizer);
   }
 
   @Override

@@ -12,7 +12,6 @@
 """
 Restore utility for the metadata CLI
 """
-from pathlib import Path
 from typing import List, Optional
 
 import click
@@ -24,12 +23,12 @@ from metadata.utils.logger import cli_logger
 logger = cli_logger()
 
 
-def execute_sql_file(engine: Engine, input: Path, schema: str = None) -> None:
+def execute_sql_file(engine: Engine, sql_file: str) -> None:
     """
     Method to create the connection and execute the sql query
     """
 
-    with open(input, encoding="utf-8") as file:
+    with open(sql_file, encoding="utf-8") as file:
         for query in file.readlines():
             # `%` is a reserved syntax in SQLAlchemy to bind parameters. Escaping it with `%%`
             clean_query = query.replace("%", "%%")
@@ -38,13 +37,13 @@ def execute_sql_file(engine: Engine, input: Path, schema: str = None) -> None:
                 conn.execute(clean_query)
 
 
-def run_restore(
+def run_restore(  # pylint: disable=too-many-arguments
     host: str,
     user: str,
     password: str,
     database: str,
     port: str,
-    input: str,
+    sql_file: str,
     options: List[str],
     arguments: List[str],
     schema: Optional[str] = None,
@@ -58,7 +57,7 @@ def run_restore(
     :param password: service pwd
     :param database: database to back up
     :param port: database service port
-    :param intput: local path of file to restore the backup
+    :param sql_file: local path of file to restore the backup
     :param options: list of other connection options
     :param arguments: list of connection arguments
     :param schema: Run the process against Postgres with the given schema
@@ -72,9 +71,9 @@ def run_restore(
         host, port, user, password, options, arguments, schema, database
     )
 
-    execute_sql_file(engine=engine, input=input, schema=schema)
+    execute_sql_file(engine=engine, sql_file=sql_file)
 
     click.secho(
-        f"Backup restored from {input}",
+        f"Backup restored from {sql_file}",
         fg="bright_green",
     )

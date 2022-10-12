@@ -22,7 +22,6 @@ import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.type.PipelineConnection;
-import org.openmetadata.service.secrets.SecretsManager;
 
 public class PipelineServiceRepositoryUnitTest
     extends ServiceEntityRepositoryTest<PipelineServiceRepository, PipelineService, PipelineConnection> {
@@ -32,8 +31,8 @@ public class PipelineServiceRepositoryUnitTest
   }
 
   @Override
-  protected PipelineServiceRepository newServiceRepository(CollectionDAO collectionDAO, SecretsManager secretsManager) {
-    return new PipelineServiceRepository(collectionDAO, secretsManager);
+  protected PipelineServiceRepository newServiceRepository(CollectionDAO collectionDAO) {
+    return new PipelineServiceRepository(collectionDAO);
   }
 
   @Override

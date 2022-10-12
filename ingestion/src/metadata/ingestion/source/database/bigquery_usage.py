@@ -19,6 +19,10 @@ from metadata.utils.sql_queries import BIGQUERY_STATEMENT
 
 
 class BigqueryUsageSource(BigqueryQueryParserSource, UsageSource):
+    """
+    Implements the necessary methods to extract
+    Database Usage from Bigquery Source
+    """
 
     sql_stmt = BIGQUERY_STATEMENT
 

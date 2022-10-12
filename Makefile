@@ -54,6 +54,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
 	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
 	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
+	pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 
 ## Ingestion models generation
 .PHONY: generate
@@ -117,12 +118,6 @@ publish:  ## Publish the ingestion module to PyPI
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
 	  twine upload dist/*
-
-## Docker operators
-.PHONY: build_docker_base
-build_docker_base:  ## Build the base Docker image for the Ingestion Framework Sources
-	$(MAKE) install_dev generate
-	docker build -f ingestion/connectors/Dockerfile-base ingestion/ -t openmetadata/ingestion-connector-base
 
 .PHONY: build_docker_connectors
 build_docker_connectors:  ## Build all Ingestion Framework Sources Images to be used as Docker Operators in Airflow
@@ -269,3 +264,9 @@ export-snyk-html-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
 	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
+
+# Ingestion Operators
+.PHONY: build-ingestion-base-local
+build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
+	$(MAKE) install_dev generate
+	docker build -f ingestion/operators/docker/Dockerfile-dev . -t openmetadata/ingestion-base:local

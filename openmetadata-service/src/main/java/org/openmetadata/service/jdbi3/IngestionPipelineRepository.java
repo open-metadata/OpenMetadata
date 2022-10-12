@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -39,9 +40,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
   private static PipelineServiceClient pipelineServiceClient;
 
-  private final SecretsManager secretsManager;
-
-  public IngestionPipelineRepository(CollectionDAO dao, SecretsManager secretsManager) {
+  public IngestionPipelineRepository(CollectionDAO dao) {
     super(
         IngestionPipelineResource.COLLECTION_PATH,
         Entity.INGESTION_PIPELINE,
@@ -50,7 +49,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-    this.secretsManager = secretsManager;
   }
 
   @Override
@@ -83,6 +81,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
     // encrypt config in case of local secret manager
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager.isLocal()) {
       secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, service, true);
       store(ingestionPipeline.getId(), ingestionPipeline, update);
@@ -152,6 +151,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateSourceConfig() throws JsonProcessingException {
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       secretsManager.encryptOrDecryptDbtConfigSource(original, false);
 
       JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));

@@ -166,9 +166,9 @@ def _(connection: OracleConnection):
     # Patching the cx_Oracle module with oracledb lib
     # to work take advantage of the thin mode of oracledb
     # which doesn't require the oracle client libs to be installed
-    import sys
+    import sys  # pylint: disable=import-outside-toplevel
 
-    import oracledb
+    import oracledb  # pylint: disable=import-outside-toplevel
 
     oracledb.version = CX_ORACLE_LIB_VERSION
     sys.modules["cx_Oracle"] = oracledb
@@ -361,21 +361,20 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    from google import auth
+    from google import auth  # pylint: disable=import-outside-toplevel
 
     _, project_id = auth.default()
     if isinstance(connection.credentials.gcsConfig, GCSValues):
         if not project_id:
             return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
-        else:
-            if (
-                not connection.credentials.gcsConfig.privateKey
-                and connection.credentials.gcsConfig.projectId
-            ):
-                # Setting environment variable based on project id given by user / set in ADC
-                project_id = connection.credentials.gcsConfig.projectId
-                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{project_id}"
+        if (
+            not connection.credentials.gcsConfig.privateKey
+            and connection.credentials.gcsConfig.projectId
+        ):
+            # Setting environment variable based on project id given by user / set in ADC
+            project_id = connection.credentials.gcsConfig.projectId
+            os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+        return f"{connection.scheme.value}://{project_id}"
     return f"{connection.scheme.value}://"
 
 

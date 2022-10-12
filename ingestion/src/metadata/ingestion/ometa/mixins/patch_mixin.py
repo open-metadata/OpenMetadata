@@ -26,7 +26,7 @@ from metadata.ingestion.ometa.utils import model_str, ometa_logger
 
 logger = ometa_logger()
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 
 OPERATION = "op"
 PATH = "path"
