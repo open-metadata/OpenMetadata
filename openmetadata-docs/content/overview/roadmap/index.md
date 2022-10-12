@@ -85,7 +85,7 @@ You can check the latest release [here](/overview/releases).
   >
     <li>Freshness based on the partition key</li>
     <li>TestCase versioning and results applying to a specific version so that UI can show the results as per the test case version</li>
-    <li>Auto Classification by Tagging entities using profiler - **beta**<li>
+    <li>Auto Classification by Tagging entities using profiler - **beta**</li>
   </Tile>
   <Tile
     title="Connectors"
