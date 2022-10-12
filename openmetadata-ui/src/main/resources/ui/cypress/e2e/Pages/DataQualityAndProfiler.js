@@ -393,7 +393,7 @@ describe('Data Quality and Profiler should work properly', () => {
     deleteCreatedService(SERVICE_TYPE.Database, serviceName);
   });
 
-  it.only('Profiler matrix and test case graph should visible', () => {
+  it('Profiler matrix and test case graph should visible', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     const { term, entity, serviceName, testCaseName } =
