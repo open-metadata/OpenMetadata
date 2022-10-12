@@ -78,7 +78,6 @@
       "items": {
         "type": "string"
       },
-      "uniqueItems": true,
       "default": null
     },
     "taxonomyLocation": {
