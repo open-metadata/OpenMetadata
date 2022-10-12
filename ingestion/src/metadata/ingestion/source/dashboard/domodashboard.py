@@ -1,3 +1,17 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+DomoDashboard source to extract metadata
+"""
+
 import traceback
 from typing import Any, Iterable, List, Optional
 
@@ -25,6 +39,10 @@ logger = ingestion_logger()
 
 
 class DomodashboardSource(DashboardServiceSource):
+    """
+    Implements the necessary methods to extract
+    Dashboard metadata from Domo's metadata db
+    """
 
     config: WorkflowSource
     metadata: OpenMetadataConnection
@@ -82,7 +100,10 @@ class DomodashboardSource(DashboardServiceSource):
         charts = self.client.get_chart_details(page_id=dashboard_details["id"])
         for chart in charts["cards"]:
             try:
-                chart_url = f"{self.service_connection.sandboxDomain}/page/{charts['id']}/{chart['type']}/details/{chart['id']}"
+                chart_url = (
+                    f"{self.service_connection.sandboxDomain}/page/"
+                    f"{charts['id']}/{chart['type']}/details/{chart['id']}"
+                )
 
                 if filter_by_chart(
                     self.source_config.chartFilterPattern, chart["title"]
