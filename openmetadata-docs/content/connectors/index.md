@@ -5,7 +5,7 @@ slug: /connectors
 
 # Connectors
 
-OpenMetadata can extract metadata from the following list of connectors:
+OpenMetadata can extract metadata from the following list of 55 connectors:
 
 ## Database / DataWarehouse Services
 
