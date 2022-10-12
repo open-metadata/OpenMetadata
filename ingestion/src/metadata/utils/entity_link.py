@@ -32,7 +32,7 @@ class EntityLinkBuildingException(Exception):
     """
 
 
-def split(s: str) -> List[str]:
+def split(s: str) -> List[str]:  # pylint: disable=invalid-name
     """
     Method to handle the splitting logic
     """
@@ -40,7 +40,7 @@ def split(s: str) -> List[str]:
     lexer = EntityLinkLexer(InputStream(s))
     stream = CommonTokenStream(lexer)
     parser = EntityLinkParser(stream)
-    parser._errHandler = BailErrorStrategy()
+    parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
     tree = parser.entitylink()
     walker = ParseTreeWalker()
     splitter = EntityLinkSplitListener()

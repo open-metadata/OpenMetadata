@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Module containing AWS Client
+"""
 from typing import Any
 
 import boto3
@@ -68,10 +70,10 @@ class AWSClient:
                     service_name=service_name, endpoint_url=self.config.endPointURL
                 )
             return session.client(service_name=service_name)
-        else:
-            logger.info(f"Getting AWS default client for service [{service_name}]")
-            # initialized with the credentials loaded from running machine
-            return boto3.client(service_name=service_name)
+
+        logger.info(f"Getting AWS default client for service [{service_name}]")
+        # initialized with the credentials loaded from running machine
+        return boto3.client(service_name=service_name)
 
     def get_resource(self, service_name: str) -> Any:
         session = self._get_session()

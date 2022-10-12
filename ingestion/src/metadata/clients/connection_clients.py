@@ -8,14 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-from dataclasses import dataclass
-
 """
-Creating client for non-sqlalchemy package is neccessary, 
+Creating client for non-sqlalchemy package is necessary,
 Importing a Class directly in connection.py will break the ingestion,
 if non-sqlalchemy package is not installed
 """
+
+from dataclasses import dataclass
 
 
 @dataclass

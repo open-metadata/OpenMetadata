@@ -27,7 +27,9 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def read_csv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> DataFrame:
+def read_csv_from_gcs(  # pylint: disable=inconsistent-return-statements
+    key: str, bucket_name: str, sample_size: int = 100
+) -> DataFrame:
     """
     Read the csv file from the gcs bucket and return a dataframe
     """
@@ -39,7 +41,9 @@ def read_csv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> Dat
         logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_tsv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> DataFrame:
+def read_tsv_from_gcs(  # pylint: disable=inconsistent-return-statements
+    key: str, bucket_name: str, sample_size: int = 100
+) -> DataFrame:
     """
     Read the tsv file from the gcs bucket and return a dataframe
     """
@@ -51,7 +55,7 @@ def read_tsv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> Dat
         logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_json_from_gcs(
+def read_json_from_gcs(  # pylint: disable=inconsistent-return-statements
     client: Any, key: str, bucket_name: str, sample_size=100
 ) -> DataFrame:
     """
@@ -64,7 +68,9 @@ def read_json_from_gcs(
         if isinstance(data, list):
             return pd.DataFrame.from_records(data, nrows=sample_size)
         return pd.DataFrame.from_dict(
-            dict([(k, pd.Series(v)) for k, v in data.items()])
+            dict(  # pylint: disable=consider-using-dict-comprehension
+                [(k, pd.Series(v)) for k, v in data.items()]
+            )
         )
 
     except ValueError as verr:

@@ -219,7 +219,7 @@ def _get_schema_column_info(self, connection, schema=None, **kw):
 RedshiftDialectMixin._get_table_or_view_names = (  # pylint: disable=protected-access
     _get_table_or_view_names
 )
-RedshiftDialectMixin.get_view_names = get_view_names  # pylint: disable=protected-access
+RedshiftDialectMixin.get_view_names = get_view_names
 RedshiftDialectMixin.get_table_names = get_table_names
 RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
     _get_column_info
@@ -450,7 +450,7 @@ STANDARD_TABLE_TYPES = {
     "v": TableType.View,
 }
 
-# pylint: disable=useless-super-delegation
+
 class RedshiftSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract

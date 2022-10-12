@@ -510,6 +510,22 @@ class DatabaseServiceSource(
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
                 yield DeleteTable(table=table)
 
+    def fetch_all_schema_and_delete_tables(self):
+        """
+        Fetch all schemas and delete tables
+        """
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.config.serviceName,
+            database_name=self.context.database.name.__root__,
+        )
+        schema_list = self.metadata.list_all_entities(
+            entity=DatabaseSchema, params={"database": database_fqn}
+        )
+        for schema in schema_list:
+            yield from self.delete_schema_tables(schema.fullyQualifiedName.__root__)
+
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
@@ -518,18 +534,17 @@ class DatabaseServiceSource(
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            schema_names_list = (
-                self.get_database_schema_names()
-                if self.source_config.markDeletedTablesFromFilterOnly
-                else self.get_raw_database_schema_names()
-            )
-            for schema_name in schema_names_list:
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.config.serviceName,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=schema_name,
-                )
+            if self.source_config.markDeletedTablesFromFilterOnly:
+                schema_names_list = self.get_database_schema_names()
+                for schema_name in schema_names_list:
+                    schema_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.config.serviceName,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=schema_name,
+                    )
 
-                yield from self.delete_schema_tables(schema_fqn)
+                    yield from self.delete_schema_tables(schema_fqn)
+            else:
+                yield from self.fetch_all_schema_and_delete_tables()

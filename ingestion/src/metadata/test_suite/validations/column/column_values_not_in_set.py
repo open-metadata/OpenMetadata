@@ -33,7 +33,7 @@ from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
-
+# pylint: disable=abstract-class-instantiated
 def column_values_not_in_set(
     test_case: TestCase,
     execution_date: datetime,
@@ -69,9 +69,7 @@ def column_values_not_in_set(
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
-        set_count_dict = dict(
-            runner.dispatch_query_select_first(set_count(col).fn())
-        )  # pylint: disable=abstract-class-instantiated
+        set_count_dict = dict(runner.dispatch_query_select_first(set_count(col).fn()))
         set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
     except Exception as exc:
