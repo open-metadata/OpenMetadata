@@ -333,7 +333,7 @@ class AmundsenSource(Source[Entity]):
                 data_type = self.get_type_primitive_type(data_type)
                 parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     data_type
-                )  # pylint: disable=protected-access
+                )
                 parsed_string["name"] = name
                 parsed_string["dataLength"] = 1
                 parsed_string["description"] = description

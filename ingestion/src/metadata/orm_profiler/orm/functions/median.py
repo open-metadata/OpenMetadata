@@ -47,6 +47,7 @@ def _(elements, compiler, **kwargs):
     return "median(%s)" % col
 
 
+# pylint: disable=unused-argument
 @compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):

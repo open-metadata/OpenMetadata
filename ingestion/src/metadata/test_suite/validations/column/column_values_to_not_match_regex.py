@@ -71,8 +71,8 @@ def column_values_to_not_match_regex(
 
         not_like_count_dict = dict(
             runner.dispatch_query_select_first(
-                not_like_count(col).fn()
-            )  # pylint: disable=abstract-class-instantiated
+                not_like_count(col).fn()  # pylint: disable=abstract-class-instantiated
+            )
         )
         not_like_count_res = not_like_count_dict.get(Metrics.NOT_LIKE_COUNT.name)
 
