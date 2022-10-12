@@ -1,0 +1,34 @@
+{
+    "$id": "https://open-metadata.org/schema/api/tests/createReportDefinition.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CreateReportDefinition",
+    "description": "Payload to create a report definition",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.api.tests.CreateReportDefinition",
+    "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+    "properties": {
+      "name": {
+        "description": "Name that identifies this report definition.",
+        "$ref": "../../type/basic.json#/definitions/entityName"
+      },
+      "displayName": {
+        "description": "Display Name the report definition.",
+        "type": "string"
+      },
+      "description": {
+        "description": "Description of the report definition.",
+        "$ref": "../../type/basic.json#/definitions/markdown"
+      },
+      "reportParametersDefinition": {
+        "description": "dimension(s) and metric(s) for a report",
+        "$ref": "../../analytics/reportDefinition.json#/definitions/reportParametersDefinition"
+      },
+      "owner": {
+        "description": "Owner of this report definition",
+        "$ref": "../../type/entityReference.json"
+      }
+    },
+    "required": ["name", "reportParametersDefinition"],
+    "additionalProperties": false
+  }
+  

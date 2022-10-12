@@ -44,6 +44,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.analytics.ReportDefinition;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
@@ -221,6 +222,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TestCaseDAO testCaseDAO();
+
+  @CreateSqlObject
+  AnalyticsReportDAO analyticsReportDAO();
 
   @CreateSqlObject
   UtilDAO utilDAO();
@@ -2935,6 +2939,23 @@ public interface CollectionDAO {
       }
 
       return listCount(getTableName(), getNameColumn(), condition);
+    }
+  }
+
+  interface AnalyticsReportDAO extends EntityDAO<ReportDefinition> {
+    @Override
+    default String getTableName() {
+      return "analytics_report";
+    }
+
+    @Override
+    default Class<ReportDefinition> getEntityClass() {
+      return ReportDefinition.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
     }
   }
 

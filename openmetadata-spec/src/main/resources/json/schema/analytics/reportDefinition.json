@@ -1,0 +1,140 @@
+{
+    "$id": "https://open-metadata.org/schema/tests/reportDefinition.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ReportDefinition",
+    "description": "Report definition",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.analytics.ReportDefinition",
+    "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+    "definitions": {
+        "dimension": {
+            "javaType": "org.openmetadata.schema.analytics.type.Dimension",
+            "description": "Dimension of a report",
+            "properties": {
+                "name": {
+                    "description": "dimension name",
+                    "type": "string",
+                    "enum": [
+                        "Entity",
+                        "ServiceConnection",
+                        "Team"
+                    ]
+                },
+                "displayName": {
+                    "description": "dimension display name",
+                    "type": "string"
+                }
+            }
+        },
+        "metric": {
+            "javaType": "org.openmetadata.schema.analytics.type.Metric",
+            "description": "Metric of a report",
+            "properties": {
+                "name": {
+                    "description": "metric name",
+                    "type": "string",
+                    "enum": [
+                        "completed_descriptions",
+                        "total_service_types",
+                        "completed_owners"
+                    ]
+                },
+                "displayName": {
+                    "description": "metric display name",
+                    "type": "string"
+                },
+                "dataType": {
+                    "description": "metric data type",
+                    "type": "string",
+                    "enum": [
+                      "NUMBER",
+                      "INT",
+                      "FLOAT",
+                      "DOUBLE",
+                      "DECIMAL"
+                    ]
+                }
+            }
+        },
+        "reportParametersDefinition": {
+            "description": "defintion of metric and dimension for a single report",
+            "dimensions": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/definitions/dimension"
+                }
+            },
+            "metrics": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/definitions/dimension"
+                }
+            }
+        }
+    },
+    "properties": {
+        "id": {
+            "description": "Unique identifier of the report.",
+            "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "name": {
+            "description": "Name that identifies this test case.",
+            "$ref": "../type/basic.json#/definitions/entityName"
+        },
+        "fullyQualifiedName": {
+            "description": "FullyQualifiedName same as `name`.",
+            "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "displayName": {
+            "description": "Display Name that identifies this report.",
+            "type": "string"
+        },
+        "description": {
+            "description": "Description of the report.",
+            "$ref": "../type/basic.json#/definitions/markdown"
+        },
+        "reportParametersDefinition": {
+            "description": "defintion of metric and dimension for a single report",
+            "$ref": "#/definitions/reportParametersDefinition"
+        },
+        "reportResutls": {
+            "description": "Result for a report",
+            "type":"array",
+            "items": {
+              "$ref": "./basic.json#/definitions/reportResult" 
+            }
+        },
+        "version": {
+            "description": "Metadata version of the entity.",
+            "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+        },
+        "owner": {
+            "description": "Owner of this report.",
+            "$ref": "../type/entityReference.json",
+            "default": null
+        },
+        "updatedAt": {
+            "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+            "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "updatedBy": {
+            "description": "User who performed the update.",
+            "type": "string"
+        },
+        "href": {
+            "description": "Link to the resource corresponding to this entity.",
+            "$ref": "../type/basic.json#/definitions/href"
+        },
+        "changeDescription": {
+            "description": "Change that lead to this version of the entity.",
+            "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+        },
+        "deleted": {
+            "description": "When `true` indicates the entity has been soft deleted.",
+            "type": "boolean",
+            "default": false
+        }
+    },
+    "required": ["fullyQualifiedName"],
+    "additionalProperties": false
+}

@@ -1,0 +1,30 @@
+{
+    "name": "completedDescriptionByServiceType",
+    "displayName": "Completed Description by Service Type",
+    "description": "This report definition shows the number/percentage of completed description by service type (i.e. databases, tables, dashboard, etc.)",
+    "reportParametersDefinition": {
+        "dimensions": [
+            {
+                "name": "ServiceType",
+                "displayName": "Service Type"
+            },
+            {
+                "name": "Team",
+                "displayName": "Team"
+            }
+        ],
+        "metrics": [
+            {
+                "name": "completed_descriptions",
+                "displayName": "Completed Descriptions",
+                "dataType": "INT"
+            },
+            {
+                "name": "total_service_types",
+                "displayName": "Total Services",
+                "dataType": "INT"
+            }
+        ]
+    }
+}
+  
