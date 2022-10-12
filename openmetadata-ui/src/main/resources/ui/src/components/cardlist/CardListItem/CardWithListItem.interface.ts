@@ -29,5 +29,4 @@ export interface Props extends HTMLAttributes<HTMLDivElement> {
   tierStatus: Status;
   onSave: (updatedTier: string) => void;
   onCardSelect: (cardId: string) => void;
-  removeTier?: () => void;
 }

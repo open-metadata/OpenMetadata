@@ -542,7 +542,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       saveUpdatedTopicData(updatedTopic)
         .then((res) => {
           if (res) {
-            setTopicDetails(res);
+            setTopicDetails({ ...res, tags: res.tags ?? [] });
             setCurrentVersion(res.version?.toString());
             setOwner(res.owner);
             setTier(getTierTags((res.tags ?? []) as EntityTags[]));
