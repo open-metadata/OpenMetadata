@@ -227,3 +227,16 @@ export type SuggestResponse<
     SearchIndexSearchSourceMapping[SI]
   > = KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
 > = SearchIndexSuggestHitBodyMapping<TIncludeFields>[SI][];
+
+export type RawSuggestResponse<
+  SI extends SearchIndex,
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI]
+  > = KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
+> = {
+  suggest: {
+    'metadata-suggest': Array<{
+      options: SuggestResponse<SI, TIncludeFields>;
+    }>;
+  };
+};

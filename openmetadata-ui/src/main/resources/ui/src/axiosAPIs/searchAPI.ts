@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Aggregations,
   KeysOfUnion,
+  RawSuggestResponse,
   SearchIndexSearchSourceMapping,
   SearchRequest,
   SearchResponse,
@@ -39,7 +41,95 @@ const getSearchIndexParam: (
   return si;
 };
 
-export const searchQuery = async <
+/**
+ * Formats a response from {@link rawSearchQuery}
+ *
+ * Warning: avoid this pattern unless applying custom transformation to the raw response!
+ * ```ts
+ * const response = await rawSearchQuery(req);
+ * const data = formatSearchQueryResponse(response.data);
+ * ```
+ *
+ * Instead use the shorthand {@link searchQuery}
+ * ```ts
+ * const data = searchQuery(req);
+ * ```
+ *
+ * @param data
+ */
+export const formatSearchQueryResponse = <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+      ? SI[number]
+      : SI]
+  >
+>(
+  data: SearchResponse<
+    SI extends Array<SearchIndex> ? SI[number] : SI,
+    TIncludeFields
+  >
+): SearchResponse<
+  SI extends Array<SearchIndex> ? SI[number] : SI,
+  TIncludeFields
+> => {
+  let _data;
+
+  _data = data;
+
+  /* Elasticsearch responses use 'null' for missing values, we want undefined
+       omitDeep is untyped, so this will return unknown, which is not necessarily bad
+       since we need to do some more transformations to the response */
+  _data = omitDeep(_data, isNil);
+
+  /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
+      This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
+  _data = {
+    ..._data,
+    hits: {
+      ..._data.hits,
+      hits: isArray(_data.hits.hits)
+        ? _data.hits.hits.map((hit: { _source: Record<string, unknown> }) =>
+            '_source' in hit
+              ? 'entityType' in hit._source
+                ? {
+                    ...hit,
+                    _source: {
+                      ...hit._source,
+                      type: hit._source.entityType,
+                    },
+                  }
+                : hit
+              : hit
+          )
+        : [],
+    },
+  };
+
+  /* Aggregation key start with 'sterms#' - this is caused by the serialization of the ElasticsearchResponse
+      Java object. For usability this prefix is removed from keys.  */
+  _data = {
+    ..._data,
+    aggregations:
+      _data.aggregations &&
+      (Object.fromEntries(
+        Object.entries(_data.aggregations).map(([key, value]) => [
+          key.replace('sterms#', ''),
+          value,
+        ])
+      ) as Aggregations),
+  };
+
+  return _data;
+};
+
+/**
+ * Executes a request to /search/query, returning the raw response.
+ * Warning: Only call this function directly in special cases. Otherwise use {@link searchQuery}
+ *
+ * @param req Request object
+ */
+export const rawSearchQuery = <
   SI extends SearchIndex | SearchIndex[],
   TIncludeFields extends KeysOfUnion<
     SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
@@ -49,9 +139,11 @@ export const searchQuery = async <
 >(
   req: SearchRequest<SI, TIncludeFields>
 ): Promise<
-  SearchResponse<
-    SI extends Array<SearchIndex> ? SI[number] : SI,
-    TIncludeFields
+  AxiosResponse<
+    SearchResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
   >
 > => {
   const {
@@ -68,7 +160,7 @@ export const searchQuery = async <
     fetchSource,
   } = req;
 
-  const response = await APIClient.get<
+  return APIClient.get<
     SearchResponse<
       SI extends Array<SearchIndex> ? SI[number] : SI,
       TIncludeFields
@@ -91,57 +183,138 @@ export const searchQuery = async <
       /* eslint-enable @typescript-eslint/camelcase */
     },
   });
+};
 
-  let data;
+/**
+ * Access point for the Search API.
+ * Executes a request to /search/query, returning a formatted response.
+ *
+ * @param req Request object
+ */
+export const searchQuery = async <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+      ? SI[number]
+      : SI]
+  >
+>(
+  req: SearchRequest<SI, TIncludeFields>
+): Promise<
+  SearchResponse<
+    SI extends Array<SearchIndex> ? SI[number] : SI,
+    TIncludeFields
+  >
+> => {
+  const res = await rawSearchQuery(req);
 
-  data = response.data;
+  return formatSearchQueryResponse(res.data);
+};
 
-  /* Elasticsearch responses use 'null' for missing values, we want undefined
-       omitDeep is untyped, so this will return unknown, which is not necessarily bad
-       since we need to do some more transformations to the response */
-  data = omitDeep(data, isNil);
+/**
+ * Formats a response from {@link rawSuggestQuery}
+ *
+ * Warning: avoid this pattern unless applying custom transformation to the raw response!
+ * ```ts
+ * const response = await rawSuggestQuery(req);
+ * const data = formatSuggestQueryResponse(response.data);
+ * ```
+ *
+ * Instead use the shorthand {@link suggestQuery}
+ * ```ts
+ * const data = suggestQuery(req);
+ * ```
+ *
+ * @param data
+ */
+export const formatSuggestQueryResponse = <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+      ? SI[number]
+      : SI]
+  >
+>(
+  data: RawSuggestResponse<
+    SI extends Array<SearchIndex> ? SI[number] : SI,
+    TIncludeFields
+  >
+): SuggestResponse<
+  SI extends Array<SearchIndex> ? SI[number] : SI,
+  TIncludeFields
+> => {
+  let _data;
+
+  _data = data;
+
+  // Elasticsearch responses use 'null' for missing values, we want undefined
+  _data = omitDeep(_data.suggest['metadata-suggest'][0].options, isNil);
 
   /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
       This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
-  data = {
-    ...data,
-    hits: {
-      ...data.hits,
-      hits: isArray(data.hits.hits)
-        ? data.hits.hits.map((hit: { _source: Record<string, unknown> }) =>
-            '_source' in hit
-              ? 'entityType' in hit._source
-                ? {
-                    ...hit,
-                    _source: {
-                      ...hit._source,
-                      type: hit._source.entityType,
-                    },
-                  }
-                : hit
-              : hit
-          )
-        : [],
-    },
-  };
+  _data = _data.map((datum: { _source: Record<string, unknown> }) =>
+    '_source' in datum
+      ? 'entityType' in datum._source
+        ? {
+            ...datum,
+            _source: { ...datum._source, type: datum._source.entityType },
+          }
+        : datum
+      : datum
+  );
 
-  /* Aggregation key start with 'sterms#' - this is caused by the serialization of the ElasticsearchResponse
-      Java object. For usability this prefix is removed from keys.  */
-  data = {
-    ...data,
-    aggregations:
-      data.aggregations &&
-      (Object.fromEntries(
-        Object.entries(data.aggregations).map(([key, value]) => [
-          key.replace('sterms#', ''),
-          value,
-        ])
-      ) as Aggregations),
-  };
-
-  return data;
+  return _data;
 };
 
+/**
+ * Executes a request to /search/suggest, returning the raw response.
+ * Warning: Only call this function directly in special cases. Otherwise use {@link suggestQuery}
+ *
+ * @param req Request object
+ */
+export const rawSuggestQuery = <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+      ? SI[number]
+      : SI]
+  >
+>(
+  req: SuggestRequest<SI, TIncludeFields>
+): Promise<
+  AxiosResponse<
+    RawSuggestResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
+  >
+> => {
+  const { query, searchIndex, field, fetchSource } = req;
+
+  return APIClient.get<
+    RawSuggestResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
+  >('/search/suggest', {
+    params: {
+      q: query,
+      field,
+      index: getSearchIndexParam(searchIndex),
+      /* eslint-disable @typescript-eslint/camelcase */
+      fetch_source: fetchSource,
+      include_source_fields: req.fetchSource ? req.includeFields : undefined,
+      /* eslint-enable @typescript-eslint/camelcase */
+    },
+  });
+};
+
+/**
+ * Access point for the Suggestion API.
+ * Executes a request to /search/suggest, returning a formatted response.
+ *
+ * @param req Request object
+ */
 export const suggestQuery = async <
   SI extends SearchIndex | SearchIndex[],
   TIncludeFields extends KeysOfUnion<
@@ -157,48 +330,7 @@ export const suggestQuery = async <
     TIncludeFields
   >
 > => {
-  const { query, searchIndex, field, fetchSource } = req;
+  const res = await rawSuggestQuery(req);
 
-  const response = await APIClient.get<{
-    suggest: {
-      'metadata-suggest': Array<{
-        options: SuggestResponse<
-          SI extends Array<SearchIndex> ? SI[number] : SI,
-          TIncludeFields
-        >;
-      }>;
-    };
-  }>('/search/suggest', {
-    params: {
-      q: query,
-      field,
-      index: getSearchIndexParam(searchIndex),
-      /* eslint-disable @typescript-eslint/camelcase */
-      fetch_source: fetchSource,
-      include_source_fields: req.fetchSource ? req.includeFields : undefined,
-      /* eslint-enable @typescript-eslint/camelcase */
-    },
-    // Elasticsearch responses use 'null' for missing values, we want undefined
-  });
-
-  let data;
-
-  data = response.data;
-
-  data = omitDeep(data.suggest['metadata-suggest'][0].options, isNil);
-
-  /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
-      This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
-  data = data.map((datum: { _source: Record<string, unknown> }) =>
-    '_source' in datum
-      ? 'entityType' in datum._source
-        ? {
-            ...datum,
-            _source: { ...datum._source, type: datum._source.entityType },
-          }
-        : datum
-      : datum
-  );
-
-  return data;
+  return formatSuggestQueryResponse(res.data);
 };
