@@ -167,6 +167,9 @@ const AddUsersModalV1 = ({
   return (
     <Modal
       data-testid="modal-container"
+      okButtonProps={{
+        id: 'save-button',
+      }}
       okText="Save"
       title={header}
       visible={isVisible}
