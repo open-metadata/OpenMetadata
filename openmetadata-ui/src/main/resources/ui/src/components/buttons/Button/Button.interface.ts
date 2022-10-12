@@ -13,9 +13,8 @@
 
 import React, { ReactNode } from 'react';
 
-export interface Props {
+export interface CommonProps {
   block?: boolean;
-  children?: ReactNode;
   className?: string;
   disabled?: boolean;
   size?: 'large' | 'regular' | 'small' | 'x-small' | 'custom';
@@ -24,7 +23,7 @@ export interface Props {
 }
 
 export interface ButtonAsButtonProps
-  extends Props,
+  extends CommonProps,
     React.ButtonHTMLAttributes<HTMLButtonElement> {
   /**
    * The element that should be rendered as a button
@@ -37,13 +36,13 @@ export interface ButtonAsButtonProps
 }
 
 export interface ButtonAsAnchorProps
-  extends Props,
+  extends CommonProps,
     React.AnchorHTMLAttributes<HTMLAnchorElement> {
   tag?: 'a';
 }
 
 export interface ButtonAsOtherProps
-  extends Props,
+  extends CommonProps,
     React.AnchorHTMLAttributes<HTMLAnchorElement> {
   tag?: string;
 }
