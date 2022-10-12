@@ -19,7 +19,7 @@ import React, { useEffect, useState } from 'react';
 import {
   getAllReIndexStatus,
   reIndexByPublisher,
-} from '../../axiosAPIs/elastic-index-API';
+} from '../../axiosAPIs/elasticSearchReIndexAPI';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
