@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Viewer } from '@toast-ui/react-editor';
 import { Button, Modal } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FC, Fragment, useEffect, useState } from 'react';
+import { LazyLog } from 'react-lazylog';
 import { getIngestionPipelineLogById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { gzipToStringConverter } from '../../../utils/ingestionutils';
@@ -100,9 +100,11 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
   };
 
   const handleJumpToEnd = () => {
-    const logsBody = document.getElementById('logs-body') as HTMLElement;
-    if (!isNil(logsBody)) {
-      logsBody.scrollTop = logsBody.scrollHeight;
+    const logBody = document.getElementsByClassName(
+      'ReactVirtualized__Grid'
+    )[0];
+    if (!isNil(logBody)) {
+      logBody.scrollTop = logBody.scrollHeight;
     }
   };
 
@@ -145,7 +147,12 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
                 })}
                 data-testid="logs-body"
                 id="logs-body">
-                <Viewer initialValue={logs} />
+                <LazyLog
+                  caseInsensitive
+                  enableSearch
+                  selectableLines
+                  text={logs}
+                />
               </div>
             </Fragment>
           ) : (
