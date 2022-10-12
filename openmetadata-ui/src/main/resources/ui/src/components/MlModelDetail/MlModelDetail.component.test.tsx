@@ -192,6 +192,10 @@ jest.mock('../common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<p data-testid="tabs">Tabs</p>);
 });
 
+jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
+  return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => {
   return {
     getEntityName: jest.fn().mockReturnValue('entityName'),
@@ -211,6 +215,11 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
 }));
 
 describe('Test MlModel entity detail component', () => {
@@ -237,7 +246,7 @@ describe('Test MlModel entity detail component', () => {
 
   it('Should render hyper parameter and ml store table for details tab', async () => {
     const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={2} />,
+      <MlModelDetailComponent {...mockProp} activeTab={3} />,
       {
         wrapper: MemoryRouter,
       }
@@ -258,7 +267,7 @@ describe('Test MlModel entity detail component', () => {
 
   it('Should render lineage tab', async () => {
     const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={3} />,
+      <MlModelDetailComponent {...mockProp} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -271,7 +280,7 @@ describe('Test MlModel entity detail component', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={4} />,
+      <MlModelDetailComponent {...mockProp} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
