@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import React, { FunctionComponent, useState } from 'react';
-import BGConfetti from '../../../assets/img/confetti-bg.jpeg';
-import { urlGithubRepo, urlJoinSlack } from '../../../constants/url.const';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import {
   faAngleDoubleRight,
   faArrowLeft,
   faArrowRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import classNames from 'classnames';
+import React, { FunctionComponent, useState } from 'react';
+import BGConfetti from '../../../assets/img/confetti-bg.jpeg';
+import { urlGithubRepo, urlJoinSlack } from '../../../constants/url.const';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { Button } from '../../buttons/Button/Button';
 
 type Props = {
   onSave: () => void;
@@ -65,7 +65,6 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
         <div className="tw-modal-header tw-border-0 tw-justify-center tw-pt-8 tw-pb-0">
           <div className="tw-flex tw-flex-col tw-justify-center tw-items-center tw-mt-12">
             {active === 0 ? (
-              // TODO: Replace it with Party popper icon
               <SVGIcons alt="Welcome" icon={Icons.WELCOME_POPPER} width="60" />
             ) : (
               <SVGIcons

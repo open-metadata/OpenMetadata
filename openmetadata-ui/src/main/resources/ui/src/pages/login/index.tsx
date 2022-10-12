@@ -118,7 +118,7 @@ const SigninPage = () => {
 
         break;
       }
-      // TODO: Add "case AuthTypes.GITHUB after adding support for these SSO
+
       default: {
         return <div>SSO Provider {authConfig?.provider} is not supported.</div>;
       }

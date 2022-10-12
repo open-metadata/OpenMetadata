@@ -49,7 +49,6 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
     getIngestionPipelineLogById(id)
       .then(
         (
-          // TODO: improve below types
           res: AxiosResponse<{
             ingestion_task?: string;
             profiler_task?: string;

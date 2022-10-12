@@ -57,6 +57,7 @@ export interface MlModelSource extends CommonSource {
 
 export interface Option {
   _index: string;
+  _id: string;
   _source: TableSource &
     DashboardSource &
     TopicSource &

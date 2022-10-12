@@ -55,7 +55,10 @@ export const getUsers = async (
       ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
       : '');
 
-  const response = await APIClient.get<{ data: User[]; paging: Paging }>(url);
+  const response = await APIClient.get<{
+    data: EntityReference[];
+    paging: Paging;
+  }>(url);
 
   return response.data;
 };

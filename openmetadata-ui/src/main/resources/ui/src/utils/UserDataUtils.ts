@@ -195,8 +195,7 @@ export const suggestFormattedUsersAndTeams = (
             ? formatUsersResponse(
                 // TODO: fix type errors below
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (resUsers.value.data as any).suggest['metadata-suggest'][0]
-                  .options
+                resUsers.value.suggest['metadata-suggest'][0].options
               )
             : [];
         const teams =

@@ -134,9 +134,7 @@ const addWebhookProps: AddWebhookProps = {
   allowAccess: true,
 };
 
-// TODO: improve API unit tests as per standards
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip('Test AddWebhook component', () => {
+describe('Test AddWebhook component', () => {
   it('Component should render properly', async () => {
     const { container } = render(<AddWebhook {...addWebhookProps} />, {
       wrapper: MemoryRouter,

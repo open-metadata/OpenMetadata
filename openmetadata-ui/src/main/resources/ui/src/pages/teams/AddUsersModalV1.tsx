@@ -66,12 +66,11 @@ const AddUsersModalV1 = ({
 
   const fetchAllUsers = async () => {
     setIsLoading(true);
-    const { data } = await getUsers('', API_RES_MAX_SIZE);
-
     try {
+      const { data } = await getUsers('', API_RES_MAX_SIZE);
+
       if (data) {
-        // TODO: fix type issue
-        setAllUsers(data as unknown as UserTeams[]);
+        setAllUsers(data);
       } else {
         throw jsonData['api-error-messages']['fetch-users-error'];
       }

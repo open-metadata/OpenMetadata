@@ -51,7 +51,6 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
         localStorage.removeItem('okta-token-storage');
         onLogoutSuccess();
       } catch (err) {
-        // TODO: Handle error on logout failure
         // eslint-disable-next-line no-console
         console.log(err);
       }

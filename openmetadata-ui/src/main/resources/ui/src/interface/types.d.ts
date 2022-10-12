@@ -306,7 +306,7 @@ declare module 'Models' {
   export type ClientAuth = {
     authority: string;
     client_id: string;
-    provider?: 'google' | 'okta' | 'auth0'; // TODO: add 'github' after adding support for Github SSO
+    provider?: 'google' | 'okta' | 'auth0';
     callbackUrl?: string;
     signingIn?: boolean;
   };
@@ -596,7 +596,15 @@ declare module 'Models' {
 
   export type Status = 'initial' | 'waiting' | 'success';
 
-  // ES interface end
+  // ES interface start
 
-  //   interface ESUserResponse {}
+  export interface ESSuggestResponse<T> {
+    suggest: {
+      'metadata-suggest': {
+        options: T[];
+      }[];
+    };
+  }
+
+  // ES interface end
 }

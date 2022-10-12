@@ -59,13 +59,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       SearchIndex[entityType as keyof typeof SearchIndex]
     )
       .then((res) => {
-        if (res.data) {
+        if (res) {
           setData(
-            // TODO: fix types below
-            formatDataResponse(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            )
+            formatDataResponse(res.suggest['metadata-suggest'][0].options)
           );
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];

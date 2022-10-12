@@ -12,13 +12,19 @@
  */
 
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { ESSuggestResponse } from 'Models';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
+import { Option } from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { TagCategory } from '../generated/entity/tags/tagCategory';
+import { Team } from '../generated/entity/teams/team';
+import { User } from '../generated/entity/teams/user';
 import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
+import { SearchHits } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
@@ -83,10 +89,10 @@ export const fetchAirflowConfig = async () => {
   return response.data;
 };
 
-export const getSuggestions = (
+export const getSuggestions = async (
   queryString: string,
   searchIndex?: string
-): Promise<AxiosResponse> => {
+) => {
   const params = {
     q: queryString,
     index:
@@ -94,7 +100,12 @@ export const getSuggestions = (
       `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`,
   };
 
-  return APIClient.get(`/search/suggest`, { params });
+  const response = await APIClient.get<ESSuggestResponse<Option>>(
+    `/search/suggest`,
+    { params }
+  );
+
+  return response.data;
 };
 
 export const getVersion = async () => {
@@ -133,27 +144,33 @@ export const getInitialEntity = (
   });
 };
 
-export const getSuggestedUsers = (
-  term: string
-  // TODO: improve types below
-): Promise<AxiosResponse<unknown>> => {
-  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.USER}`);
+export const getSuggestedUsers = async (term: string) => {
+  const response = await APIClient.get<ESSuggestResponse<User>>(
+    `/search/suggest?q=${term}&index=${SearchIndex.USER}`
+  );
+
+  return response.data;
 };
 
-export const getSuggestedTeams = (
-  term: string
-  // TODO: improve types below
-): Promise<AxiosResponse<unknown>> => {
-  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.TEAM}`);
+export const getSuggestedTeams = async (term: string) => {
+  const response = await APIClient.get<ESSuggestResponse<Team>>(
+    `/search/suggest?q=${term}&index=${SearchIndex.TEAM}`
+  );
+
+  return response.data;
 };
 
-export const getUserSuggestions = (term: string): Promise<AxiosResponse> => {
+export const getUserSuggestions = async (term: string) => {
   const params = {
     q: term,
     index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
   };
 
-  return APIClient.get(`/search/suggest`, { params });
+  const response = await APIClient.get<
+    ESSuggestResponse<SearchHits<User | Team>>
+  >(`/search/suggest`, { params });
+
+  return response.data;
 };
 
 export const getTeamsByQuery = async (params: {
@@ -175,13 +192,19 @@ export const getTeamsByQuery = async (params: {
   return response.data;
 };
 
-export const getTagSuggestions = (term: string): Promise<AxiosResponse> => {
+export const getTagSuggestions = async (term: string) => {
   const params = {
     q: term,
     index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
   };
 
-  return APIClient.get(`/search/suggest`, { params });
+  const response = await APIClient.get<
+    ESSuggestResponse<SearchHits<TagCategory>>
+  >(`/search/suggest`, {
+    params,
+  });
+
+  return response.data;
 };
 
 export const getSearchedUsers = (
@@ -232,14 +255,21 @@ export const deleteEntity = async (
   });
 };
 
-export const getAdvancedFieldOptions = (
+export const getAdvancedFieldOptions = async (
   q: string,
   index: string,
   field: string | undefined
-): Promise<AxiosResponse> => {
+) => {
   const params = { index, field, q };
 
-  return APIClient.get(`/search/suggest`, { params });
+  const response = await APIClient.get<ESSuggestResponse<{ text: string }>>(
+    `/search/suggest`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
 };
 
 export const getEntityCount = async (

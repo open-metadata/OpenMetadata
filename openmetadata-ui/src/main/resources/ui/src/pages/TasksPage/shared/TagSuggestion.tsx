@@ -49,16 +49,10 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
 
   const fetchOptions = (query: string) => {
     getTagSuggestions(query)
-      // TODO: Fix types below
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then((res: any) => {
-        const suggestOptions =
-          res.data.suggest['metadata-suggest'][0].options ?? [];
+      .then((res) => {
+        const suggestOptions = res.suggest['metadata-suggest'][0].options ?? [];
         const uniqueOptions = [
-          ...new Set(
-            // eslint-disable-next-line
-            suggestOptions.map((op: any) => op._source)
-          ),
+          ...new Set(suggestOptions.map((op) => op._source)),
         ];
         setOptions(
           // eslint-disable-next-line

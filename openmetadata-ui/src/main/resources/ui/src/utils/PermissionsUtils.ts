@@ -17,33 +17,12 @@ import {
   ResourceEntity,
   UIPermission,
 } from '../components/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../enums/entity.enum';
 import {
   Access,
   Permission,
   ResourcePermission,
 } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../generated/entity/policies/policy';
-
-/**
- * @deprecated
- * TODO: Remove this method once we have new permission structure everywhere
- */
-export const hasPermission = (
-  operation: Operation,
-  entityType: EntityType,
-  permissions: ResourcePermission[]
-) => {
-  const entityPermission = permissions.find(
-    (permission) => permission.resource === entityType
-  );
-
-  const currentPermission = entityPermission?.permissions?.find(
-    (permission) => permission.operation === operation
-  );
-
-  return currentPermission?.access === Access.Allow;
-};
 
 /**
  *

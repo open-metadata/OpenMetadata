@@ -105,12 +105,9 @@ const AdvancedField: FC<Props> = ({
       getAdvancedFieldOptions(query, index, advancedField)
         .then((res) => {
           const suggestOptions =
-            // TODO: Fix type issues below
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (res.data as any).suggest['metadata-suggest'][0].options ?? [];
+            res.suggest['metadata-suggest'][0].options ?? [];
           const uniqueOptions = [
-            // eslint-disable-next-line
-            ...new Set(suggestOptions.map((op: any) => op.text)),
+            ...new Set(suggestOptions.map((op) => op.text)),
           ];
           setOptions(
             uniqueOptions.map((op: unknown) => ({
@@ -125,13 +122,10 @@ const AdvancedField: FC<Props> = ({
         getTagSuggestions(query)
           .then((res) => {
             const suggestOptions =
-              // TODO: Fix type issues below
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options ?? [];
+              res.suggest['metadata-suggest'][0].options ?? [];
             const uniqueOptions = [
               ...new Set(
-                // eslint-disable-next-line
-                suggestOptions.map((op: any) => op._source.fullyQualifiedName)
+                suggestOptions.map((op) => op._source.fullyQualifiedName)
               ),
             ];
             setOptions(
@@ -146,12 +140,9 @@ const AdvancedField: FC<Props> = ({
         getUserSuggestions(query)
           .then((res) => {
             const suggestOptions =
-              // TODO: Fix type issues below
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options ?? [];
+              res.suggest['metadata-suggest'][0].options ?? [];
             const uniqueOptions = [
-              // eslint-disable-next-line
-              ...new Set(suggestOptions.map((op: any) => op._source.name)),
+              ...new Set(suggestOptions.map((op) => op._source.name)),
             ];
             setOptions(
               uniqueOptions.map((op: unknown) => ({

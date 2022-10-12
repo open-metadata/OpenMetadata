@@ -13,8 +13,18 @@
 
 import { orderBy } from 'lodash';
 import { getTableDetails } from '../axiosAPIs/tableAPI';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Team } from '../generated/entity/teams/team';
+import { User } from '../generated/entity/teams/user';
 import { getRelativeTime } from './TimeUtils';
+
+export interface SearchHits<T> {
+  _source: T & { entityType: EntityType };
+  _index: SearchIndex;
+  _id: string;
+}
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
 export const formatDataResponse = (hits) => {
@@ -53,7 +63,7 @@ export const formatDataResponse = (hits) => {
   return formattedData;
 };
 
-export const formatUsersResponse = (hits) => {
+export const formatUsersResponse = (hits: SearchHits<User>[]) => {
   return hits.map((d) => {
     return {
       name: d._source.name,
@@ -67,7 +77,7 @@ export const formatUsersResponse = (hits) => {
   });
 };
 
-export const formatTeamsResponse = (hits) => {
+export const formatTeamsResponse = (hits: SearchHits<Team>[]) => {
   return hits.map((d) => {
     return {
       name: d._source.name,
@@ -80,15 +90,19 @@ export const formatTeamsResponse = (hits) => {
   });
 };
 
-export const formatTeamsAndUsersResponse = (hits) => {
-  const data = hits.reduce(
-    (prev, curr) => {
-      return curr._index === SearchIndex.TEAM
-        ? { ...prev, teams: [...prev.teams, curr] }
-        : { ...prev, users: [...prev.users, curr] };
-    },
-    { users: [], teams: [] }
-  );
+export const formatTeamsAndUsersResponse = (
+  hits: Array<SearchHits<User> | SearchHits<Team>>
+) => {
+  const initialValue: {
+    users: SearchHits<User>[];
+    teams: SearchHits<Team>[];
+  } = { users: [], teams: [] };
+
+  const data = hits.reduce((prev, curr) => {
+    return curr._index === SearchIndex.TEAM
+      ? { ...prev, teams: [...prev.teams, curr as SearchHits<Team>] }
+      : { ...prev, users: [...prev.users, curr as SearchHits<User>] };
+  }, initialValue);
 
   const users = formatUsersResponse(data.users);
   const teams = formatTeamsResponse(data.teams);
@@ -96,7 +110,9 @@ export const formatTeamsAndUsersResponse = (hits) => {
   return { users, teams };
 };
 
-export const formatSearchGlossaryTermResponse = (hits) => {
+export const formatSearchGlossaryTermResponse = (
+  hits: SearchHits<GlossaryTerm>[]
+) => {
   const term = hits.map((d) => {
     return {
       name: d._source.name,
