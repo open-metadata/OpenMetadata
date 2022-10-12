@@ -24,6 +24,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
+import './IngestionLogsModal.less';
 
 interface IngestionLogsModalProps {
   pipelineId: string;
@@ -120,13 +121,14 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
 
   return (
     <Modal
+      centered
       destroyOnClose
       afterClose={() => setLogs('')}
       data-testid="logs-modal"
       footer={null}
       title={modalTitle}
       visible={isModalOpen}
-      width={1200}
+      width={1500}
       onCancel={onClose}>
       {isLoading ? (
         <Loader />
@@ -143,7 +145,7 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
               </Button>
               <div
                 className={classNames('tw-overflow-y-auto', {
-                  'tw-h-100': logs,
+                  'ingestion-log-modal': logs,
                 })}
                 data-testid="logs-body"
                 id="logs-body">
