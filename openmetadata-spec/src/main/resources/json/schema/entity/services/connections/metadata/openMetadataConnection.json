@@ -176,7 +176,7 @@
       "type": "integer",
       "default": "1000"
     },
-    "forceEntityOverwrite": {
+    "forceEntityOverwriting": {
       "description": "Force the overwriting of any entity during the ingestion.",
       "type": "boolean",
       "default": false
