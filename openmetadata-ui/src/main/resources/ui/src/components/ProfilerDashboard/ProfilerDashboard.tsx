@@ -276,6 +276,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
   };
 
+  const handleTierRemove = () => {
+    if (table) {
+      const updatedTableDetails = {
+        ...table,
+        tags: undefined,
+      };
+      onTableChange(updatedTableDetails);
+    }
+  };
+
   const handleTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Table['tags'] = newTier
@@ -462,6 +472,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             removeOwner={
               tablePermissions.EditAll || tablePermissions.EditOwner
                 ? handleOwnerRemove
+                : undefined
+            }
+            removeTier={
+              tablePermissions.EditAll || tablePermissions.EditTier
+                ? handleTierRemove
                 : undefined
             }
             tags={getTagsWithoutTier(table.tags || [])}

@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
@@ -241,7 +241,7 @@ const MlModelPage = () => {
   };
 
   const saveUpdatedMlModelData = (updatedData: Mlmodel) => {
-    const jsonPatch = compare(mlModelDetail, updatedData);
+    const jsonPatch = compare(omitBy(mlModelDetail, isUndefined), updatedData);
 
     return patchMlModelDetails(mlModelDetail.id, jsonPatch);
   };

@@ -327,6 +327,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
+  const onTierRemove = () => {
+    if (mlModelDetail) {
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Mlmodel['tags'] = newTier
@@ -473,6 +483,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           removeOwner={
             mlModelPermissions.EditAll || mlModelPermissions.EditOwner
               ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            mlModelPermissions.EditAll || mlModelPermissions.EditTier
+              ? onTierRemove
               : undefined
           }
           tags={mlModelTags}

@@ -84,6 +84,7 @@ interface Props {
   updateTier?: (value: string) => void;
   removeOwner?: () => void;
   currentOwner?: Dashboard['owner'];
+  removeTier?: () => void;
 }
 
 const EntityPageInfo = ({
@@ -113,6 +114,7 @@ const EntityPageInfo = ({
   canDelete,
   currentOwner,
   entityFieldTasks,
+  removeTier,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -519,6 +521,7 @@ const EntityPageInfo = ({
                   currentOwner={currentOwner}
                   data={info}
                   removeOwner={removeOwner}
+                  removeTier={removeTier}
                   tier={tier}
                   updateOwner={updateOwner}
                   updateTier={updateTier}

@@ -154,6 +154,7 @@ import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconReaction from '../assets/svg/Reaction.svg';
+import IconRemoveWhite from '../assets/svg/Remove-white.svg';
 import IconRemove from '../assets/svg/Remove.svg';
 import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
@@ -355,6 +356,7 @@ export const Icons = {
   POLICIES: 'policies',
   INFO_SECONDARY: 'info-secondary',
   ICON_REMOVE: 'icon-remove',
+  ICON_REMOVE_WHITE: 'icon-remove-white',
   DELETE_COLORED: 'icon-delete-colored',
   IC_EDIT_PRIMARY: 'ic-edit-primary',
   MSTEAMS: 'msteams',
@@ -1014,6 +1016,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ICON_REMOVE:
       IconComponent = IconRemove;
+
+      break;
+    case Icons.ICON_REMOVE_WHITE:
+      IconComponent = IconRemoveWhite;
 
       break;
     case Icons.IC_EDIT_PRIMARY:

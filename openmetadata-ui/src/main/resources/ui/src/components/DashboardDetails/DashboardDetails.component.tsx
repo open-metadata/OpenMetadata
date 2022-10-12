@@ -310,6 +310,16 @@ const DashboardDetails = ({
     }
   };
 
+  const onRemoveTier = () => {
+    if (dashboardDetails) {
+      const updatedDashboardDetails = {
+        ...dashboardDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedDashboardDetails);
+    }
+  };
+
   const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -522,6 +532,11 @@ const DashboardDetails = ({
           removeOwner={
             dashboardPermissions.EditAll || dashboardPermissions.EditOwner
               ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            dashboardPermissions.EditAll || dashboardPermissions.EditTier
+              ? onRemoveTier
               : undefined
           }
           tags={dashboardTags}

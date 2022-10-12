@@ -321,6 +321,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const onTierRemove = () => {
+    if (topicDetails) {
+      const updatedTopicDetails = {
+        ...topicDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedTopicDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Topic['tags'] = newTier
@@ -451,6 +461,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           removeOwner={
             topicPermissions.EditAll || topicPermissions.EditOwner
               ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            topicPermissions.EditAll || topicPermissions.EditTier
+              ? onTierRemove
               : undefined
           }
           tags={topicTags}

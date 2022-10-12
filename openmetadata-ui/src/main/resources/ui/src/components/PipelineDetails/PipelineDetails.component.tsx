@@ -284,6 +284,16 @@ const PipelineDetails = ({
     }
   };
 
+  const onTierRemove = () => {
+    if (pipelineDetails) {
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Pipeline['tags'] = newTier
@@ -414,6 +424,11 @@ const PipelineDetails = ({
           removeOwner={
             pipelinePermissions.EditAll || pipelinePermissions.EditOwner
               ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            pipelinePermissions.EditAll || pipelinePermissions.EditTier
+              ? onTierRemove
               : undefined
           }
           tags={pipelineTags}

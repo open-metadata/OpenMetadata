@@ -12,8 +12,10 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
@@ -29,6 +31,7 @@ const CardListItem: FunctionComponent<Props> = ({
   onSave,
   tierStatus,
   className,
+  removeTier,
 }: Props) => {
   const getCardBodyStyle = () => {
     const activeStyle = isActive ? cardStyle.active : cardStyle.default;
@@ -74,7 +77,21 @@ const CardListItem: FunctionComponent<Props> = ({
 
   const getCardIcon = (cardId: string) => {
     if (isSelected && isActive) {
-      return <FontAwesomeIcon className="tw-text-h4" icon="check-circle" />;
+      return (
+        <Space size={16}>
+          <Tooltip title="Remove Tier">
+            <button className="tw-cursor-pointer" onClick={removeTier}>
+              <SVGIcons
+                alt="remove tier"
+                icon={Icons.ICON_REMOVE_WHITE}
+                title="Remove Tier"
+                width="24px"
+              />
+            </button>
+          </Tooltip>
+          <FontAwesomeIcon className="tw-text-h4" icon="check-circle" />
+        </Space>
+      );
     } else if (isSelected) {
       return <FontAwesomeIcon className="tw-text-h4" icon="check-circle" />;
     } else if (isActive) {

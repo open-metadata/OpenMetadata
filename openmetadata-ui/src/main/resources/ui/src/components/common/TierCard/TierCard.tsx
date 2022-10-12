@@ -23,9 +23,15 @@ export interface TierCardProps {
     tier?: TableDetail['tier'],
     isJoinable?: boolean
   ) => Promise<void>;
+  removeTier?: () => void;
 }
 
-const TierCard = ({ currentTier, hideTier, updateTier }: TierCardProps) => {
+const TierCard = ({
+  currentTier,
+  hideTier,
+  updateTier,
+  removeTier,
+}: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [activeTier, setActiveTier] = useState(currentTier);
   const [statusTier, setStatusTier] = useState<Status>('initial');
@@ -112,6 +118,7 @@ const TierCard = ({ currentTier, hideTier, updateTier }: TierCardProps) => {
             isActive={activeTier === card.id}
             isSelected={card.id === currentTier}
             key={i}
+            removeTier={removeTier}
             tierStatus={statusTier}
             onCardSelect={handleCardSelection}
             onSave={handleTierSave}

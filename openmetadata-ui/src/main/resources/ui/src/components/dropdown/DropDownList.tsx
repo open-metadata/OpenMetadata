@@ -219,9 +219,27 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       return getEmptyTextElement();
     }
 
+    // Filter select owner to top of list
+    const filteredResult = results.reduce(
+      (acc: DropDownListItem[], cv: DropDownListItem) => {
+        if (cv.value === value) {
+          if (acc.length) {
+            acc.unshift(cv);
+
+            return acc;
+          } else {
+            return [...acc, cv];
+          }
+        } else {
+          return [...acc, cv];
+        }
+      },
+      []
+    );
+
     return (
       <>
-        {results.map((item: DropDownListItem, index: number) =>
+        {filteredResult.map((item: DropDownListItem, index: number) =>
           getDropDownElement(item, index)
         )}
       </>

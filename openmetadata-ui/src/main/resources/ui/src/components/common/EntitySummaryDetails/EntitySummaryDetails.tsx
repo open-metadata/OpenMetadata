@@ -43,6 +43,7 @@ export interface GetInfoElementsProps {
   updateTier?: (value: string) => void;
   updateTeamType?: (type: TeamType) => void;
   currentOwner?: Dashboard['owner'];
+  removeTier?: () => void;
 }
 
 const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
@@ -75,6 +76,7 @@ const EntitySummaryDetails = ({
   updateOwner,
   updateTier,
   updateTeamType,
+  removeTier,
   currentOwner,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
@@ -155,6 +157,7 @@ const EntitySummaryDetails = ({
                 overlay={
                   <TierCard
                     currentTier={tier?.tagFQN}
+                    removeTier={removeTier}
                     updateTier={updateTier}
                   />
                 }
@@ -291,6 +294,7 @@ const EntitySummaryDetails = ({
                 overlay={
                   <TierCard
                     currentTier={tier?.tagFQN}
+                    removeTier={removeTier}
                     updateTier={updateTier}
                   />
                 }

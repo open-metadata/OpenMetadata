@@ -492,6 +492,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const onRemoveTier = () => {
+    if (tableDetails) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedTableDetails);
+    }
+  };
+
   /**
    * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
@@ -614,6 +624,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           removeOwner={
             tablePermissions.EditAll || tablePermissions.EditOwner
               ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            tablePermissions.EditAll || tablePermissions.EditTier
+              ? onRemoveTier
               : undefined
           }
           tags={tableTags}
