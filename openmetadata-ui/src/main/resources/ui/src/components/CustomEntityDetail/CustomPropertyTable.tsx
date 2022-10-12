@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
-import classNames from 'classnames';
-import { isEmpty, uniqueId } from 'lodash';
-import React, { FC, Fragment, useState } from 'react';
+import { Table, Tooltip } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { isEmpty } from 'lodash';
+import React, { FC, Fragment, useMemo, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CustomProperty, Type } from '../../generated/entity/type';
-import { getEntityName, isEven } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -72,113 +72,91 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   const deleteCheck = !isEmpty(selectedProperty) && operation === 'delete';
   const updateCheck = !isEmpty(selectedProperty) && operation === 'update';
 
+  const tableColumn: ColumnsType<CustomProperty> = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+      },
+      {
+        title: 'Type',
+        dataIndex: 'propertyType',
+        key: 'propertyType',
+        render: (text) => getEntityName(text),
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text) =>
+          text ? (
+            <RichTextEditorPreviewer markdown={text || ''} />
+          ) : (
+            <span
+              className="tw-no-description tw-p-2 tw--ml-1.5"
+              data-testid="no-description">
+              No description{' '}
+            </span>
+          ),
+      },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        key: 'actions',
+        render: (_, record) => (
+          <div className="tw-flex">
+            <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+              <button
+                className="tw-cursor-pointer"
+                data-testid="edit-button"
+                disabled={!hasAccess}
+                onClick={() => {
+                  setSelectedProperty(record);
+                  setOperation('update');
+                }}>
+                <SVGIcons
+                  alt="edit"
+                  icon={Icons.EDIT}
+                  title="Edit"
+                  width="16px"
+                />
+              </button>
+            </Tooltip>
+            <Tooltip title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+              <button
+                className="tw-cursor-pointer tw-ml-4"
+                data-testid="delete-button"
+                disabled={!hasAccess}
+                onClick={() => {
+                  setSelectedProperty(record);
+                  setOperation('delete');
+                }}>
+                <SVGIcons
+                  alt="delete"
+                  icon={Icons.DELETE}
+                  title="Delete"
+                  width="16px"
+                />
+              </button>
+            </Tooltip>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
   return (
     <Fragment>
-      <div className="tw-table-container">
-        <table
-          className="tw-w-full"
-          data-testid="entity-custom-properties-table">
-          <thead data-testid="table-header">
-            <tr className="tableHead-row">
-              <th className="tableHead-cell" data-testid="property-name">
-                Name
-              </th>
-              <th className="tableHead-cell" data-testid="property-type">
-                Type
-              </th>
-              <th className="tableHead-cell" data-testid="property-description">
-                Description
-              </th>
-              <th className="tableHead-cell" data-testid="property-actions">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody data-testid="table-body">
-            {customProperties.length ? (
-              customProperties.map((property, index) => (
-                <tr
-                  className={classNames(
-                    `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                    {
-                      'tw-border-b-0': index === customProperties.length - 1,
-                    }
-                  )}
-                  data-testid="data-row"
-                  key={uniqueId()}>
-                  <td className="tableBody-cell">{property.name}</td>
-                  <td className="tableBody-cell">
-                    {getEntityName(property.propertyType)}
-                  </td>
-                  <td className="tableBody-cell">
-                    {property.description ? (
-                      <RichTextEditorPreviewer
-                        markdown={property.description || ''}
-                      />
-                    ) : (
-                      <span
-                        className="tw-no-description tw-p-2 tw--ml-1.5"
-                        data-testid="no-description">
-                        No description{' '}
-                      </span>
-                    )}
-                  </td>
-                  <td className="tableBody-cell">
-                    <div className="tw-flex">
-                      <Tooltip
-                        title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
-                        <button
-                          className="tw-cursor-pointer"
-                          data-testid="edit-button"
-                          disabled={!hasAccess}
-                          onClick={() => {
-                            setSelectedProperty(property);
-                            setOperation('update');
-                          }}>
-                          <SVGIcons
-                            alt="edit"
-                            icon={Icons.EDIT}
-                            title="Edit"
-                            width="16px"
-                          />
-                        </button>
-                      </Tooltip>
-                      <Tooltip
-                        title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
-                        <button
-                          className="tw-cursor-pointer tw-ml-4"
-                          data-testid="delete-button"
-                          disabled={!hasAccess}
-                          onClick={() => {
-                            setSelectedProperty(property);
-                            setOperation('delete');
-                          }}>
-                          <SVGIcons
-                            alt="delete"
-                            icon={Icons.DELETE}
-                            title="Delete"
-                            width="16px"
-                          />
-                        </button>
-                      </Tooltip>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr
-                className="tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0"
-                data-testid="no-data-row">
-                <td
-                  className="tableBody-cell tw-text-grey-muted tw-text-center"
-                  colSpan={4}>
-                  No data
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table
+        columns={tableColumn}
+        data-testid="entity-custom-properties-table"
+        dataSource={customProperties}
+        pagination={false}
+        rowKey="name"
+        size="small"
+      />
       {deleteCheck && (
         <ConfirmationModal
           bodyText={`Are you sure you want to delete the property ${selectedProperty.name}`}
