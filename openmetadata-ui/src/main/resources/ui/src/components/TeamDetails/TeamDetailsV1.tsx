@@ -1167,6 +1167,7 @@ const TeamDetailsV1 = ({
       {selectedEntity && (
         <Modal
           centered
+          closable={false}
           okText="Confirm"
           title={`Remove ${getEntityName(
             selectedEntity.record
