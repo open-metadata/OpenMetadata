@@ -143,6 +143,8 @@ class BigquerySource(CommonDbSourceService):
         """
         try:
             list_project_ids = [self.project_id]
+            if not self.service_connection.taxonomyProjectID:
+                self.service_connection.taxonomyProjectID = []
             list_project_ids.extend(self.service_connection.taxonomyProjectID)
             for project_ids in list_project_ids:
                 taxonomies = PolicyTagManagerClient().list_taxonomies(
