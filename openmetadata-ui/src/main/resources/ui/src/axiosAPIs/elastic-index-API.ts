@@ -31,12 +31,16 @@ export const reIndexByPublisher = async ({
   runMode,
   entities = ['all'],
   recreateIndex = true,
+  batchSize,
+  flushIntervalInSec,
 }: CreateEventPublisherJob) => {
   const payload = {
     publisherType: PublisherType.ElasticSearch,
     runMode,
     recreateIndex,
     entities,
+    batchSize,
+    flushIntervalInSec,
   };
 
   const res = await axiosClient.post('/indexResource/reindex', payload);
