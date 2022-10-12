@@ -80,7 +80,7 @@ const ReIndexAllModal = ({
         </Form.Item>
         <Form.Item
           initialValue={ELASTIC_SEARCH_INITIAL_VALUES.flushIntervalInSec}
-          label="Flush Interval In Seconds:"
+          label="Flush Interval (secs):"
           name="flushIntervalInSec">
           <Input
             data-testid="flush-interval-in-sec"
