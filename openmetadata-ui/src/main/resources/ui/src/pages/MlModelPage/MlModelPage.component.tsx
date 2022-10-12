@@ -12,12 +12,23 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import {
+  EntityFieldThreadCount,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
+import {
+  getAllFeeds,
+  postFeedById,
+  postThread,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -38,17 +49,23 @@ import { ResourceEntity } from '../../components/PermissionProvider/PermissionPr
 import { getMlModelPath } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import {
   EntityLineage,
   EntityReference,
 } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityMissingError,
+  getFeedCounts,
 } from '../../utils/CommonUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import {
   defaultFields,
   getCurrentMlModelTab,
@@ -79,6 +96,25 @@ const MlModelPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const [isEntityThreadLoading, setIsEntityThreadLoading] =
+    useState<boolean>(false);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = async (entityFqn: string) => {
@@ -100,7 +136,7 @@ const MlModelPage = () => {
 
   const getLineageData = () => {
     setIsLineageLoading(true);
-    getLineageByFQN(mlModelDetail.fullyQualifiedName ?? '', EntityType.MLMODEL)
+    getLineageByFQN(mlModelFqn, EntityType.MLMODEL)
       .then((res) => {
         if (res) {
           setEntityLineage(res);
@@ -202,16 +238,74 @@ const MlModelPage = () => {
     }
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.MLMODEL,
+      mlModelFqn,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
+  };
+
+  const getFeedData = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
+    setIsEntityThreadLoading(true);
+    getAllFeeds(
+      getEntityFeedLink(EntityType.MLMODEL, mlModelFqn),
+      after,
+      threadType,
+      feedType,
+      undefined,
+      USERId
+    )
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
+        if (data) {
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
+      })
+      .finally(() => setIsEntityThreadLoading(false));
+  };
+
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    getFeedData(after, feedType, threadType);
+  };
+
   const fetchTabSpecificData = (tabField = '') => {
     switch (tabField) {
       case TabSpecificField.LINEAGE: {
-        if (!isEmpty(mlModelDetail) && !mlModelDetail.deleted) {
+        if (!mlModelDetail.deleted) {
           if (isEmpty(entityLineage)) {
             getLineageData();
           }
 
           break;
         }
+
+        break;
+      }
+      case TabSpecificField.ACTIVITY_FEED: {
+        getFeedData();
 
         break;
       }
@@ -391,13 +485,86 @@ const MlModelPage = () => {
     }
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const data = {
+      message: value,
+      from: currentUser?.name,
+    } as Post;
+    postFeedById(id, data)
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res, posts: posts?.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+          getEntityFeedCount();
+        } else {
+          showErrorToast(jsonData['api-error-messages']['add-feed-error']);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+      });
+  };
+
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res) => {
+        if (res) {
+          setEntityThread((pre) => [...pre, res]);
+          getEntityFeedCount();
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['create-conversation-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
+      });
+  };
+
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread, setEntityThread);
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   const getMlModelDetail = () => {
     if (!isNil(mlModelDetail) && !isEmpty(mlModelDetail)) {
       return (
         <MlModelDetailComponent
           activeTab={activeTab}
+          createThread={createThread}
+          deletePostHandler={deletePostHandler}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
+          entityFieldThreadCount={entityFieldThreadCount}
+          entityThread={entityThread}
+          feedCount={feedCount}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followMlModelHandler={followMlModel}
+          isEntityThreadLoading={isEntityThreadLoading}
           lineageTabData={{
             loadNodeHandler,
             addLineageHandler,
@@ -409,11 +576,14 @@ const MlModelPage = () => {
             isNodeLoading,
           }}
           mlModelDetail={mlModelDetail}
+          paging={paging}
+          postFeedHandler={postFeedHandler}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
           tagUpdateHandler={onTagUpdate}
           unfollowMlModelHandler={unfollowMlModel}
           updateMlModelFeatures={updateMlModelFeatures}
+          updateThreadHandler={updateThreadHandler}
           onExtensionUpdate={handleExtentionUpdate}
         />
       );
@@ -427,12 +597,17 @@ const MlModelPage = () => {
   };
 
   useEffect(() => {
+    setEntityThread([]);
+  }, [tab]);
+
+  useEffect(() => {
     fetchTabSpecificData(mlModelTabs[activeTab - 1].field);
-  }, [activeTab, mlModelDetail]);
+  }, [activeTab]);
 
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
       fetchMlModelDetails(mlModelFqn);
+      getEntityFeedCount();
     }
   }, [mlModelPermissions, mlModelFqn]);
 

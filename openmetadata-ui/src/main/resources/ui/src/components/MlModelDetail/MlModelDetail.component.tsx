@@ -16,17 +16,11 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityTags,
-  ExtraInfo,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   FC,
   Fragment,
-  HTMLAttributes,
+  RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -38,14 +32,16 @@ import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
   getEntityName,
@@ -56,6 +52,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
@@ -64,33 +61,11 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
+import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import { MlModelDetailProp } from './MlModelDetail.interface';
 import MlModelFeaturesList from './MlModelFeaturesList';
-
-interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
-  mlModelDetail: Mlmodel;
-  activeTab: number;
-  followMlModelHandler: () => void;
-  unfollowMlModelHandler: () => void;
-  descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
-  setActiveTabHandler: (value: number) => void;
-  tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
-  updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
-  settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
-  lineageTabData: {
-    loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-    addLineageHandler: (edge: Edge) => Promise<void>;
-    removeLineageHandler: (data: EdgeData) => void;
-    entityLineageHandler: (lineage: EntityLineage) => void;
-    isLineageLoading?: boolean;
-    entityLineage: EntityLineage;
-    lineageLeafNodes: LeafNodes;
-    isNodeLoading: LoadingNodeState;
-  };
-  onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
-}
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
   mlModelDetail,
@@ -104,6 +79,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelFeatures,
   lineageTabData,
   onExtensionUpdate,
+  entityThread,
+  isEntityThreadLoading,
+  fetchFeedHandler,
+  deletePostHandler,
+  postFeedHandler,
+  updateThreadHandler,
+  paging,
+  feedCount,
 }) => {
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -129,6 +112,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       );
     }
   }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
+
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   useEffect(() => {
     if (mlModelDetail.id) {
@@ -233,6 +218,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 1,
     },
     {
+      name: 'Activity Feeds & Tasks',
+      isProtected: false,
+      position: 2,
+      count: feedCount,
+    },
+    {
       name: 'Details',
       icon: {
         alt: 'details',
@@ -241,17 +232,17 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         selectedName: 'icon-detailscolor',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
     {
       name: 'Lineage',
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Custom Properties',
       isProtected: false,
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -430,6 +421,31 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     );
   };
 
+  const getLoader = () => {
+    return isEntityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      fetchFeedHandler(pagingObj.after);
+    }
+  };
+
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      fetchFeedHandler(paging.after, feedType, threadType);
+    },
+    [paging]
+  );
+
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
+
   useEffect(() => {
     setFollowersData(mlModelDetail.followers || []);
   }, [
@@ -509,12 +525,30 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </Fragment>
               )}
               {activeTab === 2 && (
+                <div
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
+                  id="activityfeed">
+                  <div />
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    deletePostHandler={deletePostHandler}
+                    entityName={mlModelDetail.name}
+                    feedList={entityThread}
+                    postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
+                  />
+                  <div />
+                </div>
+              )}
+              {activeTab === 3 && (
                 <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
                   {getMlHyperParameters()}
                   {getMlModelStore()}
                 </div>
               )}
-              {activeTab === 3 && (
+              {activeTab === 4 && (
                 <div
                   className="tw-px-2 tw-h-full"
                   data-testid="lineage-details">
@@ -536,7 +570,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                 </div>
               )}
-              {activeTab === 4 && (
+              {activeTab === 5 && (
                 <CustomPropertyTable
                   entityDetails={
                     mlModelDetail as CustomPropertyProps['entityDetails']
@@ -545,6 +579,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   handleExtentionUpdate={onExtensionUpdate}
                 />
               )}
+              <div
+                data-testid="observer-element"
+                id="observer-element"
+                ref={elementRef as RefObject<HTMLDivElement>}>
+                {getLoader()}
+              </div>
             </div>
           </div>
         </div>

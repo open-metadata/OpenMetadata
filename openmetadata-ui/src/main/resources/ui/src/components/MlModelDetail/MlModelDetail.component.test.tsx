@@ -16,6 +16,7 @@ import { LeafNodes } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Paging } from '../../generated/type/paging';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {
@@ -153,6 +154,18 @@ const mockProp = {
     isNodeLoading: { id: undefined, state: false },
   },
   onExtensionUpdate: jest.fn(),
+  entityThread: [],
+  isEntityThreadLoading: false,
+  paging: {} as Paging,
+  feedCount: 2,
+  fetchFeedHandler: jest.fn(),
+  postFeedHandler: jest.fn(),
+  deletePostHandler: jest.fn(),
+
+  updateThreadHandler: jest.fn(),
+  entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
+  createThread: jest.fn(),
 };
 
 jest.mock('../common/description/Description', () => {
