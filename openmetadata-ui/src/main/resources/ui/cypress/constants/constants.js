@@ -33,6 +33,13 @@ export const SEARCH_INDEX = {
   mlmodels: 'mlmodel_search_index',
 };
 
+export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
+  term: 'dim_address',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  serviceName: 'sample_data',
+  testCaseName: 'column_value_max_to_be_between',
+};
+
 export const SEARCH_ENTITY_TABLE = {
   table_1: {
     term: 'raw_customer',

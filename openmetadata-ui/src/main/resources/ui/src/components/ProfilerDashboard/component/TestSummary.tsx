@@ -40,9 +40,9 @@ import {
 } from '../../../generated/tests/testCase';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
-  getDateToMilliSecondsOfCurrentDate,
+  getCurrentDateTimeStamp,
   getFormattedDateFromSeconds,
-  getPastDatesToMilliSecondsFromCurrentDate,
+  getPastDatesTimeStampFromCurrentDate,
 } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
@@ -130,11 +130,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (isEmpty(data)) return;
 
     try {
-      const startTs = getPastDatesToMilliSecondsFromCurrentDate(
+      const startTs = getPastDatesTimeStampFromCurrentDate(
         PROFILER_FILTER_RANGE[selectedTimeRange].days
       );
 
-      const endTs = getDateToMilliSecondsOfCurrentDate();
+      const endTs = getCurrentDateTimeStamp();
 
       const { data: chartData } = await getListTestCaseResults(
         getEncodedFqn(data.fullyQualifiedName || ''),
@@ -217,7 +217,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             </Space>
 
             {results.length ? (
-              <ResponsiveContainer className="tw-bg-white" minHeight={300}>
+              <ResponsiveContainer
+                className="tw-bg-white"
+                id={`${data.name}_graph`}
+                minHeight={300}>
                 <LineChart
                   data={chartData.data}
                   margin={{

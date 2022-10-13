@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.support.WriteRequest;
@@ -109,10 +111,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(ChangeEventList events) throws EventPublisherException {
+  public void publish(ChangeEventList events) throws EventPublisherException, JsonProcessingException {
     for (ChangeEvent event : events.getData()) {
+      String entityType = event.getEntityType();
+      String contextInfo =
+          event.getEntity() != null ? String.format("Entity Info : %s", JsonUtils.pojoToJson(event.getEntity())) : null;
       try {
-        String entityType = event.getEntityType();
         switch (entityType) {
           case Entity.TABLE:
             updateTable(event);
@@ -174,26 +178,39 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       } catch (DocumentMissingException ex) {
         LOG.error("Missing Document", ex);
         updateElasticSearchFailureStatus(
-            EventPublisherJob.Status.ACTIVEWITHERROR, "Missing Document while Updating ES.");
+            contextInfo,
+            EventPublisherJob.Status.ACTIVEWITHERROR,
+            String.format(
+                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
       } catch (ElasticsearchException e) {
         LOG.error("failed to update ES doc");
         LOG.debug(e.getMessage());
         if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
           LOG.error("Error in publishing to ElasticSearch");
           updateElasticSearchFailureStatus(
+              contextInfo,
               EventPublisherJob.Status.ACTIVEWITHERROR,
-              String.format("Timeout when updating ES request. Reason %s", e.getMessage()));
+              String.format(
+                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
           throw new ElasticSearchRetriableException(e.getMessage());
         } else {
           updateElasticSearchFailureStatus(
+              contextInfo,
               EventPublisherJob.Status.ACTIVEWITHERROR,
-              String.format("Failed while updating ES. Reason %s", e.getMessage()));
+              String.format(
+                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
           LOG.error(e.getMessage(), e);
         }
       } catch (IOException ie) {
         updateElasticSearchFailureStatus(
+            contextInfo,
             EventPublisherJob.Status.ACTIVEWITHERROR,
-            String.format("Issue in updating ES request. Reason %s", ie.getMessage()));
+            String.format(
+                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
         throw new EventPublisherException(ie.getMessage());
       }
     }
@@ -731,7 +748,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
-  public void updateElasticSearchFailureStatus(EventPublisherJob.Status status, String failureMessage) {
+  public void updateElasticSearchFailureStatus(String context, EventPublisherJob.Status status, String failureMessage) {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
@@ -741,7 +758,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       lastRecord.setStatus(status);
       lastRecord.setTimestamp(updateTime);
       lastRecord.setFailureDetails(
-          new FailureDetails().withLastFailedAt(updateTime).withLastFailedReason(failureMessage));
+          new FailureDetails().withContext(context).withLastFailedAt(updateTime).withLastFailedReason(failureMessage));
 
       dao.entityExtensionTimeSeriesDao()
           .update(
