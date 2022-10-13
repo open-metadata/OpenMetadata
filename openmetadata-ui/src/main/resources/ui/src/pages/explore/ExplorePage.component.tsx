@@ -166,10 +166,6 @@ const ExplorePage: FunctionComponent = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // const handlePathChange = (path: string) => {
-  //   AppState.updateExplorePageTab(path);
-  // };
-
   useEffect(() => {
     setIsLoading(true);
     Promise.all([

@@ -65,6 +65,9 @@ export const autocomplete: (
       hasMore: false,
     }));
 
+/**
+ * Common fields that exit for all searchable entities
+ */
 const commonQueryBuilderFields: Fields = {
   deleted: {
     label: 'Deleted',
@@ -107,8 +110,19 @@ const commonQueryBuilderFields: Fields = {
       asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
     },
   },
+
+  'tier.tagFQN': {
+    label: 'Tier',
+    type: 'select',
+    fieldSettings: {
+      asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
+    },
+  },
 };
 
+/**
+ * Fields specific to services
+ */
 const serviceQueryBuilderFields: Fields = {
   service: {
     label: 'Service',
@@ -130,6 +144,9 @@ const serviceQueryBuilderFields: Fields = {
   },
 };
 
+/**
+ * Fields specific to tables
+ */
 const tableQueryBuilderFields: Fields = {
   database: {
     label: 'Database',
@@ -201,7 +218,8 @@ const tableQueryBuilderFields: Fields = {
 };
 
 /**
- * Overriding default configurations
+ * Overriding default configurations.
+ * Basic attributes that fields inherit from.
  */
 const initialConfigWithoutFields: BasicConfig = {
   ...BaseConfig,
@@ -216,13 +234,8 @@ const initialConfigWithoutFields: BasicConfig = {
           operators: ['like', 'not_like'],
         },
       },
-      // Removes NULL check operators and multiple selects
-      excludeOperators: [
-        'is_null',
-        'is_not_null',
-        // 'select_any_in',
-        // 'select_not_any_in',
-      ],
+      // Removes NULL check operators
+      excludeOperators: ['is_null', 'is_not_null'],
       // Limits source to user input values, not other fields
       valueSources: ['value'],
     },
@@ -234,12 +247,7 @@ const initialConfigWithoutFields: BasicConfig = {
           operators: ['like', 'not_like'],
         },
       },
-      excludeOperators: [
-        'is_null',
-        'is_not_null',
-        // 'select_any_in',
-        // 'select_not_any_in',
-      ],
+      excludeOperators: ['is_null', 'is_not_null'],
       valueSources: ['value'],
     },
     text: {
@@ -276,6 +284,9 @@ const initialConfigWithoutFields: BasicConfig = {
   },
 };
 
+/**
+ * Builds search index specific configuration for the query builder
+ */
 export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
   searchIndex
 ) => {

@@ -18,6 +18,9 @@ import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
 import { Icons } from '../utils/SvgUtils';
 
+/**
+ * Builds an Elasticsearch JSON query from a {@see FilterObject}
+ */
 export const filterObjectToElasticsearchQuery: (
   f: FilterObject | undefined
 ) => Record<string, unknown> | undefined = (f) =>
