@@ -179,7 +179,9 @@ public class DefaultAuthorizer implements Authorizer {
       User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
       updateUserWithHashedPwd(user, pwd);
       addOrUpdateUser(user);
-      sendInviteMailToAdmin(user, pwd);
+      if (isSmtpEnabled) {
+        sendInviteMailToAdmin(user, pwd);
+      }
     }
   }
 
