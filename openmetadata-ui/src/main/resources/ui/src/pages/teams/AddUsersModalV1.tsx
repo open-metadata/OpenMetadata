@@ -20,7 +20,11 @@ import React, { useEffect, useState } from 'react';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import Searchbar from '../../components/common/searchbar/Searchbar';
-import { PAGE_SIZE_MEDIUM, pagingObject } from '../../constants/constants';
+import {
+  ADD_USER_CONTAINER_HEIGHT,
+  PAGE_SIZE_MEDIUM,
+  pagingObject,
+} from '../../constants/constants';
 import { INITIAL_FROM } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -44,7 +48,14 @@ type Props = {
   onCancel: () => void;
   onSave: (data: Array<UserTeams>) => void;
 };
-const ContainerHeight = 250;
+type UserData = {
+  fqn: string;
+  type: string;
+  displayName: string;
+  id?: string;
+  name?: string;
+};
+
 const AddUsersModalV1 = ({
   isVisible,
   header,
@@ -53,17 +64,35 @@ const AddUsersModalV1 = ({
   onSave,
   searchPlaceHolder,
 }: Props) => {
-  const [uniqueUser, setUniqueUser] = useState<User[]>([]);
+  const [uniqueUser, setUniqueUser] = useState<UserData[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Array<string>>([]);
   const [searchText, setSearchText] = useState('');
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState(INITIAL_FROM);
   const [totalESCount, setTotalESCount] = useState(0);
 
+  const getFilterUserData = (data: User[]) => {
+    return data
+      .filter((user) => {
+        const teamUser = list.some((teamUser) => user.id === teamUser.id);
+
+        return !teamUser && user;
+      })
+      .map((user) => {
+        return {
+          displayName: getEntityName(user),
+          fqn: user.fullyQualifiedName || '',
+          id: user.id,
+          type: OwnerType.USER,
+          name: user.name,
+        };
+      });
+  };
+
   const searchUsers = (text: string, page: number) => {
     searchData(text, page, PAGE_SIZE_MEDIUM, '', '', '', SearchIndex.USER)
       .then((res: SearchResponse) => {
-        const data = formatUsersResponse(res.data.hits.hits);
+        const data = getFilterUserData(formatUsersResponse(res.data.hits.hits));
         setTotalESCount(res.data.hits.total.value);
         setCurrentPage((pre) => pre + 1);
         setUniqueUser((pre) => [...pre, ...data]);
@@ -73,16 +102,11 @@ const AddUsersModalV1 = ({
       });
   };
 
-  const fetchAllUsers = async (after?: string) => {
-    const param = after
-      ? {
-          after,
-        }
-      : undefined;
+  const fetchAllUsers = async (param?: { after: string }) => {
     try {
       const { data, paging } = await getUsers('', PAGE_SIZE_MEDIUM, param);
-
-      setUniqueUser((pre) => [...pre, ...data]);
+      const filterData = getFilterUserData(data);
+      setUniqueUser((pre) => [...pre, ...filterData]);
       setUserPaging(paging);
     } catch (error) {
       setUniqueUser([]);
@@ -105,23 +129,6 @@ const AddUsersModalV1 = ({
         return [...prevState, id];
       }
     });
-  };
-  const getUserCards = () => {
-    return uniqueUser
-      .filter((user) => {
-        const teamUser = list.some((teamUser) => user.id === teamUser.id);
-
-        return !teamUser && user;
-      })
-      .map((user) => {
-        return {
-          displayName: getEntityName(user),
-          fqn: user.fullyQualifiedName || '',
-          id: user.id,
-          type: OwnerType.USER,
-          name: user.name,
-        };
-      });
   };
 
   const handleSave = () => {
@@ -148,14 +155,15 @@ const AddUsersModalV1 = ({
   const onScroll = (e: React.UIEvent<HTMLElement, UIEvent>) => {
     if (
       e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
-      ContainerHeight
+      ADD_USER_CONTAINER_HEIGHT
     ) {
       if (searchText) {
         // make API call only when current page size is less then total count
         PAGE_SIZE_MEDIUM * currentPage < totalESCount &&
           searchUsers(searchText, currentPage);
       } else {
-        !isUndefined(userPaging.after) && fetchAllUsers(userPaging.after);
+        !isUndefined(userPaging.after) &&
+          fetchAllUsers({ after: userPaging.after });
       }
     }
   };
@@ -188,8 +196,8 @@ const AddUsersModalV1 = ({
       <List>
         <VirtualList
           className="user-list"
-          data={getUserCards()}
-          height={ContainerHeight}
+          data={uniqueUser}
+          height={ADD_USER_CONTAINER_HEIGHT}
           itemKey="user"
           onScroll={onScroll}>
           {(User) => (
