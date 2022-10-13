@@ -243,6 +243,7 @@ email:
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
   enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
   openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
+  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
   serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
   serverPort: ${SMTP_SERVER_PORT:-""}
   username: ${SMTP_SERVER_USERNAME:-""}
