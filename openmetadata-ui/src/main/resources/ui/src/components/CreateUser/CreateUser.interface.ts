@@ -14,11 +14,6 @@
 import { LoadingState } from 'Models';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
-import { Auth0SSOClientConfig } from '../../generated/security/client/auth0SSOClientConfig';
-import { AzureSSOClientConfig } from '../../generated/security/client/azureSSOClientConfig';
-import { CustomOidcSSOClientConfig } from '../../generated/security/client/customOidcSSOClientConfig';
-import { GoogleSSOClientConfig } from '../../generated/security/client/googleSSOClientConfig';
-import { OktaSSOClientConfig } from '../../generated/security/client/oktaSSOClientConfig';
 
 export interface CreateUserProps {
   saveState?: LoadingState;
@@ -27,10 +22,3 @@ export interface CreateUserProps {
   onCancel: () => void;
   forceBot: boolean;
 }
-
-export type SSOClientConfig =
-  | GoogleSSOClientConfig
-  | Auth0SSOClientConfig
-  | AzureSSOClientConfig
-  | OktaSSOClientConfig
-  | CustomOidcSSOClientConfig;

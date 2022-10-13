@@ -158,6 +158,7 @@ class OpenMetadata(
 
     client: REST
     _auth_provider: AuthenticationProvider
+    config: OpenMetadataConnection
 
     class_root = ".".join(["metadata", "generated", "schema"])
     entity_path = "entity"
