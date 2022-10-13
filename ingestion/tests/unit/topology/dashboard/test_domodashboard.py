@@ -103,7 +103,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     extension=None,
 )
 
-EXPECTED_PIPELINES = [
+EXPECTED_DASHBOARDS = [
     CreateChartRequest(
         name="Top Salespeople",
         displayName="Top Salespeople",
@@ -112,7 +112,7 @@ EXPECTED_PIPELINES = [
             " Identify over-performers and understand the secrets to their success."
         ),
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpi/details/1108771657",
+        chartUrl="https://domain.domo.com/page/552315335/kpis/details/1108771657",
         tables=None,
         tags=None,
         owner=None,
@@ -132,7 +132,7 @@ EXPECTED_PIPELINES = [
         displayName="Milan Datasets",
         description="",
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpi/details/1985861713",
+        chartUrl="https://domain.domo.com/page/552315335/kpis/details/1985861713",
         tables=None,
         tags=None,
         owner=None,
@@ -152,7 +152,7 @@ EXPECTED_PIPELINES = [
         displayName="Page Fans",
         description="",
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpi/details/2025899139",
+        chartUrl="https://domain.domo.com/page/552315335/kpis/details/2025899139",
         tables=None,
         tags=None,
         owner=None,
@@ -205,9 +205,7 @@ class DomoDashboardUnitTest(TestCase):
             self.domodashboard.get_dashboard_name(MOCK_DASHBOARD) == mock_data["title"]
         )
 
-    @patch(
-        "metadata.clients.domodashboard_client.DomoDashboardClient.get_chart_details"
-    )
+    @patch("metadata.clients.domo_client.DomoClient.get_chart_details")
     def test_chart(self, get_chart_details):
         get_chart_details.return_value = mock_data
         results = self.domodashboard.yield_dashboard_chart(MOCK_DASHBOARD)
@@ -215,5 +213,5 @@ class DomoDashboardUnitTest(TestCase):
         for result in results:
             if isinstance(result, CreateChartRequest):
                 chart_list.append(result)
-        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINES, chart_list)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):
             self.assertEqual(expected, original)
