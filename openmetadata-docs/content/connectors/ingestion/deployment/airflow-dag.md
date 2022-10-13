@@ -96,7 +96,7 @@ For example, if you are running Airflow in Docker Compose, that can be achieved 
 
 ```yaml
 volumes:
-  - /var/run/docker.sock:/var/run/docker.sock:z  # Need 600 permissions to run DockerOperator
+  - /var/run/docker.sock:/var/run/docker.sock:z  # Need 666 permissions to run DockerOperator
 ```
 
 Then, preparing a DAG looks like this:
