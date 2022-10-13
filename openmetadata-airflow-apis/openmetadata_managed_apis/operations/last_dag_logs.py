@@ -11,7 +11,7 @@
 """
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
-from typing import List
+from typing import List, Optional
 
 from airflow.models import DagModel, TaskInstance
 from airflow.utils.log.log_reader import TaskLogReader
@@ -23,12 +23,18 @@ LOG_METADATA = {
 }
 
 
-def last_dag_logs(dag_id: str) -> Response:
-    """
-    Validate that the DAG is registered by Airflow and have at least one Run.
+def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Response:
+    """Validate that the DAG is registered by Airflow and have at least one Run.
+
     If exists, returns all logs for each task instance of the last DAG run.
-    :param dag_id: DAG to find
-    :return: API Response
+
+    Args:
+        dag_id (str): DAG to look for
+        task_id (str): Task to fetch logs from
+        after (int): log stream cursor
+
+    Return:
+        Response with log and pagination
     """
 
     dag_model = DagModel.get_dagmodel(dag_id=dag_id)
@@ -48,29 +54,45 @@ def last_dag_logs(dag_id: str) -> Response:
             f"Cannot find any task instance for the last DagRun of {dag_id}."
         )
 
-    response = {}
+    logs = None
 
     for task_instance in task_instances:
 
-        # Pick up the _try_number, otherwise they are adding 1
-        try_number = task_instance._try_number  # pylint: disable=protected-access
+        # Only fetch the required logs
+        if task_instance.task_id == task_id:
 
-        task_log_reader = TaskLogReader()
-        if not task_log_reader.supports_read:
-            return ApiResponse.server_error(
-                f"Task Log Reader does not support read logs."
-            )
+            # Pick up the _try_number, otherwise they are adding 1
+            try_number = task_instance._try_number  # pylint: disable=protected-access
 
-        logs = "\n".join(
-            list(
+            task_log_reader = TaskLogReader()
+            if not task_log_reader.supports_read:
+                return ApiResponse.server_error(
+                    "Task Log Reader does not support read logs."
+                )
+
+            logs = list(
                 task_log_reader.read_log_stream(
                     ti=task_instance,
                     try_number=try_number,
                     metadata=LOG_METADATA,
                 )
             )
+
+    if not logs:
+        return ApiResponse.bad_request(
+            f"Can't fetch logs for DAG {dag_id} and Task {task_id}."
         )
 
-        response[task_instance.task_id] = ResponseFormat.b64_gzip_compression(logs)
+    total = len(logs)
 
-    return ApiResponse.success(response)
+    if not after:
+        return ApiResponse.success({task_id: logs[0], "after": 1, "total": total})
+
+    if int(after) >= total:
+        return ApiResponse.bad_request(
+            f"After index {after} is out of bounds. Total pagination is {total} for DAG {dag_id} and Task {task_id}."
+        )
+
+    return ApiResponse.success(
+        {task_id: logs[after], "after": after + 1, "total": len(logs)}
+    )
