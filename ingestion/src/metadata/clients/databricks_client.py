@@ -63,6 +63,6 @@ class DatabricksClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"{exc}")
+            logger.error(exc)
 
         return query_details
