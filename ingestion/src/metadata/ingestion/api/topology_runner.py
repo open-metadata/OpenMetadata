@@ -235,5 +235,5 @@ class TopologyRunnerMixin(Generic[C]):
                 self.append_context(key=stage.context, value=entity)
             logger.debug(self.context)
 
-    def _is_force_overwrite_enabled(self):
+    def _is_force_overwrite_enabled(self) -> bool:
         return self.metadata.config and self.metadata.config.forceEntityOverwriting
