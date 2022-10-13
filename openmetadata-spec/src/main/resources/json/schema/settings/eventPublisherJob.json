@@ -85,7 +85,7 @@
       "type": "object",
       "properties": {
         "context" : {
-          "description": "AdditionalC Context for Failure.",
+          "description": "Additional Context for Failure.",
           "type": "string"
         },
         "lastFailedAt": {
