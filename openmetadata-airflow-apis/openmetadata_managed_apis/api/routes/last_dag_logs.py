@@ -49,9 +49,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         after = get_request_arg(request, "after", raise_missing=False)
 
         try:
-            return last_dag_logs(
-                dag_id=dag_id, task_id=task_id, after=after
-            )
+            return last_dag_logs(dag_id=dag_id, task_id=task_id, after=after)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

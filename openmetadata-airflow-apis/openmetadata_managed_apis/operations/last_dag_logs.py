@@ -84,15 +84,18 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
         )
 
     total = len(logs)
+    after_idx = int(after) if after is not None else 0
 
-    if not after:
-        return ApiResponse.success({task_id: logs[0], "after": 1, "total": total})
-
-    if int(after) >= total:
+    if after_idx >= total:
         return ApiResponse.bad_request(
             f"After index {after} is out of bounds. Total pagination is {total} for DAG {dag_id} and Task {task_id}."
         )
 
     return ApiResponse.success(
-        {task_id: logs[after], "after": after + 1, "total": len(logs)}
+        {
+            task_id: logs[after_idx],
+            "total": len(logs),
+            # Only add the after if there are more pages
+            **({"after": after_idx + 1} if after_idx < total - 1 else {}),
+        }
     )
