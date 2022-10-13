@@ -178,6 +178,7 @@ airflowConfiguration:
 email:
   enableSmtpServer : false
   openMetadataUrl: ""
+  senderMail: ""
   serverEndpoint: ""
   serverPort: ""
   username: ""
