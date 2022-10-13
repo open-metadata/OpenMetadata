@@ -24,7 +24,7 @@ from metadata.ingestion.ometa.utils import get_entity_type, ometa_logger
 
 logger = ometa_logger()
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 
 
 class OMetaLineageMixin(Generic[T]):

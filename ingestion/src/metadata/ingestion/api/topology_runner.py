@@ -198,7 +198,7 @@ class TopologyRunnerMixin(Generic[C]):
                 )
 
                 # we get entity from OM if we do not want to overwrite existing data in OM
-                if not stage.overwrite:
+                if not stage.overwrite and not self._is_force_overwrite_enabled():
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
                         fqn=entity_fqn,
@@ -234,3 +234,6 @@ class TopologyRunnerMixin(Generic[C]):
             if stage.context and stage.cache_all:
                 self.append_context(key=stage.context, value=entity)
             logger.debug(self.context)
+
+    def _is_force_overwrite_enabled(self) -> bool:
+        return self.metadata.config and self.metadata.config.forceEntityOverwriting

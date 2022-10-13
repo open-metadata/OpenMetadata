@@ -95,12 +95,11 @@ def parse_row_data_type(type_str: str) -> str:
     return final[:-1] + ">"
 
 
-def _get_columns(  # pylint: disable=unused-argument
-    self, connection: Connection, table_name: str, schema: str = None, **kw
+def _get_columns(
+    self, connection: Connection, table_name: str, schema: str = None, **__
 ) -> List[Dict[str, Any]]:
-    schema = schema or self._get_default_schema_name(
-        connection
-    )  # pylint: disable=protected-access
+    # pylint: disable=protected-access
+    schema = schema or self._get_default_schema_name(connection)
     query = dedent(TRINO_GET_COLUMNS).strip()
     res = connection.execute(sql.text(query), schema=schema, table=table_name)
     columns = []

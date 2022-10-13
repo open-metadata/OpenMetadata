@@ -14,6 +14,7 @@ Helpers module for ingestion related methods
 """
 
 import re
+import traceback
 from datetime import datetime, timedelta
 from functools import wraps
 from time import perf_counter
@@ -33,6 +34,9 @@ from metadata.generated.schema.api.services.createStorageService import (
 )
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -380,6 +384,30 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
         (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
     ]
     return dict(split_original)
+
+
+def create_ometa_client(
+    metadata_config: OpenMetadataConnection,
+) -> OpenMetadata:
+    """Create an OpenMetadata client
+
+    Args:
+        metadata_config (OpenMetadataConnection): OM connection config
+
+    Returns:
+        OpenMetadata: an OM client
+    """
+    try:
+        metadata = OpenMetadata(metadata_config)
+        metadata.health_check()
+        return metadata
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"No OpenMetadata server configuration found. "
+            f"Setting client to `None`. You won't be able to access the server from the client: {exc}"
+        )
+        raise ValueError(exc)
 
 
 def clean_up_starting_ending_double_quotes_in_string(string: str) -> str:

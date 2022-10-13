@@ -56,7 +56,7 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
 
     if filter_pattern.includes:
         validate_regex(filter_pattern.includes)
-        return not any(
+        return not any(  # pylint: disable=use-a-generator
             [
                 name
                 for regex in filter_pattern.includes
@@ -66,7 +66,7 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
 
     if filter_pattern.excludes:
         validate_regex(filter_pattern.excludes)
-        return any(
+        return any(  # pylint: disable=use-a-generator
             [
                 name
                 for regex in filter_pattern.excludes

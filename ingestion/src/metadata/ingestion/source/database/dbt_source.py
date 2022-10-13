@@ -67,13 +67,13 @@ class DBTMixin:
     metadata: OpenMetadata
 
     def get_data_model(self, table_fqn: str) -> Optional[DataModel]:
-        return self.data_models.get(table_fqn)
+        return self.data_models.get(table_fqn.lower())
 
-    def get_dbt_owner(self, cnode: dict) -> Optional[str]:
+    def get_dbt_owner(self, mnode: dict, cnode: dict) -> Optional[str]:
         """
         Returns dbt owner
         """
-        dbt_owner = cnode["metadata"].get("owner")
+        dbt_owner = mnode["meta"].get("owner") or cnode["metadata"].get("owner")
         owner = None
         if dbt_owner:
             owner_name = f"*{dbt_owner}*"
@@ -163,7 +163,7 @@ class DBTMixin:
                         sql=mnode.get("compiled_sql", mnode.get("raw_sql", "")),
                         columns=columns,
                         upstream=upstream_nodes,
-                        owner=self.get_dbt_owner(cnode=cnode),
+                        owner=self.get_dbt_owner(mnode=mnode, cnode=cnode),
                         tags=dbt_table_tags_list,
                     )
                     model_fqn = fqn.build(
@@ -173,7 +173,7 @@ class DBTMixin:
                         database_name=database,
                         schema_name=schema,
                         model_name=model_name,
-                    )
+                    ).lower()
                     self.data_models[model_fqn] = model
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

@@ -26,7 +26,7 @@ from metadata.ingestion.ometa.utils import model_str, ometa_logger
 
 logger = ometa_logger()
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 
 OPERATION = "op"
 PATH = "path"
@@ -161,7 +161,7 @@ class OMetaPatchMixin(Generic[T]):
             (
                 (col_index, col)
                 for col_index, col in enumerate(table.columns)
-                if col.name.__root__ == column_name
+                if str(col.name.__root__).lower() == column_name.lower()
             ),
             None,
         )

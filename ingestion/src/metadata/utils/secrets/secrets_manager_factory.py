@@ -34,7 +34,7 @@ def get_secrets_manager_from_om_connection(
     """
     Method to get the secrets manager based on the configuration passed in OpenMetadataConnection
     :param open_metadata_config: the OpenMetadata connection configuration object
-    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations
+    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations # pylint: disable=line-too-long
     :return: a secrets manager
     """
     return get_secrets_manager(
@@ -53,7 +53,7 @@ def get_secrets_manager(
     Method to get the secrets manager based on the arguments passed
     :param secrets_manager_provider: the secrets manager provider
     :param cluster_name: the cluster name
-    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations
+    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations # pylint: disable=line-too-long
     :return: a secrets manager
     """
     if (

@@ -219,7 +219,7 @@ def get_view_definition(
     return None
 
 
-VerticaDialect.get_columns = get_columns  # pylint: disable=protected-access
+VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
 VerticaDialect.get_view_definition = get_view_definition
 

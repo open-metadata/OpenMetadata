@@ -78,9 +78,8 @@ class DagsterSource(PipelineServiceSource):
 
     def get_run_list(self):
         try:
-            result = self.client.client._execute(
-                DAGSTER_PIPELINE_DETAILS_GRAPHQL
-            )  # pylint: disable=protected-access
+            # pylint: disable=protected-access
+            result = self.client.client._execute(DAGSTER_PIPELINE_DETAILS_GRAPHQL)
         except ConnectionError as conerr:
             logger.error(f"Cannot connect to dagster client {conerr}")
             logger.debug(f"Failed due to : {traceback.format_exc()}")
