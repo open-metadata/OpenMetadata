@@ -14,7 +14,7 @@
 /// <reference types="cypress" />
 
 import { deleteCreatedService, descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, login, mySqlConnectionInput, scheduleIngestion, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
-import { DELETE_TERM, LOGIN, MYDATA_SUMMARY_OPTIONS, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import { DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM, LOGIN, MYDATA_SUMMARY_OPTIONS, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -391,5 +391,44 @@ describe('Data Quality and Profiler should work properly', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     deleteCreatedService(SERVICE_TYPE.Database, serviceName);
+  });
+
+  it('Profiler matrix and test case graph should visible', () => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
+    const { term, entity, serviceName, testCaseName } =
+      DATA_QUALITY_SAMPLE_DATA_TABLE;
+    visitEntityDetailsPage(term, serviceName, entity);
+    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
+    cy.get('[data-testid="Profiler & Data Quality"]')
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="Profiler & Data Quality"]').should(
+      'have.class',
+      'active'
+    );
+    interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
+
+    cy.get('[data-row-key="shop_id"] > :nth-child(1) > a')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    verifyResponseStatusCode('@getProfilerInfo', 200);
+
+    cy.get('#count_graph').scrollIntoView().should('be.visible');
+    cy.get('#proportion_graph').scrollIntoView().should('be.visible');
+    cy.get('#math_graph').scrollIntoView().should('be.visible');
+    cy.get('#sum_graph').scrollIntoView().should('be.visible');
+
+    interceptURL('GET', '/api/v1/testCase?*', 'getTestCaseInfo');
+    interceptURL('GET', '/api/v1/testCase/*/testCaseResult?*', 'getTestResult');
+    cy.get('[data-testid="profiler-switch"]')
+      .contains('Data Quality')
+      .scrollIntoView()
+      .click();
+    verifyResponseStatusCode('@getTestCaseInfo', 200);
+    cy.get(`[data-testid="${testCaseName}"]`).should('be.visible').click();
+    verifyResponseStatusCode('@getTestResult', 200);
+    cy.get(`[id="${testCaseName}_graph"]`).should('be.visible');
   });
 });
