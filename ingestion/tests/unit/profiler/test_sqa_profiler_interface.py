@@ -19,7 +19,6 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from pytest import raises
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
