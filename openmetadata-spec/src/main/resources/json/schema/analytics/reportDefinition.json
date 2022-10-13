@@ -8,10 +8,9 @@
     "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
     "definitions": {
         "dimension": {
-            "javaType": "org.openmetadata.schema.analytics.type.Dimension",
             "description": "Dimension of a report",
             "properties": {
-                "name": {
+                "dimensionName": {
                     "description": "dimension name",
                     "type": "string",
                     "enum": [
@@ -27,10 +26,9 @@
             }
         },
         "metric": {
-            "javaType": "org.openmetadata.schema.analytics.type.Metric",
             "description": "Metric of a report",
             "properties": {
-                "name": {
+                "metricName": {
                     "description": "metric name",
                     "type": "string",
                     "enum": [
@@ -43,7 +41,7 @@
                     "description": "metric display name",
                     "type": "string"
                 },
-                "dataType": {
+                "metricDataType": {
                     "description": "metric data type",
                     "type": "string",
                     "enum": [
@@ -57,17 +55,21 @@
             }
         },
         "reportParametersDefinition": {
+            "type": "object",
             "description": "defintion of metric and dimension for a single report",
-            "dimensions": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/dimension"
-                }
-            },
-            "metrics": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/dimension"
+            "javaType": "org.openmetadata.schema.analytics.ReportParameterDefinition",
+            "properties": {
+                "dimensions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dimension"
+                    }
+                },
+                "metrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dimension"
+                    }
                 }
             }
         }
@@ -93,16 +95,13 @@
             "description": "Description of the report.",
             "$ref": "../type/basic.json#/definitions/markdown"
         },
-        "reportParametersDefinition": {
+        "paramsDefinition": {
             "description": "defintion of metric and dimension for a single report",
             "$ref": "#/definitions/reportParametersDefinition"
         },
-        "reportResutls": {
+        "reportResult": {
             "description": "Result for a report",
-            "type":"array",
-            "items": {
-              "$ref": "./basic.json#/definitions/reportResult" 
-            }
+            "$ref": "./basic.json#/definitions/reportResult" 
         },
         "version": {
             "description": "Metadata version of the entity.",

@@ -24,6 +24,10 @@
         "javaType": "org.openmetadata.schema.analytics.type.ReportResult",
         "type": "object",
         "properties": {
+          "id": {
+              "description": "Unique identifier for a result.",
+              "$ref": "../type/basic.json#/definitions/uuid"
+          },
           "timestamp": {
             "description": "Data one which test case result is taken.",
             "$ref": "../type/basic.json#/definitions/timestamp"

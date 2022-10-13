@@ -19,7 +19,7 @@
         "description": "Description of the report definition.",
         "$ref": "../../type/basic.json#/definitions/markdown"
       },
-      "reportParametersDefinition": {
+      "paramsDefinition": {
         "description": "dimension(s) and metric(s) for a report",
         "$ref": "../../analytics/reportDefinition.json#/definitions/reportParametersDefinition"
       },
@@ -28,7 +28,7 @@
         "$ref": "../../type/entityReference.json"
       }
     },
-    "required": ["name", "reportParametersDefinition"],
+    "required": ["name"],
     "additionalProperties": false
   }
   
