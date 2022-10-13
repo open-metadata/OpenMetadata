@@ -19,7 +19,11 @@ from metadata.generated.schema.entity.services.connections.dashboard.domodashboa
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 
-CARDS_URL = "cards?includeV4PageLayouts=true&parts=metadata,datasources,library,drillPathURNs,owners,certification,dateInfo,subscriptions,slicers"  # pylint: disable=line-too-long
+CARDS_URL = (
+    "cards?includeV4PageLayouts=true&parts=metadata,datasources,library,drillPathURNs"
+    ",owners,certification,dateInfo,subscriptions,slicers"
+)
+
 
 HEADERS = {"Content-Type": "application/json"}
 
