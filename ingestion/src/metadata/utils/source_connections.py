@@ -93,6 +93,10 @@ CX_ORACLE_LIB_VERSION = "8.3.0"
 
 
 def get_connection_url_common(connection):
+    """
+    Common method for building the source connection urls
+    """
+
     url = f"{connection.scheme.value}://"
 
     if connection.username:
@@ -128,7 +132,11 @@ def get_connection_url_common(connection):
 
 @singledispatch
 def get_connection_url(connection):
-    raise NotImplemented(
+    """
+    Single dispatch method to get the source connection url
+    """
+
+    raise NotImplementedError(
         f"Connection URL build not implemented for type {type(connection)}: {connection}"
     )
 
@@ -158,9 +166,9 @@ def _(connection: OracleConnection):
     # Patching the cx_Oracle module with oracledb lib
     # to work take advantage of the thin mode of oracledb
     # which doesn't require the oracle client libs to be installed
-    import sys
+    import sys  # pylint: disable=import-outside-toplevel
 
-    import oracledb
+    import oracledb  # pylint: disable=import-outside-toplevel
 
     oracledb.version = CX_ORACLE_LIB_VERSION
     sys.modules["cx_Oracle"] = oracledb
@@ -256,6 +264,10 @@ def _(connection: PrestoConnection):
 
 @singledispatch
 def get_connection_args(connection):
+    """
+    Single dispatch method to get the connection arguments
+    """
+
     return connection.connectionArguments or {}
 
 
@@ -268,10 +280,8 @@ def _(connection: TrinoConnection):
             connection_args = connection.connectionArguments.dict()
             connection_args.update({"http_session": session})
             return connection_args
-        else:
-            return {"http_session": session}
-    else:
-        return connection.connectionArguments if connection.connectionArguments else {}
+        return {"http_session": session}
+    return connection.connectionArguments if connection.connectionArguments else {}
 
 
 @get_connection_url.register
@@ -340,9 +350,6 @@ def _(connection: HiveConnection):
     )
 
     if options:
-        if not connection.databaseSchema:
-            url += "/"
-        url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
@@ -354,23 +361,20 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    from google import auth
+    from google import auth  # pylint: disable=import-outside-toplevel
 
     _, project_id = auth.default()
     if isinstance(connection.credentials.gcsConfig, GCSValues):
-        has_project_id = hasattr(connection.credentials.gcsConfig, "projectId")
-
         if not project_id:
-            if has_project_id:
-                project_id = connection.credentials.gcsConfig.projectId
-        else:
-            if has_project_id and not hasattr(
-                connection.credentials.gcsConfig, "privateKey"
-            ):
-                # Setting environment variable based on project id given by user / set in ADC
-                project_id = connection.credentials.gcsConfig.projectId
+            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
+        if (
+            not connection.credentials.gcsConfig.privateKey
+            and connection.credentials.gcsConfig.projectId
+        ):
+            # Setting environment variable based on project id given by user / set in ADC
+            project_id = connection.credentials.gcsConfig.projectId
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{project_id}"
+        return f"{connection.scheme.value}://{project_id}"
     return f"{connection.scheme.value}://"
 
 

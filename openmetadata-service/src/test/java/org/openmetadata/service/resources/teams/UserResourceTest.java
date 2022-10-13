@@ -21,6 +21,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,9 +29,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -61,6 +64,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -72,7 +76,10 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.LoginRequest;
+import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
@@ -89,13 +96,17 @@ import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -195,6 +206,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     create = createRequest(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
   }
 
   @Test
@@ -217,6 +229,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     change = getChangeDescription(user.getVersion());
     fieldUpdated(change, "displayName", "displayName1", "displayName2");
     updateAndCheckEntity(update, OK, authHeaders("user.xyz@email.com"), MINOR_UPDATE, change);
+    assertNotNull(user);
   }
 
   @Test
@@ -240,6 +253,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withEmail("testAdmin@email.com")
             .withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
   }
 
   @Test
@@ -711,6 +725,131 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void get_generateRandomPassword(TestInfo test) throws HttpResponseException {
+    String randomPwd = TestUtils.get(getResource("users/generateRandomPwd"), String.class, ADMIN_AUTH_HEADERS);
+    assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
+  }
+
+  @Test
+  void post_createUser_BasicAuth_AdminCreate_login_200_ok(TestInfo test) throws HttpResponseException {
+    // Create a user with Auth and Try Logging in
+    User user =
+        createEntity(
+            createRequest(test)
+                .withName("testBasicAuth")
+                .withDisplayName("Test")
+                .withEmail("testBasicAuth@email.com")
+                .withIsBot(false)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMINCREATE)
+                .withPassword("Test@1234")
+                .withConfirmPassword("Test@1234"),
+            authHeaders("testBasicAuth@email.com"));
+
+    // jwtAuth Response should be null always
+    user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(user.getAuthenticationMechanism());
+
+    // Login With Correct Password
+    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
+    JwtResponse jwtResponse =
+        TestUtils.post(
+            getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
+
+    validateJwtBasicAuth(jwtResponse, "testBasicAuth");
+
+    // Login With Wrong email
+    LoginRequest failedLoginWithWrongEmail =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongEmail,
+                JwtResponse.class,
+                BAD_REQUEST.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+
+    // Login With Wrong Password
+    LoginRequest failedLoginWithWrongPwd =
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongPwd,
+                JwtResponse.class,
+                UNAUTHORIZED.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        UNAUTHORIZED,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+  }
+
+  @Test
+  void post_createUser_BasicAuth_SignUp_200_ok(TestInfo test) throws HttpResponseException {
+    // Create a user with Auth and Try Logging in
+    RegistrationRequest newRegistrationRequest =
+        new RegistrationRequest()
+            .withFirstName("Test")
+            .withLastName("Test")
+            .withEmail("testBasicAuth123@email.com")
+            .withPassword("Test@1234");
+
+    TestUtils.post(getResource("users/signup"), newRegistrationRequest, String.class, ADMIN_AUTH_HEADERS);
+
+    // jwtAuth Response should be null always
+    User user = getEntityByName("testBasicAuth123", null, ADMIN_AUTH_HEADERS);
+    assertNull(user.getAuthenticationMechanism());
+
+    // Login With Correct Password
+    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+    JwtResponse jwtResponse =
+        TestUtils.post(
+            getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
+
+    validateJwtBasicAuth(jwtResponse, "testBasicAuth123");
+
+    // Login With Wrong email
+    LoginRequest failedLoginWithWrongEmail =
+        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword("Test@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongEmail,
+                JwtResponse.class,
+                BAD_REQUEST.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+
+    // Login With Wrong Password
+    LoginRequest failedLoginWithWrongPwd =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test1@1234");
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/login"),
+                failedLoginWithWrongPwd,
+                JwtResponse.class,
+                UNAUTHORIZED.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        UNAUTHORIZED,
+        CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+  }
+
+  private void validateJwtBasicAuth(JwtResponse jwtResponse, String username) {
+    assertNotNull(jwtResponse.getAccessToken());
+    DecodedJWT jwt = decodedJWT(jwtResponse.getAccessToken());
+    Date date = jwt.getExpiresAt();
+    long hours = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60));
+    assertEquals(1, hours);
+    assertEquals(username, jwt.getClaims().get("sub").asString());
+    assertEquals(false, jwt.getClaims().get("isBot").asBoolean());
+  }
+
+  @Test
   void testInheritedRole() throws HttpResponseException {
     // USER1 inherits DATA_CONSUMER_ROLE from Organization
     User user1 = getEntity(USER1.getId(), "roles", ADMIN_AUTH_HEADERS);
@@ -719,6 +858,42 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // USER_TEAM21 inherits DATA_CONSUMER_ROLE from Organization and DATA_STEWARD_ROLE from Team2
     User user_team21 = getEntity(USER_TEAM21.getId(), "roles", ADMIN_AUTH_HEADERS);
     assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF, DATA_STEWARD_ROLE_REF), user_team21.getInheritedRoles());
+  }
+
+  @Test
+  void put_failIfBotUserIsAlreadyAssignedToAnotherBot(TestInfo test) throws HttpResponseException {
+    BotResourceTest botResourceTest = new BotResourceTest();
+    String botName = "test-bot-user-fail";
+    // create bot user
+    CreateUser createBotUser = creatBotUserRequest("test-bot-user", true).withBotName(botName);
+    User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
+    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
+    // assign bot user to a bot
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    // put user with a different bot name
+    CreateUser createWrongBotUser = creatBotUserRequest("test-bot-user", true).withBotName("test-bot-user-fail-2");
+    assertResponse(
+        () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        String.format("Bot user [test-bot-user] is already used by [%s] bot.", botName));
+  }
+
+  @Test
+  void put_ok_ifBotUserIsBotUserOfBot(TestInfo test) throws HttpResponseException {
+    BotResourceTest botResourceTest = new BotResourceTest();
+    String botName = "test-bot-ok";
+    // create bot user
+    CreateUser createBotUser = creatBotUserRequest("test-bot-user-ok", true).withBotName(botName);
+    User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
+    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
+    // assign bot user to a bot
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    // put again user with same bot name
+    CreateUser createDifferentBotUser = creatBotUserRequest("test-bot-user-ok", true).withBotName(botName);
+    updateEntity(createDifferentBotUser, OK, ADMIN_AUTH_HEADERS);
+    assertNotNull(createDifferentBotUser);
   }
 
   private DecodedJWT decodedJWT(String token) {
@@ -796,8 +971,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
     assertEquals(createRequest.getTimezone(), user.getTimezone());
@@ -861,5 +1035,31 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Override
+  protected String getAllowedFields() {
+    List<String> allowedFields = Entity.getAllowedFields(entityClass);
+    allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
+    return String.join(",", allowedFields);
+  }
+
+  public User createUser(String botName, boolean isBot) {
+    try {
+      CreateUser createUser = creatBotUserRequest(botName, isBot);
+      return createEntity(createUser, ADMIN_AUTH_HEADERS);
+    } catch (Exception ignore) {
+      return null;
+    }
+  }
+
+  private CreateUser creatBotUserRequest(String botUserName, boolean isBot) {
+    return createRequest(botUserName, "", "", null)
+        .withIsBot(isBot)
+        .withIsAdmin(false)
+        .withAuthenticationMechanism(
+            new AuthenticationMechanism()
+                .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
   }
 }

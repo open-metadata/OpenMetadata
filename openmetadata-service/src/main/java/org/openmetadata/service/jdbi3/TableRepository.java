@@ -1053,22 +1053,22 @@ public class TableRepository extends EntityRepository<Table> {
     private void updateColumnPrecision(Column origColumn, Column updatedColumn) throws JsonProcessingException {
       String columnField = getColumnField(original, origColumn, "precision");
       boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
-      if (origColumn.getPrecision() != null) { // Previously precision was set
-        if (updated && updatedColumn.getPrecision() < origColumn.getPrecision()) {
-          // The precision was reduced. Treat it as backward-incompatible change
-          majorVersionChange = true;
-        }
+      if (origColumn.getPrecision() != null
+          && updated
+          && updatedColumn.getPrecision() < origColumn.getPrecision()) { // Previously precision was set
+        // The precision was reduced. Treat it as backward-incompatible change
+        majorVersionChange = true;
       }
     }
 
     private void updateColumnScale(Column origColumn, Column updatedColumn) throws JsonProcessingException {
       String columnField = getColumnField(original, origColumn, "scale");
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
-      if (origColumn.getScale() != null) { // Previously scale was set
-        if (updated && updatedColumn.getScale() < origColumn.getScale()) {
-          // The scale was reduced. Treat it as backward-incompatible change
-          majorVersionChange = true;
-        }
+      if (origColumn.getScale() != null
+          && updated
+          && updatedColumn.getScale() < origColumn.getScale()) { // Previously scale was set
+        // The scale was reduced. Treat it as backward-incompatible change
+        majorVersionChange = true;
       }
     }
   }

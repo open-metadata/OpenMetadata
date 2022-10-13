@@ -13,8 +13,7 @@
 Test AWS SSM Secrets Manager
 """
 import json
-from abc import ABC
-from typing import Any, Dict
+from typing import Any, Dict, List
 from unittest.mock import Mock
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
@@ -24,11 +23,16 @@ from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from .test_aws_based_secrets_manager import AWSBasedSecretsManager
 
 
-class TestAWSSecretsManager(AWSBasedSecretsManager.TestCase, ABC):
+class TestAWSSecretsManager(AWSBasedSecretsManager.TestCase):
     def build_secret_manager(
-        self, mocked_get_client: Mock, expected_json: Dict[str, Any]
+        self,
+        mocked_get_client: Mock,
+        expected_json_1: Dict[str, Any],
+        expected_json_2: Dict[str, Any] = None,
     ) -> AWSSSMSecretsManager:
-        self.init_mocked_get_client(mocked_get_client, expected_json)
+        self.init_mocked_get_client(
+            mocked_get_client, [expected_json_1, expected_json_2]
+        )
         return AWSSSMSecretsManager(
             AWSCredentials(
                 awsAccessKeyId="fake_key",
@@ -39,17 +43,24 @@ class TestAWSSecretsManager(AWSBasedSecretsManager.TestCase, ABC):
         )
 
     @staticmethod
-    def init_mocked_get_client(get_client_mock: Mock, client_return: Dict[str, Any]):
+    def init_mocked_get_client(
+        get_client_mock: Mock, client_return: List[Dict[str, Any]]
+    ):
         mocked_secret_manager = Mock()
-        mocked_secret_manager.get_parameter = Mock(return_value=client_return)
+        mocked_secret_manager.get_parameter = Mock(side_effect=client_return)
         get_client_mock.return_value = mocked_secret_manager
 
     @staticmethod
     def assert_client_called_once(
-        aws_manager: AWSSecretsManager, expected_call: str
+        aws_manager: AWSSecretsManager,
+        expected_call_1: str,
+        expected_call_2: str = None,
     ) -> None:
-        expected_call = {"Name": expected_call, "WithDecryption": True}
-        aws_manager.client.get_parameter.assert_called_once_with(**expected_call)
+        expected_call = {"Name": expected_call_1, "WithDecryption": True}
+        aws_manager.client.get_parameter.assert_any_call(**expected_call)
+        if expected_call_2:
+            expected_call = {"Name": expected_call_2, "WithDecryption": True}
+            aws_manager.client.get_parameter.assert_any_call(**expected_call)
 
     @staticmethod
     def build_response_value(json_value: dict):

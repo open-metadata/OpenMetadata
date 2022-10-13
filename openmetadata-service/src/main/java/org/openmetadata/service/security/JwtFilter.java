@@ -135,7 +135,7 @@ public class JwtFilter implements ContainerRequestFilter {
     String userName = validateAndReturnUsername(claims);
 
     // validate bot token
-    if (claims.containsKey(BOT_CLAIM) && claims.get(BOT_CLAIM).asBoolean()) {
+    if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
       validateBotToken(tokenFromHeader, userName);
     }
 
@@ -201,11 +201,9 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     // validate principal domain
-    if (enforcePrincipalDomain) {
-      if (!domain.equals(principalDomain)) {
-        throw new AuthenticationException(
-            String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
-      }
+    if (enforcePrincipalDomain && !domain.equals(principalDomain)) {
+      throw new AuthenticationException(
+          String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
     }
     return userName;
   }

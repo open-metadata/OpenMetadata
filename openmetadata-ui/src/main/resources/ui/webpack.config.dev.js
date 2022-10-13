@@ -27,14 +27,7 @@ module.exports = {
   mode: 'development',
 
   // Input configuration
-  entry: [
-    '@babel/polyfill',
-    // Runtime code for hot module replacement
-    'webpack/hot/dev-server.js',
-    // Dev server client for web socket transport, hot and live reload logic
-    'webpack-dev-server/client/index.js?hot=true&live-reload=true',
-    path.join(__dirname, 'src/index.js'),
-  ],
+  entry: ['@babel/polyfill', path.join(__dirname, 'src/index.tsx')],
 
   // Output configuration
   output: {
@@ -177,6 +170,7 @@ module.exports = {
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
+      url: require.resolve('url/'),
     },
   },
 
@@ -237,13 +231,17 @@ module.exports = {
       process: 'process/browser',
       Buffer: ['buffer', 'Buffer'],
     }),
-    // Plugin for hot module replacement
-    new webpack.HotModuleReplacementPlugin(),
   ],
 
   // webpack-dev-server
   devServer: {
-    contentBase: outputPath,
+    // Disable webpack browser window overlay
+    client: {
+      overlay: false,
+    },
+    static: {
+      directory: outputPath,
+    },
     compress: true,
     hot: true,
     port: 3000,

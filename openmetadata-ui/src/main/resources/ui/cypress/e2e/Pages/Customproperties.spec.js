@@ -33,11 +33,14 @@ describe('Custom Properties should work properly', () => {
 
   Object.values(ENTITIES).forEach((entity) => {
     it(`Add Integer custom property for ${entity.name}  Entities`, () => {
+     cy.getSearchQueryName(entity.name).then((entityName) => {
+        
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
         'getEntity'
       );
+
       //Selecting the entity
       cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
         .scrollIntoView()
@@ -51,7 +54,8 @@ describe('Custom Properties should work properly', () => {
         entity,
         'integer',
         entity.integerValue,
-        entity.entityObj
+        entity.entityObj,
+        entityName
       );
       //Navigating back to custom properties page
       cy.get('[data-testid="appbar-item-settings"]')
@@ -68,8 +72,10 @@ describe('Custom Properties should work properly', () => {
 
       deleteCreatedProperty(propertyName);
     });
-  });
 
+})
+  });
+  
   Object.values(ENTITIES).forEach((entity) => {
     it(`Add String custom property for ${entity.name} Entities`, () => {
       interceptURL(

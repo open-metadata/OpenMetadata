@@ -59,9 +59,9 @@ public class WebhookPublisher extends AbstractEventPublisher {
   private final Webhook webhook;
   private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
   private Client client;
-  private CollectionDAO daoCollection;
+  private final CollectionDAO daoCollection;
 
-  private WebhookRepository webhookRepository;
+  private final WebhookRepository webhookRepository;
 
   public WebhookPublisher(Webhook webhook, CollectionDAO dao) {
     super(webhook.getBatchSize(), webhook.getEventFilters());
@@ -200,9 +200,11 @@ public class WebhookPublisher extends AbstractEventPublisher {
       }
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
-      if (cause.getClass() == UnknownHostException.class) {
+      if (cause != null && cause.getClass() == UnknownHostException.class) {
         LOG.warn("Invalid webhook {} endpoint {}", webhook.getName(), webhook.getEndpoint());
         setErrorStatus(attemptTime, null, "UnknownHostException");
+      } else {
+        LOG.debug("Exception occurred while publishing webhook", ex);
       }
     }
   }

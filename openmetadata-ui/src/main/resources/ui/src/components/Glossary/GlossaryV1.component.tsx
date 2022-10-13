@@ -21,14 +21,14 @@ import {
   Row,
   Space,
   Tooltip,
+  Tree,
   Typography,
 } from 'antd';
+import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
-import RcTree from 'rc-tree';
-import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
-import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -52,7 +52,6 @@ import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import TreeView from '../common/TreeView/TreeView.component';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
@@ -64,6 +63,7 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import './GlossaryV1.style.less';
+
 const { Title } = Typography;
 
 type Props = {
@@ -122,8 +122,9 @@ const GlossaryV1 = ({
   onRelatedTermClick,
   currentPage,
 }: Props) => {
+  const { DirectoryTree } = Tree;
+
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const treeRef = useRef<RcTree<DataNode>>(null);
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -227,10 +228,7 @@ const GlossaryV1 = ({
     setIsDelete(false);
   };
 
-  const handleTreeClick = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    node: EventDataNode
-  ) => {
+  const handleTreeClick = (node: EventDataNode) => {
     const key = node.key as string;
     if (selectedKey !== key) {
       handleChildLoading(true);
@@ -367,14 +365,17 @@ const GlossaryV1 = ({
                     )}
                   </p>
                 ) : (
-                  <TreeView
+                  <DirectoryTree
+                    multiple
                     expandedKeys={expandedKey}
-                    handleClick={handleTreeClick}
-                    handleExpand={(key) => handleExpandedKey(key as string[])}
-                    loadingKey={loadingKey}
-                    ref={treeRef}
+                    loadedKeys={loadingKey}
                     selectedKeys={[selectedKey]}
                     treeData={treeData}
+                    onExpand={(key, info) => {
+                      handleExpandedKey(key as string[]);
+                      handleTreeClick(info.node);
+                    }}
+                    onSelect={(_, info) => handleTreeClick(info.node)}
                   />
                 )}
               </Fragment>

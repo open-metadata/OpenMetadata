@@ -15,13 +15,17 @@ import { Button, Divider, Input, Space, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { FC } from 'react';
 import { AuthType } from '../../generated/api/teams/createUser';
-import { AuthenticationMechanism } from '../../generated/entity/teams/user';
+import {
+  AuthenticationMechanism,
+  User,
+} from '../../generated/entity/teams/user';
 import { getTokenExpiry } from '../../utils/BotsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import './AuthMechanism.less';
 
 interface Props {
+  botUser: User;
   authenticationMechanism: AuthenticationMechanism;
   hasPermission: boolean;
   onEdit: () => void;
@@ -33,6 +37,7 @@ const AuthMechanism: FC<Props> = ({
   hasPermission,
   onEdit,
   onTokenRevoke,
+  botUser,
 }: Props) => {
   if (authenticationMechanism.authType === AuthType.Jwt) {
     const JWTToken = authenticationMechanism.config?.JWTToken;
@@ -137,6 +142,18 @@ const AuthMechanism: FC<Props> = ({
         <Divider style={{ margin: '8px 0px' }} />
 
         <Space className="w-full" direction="vertical">
+          <>
+            <Typography.Text>Account Email</Typography.Text>
+            <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Input
+                contentEditable={false}
+                data-testid="botUser-email"
+                value={botUser.email}
+              />
+              <CopyToClipboardButton copyText={botUser.email} />
+            </Space>
+          </>
+
           {authConfig?.secretKey && (
             <>
               <Typography.Text>SecretKey</Typography.Text>

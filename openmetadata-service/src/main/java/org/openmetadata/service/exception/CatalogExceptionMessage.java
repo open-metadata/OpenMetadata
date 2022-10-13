@@ -20,6 +20,12 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.MetadataOperation;
 
 public final class CatalogExceptionMessage {
+  public static final String EMAIL_SENDING_ISSUE =
+      "There is some issue in sending the Mail. Please contact your administrator.";
+  public static final String PASSWORD_INVALID_FORMAT =
+      "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.";
+  public static final String MAX_FAILED_LOGIN_ATTEMPT = "Failed Login Attempts Exceeded. Please try after some time.";
+  public static final String INVALID_USERNAME_PASSWORD = "You have entered an invalid username or password.";
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
   public static final String FERNET_KEY_NULL = "Fernet key is null";
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";

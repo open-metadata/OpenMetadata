@@ -24,7 +24,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,6 +38,7 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -372,9 +375,9 @@ public interface CollectionDAO {
     @Getter private final Double version;
     @Getter private final String entityJson;
 
-    public EntityVersionPair(ExtensionRecord record) {
-      this.version = EntityUtil.getVersion(record.getExtensionName());
-      this.entityJson = record.getExtensionJson();
+    public EntityVersionPair(ExtensionRecord extensionRecord) {
+      this.version = EntityUtil.getVersion(extensionRecord.getExtensionName());
+      this.entityJson = extensionRecord.getExtensionJson();
     }
   }
 
@@ -967,10 +970,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkBefore(
             fqnPrefix, toType, limit, before, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkBefore(
           fqnPrefix, toType, limit, before, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1058,10 +1059,8 @@ public interface CollectionDAO {
         return listAnnouncementsByEntityLinkAfter(
             fqnPrefix, toType, limit, after, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkAfter(
           fqnPrefix, toType, limit, after, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1146,10 +1145,8 @@ public interface CollectionDAO {
         }
         return listCountAnnouncementsByEntityLink(fqnPrefix, toType, type, relation, mysqlCondition, postgresCondition);
       }
-      if (userName != null) {
-        if (filterType == FilterType.MENTIONS) {
-          filterRelation = Relationship.MENTIONED_IN.ordinal();
-        }
+      if (userName != null && filterType == FilterType.MENTIONS) {
+        filterRelation = Relationship.MENTIONED_IN.ordinal();
       }
       return listCountThreadsByEntityLink(
           fqnPrefix, toType, type, status, resolved, relation, userName, teamNames, filterRelation);
@@ -1460,12 +1457,14 @@ public interface CollectionDAO {
 
     default void deleteAllByPrefix(String fqnPrefix) {
       String prefix = String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR);
-      String cond = String.format("WHERE (toFQN LIKE '%s' OR fromFQN LIKE '%s')", prefix, prefix);
-      deleteAllByPrefixInternal(cond);
+      String condition = "WHERE (toFQN LIKE :prefix OR fromFQN LIKE :prefix)";
+      Map<String, String> bindMap = new HashMap<>();
+      bindMap.put("prefix", prefix);
+      deleteAllByPrefixInternal(condition, bindMap);
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")
-    void deleteAllByPrefixInternal(@Define("cond") String cond);
+    void deleteAllByPrefixInternal(@Define("cond") String cond, @BindMap Map<String, String> bindings);
 
     @SqlUpdate(
         "DELETE from field_relationship WHERE fromFQN = :fromFQN AND toFQN = :toFQN AND fromType = :fromType "
@@ -3048,47 +3047,47 @@ public interface CollectionDAO {
   interface UtilDAO {
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT (SELECT COUNT(*) FROM table_entity) as tableCount, "
-                + "(SELECT COUNT(*) FROM topic_entity) as topicCount, "
-                + "(SELECT COUNT(*) FROM dashboard_entity) as dashboardCount, "
-                + "(SELECT COUNT(*) FROM pipeline_entity) as pipelineCount, "
-                + "(SELECT COUNT(*) FROM ml_model_entity) as mlmodelCount, "
-                + "(SELECT (SELECT COUNT(*) FROM database_entity) + "
-                + "(SELECT COUNT(*) FROM messaging_service_entity)+ "
-                + "(SELECT COUNT(*) FROM dashboard_service_entity)+ "
-                + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
-                + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM user_entity WHERE JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE) as userCount, "
-                + "(SELECT COUNT(*) FROM team_entity) as teamCount, "
-                + "(SELECT COUNT(*) FROM test_suite) as testSuiteCount",
+            "SELECT (SELECT COUNT(*) FROM table_entity <cond>) as tableCount, "
+                + "(SELECT COUNT(*) FROM topic_entity <cond>) as topicCount, "
+                + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
+                + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
+                + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
+                + "(SELECT (SELECT COUNT(*) FROM database_entity <cond>) + "
+                + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
+                + "(SELECT COUNT(*) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
+                + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
+                + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT (SELECT COUNT(*) FROM table_entity) as tableCount, "
-                + "(SELECT COUNT(*) FROM topic_entity) as topicCount, "
-                + "(SELECT COUNT(*) FROM dashboard_entity) as dashboardCount, "
-                + "(SELECT COUNT(*) FROM pipeline_entity) as pipelineCount, "
-                + "(SELECT COUNT(*) FROM ml_model_entity) as mlmodelCount, "
-                + "(SELECT (SELECT COUNT(*) FROM database_entity) + "
-                + "(SELECT COUNT(*) FROM messaging_service_entity)+ "
-                + "(SELECT COUNT(*) FROM dashboard_service_entity)+ "
-                + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
-                + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM user_entity WHERE json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE) as userCount, "
-                + "(SELECT COUNT(*) FROM team_entity) as teamCount, "
-                + "(SELECT COUNT(*) FROM test_suite) as testSuiteCount",
+            "SELECT (SELECT COUNT(*) FROM table_entity <cond>) as tableCount, "
+                + "(SELECT COUNT(*) FROM topic_entity <cond>) as topicCount, "
+                + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
+                + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
+                + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
+                + "(SELECT (SELECT COUNT(*) FROM database_entity <cond>) + "
+                + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
+                + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
+                + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
+                + "(SELECT COUNT(*) FROM test_suite <cond>  ) as testSuiteCount",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntitiesCountRowMapper.class)
-    EntitiesCount getAggregatedEntitiesCount() throws StatementException;
+    EntitiesCount getAggregatedEntitiesCount(@Define("cond") String cond) throws StatementException;
 
     @SqlQuery(
-        "SELECT (SELECT COUNT(*) FROM database_entity) as databaseServiceCount, "
-            + "(SELECT COUNT(*) FROM messaging_service_entity) as messagingServiceCount, "
-            + "(SELECT COUNT(*) FROM dashboard_service_entity) as dashboardServiceCount, "
-            + "(SELECT COUNT(*) FROM pipeline_service_entity) as pipelineServiceCount, "
-            + "(SELECT COUNT(*) FROM mlmodel_service_entity) as mlModelServiceCount")
+        "SELECT (SELECT COUNT(*) FROM database_entity <cond>) as databaseServiceCount, "
+            + "(SELECT COUNT(*) FROM messaging_service_entity <cond>) as messagingServiceCount, "
+            + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
+            + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
+            + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
-    ServicesCount getAggregatedServicesCount() throws StatementException;
+    ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
@@ -3102,12 +3101,10 @@ public interface CollectionDAO {
       settings.setConfigType(configType);
       Object value = null;
       try {
-        switch (configType) {
-          case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-            break;
-          default:
-            throw new RuntimeException("Invalid Settings Type");
+        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
+          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+        } else {
+          throw new RuntimeException("Invalid Settings Type");
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

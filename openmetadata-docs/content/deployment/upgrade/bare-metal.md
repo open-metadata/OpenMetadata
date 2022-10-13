@@ -14,12 +14,18 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 ## Procedure
 
+<Warning>
+
+It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+
+</Warning>
+
 ### 1. Download the binaries for the release you want to install
 
 OpenMetadata release binaries are maintained as GitHub releases.
 
 To download a specific release binary:
-1. Visit [github.com/open-metadata/OpenMetadata/releases](github.com/open-metadata/OpenMetadata/releases). The latest
+1. Visit [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest
   release will be at the top of this page. 
 2. Locate the Assets' section for the release you want to upgrade to. 
 3. Download the release binaries. The release binaries will be in a compressed tar file named using the following 
@@ -79,7 +85,7 @@ MySQL) and index (in Elasticsearch).
 
 This step will be different in the 0.9 to 0.10 upgrade as it is a backward incompatible change.
 
-Find specific instructions [here](/deployment/upgrades/versions/090-to-010).
+Find specific instructions [here](/deployment/upgrade/versions/090-to-010).
 
 </Note>
 

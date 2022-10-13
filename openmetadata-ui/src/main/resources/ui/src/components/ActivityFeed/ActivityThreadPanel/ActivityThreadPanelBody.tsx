@@ -292,7 +292,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 )}
                 {isAnnouncementType && (
                   <ErrorPlaceHolder>
-                    <p>
+                    <p data-testid="announcement-error">
                       No Announcements, Click on add announcement to add one.
                     </p>
                   </ErrorPlaceHolder>

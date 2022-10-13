@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Postgres source module
+"""
 import traceback
 from collections import namedtuple
 from typing import Iterable, Tuple
@@ -71,7 +74,9 @@ class POLYGON(String):
 
 
 @reflection.cache
-def get_table_names(self, connection, schema=None, **kw):
+def get_table_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     """
     Overwriting get_table_names method of dialect to filter partitioned tables
     """
@@ -89,6 +94,11 @@ PGDialect.ischema_names = ischema_names
 
 
 class PostgresSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Postgres Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -164,6 +174,6 @@ class PostgresSource(CommonDbSourceService):
             (schema_table[0], schema_table[1], column_name),
         )
         pgtype = cur.fetchone()[1]
-        if pgtype == "geometry" or pgtype == "geography":
+        if pgtype in ("geometry", "geography"):
             return "GEOGRAPHY"
         return sa_type

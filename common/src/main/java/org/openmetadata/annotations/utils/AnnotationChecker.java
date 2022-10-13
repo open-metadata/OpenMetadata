@@ -8,6 +8,8 @@ import org.openmetadata.annotations.ExposedField;
 
 public class AnnotationChecker {
 
+  private AnnotationChecker() {}
+
   private static boolean checkIfAnyClassFieldsHasAnnotation(
       Class<?> objectClass, Class<? extends Annotation> annotationClass) {
     return checkIfAnyClassFieldsHasAnnotation(objectClass, annotationClass, new HashSet<>());

@@ -20,6 +20,7 @@ public class WebSocketManager {
   @Getter private final SocketIoServer socketIoServer;
   public static final String FEED_BROADCAST_CHANNEL = "activityFeed";
   public static final String TASK_BROADCAST_CHANNEL = "taskChannel";
+  public static final String JOB_STATUS_BROADCAST_CHANNEL = "jobStatus";
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
@@ -110,6 +111,8 @@ public class WebSocketManager {
   }
 
   public static class WebSocketManagerBuilder {
+    private WebSocketManagerBuilder() {}
+
     public static void build(EngineIoServerOptions eiOptions) {
       INSTANCE = new WebSocketManager(eiOptions);
     }

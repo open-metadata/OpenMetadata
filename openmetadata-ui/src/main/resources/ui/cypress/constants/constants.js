@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { uuid } from '../common/common';
-
+export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
 
 export const MYDATA_SUMMARY_OPTIONS = {
@@ -23,6 +22,22 @@ export const MYDATA_SUMMARY_OPTIONS = {
   service: 'service',
   user: 'user',
   terms: 'terms',
+  mlmodels: 'mlmodels',
+};
+
+export const SEARCH_INDEX = {
+  tables: 'table_search_index',
+  topics: 'topic_search_index',
+  dashboards: 'dashboard_search_index',
+  pipelines: 'pipeline_search_index',
+  mlmodels: 'mlmodel_search_index',
+};
+
+export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
+  term: 'dim_address',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  serviceName: 'sample_data',
+  testCaseName: 'column_value_max_to_be_between',
 };
 
 export const SEARCH_ENTITY_TABLE = {
@@ -79,6 +94,18 @@ export const SEARCH_ENTITY_PIPELINE = {
     term: 'dim_location_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+  },
+};
+export const SEARCH_ENTITY_MLMODEL = {
+  mlmodel_1: {
+    term: 'forecast_sales',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
+  },
+  mlmodel_2: {
+    term: 'eta_predictions',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
   },
 };
 

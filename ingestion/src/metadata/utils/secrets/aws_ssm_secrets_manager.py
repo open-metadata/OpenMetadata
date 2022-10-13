@@ -29,6 +29,10 @@ from metadata.utils.secrets.secrets_manager import logger
 
 
 class AWSSSMSecretsManager(AWSBasedSecretsManager):
+    """
+    AWS SSM Parameter Store Secret Manager Class
+    """
+
     def __init__(self, credentials: Optional[AWSCredentials], cluster_prefix: str):
         super().__init__(credentials, "ssm", SecretsManagerProvider.aws, cluster_prefix)
 
@@ -55,7 +59,6 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
                     if response["Parameter"]["Value"] != NULL_VALUE
                     else None
                 )
-            else:
-                raise ValueError(
-                    f"Parameter for parameter name [{name}] not present in the response."
-                )
+            raise ValueError(
+                f"Parameter for parameter name [{name}] not present in the response."
+            )

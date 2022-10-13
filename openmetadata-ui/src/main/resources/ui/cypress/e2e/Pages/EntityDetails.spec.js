@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import moment from 'moment';
+import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from "../../../src/utils/TimeUtils";
 import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
@@ -182,16 +182,13 @@ describe('Entity Details Page', () => {
   };
 
   const addAnnouncement = (value) => {
-    const currentDate = Date.now();
-    const startDate = moment(currentDate, 'x').format('yyyy-MM-DDThh:mm');
-    const endDate = moment(currentDate, 'x')
-      .add(5, 'days')
-      .format('yyyy-MM-DDThh:mm');
+    const startDate = getCurrentLocaleDate();
+    const endDate = getFutureLocaleDateFromCurrentDate(5);
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
     cy.get('[data-testid="announcement-button"]').should('be.visible').click();
-    cy.get('.ant-empty-description')
+    cy.get('[data-testid="announcement-error"]')
       .should('be.visible')
       .contains('No Announcements, Click on add announcement to add one.');
     cy.get('[data-testid="add-announcement"]').should('be.visible').click();

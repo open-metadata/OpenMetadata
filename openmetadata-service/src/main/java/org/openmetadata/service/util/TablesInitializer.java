@@ -56,6 +56,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 public final class TablesInitializer {
@@ -235,7 +236,19 @@ public final class TablesInitializer {
       RestHighLevelClient client,
       SchemaMigrationOption schemaMigrationOption)
       throws SQLException {
+    final Jdbi jdbi =
+        Jdbi.create(
+            config.getDataSourceFactory().getUrl(),
+            config.getDataSourceFactory().getUser(),
+            config.getDataSourceFactory().getPassword());
+    jdbi.installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     ElasticSearchIndexDefinition esIndexDefinition;
+
+    // Initialize secrets manager
+    SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
+
     switch (schemaMigrationOption) {
       case CREATE:
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
@@ -278,22 +291,22 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.createIndexes();
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.updateIndexes();
         break;
       case ES_DROP:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.dropIndexes();
         break;
       case CREATE_INGESTION_BOT:
-        createIngestionBot(config);
+        createIngestionBot(config, jdbi);
         break;
       case UPDATE_INGESTION_BOT:
-        updateIngestionBot(config);
+        updateIngestionBot(config, jdbi);
         break;
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
@@ -319,15 +332,7 @@ public final class TablesInitializer {
     System.out.println(message);
   }
 
-  private static void createIngestionBot(OpenMetadataApplicationConfig config) {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+  private static void createIngestionBot(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     String domain =
         config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
             ? DEFAULT_PRINCIPAL_DOMAIN
@@ -364,15 +369,7 @@ public final class TablesInitializer {
     }
   }
 
-  private static void updateIngestionBot(OpenMetadataApplicationConfig config) {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+  private static void updateIngestionBot(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     String domain =
         config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
             ? DEFAULT_PRINCIPAL_DOMAIN

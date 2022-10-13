@@ -98,6 +98,8 @@ DBT_SOURCE_CONFIG_SECRET_PREFIX: str = "database-metadata-pipeline"
 
 BOT_PREFIX: str = "bot"
 
+AUTH_PROVIDER_PREFIX: str = "auth-provider"
+
 TEST_CONNECTION_TEMP_SECRET_PREFIX: str = "test-connection-temp"
 
 
@@ -125,15 +127,16 @@ class SecretsManager(metaclass=Singleton):
         :param service: Service connection object e.g. DatabaseConnection
         :param service_type: Service type e.g. databaseService
         """
-        pass
 
     @abstractmethod
-    def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
+    def add_auth_provider_security_config(
+        self, config: OpenMetadataConnection, bot_name: str
+    ) -> None:
         """
         Add the auth provider security config from the secret manager to a given OpenMetadata connection object.
         :param config: OpenMetadataConnection object
+        :param bot_name: Bot name with the credentials
         """
-        pass
 
     @abstractmethod
     def retrieve_dbt_source_config(
@@ -145,7 +148,6 @@ class SecretsManager(metaclass=Singleton):
         :param pipeline_name: the pipeline's name
         :return:
         """
-        pass
 
     @abstractmethod
     def retrieve_temp_service_test_connection(
@@ -159,7 +161,6 @@ class SecretsManager(metaclass=Singleton):
         :param connection: Connection of the service
         :param service_type: Service type e.g. Database
         """
-        pass
 
     @property
     def secret_id_separator(self) -> str:
@@ -185,7 +186,7 @@ class SecretsManager(metaclass=Singleton):
         :return: the secret_id
         """
         secret_id = self.secret_id_separator.join([arg.lower() for arg in args])
-        return f"{self.secret_id_separator if self.starts_with_separator else ''}{self.cluster_prefix}{self.secret_id_separator}{secret_id}"
+        return f"{self.secret_id_separator if self.starts_with_separator else ''}{self.cluster_prefix}{self.secret_id_separator}{secret_id}"  # pylint: disable=line-too-long
 
     @staticmethod
     def get_service_connection_class(service_type: str) -> object:
@@ -222,5 +223,5 @@ class SecretsManager(metaclass=Singleton):
             service_connection_type[0].lower() + service_connection_type[1:]
         )
         return locate(
-            f"metadata.generated.schema.entity.services.connections.{service_type}.{connection_py_file}Connection.{service_connection_type}Connection"
+            f"metadata.generated.schema.entity.services.connections.{service_type}.{connection_py_file}Connection.{service_connection_type}Connection"  # pylint: disable=line-too-long
         )

@@ -25,6 +25,7 @@ import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
 import './tailwind.css';
 import './temp.css';
+import './tree.less';
 import './x-custom/code-mirror.css';
 import './x-custom/CronEditor.css';
 import './x-custom/EntityVersionTimeLine.css';

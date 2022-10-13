@@ -29,6 +29,10 @@ NULL_VALUE = "null"
 
 
 class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
+    """
+    AWS Secrets Manager class
+    """
+
     def __init__(
         self,
         credentials: Optional[AWSCredentials],
@@ -45,4 +49,3 @@ class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
         :param name: The secret name to retrieve
         :return: The value of the secret
         """
-        pass

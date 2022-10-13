@@ -13,7 +13,7 @@ max-args=7
 max-attributes=12
 
 # usual typevar naming
-good-names=T,C,fn
+good-names=T,C,fn,db
 
 [MASTER]
 fail-under=6.0
@@ -21,7 +21,8 @@ init-hook='from pylint.config import find_pylintrc; import os, sys; sys.path.app
 extension-pkg-allow-list=pydantic
 
 [MESSAGES CONTROL]
-disable=no-name-in-module
+disable=no-name-in-module,import-error,duplicate-code
+enable=useless-suppression
 
 [FORMAT]
 # We all have big monitors now

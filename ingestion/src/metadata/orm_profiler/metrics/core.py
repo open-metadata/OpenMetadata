@@ -13,6 +13,8 @@
 Metric Core definitions
 """
 
+# pylint: disable=invalid-name
+
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import wraps

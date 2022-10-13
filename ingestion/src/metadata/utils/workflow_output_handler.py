@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Module handles the output messages from different workflows
+"""
+
 import time
 from enum import Enum
 from pathlib import Path
@@ -21,33 +25,38 @@ from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
+from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 
 
 class WorkflowType(Enum):
-    ingest = "ingest"
-    profile = "profile"
-    test = "test"
-    lineage = "lineage"
-    usage = "usage"
+    """
+    Workflow type enums
+    """
+
+    INGEST = "ingest"
+    PROFILE = "profile"
+    TEST = "test"
+    LINEAGE = "lineage"
+    USAGE = "usage"
 
 
 EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflows"
 
 URLS = {
-    WorkflowType.ingest: "https://docs.open-metadata.org/openmetadata/ingestion",
-    WorkflowType.profile: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler",
-    WorkflowType.test: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/data-quality",
-    WorkflowType.lineage: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/lineage",
-    WorkflowType.usage: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/usage",
+    WorkflowType.INGEST: "https://docs.open-metadata.org/openmetadata/ingestion",
+    WorkflowType.PROFILE: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler",
+    WorkflowType.TEST: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/data-quality",
+    WorkflowType.LINEAGE: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/lineage",
+    WorkflowType.USAGE: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/usage",
 }
 
 DEFAULT_EXAMPLE_FILE = {
-    WorkflowType.ingest: "bigquery",
-    WorkflowType.profile: "bigquery_profiler",
-    WorkflowType.test: "test_suite",
-    WorkflowType.lineage: "bigquery_lineage",
-    WorkflowType.usage: "bigquery_usage",
+    WorkflowType.INGEST: "bigquery",
+    WorkflowType.PROFILE: "bigquery_profiler",
+    WorkflowType.TEST: "test_suite",
+    WorkflowType.LINEAGE: "bigquery_lineage",
+    WorkflowType.USAGE: "bigquery_usage",
 }
 
 
@@ -56,7 +65,7 @@ def print_more_info(workflow_type: WorkflowType) -> None:
     Click echo print more information message
     """
     click.echo(
-        f"\nFor more information, please visit: {URLS[workflow_type]}\nOr join us in Slack: https://slack.open-metadata.org/"
+        f"\nFor more information, please visit: {URLS[workflow_type]}\nOr join us in Slack: https://slack.open-metadata.org/"  # pylint: disable=line-too-long
     )
 
 
@@ -85,22 +94,21 @@ def calculate_ingestion_type(source_type_name: str) -> WorkflowType:
     Calculates the ingestion type depending on the source type name
     """
     if source_type_name.endswith("lineage"):
-        return WorkflowType.lineage
-    elif source_type_name.endswith("usage"):
-        return WorkflowType.usage
-    return WorkflowType.ingest
+        return WorkflowType.LINEAGE
+    if source_type_name.endswith("usage"):
+        return WorkflowType.USAGE
+    return WorkflowType.INGEST
 
 
 def calculate_example_file(source_type_name: str, workflow_type: WorkflowType) -> str:
     """
     Calculates the ingestion type depending on the source type name and workflow_type
     """
-    if workflow_type == WorkflowType.profile:
+    if workflow_type == WorkflowType.PROFILE:
         return f"{source_type_name}_profiler"
-    elif workflow_type == WorkflowType.test:
+    if workflow_type == WorkflowType.TEST:
         return DEFAULT_EXAMPLE_FILE[workflow_type]
-    else:
-        return source_type_name
+    return source_type_name
 
 
 def print_file_example(source_type_name: str, workflow_type: WorkflowType):
@@ -117,14 +125,15 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
             f"\nMake sure you are following the following format e.g. '{example_file}':"
         )
         click.echo("------------")
-        click.echo(open(example_path).read())
+        with open(example_path, encoding=UTF_8) as file:
+            click.echo(file.read())
         click.echo("------------")
 
 
 def print_init_error(
     exc: Union[Exception, Type[Exception]],
     config: dict,
-    workflow_type: WorkflowType = WorkflowType.ingest,
+    workflow_type: WorkflowType = WorkflowType.INGEST,
 ) -> None:
     """
     Click echo print a workflow initialization error
@@ -139,7 +148,7 @@ def print_init_error(
         source_type_name = source_type_name.replace("-", "-")
         workflow_type = (
             calculate_ingestion_type(source_type_name)
-            if workflow_type == WorkflowType.ingest
+            if workflow_type == WorkflowType.INGEST
             else workflow_type
         )
 
@@ -147,11 +156,9 @@ def print_init_error(
         print_error_msg(f"Error loading {workflow_type.name} configuration: {exc}")
         print_file_example(source_type_name, workflow_type)
         print_more_info(workflow_type)
-    elif isinstance(exc, ConfigurationError) or isinstance(
-        exc, InvalidWorkflowException
-    ):
+    elif isinstance(exc, (ConfigurationError, InvalidWorkflowException)):
         print_error_msg(f"Error loading {workflow_type.name} configuration: {exc}")
-        if workflow_type == WorkflowType.usage:
+        if workflow_type == WorkflowType.USAGE:
             print_file_example(source_type_name, workflow_type)
         print_more_info(workflow_type)
     else:
@@ -181,7 +188,7 @@ def print_status(workflow) -> None:
 
     if workflow.source.get_status().source_start_time:
         click.secho(
-            f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)} ",
+            f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)} ",  # pylint: disable=line-too-long
             fg="bright_cyan",
             bold=True,
         )

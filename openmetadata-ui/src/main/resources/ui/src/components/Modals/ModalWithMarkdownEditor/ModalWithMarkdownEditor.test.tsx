@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import ReactDOM from 'react-dom';
 import { ModalWithMarkdownEditor } from './ModalWithMarkdownEditor';
 
@@ -21,7 +21,11 @@ const mockOnCancel = jest.fn();
 const mockValue = 'Test value';
 
 jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
-  return () => jest.fn().mockImplementation(() => mockValue);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }, ref) => {
+      return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;
+    })
+  );
 });
 
 describe('Test ModalWithMarkdownEditor Component', () => {

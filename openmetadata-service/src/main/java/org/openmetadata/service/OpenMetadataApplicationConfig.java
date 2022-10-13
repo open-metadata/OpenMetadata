@@ -34,7 +34,6 @@ import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.secrets.SecretsManagerConfiguration;
-import org.openmetadata.service.validators.AirflowConfigValidation;
 
 @Getter
 @Setter
@@ -62,7 +61,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @AirflowConfigValidation
   @NotNull
   @Valid
   @JsonProperty("airflowConfiguration")

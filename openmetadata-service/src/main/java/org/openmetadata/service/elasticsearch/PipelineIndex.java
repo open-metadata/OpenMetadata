@@ -9,7 +9,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class PipelineIndex implements ElasticSearchIndex {
-  Pipeline pipeline;
+  final Pipeline pipeline;
   final List<String> excludeFields = List.of("changeDescription");
 
   public PipelineIndex(Pipeline pipeline) {
@@ -31,7 +31,7 @@ public class PipelineIndex implements ElasticSearchIndex {
         taskSuggest.add(ElasticSearchSuggest.builder().input(task.getName()).weight(5).build());
       }
     }
-    doc.put("name", pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
+    doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(pipeline.getFollowers()));
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);

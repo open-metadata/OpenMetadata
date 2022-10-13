@@ -39,9 +39,7 @@ public class OpenMetadata {
   }
 
   private ApiClient apiClient;
-  private OpenMetadataServerConnection serverConfig;
-  private String basePath;
-  private final String requestInterceptorKey = "custom";
+  private static final String requestInterceptorKey = "custom";
 
   public OpenMetadata(OpenMetadataServerConnection config) {
     initClient(config);
@@ -54,7 +52,6 @@ public class OpenMetadata {
   }
 
   public void initClient(OpenMetadataServerConnection config) {
-    serverConfig = config;
     apiClient = new ApiClient();
     Feign.Builder builder =
         Feign.builder()
@@ -65,7 +62,7 @@ public class OpenMetadata {
     apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
-    basePath = config.getHostPort() + "/";
+    String basePath = config.getHostPort() + "/";
     apiClient.setBasePath(basePath);
     apiClient.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
   }

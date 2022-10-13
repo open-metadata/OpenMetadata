@@ -75,7 +75,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
-import Ellipses from '../common/Ellipses/Ellipses';
 import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -163,6 +162,7 @@ const TeamDetailsV1 = ({
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+  const [loading, setLoading] = useState<boolean>(false);
   const [selectedEntity, setEntity] = useState<{
     attribute: 'defaultRoles' | 'policies';
     record: EntityReference;
@@ -491,6 +491,7 @@ const TeamDetailsV1 = ({
   };
 
   const fetchPermissions = async () => {
+    setLoading(true);
     try {
       const perms = await getEntityPermission(
         ResourceEntity.TEAM,
@@ -502,6 +503,8 @@ const TeamDetailsV1 = ({
         error as AxiosError,
         jsonData['api-error-messages']['fetch-user-permission-error']
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -817,9 +820,9 @@ const TeamDetailsV1 = ({
           </div>
         ) : (
           <div className="tw-flex tw-group" data-testid="team-heading">
-            <Ellipses tooltip rows={1}>
+            <Typography.Title ellipsis={{ rows: 1, tooltip: true }} level={5}>
               {heading}
-            </Ellipses>
+            </Typography.Title>
             {isActionAllowed() && (
               <div className={classNames('tw-w-5 tw-min-w-max')}>
                 <Tooltip
@@ -858,6 +861,10 @@ const TeamDetailsV1 = ({
 
   const viewPermission =
     entityPermissions.ViewAll || entityPermissions.ViewBasic;
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return viewPermission ? (
     <div

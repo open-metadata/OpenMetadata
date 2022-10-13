@@ -508,7 +508,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) throws IOException {
+  public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     String id = thread.getId().toString();
 
     // Delete all the relationships to other entities
@@ -1069,8 +1069,8 @@ public class FeedRepository {
     List<EntityRelationshipRecord> records =
         dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
     List<String> teamIds = new ArrayList<>();
-    for (EntityRelationshipRecord record : records) {
-      teamIds.add(record.getId().toString());
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      teamIds.add(entityRelationshipRecord.getId().toString());
     }
     return teamIds.isEmpty() ? List.of(StringUtils.EMPTY) : teamIds;
   }

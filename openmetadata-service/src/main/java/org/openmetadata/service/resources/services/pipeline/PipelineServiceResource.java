@@ -53,7 +53,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -77,13 +76,8 @@ public class PipelineServiceResource
     return service;
   }
 
-  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(
-        PipelineService.class,
-        new PipelineServiceRepository(dao, secretsManager),
-        authorizer,
-        secretsManager,
-        ServiceType.PIPELINE);
+  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
+    super(PipelineService.class, new PipelineServiceRepository(dao), authorizer, ServiceType.PIPELINE);
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {

@@ -9,6 +9,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -35,7 +36,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final List<String> allowedFields;
-  protected final K dao;
+  @Getter protected final K dao;
   protected final Authorizer authorizer;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
@@ -263,7 +264,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).build();
   }
 
-  public static MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+  public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
     return VIEW_ALL_OPERATIONS;

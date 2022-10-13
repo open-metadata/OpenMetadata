@@ -12,12 +12,11 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Tooltip } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
@@ -202,7 +201,11 @@ const UserCard = ({
                 onClick={() => {
                   onTitleClick?.(item.fqn);
                 }}>
-                <Ellipses tooltip>{item.displayName}</Ellipses>
+                <Typography.Text
+                  className="ant-typography-ellipsis-custom"
+                  ellipsis={{ tooltip: true }}>
+                  {item.displayName}
+                </Typography.Text>
               </span>
               {item.name && item.name !== item.displayName && (
                 <span
@@ -210,9 +213,11 @@ const UserCard = ({
                     isActionVisible ? 'tw-w-32' : 'tw-w-52'
                   )}
                   title={isIconVisible ? item.name : capitalize(item.name)}>
-                  <Ellipses tooltip>
+                  <Typography.Text
+                    className="ant-typography-ellipsis-custom"
+                    ellipsis={{ tooltip: true }}>
                     {isIconVisible ? item.name : capitalize(item.name)}
-                  </Ellipses>
+                  </Typography.Text>
                 </span>
               )}
             </Fragment>

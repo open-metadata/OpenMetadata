@@ -167,7 +167,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
-  protected boolean supportsSoftDelete;
+  protected final boolean supportsSoftDelete;
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
@@ -435,7 +435,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
 
-    String allFields = String.join(",", Entity.getAllowedFields(entityClass));
+    String allFields = getAllowedFields();
 
     // GET an entity by ID with all the field names of an entity should be successful
     getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
@@ -2217,5 +2217,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference reduceEntityReference(EntityReference ref) {
     // In requests send minimum entity reference information to ensure the server fills rest of the details
     return ref != null ? new EntityReference().withType(ref.getType()).withId(ref.getId()) : null;
+  }
+
+  protected String getAllowedFields() {
+    return String.join(",", Entity.getAllowedFields(entityClass));
   }
 }

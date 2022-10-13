@@ -48,7 +48,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @Slf4j
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
 
-  public static String KAFKA_BROKERS = "192.168.1.1:0";
+  public static final String KAFKA_BROKERS = "192.168.1.1:0";
   public static URI SCHEMA_REGISTRY_URL;
 
   static {

@@ -40,6 +40,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -50,9 +51,8 @@ public class UserRepository extends EntityRepository<User> {
   static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   private final EntityReference organization;
-  private final SecretsManager secretsManager;
 
-  public UserRepository(CollectionDAO dao, SecretsManager secretsManager) {
+  public UserRepository(CollectionDAO dao) {
     super(
         UserResource.COLLECTION_PATH,
         Entity.USER,
@@ -62,7 +62,6 @@ public class UserRepository extends EntityRepository<User> {
         USER_PATCH_FIELDS,
         USER_UPDATE_FIELDS);
     organization = dao.teamDAO().findEntityReferenceByName(Entity.ORGANIZATION_NAME, Include.ALL);
-    this.secretsManager = secretsManager;
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
@@ -72,10 +71,6 @@ public class UserRepository extends EntityRepository<User> {
       return new Fields(allowedFields, String.join(",", tempFields));
     }
     return new Fields(allowedFields, fields);
-  }
-
-  public UserRepository(CollectionDAO dao) {
-    this(dao, null);
   }
 
   @Override
@@ -116,10 +111,11 @@ public class UserRepository extends EntityRepository<User> {
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
 
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .setConfig(
-              secretsManager.encryptOrDecryptIngestionBotCredentials(
+              secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), true));
     }
 
@@ -230,10 +226,11 @@ public class UserRepository extends EntityRepository<User> {
   @Transaction
   public User getByNameWithSecretManager(String fqn, Fields fields) throws IOException {
     User user = getByName(null, fqn, fields, NON_DELETED);
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (user.getAuthenticationMechanism() != null) {
       user.getAuthenticationMechanism()
           .withConfig(
-              this.secretsManager.encryptOrDecryptIngestionBotCredentials(
+              secretsManager.encryptOrDecryptBotUserCredentials(
                   user.getName(), user.getAuthenticationMechanism().getConfig(), false));
     }
     return user;
@@ -349,15 +346,11 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange("authenticationMechanism", original.getAuthenticationMechanism(), "new-encrypted-value");
-      } else if (hasConfig(origAuthMechanism) && hasConfig(updatedAuthMechanism)) {
-        if (!JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
-          recordChange("authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
-        }
+      } else if (origAuthMechanism != null
+          && updatedAuthMechanism != null
+          && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
+        recordChange("authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
       }
-    }
-
-    private boolean hasConfig(AuthenticationMechanism authenticationMechanism) {
-      return authenticationMechanism != null && authenticationMechanism.getConfig() != null;
     }
   }
 }

@@ -39,6 +39,8 @@ public class FilterUtil {
   private static final String TEST_CASE_RESULT = "testCaseResult";
   private static final String WILDCARD_FILTER = "all";
 
+  private FilterUtil() {}
+
   public static boolean shouldProcessRequest(ChangeEvent changeEvent, Map<String, Map<EventType, Filters>> filtersMap) {
     if (filtersMap != null && !filtersMap.isEmpty()) {
       String entityType = changeEvent.getEntityType();
@@ -174,7 +176,6 @@ public class FilterUtil {
 
   public static List<EventFilter> getEventFilterFromSettings(Settings setting) throws IOException {
     String json = JsonUtils.pojoToJson(setting.getConfigValue());
-    List<EventFilter> eventFilterList = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-    return eventFilterList;
+    return JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
   }
 }

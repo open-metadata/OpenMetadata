@@ -36,7 +36,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -82,9 +81,11 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         key: 'dataType',
         render: (dataTypeDisplay: string) => {
           return (
-            <Ellipses tooltip className="tw-w-24">
+            <Typography.Text
+              className="ant-typography-ellipsis-custom w-24"
+              ellipsis={{ tooltip: true }}>
               {dataTypeDisplay || 'N/A'}
-            </Ellipses>
+            </Typography.Text>
           );
         },
         sorter: (col1, col2) => col1.dataType.localeCompare(col2.dataType),

@@ -55,14 +55,14 @@ class FQNBuildingException(Exception):
     """
 
 
-def split(s: str) -> List[str]:
+def split(s: str) -> List[str]:  # pylint: disable=invalid-name
     """
     Equivalent of Java's FullyQualifiedName#split
     """
     lexer = FqnLexer(InputStream(s))
     stream = CommonTokenStream(lexer)
     parser = FqnParser(stream)
-    parser._errHandler = BailErrorStrategy()
+    parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
     tree = parser.fqn()
     walker = ParseTreeWalker()
     splitter = FqnSplitListener()
@@ -115,12 +115,12 @@ def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[st
     :param kwargs: required to build the FQN
     :return: FQN as a string
     """
-    fn = fqn_build_registry.registry.get(entity_type.__name__)
-    if not fn:
+    func = fqn_build_registry.registry.get(entity_type.__name__)
+    if not func:
         raise FQNBuildingException(
             f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
         )
-    return fn(metadata, **kwargs)
+    return func(metadata, **kwargs)
 
 
 @fqn_build_registry.add(Table)
@@ -394,14 +394,13 @@ def _(
             column_name,
             test_case_name,
         )
-    else:
-        return _build(
-            service_name,
-            database_name,
-            schema_name,
-            table_name,
-            test_case_name,
-        )
+    return _build(
+        service_name,
+        database_name,
+        schema_name,
+        table_name,
+        test_case_name,
+    )
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
@@ -440,6 +439,13 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
     if len(details) != 6:
         details.insert(4, None)
 
-    service, database, schema, table, column, test_case = details
+    (  # pylint: disable=unbalanced-tuple-unpacking
+        service,
+        database,
+        schema,
+        table,
+        column,
+        test_case,
+    ) = details
 
     return SplitTestCaseFqn(service, database, schema, table, column, test_case)

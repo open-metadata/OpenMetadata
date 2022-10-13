@@ -87,8 +87,7 @@ class QueryRunner:
         """dispatch query to sample or all table"""
         if isinstance(self._sample, AliasedClass):
             return self.select_first_from_sample(*entities, **kwargs)
-        else:
-            return self.select_first_from_table(*entities, **kwargs)
+        return self.select_first_from_table(*entities, **kwargs)
 
     @staticmethod
     def select_first_from_query(query: Query):

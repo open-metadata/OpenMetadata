@@ -13,7 +13,7 @@
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
 import { LoadingState } from 'Models';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import {
   mockedGlossaries,
   mockedGlossaryTerms,
@@ -40,8 +40,29 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }, ref) => {
+      return <div ref={ref}>{initialValue}RichTextEditorPreviewer</div>;
+    })
+  );
+});
+
 jest.mock('../common/rich-text-editor/RichTextEditor', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditor</p>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }) => {
+      return (
+        <div
+          ref={(input) => {
+            return {
+              getEditorContent: input,
+            };
+          }}>
+          {initialValue}RichTextEditor
+        </div>
+      );
+    })
+  );
 });
 
 const mockOnCancel = jest.fn();
@@ -61,10 +82,7 @@ describe('Test AddGlossaryTerm component', () => {
   it('AddGlossaryTerm component should render', async () => {
     const { container } = render(<AddGlossaryTerm {...mockProps} />);
 
-    const addGlossaryTermForm = await getByTestId(
-      container,
-      'add-glossary-term'
-    );
+    const addGlossaryTermForm = getByTestId(container, 'add-glossary-term');
 
     expect(addGlossaryTermForm).toBeInTheDocument();
   });

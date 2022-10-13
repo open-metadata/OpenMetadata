@@ -85,6 +85,7 @@ public abstract class OpenMetadataApplicationTest {
             ConfigOverride.config("database.password", SQL_CONTAINER.getPassword()),
             // Migration overrides
             ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
+
     APP.before();
   }
 

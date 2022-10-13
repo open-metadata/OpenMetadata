@@ -85,7 +85,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
     }
     for (TestCaseParameter parameter : parameterDefinition) {
-      if (parameter.getRequired()
+      if (Boolean.TRUE.equals(parameter.getRequired())
           && (!values.containsKey(parameter.getName()) || values.get(parameter.getName()) == null)) {
         throw new IllegalArgumentException(
             "Required parameter " + parameter.getName() + " is not passed in parameterValues");

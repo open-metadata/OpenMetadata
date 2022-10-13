@@ -64,11 +64,11 @@ export const EditSchemaColumnModal: FunctionComponent<Props> = ({
           <textarea
             className="tw-p-5 tw-bg-white tw-border tw-border-main tw-rounded tw-shadow-sm tw-h-32 focus:tw-outline-none"
             data-testid="column-description"
+            defaultValue={descriptionText}
             name="column-description"
             placeholder="Type message..."
-            onChange={handleDescriptionChange}>
-            {descriptionText}
-          </textarea>
+            onChange={handleDescriptionChange}
+          />
         </div>
         <div className="tw-modal-footer tw-justify-end">
           <Button
