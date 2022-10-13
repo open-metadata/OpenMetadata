@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { Space, Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -22,9 +24,9 @@ import { OwnerType } from '../../enums/user.enum';
 import {
   ChangeDescription,
   Dashboard,
+  EntityReference,
 } from '../../generated/entity/data/dashboard';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { isEven } from '../../utils/CommonUtils';
 import {
   getDescriptionDiff,
   getDiffByFieldName,
@@ -212,6 +214,51 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     );
   }, [currentVersionData]);
 
+  const tableColumn: ColumnsType<EntityReference> = useMemo(
+    () => [
+      {
+        title: 'Chart Name',
+        dataIndex: 'name',
+        key: 'name',
+        render: (text, record) => (
+          <Link target="_blank" to={{ pathname: text }}>
+            <Space>
+              <span>{record.displayName}</span>
+              <SVGIcons
+                alt="external-link"
+                className="tw-align-middle"
+                icon="external-link"
+                width="16px"
+              />
+            </Space>
+          </Link>
+        ),
+      },
+      {
+        title: 'Chart Type',
+        dataIndex: 'type',
+        key: 'type',
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text) =>
+          text ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            <span className="tw-no-description">No description</span>
+          ),
+      },
+      {
+        title: 'Tags',
+        dataIndex: 'tags',
+        key: 'tags',
+      },
+    ],
+    []
+  );
+
   return (
     <PageContainer>
       <div
@@ -249,60 +296,15 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                       description={getDashboardDescription()}
                     />
                   </div>
-                  <div className="tw-table-responsive tw-my-6 tw-col-span-full tw-table-container">
-                    <table className="tw-w-full" data-testid="schema-table">
-                      <thead>
-                        <tr className="tableHead-row">
-                          <th className="tableHead-cell">Chart Name</th>
-                          <th className="tableHead-cell">Chart Type</th>
-                          <th className="tableHead-cell">Description</th>
-                          <th className="tableHead-cell tw-w-60">Tags</th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {(currentVersionData as Dashboard)?.charts?.map(
-                          (chart, index) => (
-                            <tr
-                              className={classNames(
-                                'tableBody-row',
-                                !isEven(index + 1) ? 'odd-row' : null
-                              )}
-                              key={index}>
-                              <td className="tableBody-cell">
-                                <Link
-                                  target="_blank"
-                                  to={{ pathname: chart.name }}>
-                                  <span className="tw-flex">
-                                    <span className="tw-mr-1">
-                                      {chart.displayName}
-                                    </span>
-                                    <SVGIcons
-                                      alt="external-link"
-                                      className="tw-align-middle"
-                                      icon="external-link"
-                                      width="16px"
-                                    />
-                                  </span>
-                                </Link>
-                              </td>
-                              <td className="tableBody-cell">{chart.type}</td>
-                              <td className="tw-group tableBody-cell tw-relative">
-                                {chart.description ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={chart.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description
-                                  </span>
-                                )}
-                              </td>
-                              <td className="tw-group tw-relative tableBody-cell" />
-                            </tr>
-                          )
-                        )}
-                      </tbody>
-                    </table>
+                  <div className="m-y-md tw-col-span-full">
+                    <Table
+                      columns={tableColumn}
+                      data-testid="schema-table"
+                      dataSource={(currentVersionData as Dashboard)?.charts}
+                      pagination={false}
+                      rowKey="id"
+                      size="small"
+                    />
                   </div>
                 </div>
               </div>

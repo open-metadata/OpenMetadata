@@ -15,9 +15,22 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 
 You can check the latest release [here](/overview/releases).
 
-## 0.12.0 Release - Sept 7th, 2022
+## 0.13.0 Release - Nov 16th, 2022
 
 <TileContainer>
+  <Tile
+    title="Data Insights"
+    text=""
+    background="pink-70"
+    bordercolor="pink-70"
+    link="https://github.com/open-metadata/OpenMetadata/issues/4652"
+  >
+    <li>Data Insights will provide analytics on top of metadata collected in OpenMetadata.</li>
+    <li>Reports/Dashboards on how to your data is doing</li>
+    <li>Data Ownership/Description coverage</li>
+    <li>Admins should be able to view aggregated user activity, such as user growth and user engagement, in OpenMetadata</li>
+    <li>Weekly Data Insights Reports to the team to understand how their team is performing relative to KPIs set at the org level and, in general, nudging the teams to get to better data by giving insights into the metadata.</li>
+  </Tile>
   <Tile
     title="Access Control and Policies"
     text=""
@@ -25,121 +38,131 @@ You can check the latest release [here](/overview/releases).
     bordercolor="yellow-70"
     link="https://github.com/open-metadata/OpenMetadata/issues/4199"
   >
-    <li>Overhaul of Access Control and Policies to provide fine-grained access control</li>
-    <li>Improved organization of Teams and hierarchical Teams</li>
-    <li>Define policies and create roles with multiple policies</li>
-    <li>UI improvements to add ACLs and control user access based on the roles</li>
+    <li>Add Search Results Integration</li>
+    <li>Roles and Policies application to TestSuite and TestCases</li>
   </Tile>
   <Tile
-    title="Collaboration"
+    title="Glossary"
     text=""
     background="purple-70"
     bordercolor="purple-70"
     link=""
     size="half"
   >
-    <li>Request for tags and turn them into tasks</li>
-    <li>Glossary term approval workflow as a task</li>
-    <li>Improved notifications and integration into web browser notifications</li>
-    <li>Announcements. Send announcements to your team or org level</li>
-    <li>Table Deprecation announcement</li>
+    <li>Bulk upload of Glossary Terms</li>
+    <li>Glossary Review Workflow. Owners and Reviewers can approve or deny a Glossary Term to be used. When a user adds a GlossaryTerm, it will open a task and assign it to the owner and reviewers.</li>
+    <li>Propagate tags at the root of glossary terms to its children</li>
+    <li>Propagate tags/glossary by tagging at the database/schema level and applying them to all the schemas/tables underneath them.</li>
   </Tile>
   <Tile
-    title="Data Quality"
-    text=""
-    background="pink-70"
-    bordercolor="pink-70"
-    link="https://github.com/open-metadata/OpenMetadata/issues/4652"
-  >
-    <li>Updated APIs to register to test cases from different platforms such as GE, Deequ, etc.</li>
-    <li>Time-Series storage of profiler details and test case results</li>
-    <li>Improved UI to visualize the Data Profiler data</li>
-    <li>Improved UI to add and visualize the data quality tests</li>
-    <li>Test Notifications</li>
-  </Tile>
-  <Tile
-    title="Security"
+    title="Notifications"
     text=""
     background="green-70"
     bordercolor="green-70"
     link="https://github.com/open-metadata/OpenMetadata/issues/5803"
     size="half"
   >
-    <li>Support for SAML based authentication for AWS SSO and Google</li>
-    <li>Support for pluggable secure stores to store any secrets for OpenMetadata such as service connections</li>
+    <li>Improved workflow to build Alerts and filtering mechanisms</li>
+    <li>Admins can now configure email templates. </li>
+    <li>Admins can set up an email notification for an event, such as a schema change notification, etc..</li>
   </Tile>
   <Tile
-    title="Site-Wide Settings"
+    title="Lineage"
     text=""
     background="yellow-70"
     bordercolor="blue-70"
   >
-    <li>Single, Centralized settings Page</li>
-    <li>Add Slack integrations via Settings page similar to Webhooks</li>
-    <li>Custom Attribute support for all entities</li>
+    <li>Better lineage coverage for DBT and PowerBI</li>
+    <li>Traceability at the table-level land column-level lineage</li>
+    <li>Showcase transformations or functions used to convert one column to another as an edge</li>
+    <li>Improvements to our SQL Parser to collect lineage and extend the parser to more SQL dialects</li>
+  </Tile>
+  <Tile
+    title="Data Quality"
+    text=""
+    background="yellow-70"
+    bordercolor="blue-70"
+  >
+    <li>Freshness based on the partition key</li>
+    <li>TestCase versioning and results applying to a specific version so that UI can show the results as per the test case version</li>
+    <li>Auto Classification by Tagging entities using profiler - **beta**</li>
   </Tile>
   <Tile
     title="Connectors"
     text=""
+    background="blue-70"
+    bordercolor="purple-70"
+  >
+    <li>Domo</li>
+    <li>Databricks SQL</li>
+    <li>Amundsen</li>
+    <li>Improve coverage of primary/foreign key/partition details for all the databases/data </li>
+    <li>Several improvements to the Ingestion framework.</li>
+  </Tile>
+  <Tile
+    title="Messaging - Kafka & Redpanda"
+    text=""
     background="purple-70"
     bordercolor="blue-70"
   >
-    <li>Fivetran</li>
-    <li>Redpanda</li>
-    <li>Dagster</li>
+    <li>AVRO/Protobuf schema parsing and showing them in the topic entity view; currently, we show it as one payload</li>
+    <li>Users will be able to add descriptions/tags at the field level</li>
+    <li>Users can search based on fields in a schema of a topic.</li>
   </Tile>
+  <Tile
+    title="Reverse Metadata"
+    text=""
+    background="yellow-70"
+    bordercolor="blue-70"
+  >
+    <li>We are super excited about this feature coming in 0.13.0</li>
+  </Tile>
+  
 </TileContainer>
 
-## 0.13.0 Release - Oct 12th, 2022
+## 1.0 Release - Dec 21st, 2022
 
 <TileContainer>
   <Tile
-    title="Data Intelligence"
+    title="APIs & Schemas"
     text=""
     background="yellow-70"
     bordercolor="yellow-70"
     link=""
   >
-    <li>Reports/Dashboards on how to your data is doing</li>
-    <li>Data Ownership/Description coverage</li>
-    <li>Weekly Notifications through Email to have better coverage</li>
+    <li>Entity Schema specification versioning</li>
+    <li>Defining API backward compatability</li>
   </Tile>
   <Tile
-    title="Collaboration"
+    title="Lineage"
     text=""
     background="purple-70"
     bordercolor="purple-70"
     link=""
     size="half"
   >
-    <li>Badges for Users to recognize their contributions to improve Data</li>
-    <li>Teams Integration</li>
-    <li>Email notifications</li>
-    <li>Improvements Tasks & Activity Threads</li>
-    <li>Capture popularity based on thumbs up/thumbs down and number of followers</li>
+    <li>Spark Lineage</li>
+    <li>Propagation of tags and descriptions through the column-level lineage</li>
+    <li>UI Improvements to the queries collected and attached to a table. Allow users upvote a query to show as an example</li>
   </Tile>
   <Tile
-    title="Entities"
+    title="Collaboration"
     text=""
     background="pink-70"
     bordercolor="pink-70"
   >
-    <li>Add support json based documents</li>
-    <li>Support for ElasticSearch, MongoDB etc.</li>
-    <li>Parse and Expand Arrays of Structs</li>
-    <li>Report Entity</li>
-    <li>Notebooks as an Entity</li>
+    <li>Improvements Task & Activity Feed</li>
+    <li>Capture the popularity of entities based on thumbs up and down</li>
+    <li>Knowledge Articles - Users/Data Stewards can build knowledge articles right within OpenMetadata and attach them at the entity or database level. These articles can be searchable</li>
   </Tile>
   <Tile
-    title="Connectors"
+    title="Entities"
     text=""
     background="green-70"
     bordercolor="green-70"
   >
-    <li>DataStudio</li>
-    <li>Trino Usage</li>
-    <li>LookML</li>
-    <li>Sagemaker</li>
+    <li> Add support for NoSQL/Json-based documents as entities. This will help integrate Cassandra/ElasticSearch etc.. services.</li>
+    <li>Storage Services such as S3 and showcase buckets as independent entities</li>
   </Tile>
   <Tile
     title="Data Quality"
@@ -149,8 +172,9 @@ You can check the latest release [here](/overview/releases).
     link="https://github.com/open-metadata/OpenMetadata/issues/4652"
   >
     <li>Complex types</li>
-    <li>Improvements to data profiler metrics</li>
-    <li>Performance improvements to data quality</li>
+    <li>Add support for computing completeness</li>
+    <li>Add support for anomaly detection</li>
+    <li>Improvements to Auto Classification of entities by ML</li>
   </Tile>
   <Tile
     title="Security"
@@ -178,7 +202,7 @@ You can check the latest release [here](/overview/releases).
   </Tile>
 </TileContainer>
 
-## 0.14.0 Release - Nov 16th, 2022
+## 1.1 Release - Feb 15th 2023
 
 <TileContainer>
   <Tile
@@ -188,78 +212,33 @@ You can check the latest release [here](/overview/releases).
     bordercolor="yellow-70"
   >
     <li>Automation framework to listen change events to run automated workflows</li>
-    <li>Auto classifier automation</li>
-  </Tile>
-  <Tile
-    title="Data Intelligence"
-    text=""
-    background="purple-70"
-    bordercolor="purple-70"
-  >
-    <li>Tiering Report</li>
-    <li>Cost analysis</li>
   </Tile>
   <Tile
     title="Data Observability"
     text=""
+    background="purple-70"
+    bordercolor="purple-70"
+  >
+    <li>Notifications will be grouped into Activity vs. Alert type notifications</li>
+    <li>Data SLAs</li>
+    <li>Impact Analysis</li>
+  </Tile>
+  <Tile
+    title="Data Insights"
+    text=""
     background="pink-70"
     bordercolor="pink-70"
   >
-    <li>Add support for Data Observability with Freshness metric</li>
-    <li>ML Support to understand the behavior of datasets and add metrics</li>
-    <li>Data SLAs</li>
+    <li>Cost analysis report</li>
+    <li>Data Deletion Report</li>
   </Tile>
   <Tile
     title="Entities"
-    text="Add external API endpoints"
+    text=""
     background="green-70"
     bordercolor="green-70"
-  />
-  <Tile
-    title="Connectors"
-    text=""
-    background="yellow-70"
-    bordercolor="blue-70"
   >
-    <li>AWS kinesis</li>
-    <li>Kafka Connect</li>
-    <li>Microstrategy</li>
-    <li>Custom service integration - Users can integrate with their own service type</li>
-  </Tile>
-  <Tile
-    title="Data Quality"
-    text=""
-    background="purple-70"
-    bordercolor="purple-70"
-    link=""
-  >
-    <li>Custom SQL improvements, Allow users to validate the sql and run</li>
-  </Tile>
-</TileContainer>
-
-## 1.0 Release - Dec 15th, 2022
-
-<TileContainer>
-  <Tile
-    title="Announcing 1.0 Release"
-    text="OpenMetadata Graduating 1.0 Release with many of our foundational features shipped"
-    background="yellow-70"
-    bordercolor="yellow-70"
-  />
-  <Tile
-    title="Data Intelligence"
-    text="Data Deletion Report"
-    background="purple-70"
-    bordercolor="purple-70"
-  />
-  <Tile
-    title="Data Observability - Incident Management"
-    text=""
-    background="pink-70"
-    bordercolor="pink-70"
-  >
-    <li>Identify the failure of pipelines</li>
-    <li>Identify the dataset is failing through lineage</li>
-    <li>Trigger hard/soft alerts based on the lineage and impact</li>
+  <li> Add support for Notebook Entity </li>
+  <li> Add support for Report Entity </li>
   </Tile>
 </TileContainer>

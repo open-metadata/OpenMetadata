@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Common configuration models and exceptions
+"""
 import io
 import json
 import os
@@ -52,7 +54,6 @@ class ConfigurationMechanism(ABC):
         """
         Abstract method to load configuration from yaml files
         """
-        pass
 
 
 class YamlConfigurationMechanism(ConfigurationMechanism):

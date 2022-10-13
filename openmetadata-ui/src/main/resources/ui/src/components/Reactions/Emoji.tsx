@@ -15,25 +15,38 @@ import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
-import PropTypes from 'prop-types';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
 import { ReactionOperation } from '../../enums/reactions.enum';
+import { Reaction, ReactionType } from '../../generated/type/reaction';
 import useImage from '../../hooks/useImage';
 
-const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
+interface EmojiProps {
+  reaction: ReactionType;
+  reactionList: Reaction[];
+  onReactionSelect: (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => void;
+}
+
+const Emoji: FC<EmojiProps> = ({
+  reaction,
+  reactionList,
+  onReactionSelect,
+}) => {
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
   const [visible, setVisible] = useState(false);
 
-  // get reaction object based on cureent reactionType
+  // get reaction object based on current reactionType
   const reactionObject = useMemo(
     () => REACTION_LIST.find((value) => value.reaction === reactionType),
     [reactionType]
   );
 
-  const { image } = useImage(`emojis/${reactionObject.reaction}.png`);
+  const { image } = useImage(`emojis/${reactionObject?.reaction}.png`);
 
   // get current user details
   const currentUser = useMemo(
@@ -50,13 +63,13 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
     (reactionItem) => reactionItem.user.name
   );
 
-  const handleEmojiOnClick = (e) => {
+  const handleEmojiOnClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isClicked) {
       const operation = isReacted
         ? ReactionOperation.REMOVE
         : ReactionOperation.ADD;
-      onReactionSelect(reactionObject.reaction, operation);
+      onReactionSelect(reactionObject?.reaction as ReactionType, operation);
       setIsClicked(true);
     }
   };
@@ -91,42 +104,33 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
       zIndex={9999}
       onVisibleChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction tw-mr-1', {
+        className={classNames('ant-btn-reaction tw-mr-1 flex', {
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"
         shape="round"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
-        <g-emoji
-          alias={reactionObject.alias}
+        <div
+          dangerouslySetInnerHTML={{
+            __html: `<g-emoji
+          alias={${reactionObject?.alias}}
           className="d-flex"
           data-testid="emoji"
-          fallback-src={image}>
-          {reactionObject.emoji}
-        </g-emoji>
-        <span className="tw-text-sm tw-ml-1" data-testid="emoji-count">
+          fallback-src={${image}}>
+          ${reactionObject?.emoji}
+        </g-emoji>`,
+          }}
+        />
+
+        <span
+          className="tw-text-sm tw-ml-1 self-center"
+          data-testid="emoji-count">
           {reactionList.length}
         </span>
       </Button>
     </Popover>
   );
-};
-
-Emoji.propTypes = {
-  reactionList: PropTypes.arrayOf(
-    PropTypes.shape({
-      reactionType: PropTypes.string.isRequired,
-      user: PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        name: PropTypes.string,
-        displayName: PropTypes.string,
-        type: PropTypes.string,
-      }).isRequired,
-    }).isRequired
-  ).isRequired,
-  reaction: PropTypes.string.isRequired,
-  onReactionSelect: PropTypes.func.isRequired,
 };
 
 export default observer(Emoji);
