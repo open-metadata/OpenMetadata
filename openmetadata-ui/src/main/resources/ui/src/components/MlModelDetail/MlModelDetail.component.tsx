@@ -421,10 +421,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     );
   };
 
-  const getLoader = () => {
-    return isEntityThreadLoading ? <Loader /> : null;
-  };
-
   const fetchMoreThread = (
     isElementInView: boolean,
     pagingObj: Paging,
@@ -583,7 +579,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 data-testid="observer-element"
                 id="observer-element"
                 ref={elementRef as RefObject<HTMLDivElement>}>
-                {getLoader()}
+                {isEntityThreadLoading ? <Loader /> : null}
               </div>
             </div>
           </div>

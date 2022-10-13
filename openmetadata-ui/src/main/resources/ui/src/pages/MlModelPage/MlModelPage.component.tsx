@@ -248,38 +248,32 @@ const MlModelPage = () => {
     );
   };
 
-  const getFeedData = (
+  const getFeedData = async (
     after?: string,
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => {
-    setIsEntityThreadLoading(true);
-    getAllFeeds(
-      getEntityFeedLink(EntityType.MLMODEL, mlModelFqn),
-      after,
-      threadType,
-      feedType,
-      undefined,
-      USERId
-    )
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setPaging(pagingObj);
-          setEntityThread((prevData) => [...prevData, ...data]);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
-        );
-      })
-      .finally(() => setIsEntityThreadLoading(false));
+    try {
+      setIsEntityThreadLoading(true);
+      const response = await getAllFeeds(
+        getEntityFeedLink(EntityType.MLMODEL, mlModelFqn),
+        after,
+        threadType,
+        feedType,
+        undefined,
+        USERId
+      );
+      const { data, paging: pagingObj } = response;
+      setPaging(pagingObj);
+      setEntityThread((prevData) => [...prevData, ...data]);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-entity-feed-error']
+      );
+    } finally {
+      setIsEntityThreadLoading(false);
+    }
   };
 
   const handleFeedFetchFromFeedList = (
@@ -485,52 +479,43 @@ const MlModelPage = () => {
     }
   };
 
-  const postFeedHandler = (value: string, id: string) => {
+  const postFeedHandler = async (value: string, threadId: string) => {
     const data = {
       message: value,
       from: currentUser?.name,
     } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['add-feed-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+    try {
+      const response = await postFeedById(threadId, data);
+      const { id, posts } = response;
+      setEntityThread((pre) => {
+        return pre.map((thread) => {
+          if (thread.id === id) {
+            return { ...response, posts: posts?.slice(-3) };
+          } else {
+            return thread;
+          }
+        });
       });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['add-feed-error']
+      );
+    }
   };
 
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          setEntityThread((pre) => [...pre, res]);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['create-conversation-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['create-conversation-error']
-        );
-      });
+  const createThread = async (data: CreateThread) => {
+    try {
+      const response = await postThread(data);
+      setEntityThread((pre) => [...pre, response]);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['create-conversation-error']
+      );
+    }
   };
 
   const deletePostHandler = (
