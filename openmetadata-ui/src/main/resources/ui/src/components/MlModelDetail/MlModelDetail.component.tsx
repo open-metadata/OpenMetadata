@@ -32,12 +32,14 @@ import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
@@ -48,11 +50,13 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../utils/CommonUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
@@ -87,6 +91,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   updateThreadHandler,
   paging,
   feedCount,
+  createThread,
+  entityFieldTaskCount,
+  entityFieldThreadCount,
 }) => {
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -96,6 +103,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
+  const [threadLink, setThreadLink] = useState<string>('');
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -332,6 +344,17 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     await updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
   };
 
+  const handleThreadLinkSelect = (link: string, threadType?: ThreadType) => {
+    setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
+  };
+
+  const handleThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
   const getMlHyperParametersColumn: ColumnsType<MlHyperParameter> = useMemo(
     () => [
       {
@@ -458,6 +481,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
           deleted={mlModelDetail.deleted}
+          entityFieldTasks={getEntityFieldThreadCounts(
+            EntityField.TAGS,
+            entityFieldTaskCount
+          )}
+          entityFieldThreads={getEntityFieldThreadCounts(
+            EntityField.TAGS,
+            entityFieldThreadCount
+          )}
           entityFqn={mlModelDetail.fullyQualifiedName}
           entityId={mlModelDetail.id}
           entityName={mlModelDetail.name}
@@ -484,6 +515,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
+          onThreadLinkSelect={handleThreadLinkSelect}
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
@@ -499,6 +531,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 <Fragment>
                   <Description
                     description={mlModelDetail.description}
+                    entityFieldTasks={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldTaskCount
+                    )}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldThreadCount
+                    )}
                     entityFqn={mlModelDetail.fullyQualifiedName}
                     entityName={mlModelDetail.name}
                     entityType={EntityType.MLMODEL}
@@ -512,6 +552,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={handleThreadLinkSelect}
                   />
                   <MlModelFeaturesList
                     handleFeaturesUpdate={onFeaturesUpdate}
@@ -585,6 +626,18 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           </div>
         </div>
       </div>
+      {threadLink ? (
+        <ActivityThreadPanel
+          createThread={createThread}
+          deletePostHandler={deletePostHandler}
+          open={Boolean(threadLink)}
+          postFeedHandler={postFeedHandler}
+          threadLink={threadLink}
+          threadType={threadType}
+          updateThreadHandler={updateThreadHandler}
+          onCancel={handleThreadPanelClose}
+        />
+      ) : null}
     </PageContainer>
   );
 };
