@@ -38,8 +38,6 @@ jest.mock('../table-data-card/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 
-// const getDatasetDetailsPath = jest.fn();
-
 describe('Test TableDataCard Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(

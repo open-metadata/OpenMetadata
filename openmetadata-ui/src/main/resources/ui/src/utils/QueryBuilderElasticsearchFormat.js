@@ -16,6 +16,11 @@
 import { defaultConjunction } from 'react-awesome-query-builder/lib/utils/defaultUtils';
 import { getWidgetForFieldOp } from 'react-awesome-query-builder/lib/utils/ruleUtils';
 
+/*
+ * This script is a modified version of https://github.com/ukrbublik/react-awesome-query-builder/blob/5.1.2/modules/export/elasticSearch.js
+ * with small improvements.
+ */
+
 /**
  * Converts a string representation of top_left and bottom_right cords to
  * a ES geo_point required for query
