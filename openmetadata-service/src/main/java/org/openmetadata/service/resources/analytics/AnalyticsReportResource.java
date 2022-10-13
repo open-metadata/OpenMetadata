@@ -29,6 +29,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportDefinition;
@@ -56,7 +57,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "AnalyticsReport")
 public class AnalyticsReportResource extends EntityResource<ReportDefinition, AnalyticsReportRepository> {
   public static final String COLLECTION_PATH = AnalyticsReportRepository.COLLECTION_PATH;
-  static final String FIELDS = "reportResults";
+  static final String FIELDS = "owner";
+  private final AnalyticsReportRepository daoReportDefinition;
 
   @Override
   public ReportDefinition addHref(UriInfo uriInfo, ReportDefinition reportDefinition) {
@@ -68,6 +70,7 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
   @Inject
   public AnalyticsReportResource(CollectionDAO dao, Authorizer authorizer) {
     super(ReportDefinition.class, new AnalyticsReportRepository(dao), authorizer);
+    this.daoReportDefinition = new AnalyticsReportRepository(dao);
   }
 
   @SuppressWarnings("unused") // Method used for reflection of reportDefinitions
@@ -83,7 +86,7 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
             ReportDefinition reportDefinition = JsonUtils.readValue(reportDefinitionJson, ReportDefinition.class);
             long currentTimestamp = System.currentTimeMillis();
             reportDefinition.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(currentTimestamp);
-            // daoReportDefinition.initSeedData(reportDefinition);
+            daoReportDefinition.initSeedData(reportDefinition);
           } catch (Exception e) {
             LOG.warn("Failed to initialized report definition files {}", reportDefinitionFile, e);
           }
@@ -101,6 +104,17 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
     }
   }
 
+  public static class ReportResultList extends ResultList<ReportResult> {
+    @SuppressWarnings("unused")
+    public ReportResultList() {
+      // Empty constructor needed for deserialization
+    }
+
+    public ReportResultList(List<ReportResult> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
   @GET
   @Operation(
       operationId = "listReportDefinition",
@@ -108,7 +122,6 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
       tags = "ReportDefinition",
       description =
           "Get a list of test definitions. You can filter by report name and "
-              + " optionally include report results if the `reportResults` field is passed."
               + "Use field parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -194,7 +207,7 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
   @Operation(
       operationId = "getReportDefinitionByName",
       summary = "Get a report definition by Name",
-      tags = "reportDefinition",
+      tags = "ReportDefinition",
       description = "Get a report definition by Name.",
       responses = {
         @ApiResponse(
@@ -245,7 +258,7 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
   }
 
   @PUT
-  @Path("/{fqn}/results")
+  @Path("/{fqn}/result")
   @Operation(
       operationId = "addReportResults",
       summary = "Add results to a report",
@@ -274,7 +287,43 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
-        .withReportParametersDefinition(create.getReportParametersDefinition())
+        .withParamsDefinition(create.getParamsDefinition())
         .withOwner(create.getOwner());
+  }
+
+  @GET
+  @Path("/{fqn}/result")
+  @Operation(
+      operationId = "getReportResults",
+      summary = "Retrieve report result",
+      tags = "ReportDefinition",
+      description = "Retrieve report result.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of report results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AnalyticsReportResource.ReportResultList.class)))
+      })
+  public ResultList<ReportResult> listReportResults(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn of the reportDefinition", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Filter report results after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter report results before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("endTs")
+          Long endTs)
+      throws IOException {
+    return dao.getReportResults(fqn, startTs, endTs);
   }
 }

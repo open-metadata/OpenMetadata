@@ -3,6 +3,8 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.REPORT_DEFINITION;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -17,6 +19,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ResultList;
 
 public class AnalyticsReportRepository extends EntityRepository<ReportDefinition> {
   public static final String COLLECTION_PATH = "/v1/analytics/report";
@@ -87,6 +90,7 @@ public class AnalyticsReportRepository extends EntityRepository<ReportDefinition
   public RestUtil.PutResponse<?> addReportResult(UriInfo uriInfo, String fqn, ReportResult reportResult)
       throws IOException {
     ReportDefinition reportDefinition = dao.findEntityByName(fqn);
+    reportResult.setId(UUID.randomUUID());
 
     ReportResult storedReportResult =
         JsonUtils.readValue(
@@ -119,5 +123,17 @@ public class AnalyticsReportRepository extends EntityRepository<ReportDefinition
         getChangeEvent(withHref(uriInfo, reportDefinition), change, entityType, reportDefinition.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+  }
+
+  public ResultList<ReportResult> getReportResults(String fqn, Long startTs, Long endTs) throws IOException {
+    List<ReportResult> reportResults;
+    reportResults =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, REPORT_RESULT_EXTENSION, startTs, endTs),
+            ReportResult.class);
+
+    return new ResultList<>(reportResults, String.valueOf(startTs), String.valueOf(endTs), reportResults.size());
   }
 }
