@@ -100,7 +100,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // This should be first only as this holder has some config
     ConfigurationHolder.getInstance().init(catalogConfig);
     // init email Util for handling
-    EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
+    if (catalogConfig.getSmtpSettings() != null && catalogConfig.getSmtpSettings().getEnableSmtpServer()) {
+      EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
+    }
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(
