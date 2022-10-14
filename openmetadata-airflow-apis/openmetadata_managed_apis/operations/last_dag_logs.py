@@ -77,13 +77,15 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
             # Even when generating a ton of logs, we just get a single element.
             # Same happens when trying to call task_log_reader.read_log_chunks
             # We'll create our own chunk size and paginate based on that
-            raw_logs_str = "".join(list(
-                task_log_reader.read_log_stream(
-                    ti=task_instance,
-                    try_number=try_number,
-                    metadata=LOG_METADATA,
+            raw_logs_str = "".join(
+                list(
+                    task_log_reader.read_log_stream(
+                        ti=task_instance,
+                        try_number=try_number,
+                        metadata=LOG_METADATA,
+                    )
                 )
-            ))
+            )
 
     if not raw_logs_str:
         return ApiResponse.bad_request(
@@ -92,7 +94,9 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 
     # Split the string in chunks of size without
     # having to know the full length beforehand
-    log_chunks = [chunk for chunk in iter(partial(StringIO(raw_logs_str).read, CHUNK_SIZE), '')]
+    log_chunks = [
+        chunk for chunk in iter(partial(StringIO(raw_logs_str).read, CHUNK_SIZE), "")
+    ]
 
     total = len(log_chunks)
     after_idx = int(after) if after is not None else 0
