@@ -105,6 +105,7 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 	docker run \
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
+		-e SONAR_SCANNER_OPTS="-Xmx1g" \
 		-e SONAR_LOGIN=$(token) \
 		-v ${PWD}/ingestion:/usr/src \
 		sonarsource/sonar-scanner-cli \
