@@ -14,7 +14,6 @@ OpenMetadata high-level API Table test
 """
 from unittest import TestCase
 
-from ingestion.src.metadata.utils.helpers import find_column_in_table
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -40,6 +39,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import find_column_in_table
 
 
 class OMetaTableTest(TestCase):

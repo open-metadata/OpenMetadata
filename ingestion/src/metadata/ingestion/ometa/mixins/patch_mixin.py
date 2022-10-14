@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str, ometa_logger
+from metadata.utils.helpers import find_column_in_table_with_index
 
 logger = ometa_logger()
 
@@ -157,13 +158,8 @@ class OMetaPatchMixin(Generic[T]):
         if not table:
             return None
 
-        col_index, col = next(
-            (
-                (col_index, col)
-                for col_index, col in enumerate(table.columns)
-                if str(col.name.__root__).lower() == column_name.lower()
-            ),
-            None,
+        col_index, col = find_column_in_table_with_index(
+            column_name=column_name, table=table
         )
 
         if col_index is None:
