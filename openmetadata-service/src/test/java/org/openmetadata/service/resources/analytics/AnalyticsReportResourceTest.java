@@ -33,13 +33,13 @@ public class AnalyticsReportResourceTest extends EntityResourceTest<ReportDefini
     supportsEmptyDescription = false;
     supportsFollowers = false;
     supportsAuthorizedMetadataOperations = false;
-    supportsOwner = true;
+    supportsOwner = false;
   }
 
   @Test
   void post_report_definition_200(TestInfo test) throws IOException {
     CreateReportDefinition create = createRequest(test);
-    create.withName("foo");
+    create.withName("bar");
     ReportDefinition reportDefinition = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     reportDefinition = getEntity(reportDefinition.getId(), ADMIN_AUTH_HEADERS);
     validateCreatedEntity(reportDefinition, create, ADMIN_AUTH_HEADERS);

@@ -5,8 +5,8 @@
     "paramsDefinition": {
         "dimensions": [
             {
-                "dimensionName": "ServiceType",
-                "displayName": "Service Type"
+                "dimensionName": "Entity",
+                "displayName": "Entity Type"
             },
             {
                 "dimensionName": "Team",
