@@ -33,6 +33,7 @@ import java.sql.SQLException;
 import java.util.Scanner;
 import java.util.UUID;
 import javax.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -59,6 +60,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
+@Slf4j
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
@@ -320,16 +322,16 @@ public final class TablesInitializer {
 
   private static void printToConsoleInDebug(String message) {
     if (DEBUG_MODE) {
-      System.out.println(message);
+      LOG.debug(message);
     }
   }
 
   private static void printError(String message) {
-    System.err.println(message);
+    LOG.error(message);
   }
 
   private static void printToConsoleMandatory(String message) {
-    System.out.println(message);
+    LOG.info(message);
   }
 
   private static void createIngestionBot(OpenMetadataApplicationConfig config, Jdbi jdbi) {
