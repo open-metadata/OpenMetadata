@@ -438,5 +438,17 @@
       "Delete",
       "ViewAll"
     ]
+  },
+  {
+    "name" : "reportDefinition",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
+    ]
   }
 ]
