@@ -170,7 +170,12 @@ class OpenMetadata(
     tags_path = "tags"
     tests_path = "tests"
 
-    def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
+    def __init__(
+        self,
+        config: OpenMetadataConnection,
+        raw_data: bool = False,
+        bot_type: BotType = BotType.ingestion_bot,
+    ):
         self.config = config
 
         # Load the secrets' manager client
@@ -180,7 +185,7 @@ class OpenMetadata(
 
         # Load auth provider config from Secret Manager if necessary
         self.secrets_manager_client.add_auth_provider_security_config(
-            self.config, BotType.ingestion_bot.value
+            self.config, bot_type.value
         )
 
         # Load the auth provider init from the registry

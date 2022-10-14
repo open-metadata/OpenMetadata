@@ -16,6 +16,7 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -52,7 +53,9 @@ class MetadataRestSink(Sink[Entity]):
         self.metadata_config = metadata_config
         self.status = SinkStatus()
         self.wrote_something = False
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = OpenMetadata(
+            self.metadata_config, bot_type=BotType.profiler_bot
+        )
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):

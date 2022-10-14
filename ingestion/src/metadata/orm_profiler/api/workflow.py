@@ -25,6 +25,7 @@ from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
+from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
@@ -97,7 +98,9 @@ class ProfilerWorkflow:
             self.config.processor.dict().get("config")
         )
 
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = OpenMetadata(
+            self.metadata_config, bot_type=BotType.profiler_bot
+        )
 
         self._retrieve_service_connection_if_needed()
 

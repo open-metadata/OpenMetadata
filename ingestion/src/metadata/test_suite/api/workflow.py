@@ -27,6 +27,7 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.data.table import IntervalType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -85,7 +86,7 @@ class TestSuiteWorkflow:
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = OpenMetadata(self.metadata_config, bot_type=BotType.test_bot)
 
         self.status = ProcessorStatus()
 

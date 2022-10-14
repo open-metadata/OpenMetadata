@@ -11,7 +11,7 @@
       "javaType": "org.openmetadata.schema.entity.BotType",
       "description": "Type of bot",
       "type": "string",
-      "enum": ["bot", "ingestion-bot"],
+      "enum": ["bot", "ingestion-bot", "profiler-bot", "test-bot"],
       "default": "bot"
     }
   },
