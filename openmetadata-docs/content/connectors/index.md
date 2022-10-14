@@ -18,6 +18,8 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
   - Clickhouse Metadata
   - Clickhouse Usage
 - [Databricks SQL](/connectors/database/databricks)
+  - Databricks Metadata
+  - Databricks Usage
 - [Data lake](/connectors/database/datalake)
   - S3 Data Lake
   - Google Cloud Service Data Lake
