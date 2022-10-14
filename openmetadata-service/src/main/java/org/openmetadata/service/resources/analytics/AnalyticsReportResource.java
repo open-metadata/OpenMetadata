@@ -31,7 +31,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportDefinition;
 import org.openmetadata.schema.analytics.type.ReportResult;
 import org.openmetadata.schema.api.tests.CreateReportDefinition;
-import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -165,54 +164,46 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
-    @POST
-    @Operation(
-            operationId = "createReportDefinition",
-            summary = "Create a report definition",
-            tags = "ReportDefinition",
-            description = "Create report definition.",
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Create a report definition",
-                            content =
-                            @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDefinition.class))),
-                    @ApiResponse(responseCode = "400", description = "Bad request")
-            })
-    public Response create(
-            @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateReportDefinition create)
-            throws IOException {
-        ReportDefinition reportDefinition = getReportDefinition(create, securityContext.getUserPrincipal().getName());
-        return create(uriInfo, securityContext, reportDefinition, true);
-    }
+
+  @POST
+  @Operation(
+      operationId = "createReportDefinition",
+      summary = "Create a report definition",
+      tags = "ReportDefinition",
+      description = "Create report definition.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Create a report definition",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDefinition.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateReportDefinition create)
+      throws IOException {
+    ReportDefinition reportDefinition = getReportDefinition(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, reportDefinition, true);
+  }
 
   @PUT
   @Operation(
-          operationId = "createOrUpdateReportDefinition",
-          summary = "Update report definition",
-          tags = "ReportDefinition",
-          description = "Update report definition.",
-          responses = {
-                  @ApiResponse(
-                          responseCode = "200",
-                          description = "Updated report definition",
-                          content =
-                                  @Content(
-                                          mediaType = "application/json",
-                                          schema = @Schema(
-                                                  implementation = ReportDefinition.class
-                                          )
-                                  )
-                  )
-          }
-  )
+      operationId = "createOrUpdateReportDefinition",
+      summary = "Update report definition",
+      tags = "ReportDefinition",
+      description = "Update report definition.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated report definition",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDefinition.class)))
+      })
   public Response createOrUpdate(
-          @Context UriInfo uriInfo,
-          @Context SecurityContext securityContext,
-          @Valid CreateReportDefinition create
-  ) throws IOException {
-      ReportDefinition reportDefinition = getReportDefinition(create, securityContext.getUserPrincipal().getName());
-      return createOrUpdate(uriInfo, securityContext, reportDefinition, true);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateReportDefinition create)
+      throws IOException {
+    ReportDefinition reportDefinition = getReportDefinition(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, reportDefinition, true);
   }
 
   @GET
@@ -252,53 +243,50 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
   @PATCH
   @Path("/{id}")
   @Operation(
-          operationId = "patcheReportDefinition",
-          summary = "Update a report definition",
-          tags = "ReportDefinition",
-          description = "Update a report definition.",
-          externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      operationId = "patcheReportDefinition",
+      summary = "Update a report definition",
+      tags = "ReportDefinition",
+      description = "Update a report definition.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public  Response updateDescription(
-          @Context UriInfo uriInfo,
-          @Context SecurityContext securityContext,
-          @PathParam("id") UUID id,
-          @RequestBody(
-                  description = "JsonPatch with array of operations",
-                  content =
-                          @Content(
-                                  mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                                  examples = {
-                                          @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                                  }
-                          )
-          )
-          JsonPatch patch) throws IOException {
-      return patchInternal(uriInfo, securityContext, id, patch);
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
-
 
   @DELETE
   @Path("/{id}")
   @Operation(
-          operationId = "deleteReportDefinition",
-          summary = "delete a report definition",
-          tags = "ReportDefinition",
-          description = "Delete a report definition by id.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Report definition for instance {id} is not found")
-          }
-  )
+      operationId = "deleteReportDefinition",
+      summary = "delete a report definition",
+      tags = "ReportDefinition",
+      description = "Delete a report definition by id.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Report definition for instance {id} is not found")
+      })
   public Response delete(
-          @Context UriInfo uriInfo,
-          @Context SecurityContext securityContext,
-          @Parameter(description = "Hard delete the entity. (Default = `false`)")
-              @QueryParam("hardDelete")
-              @DefaultValue("false")
-              boolean hardDelete,
-          @Parameter(description = "Report Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
-  ) throws IOException {
-      return delete(uriInfo, securityContext, id, false, hardDelete, true);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Report Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   @GET
@@ -338,60 +326,55 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
   @GET
   @Path("/{id}/versions")
   @Operation(
-          operationId = "listAllReportDefinitionVersion",
-          summary = "List Report definition versions",
-          tags = "ReportDefinition",
-          description = "Get a list of all the version of a report definition by `id`.",
-          responses = {
-                  @ApiResponse(
-                          responseCode = "200",
-                          description = "List all report definition versions",
-                          content =
-                                  @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = EntityHistory.class))
-                  )
-          }
-  )
+      operationId = "listAllReportDefinitionVersion",
+      summary = "List Report definition versions",
+      tags = "ReportDefinition",
+      description = "Get a list of all the version of a report definition by `id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List all report definition versions",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+      })
   public EntityHistory listVersions(
-          @Context UriInfo uriInfo,
-          @Context SecurityContext securityContext,
-          @Parameter(description = "Report Definition Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-          throws IOException {
-      return super.listVersionsInternal(securityContext, id);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Report Definition Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      throws IOException {
+    return super.listVersionsInternal(securityContext, id);
   }
 
-    @GET
-    @Path("/{id}/versions/{version}")
-    @Operation(
-            operationId = "getSpecificReportDefinitionVersion",
-            summary = "Get a version of the report definition",
-            tags = "ReportDefinition",
-            description = "Get a version of the report definition by `id`",
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "ReportDefinition",
-                            content =
-                            @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDefinition.class))),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "Report Definition for instance {id} and version {version} is " + "not found")
-            })
-    public ReportDefinition getVersion(
-            @Context UriInfo uriInfo,
-            @Context SecurityContext securityContext,
-            @Parameter(description = "Report Definition Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
-            @Parameter(
-                    description = "Report Definition version number in the form `major`.`minor`",
-                    schema = @Schema(type = "string", example = "0.1 or 1.1"))
-            @PathParam("version")
-            String version)
-            throws IOException {
-        return super.getVersionInternal(securityContext, id, version);
-    }
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(
+      operationId = "getSpecificReportDefinitionVersion",
+      summary = "Get a version of the report definition",
+      tags = "ReportDefinition",
+      description = "Get a version of the report definition by `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ReportDefinition",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDefinition.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Report Definition for instance {id} and version {version} is " + "not found")
+      })
+  public ReportDefinition getVersion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Report Definition Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(
+              description = "Report Definition version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version)
+      throws IOException {
+    return super.getVersionInternal(securityContext, id, version);
+  }
 
-
-    @PUT
+  @PUT
   @Path("/{fqn}/result")
   @Operation(
       operationId = "addReportResults",
