@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS analytics_report (
+CREATE TABLE IF NOT EXISTS report_definition (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,

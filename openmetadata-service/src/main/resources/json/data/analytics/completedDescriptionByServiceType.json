@@ -1,7 +1,7 @@
 {
-    "name": "completedDescriptionByServiceType",
-    "displayName": "Completed Description by Service Type",
-    "description": "This report definition shows the number/percentage of completed description by service type (i.e. databases, tables, dashboard, etc.)",
+    "name": "completedDescriptionByEntityType",
+    "displayName": "Completed Description by Entity Type",
+    "description": "This report definition shows the number/percentage of completed description by entity type (i.e. topics, tables, dashboard, etc.)",
     "paramsDefinition": {
         "dimensions": [
             {
@@ -20,8 +20,8 @@
                 "metricDataType": "INT"
             },
             {
-                "metricName": "total_service_types",
-                "displayName": "Total Services",
+                "metricName": "total_entities",
+                "displayName": "Total Entities",
                 "metricDataType": "INT"
             }
         ]

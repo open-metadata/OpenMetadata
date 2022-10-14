@@ -2945,7 +2945,7 @@ public interface CollectionDAO {
   interface AnalyticsReportDAO extends EntityDAO<ReportDefinition> {
     @Override
     default String getTableName() {
-      return "analytics_report";
+      return "report_definition";
     }
 
     @Override
