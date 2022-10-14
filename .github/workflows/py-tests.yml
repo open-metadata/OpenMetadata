@@ -72,10 +72,11 @@ jobs:
       run: ./docker/run_local_docker.sh -m no-ui
       timeout-minutes: 30
 
-    - name: Run Python Tests
+    - name: Run Python Tests & record coverage
       run: |
         source env/bin/activate
-        make run_python_tests
+        make coverage
+        rm pom.xml
 
       # we have to pass these args values since we are working with the 'pull_request_target' trigger
     - name: Push Results in PR to Sonar
