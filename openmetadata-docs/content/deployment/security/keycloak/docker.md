@@ -26,8 +26,8 @@ AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=custom-oidc
 CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=KeyCloak
-AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8080/realms/data-sec/protocol/openid-connect/certs}]
-AUTHENTICATION_AUTHORITY={http://localhost:8080/realms/data-sec}
+AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8081/realms/data-sec/protocol/openid-connect/certs}]
+AUTHENTICATION_AUTHORITY={http://localhost:8081/realms/data-sec}
 AUTHENTICATION_CLIENT_ID=open-metadata # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 
@@ -35,7 +35,7 @@ AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 AIRFLOW_AUTH_PROVIDER=custom-oidc
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID=open-metadata # Update with your Client ID
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY={Secret Key} # Update with your Secret Key
-OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL="http://localhost:8080/realms/data-sec/protocol/openid-connect/token"
+OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL="http://localhost:8081/realms/data-sec/protocol/openid-connect/token"
 ```
 
 ### 1.1 After 0.12.1
@@ -50,8 +50,8 @@ AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=custom-oidc
 CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=KeyCloak
-AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8080/realms/data-sec/protocol/openid-connect/certs}]
-AUTHENTICATION_AUTHORITY={http://localhost:8080/realms/data-sec}
+AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8081/realms/data-sec/protocol/openid-connect/certs}]
+AUTHENTICATION_AUTHORITY={http://localhost:8081/realms/data-sec}
 AUTHENTICATION_CLIENT_ID=open-metadata # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
