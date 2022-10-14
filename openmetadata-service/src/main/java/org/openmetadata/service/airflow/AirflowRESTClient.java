@@ -38,12 +38,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String API_ENDPOINT = "api/v1/openmetadata";
   private static final String DAG_ID = "dag_id";
 
-  private static Map<String, String> TYPE_TO_TASK =
+  private static final Map<String, String> TYPE_TO_TASK =
       Map.of(
           PipelineType.METADATA.toString(), "ingestion_task",
           PipelineType.PROFILER.toString(), "profiler_task",
           PipelineType.LINEAGE.toString(), "lineage_task",
-          PipelineType.LINEAGE.toString(), "usage_task",
+          PipelineType.USAGE.toString(), "usage_task",
           PipelineType.TEST_SUITE.toString(), "test_suite_task");
 
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {

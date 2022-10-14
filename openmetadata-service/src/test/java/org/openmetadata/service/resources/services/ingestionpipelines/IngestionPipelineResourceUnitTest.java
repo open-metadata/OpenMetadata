@@ -211,7 +211,7 @@ public class IngestionPipelineResourceUnitTest {
   }
 
   private void preparePipelineServiceClient(AirflowRESTClient mockPipelineServiceClient, Context context) {
-    when(mockPipelineServiceClient.getLastIngestionLogs(any(), "after")).thenReturn(Map.of("task", "log"));
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(), any())).thenReturn(Map.of("task", "log"));
   }
 
   private IngestionPipeline buildIngestionPipeline(Object config, PipelineType pipelineType, UUID id) {
