@@ -18,10 +18,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.type.entityReference import (
-    EntityReference,
-    EntityReferenceList,
-)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ometa_logger
