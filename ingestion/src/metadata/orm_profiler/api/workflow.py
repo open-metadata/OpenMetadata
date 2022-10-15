@@ -48,6 +48,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
@@ -67,7 +68,6 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.helpers import create_ometa_client
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
 
