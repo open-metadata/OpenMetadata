@@ -14,7 +14,6 @@ Trino source implementation.
 import logging
 import re
 import sys
-from textwrap import dedent
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import click
@@ -36,7 +35,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import TRINO_GET_COLUMNS
 
 logger = ingestion_logger()
 ROW_DATA_TYPE = "row"
@@ -100,19 +98,16 @@ def _get_columns(
 ) -> List[Dict[str, Any]]:
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
-    query = dedent(TRINO_GET_COLUMNS).strip()
+    query = f"SHOW COLUMNS FROM {schema}.{table_name}"
+
     res = connection.execute(sql.text(query), schema=schema, table=table_name)
     columns = []
-
     for record in res:
-        col_type = datatype.parse_sqltype(record.data_type)
+        col_type = datatype.parse_sqltype(record.Type)
         column = dict(
-            name=record.column_name,
-            type=col_type,
-            nullable=record.is_nullable == "YES",
-            default=record.column_default,
+            name=record.Column, type=col_type, nullable=True, comment=record.Comment
         )
-        type_str = record.data_type.strip().lower()
+        type_str = record.Type.strip().lower()
         type_name, type_opts = get_type_name_and_opts(type_str)
         if type_opts and type_name == ROW_DATA_TYPE:
             column["raw_data_type"] = parse_row_data_type(type_str)

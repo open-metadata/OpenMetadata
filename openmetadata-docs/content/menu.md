@@ -480,6 +480,8 @@ site_menu:
     url: /connectors/ingestion/versioning/event-notification-via-webhooks
   - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
     url: /connectors/ingestion/deployment
+  - category: Connectors / Ingestion / Run Connectors in your Airflow
+    url: /connectors/ingestion/run-connectors-in-airflow
 
 
   - category: How to guides

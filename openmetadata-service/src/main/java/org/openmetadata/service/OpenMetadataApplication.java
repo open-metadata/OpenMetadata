@@ -96,7 +96,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
     // init email Util for handling
-    EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
+    if (catalogConfig.getSmtpSettings() != null && catalogConfig.getSmtpSettings().getEnableSmtpServer()) {
+      EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
+    }
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(

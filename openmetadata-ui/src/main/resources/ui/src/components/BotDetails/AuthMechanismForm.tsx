@@ -28,13 +28,9 @@ import {
   AuthenticationMechanism,
   AuthType,
   JWTTokenExpiry,
+  SsoClientConfig,
   User,
 } from '../../generated/entity/teams/user';
-import { Auth0SSOClientConfig } from '../../generated/security/client/auth0SSOClientConfig';
-import { AzureSSOClientConfig } from '../../generated/security/client/azureSSOClientConfig';
-import { CustomOidcSSOClientConfig } from '../../generated/security/client/customOidcSSOClientConfig';
-import { GoogleSSOClientConfig } from '../../generated/security/client/googleSSOClientConfig';
-import { OktaSSOClientConfig } from '../../generated/security/client/oktaSSOClientConfig';
 import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import {
@@ -43,7 +39,6 @@ import {
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { SSOClientConfig } from '../CreateUser/CreateUser.interface';
 import Loader from '../Loader/Loader';
 
 const { Option } = Select;
@@ -76,10 +71,9 @@ const AuthMechanismForm: FC<Props> = ({
     authenticationMechanism.config?.JWTTokenExpiry ?? JWTTokenExpiry.OneHour
   );
 
-  const [ssoClientConfig, setSSOClientConfig] = useState<SSOClientConfig>(
-    (authenticationMechanism.config?.authConfig as SSOClientConfig) ??
-      ({} as SSOClientConfig)
-  );
+  const [ssoClientConfig, setSSOClientConfig] = useState<
+    SsoClientConfig | undefined
+  >(authenticationMechanism.config?.authConfig);
 
   const [accountEmail, setAccountEmail] = useState<string>(botUser.email);
 
@@ -91,9 +85,7 @@ const AuthMechanismForm: FC<Props> = ({
     const authConfig = authenticationMechanism.config?.authConfig;
     const JWTTokenExpiryValue = authenticationMechanism.config?.JWTTokenExpiry;
     setAuthMechanism(authType ?? AuthType.Jwt);
-    setSSOClientConfig(
-      (authConfig as SSOClientConfig) ?? ({} as SSOClientConfig)
-    );
+    setSSOClientConfig(authConfig);
     setTokenExpiry(JWTTokenExpiryValue ?? JWTTokenExpiry.OneHour);
   }, [authenticationMechanism]);
 
@@ -229,8 +221,6 @@ const AuthMechanismForm: FC<Props> = ({
   const getSSOConfig = () => {
     switch (authConfig?.provider) {
       case SsoServiceType.Google: {
-        const googleConfig = ssoClientConfig as GoogleSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -246,7 +236,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder="secretKey"
-                value={googleConfig.secretKey}
+                value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -255,7 +245,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="audience"
                 name="audience"
                 placeholder="audience"
-                value={googleConfig.audience}
+                value={ssoClientConfig?.audience}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -264,8 +254,6 @@ const AuthMechanismForm: FC<Props> = ({
       }
 
       case SsoServiceType.Auth0: {
-        const auth0Config = ssoClientConfig as Auth0SSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -281,7 +269,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder="secretKey"
-                value={auth0Config.secretKey}
+                value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -298,7 +286,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={auth0Config.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -315,7 +303,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="domain"
                 name="domain"
                 placeholder="domain"
-                value={auth0Config.domain}
+                value={ssoClientConfig?.domain}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -323,8 +311,6 @@ const AuthMechanismForm: FC<Props> = ({
         );
       }
       case SsoServiceType.Azure: {
-        const azureConfig = ssoClientConfig as AzureSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -340,7 +326,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder="clientSecret"
-                value={azureConfig.clientSecret}
+                value={ssoClientConfig?.clientSecret}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -357,7 +343,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={azureConfig.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -374,7 +360,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="authority"
                 name="authority"
                 placeholder="authority"
-                value={azureConfig.authority}
+                value={ssoClientConfig?.authority}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -391,7 +377,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="scopes"
                 name="scopes"
                 placeholder="Scopes value comma separated"
-                value={azureConfig.scopes.join(',')}
+                value={ssoClientConfig?.scopes?.join(',')}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -399,8 +385,6 @@ const AuthMechanismForm: FC<Props> = ({
         );
       }
       case SsoServiceType.Okta: {
-        const oktaConfig = ssoClientConfig as OktaSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -416,7 +400,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder="privateKey"
-                value={oktaConfig.privateKey}
+                value={ssoClientConfig?.privateKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -433,7 +417,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={oktaConfig.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -450,7 +434,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="orgURL"
                 name="orgURL"
                 placeholder="orgURL"
-                value={oktaConfig.orgURL}
+                value={ssoClientConfig?.orgURL}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -468,7 +452,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="oktaEmail"
                 name="oktaEmail"
                 placeholder="Okta Service account Email"
-                value={oktaConfig.email}
+                value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -477,7 +461,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="scopes"
                 name="scopes"
                 placeholder="Scopes value comma separated"
-                value={oktaConfig.scopes?.join('')}
+                value={ssoClientConfig?.scopes?.join('')}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -485,8 +469,6 @@ const AuthMechanismForm: FC<Props> = ({
         );
       }
       case SsoServiceType.CustomOidc: {
-        const customOidcConfig = ssoClientConfig as CustomOidcSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -502,7 +484,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder="secretKey"
-                value={customOidcConfig.secretKey}
+                value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -519,7 +501,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={customOidcConfig.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -536,7 +518,7 @@ const AuthMechanismForm: FC<Props> = ({
                 data-testid="tokenEndpoint"
                 name="tokenEndpoint"
                 placeholder="tokenEndpoint"
-                value={customOidcConfig.tokenEndpoint}
+                value={ssoClientConfig?.tokenEndpoint}
                 onChange={handleOnChange}
               />
             </Form.Item>
