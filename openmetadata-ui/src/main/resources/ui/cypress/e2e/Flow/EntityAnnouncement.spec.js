@@ -23,7 +23,13 @@ describe("Entity Announcement", () => {
     cy.goToHomePage();
   });
 
-  const createAnnouncement = (title,startDate,endDate,description) => {
+  const createAnnouncement = (title, startDate, endDate, description) => {
+    cy.get('[data-testid="add-announcement"]').should('be.visible').click();
+    cy.get('.ant-modal-header')
+      .should('be.visible')
+      .contains('Make an announcement');
+    cy.get('.ant-modal-body').should('be.visible');
+    
     cy.get('#title').should('be.visible').type(title);
     cy.get('#startDate').should('be.visible').type(startDate);
     cy.get('#endtDate').should('be.visible').type(endDate);
@@ -46,11 +52,6 @@ describe("Entity Announcement", () => {
     cy.get('[data-testid="announcement-error"]')
       .should('be.visible')
       .contains('No Announcements, Click on add announcement to add one.');
-    cy.get('[data-testid="add-announcement"]').should('be.visible').click();
-    cy.get('.ant-modal-header')
-      .should('be.visible')
-      .contains('Make an announcement');
-    cy.get('.ant-modal-body').should('be.visible');
     
     // Create Active Announcement
     createAnnouncement("Announcement Title", startDate, endDate, "Announcement Description")
