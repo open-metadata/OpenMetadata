@@ -262,3 +262,22 @@ export const LOGIN = {
   username: 'admin@openmetadata.org',
   password: 'admin',
 };
+
+export const HTTP_CONFIG_SOURCE = {
+  DBT_CATALOG_HTTP_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/catalog.json',
+  DBT_MANIFEST_HTTP_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/manifest.json',
+  DBT_RUN_RESTLTS_FILE_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/run_results.json',
+};
+
+export const DBT = {
+  tagCategory: 'DBTTags',
+  tagName: 'model_tag_one',
+  dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
+  dbtLineageNode1: 'dev.dbt_jaffle.stg_orders',
+  dbtLineageNode2: 'dev.dbt_jaffle.stg_payments',
+  dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
+  dataQualityTest2: 'not_null_customers_customer_id',
+};
