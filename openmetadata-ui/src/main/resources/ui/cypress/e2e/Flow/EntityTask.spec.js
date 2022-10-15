@@ -43,11 +43,11 @@ describe("Entity Tasks", () => {
     
     
     cy.get('[data-testid="select-assignee"]').should('be.visible').type(assignee);
-    cy.get('[data-testid="user-tag"]').should("be.visible").click()
+    cy.get('[data-testid="user-tag"]').should("be.visible").first().click()
     cy.get('body').click()
    
      cy.get('[data-testid="select-tags"]').should('be.visible').type(tag);
-    cy.get('[data-testid="tag-option"]').should("be.visible").click()
+    cy.get('[data-testid="tag-option"]').should("be.visible").first().click()
     cy.get('body').click()
 
     interceptURL("GET","/api/v1/feed/tasks/*",'entityTaskDetail')
