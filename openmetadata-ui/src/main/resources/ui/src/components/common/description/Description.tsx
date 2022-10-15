@@ -90,7 +90,7 @@ const Description: FC<DescriptionProps> = ({
     return TASK_ENTITIES.includes(entityType as EntityType) ? (
       <button
         className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
-        data-testid="request-description"
+        data-testid="request-entity-description"
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
         }>

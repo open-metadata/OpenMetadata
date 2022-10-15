@@ -678,6 +678,7 @@ const TaskDetailPage = () => {
                         {taskDetail.task?.suggestion ? (
                           <Dropdown.Button
                             className="ant-btn-primary-dropdown"
+                            data-testid="complete-task"
                             icon={
                               <FontAwesomeIcon
                                 className="tw-text-sm"
