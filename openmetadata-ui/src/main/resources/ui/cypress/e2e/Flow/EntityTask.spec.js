@@ -12,9 +12,9 @@
  */
 
 import { interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from "../../common/common";
-import { LOGIN, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from "../../constants/constants";
+import { LOGIN, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_MLMODEL, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from "../../constants/constants";
 
-const TASK_ENTITIES=[SEARCH_ENTITY_TABLE.table_1,SEARCH_ENTITY_TOPIC.topic_1,SEARCH_ENTITY_DASHBOARD.dashboard_1,SEARCH_ENTITY_PIPELINE.pipeline_1]
+const TASK_ENTITIES=[SEARCH_ENTITY_TABLE.table_1,SEARCH_ENTITY_TOPIC.topic_1,SEARCH_ENTITY_DASHBOARD.dashboard_1,SEARCH_ENTITY_PIPELINE.pipeline_1,SEARCH_ENTITY_MLMODEL.mlmodel_1]
 
 describe("Entity Tasks", () => {
   beforeEach(() => {
