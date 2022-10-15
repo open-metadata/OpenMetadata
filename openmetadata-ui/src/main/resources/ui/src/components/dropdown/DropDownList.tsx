@@ -112,7 +112,10 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   const removeOwnerButton = (item: DropDownListItem) => {
     return !isNil(value) && item.value === value ? (
       <Tooltip title="Remove owner">
-        <button className="tw-cursor-pointer" onClick={removeOwner}>
+        <button
+          className="tw-cursor-pointer"
+          data-testid="remove-owner"
+          onClick={removeOwner}>
           <SVGIcons
             alt="remove owner"
             icon={Icons.ICON_REMOVE}

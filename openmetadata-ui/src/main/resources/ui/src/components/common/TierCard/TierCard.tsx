@@ -107,7 +107,11 @@ const TierCard = ({
               Edit Tier
             </Typography.Title>
             {currentTier ? (
-              <Button className="font-medium" type="link" onClick={removeTier}>
+              <Button
+                className="font-medium"
+                data-testid="remove-tier"
+                type="link"
+                onClick={removeTier}>
                 {' '}
                 Clear Tier
               </Button>
@@ -165,7 +169,11 @@ const TierCard = ({
     }
   }, [currentTier]);
 
-  return <Popover trigger="click">{getTierWidget()}</Popover>;
+  return (
+    <Popover data-testid="tier-card-container" trigger="click">
+      {getTierWidget()}
+    </Popover>
+  );
 };
 
 export default TierCard;
