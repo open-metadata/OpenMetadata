@@ -57,7 +57,6 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
     'dashboard',
     'pipeline',
     'mlmodel',
-    'bot',
     'user',
     'team',
     'glossaryTerm',

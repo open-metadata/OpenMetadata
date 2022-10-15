@@ -34,6 +34,7 @@ from metadata.clients.connection_clients import (
     DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
+    DomoDashboardClient,
     DynamoClient,
     FivetranClient,
     GlueDBClient,
@@ -53,6 +54,9 @@ from metadata.clients.connection_clients import (
 from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
+    DomoDashboardConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -968,3 +972,28 @@ def _(connection: DagsterClient) -> None:
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(connection: DomoDashboardConnection) -> None:
+    from pydomo import Domo
+
+    try:
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoDashboardClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoDashboardClient) -> None:
+    try:
+        connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)

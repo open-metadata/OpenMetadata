@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByTestId,
-  findByTestId,
-  fireEvent,
-  render,
-} from '@testing-library/react';
+import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
@@ -67,7 +62,7 @@ const mockProp = {
 
 describe('Test CustomField Table Component', () => {
   it('Should render table component', async () => {
-    const { findByTestId, findAllByTestId } = render(
+    const { findByTestId, findByText, findAllByRole } = render(
       <CustomPropertyTable {...mockProp} />
     );
 
@@ -75,21 +70,25 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableHeader = await findByTestId('table-header');
+    const tableCellName = await findByText('Name');
+    const tableCellType = await findByText('Type');
+    const tableCellDescription = await findByText('Description');
+    const tableCellActions = await findByText('Actions');
 
-    const tableBody = await findByTestId('table-body');
+    expect(tableCellName).toBeInTheDocument();
+    expect(tableCellType).toBeInTheDocument();
+    expect(tableCellDescription).toBeInTheDocument();
+    expect(tableCellActions).toBeInTheDocument();
 
-    expect(tableHeader).toBeInTheDocument();
+    const tableRow = await findAllByRole('row');
 
-    expect(tableBody).toBeInTheDocument();
-
-    const dataRows = await findAllByTestId('data-row');
-
-    expect(dataRows).toHaveLength(mockProperties.length);
+    expect(tableRow).toHaveLength(mockProperties.length + 1);
   });
 
   it('Test delete property flow', async () => {
-    const { container } = render(<CustomPropertyTable {...mockProp} />);
+    const { container, findByText, findAllByRole } = render(
+      <CustomPropertyTable {...mockProp} />
+    );
 
     const table = await findByTestId(
       container,
@@ -98,19 +97,21 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableHeader = await findByTestId(container, 'table-header');
+    const tableCellName = await findByText('Name');
+    const tableCellType = await findByText('Type');
+    const tableCellDescription = await findByText('Description');
+    const tableCellActions = await findByText('Actions');
 
-    const tableBody = await findByTestId(container, 'table-body');
+    expect(tableCellName).toBeInTheDocument();
+    expect(tableCellType).toBeInTheDocument();
+    expect(tableCellDescription).toBeInTheDocument();
+    expect(tableCellActions).toBeInTheDocument();
 
-    expect(tableHeader).toBeInTheDocument();
+    const tableRow = await findAllByRole('row');
 
-    expect(tableBody).toBeInTheDocument();
+    expect(tableRow).toHaveLength(mockProperties.length + 1);
 
-    const dataRows = await findAllByTestId(container, 'data-row');
-
-    expect(dataRows).toHaveLength(mockProperties.length);
-
-    const dataRow = dataRows[0];
+    const dataRow = tableRow[1];
 
     const deleteButton = await findByTestId(dataRow, 'delete-button');
 
@@ -135,7 +136,7 @@ describe('Test CustomField Table Component', () => {
   });
 
   it('Should render no data row if there is no custom properties', async () => {
-    const { findByTestId, queryAllByTestId } = render(
+    const { findByTestId, findByText, findAllByRole } = render(
       <CustomPropertyTable {...mockProp} customProperties={[]} />
     );
 
@@ -143,20 +144,18 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableHeader = await findByTestId('table-header');
+    const tableCellName = await findByText('Name');
+    const tableCellType = await findByText('Type');
+    const tableCellDescription = await findByText('Description');
+    const tableCellActions = await findByText('Actions');
 
-    const tableBody = await findByTestId('table-body');
+    expect(tableCellName).toBeInTheDocument();
+    expect(tableCellType).toBeInTheDocument();
+    expect(tableCellDescription).toBeInTheDocument();
+    expect(tableCellActions).toBeInTheDocument();
 
-    expect(tableHeader).toBeInTheDocument();
+    const tableRow = await findAllByRole('row');
 
-    expect(tableBody).toBeInTheDocument();
-
-    const dataRows = queryAllByTestId('data-row');
-
-    expect(dataRows).toHaveLength(0);
-
-    const noDataRow = await findByTestId('no-data-row');
-
-    expect(noDataRow).toBeInTheDocument();
+    expect(tableRow).toHaveLength(2);
   });
 });

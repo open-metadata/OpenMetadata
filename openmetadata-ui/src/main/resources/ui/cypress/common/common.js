@@ -711,7 +711,7 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   cy.wait('@customProperties');
-  cy.get('[data-testid="data-row"]').should('contain', propertyName);
+  cy.get('.ant-table-row').should('contain', propertyName);
 
   //Navigating to home page
   cy.clickOnLogo();
@@ -805,7 +805,7 @@ export const editCreatedProperty = (propertyName) => {
   cy.get('.tw-modal-container').should('not.exist');
 
   //Fetching for updated descriptions for the created custom property
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .nextUntil('div')
