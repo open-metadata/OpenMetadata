@@ -633,11 +633,10 @@ const TaskDetailPage = () => {
                 </Card>
 
                 <Card
+                  className="mt-4 ml-6"
                   data-testid="task-data"
                   style={{
                     ...cardStyles,
-                    marginTop: '16px',
-                    marginLeft: '24px',
                   }}>
                   {isTaskDescription && (
                     <DescriptionTask
