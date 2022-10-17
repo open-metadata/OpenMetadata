@@ -27,6 +27,7 @@
     "@okta/okta-react": "^6.4.3",
     "@rjsf/core": "^4.1.1",
     "@toast-ui/react-editor": "^3.1.8",
+    "analytics": "^0.8.1",
     "antd": "^4.20.6",
     "antlr4": "4.9.2",
     "autoprefixer": "^9.8.6",
@@ -93,7 +94,8 @@
     "tailwindcss": "^2.1.4",
     "to-arraybuffer": "^1.0.1",
     "turndown": "^7.1.1",
-    "url": "^0.11.0"
+    "url": "^0.11.0",
+    "use-analytics": "^0.0.5"
   },
   "scripts": {
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",
@@ -164,6 +166,7 @@
     "@types/showdown": "^2.0.0",
     "@types/testing-library__jest-dom": "^5.9.5",
     "@types/turndown": "^5.0.1",
+    "@types/use-analytics": "^0.0.0",
     "@typescript-eslint/eslint-plugin": "^2.10.0",
     "@typescript-eslint/parser": "^2.10.0",
     "babel-eslint": "^10.1.0",
