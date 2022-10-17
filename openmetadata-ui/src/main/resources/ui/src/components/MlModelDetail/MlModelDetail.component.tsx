@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isUndefined, startCase, uniqueId } from 'lodash';
@@ -562,22 +562,20 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </Fragment>
               )}
               {activeTab === 2 && (
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
-                  id="activityfeed">
-                  <div />
-                  <ActivityFeedList
-                    isEntityFeed
-                    withSidePanel
-                    deletePostHandler={deletePostHandler}
-                    entityName={mlModelDetail.name}
-                    feedList={entityThread}
-                    postFeedHandler={postFeedHandler}
-                    updateThreadHandler={updateThreadHandler}
-                    onFeedFiltersUpdate={handleFeedFilterChange}
-                  />
-                  <div />
-                </div>
+                <Row id="activityfeed">
+                  <Col offset={3} span={18}>
+                    <ActivityFeedList
+                      isEntityFeed
+                      withSidePanel
+                      deletePostHandler={deletePostHandler}
+                      entityName={mlModelDetail.name}
+                      feedList={entityThread}
+                      postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
+                      onFeedFiltersUpdate={handleFeedFilterChange}
+                    />
+                  </Col>
+                </Row>
               )}
               {activeTab === 3 && (
                 <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
