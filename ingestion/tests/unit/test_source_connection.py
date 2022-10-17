@@ -47,6 +47,12 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection,
     MySQLScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
+    OracleDatabaseSchema,
+    OracleScheme,
+    OracleServiceName,
+)
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
     PinotDBScheme,
