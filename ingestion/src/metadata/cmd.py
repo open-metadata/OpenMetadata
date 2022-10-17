@@ -11,27 +11,22 @@
 """
 This module defines the CLI commands for OpenMetada
 """
-
+import argparse
 import logging
-import os
 import pathlib
-import sys
-import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import List, Optional, Tuple
-
-import click
 
 from metadata.__version__ import get_metadata_version
-from metadata.cli.backup import UploadDestinationType, run_backup
+from metadata.cli.backup import UploadDestinationType,run_backup
+from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.cli.openmetadata_imports_migration import (
     run_openmetadata_imports_migration,
 )
+from metadata.cli.profile import run_profiler
 from metadata.cli.restore import run_restore
 from metadata.config.common import load_config_file
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
 from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
@@ -39,437 +34,224 @@ from metadata.utils.workflow_output_handler import WorkflowType, print_init_erro
 logger = cli_logger()
 
 
-# To be fixed in https://github.com/open-metadata/OpenMetadata/issues/8081
-# pylint: disable=too-many-arguments
-@click.group()
-def check() -> None:
+def create_common_config_parser_args(parser: argparse.ArgumentParser):
+    print(parser, type(parser))
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="path to the config file",
+        type=pathlib.Path,
+        required=True,
+    )
+
+
+def create_openmetadata_imports_migration_args(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "-d",
+        "--dir-path",
+        default="/opt/airflow/dags",
+        type=pathlib.Path,
+        help="Path to the DAG folder. Default to `/opt/airflow/dags`",
+    )
+
+    parser.add_argument(
+        "--change-config-file-path",
+        help="Flag option. If pass this will try to change the path of the dag config files",
+        type=bool,
+    )
+
+
+def docker_args(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "--start", help="Start release docker containers", default=True, type=bool
+    )
+    parser.add_argument(
+        "--stop",
+        help="Stops openmetadata docker containers",
+        default=True,
+        type=bool,
+    )
+    parser.add_argument(
+        "--pause", help="Pause openmetadata docker containers", default=True, type=bool
+    )
+    parser.add_argument(
+        "--resume",
+        help="Resume/Unpause openmetadata docker containers",
+        default=True,
+        type=bool,
+    )
+    parser.add_argument(
+        "--clean",
+        help="Stops and remove openmetadata docker containers along with images, volumes, networks associated",
+        default=True,
+        type=bool,
+    )
+    parser.add_argument(
+        "-f",
+        "--file-path",
+        help="Path to Local docker-compose.yml",
+        type=pathlib.Path,
+        required=False,
+    )
+    parser.add_argument(
+        "-env-file",
+        "--env-file-path",
+        help="Path to env file containing the environment variables",
+        type=pathlib.Path,
+        required=False,
+    )
+    parser.add_argument(
+        "--reset-db", help="Reset OpenMetadata Data", type=bool, default=True
+    )
+    parser.add_argument(
+        "--ingest-sample-data",
+        help="Enable the sample metadata ingestion",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
+        "-db",
+        "--database",
+        choices=list(BACKEND_DATABASES.keys()),
+        default="mysql",
+    )
+
+
+def webhook_args(parser: argparse.ArgumentParser):
     pass
 
 
-@click.group()
-@click.version_option(get_metadata_version())
-@click.option(
-    "--debug/--no-debug", default=lambda: os.environ.get("METADATA_DEBUG", False)
-)
-@click.option(
-    "--log-level",
-    "-l",
-    type=click.Choice(["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]),
-    help="Log level",
-    required=False,
-)
-def metadata(debug: bool = False, log_level: str = "INFO") -> None:
-    """Method to set logger information"""
-    if debug:
+def add_metadata_args(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "-v", "--version", action="version", version=get_metadata_version()
+    )
+
+    parser.add_argument(
+        "-l",
+        "--log-level",
+        choices=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"],
+        help="Set Log Level",
+    )
+
+
+def metadata(args=None):
+    parser = argparse.ArgumentParser(prog="metadata", description="Ingestion Framework")
+    sub_parser = parser.add_subparsers(dest="command")
+
+    ingest_parser = sub_parser.add_parser(
+        "ingest", help="Ingestion Workflow", prog="ingest"
+    )
+    profile_parser = sub_parser.add_parser(
+        "profile", help="Workflow for profiling Table sources into Metadata"
+    )
+    test_parser = sub_parser.add_parser("test", help="Workflow for running test suites")
+
+    create_common_config_parser_args(ingest_parser)
+    create_common_config_parser_args(profile_parser)
+    create_common_config_parser_args(test_parser)
+
+    openmetadata_imports_migration_parser = sub_parser.add_parser(
+        "openmetadata_imports_migration", help="Data Quality Workflow"
+    )
+    create_openmetadata_imports_migration_args(openmetadata_imports_migration_parser)
+    docker_parser = sub_parser.add_parser("docker", help="Docker Quickstart")
+    docker_args(docker_parser)
+    webhook_parser = sub_parser.add_parser(
+        "webhook", help="Simple Webserver to test webhook metadata events"
+    )
+    webhook_args(webhook_parser)
+
+    add_metadata_args(parser)
+
+    parser.add_argument("--debug", help="Debug Mode", action="store_true")
+
+    contains_args = vars(parser.parse_args())
+    host = contains_args.get("host")
+    port = contains_args.get("port")
+    metadata_workflow = contains_args.get("command")
+    config_file = contains_args.get("config")
+    if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
-    elif log_level:
-        set_loggers_level(log_level)
+    elif contains_args.get("log_level"):
+        set_loggers_level(contains_args.get("log_level"))
     else:
         set_loggers_level(logging.INFO)
 
+    if metadata_workflow == "ingest":
+        run_ingest(config_path=config_file)
+    elif metadata_workflow == "profile":
+        run_profiler(config_path=config_file)
+    elif metadata_workflow == "test":
+        run_test(config_path=config_file)
+    elif metadata_workflow == "backup":
+        run_backup(
+            host,
+            contains_args.get("user"),
+            contains_args.get("password"),
+            contains_args.get("database"),
+            port,
+            contains_args.get("output"),
+            contains_args.get("upload_destination_type"),
+            contains_args.get("upload"),
+            contains_args.get("options"),
+            contains_args.get("arguments"),
+            contains_args.get("schema"),
+        )
+    elif metadata_workflow == "restore":
+        run_restore(
+            host,
+            contains_args.get("user"),
+            contains_args.get("password"),
+            contains_args.get("database"),
+            port,
+            contains_args.get("input"),
+            contains_args.get("options"),
+            contains_args.get("arguments"),
+            contains_args.get("schema"),
+        )
+    elif metadata_workflow == "docker":
+        run_docker(
+            contains_args.get("start"),
+            contains_args.get("stop"),
+            contains_args.get("pause"),
+            contains_args.get("resume"),
+            contains_args.get("clean"),
+            contains_args.get("file_path"),
+            contains_args.get("env_file_path"),
+            contains_args.get("reset_db"),
+            contains_args.get("ingest_sample_data"),
+            contains_args.get("database"),
+        )
+    elif metadata_workflow == "webhook":
 
-@metadata.command()
-@click.option(
-    "-c",
-    "--config",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Workflow config",
-    required=True,
-)
-def ingest(config: str) -> None:
-    """
-    Main command for ingesting metadata into Metadata.
-    Logging is controlled via the JSON config
-    """
-    run_ingest(config_path=config)
+        class WebhookHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
 
+                message = "Hello, World! Here is a GET response"
+                self.wfile.write(bytes(message, "utf8"))
 
-@metadata.command()
-@click.option(
-    "-c",
-    "--config",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Test Suite Workflow config",
-    required=True,
-)
-def test(config: str) -> None:
-    """Main command for running test suites"""
-    config_file = pathlib.Path(config)
-    workflow_test_config_dict = None
-    try:
-        workflow_test_config_dict = load_config_file(config_file)
-        logger.debug(f"Using config: {workflow_test_config_dict}")
-        workflow = TestSuiteWorkflow.create(workflow_test_config_dict)
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        print_init_error(exc, workflow_test_config_dict, WorkflowType.PROFILE)
-        sys.exit(1)
+            def do_POST(self):
+                content_len = int(self.headers.get("Content-Length"))
+                post_body = self.rfile.read(content_len)
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                logger.info(post_body)
 
-    workflow.execute()
-    workflow.stop()
-    workflow.print_status()
-    ret = workflow.result_status()
-    sys.exit(ret)
+        logger.info(f"Starting server at {host}:{port}")
+        with HTTPServer((host, port), WebhookHandler) as server:
+            server.serve_forever()
 
-
-@metadata.command()
-@click.option(
-    "-c",
-    "--config",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Profiler Workflow config",
-    required=True,
-)
-def profile(config: str) -> None:
-    """Main command for profiling Table sources into Metadata"""
-    config_file = pathlib.Path(config)
-    workflow_config_dict = None
-    try:
-        workflow_config_dict = load_config_file(config_file)
-        logger.debug(f"Using config: {workflow_config_dict}")
-        workflow = ProfilerWorkflow.create(workflow_config_dict)
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        print_init_error(exc, workflow_config_dict, WorkflowType.PROFILE)
-        sys.exit(1)
-
-    workflow.execute()
-    workflow.stop()
-    workflow.print_status()
-    ret = workflow.result_status()
-    sys.exit(ret)
-
-
-@metadata.command()
-@click.option("-h", "--host", help="Webserver Host", type=str, default="0.0.0.0")
-@click.option("-p", "--port", help="Webserver Port", type=int, default=8000)
-def webhook(host: str, port: int) -> None:
-    """Simple Webserver to test webhook metadata events"""
-
-    class WebhookHandler(BaseHTTPRequestHandler):
-        """WebhookHandler class to define the rest API methods"""
-
-        # Overwrite do_GET and do_POST from parent class
-        def do_GET(self):  # pylint: disable=invalid-name
-            """WebhookHandler GET API method"""
-            self.send_response(200)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
-
-            message = "Hello, World! Here is a GET response"
-            self.wfile.write(bytes(message, "utf8"))
-
-        def do_POST(self):  # pylint: disable=invalid-name
-            """WebhookHandler POST API method"""
-            content_len = int(self.headers.get("Content-Length"))
-            post_body = self.rfile.read(content_len)
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            logger.info(post_body)
-
-    logger.info(f"Starting server at {host}:{port}")
-    with HTTPServer((host, port), WebhookHandler) as server:
-        server.serve_forever()
+    elif metadata_workflow == "openmetadata_imports_migration":
+        run_openmetadata_imports_migration(
+            contains_args.get("dir_path"), contains_args.get("change_config_file_path")
+        )
 
 
-@metadata.command()
-@click.option("--start", help="Start release docker containers", is_flag=True)
-@click.option(
-    "--stop",
-    help="Stops openmetadata docker containers",
-    is_flag=True,
-)
-@click.option("--pause", help="Pause openmetadata docker containers", is_flag=True)
-@click.option(
-    "--resume", help="Resume/Unpause openmetadata docker containers", is_flag=True
-)
-@click.option(
-    "--clean",
-    help="Stops and remove openmetadata docker containers along with images, volumes, networks associated",
-    is_flag=True,
-)
-@click.option(
-    "-f",
-    "--file-path",
-    help="Path to Local docker-compose.yml",
-    type=click.Path(exists=True, dir_okay=False),
-    required=False,
-)
-@click.option(
-    "-env-file",
-    "--env-file-path",
-    help="Path to env file containing the environment variables",
-    type=click.Path(exists=True, dir_okay=False),
-    required=False,
-)
-@click.option("--reset-db", help="Reset OpenMetadata Data", is_flag=True)
-@click.option(
-    "--ingest-sample-data", help="Enable the sample metadata ingestion", is_flag=True
-)
-@click.option(
-    "-db",
-    "--database",
-    type=click.Choice(list(BACKEND_DATABASES.keys())),
-    default="mysql",
-)
-def docker(
-    start,
-    stop,
-    pause,
-    resume,
-    clean,
-    file_path,
-    env_file_path,
-    reset_db,
-    ingest_sample_data,
-    database,
-) -> None:
-    """
-    Checks Docker Memory Allocation
-    Run Latest Release Docker - metadata docker --start
-    Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
-    """
-    run_docker(
-        start,
-        stop,
-        pause,
-        resume,
-        clean,
-        file_path,
-        env_file_path,
-        reset_db,
-        ingest_sample_data,
-        database,
-    )
-
-
-@metadata.command()
-@click.option(
-    "-h",
-    "--host",
-    help="Host that runs the database",
-    required=True,
-)
-@click.option(
-    "-u",
-    "--user",
-    help="User to run the backup",
-    required=True,
-)
-@click.option(
-    "-p",
-    "--password",
-    help="Credentials for the user",
-    required=True,
-)
-@click.option(
-    "-d",
-    "--database",
-    help="Database to backup",
-    required=True,
-)
-@click.option(
-    "--port",
-    help="Database service port",
-    default="3306",
-    required=False,
-)
-@click.option(
-    "--output",
-    help="Local path to store the backup",
-    type=click.Path(exists=False, dir_okay=True),
-    default=None,
-    required=False,
-)
-@click.option(
-    "--upload_destination_type",
-    help="AWS or AZURE",
-    type=click.Choice(UploadDestinationType.__members__),
-    default=None,
-    required=False,
-)
-@click.option(
-    "--upload",
-    help="S3 endpoint, bucket & key to upload the backup file",
-    nargs=3,
-    default=None,
-    required=False,
-)
-@click.option(
-    "-o",
-    "--options",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "-a",
-    "--arguments",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "-s",
-    "--schema",
-    default=None,
-    required=False,
-)
-def backup(
-    host: str,
-    user: str,
-    password: str,
-    database: str,
-    port: str,
-    output: Optional[str],
-    upload_destination_type: Optional[UploadDestinationType],
-    upload: Optional[Tuple[str, str, str]],
-    options: List[str],
-    arguments: List[str],
-    schema: str,
-) -> None:
-    """
-    Run a backup for the metadata DB. Uses a custom dump strategy for OpenMetadata tables.
-
-    We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
-    Same with connection arguments `-a <arg1>, -a <arg2> [...]`
-
-    To run the upload, provide the information as
-    `--upload endpoint bucket key` and properly configure the environment
-    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY.
-
-    If `-s` or `--schema` is provided, we will trigger a Postgres backup instead
-    of a MySQL backup. This is the value of the schema containing the OpenMetadata
-    tables.
-    """
-    run_backup(
-        host,
-        user,
-        password,
-        database,
-        port,
-        output,
-        upload_destination_type,
-        upload,
-        options,
-        arguments,
-        schema,
-    )
-
-
-@metadata.command()
-@click.option(
-    "-d",
-    "--dir-path",
-    default="/opt/airflow/dags",
-    type=click.Path(exists=True, dir_okay=True),
-    help="Path to the DAG folder. Default to `/opt/airflow/dags`",
-)
-@click.option(
-    "--change-config-file-path",
-    is_flag=True,
-    help="Flag option. If pass this will try to change the path of the dag config files",
-)
-def openmetadata_imports_migration(
-    dir_path: str,
-    change_config_file_path: bool,
-) -> None:
-    """Update DAG files generated after creating workflow in 0.11 and before.
-
-    In 0.12 the airflow managed API package name changed from `openmetadata` to `openmetadata_managed_apis`
-    hence breaking existing DAGs. The `dag_generated_config` folder also changed location in Docker.
-    This small CLI utility allows you to update both elements.
-    """
-    run_openmetadata_imports_migration(dir_path, change_config_file_path)
-
-
-@metadata.command()
-@click.option(
-    "-h",
-    "--host",
-    help="Host that runs the database",
-    required=True,
-)
-@click.option(
-    "-u",
-    "--user",
-    help="User to run the restore backup",
-    required=True,
-)
-@click.option(
-    "-p",
-    "--password",
-    help="Credentials for the user",
-    required=True,
-)
-@click.option(
-    "-d",
-    "--database",
-    help="Database to restore",
-    required=True,
-)
-@click.option(
-    "--port",
-    help="Database service port",
-    default="3306",
-    required=False,
-)
-@click.option(
-    "-b",
-    "--backup-file",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Backup file",
-    required=True,
-)
-@click.option(
-    "-o",
-    "--options",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "-a",
-    "--arguments",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "-s",
-    "--schema",
-    default=None,
-    required=False,
-)
-def restore(
-    host: str,
-    user: str,
-    password: str,
-    database: str,
-    port: str,
-    backup_file: str,
-    options: List[str],
-    arguments: List[str],
-    schema: str,
-) -> None:
-    """
-    Run a restore for the metadata DB.
-
-    We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
-    Same with connection arguments `-a <arg1>, -a <arg2> [...]`
-
-    If `-s` or `--schema` is provided, we will trigger a Postgres Restore instead
-    of a MySQL restore. This is the value of the schema containing the OpenMetadata
-    tables.
-    """
-    run_restore(
-        host,
-        user,
-        password,
-        database,
-        port,
-        backup_file,
-        options,
-        arguments,
-        schema,
-    )
-
-
-metadata.add_command(check)
+# "--upload_destination_type",
+#     help="AWS or AZURE",
+#     type=UploadDestinationType,
+#     default=None,
