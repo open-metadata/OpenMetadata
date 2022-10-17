@@ -223,7 +223,7 @@ describe('Test Description Component', () => {
 
     const requestDescription = await findByTestId(
       container,
-      'request-description'
+      'request-entity-description'
     );
 
     expect(descriptionContainer).toBeInTheDocument();

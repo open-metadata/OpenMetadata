@@ -119,7 +119,8 @@ export const testServiceCreationAndIngestion = (
   addIngestionInput,
   serviceName,
   type = 'database',
-  testIngestionButton = true
+  testIngestionButton = true,
+  configureDBT
 ) => {
   //Storing the created service name and the type of service
   // Select Service in step 1
@@ -185,8 +186,7 @@ export const testServiceCreationAndIngestion = (
   // Configure DBT Model
   if (isDatabaseService(type)) {
     cy.contains('Configure DBT Model').should('be.visible');
-    cy.get('[data-testid="dbt-source"]').should('be.visible').select('');
-
+    configureDBT && configureDBT();
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
   }
 

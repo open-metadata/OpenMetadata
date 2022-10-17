@@ -16,6 +16,7 @@ import { Change, diffWordsWithSpace } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
 import { getUserSuggestions } from '../axiosAPIs/miscAPI';
+import { getMlModelByFQN } from '../axiosAPIs/mlModelAPI';
 import { getPipelineByFqn } from '../axiosAPIs/pipelineAPI';
 import { getTableDetailsByFQN } from '../axiosAPIs/tableAPI';
 import { getTopicByFqn } from '../axiosAPIs/topicsAPI';
@@ -40,6 +41,7 @@ import {
 import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
 import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
+import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getEntityLink } from './TableUtils';
@@ -183,6 +185,7 @@ export const TASK_ENTITIES = [
   EntityType.DASHBOARD,
   EntityType.TOPIC,
   EntityType.PIPELINE,
+  EntityType.MLMODEL,
 ];
 
 export const getBreadCrumbList = (
@@ -248,6 +251,10 @@ export const getBreadCrumbList = (
       return [service(ServiceCategory.PIPELINE_SERVICES), activeEntity];
     }
 
+    case EntityType.MLMODEL: {
+      return [service(ServiceCategory.ML_MODEL_SERVICES), activeEntity];
+    }
+
     default:
       return [];
   }
@@ -285,6 +292,14 @@ export const fetchEntityDetail = (
       break;
     case EntityType.PIPELINE:
       getPipelineByFqn(entityFQN, PipelineFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.MLMODEL:
+      getMlModelByFQN(entityFQN, MlModelFields)
         .then((res) => {
           setEntityData(res);
         })
