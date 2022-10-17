@@ -33,11 +33,11 @@ class SumFn(GenericFunction):
 def _(element, compiler, **kw):
     """Handle case for empty table. If empty, clickhouse returns NaN"""
     proc = compiler.process(element.clauses, **kw)
-    return "SUM(%s)" % proc
+    return f"SUM({proc})"
 
 
 @compiles(SumFn, Dialects.BigQuery)
 def _(element, compiler, **kw):
     """Handle case where column type is INTEGER but SUM returns a NUMBER"""
     proc = compiler.process(element.clauses, **kw)
-    return "SUM(CAST(%s AS NUMERIC))" % proc
+    return f"SUM(CAST({proc} AS NUMERIC))"

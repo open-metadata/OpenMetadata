@@ -29,6 +29,10 @@ from metadata.utils.secrets.secrets_manager import logger
 
 
 class AWSSecretsManager(AWSBasedSecretsManager):
+    """
+    Secrets Manager Implementation Class
+    """
+
     def __init__(self, credentials: Optional[AWSCredentials], cluster_prefix: str):
         super().__init__(
             credentials, "secretsmanager", SecretsManagerProvider.aws, cluster_prefix
@@ -59,7 +63,6 @@ class AWSSecretsManager(AWSBasedSecretsManager):
                     if response["SecretString"] != NULL_VALUE
                     else None
                 )
-            else:
-                raise ValueError(
-                    f"SecretString for secret [{name}] not present in the response."
-                )
+            raise ValueError(
+                f"SecretString for secret [{name}] not present in the response."
+            )

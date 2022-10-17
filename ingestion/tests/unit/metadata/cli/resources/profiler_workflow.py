@@ -1,7 +1,6 @@
 """
 This file has been generated from dag_runner.j2
 """
-from airflow import DAG
 from openmetadata.workflows import workflow_factory
 
 workflow = workflow_factory.WorkflowFactory.create(

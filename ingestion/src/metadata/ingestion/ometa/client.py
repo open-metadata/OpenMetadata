@@ -107,7 +107,6 @@ class ClientConfig(ConfigModel):
     verify: Optional[Union[bool, str]] = None
 
 
-# pylint: disable=too-many-instance-attributes
 class REST:
     """
     REST client wrapper to manage requests with
@@ -127,7 +126,6 @@ class REST:
         self._auth_token_mode = self.config.auth_token_mode
         self._verify = self.config.verify
 
-    # pylint: disable=too-many-arguments
     def _request(
         self,
         method,

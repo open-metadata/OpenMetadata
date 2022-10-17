@@ -130,6 +130,7 @@ plugins: Dict[str, Set[str]] = {
     "great-expectations": {"great-expectations~=0.15.0"},
     "pinotdb": {"pinotdb~=0.3.11"},
     "nifi": {},
+    "domo": {"pydomo~=0.3.0.5"},
 }
 dev = {
     "datamodel-code-generator==0.13.0",
@@ -146,6 +147,7 @@ test = {
     "pylint",
     "pytest==7.0.0",
     "pytest-cov",
+    "pytest-order",
     "faker",
     "coverage",
     # sklearn integration

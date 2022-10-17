@@ -34,7 +34,6 @@ import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 
 public class MessagingServiceResourceUnitTest
@@ -42,9 +41,8 @@ public class MessagingServiceResourceUnitTest
         MessagingServiceResource, MessagingService, MessagingServiceRepository, MessagingConnection> {
 
   @Override
-  protected MessagingServiceResource newServiceResource(
-      CollectionDAO collectionDAO, Authorizer authorizer, SecretsManager secretsManager) {
-    return new MessagingServiceResource(collectionDAO, authorizer, secretsManager);
+  protected MessagingServiceResource newServiceResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    return new MessagingServiceResource(collectionDAO, authorizer);
   }
 
   @Override

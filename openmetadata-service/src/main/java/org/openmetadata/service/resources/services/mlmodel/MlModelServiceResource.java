@@ -53,7 +53,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -78,13 +77,8 @@ public class MlModelServiceResource
     return service;
   }
 
-  public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(
-        MlModelService.class,
-        new MlModelServiceRepository(dao, secretsManager),
-        authorizer,
-        secretsManager,
-        ServiceType.ML_MODEL);
+  public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer) {
+    super(MlModelService.class, new MlModelServiceRepository(dao), authorizer, ServiceType.ML_MODEL);
   }
 
   public static class MlModelServiceList extends ResultList<MlModelService> {

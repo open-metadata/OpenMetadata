@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Utils module to convert different file types from gcs buckets into a dataframe
+"""
+
 import json
 import traceback
 from typing import Any
@@ -23,7 +27,13 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def read_csv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> DataFrame:
+def read_csv_from_gcs(  # pylint: disable=inconsistent-return-statements
+    key: str, bucket_name: str, sample_size: int = 100
+) -> DataFrame:
+    """
+    Read the csv file from the gcs bucket and return a dataframe
+    """
+
     try:
         return pd.read_csv(f"gs://{bucket_name}/{key}", sep=",", nrows=sample_size + 1)
     except Exception as exc:
@@ -31,7 +41,13 @@ def read_csv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> Dat
         logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_tsv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> DataFrame:
+def read_tsv_from_gcs(  # pylint: disable=inconsistent-return-statements
+    key: str, bucket_name: str, sample_size: int = 100
+) -> DataFrame:
+    """
+    Read the tsv file from the gcs bucket and return a dataframe
+    """
+
     try:
         return pd.read_csv(f"gs://{bucket_name}/{key}", sep="\t", nrows=sample_size + 1)
     except Exception as exc:
@@ -39,18 +55,23 @@ def read_tsv_from_gcs(key: str, bucket_name: str, sample_size: int = 100) -> Dat
         logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_json_from_gcs(
+def read_json_from_gcs(  # pylint: disable=inconsistent-return-statements
     client: Any, key: str, bucket_name: str, sample_size=100
 ) -> DataFrame:
+    """
+    Read the json file from the gcs bucket and return a dataframe
+    """
+
     try:
         bucket = client.get_bucket(bucket_name)
         data = json.loads(bucket.get_blob(key).download_as_string())
         if isinstance(data, list):
             return pd.DataFrame.from_records(data, nrows=sample_size)
-        else:
-            return pd.DataFrame.from_dict(
-                dict([(k, pd.Series(v)) for k, v in data.items()])
+        return pd.DataFrame.from_dict(
+            dict(  # pylint: disable=consider-using-dict-comprehension
+                [(k, pd.Series(v)) for k, v in data.items()]
             )
+        )
 
     except ValueError as verr:
         logger.debug(traceback.format_exc())
@@ -58,6 +79,10 @@ def read_json_from_gcs(
 
 
 def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:
+    """
+    Read the parquet file from the gcs bucket and return a dataframe
+    """
+
     gcs = gcsfs.GCSFileSystem()
-    f = gcs.open(f"gs://{bucket_name}/{key}")
-    return ParquetFile(f).schema.to_arrow_schema().empty_table().to_pandas()
+    file = gcs.open(f"gs://{bucket_name}/{key}")
+    return ParquetFile(file).schema.to_arrow_schema().empty_table().to_pandas()

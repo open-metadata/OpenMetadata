@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -86,6 +85,9 @@ def get_filter_name(filter_obj):
 
 
 class SupersetSource(DashboardServiceSource):
+    """
+    Superset Source Class
+    """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
@@ -93,11 +95,8 @@ class SupersetSource(DashboardServiceSource):
     platform = "superset"
     service_type = DashboardServiceType.Superset.value
 
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        self.all_charts = {}
         super().__init__(config, metadata_config)
 
     @classmethod
@@ -116,15 +115,14 @@ class SupersetSource(DashboardServiceSource):
         this step is done because fetch_total_charts api fetches all
         the required information which is not available in fetch_charts_with_id api
         """
-        self.all_charts = {}
         current_page = 0
         page_size = 25
         total_charts = self.client.fetch_total_charts()
         while current_page * page_size <= total_charts:
             charts = self.client.fetch_charts(current_page, page_size)
             current_page += 1
-            for i in range(len(charts["result"])):
-                self.all_charts[charts["ids"][i]] = charts["result"][i]
+            for index in range(len(charts["result"])):
+                self.all_charts[charts["ids"][index]] = charts["result"][index]
 
     def get_dashboards_list(self) -> Optional[List[object]]:
         """
@@ -193,48 +191,40 @@ class SupersetSource(DashboardServiceSource):
         """
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
             chart_json = self.all_charts.get(chart_id)
-            datasource_fqn = (
-                self._get_datasource_fqn(
-                    chart_json.get("datasource_id"), db_service_name
-                )
-                if chart_json.get("datasource_id")
-                else None
-            )
-            if not datasource_fqn:
-                continue
-            from_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=datasource_fqn,
-            )
-            try:
-                dashboard_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Lineage_Dashboard,
-                    service_name=self.config.serviceName,
-                    dashboard_name=str(dashboard_details["id"]),
-                )
-                to_entity = self.metadata.get_by_name(
-                    entity=Lineage_Dashboard,
-                    fqn=dashboard_fqn,
-                )
-                if from_entity and to_entity:
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__, type="dashboard"
-                            ),
-                        )
+            if chart_json:
+                datasource_fqn = (
+                    self._get_datasource_fqn(
+                        chart_json.get("datasource_id"), db_service_name
                     )
-                    yield lineage
-
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+                    if chart_json.get("datasource_id")
+                    else None
                 )
+                if not datasource_fqn:
+                    continue
+                from_entity = self.metadata.get_by_name(
+                    entity=Table,
+                    fqn=datasource_fqn,
+                )
+                try:
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Lineage_Dashboard,
+                        service_name=self.config.serviceName,
+                        dashboard_name=str(dashboard_details["id"]),
+                    )
+                    to_entity = self.metadata.get_by_name(
+                        entity=Lineage_Dashboard,
+                        fqn=dashboard_fqn,
+                    )
+                    if from_entity and to_entity:
+                        yield self._get_add_lineage_request(
+                            to_entity=to_entity, from_entity=from_entity
+                        )
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+                    )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -265,25 +255,24 @@ class SupersetSource(DashboardServiceSource):
     def _get_datasource_fqn(
         self, datasource_id: str, db_service_name: str
     ) -> Optional[str]:
-        if not db_service_name:
-            return
-        try:
-            datasource_json = self.client.fetch_datasource(datasource_id)
-            database_json = self.client.fetch_database(
-                datasource_json["result"]["database"]["id"]
-            )
-            dataset_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                table_name=datasource_json["result"]["table_name"],
-                schema_name=datasource_json["result"]["schema"],
-                database_name=database_json["result"]["parameters"]["database"],
-                service_name=db_service_name,
-            )
-            return dataset_fqn
-        except KeyError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
-            )
-            return None
+        if db_service_name:
+            try:
+                datasource_json = self.client.fetch_datasource(datasource_id)
+                database_json = self.client.fetch_database(
+                    datasource_json["result"]["database"]["id"]
+                )
+                dataset_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    table_name=datasource_json["result"]["table_name"],
+                    schema_name=datasource_json["result"]["schema"],
+                    database_name=database_json["result"]["parameters"]["database"],
+                    service_name=db_service_name,
+                )
+                return dataset_fqn
+            except KeyError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
+                )
+        return None

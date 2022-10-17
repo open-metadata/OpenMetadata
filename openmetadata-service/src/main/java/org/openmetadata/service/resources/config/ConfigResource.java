@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.io.IOException;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -37,12 +38,15 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
-  private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;
 
-  public ConfigResource(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    this.openMetadataApplicationConfig = openMetadataApplicationConfig;
+  public ConfigResource() {
     this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    this.openMetadataApplicationConfig = config;
   }
 
   @GET

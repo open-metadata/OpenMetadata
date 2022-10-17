@@ -47,7 +47,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -77,7 +76,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
@@ -109,6 +107,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -119,6 +118,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
@@ -126,8 +126,6 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
-import org.openmetadata.service.util.ConfigurationHolder;
-import org.openmetadata.service.util.ConfigurationHolder.ConfigurationType;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -147,18 +145,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
-
   private final TokenRepository tokenRepository;
+  private boolean isEmailServiceEnabled;
+  private LoginAttemptCache loginAttemptCache;
 
-  @Getter private final UserRepository userRepository;
+  private AuthenticationConfiguration authenticationConfiguration;
 
-  private final SecretsManager secretsManager;
-
-  private final String providerType;
-
-  private final boolean isEmailServiceEnabled;
-
-  private final LoginAttemptCache loginAttemptCache;
+  private AuthorizerConfiguration authorizerConfiguration;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -170,21 +163,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(User.class, new UserRepository(dao, secretsManager), authorizer);
+  public UserResource(CollectionDAO dao, Authorizer authorizer) {
+    super(User.class, new UserRepository(dao), authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
-    userRepository = new UserRepository(dao, secretsManager);
-    this.secretsManager = secretsManager;
-    this.providerType =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-            .getProvider();
-    SmtpSettings smtpSettings =
-        ConfigurationHolder.getInstance().getConfig(ConfigurationType.SMTP_CONFIG, SmtpSettings.class);
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authorizerConfiguration = config.getAuthorizerConfiguration();
+    SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    this.loginAttemptCache = new LoginAttemptCache();
+    this.loginAttemptCache = new LoginAttemptCache(config);
   }
 
   public static class UserList extends ResultList<User> {
@@ -534,7 +525,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isBasicAuth() {
-    return providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
+    return authenticationConfiguration.getProvider().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
   }
 
   @PUT
@@ -788,10 +779,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
-    if (Boolean.TRUE.equals(
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHENTICATION_CONFIG, AuthenticationConfiguration.class)
-            .getEnableSelfSignup())) {
+    if (Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup())) {
       User registeredUser = registerUser(uriInfo, create);
       if (isEmailServiceEnabled) {
         try {
@@ -1205,10 +1193,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String[] tokens = newRegistrationRequest.getEmail().split("@");
     String userName = tokens[0];
     String emailDomain = tokens[1];
-    Set<String> allowedDomains =
-        ConfigurationHolder.getInstance()
-            .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
-            .getAllowedEmailRegistrationDomains();
+    Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
     if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
       LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
       throw new BadRequestException("Email with the given domain is not allowed. Contact Administrator");
@@ -1217,10 +1202,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     PasswordUtil.validatePassword(newRegistrationRequest.getPassword());
     LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
     User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
-    if (ConfigurationHolder.getInstance()
-        .getConfig(ConfigurationHolder.ConfigurationType.AUTHORIZER_CONFIG, AuthorizerConfiguration.class)
-        .getAdminPrincipals()
-        .contains(userName)) {
+    if (authorizerConfiguration.getAdminPrincipals().contains(userName)) {
       newUser.setIsAdmin(true);
     }
     // remove auth mechanism from the user
@@ -1234,8 +1216,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (emailVerificationToken == null) {
       throw new EntityNotFoundException("Invalid Token. Please issue a new Request");
     }
-    User registeredUser =
-        dao.get(uriInfo, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
+    User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), dao.getFieldsWithUserAuth("*"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
@@ -1255,22 +1236,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // deleting the entry for the token from the Database
     tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
-  }
-
-  public User extendRegistrationToken(UriInfo uriInfo, String existingToken) throws IOException {
-    EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(existingToken);
-    User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), getFields("isEmailVerified"));
-    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
-      // no need to do anything
-      return registeredUser;
-    }
-    // Update token with new Expiry and Status
-    emailVerificationToken.setTokenStatus(EmailVerificationToken.TokenStatus.STATUS_PENDING);
-    emailVerificationToken.setExpiryDate(Instant.now().plus(24, ChronoUnit.HOURS).toEpochMilli());
-
-    // Update the token details in Database
-    tokenRepository.updateToken(emailVerificationToken);
-    return registeredUser;
   }
 
   private void sendEmailVerification(UriInfo uriInfo, User user) throws IOException, TemplateException {
@@ -1514,6 +1479,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isValidAuthenticationMechanism(create)) {
       AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
       AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       switch (authType) {
         case JWT:
           User original = retrieveBotUser(user, uriInfo);
@@ -1592,6 +1558,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private User decryptOrNullify(SecurityContext securityContext, User user) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(

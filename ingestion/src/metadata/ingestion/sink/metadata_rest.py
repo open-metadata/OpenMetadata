@@ -222,9 +222,7 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to write dashboard usage [{dashboard_usage}]: {exc}")
 
-    def write_tables(  # pylint: disable=too-many-branches
-        self, db_schema_and_table: OMetaDatabaseAndTable
-    ) -> None:
+    def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable) -> None:
         """Based on all the table information, send that to OM API
 
         This method is only used for testing and should be deprecated.

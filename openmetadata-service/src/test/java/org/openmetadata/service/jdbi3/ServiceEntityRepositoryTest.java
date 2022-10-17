@@ -34,6 +34,7 @@ import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class ServiceEntityRepositoryTest<
@@ -59,16 +60,18 @@ public abstract class ServiceEntityRepositoryTest<
 
   @BeforeEach
   void beforeEach() {
+    SecretsManagerFactory.setSecretsManager(secretsManager);
     mockServiceResourceSpecific();
-    serviceRepository = newServiceRepository(collectionDAO, secretsManager);
+    serviceRepository = newServiceRepository(collectionDAO);
   }
 
   @AfterEach
   void afterEach() {
     reset(secretsManager, service);
+    SecretsManagerFactory.setSecretsManager(null);
   }
 
-  protected abstract T newServiceRepository(CollectionDAO collectionDAO, SecretsManager secretsManager);
+  protected abstract T newServiceRepository(CollectionDAO collectionDAO);
 
   protected abstract void mockServiceResourceSpecific();
 

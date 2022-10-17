@@ -13,7 +13,6 @@
 Test AWS SSM Secrets Manager
 """
 import json
-from abc import ABC
 from typing import Any, Dict, List
 from unittest.mock import Mock
 
@@ -24,7 +23,7 @@ from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from .test_aws_based_secrets_manager import AWSBasedSecretsManager
 
 
-class TestAWSSecretsManager(AWSBasedSecretsManager.TestCase, ABC):
+class TestAWSSecretsManager(AWSBasedSecretsManager.TestCase):
     def build_secret_manager(
         self,
         mocked_get_client: Mock,

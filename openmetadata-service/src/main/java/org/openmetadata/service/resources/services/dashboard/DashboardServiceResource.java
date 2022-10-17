@@ -55,7 +55,6 @@ import org.openmetadata.service.jdbi3.DashboardServiceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -78,13 +77,9 @@ public class DashboardServiceResource
     return service;
   }
 
-  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(
-        DashboardService.class,
-        new DashboardServiceRepository(dao, secretsManager),
-        authorizer,
-        secretsManager,
-        ServiceType.DASHBOARD);
+  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
+
+    super(DashboardService.class, new DashboardServiceRepository(dao), authorizer, ServiceType.DASHBOARD);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {

@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Snowflake source module
+"""
 import json
 import traceback
 from typing import Iterable, List, Optional, Tuple
@@ -57,23 +60,25 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 logger = ingestion_logger()
 
 
-SnowflakeDialect._json_deserializer = json.loads
+SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
 
 
-def get_table_names(self, connection, schema, **kw):
+def get_table_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
     cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 
 
-def get_view_names(self, connection, schema, **kw):
+def get_view_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
     cursor = connection.execute(SNOWFLAKE_GET_VIEW_NAMES.format(schema))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 
 
 @reflection.cache
-def get_view_definition(self, connection, view_name, schema=None, **kw):
+def get_view_definition(  # pylint: disable=unused-argument
+    self, connection, view_name, schema=None, **kw
+):
     """
     Gets the view definition
     """
@@ -81,14 +86,13 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     if schema:
         cursor = connection.execute(
             "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
-            "LIKE '{0}' IN {1}".format(view_name, schema)
+            f"LIKE '{view_name}' IN {schema}"
         )
     else:
         cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
-            "LIKE '{0}'".format(view_name)
+            "SHOW /* sqlalchemy:get_view_definition */ VIEWS " f"LIKE '{view_name}'"
         )
-    n2i = self.__class__._map_name_to_idx(cursor)
+    n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
     try:
         ret = cursor.fetchone()
         if ret:
@@ -99,7 +103,9 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
 
 
 @reflection.cache
-def get_table_comment(self, connection, table_name, schema_name, **kw):
+def get_table_comment(  # pylint: disable=unused-argument
+    self, connection, table_name, schema_name, **kw
+):
     """
     Returns comment of table.
     """
@@ -112,11 +118,13 @@ def get_table_comment(self, connection, table_name, schema_name, **kw):
 
 
 @reflection.cache
-def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+def get_unique_constraints(  # pylint: disable=unused-argument
+    self, connection, table_name, schema=None, **kw
+):
     return []
 
 
-def normalize_names(self, name):
+def normalize_names(self, name):  # pylint: disable=unused-argument
     return name
 
 
@@ -129,6 +137,11 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 
 
 class SnowflakeSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Snowflake Source
+    """
+
     def __init__(self, config, metadata_config):
         self.partition_details = {}
         super().__init__(config, metadata_config)
@@ -228,6 +241,7 @@ class SnowflakeSource(CommonDbSourceService):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to parse cluster key - {err}")
+        return None
 
     def __fix_partition_column_case(
         self,
@@ -288,7 +302,7 @@ class SnowflakeSource(CommonDbSourceService):
             row = list(res)
             fqn_elements = [name for name in row[2:] if name]
             yield OMetaTagAndCategory(
-                fqn=fqn._build(
+                fqn=fqn._build(  # pylint: disable=protected-access
                     self.context.database_service.name.__root__, *fqn_elements
                 ),
                 category_name=CreateTagCategoryRequest(

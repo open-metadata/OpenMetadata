@@ -81,6 +81,11 @@ jest.mock('antd', () => ({
   Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Tree: {
+    DirectoryTree: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
   Typography: {
     Title: jest
       .fn()
@@ -119,6 +124,11 @@ jest.mock('antd', () => ({
   Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Tree: {
+    DirectoryTree: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
   Typography: {
     Title: jest
       .fn()

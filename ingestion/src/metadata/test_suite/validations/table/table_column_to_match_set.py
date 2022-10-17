@@ -92,6 +92,7 @@ def table_column_to_match_set(
         None,
     )
     expected_column_names = [item.strip() for item in column_name.split(",")]
+    # pylint: disable=unnecessary-lambda-assignment
     compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
 
     if ordered:
