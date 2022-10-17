@@ -151,10 +151,9 @@ the application access scope.
 - `authority`: When passing the details for authority, the Tenant ID is added to the URL as shown
 below. `https://login.microsoftonline.com/TenantID`
 - `clientSecret`: The clientSecret can be accessed from the Certificates & secret section of the application.
+- `scopes`: The scopes for running the ingestion to get token using Client Credentials Flow. This will be in the format of `<application-id-uri>/.default` (Application Id URI will be available from [Step 7](/deployment/security/azure#step-7-set-the-app-id-uri))
 
-This information is required to configure Airflow.
-
-<Image src="/images/deployment/security/azure/client-id-and-authority.png" alt="client-id-authority"/>
+This information is required to configure ingestion-bot from OpenMetadata UI from 0.12.1 Release.
 
 After the applying these steps, you can update the configuration of your deployment:
 
@@ -185,7 +184,19 @@ After the applying these steps, you can update the configuration of your deploym
   </InlineCallout>
 </InlineCalloutContainer>
 
-## Configure Ingestion
+### Step 10: Update Ingestion Bot with Azure SSO Service Application
+
+Starting from 0.12.1, Navigate to `Settings >> Bots >> ingestion-bot` and click on edit.
+
+<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png"/>
+
+Update the Auth Mechanism as Azure SSO and update `ClientSecret`, `ClientId`, `Authority`, and `Scopes` as mentioned in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority) and Save.
+
+<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png" />
+
+This will enable all the Service Connector Ingestions created from UI to securely use Azure SSO Service Applications for connecting with OpenMetadata APIs.
+
+## Configure Ingestion from CLI
 
 After everything has been set up, you will need to configure your workflows if you are running them via the
 `metadata` CLI or with any custom scheduler.
@@ -202,8 +213,6 @@ workflowConfig:
       authority: '{your_authority_url}'
       clientId: '{your_client_id}'
       scopes:
-        - your_scopes
+        - <azure-service-application-id-uri>/.default
 
 ```
-
-
