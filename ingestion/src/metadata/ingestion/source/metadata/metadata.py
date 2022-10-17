@@ -42,9 +42,9 @@ logger = ingestion_logger()
 
 class MetadataSourceStatus(SourceStatus):
 
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
 
     def scanned_entity(self, entity_class_name: str, entity_name: str) -> None:
         self.success.append(entity_name)
@@ -59,6 +59,9 @@ class MetadataSourceStatus(SourceStatus):
 
 
 class MetadataSource(Source[Entity]):
+    """
+    Metadata Source to Fetch All Entities from backend
+    """
 
     config: WorkflowSource
     report: SourceStatus
@@ -85,7 +88,7 @@ class MetadataSource(Source[Entity]):
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         raise NotImplementedError("Create Method not implemented")
 
-    def next_record(self) -> Iterable[Entity]:
+    def next_record(self) -> Iterable[Entity]:  # pylint: disable=too-many-branches
         if self.service_connection.includeTables:
             yield from self.fetch_entities(
                 entity_class=Table,

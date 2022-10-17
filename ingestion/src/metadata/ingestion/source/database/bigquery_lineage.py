@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Handle big query usage extraction
+Handle big query lineage extraction
 """
 from metadata.ingestion.source.database.bigquery_query_parser import (
     BigqueryQueryParserSource,
@@ -19,6 +19,10 @@ from metadata.utils.sql_queries import BIGQUERY_STATEMENT
 
 
 class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):
+    """
+    Implements the necessary methods to extract
+    Database lineage from Bigquery Source
+    """
 
     sql_stmt = BIGQUERY_STATEMENT
 

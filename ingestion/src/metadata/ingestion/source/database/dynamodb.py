@@ -1,3 +1,17 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Dynamo source methods.
+"""
+
 import traceback
 from typing import Iterable, Optional, Tuple
 
@@ -38,6 +52,11 @@ logger = ingestion_logger()
 
 
 class DynamodbSource(DatabaseServiceSource):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Dynamo Source
+    """
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.status = SQLSourceStatus()
         self.config = config
@@ -152,7 +171,7 @@ class DynamodbSource(DatabaseServiceSource):
             try:
                 if "S" in column["AttributeType"].upper():
                     column["AttributeType"] = column["AttributeType"].replace(" ", "")
-                parsed_string = ColumnTypeParser._parse_datatype_string(
+                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     column["AttributeType"].lower()
                 )
                 if isinstance(parsed_string, list):
@@ -196,9 +215,7 @@ class DynamodbSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
@@ -206,7 +223,7 @@ class DynamodbSource(DatabaseServiceSource):
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
+    def standardize_table_name(self, _: str, table: str) -> str:
         return table
 
     def close(self):

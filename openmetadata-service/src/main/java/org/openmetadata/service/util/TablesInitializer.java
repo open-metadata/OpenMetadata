@@ -56,6 +56,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 public final class TablesInitializer {
@@ -244,6 +245,10 @@ public final class TablesInitializer {
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     ElasticSearchIndexDefinition esIndexDefinition;
+
+    // Initialize secrets manager
+    SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
+
     switch (schemaMigrationOption) {
       case CREATE:
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {

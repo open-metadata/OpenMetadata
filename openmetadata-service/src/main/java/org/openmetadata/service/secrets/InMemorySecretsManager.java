@@ -24,11 +24,10 @@ public class InMemorySecretsManager extends ThirdPartySecretsManager {
 
   private static InMemorySecretsManager INSTANCE;
 
-  @Getter private final Map<String, String> secretsMap;
+  @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
   protected InMemorySecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
     super(secretsManagerProvider, clusterPrefix);
-    secretsMap = new HashMap<>();
   }
 
   public static InMemorySecretsManager getInstance(String clusterPrefix) {

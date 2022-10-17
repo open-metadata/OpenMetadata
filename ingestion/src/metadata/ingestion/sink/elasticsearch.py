@@ -14,7 +14,6 @@ the indexes used in OM.
 
 We disable unexpected-keyword-arg as we get a false positive for request_timeout in put_mappings
 """
-# pylint: disable=unexpected-keyword-arg
 
 import json
 import ssl
@@ -44,7 +43,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.table_metadata import (
+from metadata.ingestion.models.es_documents import (
     DashboardESDocument,
     ESEntityReference,
     GlossaryTermESDocument,

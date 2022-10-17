@@ -33,7 +33,7 @@ from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
-
+# pylint: disable=abstract-class-instantiated
 def column_values_not_in_set(
     test_case: TestCase,
     execution_date: datetime,

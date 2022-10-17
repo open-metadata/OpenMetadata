@@ -8,8 +8,10 @@ slug: /connectors/database/databricks
 In this section, we provide guides and references to use the Databricks connector.
 
 Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
+
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
 - [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
@@ -92,7 +94,6 @@ a name that distinguishes your deployment from other services, including
 the other {connector} services that you might be ingesting metadata
 from.
 
-
 <div className="w-100 flex justify-center">
 <Image
   src="/images/openmetadata/connectors/databricks/add-new-service.png"
@@ -100,7 +101,6 @@ from.
   caption="Provide a Name and description for your Service"
 />
 </div>
-
 
 ### 5. Configure the Service Connection
 
@@ -117,7 +117,6 @@ desired.
 />
 </div>
 
-
 Once the credentials have been added, click on `Test Connection` and Save
 the changes.
 
@@ -131,12 +130,11 @@ the changes.
 
 #### Connection Options
 
-
 - **Host and Port**: Enter the fully qualified hostname and port number for your Databricks deployment in the Host and Port field.
 - **Token**: Generated Token to connect to Databricks.
 - **HTTP Path**: Databricks compute resources URL.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
-- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Databricks during the connection. These details must be added as Key-Value pairs. 
+- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
@@ -216,6 +214,15 @@ caption="Edit and Deploy the Ingestion Pipeline"
 />
 
 From the Connection tab, you can also Edit the Service if needed.
+
+## Query Usage and Lineage Ingestion
+
+<Tile
+icon="manage_accounts"
+title="Usage Workflow"
+text="Learn more about how to configure the Usage Workflow to ingest Query and Lineage information from the UI."
+link="/connectors/ingestion/workflows/usage"
+/>
 
 ## Data Profiler
 

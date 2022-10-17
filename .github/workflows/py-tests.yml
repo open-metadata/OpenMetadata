@@ -73,6 +73,40 @@ jobs:
       timeout-minutes: 30
 
     - name: Run Python Tests
+      if: ${{ matrix.py-version != '3.9' }}
       run: |
         source env/bin/activate
         make run_python_tests
+
+    - name: Run Python Tests & record coverage
+      if: ${{ matrix.py-version == '3.9' }}
+      run: |
+        source env/bin/activate
+        make coverage
+        rm pom.xml
+
+      # we have to pass these args values since we are working with the 'pull_request_target' trigger
+    - name: Push Results in PR to Sonar
+      uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/
+        args: >
+          -Dproject.settings=ingestion/sonar-project.properties
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          -Dsonar.pullrequest.branch=${{ github.head_ref }}
+          -Dsonar.pullrequest.github.repository=OpenMetadata
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+          -Dsonar.pullrequest.provider=github
+
+    - name: Push Results to Sonar
+      uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'push' &&  matrix.py-version == '3.9' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/

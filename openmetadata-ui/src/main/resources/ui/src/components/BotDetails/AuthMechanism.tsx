@@ -86,7 +86,7 @@ const AuthMechanism: FC<Props> = ({
           <>
             <Space className="w-full tw-justify-between ant-space-authMechanism">
               <Input.Password
-                contentEditable={false}
+                readOnly
                 data-testid="token"
                 placeholder="Generate new token..."
                 value={JWTToken}
@@ -146,7 +146,7 @@ const AuthMechanism: FC<Props> = ({
             <Typography.Text>Account Email</Typography.Text>
             <Space className="w-full tw-justify-between ant-space-authMechanism">
               <Input
-                contentEditable={false}
+                readOnly
                 data-testid="botUser-email"
                 value={botUser.email}
               />
@@ -159,7 +159,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>SecretKey</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
-                  contentEditable={false}
+                  readOnly
                   data-testid="secretKey"
                   value={authConfig?.secretKey}
                 />
@@ -172,7 +172,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>PrivateKey</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
-                  contentEditable={false}
+                  readOnly
                   data-testid="privateKey"
                   value={authConfig?.privateKey}
                 />
@@ -185,7 +185,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>ClientSecret</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
-                  contentEditable={false}
+                  readOnly
                   data-testid="clientSecret"
                   value={authConfig?.clientSecret}
                 />
@@ -198,7 +198,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>Audience</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
-                  contentEditable={false}
+                  readOnly
                   data-testid="audience"
                   value={authConfig?.audience}
                 />
@@ -211,7 +211,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>ClientId</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
-                  contentEditable={false}
+                  readOnly
                   data-testid="clientId"
                   value={authConfig?.clientId}
                 />
@@ -223,11 +223,7 @@ const AuthMechanism: FC<Props> = ({
             <>
               <Typography.Text>Email</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
-                <Input
-                  contentEditable={false}
-                  data-testid="email"
-                  value={authConfig?.email}
-                />
+                <Input readOnly data-testid="email" value={authConfig?.email} />
                 <CopyToClipboardButton copyText={authConfig?.email} />
               </Space>
             </>
@@ -237,7 +233,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>OrgURL</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
-                  contentEditable={false}
+                  readOnly
                   data-testid="orgURL"
                   value={authConfig?.orgURL}
                 />
@@ -250,7 +246,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>Scopes</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
-                  contentEditable={false}
+                  readOnly
                   data-testid="scopes"
                   value={authConfig?.scopes.join(',')}
                 />
@@ -265,7 +261,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>Domain</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
-                  contentEditable={false}
+                  readOnly
                   data-testid="domain"
                   value={authConfig?.domain}
                 />
@@ -278,7 +274,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>Authority</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
-                  contentEditable={false}
+                  readOnly
                   data-testid="authority"
                   value={authConfig?.authority}
                 />
@@ -291,7 +287,7 @@ const AuthMechanism: FC<Props> = ({
               <Typography.Text>TokenEndpoint</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
-                  contentEditable={false}
+                  readOnly
                   data-testid="tokenEndpoint"
                   value={authConfig?.tokenEndpoint}
                 />
