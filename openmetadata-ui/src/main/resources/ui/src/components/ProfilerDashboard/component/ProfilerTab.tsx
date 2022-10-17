@@ -257,19 +257,20 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        <ProfilerDetailsCard chartCollection={countMetrics} />
+        <ProfilerDetailsCard chartCollection={countMetrics} name="count" />
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={proportionMetrics}
+          name="proportion"
           tickFormatter="%"
         />
       </Col>
       <Col span={24}>
-        <ProfilerDetailsCard chartCollection={mathMetrics} />
+        <ProfilerDetailsCard chartCollection={mathMetrics} name="math" />
       </Col>
       <Col span={24}>
-        <ProfilerDetailsCard chartCollection={sumMetrics} />
+        <ProfilerDetailsCard chartCollection={sumMetrics} name="sum" />
       </Col>
     </Row>
   );

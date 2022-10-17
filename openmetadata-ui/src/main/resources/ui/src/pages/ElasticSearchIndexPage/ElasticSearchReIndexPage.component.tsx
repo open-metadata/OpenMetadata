@@ -242,7 +242,19 @@ const ElasticSearchIndexPage = () => {
                   </div>
                 </Space>
               </Col>
-
+              <Col span={24}>
+                <span className="tw-text-grey-muted">Failure Context:</span>
+                <span className="tw-ml-2">
+                  {batchJobData?.failureDetails?.context ? (
+                    <RichTextEditorPreviewer
+                      enableSeeMoreVariant={Boolean(batchJobData)}
+                      markdown={batchJobData?.failureDetails?.context}
+                    />
+                  ) : (
+                    '--'
+                  )}
+                </span>
+              </Col>
               <Col span={24}>
                 <span className="tw-text-grey-muted">Last error:</span>
                 <span className="tw-ml-2">
@@ -274,64 +286,85 @@ const ElasticSearchIndexPage = () => {
             loading={streamLoading}
             size="small"
             title="ElasticSearch">
-            <Space direction="horizontal" size={16}>
-              <div className="tw-flex">
-                <span className="tw-text-grey-muted">Mode</span> :
-                <span className="tw-ml-2">
-                  {startCase(streamJobData?.runMode) || '--'}
-                </span>
-              </div>
-              <div className="tw-flex">
-                <span className="tw-text-grey-muted">Status</span> :
-                <span className="tw-ml-2">
-                  <Space size={8}>
-                    {streamJobData?.status && (
-                      <SVGIcons
-                        alt="result"
-                        className="w-4"
-                        icon={getStatusResultBadgeIcon(streamJobData?.status)}
-                      />
-                    )}
-                    <span>
-                      {getEventPublisherStatusText(streamJobData?.status) ||
-                        '--'}
+            <Row gutter={[16, 8]}>
+              <Col span={24}>
+                <Space direction="horizontal" size={16}>
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Mode</span> :
+                    <span className="tw-ml-2">
+                      {startCase(streamJobData?.runMode) || '--'}
                     </span>
-                  </Space>
-                </span>
-              </div>
+                  </div>
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Status</span> :
+                    <span className="tw-ml-2">
+                      <Space size={8}>
+                        {streamJobData?.status && (
+                          <SVGIcons
+                            alt="result"
+                            className="w-4"
+                            icon={getStatusResultBadgeIcon(
+                              streamJobData?.status
+                            )}
+                          />
+                        )}
+                        <span>
+                          {getEventPublisherStatusText(streamJobData?.status) ||
+                            '--'}
+                        </span>
+                      </Space>
+                    </span>
+                  </div>
 
-              <div className="tw-flex">
-                <span className="tw-text-grey-muted">Last Updated</span> :
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Last Updated</span> :
+                    <span className="tw-ml-2">
+                      {streamJobData?.timestamp
+                        ? getDateTimeByTimeStampWithZone(
+                            streamJobData?.timestamp
+                          )
+                        : '--'}
+                    </span>
+                  </div>
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Last Failed At:</span>
+                    <p className="tw-ml-2">
+                      {streamJobData?.failureDetails?.lastFailedAt
+                        ? getDateTimeByTimeStampWithZone(
+                            streamJobData?.failureDetails?.lastFailedAt
+                          )
+                        : '--'}
+                    </p>
+                  </div>
+                </Space>
+              </Col>
+              <Col span={24}>
+                <span className="tw-text-grey-muted">Failure Context:</span>
                 <span className="tw-ml-2">
-                  {streamJobData?.timestamp
-                    ? getDateTimeByTimeStampWithZone(streamJobData?.timestamp)
-                    : '--'}
+                  {streamJobData?.failureDetails?.context ? (
+                    <RichTextEditorPreviewer
+                      enableSeeMoreVariant={Boolean(streamJobData)}
+                      markdown={streamJobData?.failureDetails?.context}
+                    />
+                  ) : (
+                    '--'
+                  )}
                 </span>
-              </div>
-              <div className="tw-flex">
-                <span className="tw-text-grey-muted">Last Failed At:</span>
-                <p className="tw-ml-2">
-                  {streamJobData?.failureDetails?.lastFailedAt
-                    ? getDateTimeByTimeStampWithZone(
-                        streamJobData?.failureDetails?.lastFailedAt
-                      )
-                    : '--'}
-                </p>
-              </div>
-            </Space>
-            <div>
-              <span className="tw-text-grey-muted">Last error</span> :
-              <span className="tw-ml-2">
-                {streamJobData?.failureDetails?.lastFailedReason ? (
-                  <RichTextEditorPreviewer
-                    enableSeeMoreVariant={Boolean(streamJobData)}
-                    markdown={streamJobData?.failureDetails?.lastFailedReason}
-                  />
-                ) : (
-                  '--'
-                )}
-              </span>
-            </div>
+              </Col>
+              <Col span={24}>
+                <span className="tw-text-grey-muted">Last error:</span>
+                <span className="tw-ml-2">
+                  {streamJobData?.failureDetails?.lastFailedReason ? (
+                    <RichTextEditorPreviewer
+                      enableSeeMoreVariant={Boolean(streamJobData)}
+                      markdown={streamJobData?.failureDetails?.lastFailedReason}
+                    />
+                  ) : (
+                    '--'
+                  )}
+                </span>
+              </Col>
+            </Row>
           </Card>
         </Col>
       </Row>

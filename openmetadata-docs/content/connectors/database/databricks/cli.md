@@ -10,6 +10,7 @@ In this section, we provide guides and references to use the Databricks connecto
 Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
 - [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
@@ -319,6 +320,89 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
+## Query Usage and Lineage Ingestion
+
+To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same. 
+However, the `sourceConfig` is now modeled after this JSON Schema.
+
+### 1. Define the YAML Config
+
+This is a sample config for Databricks Usage:
+
+```yaml
+source:
+  type: databricks-usage
+  serviceName: local_databricks
+  serviceConnection:
+    config:
+      token: <databricks token>
+      hostPort: localhost:443
+      connectionArguments:
+        http_path: <http path of databricks cluster>
+  sourceConfig:
+    config:
+      # Number of days to look back
+      queryLogDuration: 7
+      # This is a directory that will be DELETED after the usage runs
+      stageFileLocation: <path to store the stage file>
+      # resultLimit: 1000
+      # If instead of getting the query logs from the database we want to pass a file with the queries
+      # queryLogFilePath: path-to-file
+processor:
+  type: query-parser
+  config: {}
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/databricks_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/databricks_usage
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+#### Source Configuration - Service Connection
+
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/databricksConnection.json). 
+They are the same as metadata ingestion.
+
+#### Source Configuration - Source Config
+
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
+
+- `queryLogDuration`: Configuration to tune how far we want to look back in query logs to process usage data.
+- `resultLimit`: Configuration to set the limit for query logs
+
+#### Processor, Stage and Bulk Sink
+
+To specify where the staging files will be located.
+
+Note that the location is a directory that will be cleaned at the end of the ingestion.
+
+#### Workflow Configuration
+
+The same as the metadata ingestion.
+
+### 2. Run with the CLI
+
+There is an extra requirement to run the Usage pipelines. You will need to install:
+
+```bash
+pip3 install --upgrade 'openmetadata-ingestion[databricks]'
+```
+
+After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
+
+```bash
+metadata ingest -c <path-to-yaml>
+```
+
+
 ## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
@@ -371,9 +455,9 @@ processor:
   config: {}  # Remove braces if adding properties
   # tableConfig:
   #   - fullyQualifiedName: <table fqn>
-  #     profileSample: <number between 0 and 99>
+  #     profileSample: <number between 0 and 99> # default will be 100 if omitted
+  #     profileQuery: <query to use for sampling data for the profiler>
   #     columnConfig:
-  #       profileQuery: <query to use for sampling data for the profiler>
   #       excludeColumns:
   #         - <column name>
   #       includeColumns:
@@ -416,12 +500,12 @@ processor:
     tableConfig:
       - fullyQualifiedName: <table fqn>
         profileSample: <number between 0 and 99>
+        partitionConfig:
+          partitionField: <field to use as a partition field>
+          partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
+          partitionValues: <values to uses as a predicate for the query>
+        profileQuery: <query to use for sampling data for the profiler>
         columnConfig:
-          partitionConfig:
-            partitionField: <field to use as a partition field>
-            partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
-            partitionValues: <values to uses as a predicate for the query>
-          profileQuery: <query to use for sampling data for the profiler>
           excludeColumns:
             - <column name>
           includeColumns:

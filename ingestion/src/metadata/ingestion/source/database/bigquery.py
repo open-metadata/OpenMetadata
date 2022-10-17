@@ -142,24 +142,29 @@ class BigquerySource(CommonDbSourceService):
         :return:
         """
         try:
-            taxonomies = PolicyTagManagerClient().list_taxonomies(
-                parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
-            )
-            for taxonomy in taxonomies:
-                policiy_tags = PolicyTagManagerClient().list_policy_tags(
-                    parent=taxonomy.name
+            list_project_ids = [self.project_id]
+            if not self.service_connection.taxonomyProjectID:
+                self.service_connection.taxonomyProjectID = []
+            list_project_ids.extend(self.service_connection.taxonomyProjectID)
+            for project_ids in list_project_ids:
+                taxonomies = PolicyTagManagerClient().list_taxonomies(
+                    parent=f"projects/{project_ids}/locations/{self.service_connection.taxonomyLocation}"
                 )
-                for tag in policiy_tags:
-                    yield OMetaTagAndCategory(
-                        category_name=CreateTagCategoryRequest(
-                            name=self.service_connection.tagCategoryName,
-                            description="",
-                            categoryType="Classification",
-                        ),
-                        category_details=CreateTagRequest(
-                            name=tag.display_name, description="Bigquery Policy Tag"
-                        ),
+                for taxonomy in taxonomies:
+                    policy_tags = PolicyTagManagerClient().list_policy_tags(
+                        parent=taxonomy.name
                     )
+                    for tag in policy_tags:
+                        yield OMetaTagAndCategory(
+                            category_name=CreateTagCategoryRequest(
+                                name=self.service_connection.tagCategoryName,
+                                description="",
+                                categoryType="Classification",
+                            ),
+                            category_details=CreateTagRequest(
+                                name=tag.display_name, description="Bigquery Policy Tag"
+                            ),
+                        )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
