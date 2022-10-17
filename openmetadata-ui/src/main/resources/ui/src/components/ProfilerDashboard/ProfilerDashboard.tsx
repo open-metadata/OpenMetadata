@@ -509,6 +509,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
+                  data-testid="add-test"
                   disabled={
                     !(tablePermissions.EditAll || tablePermissions.EditTests)
                   }
