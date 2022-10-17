@@ -1,5 +1,8 @@
 {
   "label": {
+    "name": "Name",
+    "type": "Type",
+    "description": "Description",
     "docs": "Docs",
     "api-uppercase": "API",
     "slack": "Slack",
@@ -9,7 +12,16 @@
     "glossary": "Glossary",
     "tags": "Tags",
     "settings": "Settings",
-    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models"
+    "edit": "Edit",
+    "edit-column": "Edit column",
+    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models",
+    "frequently-joined-columns": "Frequently joined columns",
+    "no-description": "No description",
+    "request-tags": "Request tags",
+    "update-request-tags": "Update request tags",
+    "request-description": "Request description",
+    "request-update-description": "Request update description",
+    "enter-column-description": "Enter Column Description"
   },
   "message": {},
   "server": {},
