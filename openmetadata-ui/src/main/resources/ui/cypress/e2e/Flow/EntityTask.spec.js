@@ -41,12 +41,15 @@ describe("Entity Tasks", () => {
     
     cy.get('#title').should('be.visible').clear().type(title);
     
-    
+    interceptURL("GET",'/api/v1/search/suggest/*',"userSuggestion")
     cy.get('[data-testid="select-assignee"]').should('be.visible').type(assignee);
+    verifyResponseStatusCode('@userSuggestion',200)
     cy.get('[data-testid="user-tag"]').should("be.visible").first().click()
     cy.get('body').click()
    
-     cy.get('[data-testid="select-tags"]').should('be.visible').type(tag);
+    interceptURL("GET",'/api/v1/search/suggest/*',"tagSuggestion")
+    cy.get('[data-testid="select-tags"]').should('be.visible').type(tag);
+    verifyResponseStatusCode('@tagSuggestion',200)
     cy.get('[data-testid="tag-option"]').should("be.visible").first().click()
     cy.get('body').click()
 
