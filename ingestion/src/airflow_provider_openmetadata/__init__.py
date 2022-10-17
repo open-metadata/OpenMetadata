@@ -16,6 +16,7 @@ Airflow backend lineage module
 def get_provider_config():
     """
     Get provider configuration
+
     Returns
         dict:
     """
