@@ -255,7 +255,9 @@ class DBTMixin:
 
         return columns
 
-    def process_dbt_lineage_and_descriptions(self) -> Iterable[AddLineageRequest]:
+    def process_dbt_lineage_and_descriptions(  # pylint: disable=too-many-locals
+        self,
+    ) -> Iterable[AddLineageRequest]:
         """
         After everything has been processed, add the lineage info
         """
