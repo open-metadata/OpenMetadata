@@ -221,11 +221,6 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-}));
-
 describe('Test MlModel entity detail component', () => {
   it('Should render detail component', async () => {
     const { container } = render(<MlModelDetailComponent {...mockProp} />, {

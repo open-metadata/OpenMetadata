@@ -238,7 +238,7 @@ const MlModelPage = () => {
     }
   };
 
-  const getEntityFeedCount = () => {
+  const fetchEntityFeedCount = () => {
     getFeedCounts(
       EntityType.MLMODEL,
       mlModelFqn,
@@ -248,7 +248,7 @@ const MlModelPage = () => {
     );
   };
 
-  const getFeedData = async (
+  const fetchFeedData = async (
     after?: string,
     feedType?: FeedFilter,
     threadType?: ThreadType
@@ -282,7 +282,7 @@ const MlModelPage = () => {
     threadType?: ThreadType
   ) => {
     !after && setEntityThread([]);
-    getFeedData(after, feedType, threadType);
+    fetchFeedData(after, feedType, threadType);
   };
 
   const fetchTabSpecificData = (tabField = '') => {
@@ -299,7 +299,7 @@ const MlModelPage = () => {
         break;
       }
       case TabSpecificField.ACTIVITY_FEED: {
-        getFeedData();
+        fetchFeedData();
 
         break;
       }
@@ -496,7 +496,7 @@ const MlModelPage = () => {
           }
         });
       });
-      getEntityFeedCount();
+      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -509,7 +509,7 @@ const MlModelPage = () => {
     try {
       const response = await postThread(data);
       setEntityThread((pre) => [...pre, response]);
-      getEntityFeedCount();
+      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -592,7 +592,7 @@ const MlModelPage = () => {
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
       fetchMlModelDetails(mlModelFqn);
-      getEntityFeedCount();
+      fetchEntityFeedCount();
     }
   }, [mlModelPermissions, mlModelFqn]);
 

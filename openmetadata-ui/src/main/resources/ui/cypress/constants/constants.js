@@ -262,3 +262,5 @@ export const LOGIN = {
   username: 'admin@openmetadata.org',
   password: 'admin',
 };
+
+export const ANNOUNCEMENT_ENTITIES=[SEARCH_ENTITY_TABLE.table_1,SEARCH_ENTITY_TOPIC.topic_1,SEARCH_ENTITY_DASHBOARD.dashboard_1,SEARCH_ENTITY_PIPELINE.pipeline_1]
