@@ -297,8 +297,7 @@ const EntityPageInfo = ({
 
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
-      return !isUndefined(tagThread) &&
-        TASK_ENTITIES.includes(entityType as EntityType) ? (
+      return !isUndefined(tagThread) ? (
         <button
           className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
           data-testid="tag-thread"
@@ -337,10 +336,11 @@ const EntityPageInfo = ({
     const hasTags = !isEmpty(tags);
     const text = hasTags ? 'Update request tags' : 'Request tags';
 
-    return onThreadLinkSelect ? (
+    return onThreadLinkSelect &&
+      TASK_ENTITIES.includes(entityType as EntityType) ? (
       <button
         className="tw-w-7 tw-h-7 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
-        data-testid="request-description"
+        data-testid="request-entity-tags"
         onClick={hasTags ? handleUpdateTags : handleRequestTags}>
         <Popover
           destroyTooltipOnHide
