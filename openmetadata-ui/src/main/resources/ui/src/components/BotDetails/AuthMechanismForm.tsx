@@ -80,6 +80,8 @@ const AuthMechanismForm: FC<Props> = ({
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] =
     useState<boolean>(false);
 
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
     const authType = authenticationMechanism.authType;
     const authConfig = authenticationMechanism.config?.authConfig;
@@ -172,16 +174,18 @@ const AuthMechanismForm: FC<Props> = ({
         displayName: botData.displayName,
         botUser: { id: response.id, type: EntityType.USER },
       });
+      setIsConfirmationModalOpen(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       onEmailChange();
-      setIsConfirmationModalOpen(false);
+      setIsLoading(false);
     }
   };
 
   const handleAccountEmailChange = async () => {
     try {
+      setIsLoading(true);
       const isUserExists = await checkEmailInUse(accountEmail);
       if (isUserExists) {
         const userResponse = await getUserByName(
@@ -213,8 +217,6 @@ const AuthMechanismForm: FC<Props> = ({
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsConfirmationModalOpen(false);
     }
   };
 
@@ -639,6 +641,7 @@ const AuthMechanismForm: FC<Props> = ({
         <Modal
           centered
           destroyOnClose
+          confirmLoading={isLoading}
           okText="Confirm"
           title="Are you sure?"
           visible={isConfirmationModalOpen}

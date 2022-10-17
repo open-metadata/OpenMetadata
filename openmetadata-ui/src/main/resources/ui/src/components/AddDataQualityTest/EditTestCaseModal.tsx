@@ -59,6 +59,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
+
   const markdownRef = useRef<EditorContentRef>();
 
   const isColumn = useMemo(
@@ -144,16 +146,18 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
     if (jsonPatch.length) {
       try {
+        setIsLoadingOnSave(true);
         await updateTestCaseById(testCase.id || '', jsonPatch);
         onUpdate && onUpdate();
         showSuccessToast(
           jsonData['api-success-messages']['update-test-case-success']
         );
         onCancel();
+        form.resetFields();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        form.resetFields();
+        setIsLoadingOnSave(false);
       }
     }
   };
@@ -203,6 +207,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         form.resetFields();
         onCancel();
       }}
+      confirmLoading={isLoadingOnSave}
       okText="Submit"
       title={`Edit ${testCase?.name}`}
       visible={visible}

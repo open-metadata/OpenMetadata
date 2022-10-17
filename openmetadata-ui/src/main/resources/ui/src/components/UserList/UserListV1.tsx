@@ -72,6 +72,7 @@ const UserListV1: FC<UserListV1Props> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const showRestore = showDeletedUser && !isDataLoading;
+  const [isLoading, setIsLoading] = useState(false);
 
   const createPermission = useMemo(
     () => checkPermission(Operation.Create, ResourceEntity.USER, permissions),
@@ -91,7 +92,7 @@ const UserListV1: FC<UserListV1Props> = ({
     if (isUndefined(selectedUser)) {
       return;
     }
-
+    setIsLoading(true);
     const updatedUserData: CreateUser = {
       description: selectedUser.description,
       displayName: selectedUser.displayName,
@@ -110,6 +111,7 @@ const UserListV1: FC<UserListV1Props> = ({
         showSuccessToast(
           jsonData['api-success-messages']['user-restored-success']
         );
+        setShowReactiveModal(false);
       } else {
         throw jsonData['api-error-messages']['update-user-error'];
       }
@@ -118,9 +120,10 @@ const UserListV1: FC<UserListV1Props> = ({
         error as AxiosError,
         jsonData['api-error-messages']['update-user-error']
       );
+    } finally {
+      setIsLoading(false);
     }
     setSelectedUser(undefined);
-    setShowReactiveModal(false);
   };
 
   const columns: ColumnsType<User> = useMemo(() => {
@@ -289,6 +292,7 @@ const UserListV1: FC<UserListV1Props> = ({
           type: 'link',
         }}
         className="reactive-modal"
+        confirmLoading={isLoading}
         okText="Restore"
         title="restore User"
         visible={showReactiveModal}

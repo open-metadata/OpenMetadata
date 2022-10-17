@@ -165,6 +165,7 @@ const RolesDetailPage = () => {
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
+  const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
@@ -255,6 +256,8 @@ const RolesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoadingOnSave(false);
     }
   };
 
@@ -280,10 +283,13 @@ const RolesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoadingOnSave(false);
     }
   };
 
   const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    setIsLoadingOnSave(true);
     if (attribute === 'teams') {
       handleTeamsUpdate(data);
     } else if (attribute === 'users') {
@@ -304,8 +310,11 @@ const RolesDetailPage = () => {
         setRole(data);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoadingOnSave(false);
       }
     }
+    setEntity(undefined);
   };
 
   const handleAddAttribute = async (selectedIds: string[]) => {
@@ -440,6 +449,7 @@ const RolesDetailPage = () => {
       {selectedEntity && (
         <Modal
           centered
+          confirmLoading={isLoadingOnSave}
           okText="Confirm"
           title={`Remove ${getEntityName(
             selectedEntity.record
@@ -448,7 +458,6 @@ const RolesDetailPage = () => {
           onCancel={() => setEntity(undefined)}
           onOk={() => {
             handleDelete(selectedEntity.record, selectedEntity.attribute);
-            setEntity(undefined);
           }}>
           <Typography.Text>
             Are you sure you want to remove the{' '}

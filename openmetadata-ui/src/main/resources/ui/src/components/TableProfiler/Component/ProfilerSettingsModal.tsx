@@ -55,6 +55,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
     DEFAULT_INCLUDE_PROFILE
   );
+  const [isLoading, setIsLoading] = useState(false);
 
   const selectOptions = useMemo(() => {
     return columns.map(({ name }) => ({
@@ -140,6 +141,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   };
 
   const handleSave = async () => {
+    setIsLoading(true);
     const profileConfig: TableProfilerConfig = {
       excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
       profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
@@ -164,6 +166,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         error as AxiosError,
         jsonData['api-error-messages']['update-profiler-config-error']
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -183,6 +187,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       cancelButtonProps={{
         type: 'link',
       }}
+      confirmLoading={isLoading}
       data-testid="profiler-settings-modal"
       maskClosable={false}
       okText="Save"

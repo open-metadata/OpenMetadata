@@ -49,7 +49,6 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
     } catch (error) {
       // catch block error is unknown type so we have to cast it to respective type
       showErrorToast(error as AxiosError);
-      onClose();
     } finally {
       setIsLoading(false);
     }

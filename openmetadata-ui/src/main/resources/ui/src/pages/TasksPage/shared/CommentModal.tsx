@@ -23,6 +23,7 @@ interface CommentModalProps {
   setComment: (value: string) => void;
   onClose: () => void;
   onConfirm: () => void;
+  isLoading: boolean;
 }
 
 const CommentModal: FC<CommentModalProps> = ({
@@ -32,6 +33,7 @@ const CommentModal: FC<CommentModalProps> = ({
   setComment,
   onClose,
   onConfirm,
+  isLoading,
 }) => {
   return (
     <Modal
@@ -41,6 +43,7 @@ const CommentModal: FC<CommentModalProps> = ({
         type: 'link',
         className: 'ant-btn-link-custom',
       }}
+      confirmLoading={isLoading}
       data-testid="comment-modal"
       okButtonProps={{
         disabled: !comment,

@@ -171,6 +171,7 @@ const PoliciesDetailPage = () => {
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
+  const [isloadingOnSave, setIsloadingOnSave] = useState(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
@@ -262,6 +263,8 @@ const PoliciesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsloadingOnSave(false);
     }
   };
 
@@ -290,10 +293,13 @@ const PoliciesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsloadingOnSave(false);
     }
   };
 
   const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    setIsloadingOnSave(true);
     if (attribute === 'roles') {
       handleRolesUpdate(data);
     } else if (attribute === 'teams') {
@@ -314,8 +320,11 @@ const PoliciesDetailPage = () => {
         setPolicy(data);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setIsloadingOnSave(false);
       }
     }
+    setEntity(undefined);
   };
 
   const handleRuleDelete = async (data: Rule) => {
@@ -616,6 +625,7 @@ const PoliciesDetailPage = () => {
       {selectedEntity && (
         <Modal
           centered
+          confirmLoading={isloadingOnSave}
           okText="Confirm"
           title={`Remove ${getEntityName(
             selectedEntity.record
@@ -624,10 +634,9 @@ const PoliciesDetailPage = () => {
           onCancel={() => setEntity(undefined)}
           onOk={() => {
             handleDelete(selectedEntity.record, selectedEntity.attribute);
-            setEntity(undefined);
           }}>
           <Typography.Text>
-            Are you sure you want to remove the{' '}
+            Are you sure you want to remove the
             {`${getEntityName(selectedEntity.record)} from ${getEntityName(
               policy
             )}?`}

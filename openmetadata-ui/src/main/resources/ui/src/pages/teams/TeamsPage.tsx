@@ -234,14 +234,13 @@ const TeamsPage = () => {
         const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
         fetchAllTeams(true, parent);
         fetchTeamByFqn(selectedTeam.name);
+        handleAddTeam(false);
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         jsonData['api-error-messages']['create-team-error']
       );
-    } finally {
-      handleAddTeam(false);
     }
   };
 
