@@ -445,12 +445,12 @@ const DatabaseDetails: FunctionComponent = () => {
       owner: undefined,
     };
 
-    return new Promise<void>((_, reject) => {
+    return new Promise<void>((resolve, reject) => {
       saveUpdatedDatabaseData(updatedData as Database)
         .then((res) => {
           if (res) {
             setDatabase(res);
-            reject();
+            resolve();
           } else {
             reject();
 

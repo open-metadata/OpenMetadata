@@ -417,12 +417,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       owner: undefined,
     };
 
-    return new Promise<void>((_, reject) => {
+    return new Promise<void>((resolve, reject) => {
       saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
         .then((res) => {
           if (res) {
             setDatabaseSchema(res);
-            reject();
+            resolve();
           } else {
             reject();
 

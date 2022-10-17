@@ -841,14 +841,14 @@ const ServicePage: FunctionComponent = () => {
           if (res) {
             setServiceDetails(res);
 
-            return resolve();
+            resolve();
           } else {
             showErrorToast(
               jsonData['api-error-messages']['update-owner-error']
             );
           }
 
-          return reject();
+          reject();
         })
         .catch((error: AxiosError) => {
           showErrorToast(
@@ -856,7 +856,7 @@ const ServicePage: FunctionComponent = () => {
             jsonData['api-error-messages']['update-owner-error']
           );
 
-          return reject();
+          reject();
         });
     });
   };

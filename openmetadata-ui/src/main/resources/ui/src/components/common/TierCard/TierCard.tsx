@@ -1,4 +1,4 @@
-import { Button, Card, Popover, Row, Typography } from 'antd';
+import { Button, Card, Col, Popover, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Status, TableDetail } from 'Models';
@@ -102,22 +102,26 @@ const TierCard = ({
           paddingTop: '12px',
         }}
         title={
-          <Row className="justify-between items-center">
-            <Typography.Title className="m-b-0" level={5}>
-              Edit Tier
-            </Typography.Title>
-            {currentTier ? (
-              <Button
-                className="font-medium"
-                data-testid="remove-tier"
-                type="link"
-                onClick={removeTier}>
-                {' '}
-                Clear Tier
-              </Button>
-            ) : (
-              ''
-            )}
+          <Row>
+            <Col span={21}>
+              <Typography.Title className="m-b-0" level={5}>
+                Edit Tier
+              </Typography.Title>
+            </Col>
+            <Col span={3}>
+              {currentTier ? (
+                <Button
+                  className="font-medium"
+                  data-testid="remove-tier"
+                  type="link"
+                  onClick={removeTier}>
+                  {' '}
+                  Clear Tier
+                </Button>
+              ) : (
+                ''
+              )}
+            </Col>
           </Row>
         }>
         {tierData.map((card, i) => (

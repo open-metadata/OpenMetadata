@@ -427,10 +427,8 @@ const TeamDetailsV1 = ({
         owner: undefined,
       };
 
-      return updateTeamHandler(updatedData);
+      updateTeamHandler(updatedData);
     }
-
-    return Promise.reject();
   };
 
   const updateTeamType = (type: TeamType) => {
