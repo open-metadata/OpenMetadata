@@ -100,6 +100,7 @@ public final class Entity {
   public static final String TEST_SUITE = "testSuite";
   public static final String TEST_CASE = "testCase";
   public static final String REPORT_DEFINITION = "reportDefinition";
+  public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
 
   //
   // Policy entity
