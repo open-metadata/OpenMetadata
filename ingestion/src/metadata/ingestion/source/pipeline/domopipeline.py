@@ -62,12 +62,12 @@ class DomopipelineSource(PipelineServiceSource):
 
     def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
         task_list: List[Task] = []
-        runs = self.client.get_runs(pipeline_details["id"])
-        for run in runs:
-            task = Task(
-                name=run["id"],
-            )
-            task_list.append(task)
+        task = Task(
+            name=pipeline_details["name"],
+            displayName=pipeline_details["name"],
+            description=pipeline_details.get("description", ""),
+        )
+        task_list.append(task)
 
         pipeline_yield = CreatePipelineRequest(
             name=pipeline_details["name"],
@@ -89,12 +89,12 @@ class DomopipelineSource(PipelineServiceSource):
         runs = self.client.get_runs(pipeline_details["id"])
         for run in runs:
             task_status = TaskStatus(
-                name=run["id"],
+                name=pipeline_details["name"],
                 executionStatus=STATUS_MAP.get(
                     run["state"].lower(), StatusType.Pending.value
                 ),
-                startTime=run["beginTime"],
-                endTime=run["endTime"],
+                startTime=run["beginTime"] // 1000,
+                endTime=run["endTime"] // 1000,
             )
 
             pipeline_status = PipelineStatus(
@@ -102,7 +102,7 @@ class DomopipelineSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run["state"].lower(), StatusType.Pending.value
                 ),
-                timestamp=run["endTime"],
+                timestamp=run["endTime"] // 1000,
             )
 
             yield OMetaPipelineStatus(

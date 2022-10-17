@@ -12,7 +12,10 @@ from metadata.generated.schema.entity.services.connections.pipeline.domopipeline
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 
-CARDS_URL = "cards?includeV4PageLayouts=true&parts=metadata,datasources,library,drillPathURNs,owners,certification,dateInfo,subscriptions,slicers"  # pylint: disable=line-too-long
+CARDS_URL = (
+    "cards?includeV4PageLayouts=true&parts=metadata"
+    ",datasources,library,drillPathURNs,owners,certification,dateInfo,subscriptions,slicers"
+)
 
 HEADERS = {"Content-Type": "application/json"}
 WORKFLOW_URL = "dataprocessing/v1/dataflows"
@@ -41,9 +44,9 @@ class DomoClient:
             f"{CARDS_URL}"
             f"&stackLoadContext=Page&stackLoadContextId={page_id}&stackLoadTrigger=page-view"
         )
-        response = self.client._request(
+        response = self.client._request(  # pylint: disable=protected-access
             method="GET", path=url, headers=HEADERS
-        )  # pylint: disable=protected-access
+        )
         return response
 
     def get_pipelines(self):
@@ -54,7 +57,7 @@ class DomoClient:
 
     def get_runs(self, workflow_id):
         url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
-        response = self.client._request(
+        response = self.client._request(  # pylint: disable=protected-access
             method="GET", path=url, headers=HEADERS
-        )  # pylint: disable=protected-access
+        )
         return response

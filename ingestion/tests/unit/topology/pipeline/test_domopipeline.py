@@ -99,14 +99,14 @@ EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
         pipeline_fqn="local_domo_pipeline.Nihar Dataflows",
         pipeline_status=PipelineStatus(
-            timestamp=1665476792000,
+            timestamp=1665476792,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
-                    name="3",
+                    name="Nihar Dataflows",
                     executionStatus="Successful",
-                    startTime=1665476783000,
-                    endTime=1665476792000,
+                    startTime=1665476783,
+                    endTime=1665476792,
                     logLink=None,
                 )
             ],
@@ -115,14 +115,14 @@ EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
         pipeline_fqn="local_domo_pipeline.Nihar Dataflows",
         pipeline_status=PipelineStatus(
-            timestamp=1665470252000,
+            timestamp=1665470252,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
-                    name="2",
+                    name="Nihar Dataflows",
                     executionStatus="Successful",
-                    startTime=1665470244000,
-                    endTime=1665470252000,
+                    startTime=1665470244,
+                    endTime=1665470252,
                     logLink=None,
                 )
             ],
@@ -131,14 +131,14 @@ EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
         pipeline_fqn="local_domo_pipeline.Nihar Dataflows",
         pipeline_status=PipelineStatus(
-            timestamp=1665148827000,
+            timestamp=1665148827,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
-                    name="1",
+                    name="Nihar Dataflows",
                     executionStatus="Successful",
-                    startTime=1665148818000,
-                    endTime=1665148827000,
+                    startTime=1665148818,
+                    endTime=1665148827,
                     logLink=None,
                 )
             ],
@@ -157,10 +157,10 @@ EXPECTED_PIPELINE = [
         startDate=datetime(2022, 10, 7, 13, 20, 16, tzinfo=timezone.utc),
         tasks=[
             Task(
-                name="3",
-                displayName=None,
+                name="Nihar Dataflows",
+                displayName="Nihar Dataflows",
                 fullyQualifiedName=None,
-                description=None,
+                description="THis is description for Nihar dataflow",
                 taskUrl=None,
                 downstreamTasks=None,
                 taskType=None,
@@ -168,33 +168,7 @@ EXPECTED_PIPELINE = [
                 startDate=None,
                 endDate=None,
                 tags=None,
-            ),
-            Task(
-                name="2",
-                displayName=None,
-                fullyQualifiedName=None,
-                description=None,
-                taskUrl=None,
-                downstreamTasks=None,
-                taskType=None,
-                taskSQL=None,
-                startDate=None,
-                endDate=None,
-                tags=None,
-            ),
-            Task(
-                name="1",
-                displayName=None,
-                fullyQualifiedName=None,
-                description=None,
-                taskUrl=None,
-                downstreamTasks=None,
-                taskType=None,
-                taskSQL=None,
-                startDate=None,
-                endDate=None,
-                tags=None,
-            ),
+            )
         ],
         tags=None,
         owner=None,
@@ -299,7 +273,6 @@ class DomoPipelineUnitTest(TestCase):
         for result in results:
             if isinstance(result, CreatePipelineRequest):
                 pipeline_list.append(result)
-
         for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipeline_list)):
             self.assertEqual(expected, original)
 
