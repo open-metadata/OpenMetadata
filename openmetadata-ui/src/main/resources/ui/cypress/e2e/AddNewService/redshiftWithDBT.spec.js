@@ -16,22 +16,18 @@ import {
     editOwnerforCreatedService,
     goToAddNewServicePage,
     interceptURL,
-    login, testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables,
-    uuid,
-    verifyResponseStatusCode,
+    login,
+    testServiceCreationAndIngestion,
+    updateDescriptionForIngestedTables, verifyResponseStatusCode,
     visitEntityDetailsPage
 } from '../../common/common';
 import {
-    DBT, HTTP_CONFIG_SOURCE, LOGIN,
+    DBT,
+    HTTP_CONFIG_SOURCE,
+    LOGIN,
     SERVICE_TYPE
 } from '../../constants/constants';
-
-const serviceType = 'Redshift';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'boolean_test';
-const DBTTable = 'customers';
-const description = `This is ${serviceName} description`;
+import { REDSHIFT } from '../../constants/service.constants';
 
 describe('RedShift Ingestion', () => {
   beforeEach(() => {
@@ -84,10 +80,10 @@ describe('RedShift Ingestion', () => {
     };
 
     testServiceCreationAndIngestion(
-      serviceType,
+      REDSHIFT.serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName,
+      REDSHIFT.serviceName,
       'database',
       true,
       configureDBT
@@ -112,7 +108,7 @@ describe('RedShift Ingestion', () => {
       .should('contain', DBT.tagName);
 
     //Verify DBT in table entity
-    visitEntityDetailsPage(DBTTable, serviceName, 'tables');
+    visitEntityDetailsPage(REDSHIFT.DBTTable, REDSHIFT.serviceName, 'tables');
 
     //Verify tags
     cy.get('[data-testid="entity-tags"]')
@@ -151,19 +147,19 @@ describe('RedShift Ingestion', () => {
 
   it('Update table description and verify', () => {
     updateDescriptionForIngestedTables(
-      serviceName,
-      tableName,
-      description,
+      REDSHIFT.serviceName,
+      REDSHIFT.tableName,
+      REDSHIFT.description,
       SERVICE_TYPE.Database,
       'tables'
     );
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Database, serviceName);
+    editOwnerforCreatedService(SERVICE_TYPE.Database, REDSHIFT.serviceName);
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, REDSHIFT.serviceName);
   });
 });
