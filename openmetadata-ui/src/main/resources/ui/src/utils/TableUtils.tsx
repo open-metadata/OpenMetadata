@@ -32,6 +32,7 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { StatusType } from '../generated/entity/data/pipeline';
 import { Column, DataType } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -343,6 +344,22 @@ export const getEntityFqnFromEntityLink = (
 export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
   switch (status) {
     case TestCaseStatus.Success:
+      return Icons.SUCCESS_BADGE;
+
+    case TestCaseStatus.Failed:
+      return Icons.FAIL_BADGE;
+
+    case TestCaseStatus.Aborted:
+      return Icons.PENDING_BADGE;
+
+    default:
+      return '';
+  }
+};
+
+export const getStatusBadgeIcon = (status?: string) => {
+  switch (status) {
+    case StatusType.Successful:
       return Icons.SUCCESS_BADGE;
 
     case TestCaseStatus.Failed:

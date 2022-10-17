@@ -31,6 +31,7 @@ import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
+import IconArrowRight from '../assets/svg/arrow-right.svg';
 import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
@@ -315,6 +316,7 @@ export const Icons = {
   CIRCLE_CHECKBOX: 'icon-circle-checkbox',
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
+  ARROW_RIGHT: 'icon-arrow-right',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
   ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
@@ -851,6 +853,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ARROW_DOWN_PRIMARY:
       IconComponent = IconArrowDownPrimary;
+
+      break;
+    case Icons.ARROW_RIGHT:
+      IconComponent = IconArrowRight;
 
       break;
     case Icons.ARROW_RIGHT_PRIMARY:

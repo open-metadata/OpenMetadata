@@ -63,6 +63,7 @@ export const PROFILER_FILTER_RANGE = {
   last14days: { days: 14, title: 'Last 14 days' },
   last30days: { days: 30, title: 'Last 30 days' },
   last60days: { days: 60, title: 'Last 60 days' },
+  last365days: { days: 365, title: 'Last 365 days' },
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];

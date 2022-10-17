@@ -1,17 +1,27 @@
 {
   "label": {
     "docs": "Docs",
+    "date-filter": "Date Filter",
     "api-uppercase": "API",
+    "date-amd-time": "Date & Time",
     "slack": "Slack",
     "logout": "Logout",
     "version": "Version",
     "explore": "Explore",
     "glossary": "Glossary",
     "tags": "Tags",
+    "name": "Name",
+    "type": "Type",
+    "status": "Status",
     "settings": "Settings",
-    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models"
+    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models",
+    "summary": "Summary",
+    "list-hyphen-view-lowercase": "list-view",
+    "tree-hyphen-view-lowercase": "tree-view"
   },
-  "message": {},
+  "message": {
+    "fetch-pipeline-status-error": "Error while fetching pipeline status."
+  },
   "server": {},
   "url": {}
 }
