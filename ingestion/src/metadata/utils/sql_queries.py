@@ -447,22 +447,6 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
 """
 )
 
-
-TRINO_GET_COLUMNS = textwrap.dedent(
-    """
-    SELECT
-        "column_name",
-        "data_type",
-        "column_default",
-        UPPER("is_nullable") AS "is_nullable"
-    FROM "information_schema"."columns"
-    WHERE "table_schema" = :schema
-        AND "table_name" = :table
-    ORDER BY "ordinal_position" ASC
-"""
-)
-
-
 POSTGRES_SQL_STATEMENT = textwrap.dedent(
     """
       SELECT

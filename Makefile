@@ -17,6 +17,10 @@ clean_env37:
 install:  ## Install the ingestion module to the current environment
 	python -m pip install ingestion/
 
+.PHONY: devinstall
+devinstall:  ## Install the ingestion module to the current environment
+	python -m pip install -e ingestion/
+
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
 	python -m pip install openmetadata-airflow-apis/
@@ -66,6 +70,14 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
 
+devgenerate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
+	@echo "Running Datamodel Code Generator"
+	@echo "Make sure to first run the install_dev recipe"
+	mkdir -p ingestion/src/metadata/generated
+	datamodel-codegen --input openmetadata-spec/src/main/resources/json/schema --input-file-type jsonschema --output ingestion/src/metadata/generated/schema --set-default-enum-member
+	$(MAKE) py_antlr js_antlr
+	$(MAKE) devinstall
+
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
@@ -85,14 +97,15 @@ run_python_tests:  ## Run all Python tests with coverage
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
-	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
+	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml || true
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml || true
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
 	docker run \
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
+		-e SONAR_SCANNER_OPTS="-Xmx1g" \
 		-e SONAR_LOGIN=$(token) \
 		-v ${PWD}/ingestion:/usr/src \
 		sonarsource/sonar-scanner-cli \

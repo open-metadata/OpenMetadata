@@ -9,13 +9,17 @@
     "bigqueryType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["BigQuery"],
+      "enum": [
+        "BigQuery"
+      ],
       "default": "BigQuery"
     },
     "bigqueryScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["bigquery"],
+      "enum": [
+        "bigquery"
+      ],
       "default": "bigquery"
     }
   },
@@ -67,6 +71,15 @@
       "type": "string",
       "default": "_PARTITIONTIME"
     },
+    "taxonomyProjectID": {
+      "title": "Taxonomy Project IDs",
+      "description": "Project IDs used to fetch policy tags",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
     "taxonomyLocation": {
       "title": "Taxonomy Location",
       "description": "Taxonomy location used to fetch policy tags",
@@ -107,5 +120,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["credentials"]
+  "required": [
+    "credentials"
+  ]
 }

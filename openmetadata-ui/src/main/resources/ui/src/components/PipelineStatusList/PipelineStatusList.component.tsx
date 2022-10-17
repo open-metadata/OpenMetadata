@@ -29,8 +29,8 @@ import { Pipeline, PipelineStatus } from '../../generated/entity/data/pipeline';
 import jsonData from '../../jsons/en';
 import { STATUS_OPTIONS } from '../../utils/PipelineDetailsUtils';
 import {
-  getDateToMilliSecondsOfCurrentDate,
-  getPastDatesToMilliSecondsFromCurrentDate,
+  getCurrentDateTimeStamp,
+  getPastDatesTimeStampFromCurrentDate,
 } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
@@ -78,11 +78,11 @@ const PipelineStatusList: FC<Prop> = ({
 
   const fetchPipelineStatus = async () => {
     try {
-      const startTs = getPastDatesToMilliSecondsFromCurrentDate(
+      const startTs = getPastDatesTimeStampFromCurrentDate(
         PROFILER_FILTER_RANGE.last60days.days
       );
 
-      const endTs = getDateToMilliSecondsOfCurrentDate();
+      const endTs = getCurrentDateTimeStamp();
 
       const response = await getPipelineStatus(pipelineFQN, {
         startTs,

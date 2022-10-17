@@ -41,6 +41,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -71,6 +72,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -81,8 +83,8 @@ public class DefaultAuthorizer implements Authorizer {
   private Set<String> botPrincipalUsers;
   private Set<String> testUsers;
   private String principalDomain;
-
   private String providerType;
+  private boolean isSmtpEnabled;
 
   @Override
   public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi dbi) {
@@ -94,6 +96,8 @@ public class DefaultAuthorizer implements Authorizer {
     this.testUsers = new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getTestPrincipals());
     this.principalDomain = openMetadataApplicationConfig.getAuthorizerConfiguration().getPrincipalDomain();
     this.providerType = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
+    SmtpSettings smtpSettings = openMetadataApplicationConfig.getSmtpSettings();
+    this.isSmtpEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     SubjectCache.initialize();
     PolicyCache.initialize();
     RoleCache.initialize();
@@ -149,7 +153,12 @@ public class DefaultAuthorizer implements Authorizer {
         String[] tokens = adminUser.split(COLON_DELIMITER);
         addUserForBasicAuth(tokens[0], tokens[1], domain);
       } else {
-        addUserForBasicAuth(adminUser, DEFAULT_ADMIN, domain);
+        boolean isDefaultAdmin = adminUser.equals(DEFAULT_ADMIN);
+        String token = PasswordUtil.generateRandomPassword();
+        if (isDefaultAdmin || !isSmtpEnabled) {
+          token = DEFAULT_ADMIN;
+        }
+        addUserForBasicAuth(adminUser, token, domain);
       }
     }
   }
@@ -170,7 +179,9 @@ public class DefaultAuthorizer implements Authorizer {
       User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
       updateUserWithHashedPwd(user, pwd);
       addOrUpdateUser(user);
-      sendInviteMailToAdmin(user, pwd);
+      if (isSmtpEnabled) {
+        sendInviteMailToAdmin(user, pwd);
+      }
     }
   }
 

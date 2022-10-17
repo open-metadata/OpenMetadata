@@ -12,11 +12,9 @@ source:
       connectionArguments: {}
   sourceConfig:
     config:
-      enableDataProfiler: true
-      generateSampleData: false
       tableFilterPattern:
         includes:
-        - customer.*
+          - customer.*
 sink:
   type: metadata-rest
   config: {}

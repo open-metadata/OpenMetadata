@@ -421,9 +421,9 @@ processor:
   config:
   # tableConfig:
   #   - fullyQualifiedName: <table fqn>
-  #     profileSample: <number between 0 and 99>
+  #     profileSample: <number between 0 and 99> # default will be 100 if omitted
+  #     profileQuery: <query to use for sampling data for the profiler>
   #     columnConfig:
-  #       profileQuery: <query to use for sampling data for the profiler>
   #       excludeColumns:
   #         - <column name>
   #       includeColumns:
@@ -466,12 +466,12 @@ processor:
     tableConfig:
       - fullyQualifiedName: <table fqn>
         profileSample: <number between 0 and 99>
+        partitionConfig:
+          partitionField: <field to use as a partition field>
+          partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
+          partitionValues: <values to uses as a predicate for the query>
+        profileQuery: <query to use for sampling data for the profiler>
         columnConfig:
-          partitionConfig:
-            partitionField: <field to use as a partition field>
-            partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
-            partitionValues: <values to uses as a predicate for the query>
-          profileQuery: <query to use for sampling data for the profiler>
           excludeColumns:
             - <column name>
           includeColumns:

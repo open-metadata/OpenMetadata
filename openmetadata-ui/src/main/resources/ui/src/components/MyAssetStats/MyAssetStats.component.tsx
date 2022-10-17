@@ -71,7 +71,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
       },
       testSuite: {
         icon: Icons.TEST_SUITE,
-        data: 'Test Suite',
+        data: 'Test Suites',
         count: entityCounts.testSuiteCount,
         link: getSettingPath(
           GlobalSettingsMenuCategory.DATA_QUALITY,

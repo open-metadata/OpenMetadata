@@ -65,12 +65,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
+    List<String> tempFields = getAllowedFieldsCopy();
     if (fields != null && fields.equals("*")) {
-      List<String> tempFields = getAllowedFieldsCopy();
       tempFields.add("authenticationMechanism");
-      return new Fields(allowedFields, String.join(",", tempFields));
+      return new Fields(tempFields, String.join(",", tempFields));
     }
-    return new Fields(allowedFields, fields);
+    return new Fields(tempFields, fields);
   }
 
   @Override

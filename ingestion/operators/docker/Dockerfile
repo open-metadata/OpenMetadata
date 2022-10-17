@@ -49,6 +49,7 @@ COPY ingestion/operators/docker/main.py .
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
+RUN pip install --upgrade openmetadata-ingestion[airflow]
 RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
