@@ -45,6 +45,14 @@
             }
           }
         }
+      },
+      "webAnalyticEventType": {
+        "javaType": "org.openmetadata.schema.analytics.type.WebAnalyticEventType",
+        "description": "event type",
+        "type": "string",
+        "enum": [
+          "PageView"
+        ]
       }
     }
   }

@@ -73,7 +73,8 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
   @SuppressWarnings("unused") // Method used for reflection of reportDefinitions
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find the existing reportDefinition and them from json files
-    List<String> reportDefinitionFiles = EntityUtil.getJsonDataResources(".*json/data/analytics/.*\\.json$");
+    List<String> reportDefinitionFiles =
+        EntityUtil.getJsonDataResources(".*json/data/analytics/reportDefinitions/.*\\.json$");
     reportDefinitionFiles.forEach(
         reportDefinitionFile -> {
           try {
