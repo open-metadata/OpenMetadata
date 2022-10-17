@@ -119,7 +119,7 @@ def _(config: DbtHttpConfig):
 
 
 @get_dbt_details.register
-def _(config: DbtCloudConfig):
+def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None
