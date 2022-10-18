@@ -298,6 +298,7 @@ const UserListV1: FC<UserListV1Props> = ({
           type: 'link',
         }}
         className="reactive-modal"
+        closable={false}
         confirmLoading={isLoading}
         okText={t('label.restore')}
         title={t('label.restore-user')}

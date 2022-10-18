@@ -425,6 +425,17 @@ const TeamDetailsV1 = ({
     return Promise.reject();
   };
 
+  const removeOwner = () => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        owner: undefined,
+      };
+
+      updateTeamHandler(updatedData);
+    }
+  };
+
   const updateTeamType = (type: TeamType) => {
     if (currentTeam) {
       const updatedData: Team = {
@@ -932,8 +943,14 @@ const TeamDetailsV1 = ({
             {extraInfo.map((info, index) => (
               <>
                 <EntitySummaryDetails
+                  currentOwner={currentTeam.owner}
                   data={info}
                   isGroupType={isGroupType}
+                  removeOwner={
+                    entityPermissions.EditAll || entityPermissions.EditOwner
+                      ? removeOwner
+                      : undefined
+                  }
                   showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={
@@ -1190,6 +1207,7 @@ const TeamDetailsV1 = ({
       {selectedEntity && (
         <Modal
           centered
+          closable={false}
           confirmLoading={isModalLoading}
           okText={t('label.confirm')}
           title={`${t('label.remove')} ${getEntityName(

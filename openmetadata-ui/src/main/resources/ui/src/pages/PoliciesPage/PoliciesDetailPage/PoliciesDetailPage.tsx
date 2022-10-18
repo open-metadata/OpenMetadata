@@ -626,6 +626,7 @@ const PoliciesDetailPage = () => {
       {selectedEntity && (
         <Modal
           centered
+          closable={false}
           confirmLoading={isloadingOnSave}
           okText={t('label.confirm')}
           title={`${t('label.remove')} ${getEntityName(

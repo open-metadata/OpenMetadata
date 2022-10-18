@@ -1,5 +1,8 @@
 {
   "label": {
+    "name": "Name",
+    "type": "Type",
+    "description": "Description",
     "docs": "Docs",
     "api-uppercase": "API",
     "slack": "Slack",
@@ -9,6 +12,8 @@
     "glossary": "Glossary",
     "tags": "Tags",
     "settings": "Settings",
+    "edit": "Edit",
+    "edit-column": "Edit column",
     "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models",
     "name": "Name",
     "display-name": "Display Name",

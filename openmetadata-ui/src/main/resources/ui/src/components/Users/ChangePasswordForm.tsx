@@ -27,6 +27,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
   return (
     <Modal
       centered
+      closable={false}
       confirmLoading={isLoading}
       okButtonProps={{
         form: 'change-password-form',

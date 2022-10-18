@@ -200,7 +200,8 @@ const ServicePage: FunctionComponent = () => {
         serviceDetails?.owner?.type === 'team'
           ? getTeamAndUserDetailsPath(serviceDetails?.owner?.name || '')
           : serviceDetails?.owner?.name || '',
-      placeholderText: serviceDetails?.owner?.displayName || '',
+      placeholderText:
+        serviceDetails?.owner?.displayName || serviceDetails?.owner?.name || '',
       isLink: serviceDetails?.owner?.type === 'team',
       openInNewTab: false,
       profileName:
@@ -828,6 +829,38 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
+  const handleRemoveOwner = () => {
+    const updatedData = {
+      ...serviceDetails,
+      owner: undefined,
+    } as unknown as ServiceOption;
+
+    return new Promise<void>((resolve, reject) => {
+      updateService(serviceName, serviceDetails?.id ?? '', updatedData)
+        .then((res) => {
+          if (res) {
+            setServiceDetails(res);
+
+            resolve();
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['update-owner-error']
+            );
+          }
+
+          reject();
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-owner-error']
+          );
+
+          reject();
+        });
+    });
+  };
+
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -968,7 +1001,14 @@ const ServicePage: FunctionComponent = () => {
                   {extraInfo.map((info, index) => (
                     <span className="tw-flex" key={index}>
                       <EntitySummaryDetails
+                        currentOwner={serviceDetails?.owner}
                         data={info}
+                        removeOwner={
+                          servicePermission.EditAll ||
+                          servicePermission.EditOwner
+                            ? handleRemoveOwner
+                            : undefined
+                        }
                         updateOwner={
                           servicePermission.EditAll ||
                           servicePermission.EditOwner

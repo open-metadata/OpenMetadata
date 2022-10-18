@@ -79,6 +79,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   return (
     <Modal
       centered
+      closable={false}
       confirmLoading={isLoading}
       okButtonProps={{
         form: 'add-team-form',

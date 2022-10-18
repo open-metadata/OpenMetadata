@@ -454,6 +454,7 @@ const RolesDetailPage = () => {
       {selectedEntity && (
         <Modal
           centered
+          closable={false}
           confirmLoading={isLoadingOnSave}
           okText={t('label.confirm')}
           title={`${t('label.remove')} ${getEntityName(

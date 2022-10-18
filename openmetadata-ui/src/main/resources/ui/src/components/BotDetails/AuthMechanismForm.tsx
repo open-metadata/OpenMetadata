@@ -643,6 +643,7 @@ const AuthMechanismForm: FC<Props> = ({
         <Modal
           centered
           destroyOnClose
+          closable={false}
           confirmLoading={isLoading}
           okText={t('label.confirm')}
           title={t('label.are-you-sure')}

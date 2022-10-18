@@ -46,6 +46,7 @@ const CommentModal: FC<CommentModalProps> = ({
         type: 'link',
         className: 'ant-btn-link-custom',
       }}
+      closable={false}
       confirmLoading={isLoading}
       data-testid="comment-modal"
       okButtonProps={{
