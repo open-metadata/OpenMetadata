@@ -152,7 +152,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:10000",
             connectionArguments={"auth": "CUSTOM"},
         )
-        print("get_connection_url(hive_conn_obj)...", get_connection_url(hive_conn_obj))
+
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_conn_options_with_db(self):
@@ -313,6 +313,18 @@ class SouceConnectionTest(TestCase):
             test_proxies
             == get_connection_args(trino_conn_obj).get("http_session").proxies
         )
+
+    def test_trino_without_catalog(self):
+        # Test trino url without catalog
+        expected_url = "trino://username:pass@localhost:443"
+        trino_conn_obj = TrinoConnection(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            password="pass",
+        )
+
+        assert expected_url == get_connection_url(trino_conn_obj)
 
     def test_vertica_url(self):
         expected_url = (
@@ -521,10 +533,7 @@ class SouceConnectionTest(TestCase):
             warehouse="COMPUTE_WH",
             account="ue18849.us-east-2.aws",
         )
-        print(
-            "get_connection_url(snowflake_conn_obj),,,,,",
-            get_connection_url(snowflake_conn_obj),
-        )
+
         assert expected_url == get_connection_url(snowflake_conn_obj)
 
         # connection arguments with db
@@ -815,6 +824,18 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:8080",
             scheme=PrestoScheme.presto,
             catalog="test_catalog",
+        )
+
+        assert expected_url == get_connection_url(presto_conn_obj)
+
+    def test_presto_without_catalog(self):
+        # Test presto url without catalog
+        expected_url = "presto://username:pass@localhost:8080"
+        presto_conn_obj = PrestoConnection(
+            scheme=PrestoScheme.presto,
+            hostPort="localhost:8080",
+            username="username",
+            password="pass",
         )
 
         assert expected_url == get_connection_url(presto_conn_obj)
