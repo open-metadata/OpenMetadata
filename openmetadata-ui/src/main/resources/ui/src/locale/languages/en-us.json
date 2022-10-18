@@ -9,7 +9,15 @@
     "glossary": "Glossary",
     "tags": "Tags",
     "settings": "Settings",
-    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models"
+    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models",
+    "om-tagline": "Centralized Metadata Store, Discover, Collaborate and get your Data Right",
+    "login": "Login",
+    "forgot-password": "Forgot Password",
+    "or-lowercase": "or",
+    "new-to-the-platform": "New to the platform?",
+    "create-account": "Create Account",
+    "username-or-email": "Username or Email",
+    "password": "Password"
   },
   "message": {},
   "server": {},

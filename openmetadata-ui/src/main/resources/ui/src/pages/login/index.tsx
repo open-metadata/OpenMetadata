@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -42,13 +43,15 @@ const SigninPage = () => {
     isAuthenticated,
   } = useAuthContext();
 
+  const { t } = useTranslation();
+
   const { isAuthProviderBasic } = useMemo(() => {
     return {
       isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
     };
   }, [authConfig]);
 
-  const { handleLogin, loginError } = useBasicAuth();
+  const { handleLogin, loginError, isBasicAuthLoading } = useBasicAuth();
 
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
@@ -179,8 +182,7 @@ const SigninPage = () => {
             })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
             <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
-              Centralized Metadata Store, Discover, Collaborate and get your
-              Data Right
+              {t('label.om-tagline')}{' '}
             </Typography.Text>
 
             {isAuthProviderBasic ? (
@@ -193,27 +195,29 @@ const SigninPage = () => {
                   onFinish={handleSubmit}>
                   <Form.Item
                     data-testid="email"
-                    label="Username or Email"
+                    label={t('label.username-or-email')}
                     name="email"
                     requiredMark={false}
                     rules={[{ required: true }]}>
-                    <Input placeholder="Email or Username" />
+                    <Input placeholder={t('label.username-or-email')} />
                   </Form.Item>
                   <Form.Item
                     data-testid="password"
-                    label="Password"
+                    label={t('label.password')}
                     name="password"
                     requiredMark={false}
                     rules={[{ required: true }]}>
-                    <Input.Password placeholder="Password" />
+                    <Input.Password placeholder={t('label.password')} />
                   </Form.Item>
 
                   <Button
                     className="w-full"
                     data-testid="login"
+                    disabled={isBasicAuthLoading}
                     htmlType="submit"
+                    loading={isBasicAuthLoading}
                     type="primary">
-                    Login
+                    {t('label.login')}
                   </Button>
                 </Form>
                 {loginError && (
@@ -237,7 +241,7 @@ const SigninPage = () => {
                 )}
                 <div className="mt-8" onClick={onClickForgotPassword}>
                   <Typography.Link underline data-testid="forgot-password">
-                    Forgot Password
+                    {t('label.forgot-password')}
                   </Typography.Link>
                 </div>
 
@@ -245,20 +249,20 @@ const SigninPage = () => {
                   <>
                     <Divider className="w-min-0 mt-8 mb-12 justify-center">
                       <Typography.Text className="text-sm" type="secondary">
-                        or
+                        {t('label.or-lowercase')}
                       </Typography.Text>
                     </Divider>
 
                     <div className="mt-4 flex flex-center">
                       <Typography.Text className="mr-4">
-                        New to the platform?
+                        {t('label.new-to-the-platform')}
                       </Typography.Text>
                       <Button
                         ghost
                         data-testid="signup"
                         type="link"
                         onClick={onClickSignUp}>
-                        Create Account
+                        {t('label.create-account')}
                       </Button>
                     </div>
                   </>
