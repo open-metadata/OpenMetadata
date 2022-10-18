@@ -23,11 +23,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    Table,
-    TableType,
-)
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
     DomoDatabaseConnection,
 )
@@ -116,10 +112,8 @@ class DomodatabaseSource(DatabaseServiceSource):
         try:
             tables = list(self.domo_client.datasets.list())
             for table in tables:
-                table_name = table['id']
-                table_name = self.standardize_table_name(
-                    schema_name, table_name
-                )
+                table_name = table["id"]
+                table_name = self.standardize_table_name(schema_name, table_name)
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -146,9 +140,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             logger.warning(
                 f"Unexpected exception for schema name [{schema_name}]: {exc}"
             )
-            self.status.failures.append(
-                f"{self.config.serviceName}.{table_name}"
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -159,8 +151,8 @@ class DomodatabaseSource(DatabaseServiceSource):
             table_object = self.domo_client.datasets.get(table_name)
             columns = self.get_columns(table_object=table_object["schema"]["columns"])
             table_request = CreateTableRequest(
-                name=table_object['name'],
-                displayName=table_object['name'],
+                name=table_object["name"],
+                displayName=table_object["name"],
                 tableType=table_type,
                 description=table_object.get("description"),
                 columns=columns,
@@ -174,12 +166,8 @@ class DomodatabaseSource(DatabaseServiceSource):
             self.register_record(table_request=table_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception for table [{table_name}]: {exc}"
-            )
-            self.status.failures.append(
-                f"{self.config.serviceName}.{table_name}"
-            )
+            logger.warning(f"Unexpected exception for table [{table_name}]: {exc}")
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def get_columns(self, table_object):
         row_order = 1
@@ -189,7 +177,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 Column(
                     name=column["name"],
                     description=column.get("description", ""),
-                    dataType=column['type'],
+                    dataType=column["type"],
                     ordinalPosition=row_order,
                 )
             )
