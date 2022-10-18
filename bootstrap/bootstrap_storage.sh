@@ -73,7 +73,6 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-
                       This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target database
    check-connection : Checks if a connection can be successfully obtained for the target database
    rotate           : Rotate the Fernet Key defined in $FERNET_KEY
-   create-ingestion-bot: Create Ingestion bot.
    debug            : Enable Debugging Mode to get more info
 EOF
 }
@@ -88,7 +87,7 @@ fi
 opt="$1"
 
 case "${opt}" in
-create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate | create-ingestion-bot | update-ingestion-bot)
+create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate)
     execute "${opt}"
     ;;
 drop-create )
