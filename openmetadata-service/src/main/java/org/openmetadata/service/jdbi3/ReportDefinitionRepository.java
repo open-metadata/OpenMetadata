@@ -18,7 +18,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class ReportDefinitionRepository extends EntityRepository<ReportDefinition> {
@@ -87,42 +86,18 @@ public class ReportDefinitionRepository extends EntityRepository<ReportDefinitio
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> addReportResult(UriInfo uriInfo, String fqn, ReportResult reportResult)
-      throws IOException {
+  public Response addReportResult(UriInfo uriInfo, String fqn, ReportResult reportResult) throws IOException {
     ReportDefinition reportDefinition = dao.findEntityByName(fqn);
     reportResult.setId(UUID.randomUUID());
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .insert(
+            reportDefinition.getFullyQualifiedName(),
+            REPORT_RESULT_EXTENSION,
+            "reportResult",
+            JsonUtils.pojoToJson(reportResult));
 
-    ReportResult storedReportResult =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(
-                    reportDefinition.getFullyQualifiedName(), REPORT_RESULT_EXTENSION, reportResult.getTimestamp()),
-            ReportResult.class);
-    if (storedReportResult != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              reportDefinition.getFullyQualifiedName(),
-              REPORT_RESULT_EXTENSION,
-              JsonUtils.pojoToJson(reportResult),
-              reportResult.getTimestamp());
-    } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(
-              reportDefinition.getFullyQualifiedName(),
-              REPORT_RESULT_EXTENSION,
-              "reportResult",
-              JsonUtils.pojoToJson(reportResult));
-    }
-
-    ChangeDescription change =
-        addReportDefinitionChangeDescription(reportDefinition.getVersion(), reportResult, storedReportResult);
-    ChangeEvent changeEvent =
-        getChangeEvent(withHref(uriInfo, reportDefinition), change, entityType, reportDefinition.getVersion());
-
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return Response.ok(reportResult).build();
   }
 
   public ResultList<ReportResult> getReportResults(String fqn, Long startTs, Long endTs) throws IOException {

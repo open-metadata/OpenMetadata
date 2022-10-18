@@ -396,7 +396,7 @@ public class ReportDefinitionResource extends EntityResource<ReportDefinition, R
       @Valid ReportResult reportResult)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    return dao.addReportResult(uriInfo, fqn, reportResult).toResponse();
+    return dao.addReportResult(uriInfo, fqn, reportResult);
   }
 
   private ReportDefinition getReportDefinition(CreateReportDefinition create, String user) throws IOException {

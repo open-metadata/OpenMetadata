@@ -107,7 +107,7 @@ public class ReportDefinitionResourceTest extends EntityResourceTest<ReportDefin
   public static void putReportResult(String fqn, ReportResult data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("analytics/report/" + fqn + "/result");
-    TestUtils.put(target, data, CREATED, authHeaders);
+    TestUtils.put(target, data, OK, authHeaders);
   }
 
   public static ResultList<ReportResult> getReportResults(
