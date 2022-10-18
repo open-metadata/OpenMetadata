@@ -171,7 +171,9 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       {getAnnouncements(activeAnnouncements)}
       {Boolean(inActiveAnnouncements.length) && (
         <>
-          <Typography.Text className="tw-block tw-mt-4 tw-font-medium">
+          <Typography.Text
+            className="tw-block tw-mt-4 tw-font-medium"
+            data-testid="inActive-announcements">
             Inactive Announcements
           </Typography.Text>
           <Divider className="tw-mb-4 tw-mt-2" />

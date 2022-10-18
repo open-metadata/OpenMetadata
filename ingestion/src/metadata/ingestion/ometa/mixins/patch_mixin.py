@@ -21,8 +21,10 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str, ometa_logger
+from metadata.utils.helpers import find_column_in_table_with_index
 
 logger = ometa_logger()
 
@@ -39,6 +41,9 @@ REPLACE = "replace"
 # OM specific description handling
 ENTITY_DESCRIPTION = "/description"
 COL_DESCRIPTION = "/columns/{index}/description"
+
+ENTITY_TAG = "/tags/{tag_index}"
+COL_TAG = "/columns/{index}/tags/{tag_index}"
 
 
 class OMetaPatchMixin(Generic[T]):
@@ -67,7 +72,7 @@ class OMetaPatchMixin(Generic[T]):
             instance to update
         """
 
-        instance = self.get_by_id(entity=entity, entity_id=entity_id)
+        instance = self.get_by_id(entity=entity, entity_id=entity_id, fields=["*"])
 
         if not instance:
             logger.warning(
@@ -139,8 +144,7 @@ class OMetaPatchMixin(Generic[T]):
         description: str,
         force: bool = False,
     ) -> Optional[T]:
-        """
-        Given an Entity type and ID, JSON PATCH the description of the column
+        """Given an Entity ID, JSON PATCH the description of the column
 
         Args
             entity_id: ID
@@ -152,18 +156,14 @@ class OMetaPatchMixin(Generic[T]):
             Updated Entity
         """
         table: Table = self._validate_instance_description(
-            entity=Table, entity_id=entity_id
+            entity=Table,
+            entity_id=entity_id,
         )
         if not table:
             return None
 
-        col_index, col = next(
-            (
-                (col_index, col)
-                for col_index, col in enumerate(table.columns)
-                if str(col.name.__root__).lower() == column_name.lower()
-            ),
-            None,
+        col_index, col = find_column_in_table_with_index(
+            column_name=column_name, table=table
         )
 
         if col_index is None:
@@ -186,6 +186,126 @@ class OMetaPatchMixin(Generic[T]):
                             OPERATION: ADD if not col.description else REPLACE,
                             PATH: COL_DESCRIPTION.format(index=col_index),
                             VALUE: description,
+                        }
+                    ]
+                ),
+            )
+            return Table(**res)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PATCH description for Table Column: {entity_id}, {column_name}: {exc}"
+            )
+
+        return None
+
+    def patch_tag(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        tag_fqn: str,
+        from_glossary: bool = False,
+    ) -> Optional[T]:
+        """
+        Given an Entity type and ID, JSON PATCH the tag.
+
+        Args
+            entity (T): Entity Type
+            entity_id: ID
+            description: new description to add
+            force: if True, we will patch any existing description. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        instance = self._validate_instance_description(
+            entity=entity, entity_id=entity_id
+        )
+        if not instance:
+            return None
+
+        tag_index = len(instance.tags) if instance.tags else 0
+
+        try:
+            res = self.client.patch(
+                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
+                data=json.dumps(
+                    [
+                        {
+                            OPERATION: ADD,
+                            PATH: ENTITY_TAG.format(tag_index=tag_index),
+                            VALUE: {
+                                "labelType": LabelType.Automated.value,
+                                "source": TagSource.Tag.value
+                                if not from_glossary
+                                else TagSource.Glossary.value,
+                                "state": State.Confirmed.value,
+                                "tagFQN": tag_fqn,
+                            },
+                        }
+                    ]
+                ),
+            )
+            return entity(**res)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to PATCH description for {entity.__class__.__name__} [{entity_id}]: {exc}"
+            )
+
+        return None
+
+    def patch_column_tag(
+        self,
+        entity_id: Union[str, basic.Uuid],
+        column_name: str,
+        tag_fqn: str,
+        from_glossary: bool = False,
+    ) -> Optional[T]:
+        """Given an Entity ID, JSON PATCH the tag of the column
+
+        Args
+            entity_id: ID
+            tag_fqn: new tag to add
+            column_name: column to update
+            from_glossary: the tag comes from a glossary
+        Returns
+            Updated Entity
+        """
+        table: Table = self._validate_instance_description(
+            entity=Table, entity_id=entity_id
+        )
+        if not table:
+            return None
+
+        col_index, _ = find_column_in_table_with_index(
+            column_name=column_name, table=table
+        )
+
+        if col_index is None:
+            logger.warning(f"Cannot find column {column_name} in Table.")
+            return None
+
+        tag_index = len(table.tags) if table.tags else 0
+
+        try:
+            res = self.client.patch(
+                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
+                data=json.dumps(
+                    [
+                        {
+                            OPERATION: ADD,
+                            PATH: COL_TAG.format(index=col_index, tag_index=tag_index),
+                            VALUE: {
+                                "labelType": LabelType.Automated.value,
+                                "source": TagSource.Tag.value
+                                if not from_glossary
+                                else TagSource.Glossary.value,
+                                "state": State.Confirmed.value,
+                                "tagFQN": tag_fqn,
+                            },
                         }
                     ]
                 ),
