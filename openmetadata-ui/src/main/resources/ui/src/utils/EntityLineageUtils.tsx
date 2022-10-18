@@ -20,14 +20,8 @@ import dagre from 'dagre';
 import { isUndefined } from 'lodash';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
-import {
-  Edge,
-  MarkerType,
-  Node,
-  Position,
-  ReactFlowInstance,
-} from 'react-flow-renderer';
 import { Link } from 'react-router-dom';
+import { Edge, MarkerType, Node, Position, ReactFlowInstance } from 'reactflow';
 import {
   CustomEdgeData,
   CustomeElement,
