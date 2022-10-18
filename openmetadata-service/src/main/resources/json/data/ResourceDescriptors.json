@@ -451,7 +451,7 @@
     ]
   },
   {
-    "name" : "webAnalyticEventResource",
+    "name" : "webAnalyticEvent",
     "operations" : [
       "Create",
       "Delete",
