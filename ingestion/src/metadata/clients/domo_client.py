@@ -21,6 +21,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.domodashboa
 from metadata.generated.schema.entity.services.connections.pipeline.domopipelineConnection import (
     DomoPipelineConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+    DomoDatabaseConnection
+)
 from metadata.ingestion.ometa.client import REST, ClientConfig
 
 CARDS_URL = (
@@ -38,7 +41,7 @@ class DomoClient:
     DOMO metadata from Domo's metadata db
     """
 
-    def __init__(self, config: Union[DomoDashboardConnection, DomoPipelineConnection]):
+    def __init__(self, config: Union[DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection]):
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
