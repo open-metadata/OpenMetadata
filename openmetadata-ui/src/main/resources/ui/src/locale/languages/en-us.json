@@ -1,5 +1,8 @@
 {
   "label": {
+    "name": "Name",
+    "type": "Type",
+    "description": "Description",
     "docs": "Docs",
     "api-uppercase": "API",
     "slack": "Slack",
@@ -9,6 +12,8 @@
     "glossary": "Glossary",
     "tags": "Tags",
     "settings": "Settings",
+    "edit": "Edit",
+    "edit-column": "Edit column",
     "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models",
     "om-description": "Centralized Metadata Store, Discover, Collaborate and get your Data Right",
     "login": "Login",
@@ -28,7 +33,14 @@
     "no-description": "No description",
     "data-type": "Data type",
     "table-metrics-summary": "Table Metrics Summary",
-    "table-tests-summary": "Table Tests Summary"
+    "table-tests-summary": "Table Tests Summary",
+    "frequently-joined-columns": "Frequently joined columns",
+    "no-description": "No description",
+    "request-tags": "Request tags",
+    "update-request-tags": "Update request tags",
+    "request-description": "Request description",
+    "request-update-description": "Request update description",
+    "enter-column-description": "Enter Column Description"
   },
   "message": {},
   "server": {},
