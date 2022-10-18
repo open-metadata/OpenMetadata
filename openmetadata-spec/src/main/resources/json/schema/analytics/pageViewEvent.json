@@ -37,6 +37,10 @@
         "pageLoadTime": {
           "description": "time for the page to load in seconds",
           "type": "number"
+        },
+        "referrer": {
+          "description": "referrer URL",
+          "type": "string"
         }
       }
 }
