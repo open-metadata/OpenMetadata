@@ -37,8 +37,8 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getDateTimeByTimeStampWithZone } from '../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ReIndexAllModal from './elastic-re-index-modal.component';
-import './elastic-search-index.style.less';
+import './ElasticSearchReIndex.style.less';
+import ReIndexAllModal from './ElasticSearchReIndexModal.component';
 
 const ElasticSearchIndexPage = () => {
   const [batchJobData, setBatchJobData] = useState<EventPublisherJob>();
