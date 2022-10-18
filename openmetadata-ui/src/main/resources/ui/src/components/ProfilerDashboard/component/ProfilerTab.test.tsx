@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getListTestCase } from '../../../axiosAPIs/testAPI';
@@ -56,8 +56,6 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('Test ProfilerTab component', () => {
-  beforeEach(() => cleanup());
-
   it('ProfilerTab component should render properly', async () => {
     await act(async () => {
       render(<ProfilerTab {...profilerTabProps} />, {
