@@ -110,12 +110,12 @@ services:
       OM_AUTH_JWT_TOKEN: ${OM_AUTH_JWT_TOKEN:-""}
       # Database configuration for MySQL
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
-      DB_SCHEME: ${OM_DB_SCHEME:-mysql}
-      DB_USE_SSL: ${OM_DB_USE_SSL:-false}
-      DB_USER: ${OM_DB_USER:-openmetadata_user}
-      DB_USER_PASSWORD: ${OM_DB_USER_PASSWORD:-openmetadata_password}
-      DB_HOST: ${OM_DB_HOST:-mysql}
-      DB_PORT: ${OM_DB_PORT:-3306}
+      DB_SCHEME: ${DB_SCHEME:-mysql}
+      DB_USE_SSL: ${DB_USE_SSL:-false}
+      DB_USER: ${DB_USER:-openmetadata_user}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
       # Airflow SSL Configurations
       AIRFLOW_VERIFY_SSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"}
