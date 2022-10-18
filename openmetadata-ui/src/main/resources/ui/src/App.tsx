@@ -36,7 +36,7 @@ import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import { toastOptions } from './constants/toast.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
 import AppRouter from './router/AppRouter';
-import WebAnalyticsProvider from './WebAnalytics';
+import WebAnalyticsProvider from './WebAnalytics/WebAnalyticsProvider';
 
 const App: FunctionComponent = () => {
   library.add(
