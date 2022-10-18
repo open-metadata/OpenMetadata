@@ -15,16 +15,18 @@ import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import WebAnalyticsProvider from './WebAnalyticsProvider';
-const mockProps = {
-  children: <div data-testid="mock-children">Mock Children</div>,
-};
 
 describe('Test WebAnalytics Component', () => {
   it('Should render the child component', async () => {
     await act(async () => {
-      render(<WebAnalyticsProvider {...mockProps} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <WebAnalyticsProvider>
+          <div data-testid="mock-children">Mock Children</div>
+        </WebAnalyticsProvider>,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
     });
 
     const children = await screen.findByTestId('mock-children');
