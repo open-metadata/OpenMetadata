@@ -22,9 +22,11 @@
           "description": "Pipeline unique run ID.",
           "type": "string"
         },
-        "state": {
+        "pipelineState": {
           "description": "Pipeline status denotes if its failed or succeeded.",
-          "type": "string"
+          "type": "string",
+          "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType",
+          "enum": ["queued","success","failed","running","partialSuccess"]
         },
         "startDate": {
           "description": "startDate of the pipeline run for this particular execution.",

@@ -11,15 +11,22 @@
 """
 Workflow definition for metadata related ingestions: metadata, lineage and usage.
 """
-# module building strings read better with .format instead of f-strings
-# pylint: disable=consider-using-f-string
 import importlib
 import traceback
+import uuid
+
+# module building strings read better with .format instead of f-strings
+# pylint: disable=consider-using-f-string
+from datetime import datetime
 from typing import Optional, Type, TypeVar
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+    PipelineStatus,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
@@ -48,6 +55,8 @@ logger = ingestion_logger()
 T = TypeVar("T")
 
 SAMPLE_SOURCE = {"sample-data", "sample-usage"}
+
+SUCCESS_THRESHOLD_VALUE = 90
 
 
 class InvalidWorkflowJSONException(Exception):
@@ -92,9 +101,13 @@ class Workflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
 
-        self._retrieve_service_connection_if_needed(metadata_config, service_type)
+        self.metadata = OpenMetadata(config=metadata_config)
 
-        self._retrieve_dbt_config_source_if_needed(metadata_config, service_type)
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
+
+        self._retrieve_service_connection_if_needed(service_type)
+
+        self._retrieve_dbt_config_source_if_needed(service_type)
 
         logger.info(f"Service type:{service_type},{source_type} configured")
 
@@ -217,10 +230,24 @@ class Workflow:
             self.bulk_sink.close()
         if hasattr(self, "sink"):
             self.sink.close()
+
+        pipeline_state = PipelineState.success
+        if self._get_source_success() >= 90 and self._get_source_success() < 100:
+            pipeline_state = PipelineState.partialSuccess
+        elif self._get_source_success() < 90:
+            pipeline_state = PipelineState.failed
+        self.set_ingestion_pipeline_status(pipeline_state)
+
         self.source.close()
 
+    def _get_source_success(self):
+        return self.source.get_status().calculate_success()
+
     def raise_from_status(self, raise_warnings=False):
-        if self.source.get_status().failures:
+        if (
+            self.source.get_status().failures
+            and self._get_source_success() < SUCCESS_THRESHOLD_VALUE
+        ):
             raise WorkflowExecutionError(
                 "Source reported errors", self.source.get_status()
             )
@@ -258,15 +285,42 @@ class Workflow:
 
         return 0
 
-    def _retrieve_service_connection_if_needed(
-        self, metadata_config: OpenMetadataConnection, service_type: ServiceType
-    ) -> None:
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+
+        if not self.config.ingestionPipelineFQN:
+            # if ingestion pipeline fqn is not set then setting pipeline status is avoided
+            return
+
+        pipeline_status: PipelineStatus = None
+
+        if state in (PipelineState.queued, PipelineState.running):
+            self.config.pipelineRunId = self.config.pipelineRunId or str(uuid.uuid4())
+            pipeline_status = PipelineStatus(
+                runId=self.config.pipelineRunId,
+                pipelineState=state,
+                startDate=datetime.now().timestamp(),
+                timestamp=datetime.now().timestamp(),
+            )
+        elif self.config.pipelineRunId:
+            pipeline_status = self.metadata.get_pipeline_status(
+                self.config.ingestionPipelineFQN, self.config.pipelineRunId
+            )
+            # if workflow is ended then update the end date in status
+            pipeline_status.endDate = datetime.now().timestamp()
+            pipeline_status.pipelineState = state
+        self.metadata.create_or_update_pipeline_status(
+            self.config.ingestionPipelineFQN, pipeline_status
+        )
+
+    def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """
         We override the current `serviceConnection` source config object if source workflow service already exists
         in OM. When secrets' manager is configured, we retrieve the service connection from the secrets' manager.
         Otherwise, we get the service connection from the service object itself through the default `SecretsManager`.
 
-        :param metadata_config: OpenMetadata connection config
         :param service_type: source workflow service type
         :return:
         """
@@ -274,28 +328,23 @@ class Workflow:
             self.config.source.type
         ):
             service_name = self.config.source.serviceName
-            metadata = OpenMetadata(config=metadata_config)
             try:
-                service = metadata.get_by_name(
+                service = self.metadata.get_by_name(
                     get_service_class_from_service_type(service_type),
                     service_name,
                 )
                 if service:
-                    self.config.source.serviceConnection = (
-                        metadata.secrets_manager_client.retrieve_service_connection(
-                            service, service_type.name.lower()
-                        )
+                    self.config.source.serviceConnection = self.metadata.secrets_manager_client.retrieve_service_connection(
+                        service, service_type.name.lower()
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error getting dbtConfigSource for service name [{service_name}]"
-                    f" using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
-    def _retrieve_dbt_config_source_if_needed(
-        self, metadata_config: OpenMetadataConnection, service_type: ServiceType
-    ) -> None:
+    def _retrieve_dbt_config_source_if_needed(self, service_type: ServiceType) -> None:
         """
         We override the current `config` source config object if it is a metadata ingestion type. When secrets' manager
         is configured, we retrieve the config from the secrets' manager. Otherwise, we get the config from the source
@@ -309,10 +358,9 @@ class Workflow:
             and config
             and config.type == DatabaseMetadataConfigType.DatabaseMetadata
         ):
-            metadata = OpenMetadata(config=metadata_config)
             try:
                 dbt_config_source: object = (
-                    metadata.secrets_manager_client.retrieve_dbt_source_config(
+                    self.metadata.secrets_manager_client.retrieve_dbt_source_config(
                         self.config.source.sourceConfig,
                         self.config.source.serviceName,
                     )
@@ -327,7 +375,7 @@ class Workflow:
                 logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error getting dbtConfigSource for config [{config}] using the secrets manager"
-                    f" provider [{metadata.config.secretsManagerProvider}]: {exc}"
+                    f" provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     @staticmethod

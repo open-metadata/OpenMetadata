@@ -35,17 +35,7 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -55,7 +45,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -228,7 +220,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
-      ingestionPipeline = addStatus(ingestionPipeline);
+      addStatus(ingestionPipeline);
     }
     return decryptOrNullify(securityContext, ingestionPipeline);
   }
@@ -582,6 +574,58 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
+  @PUT
+  @Path("/{fqn}/pipelineStatus")
+  @Operation(
+      operationId = "addPipelineStatus",
+      summary = "Add pipeline status",
+      tags = "IngestionPipelines",
+      description = "Add pipeline status of ingestion pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the PipelineStatus. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+      })
+  public Response addPipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Encoded
+          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid PipelineStatus pipelineStatus)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    return dao.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
+  }
+
+  @GET
+  @Path("/{fqn}/pipelineStatus/{id}")
+  @Operation(
+      operationId = "getPipelineStatus",
+      summary = "get pipeline status",
+      tags = "IngestionPipelines",
+      description = "Get pipeline status of ingestion pipeline",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated state of the PipelineStatus.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+      })
+  public PipelineStatus getPipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Encoded
+          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Pipeline Status Run Id", schema = @Schema(type = "string")) @PathParam("id") UUID runId)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    return dao.getPipelineStatus(fqn, runId);
+  }
+
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build();
@@ -594,16 +638,14 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withService(create.getService());
   }
 
-  public void addStatus(List<IngestionPipeline> ingestionPipelines) {
-    listOrEmpty(ingestionPipelines).forEach(this::addStatus);
+  public void addStatus(List<IngestionPipeline> ingestionPipelines) throws IOException {
+    for (IngestionPipeline ingestionPipeline : ingestionPipelines) {
+      addStatus(ingestionPipeline);
+    }
   }
 
-  private IngestionPipeline addStatus(IngestionPipeline ingestionPipeline) {
-    try {
-      ingestionPipeline = pipelineServiceClient.getPipelineStatus(ingestionPipeline);
-    } catch (Exception e) {
-      LOG.error("Failed to fetch status for {} due to {}", ingestionPipeline.getName(), e);
-    }
+  private IngestionPipeline addStatus(IngestionPipeline ingestionPipeline) throws IOException {
+    ingestionPipeline.setPipelineStatuses(dao.listPipelineStatus(ingestionPipeline));
     return ingestionPipeline;
   }
 

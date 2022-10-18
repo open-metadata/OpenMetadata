@@ -193,6 +193,14 @@
         },
         "workflowConfig": {
           "$ref": "#/definitions/workflowConfig"
+        },
+        "ingestionPipelineFQN": {
+          "description": "Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline",
+          "type": "string"
+        },
+        "pipelineRunId": {
+          "description": "Unique identifier of pipeline run, used to identify the current pipleine run",
+          "$ref": "../type/basic.json#/definitions/uuid"
         }
       },
       "required": ["source", "workflowConfig"],

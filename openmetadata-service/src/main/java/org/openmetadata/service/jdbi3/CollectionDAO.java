@@ -3027,6 +3027,9 @@ public interface CollectionDAO {
     void deleteAtTimestamp(
         @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
 
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN and jsonSchema = :jsonSchema")
+    List<String> listByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
+
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and extension = :extension "
             + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
