@@ -57,48 +57,54 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
 }) => {
   const location = useLocation();
 
-  const otherDetails: ExtraInfo[] = [];
+  const otherDetails = useMemo(() => {
+    const _otherDetails: ExtraInfo[] = [];
 
-  if ('tier' in source && !isNil(source.tier)) {
-    otherDetails.push({
-      key: 'Tier',
-      value: isString(source.tier)
-        ? source.tier
-        : source.tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1],
-    });
-  }
+    if ('tier' in source && !isNil(source.tier)) {
+      _otherDetails.push({
+        key: 'Tier',
+        value: isString(source.tier)
+          ? source.tier
+          : source.tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1],
+      });
+    }
 
-  if ('owner' in source && !isNil(source.owner)) {
-    otherDetails.push({
-      key: 'Owner',
-      value: getOwnerValue(source.owner as EntityReference),
-      placeholderText: getEntityPlaceHolder(
-        getEntityName(source.owner as EntityReference),
-        source.owner?.deleted
-      ),
-      id: getEntityId(source.owner as EntityReference),
-      isEntityDetails: true,
-      isLink: true,
-      openInNewTab: false,
-      profileName:
-        source.owner?.type === OwnerType.USER ? source.owner?.name : undefined,
-    });
-  }
+    if ('owner' in source && !isNil(source.owner)) {
+      _otherDetails.push({
+        key: 'Owner',
+        value: getOwnerValue(source.owner as EntityReference),
+        placeholderText: getEntityPlaceHolder(
+          getEntityName(source.owner as EntityReference),
+          source.owner?.deleted
+        ),
+        id: getEntityId(source.owner as EntityReference),
+        isEntityDetails: true,
+        isLink: true,
+        openInNewTab: false,
+        profileName:
+          source.owner?.type === OwnerType.USER
+            ? source.owner?.name
+            : undefined,
+      });
+    }
 
-  if ('usageSummary' in source) {
-    otherDetails.push({
-      key: 'Usage',
-      value: source.usageSummary?.weeklyStats?.count,
-    });
-  }
+    if ('usageSummary' in source) {
+      _otherDetails.push({
+        key: 'Usage',
+        value: source.usageSummary?.weeklyStats?.count,
+      });
+    }
 
-  if ('tableType' in source) {
-    otherDetails.push({
-      key: 'Type',
-      value: source.tableType,
-      showLabel: true,
-    });
-  }
+    if ('tableType' in source) {
+      _otherDetails.push({
+        key: 'Type',
+        value: source.tableType,
+        showLabel: true,
+      });
+    }
+
+    return _otherDetails;
+  }, [source]);
 
   const handleLinkClick = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {

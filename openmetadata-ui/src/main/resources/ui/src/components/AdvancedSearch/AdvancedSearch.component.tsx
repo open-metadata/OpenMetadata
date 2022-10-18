@@ -18,7 +18,7 @@ import {
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
-import { elasticSearchFormat } from '../../utils/QueryBuilderElasticsearchFormat';
+import { elasticSearchFormat } from '../../utils/QueryBuilderElasticsearchFormatUtils';
 import { emptyJsonTree, getQbConfigs } from './AdvancedSearch.constants';
 import { AdvancedSearchProps } from './AdvancedSearch.interface';
 
@@ -49,10 +49,8 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     <Query
       {...config}
       renderBuilder={(props) => (
-        <div className="query-builder-container">
-          <div className="query-builder qb-lite">
-            <Builder {...props} />
-          </div>
+        <div className="query-builder-container query-builder qb-lite">
+          <Builder {...props} />
         </div>
       )}
       value={immutableTree}

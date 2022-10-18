@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   compareAggregationKey,
   translateAggregationKeyToTitle,
@@ -31,6 +31,14 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
 }) => {
   const [aggregationsPageSize, setAggregationsPageSize] = useState(
     Object.fromEntries(Object.keys(aggregations).map((k) => [k, 5]))
+  );
+
+  const aggregationEntries = useMemo(
+    () =>
+      Object.entries(aggregations)
+        .filter(([, { buckets }]) => buckets.length)
+        .sort(([key1], [key2]) => compareAggregationKey(key1, key2)),
+    [aggregations]
   );
 
   useEffect(
@@ -72,88 +80,80 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
         </div>
       </div>
       <div className="tw-filter-seperator" />
-      {Object.entries(aggregations)
-        .filter(([, { buckets }]) => buckets.length)
-        .sort(([key1], [key2]) => compareAggregationKey(key1, key2))
-        .map(
-          (
-            [aggregationKey, aggregation],
-            index,
-            { length: aggregationsLength }
-          ) => {
-            return (
-              <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
-                <div className="tw-flex tw-justify-between tw-flex-col">
-                  <h6 className="tw-heading tw-my-1">
-                    {translateAggregationKeyToTitle(aggregationKey)}
-                  </h6>
-                  <div className="tw-flex tw-my-1.5">
-                    {!isEmpty(filters[aggregationKey]) && (
-                      <span
-                        className="link-text tw-text-xs tw-text-grey-muted"
-                        onClick={() => onClearFilter(aggregationKey)}>
-                        Deselect All
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div
-                  className="sidebar-my-data-holder"
-                  data-testid="filter-container">
-                  {aggregation.buckets
-                    .slice(0, aggregationsPageSize[aggregationKey])
-                    .map((bucket, index) => (
-                      <FilterContainer
-                        count={bucket.doc_count}
-                        isSelected={
-                          !isNil(filters) && aggregationKey in filters
-                            ? filters[aggregationKey].includes(bucket.key)
-                            : false
-                        }
-                        key={index}
-                        name={bucket.key}
-                        type={aggregationKey}
-                        onSelect={onSelectHandler}
-                      />
-                    ))}
-                  <div className="tw-flex tw-justify-around tw-flex-row tw-my-1.5">
-                    {aggregationsPageSize[aggregationKey] <
-                      aggregation.buckets.length && (
-                      <p
-                        className="link-text tw-text-xs"
-                        onClick={() =>
-                          setAggregationsPageSize((prev) => ({
-                            ...prev,
-                            [aggregationKey]: prev[aggregationKey] + 5,
-                          }))
-                        }>
-                        View more
-                      </p>
-                    )}
-                    {aggregationsPageSize[aggregationKey] > 5 && (
-                      <p
-                        className="link-text tw-text-xs"
-                        onClick={() =>
-                          setAggregationsPageSize((prev) => ({
-                            ...prev,
-                            [aggregationKey]: Math.max(
-                              5,
-                              prev[aggregationKey] - 5
-                            ),
-                          }))
-                        }>
-                        View less
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {index !== aggregationsLength - 1 && (
-                  <div className="tw-filter-seperator" />
+      {aggregationEntries.map(
+        (
+          [aggregationKey, aggregation],
+          index,
+          { length: aggregationsLength }
+        ) => (
+          <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
+            <div className="tw-flex tw-justify-between tw-flex-col">
+              <h6 className="tw-heading tw-my-1">
+                {translateAggregationKeyToTitle(aggregationKey)}
+              </h6>
+              <div className="tw-flex tw-my-1.5">
+                {!isEmpty(filters[aggregationKey]) && (
+                  <span
+                    className="link-text tw-text-xs tw-text-grey-muted"
+                    onClick={() => onClearFilter(aggregationKey)}>
+                    Deselect All
+                  </span>
                 )}
               </div>
-            );
-          }
-        )}
+            </div>
+            <div
+              className="sidebar-my-data-holder"
+              data-testid="filter-container">
+              {aggregation.buckets
+                .slice(0, aggregationsPageSize[aggregationKey])
+                .map((bucket, index) => (
+                  <FilterContainer
+                    count={bucket.doc_count}
+                    isSelected={
+                      !isNil(filters) && aggregationKey in filters
+                        ? filters[aggregationKey].includes(bucket.key)
+                        : false
+                    }
+                    key={index}
+                    name={bucket.key}
+                    type={aggregationKey}
+                    onSelect={onSelectHandler}
+                  />
+                ))}
+              <div className="tw-flex tw-justify-around tw-flex-row tw-my-1.5">
+                {aggregationsPageSize[aggregationKey] <
+                  aggregation.buckets.length && (
+                  <p
+                    className="link-text tw-text-xs"
+                    onClick={() =>
+                      setAggregationsPageSize((prev) => ({
+                        ...prev,
+                        [aggregationKey]: prev[aggregationKey] + 5,
+                      }))
+                    }>
+                    View more
+                  </p>
+                )}
+                {aggregationsPageSize[aggregationKey] > 5 && (
+                  <p
+                    className="link-text tw-text-xs"
+                    onClick={() =>
+                      setAggregationsPageSize((prev) => ({
+                        ...prev,
+                        [aggregationKey]: Math.max(5, prev[aggregationKey] - 5),
+                      }))
+                    }>
+                    View less
+                  </p>
+                )}
+              </div>
+            </div>
+            {index !== aggregationsLength - 1 && (
+              <div className="tw-filter-seperator" />
+            )}
+          </div>
+        )
+      )}
     </>
   );
 };

@@ -11,34 +11,10 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
-import { FilterObject } from '../components/AdvancedSearch/AdvancedSearch.interface';
 import { ExploreSearchIndex } from '../components/Explore/explore.interface';
 import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
 import { Icons } from '../utils/SvgUtils';
-
-/**
- * Builds an Elasticsearch JSON query from a {@see FilterObject}
- */
-export const filterObjectToElasticsearchQuery: (
-  f: FilterObject | undefined
-) => Record<string, unknown> | undefined = (f) =>
-  isNil(f)
-    ? { query: { bool: {} } }
-    : Object.entries(f).length
-    ? {
-        query: {
-          bool: {
-            must: Object.entries(f).map(([key, values]) => ({
-              bool: {
-                should: values.map((value) => ({ term: { [key]: value } })),
-              },
-            })),
-          },
-        },
-      }
-    : undefined;
 
 export const INITIAL_SORT_FIELD = '_score';
 export const INITIAL_SORT_ORDER = 'desc';
