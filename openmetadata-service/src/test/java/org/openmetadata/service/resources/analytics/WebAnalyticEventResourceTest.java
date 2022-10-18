@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.analytics;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -74,7 +73,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
                     .withUserId(UUID.randomUUID())
                     .withSessionId(UUID.randomUUID()));
 
-    postWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
+    putWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
 
     ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
         getWebAnalyticEventData(
@@ -121,10 +120,10 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
     return;
   }
 
-  public static void postWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
+  public static void putWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("analytics/webAnalyticEvent/collect");
-    TestUtils.put(target, data, CREATED, authHeaders);
+    TestUtils.put(target, data, OK, authHeaders);
   }
 
   public static ResultList<WebAnalyticEventData> getWebAnalyticEventData(

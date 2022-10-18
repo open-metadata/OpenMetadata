@@ -86,7 +86,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
             "webAnalyticEventData",
             JsonUtils.pojoToJson(webAnalyticEventData));
 
-    return Response.created(webAnalyticEvent.getHref()).build();
+    return Response.ok(webAnalyticEventData).build();
   }
 
   public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs)
