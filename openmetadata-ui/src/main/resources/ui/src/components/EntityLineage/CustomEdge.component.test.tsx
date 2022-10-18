@@ -18,8 +18,8 @@ import {
   render,
 } from '@testing-library/react';
 import React from 'react';
-import { EdgeProps, Position } from 'react-flow-renderer';
 import { MemoryRouter } from 'react-router-dom';
+import { EdgeProps, Position } from 'reactflow';
 import { CustomEdge } from './CustomEdge.component';
 
 jest.mock('../../constants/Lineage.constants', () => ({
