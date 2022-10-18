@@ -62,6 +62,8 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
     """
 
     try:
+        # We just want to force boto3 install if uploading backup
+        # pylint: disable=import-outside-toplevel
         import boto3
         from boto3.exceptions import S3UploadFailedError
     except ModuleNotFoundError as err:
@@ -96,7 +98,7 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
 
-def run_backup(
+def run_backup(  # pylint: disable=too-many-arguments
     host: str,
     user: str,
     password: str,

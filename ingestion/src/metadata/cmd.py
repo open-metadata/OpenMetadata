@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+This module defines the CLI commands for OpenMetada
+"""
 
 import logging
 import os
@@ -36,6 +39,8 @@ from metadata.utils.workflow_output_handler import WorkflowType, print_init_erro
 logger = cli_logger()
 
 
+# To be fixed in https://github.com/open-metadata/OpenMetadata/issues/8081
+# pylint: disable=too-many-arguments
 @click.group()
 def check() -> None:
     pass
@@ -54,6 +59,7 @@ def check() -> None:
     required=False,
 )
 def metadata(debug: bool, log_level: str) -> None:
+    """Method to set logger information"""
     if debug:
         set_loggers_level(logging.DEBUG)
     elif log_level:
@@ -96,7 +102,7 @@ def test(config: str) -> None:
         workflow = TestSuiteWorkflow.create(workflow_test_config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, workflow_test_config_dict, WorkflowType.profile)
+        print_init_error(exc, workflow_test_config_dict, WorkflowType.PROFILE)
         sys.exit(1)
 
     workflow.execute()
@@ -124,7 +130,7 @@ def profile(config: str) -> None:
         workflow = ProfilerWorkflow.create(workflow_config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, workflow_config_dict, WorkflowType.profile)
+        print_init_error(exc, workflow_config_dict, WorkflowType.PROFILE)
         sys.exit(1)
 
     workflow.execute()
@@ -141,7 +147,11 @@ def webhook(host: str, port: int) -> None:
     """Simple Webserver to test webhook metadata events"""
 
     class WebhookHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
+        """WebhookHandler class to define the rest API methods"""
+
+        # Overwrite do_GET and do_POST from parent class
+        def do_GET(self):  # pylint: disable=invalid-name
+            """WebhookHandler GET API method"""
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
@@ -149,7 +159,8 @@ def webhook(host: str, port: int) -> None:
             message = "Hello, World! Here is a GET response"
             self.wfile.write(bytes(message, "utf8"))
 
-        def do_POST(self):
+        def do_POST(self):  # pylint: disable=invalid-name
+            """WebhookHandler POST API method"""
             content_len = int(self.headers.get("Content-Length"))
             post_body = self.rfile.read(content_len)
             self.send_response(200)
@@ -347,8 +358,8 @@ def openmetadata_imports_migration(
     """Update DAG files generated after creating workflow in 0.11 and before.
 
     In 0.12 the airflow managed API package name changed from `openmetadata` to `openmetadata_managed_apis`
-    hence breaking existing DAGs. The `dag_generated_config` folder also changed location in Docker. This small CLI
-    utility allows you to update both elements.
+    hence breaking existing DAGs. The `dag_generated_config` folder also changed location in Docker.
+    This small CLI utility allows you to update both elements.
     """
     run_openmetadata_imports_migration(dir_path, change_config_file_path)
 
@@ -415,7 +426,7 @@ def restore(
     password: str,
     database: str,
     port: str,
-    input: str,
+    sql_file: str,
     options: List[str],
     arguments: List[str],
     schema: str,
@@ -436,7 +447,7 @@ def restore(
         password,
         database,
         port,
-        input,
+        sql_file,
         options,
         arguments,
         schema,

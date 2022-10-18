@@ -39,7 +39,7 @@ def run_ingest(config_path: str) -> None:
         logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, config_dict, WorkflowType.ingest)
+        print_init_error(exc, config_dict, WorkflowType.INGEST)
         sys.exit(1)
 
     workflow.execute()

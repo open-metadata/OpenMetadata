@@ -48,7 +48,6 @@ public class PermissionsResource {
   private final Authorizer authorizer;
 
   @SuppressWarnings("unused")
-  @Collection
   public PermissionsResource(CollectionDAO dao, @NonNull Authorizer authorizer) {
     this.authorizer = authorizer;
   }

@@ -29,7 +29,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
-
+# pylint: disable=invalid-name
 class avg(GenericFunction):
     name = "avg"
     inherit_cache = CACHE
@@ -39,7 +39,7 @@ class avg(GenericFunction):
 def _(element, compiler, **kw):
     """Handle case for empty table. If empty, clickhouse returns NaN"""
     proc = compiler.process(element.clauses, **kw)
-    return "if(isNaN(avg(%s)), null, avg(%s))" % ((proc,) * 2)
+    return f"if(isNaN(avg({proc})), null, avg({proc}))"
 
 
 class Mean(StaticMetric):

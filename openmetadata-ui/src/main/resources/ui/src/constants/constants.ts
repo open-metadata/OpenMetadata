@@ -29,7 +29,7 @@ export const SUCCESS_COLOR = '#008376';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
-export const TAG_VIEW_CAP = 35;
+export const TAG_VIEW_CAP = 33;
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
@@ -258,6 +258,7 @@ export const SOCKET_EVENTS = {
   ACTIVITY_FEED: 'activityFeed',
   TASK_CHANNEL: 'taskChannel',
   MENTION_CHANNEL: 'mentionChannel',
+  JOB_STATUS: 'jobStatus',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

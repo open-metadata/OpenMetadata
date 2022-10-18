@@ -47,7 +47,7 @@ class StageStatus(Status):
 class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "Stage":
+    def create(cls, config_dict: dict, metadata_config: dict) -> "Stage":
         pass
 
     @abstractmethod

@@ -1,0 +1,44 @@
+.ant-tree-switcher {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.ant-tree .ant-tree-node-content-wrapper .ant-tree-iconEle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ant-tree .ant-tree-treenode {
+  padding: 4px 0;
+}
+
+.ant-tree.ant-tree-directory .ant-tree-treenode-selected:hover::before,
+.ant-tree.ant-tree-directory .ant-tree-treenode-selected::before {
+  background: #f4f0fd;
+  border-left: 2px solid rgb(113, 71, 232);
+}
+
+.ant-tree.ant-tree-directory .ant-tree-treenode::before {
+  height: 100%;
+}
+
+.ant-tree-node-selected .ant-tree-title {
+  color: rgb(113, 71, 232);
+  font-weight: 700;
+}
+
+.ant-tree-title {
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+
+.ant-tree-switcher-icon {
+  color: black;
+}

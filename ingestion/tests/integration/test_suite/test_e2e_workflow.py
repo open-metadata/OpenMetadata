@@ -16,6 +16,7 @@ Validate workflow e2e
 import os
 import unittest
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
@@ -45,7 +46,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 test_suite_config = {
@@ -168,12 +169,14 @@ class TestE2EWorkflow(unittest.TestCase):
                 ),
             )
         )
-
-        sqa_profiler_interface = SQAInterface(
-            cls.sqlite_conn.config,
-            table=User,
-            table_entity=table,
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                cls.sqlite_conn.config,
+                table_entity=table,
+                ometa_client=None,
+            )
         engine = sqa_profiler_interface.session.get_bind()
         session = sqa_profiler_interface.session
 

@@ -32,7 +32,24 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-Object.defineProperty(window, 'DOMMatrixReadOnly', {
+window.DOMMatrixReadOnly = jest.fn().mockImplementation(() => ({
   is2D: true,
   isIdentity: true,
-});
+}));
+
+/**
+ * mock implementation of ResizeObserver
+ */
+window.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
+/**
+ * mock implementation of IntersectionObserver
+ */
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+}));

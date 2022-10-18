@@ -89,6 +89,7 @@ module.exports = {
         include: [
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/tailwindcss'),
+          path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/react-tippy'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/rc-tree'),
@@ -171,7 +172,7 @@ module.exports = {
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: false, // require.resolve('url/'),
+      url: require.resolve('url/'),
     },
   },
 

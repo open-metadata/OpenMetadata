@@ -76,6 +76,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   return (
     <Modal
       centered
+      closable={false}
       okButtonProps={{
         form: 'add-team-form',
         type: 'primary',

@@ -91,7 +91,6 @@ public class TagResource {
     }
   }
 
-  @Collection
   public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
     this.dao = new TagRepository(collectionDAO);
@@ -99,7 +98,7 @@ public class TagResource {
     this.authorizer = authorizer;
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @SuppressWarnings("unused") // Method used by reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
     List<String> tagFiles = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");

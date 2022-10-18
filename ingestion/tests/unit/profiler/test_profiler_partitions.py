@@ -18,6 +18,9 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
@@ -77,6 +80,7 @@ MOCK_DATABASE = Database(
 
 class MockTable(BaseModel):
     tablePartition: Optional[TablePartition]
+    serviceType = DatabaseServiceType.BigQuery
 
     class Config:
         arbitrary_types_allowed = True

@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Salesforce source ingestion
+"""
 import traceback
 from typing import Iterable, Optional, Tuple
 
@@ -53,6 +55,11 @@ logger = ingestion_logger()
 
 
 class SalesforceSource(DatabaseServiceSource):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Salesforce Source
+    """
+
     def __init__(self, config, metadata_config: OpenMetadataConnection):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
@@ -171,9 +178,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(
                 f"Unexpected exception for schema name [{schema_name}]: {exc}"
             )
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -187,7 +192,7 @@ class SalesforceSource(DatabaseServiceSource):
 
             table_constraints = None
             salesforce_objects = self.client.restful(
-                "sobjects/{}/describe/".format(table_name),
+                f"sobjects/{table_name}/describe/",
                 params=None,
             )
             columns = self.get_columns(salesforce_objects["fields"])
@@ -208,11 +213,12 @@ class SalesforceSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception for table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def get_columns(self, salesforce_fields):
+        """
+        Method to handle column details
+        """
         row_order = 1
         columns = []
         for column in salesforce_fields:
@@ -248,7 +254,9 @@ class SalesforceSource(DatabaseServiceSource):
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
+    def standardize_table_name(  # pylint: disable=unused-argument
+        self, schema: str, table: str
+    ) -> str:
         return table
 
     def prepare(self):

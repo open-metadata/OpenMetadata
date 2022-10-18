@@ -56,7 +56,8 @@ class Sampler:
                 self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
             )
             .suffix_with(
-                f"SAMPLE SYSTEM ({self.profile_sample})", dialect=Dialects.Snowflake
+                f"SAMPLE SYSTEM ({self.profile_sample or 100})",
+                dialect=Dialects.Snowflake,
             )
             .cte(f"{self.table.__tablename__}_rnd")
         )

@@ -52,7 +52,7 @@ export const handleIngestionRetry = (
 ) => {
   const rowIndex = ingestionType === 'metadata' ? 1 : 2;
   // ingestions page
-  
+
   let retryCount = count;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -119,7 +119,8 @@ export const testServiceCreationAndIngestion = (
   addIngestionInput,
   serviceName,
   type = 'database',
-  testIngestionButton = true
+  testIngestionButton = true,
+  configureDBT
 ) => {
   //Storing the created service name and the type of service
   // Select Service in step 1
@@ -145,9 +146,14 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="ip-address"]').should('exist');
 
   // Test the connection
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/testConnection',
+    'testConnection'
+  );
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(5000);
+  verifyResponseStatusCode('@testConnection', 200);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -180,8 +186,7 @@ export const testServiceCreationAndIngestion = (
   // Configure DBT Model
   if (isDatabaseService(type)) {
     cy.contains('Configure DBT Model').should('be.visible');
-    cy.get('[data-testid="dbt-source"]').should('be.visible').select('');
-
+    configureDBT && configureDBT();
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
   }
 
@@ -676,7 +681,7 @@ export const deleteSoftDeletedUser = (username) => {
 
 export const toastNotification = (msg) => {
   cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
-  cy.wait(1000);
+  cy.wait(200);
   cy.get('.Toastify__close-button').should('be.visible').click();
 };
 
@@ -706,7 +711,7 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   cy.wait('@customProperties');
-  cy.get('[data-testid="data-row"]').should('contain', propertyName);
+  cy.get('.ant-table-row').should('contain', propertyName);
 
   //Navigating to home page
   cy.clickOnLogo();
@@ -800,7 +805,7 @@ export const editCreatedProperty = (propertyName) => {
   cy.get('.tw-modal-container').should('not.exist');
 
   //Fetching for updated descriptions for the created custom property
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .nextUntil('div')

@@ -27,14 +27,7 @@ module.exports = {
   mode: 'development',
 
   // Input configuration
-  entry: [
-    '@babel/polyfill',
-    // Runtime code for hot module replacement
-    // 'webpack/hot/dev-server.js',
-    // Dev server client for web socket transport, hot and live reload logic
-    // 'webpack-dev-server/client/index.tsx?hot=true&live-reload=true',
-    path.join(__dirname, 'src/index.tsx'),
-  ],
+  entry: ['@babel/polyfill', path.join(__dirname, 'src/index.tsx')],
 
   // Output configuration
   output: {
@@ -95,6 +88,7 @@ module.exports = {
         include: [
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/tailwindcss'),
+          path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/react-tippy'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/rc-tree'),
@@ -177,7 +171,7 @@ module.exports = {
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: false,
+      url: require.resolve('url/'),
     },
   },
 

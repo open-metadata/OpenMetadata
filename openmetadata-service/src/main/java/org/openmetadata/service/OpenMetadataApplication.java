@@ -96,7 +96,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
     // init email Util for handling
-    EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
+    if (catalogConfig.getSmtpSettings() != null && catalogConfig.getSmtpSettings().getEnableSmtpServer()) {
+      EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
+    }
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(
@@ -136,7 +138,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
-    registerResources(catalogConfig, environment, jdbi, secretsManager);
+    registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
@@ -270,9 +272,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerResources(
-      OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi, SecretsManager secretsManager) {
-    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, secretsManager);
+  private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

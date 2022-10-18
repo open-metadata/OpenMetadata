@@ -14,7 +14,6 @@ the indexes used in OM.
 
 We disable unexpected-keyword-arg as we get a false positive for request_timeout in put_mappings
 """
-# pylint: disable=unexpected-keyword-arg
 
 import json
 import ssl

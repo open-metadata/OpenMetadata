@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
+import { Col, Row, Space, Table as TableAntd } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { startCase } from 'lodash';
 import { observer } from 'mobx-react';
@@ -23,6 +23,7 @@ import React, {
   FunctionComponent,
   RefObject,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -81,7 +82,6 @@ import jsonData from '../../jsons/en';
 import {
   getEntityName,
   getPartialNameFromTableFQN,
-  isEven,
 } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
@@ -411,6 +411,34 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     });
   };
 
+  const handleRemoveOwner = () => {
+    const updatedData = {
+      ...databaseSchema,
+      owner: undefined,
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
+        .then((res) => {
+          if (res) {
+            setDatabaseSchema(res);
+            resolve();
+          } else {
+            reject();
+
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-databaseSchema-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
     getAllFeeds(
@@ -516,60 +544,49 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
+  const tableColumn: ColumnsType<Table> = useMemo(
+    () => [
+      {
+        title: 'Table Name',
+        dataIndex: 'name',
+        key: 'name',
+        render: (text: string, record: Table) => {
+          return (
+            <Link
+              to={getEntityLink(
+                EntityType.TABLE,
+                record.fullyQualifiedName as string
+              )}>
+              {text}
+            </Link>
+          );
+        },
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string) =>
+          text?.trim() ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            <span className="tw-no-description">No description</span>
+          ),
+      },
+    ],
+    []
+  );
+
   const getSchemaTableList = () => {
     return (
-      <div className="tw-table-container tw-mb-4">
-        <table
-          className="tw-bg-white tw-w-full"
-          data-testid="databaseSchema-tables">
-          <thead data-testid="table-header">
-            <tr className="tableHead-row">
-              <th className="tableHead-cell" data-testid="header-name">
-                Table Name
-              </th>
-              <th className="tableHead-cell" data-testid="header-description">
-                Description
-              </th>
-            </tr>
-          </thead>
-          <tbody className="tableBody">
-            {tableData.length > 0 ? (
-              tableData.map((table, index) => (
-                <tr
-                  className={classNames(
-                    'tableBody-row',
-                    !isEven(index + 1) ? 'odd-row' : null
-                  )}
-                  data-testid="table-column"
-                  key={index}>
-                  <td className="tableBody-cell">
-                    <Link
-                      to={getEntityLink(
-                        EntityType.TABLE,
-                        table.fullyQualifiedName as string
-                      )}>
-                      {table.name}
-                    </Link>
-                  </td>
-                  <td className="tableBody-cell">
-                    {table.description?.trim() ? (
-                      <RichTextEditorPreviewer markdown={table.description} />
-                    ) : (
-                      <span className="tw-no-description">No description</span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr className="tableBody-row">
-                <td className="tableBody-cell tw-text-center" colSpan={5}>
-                  No records found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <TableAntd
+        columns={tableColumn}
+        data-testid="databaseSchema-tables"
+        dataSource={tableData}
+        pagination={false}
+        rowKey="id"
+        size="small"
+      />
     );
   };
 
@@ -647,7 +664,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   {extraInfo.map((info, index) => (
                     <span className="tw-flex" key={index}>
                       <EntitySummaryDetails
+                        currentOwner={databaseSchema?.owner}
                         data={info}
+                        removeOwner={
+                          databaseSchemaPermission.EditOwner ||
+                          databaseSchemaPermission.EditAll
+                            ? handleRemoveOwner
+                            : undefined
+                        }
                         updateOwner={
                           databaseSchemaPermission.EditOwner ||
                           databaseSchemaPermission.EditAll

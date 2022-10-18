@@ -275,13 +275,13 @@ export const getDateOrTimeFromSeconds = (seconds: number, format?: string) =>
  * the current date
  * @param {number} pastDayCount - The number of days you want to go back from the current date.
  */
-export const getPastDatesToSecondsFromCurrentDate = (pastDayCount: number) =>
-  DateTime.now().minus({ days: pastDayCount }).toSeconds();
+export const getPastDatesTimeStampFromCurrentDate = (pastDayCount: number) =>
+  DateTime.now().minus({ days: pastDayCount }).toUnixInteger();
 
 /**
  * Get the current date and time in seconds.
  */
-export const getDateToSecondsOfCurrentDate = () => DateTime.now().toSeconds();
+export const getCurrentDateTimeStamp = () => DateTime.now().toUnixInteger();
 
 /**
  * It takes a timestamp in seconds and returns a formatted date string
