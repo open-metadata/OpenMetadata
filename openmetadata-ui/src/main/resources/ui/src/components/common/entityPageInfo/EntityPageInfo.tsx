@@ -25,6 +25,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -81,6 +82,9 @@ interface Props {
   versionHandler?: () => void;
   updateOwner?: (value: Table['owner']) => void;
   updateTier?: (value: string) => void;
+  removeOwner?: () => void;
+  currentOwner?: Dashboard['owner'];
+  removeTier?: () => void;
 }
 
 const EntityPageInfo = ({
@@ -106,8 +110,11 @@ const EntityPageInfo = ({
   entityType,
   updateOwner,
   updateTier,
+  removeOwner,
   canDelete,
+  currentOwner,
   entityFieldTasks,
+  removeTier,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -511,7 +518,10 @@ const EntityPageInfo = ({
                 data-testid={info.key || `info${index}`}
                 key={index}>
                 <EntitySummaryDetails
+                  currentOwner={currentOwner}
                   data={info}
+                  removeOwner={removeOwner}
+                  removeTier={removeTier}
                   tier={tier}
                   updateOwner={updateOwner}
                   updateTier={updateTier}

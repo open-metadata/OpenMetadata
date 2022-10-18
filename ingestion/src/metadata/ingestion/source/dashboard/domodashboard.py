@@ -15,7 +15,7 @@ DomoDashboard source to extract metadata
 import traceback
 from typing import Any, Iterable, List, Optional
 
-from metadata.clients.domodashboard_client import DomoDashboardClient
+from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -51,7 +51,7 @@ class DomodashboardSource(DashboardServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.domo_client = self.connection.client
-        self.client = DomoDashboardClient(self.service_connection)
+        self.client = DomoClient(self.service_connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -102,7 +102,7 @@ class DomodashboardSource(DashboardServiceSource):
             try:
                 chart_url = (
                     f"{self.service_connection.sandboxDomain}/page/"
-                    f"{charts['id']}/{chart['type']}/details/{chart['id']}"
+                    f"{charts['id']}/kpis/details/{chart['id']}"
                 )
 
                 if filter_by_chart(

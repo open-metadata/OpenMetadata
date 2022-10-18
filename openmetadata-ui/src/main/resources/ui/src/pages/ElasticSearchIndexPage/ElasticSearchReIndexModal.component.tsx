@@ -40,6 +40,7 @@ const ReIndexAllModal = ({
   return (
     <Modal
       centered
+      closable={false}
       confirmLoading={confirmLoading}
       okButtonProps={{
         form: 're-index-form',
