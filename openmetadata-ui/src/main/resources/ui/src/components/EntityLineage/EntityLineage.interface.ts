@@ -12,7 +12,7 @@
  */
 
 import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
-import { Edge as FlowEdge, Node } from 'react-flow-renderer';
+import { Edge as FlowEdge, Node } from 'reactflow';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import {
