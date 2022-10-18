@@ -104,7 +104,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     });
   };
 
-  const updatedDot: LineProps['dot'] = (props) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updatedDot: LineProps['dot'] = (props: any): SVGElement => {
     const { cx = 0, cy = 0, payload } = props;
     const fill =
       payload.status === TestCaseStatus.Success
@@ -123,7 +124,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         y={cy - 4}>
         <circle cx={4} cy={4} fill={fill} r={4} />
       </svg>
-    );
+    ) as unknown as SVGElement;
   };
 
   const fetchTestResults = async () => {
