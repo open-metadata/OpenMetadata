@@ -155,6 +155,11 @@ const ElasticSearchIndexPage = () => {
             loading={batchLoading}
             size="small"
             title="ElasticSearch">
+            {streamLoading ?
+                <div className="spinner-container">
+                  <div className="loading-spinner"></div>
+                </div> : <div></div>
+            }
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Space wrap direction="horizontal" size={0}>
@@ -286,6 +291,11 @@ const ElasticSearchIndexPage = () => {
             loading={streamLoading}
             size="small"
             title="ElasticSearch">
+            {streamLoading ?
+                <div className="spinner-container">
+                  <div className="loading-spinner"></div>
+                </div> : <div></div>
+            }
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Space direction="horizontal" size={16}>
