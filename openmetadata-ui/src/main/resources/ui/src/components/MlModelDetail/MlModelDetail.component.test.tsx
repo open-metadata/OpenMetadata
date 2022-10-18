@@ -16,6 +16,7 @@ import { LeafNodes } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Paging } from '../../generated/type/paging';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {
@@ -153,6 +154,18 @@ const mockProp = {
     isNodeLoading: { id: undefined, state: false },
   },
   onExtensionUpdate: jest.fn(),
+  entityThread: [],
+  isEntityThreadLoading: false,
+  paging: {} as Paging,
+  feedCount: 2,
+  fetchFeedHandler: jest.fn(),
+  postFeedHandler: jest.fn(),
+  deletePostHandler: jest.fn(),
+
+  updateThreadHandler: jest.fn(),
+  entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
+  createThread: jest.fn(),
 };
 
 jest.mock('../common/description/Description', () => {
@@ -177,6 +190,14 @@ jest.mock('./MlModelFeaturesList', () => {
 
 jest.mock('../common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<p data-testid="tabs">Tabs</p>);
+});
+
+jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
+  return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
+});
+
+jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
+  return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
 jest.mock('../../utils/CommonUtils', () => {
@@ -224,7 +245,7 @@ describe('Test MlModel entity detail component', () => {
 
   it('Should render hyper parameter and ml store table for details tab', async () => {
     const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={2} />,
+      <MlModelDetailComponent {...mockProp} activeTab={3} />,
       {
         wrapper: MemoryRouter,
       }
@@ -245,7 +266,7 @@ describe('Test MlModel entity detail component', () => {
 
   it('Should render lineage tab', async () => {
     const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={3} />,
+      <MlModelDetailComponent {...mockProp} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -258,7 +279,7 @@ describe('Test MlModel entity detail component', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={4} />,
+      <MlModelDetailComponent {...mockProp} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
