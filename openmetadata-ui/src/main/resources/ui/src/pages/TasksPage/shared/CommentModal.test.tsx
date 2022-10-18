@@ -66,6 +66,7 @@ const mockProps = {
   setComment: jest.fn(),
   onClose: jest.fn(),
   onConfirm: jest.fn(),
+  isLoading: false,
 };
 
 jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () =>

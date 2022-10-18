@@ -118,6 +118,7 @@ const TaskDetailPage = () => {
   const [comment, setComment] = useState<string>('');
   const [tagsSuggestion, setTagsSuggestion] = useState<TagLabel[]>([]);
   const [isTaskLoading, setIsTaskLoading] = useState<boolean>(false);
+  const [isLoadingOnSave, setIsLoadingOnSave] = useState<boolean>(false);
 
   // get current user details
   const currentUser = useMemo(
@@ -342,11 +343,13 @@ const TaskDetailPage = () => {
 
   const onTaskReject = () => {
     if (comment) {
+      setIsLoadingOnSave(true);
       updateTask(TaskOperation.REJECT, taskDetail.task?.id, {
         comment,
       })
         .then(() => {
           showSuccessToast('Task Closed Successfully');
+          setModalVisible(false);
           history.push(
             getEntityLink(
               entityType ?? '',
@@ -354,11 +357,11 @@ const TaskDetailPage = () => {
             )
           );
         })
-        .catch((err: AxiosError) => showErrorToast(err));
+        .catch((err: AxiosError) => showErrorToast(err))
+        .finally(() => setIsLoadingOnSave(false));
     } else {
       showErrorToast('Cannot close task without a comment');
     }
-    setModalVisible(false);
   };
 
   const createThread = (data: CreateThread) => {
@@ -714,6 +717,7 @@ const TaskDetailPage = () => {
                 </Card>
                 <CommentModal
                   comment={comment}
+                  isLoading={isLoadingOnSave}
                   isVisible={modalVisible}
                   setComment={setComment}
                   taskDetail={taskDetail}

@@ -324,7 +324,6 @@ const PoliciesDetailPage = () => {
         setIsloadingOnSave(false);
       }
     }
-    setEntity(undefined);
   };
 
   const handleRuleDelete = async (data: Rule) => {
@@ -632,8 +631,9 @@ const PoliciesDetailPage = () => {
           )} from ${getEntityName(policy)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
-          onOk={() => {
-            handleDelete(selectedEntity.record, selectedEntity.attribute);
+          onOk={async () => {
+            await handleDelete(selectedEntity.record, selectedEntity.attribute);
+            setEntity(undefined);
           }}>
           <Typography.Text>
             Are you sure you want to remove the

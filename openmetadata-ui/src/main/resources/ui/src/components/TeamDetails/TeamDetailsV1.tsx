@@ -169,6 +169,7 @@ const TeamDetailsV1 = ({
   }>();
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
 
   const tabs = useMemo(
     () =>
@@ -444,8 +445,9 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const handleAddAttribute = (selectedIds: string[]) => {
+  const handleAddAttribute = async (selectedIds: string[]) => {
     if (addAttribute) {
+      setIsModalLoading(true);
       let updatedTeamData = { ...currentTeam };
       const updatedData = selectedIds.map((id) => {
         const existingData = addAttribute.selectedData.find(
@@ -469,14 +471,16 @@ const TeamDetailsV1 = ({
         default:
           break;
       }
-      updateTeamHandler(updatedTeamData);
+      await updateTeamHandler(updatedTeamData);
+      setIsModalLoading(false);
     }
   };
 
-  const handleAttributeDelete = (
+  const handleAttributeDelete = async (
     record: EntityReference,
     attribute: 'defaultRoles' | 'policies'
   ) => {
+    setIsModalLoading(true);
     const attributeData =
       (currentTeam[attribute as keyof Team] as EntityReference[]) ?? [];
     const updatedAttributeData = attributeData.filter(
@@ -487,7 +491,8 @@ const TeamDetailsV1 = ({
       ...currentTeam,
       [attribute]: updatedAttributeData,
     };
-    updateTeamHandler(updatedTeamData);
+    await updateTeamHandler(updatedTeamData);
+    setIsModalLoading(false);
   };
 
   const fetchPermissions = async () => {
@@ -1156,6 +1161,7 @@ const TeamDetailsV1 = ({
 
       {addAttribute && (
         <AddAttributeModal
+          isModalLoading={isModalLoading}
           isOpen={!isUndefined(addAttribute)}
           selectedKeys={addAttribute.selectedData.map((data) => data.id)}
           title={`Add ${addAttribute.type}`}
@@ -1167,14 +1173,15 @@ const TeamDetailsV1 = ({
       {selectedEntity && (
         <Modal
           centered
+          confirmLoading={isModalLoading}
           okText="Confirm"
           title={`Remove ${getEntityName(
             selectedEntity.record
           )} from ${getEntityName(currentTeam)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
-          onOk={() => {
-            handleAttributeDelete(
+          onOk={async () => {
+            await handleAttributeDelete(
               selectedEntity.record,
               selectedEntity.attribute
             );

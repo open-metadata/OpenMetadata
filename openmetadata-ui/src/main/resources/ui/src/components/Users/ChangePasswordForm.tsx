@@ -9,7 +9,7 @@ type ChangePasswordForm = {
   onCancel: () => void;
   onSave: (data: ChangePasswordRequest) => void;
   isLoggedinUser: boolean;
-  isLoding: boolean;
+  isLoading: boolean;
 };
 
 const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
@@ -17,7 +17,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
   onCancel,
   onSave,
   isLoggedinUser,
-  isLoding,
+  isLoading,
 }) => {
   const [form] = Form.useForm();
   const newPassword = Form.useWatch('newPassword', form);
@@ -25,7 +25,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
   return (
     <Modal
       centered
-      confirmLoading={isLoding}
+      confirmLoading={isLoading}
       okButtonProps={{
         form: 'change-password-form',
         type: 'primary',

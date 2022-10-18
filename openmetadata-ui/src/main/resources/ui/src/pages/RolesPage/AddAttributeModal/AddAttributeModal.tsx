@@ -34,6 +34,7 @@ interface Props {
   isOpen: boolean;
   onSave: (values: string[]) => void;
   onCancel: () => void;
+  isModalLoading: boolean;
 }
 
 const AddAttributeModal: FC<Props> = ({
@@ -43,6 +44,7 @@ const AddAttributeModal: FC<Props> = ({
   title,
   type,
   selectedKeys,
+  isModalLoading,
 }) => {
   const [data, setData] = useState<EntityReference[]>([]);
   const [searchedData, setSearchedData] = useState<EntityReference[]>([]);
@@ -124,6 +126,7 @@ const AddAttributeModal: FC<Props> = ({
       centered
       className="ant-attribute-modal"
       closable={false}
+      confirmLoading={isModalLoading}
       data-testid="modal-container"
       okText="Submit"
       title={

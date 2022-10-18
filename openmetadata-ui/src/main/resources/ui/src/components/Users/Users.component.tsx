@@ -116,6 +116,7 @@ const Users = ({
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const location = useLocation();
   const isTaskType = isEqual(threadType, ThreadType.Task);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { authConfig } = useAuthContext();
 
@@ -241,6 +242,7 @@ const Users = ({
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
+      setIsLoading(true);
       const sendData = {
         ...data,
         ...(isAdminUser &&
@@ -256,6 +258,8 @@ const Users = ({
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(true);
     }
   };
 
@@ -368,6 +372,7 @@ const Users = ({
         </Typography.Text>
 
         <ChangePasswordForm
+          isLoading={isLoading}
           isLoggedinUser={isLoggedinUser}
           visible={isChangePassword}
           onCancel={() => setIsChangePassword(false)}

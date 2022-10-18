@@ -14,16 +14,17 @@ type AddTeamFormType = {
   visible: boolean;
   onCancel: () => void;
   onSave: (data: Team) => void;
+  isLoading: boolean;
 };
 
 const AddTeamForm: React.FC<AddTeamFormType> = ({
   visible,
   onCancel,
   onSave,
+  isLoading,
 }) => {
   const [description, setDescription] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
-  const [isLoding, setIsLoading] = useState(false);
   const markdownRef = useRef<EditorContentRef>();
 
   const teamTypeOptions = useMemo(() => {
@@ -47,7 +48,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   );
 
   const handleSubmit = (data: Team) => {
-    setIsLoading(true);
     data = {
       ...data,
       description,
@@ -77,7 +77,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   return (
     <Modal
       centered
-      confirmLoading={isLoding}
+      confirmLoading={isLoading}
       okButtonProps={{
         form: 'add-team-form',
         type: 'primary',

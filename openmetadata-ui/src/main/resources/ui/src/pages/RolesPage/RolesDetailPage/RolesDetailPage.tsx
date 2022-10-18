@@ -314,11 +314,11 @@ const RolesDetailPage = () => {
         setIsLoadingOnSave(false);
       }
     }
-    setEntity(undefined);
   };
 
   const handleAddAttribute = async (selectedIds: string[]) => {
     if (addAttribute) {
+      setIsLoadingOnSave(true);
       const updatedPolicies = selectedIds.map((id) => {
         const existingData = addAttribute.selectedData.find(
           (data) => data.id === id
@@ -330,10 +330,11 @@ const RolesDetailPage = () => {
       try {
         const data = await patchRole(patch, role.id);
         setRole(data);
+        setAddAttribute(undefined);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setAddAttribute(undefined);
+        setIsLoadingOnSave(false);
       }
     }
   };
@@ -456,8 +457,9 @@ const RolesDetailPage = () => {
           )} from ${getEntityName(role)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
-          onOk={() => {
-            handleDelete(selectedEntity.record, selectedEntity.attribute);
+          onOk={async () => {
+            await handleDelete(selectedEntity.record, selectedEntity.attribute);
+            setEntity(undefined);
           }}>
           <Typography.Text>
             Are you sure you want to remove the{' '}
@@ -469,6 +471,7 @@ const RolesDetailPage = () => {
       )}
       {addAttribute && (
         <AddAttributeModal
+          isModalLoading={isLoadingOnSave}
           isOpen={!isUndefined(addAttribute)}
           selectedKeys={addAttribute.selectedData.map((data) => data.id)}
           title={`Add ${addAttribute.type}`}
