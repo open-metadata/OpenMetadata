@@ -255,7 +255,7 @@ class DBTMixin:
 
         return columns
 
-    def process_dbt_lineage_and_descriptions(  # pylint: disable=too-many-locals
+    def process_dbt_lineage_and_descriptions(
         self,
     ) -> Iterable[AddLineageRequest]:
         """
@@ -332,17 +332,14 @@ class DBTMixin:
             try:
                 service_database_schema_table = fqn.split(data_model_name)
                 target_table_fqn = ".".join(service_database_schema_table[1:])
-                service_name = service_database_schema_table[0]
-                database_name = service_database_schema_table[1]
-                database_schema_name = service_database_schema_table[2]
                 create_statement = f"create table {target_table_fqn} as"
                 query = f"{create_statement} {data_model.sql.__root__}"
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
-                    service_name=service_name,
-                    database_name=database_name,
-                    schema_name=database_schema_name,
+                    service_name=service_database_schema_table[0],
+                    database_name=service_database_schema_table[1],
+                    schema_name=service_database_schema_table[2],
                 )
                 for lineage_request in lineages or []:
                     yield lineage_request
