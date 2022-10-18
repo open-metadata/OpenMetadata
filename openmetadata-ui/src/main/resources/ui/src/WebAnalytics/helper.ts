@@ -11,16 +11,52 @@
  *  limitations under the License.
  */
 
-import Analytics, { AnalyticsInstance, PageData } from 'analytics';
+import Analytics, { AnalyticsInstance } from 'analytics';
+import { WebPageData } from './webanalytics.interface';
 
 /**
  * track the page view if user id is available.
  * @param _pageData PageData
  * @param userId string
  */
-export const trackPageView = (_pageData: PageData, userId: string) => {
+export const trackPageView = (pageData: WebPageData, userId: string) => {
+  const { location, navigator } = window;
+  const { hostname, pathname } = location;
+
+  // store the current path
+  let currentPathRef = pathname;
+
   if (userId) {
-    // make an api call to collect the data
+    const { payload } = pageData;
+
+    const { anonymousId, properties } = payload;
+
+    // get the previous page url
+    const previousURL = new URL(properties.referrer);
+
+    /**
+     *  Check if the previous path and current path is not matching
+     *  then only collect the data
+     */
+    if (currentPathRef !== previousURL.pathname) {
+      currentPathRef = properties.path;
+
+      const eventData = {
+        fullUrl: properties.url,
+        url: properties.path,
+        hostname,
+        language: navigator.language,
+        screenSize: `${properties.width}x${properties.height}`,
+        userId,
+        sessionId: anonymousId,
+        referrer: properties.referrer,
+      };
+
+      // eslint-disable-next-line
+      console.log(eventData);
+
+      // TODO: make an api call to collect the data once backend API is ready
+    }
   }
 };
 
@@ -35,7 +71,7 @@ export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
     plugins: [
       {
         name: 'OM-Plugin',
-        page: (pageData: PageData) => {
+        page: (pageData: WebPageData) => {
           trackPageView(pageData, userId);
         },
       },
