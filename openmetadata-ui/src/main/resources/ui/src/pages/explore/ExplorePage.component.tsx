@@ -13,13 +13,7 @@
 
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
@@ -38,11 +32,11 @@ import { SearchResponse } from '../../interface/search.interface';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
-  filterObjectToElasticsearchQuery,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
+import { filterObjectToElasticsearchQuery } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
@@ -50,6 +44,20 @@ const ExplorePage: FunctionComponent = () => {
   const history = useHistory();
 
   const { searchQuery: searchQueryParam = '', tab } = useParams<UrlParams>();
+
+  const [searchResults, setSearchResults] =
+    useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [advancesSearchQueryFilter, setAdvancedSearchQueryFilter] =
+    useState<Record<string, unknown>>();
+
+  const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
+
+  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
+
+  const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const parsedSearch = useMemo(
     () =>
@@ -86,6 +94,10 @@ const ExplorePage: FunctionComponent = () => {
 
   const handlePageChange: ExploreProps['onChangePage'] = (page) =>
     history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
+
+  const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
+    showDeleted
+  ) => history.push({ search: Qs.stringify({ ...parsedSearch, showDeleted }) });
 
   const postFilter = useMemo(
     () =>
@@ -150,21 +162,11 @@ const ExplorePage: FunctionComponent = () => {
     handlePageChange(page);
   }, [page]);
 
-  const [searchResults, setSearchResults] =
-    useState<SearchResponse<ExploreSearchIndex>>();
+  const showDeleted = useMemo(() => {
+    const showDeletedParam = parsedSearch.showDeleted;
 
-  const [advancesSearchQueryFilter, setAdvancedSearchQueryFilter] =
-    useState<Record<string, unknown>>();
-
-  const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
-
-  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
-
-  const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
-
-  const [showDeleted, setShowDeleted] = useState(false);
-
-  const [isLoading, setIsLoading] = useState(true);
+    return showDeletedParam === 'true';
+  }, [parsedSearch.showDeleted]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -178,6 +180,7 @@ const ExplorePage: FunctionComponent = () => {
         sortOrder,
         pageNumber: page,
         pageSize: PAGE_SIZE,
+        includeDeleted: showDeleted,
       })
         .then((res) => res)
         .then((res) => setSearchResults(res)),
@@ -193,10 +196,10 @@ const ExplorePage: FunctionComponent = () => {
             query: searchQueryParam,
             pageNumber: 0,
             pageSize: 0,
-            postFilter: elasticsearchPostFilterQuery,
             queryFilter: advancesSearchQueryFilter,
+            postFilter: elasticsearchPostFilterQuery,
             searchIndex: index,
-            // includeDeleted: showDeleted,
+            includeDeleted: showDeleted,
             trackTotalHits: true,
             fetchSource: false,
           })
@@ -226,40 +229,53 @@ const ExplorePage: FunctionComponent = () => {
     searchQueryParam,
     sortValue,
     sortOrder,
+    showDeleted,
     advancesSearchQueryFilter,
     elasticsearchPostFilterQuery,
     page,
   ]);
+
+  // Return to first page on filter change
+  useEffect(
+    () => handlePageChange(1),
+    [
+      searchIndex,
+      searchQueryParam,
+      sortValue,
+      sortOrder,
+      showDeleted,
+      advancesSearchQueryFilter,
+      elasticsearchPostFilterQuery,
+    ]
+  );
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
   }, [tab]);
 
   return (
-    <Fragment>
-      <PageContainerV1>
-        <Explore
-          advancedSearchJsonTree={queryFilter}
-          loading={isLoading}
-          page={page}
-          postFilter={postFilter}
-          searchIndex={searchIndex}
-          searchResults={searchResults}
-          showDeleted={showDeleted}
-          sortOrder={sortOrder}
-          sortValue={sortValue}
-          tabCounts={searchHitCounts}
-          onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
-          onChangeAdvancedSearchQueryFilter={setAdvancedSearchQueryFilter}
-          onChangePage={handlePageChange}
-          onChangePostFilter={handlePostFilterChange}
-          onChangeSearchIndex={handleSearchIndexChange}
-          onChangeShowDeleted={setShowDeleted}
-          onChangeSortOder={setSortOrder}
-          onChangeSortValue={setSortValue}
-        />
-      </PageContainerV1>
-    </Fragment>
+    <PageContainerV1>
+      <Explore
+        advancedSearchJsonTree={queryFilter}
+        loading={isLoading}
+        page={page}
+        postFilter={postFilter}
+        searchIndex={searchIndex}
+        searchResults={searchResults}
+        showDeleted={showDeleted}
+        sortOrder={sortOrder}
+        sortValue={sortValue}
+        tabCounts={searchHitCounts}
+        onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
+        onChangeAdvancedSearchQueryFilter={setAdvancedSearchQueryFilter}
+        onChangePage={handlePageChange}
+        onChangePostFilter={handlePostFilterChange}
+        onChangeSearchIndex={handleSearchIndexChange}
+        onChangeShowDeleted={handleShowDeletedChange}
+        onChangeSortOder={setSortOrder}
+        onChangeSortValue={setSortValue}
+      />
+    </PageContainerV1>
   );
 };
 

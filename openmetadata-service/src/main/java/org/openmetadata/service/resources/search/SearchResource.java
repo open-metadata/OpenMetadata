@@ -244,8 +244,10 @@ public class SearchResource {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(searchSourceBuilder.query()).must(QueryBuilders.termQuery("deleted", deleted)));
+    if (!deleted) {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).must(QueryBuilders.termQuery("deleted", false)));
+    }
 
     if (!nullOrEmpty(sortFieldParam)) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
