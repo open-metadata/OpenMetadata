@@ -1,5 +1,6 @@
 import { Form, Input, Modal } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { passwordErrorMessage } from '../../constants/error-message';
 import { passwordRegex } from '../../constants/regex.constants';
 import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
@@ -19,6 +20,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
   isLoggedinUser,
   isLoading,
 }) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const newPassword = Form.useWatch('newPassword', form);
 
@@ -31,8 +33,8 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
-      okText="Update Password"
-      title="Change Password"
+      okText={t('label.update-password')}
+      title={t('label.change-password')}
       visible={visible}
       width={500}
       onCancel={() => {
@@ -48,7 +50,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         onFinish={onSave}>
         {isLoggedinUser && (
           <Form.Item
-            label="Old Password"
+            label={t('label.old-password')}
             name="oldPassword"
             rules={[
               {
@@ -57,12 +59,12 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             ]}>
             <Input.Password
               data-testid="name"
-              placeholder="Enter old Password"
+              placeholder={t('label.enter-old-password')}
             />
           </Form.Item>
         )}
         <Form.Item
-          label="New Password"
+          label={t('label.new-password')}
           name="newPassword"
           rules={[
             {
@@ -73,23 +75,23 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
               message: passwordErrorMessage,
             },
           ]}>
-          <Input.Password placeholder="Enter New Password" />
+          <Input.Password placeholder={t('label.enter-new-password')} />
         </Form.Item>
         <Form.Item
-          label="Confirm New Password"
+          label={t('label.confirm-new-password')}
           name="confirmPassword"
           rules={[
             {
               validator: (_, value) => {
                 if (value !== newPassword) {
-                  return Promise.reject("Password doesn't match");
+                  return Promise.reject(t('label.password-not-match'));
                 }
 
                 return Promise.resolve();
               },
             },
           ]}>
-          <Input.Password placeholder="Confirm New Password" />
+          <Input.Password placeholder={t('label.confirm-new-password')} />
         </Form.Item>
       </Form>
     </Modal>

@@ -13,6 +13,7 @@
 
 import { Modal } from 'antd';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { Thread } from '../../../generated/entity/feed/thread';
 
@@ -35,6 +36,8 @@ const CommentModal: FC<CommentModalProps> = ({
   onConfirm,
   isLoading,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Modal
       centered
@@ -58,7 +61,7 @@ const CommentModal: FC<CommentModalProps> = ({
       <RichTextEditor
         height="208px"
         initialValue={comment}
-        placeHolder="Add comment"
+        placeHolder={t('label.add-comment')}
         style={{ marginTop: '0px' }}
         onTextChange={setComment}
       />

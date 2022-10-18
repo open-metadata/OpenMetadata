@@ -21,6 +21,7 @@ import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityReference } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
@@ -96,6 +97,7 @@ import {
 } from '../TasksPage.interface';
 
 const TaskDetailPage = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const { Content, Sider } = Layout;
   const { TabPane } = Tabs;
@@ -311,7 +313,7 @@ const TaskDetailPage = () => {
     const updateTaskData = (data: Record<string, string>) => {
       updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, data)
         .then(() => {
-          showSuccessToast('Task Resolved Successfully');
+          showSuccessToast(t('label.task-resolved-successfully'));
           history.push(
             getEntityLink(
               entityType ?? '',
@@ -327,16 +329,14 @@ const TaskDetailPage = () => {
         const data = { newValue: JSON.stringify(tagsSuggestion || '[]') };
         updateTaskData(data);
       } else {
-        showErrorToast('Cannot accept an empty tag list. Please add a tags.');
+        showErrorToast(t('label.please-add-tags'));
       }
     } else {
       if (suggestion) {
         const data = { newValue: suggestion };
         updateTaskData(data);
       } else {
-        showErrorToast(
-          'Cannot accept an empty description. Please add a description.'
-        );
+        showErrorToast(t('label.please-add-description'));
       }
     }
   };
@@ -348,7 +348,7 @@ const TaskDetailPage = () => {
         comment,
       })
         .then(() => {
-          showSuccessToast('Task Closed Successfully');
+          showSuccessToast(t('label.task-closed-successfully'));
           setModalVisible(false);
           history.push(
             getEntityLink(
@@ -360,7 +360,7 @@ const TaskDetailPage = () => {
         .catch((err: AxiosError) => showErrorToast(err))
         .finally(() => setIsLoadingOnSave(false));
     } else {
-      showErrorToast('Cannot close task without a comment');
+      showErrorToast(t('label.task-closed-without-comment'));
     }
   };
 
@@ -564,7 +564,9 @@ const TaskDetailPage = () => {
                           </span>
                         </span>
                       </UserPopOverCard>
-                      <span className="tw-ml-1">created this task </span>
+                      <span className="tw-ml-1">
+                        {t('label.created-this-task')}
+                      </span>
                       <span className="tw-ml-1">
                         {toLower(
                           getDayTimeByTimeStamp(taskDetail.threadTs ?? 0)
@@ -579,7 +581,7 @@ const TaskDetailPage = () => {
                       className={classNames('tw-text-grey-muted', {
                         'tw-self-center tw-mr-2': editAssignee,
                       })}>
-                      Assignees:
+                      {t('label.assignees')}:
                     </span>
                     {editAssignee ? (
                       <Fragment>
@@ -671,7 +673,7 @@ const TaskDetailPage = () => {
                         className="ant-btn-link-custom"
                         type="link"
                         onClick={() => setModalVisible(true)}>
-                        Close with comment
+                        {t('label.close-with-comment')}
                       </Button>
                     )}
 
@@ -706,7 +708,7 @@ const TaskDetailPage = () => {
                             disabled={!suggestion}
                             type="primary"
                             onClick={onTaskResolve}>
-                            Add Description
+                            {t('label.add-description')}
                           </Button>
                         )}
                       </Fragment>

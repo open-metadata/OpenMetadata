@@ -18,6 +18,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
@@ -160,6 +161,7 @@ const List = ({
 
 const RolesDetailPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useParams<{ fqn: string }>();
 
@@ -361,13 +363,15 @@ const RolesDetailPage = () => {
           {isEmpty(role) ? (
             <ErrorPlaceHolder dataTestId="no-data">
               <div className="text-center">
-                <p>No roles found for {fqn}</p>
+                <p>
+                  {t('label.no-roles-found')} {t('label.go-back')} {fqn}
+                </p>
                 <Button
                   className="m-t-sm"
                   size="small"
                   type="primary"
                   onClick={() => history.push(rolesPath)}>
-                  Go Back
+                  {t('label.go-back')}
                 </Button>
               </div>
             </ErrorPlaceHolder>
@@ -394,7 +398,7 @@ const RolesDetailPage = () => {
                     <Tooltip
                       title={
                         rolePermission.EditAll
-                          ? 'Add Policy'
+                          ? t('label.add-policy')
                           : NO_PERMISSION_FOR_ACTION
                       }>
                       <Button
@@ -407,7 +411,7 @@ const RolesDetailPage = () => {
                             selectedData: role.policies || [],
                           })
                         }>
-                        Add Policy
+                        {t('label.add-policy')}
                       </Button>
                     </Tooltip>
                     <List
@@ -451,10 +455,10 @@ const RolesDetailPage = () => {
         <Modal
           centered
           confirmLoading={isLoadingOnSave}
-          okText="Confirm"
-          title={`Remove ${getEntityName(
+          okText={t('label.confirm')}
+          title={`${t('label.remove')} ${getEntityName(
             selectedEntity.record
-          )} from ${getEntityName(role)}`}
+          )} ${t('label.from')} ${getEntityName(role)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
@@ -462,10 +466,10 @@ const RolesDetailPage = () => {
             setEntity(undefined);
           }}>
           <Typography.Text>
-            Are you sure you want to remove the{' '}
-            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
-              role
-            )}?`}
+            {t('label.sure-to-remove')}{' '}
+            {`${getEntityName(selectedEntity.record)} ${t(
+              'label.from'
+            )} ${getEntityName(role)}?`}
           </Typography.Text>
         </Modal>
       )}
@@ -474,7 +478,7 @@ const RolesDetailPage = () => {
           isModalLoading={isLoadingOnSave}
           isOpen={!isUndefined(addAttribute)}
           selectedKeys={addAttribute.selectedData.map((data) => data.id)}
-          title={`Add ${addAttribute.type}`}
+          title={`${t('label.add')} ${addAttribute.type}`}
           type={addAttribute.type}
           onCancel={() => setAddAttribute(undefined)}
           onSave={(data) => handleAddAttribute(data)}
