@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { AggregationEntry } from '../../../interface/search.interface';
 import {
   compareAggregationKey,
   translateAggregationKeyToTitle,
@@ -33,13 +34,56 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
     Object.fromEntries(Object.keys(aggregations).map((k) => [k, 5]))
   );
 
-  const aggregationEntries = useMemo(
-    () =>
-      Object.entries(aggregations)
+  /**
+   * Merging aggregations with filters.
+   * The aim is to ensure that if there a filter on aggregationKey `k` with value `v`,
+   * but in `aggregations[k]` there is not bucket with value `v`,
+   * we add an empty bucket with value `v` and 0 elements so the UI displays that the filter exists.
+   */
+  const aggregationEntries = useMemo(() => {
+    if (isNil(filters) || isEmpty(filters)) {
+      return Object.entries(aggregations)
         .filter(([, { buckets }]) => buckets.length)
-        .sort(([key1], [key2]) => compareAggregationKey(key1, key2)),
-    [aggregations]
-  );
+        .sort(([key1], [key2]) => compareAggregationKey(key1, key2));
+    }
+
+    const aggregationEntriesWithZeroFilterBuckets: AggregationEntry[] =
+      Object.entries(aggregations).map(([aggregationKey, { buckets }]) => [
+        aggregationKey,
+        {
+          buckets:
+            aggregationKey in filters
+              ? [
+                  ...buckets,
+                  ...filters[aggregationKey]
+                    .filter((f) => !buckets.some((b) => b.key === f))
+                    .map((f) => ({ key: f, doc_count: 0 })),
+                ]
+              : buckets,
+        },
+      ]);
+
+    const missingAggregationEntries: AggregationEntry[] = Object.entries(
+      filters
+    )
+      .filter(
+        ([aggregationKey, values]) =>
+          !(aggregationKey in aggregations) && !isEmpty(values)
+      )
+      .map(([aggregationKey, values]) => [
+        aggregationKey,
+        { buckets: values.map((v) => ({ key: v, doc_count: 0 })) },
+      ]);
+
+    const combinedAggregations = [
+      ...aggregationEntriesWithZeroFilterBuckets,
+      ...missingAggregationEntries,
+    ];
+
+    return combinedAggregations
+      .filter(([, { buckets }]) => buckets.length)
+      .sort(([key1], [key2]) => compareAggregationKey(key1, key2));
+  }, [aggregations, filters]);
 
   useEffect(
     () =>
