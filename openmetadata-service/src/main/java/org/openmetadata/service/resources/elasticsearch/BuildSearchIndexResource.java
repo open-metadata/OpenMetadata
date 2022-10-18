@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.elasticSearch;
+package org.openmetadata.service.resources.elasticsearch;
 
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEAM;

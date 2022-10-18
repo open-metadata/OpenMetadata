@@ -1,7 +1,7 @@
-package org.openmetadata.service.resources.elasticSearch;
+package org.openmetadata.service.resources.elasticsearch;
 
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH;
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
