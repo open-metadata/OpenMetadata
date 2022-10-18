@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Typography } from 'antd';
+import Table, { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { isUndefined, startCase, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -26,6 +26,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -34,6 +35,7 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
+import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -61,6 +63,7 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../containers/PageContainer';
@@ -95,6 +98,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   entityFieldTaskCount,
   entityFieldThreadCount,
 }) => {
+  const { t } = useTranslation();
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
@@ -379,12 +383,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlHyperParametersColumn: ColumnsType<MlHyperParameter> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
       },
       {
-        title: 'Value',
+        title: t('label.value'),
         dataIndex: 'value',
         key: 'value',
       },
@@ -392,19 +396,38 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     []
   );
 
+  const getEmptyPlaceholder = useMemo(
+    () => () => {
+      return (
+        <ErrorPlaceHolder size={SIZE.MEDIUM}>
+          <Typography.Paragraph>
+            {t('label.no-data-available')}{' '}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      );
+    },
+    []
+  );
+
   const getMlHyperParameters = () => {
     return (
       <div className="flex flex-col m-t-xs">
-        <h6 className="font-medium text-base">Hyper Parameters</h6>
+        <h6 className="font-medium text-base">
+          {t('label.hyper-parameters')}{' '}
+        </h6>
         <div className="m-t-xs">
-          <Table
-            columns={getMlHyperParametersColumn}
-            data-testid="hyperparameters-table"
-            dataSource={mlModelDetail.mlHyperParameters}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
+          {isEmpty(mlModelDetail.mlHyperParameters) ? (
+            getEmptyPlaceholder()
+          ) : (
+            <Table
+              columns={getMlHyperParametersColumn}
+              data-testid="hyperparameters-table"
+              dataSource={mlModelDetail.mlHyperParameters}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
+          )}
         </div>
       </div>
     );
@@ -413,7 +436,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlModelStore = () => {
     return (
       <div className="flex flex-col m-t-xs">
-        <h6 className="font-medium text-base">Model Store</h6>
+        <h6 className="font-medium text-base">{t('label.model-store')}</h6>
         {mlModelDetail.mlStore ? (
           <div className="m-t-xs tw-table-container">
             <table
@@ -459,7 +482,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             </table>
           </div>
         ) : (
-          <span className="tw-text-grey-muted tw-text-center">No Data</span>
+          getEmptyPlaceholder()
         )}
       </div>
     );
