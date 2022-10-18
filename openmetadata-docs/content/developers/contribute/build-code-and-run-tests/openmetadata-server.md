@@ -30,7 +30,6 @@ sh bootstrap_storage.sh drop-create-all
 ```shell
 python3 -m venv venv
 source venv/bin/activate
-pip install -r ingestion/requirements.txt
 make install_dev generate
 cd ingestion
 pip install -e '.[sample-data, elasticsearch]'
