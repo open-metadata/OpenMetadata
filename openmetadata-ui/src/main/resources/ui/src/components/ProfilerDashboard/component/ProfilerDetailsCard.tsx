@@ -33,14 +33,11 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
 }) => {
   const { data, information } = chartCollection;
 
-  const renderColorfulLegendText = ({
-    value,
-    entry,
-  }: {
-    value: string;
+  const renderColorfulLegendText = (
+    value: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entry: any;
-  }) => <span style={{ color: entry?.color }}>{value}</span>;
+    entry: any
+  ) => <span style={{ color: entry?.color }}>{value}</span>;
 
   const tooltipFormatter = (value: string | number | (string | number)[]) => {
     const numValue = value as number;
