@@ -15,7 +15,7 @@ import { Button, Divider, Form, Input, Typography } from 'antd';
 import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
@@ -32,6 +32,7 @@ import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
+  const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
   const history = useHistory();
@@ -51,7 +52,7 @@ const SigninPage = () => {
     };
   }, [authConfig]);
 
-  const { handleLogin, loginError, isBasicAuthLoading } = useBasicAuth();
+  const { handleLogin, loginError } = useBasicAuth();
 
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
@@ -163,7 +164,9 @@ const SigninPage = () => {
     email: string;
     password: string;
   }) => {
-    handleLogin(email, password);
+    setLoading(true);
+    await Promise.resolve(handleLogin(email, password));
+    setLoading(false);
   };
 
   const onClickSignUp = () => history.push(ROUTES.REGISTER);
@@ -182,7 +185,7 @@ const SigninPage = () => {
             })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
             <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
-              {t('label.om-tagline')}{' '}
+              {t('label.om-description')}{' '}
             </Typography.Text>
 
             {isAuthProviderBasic ? (
@@ -213,9 +216,9 @@ const SigninPage = () => {
                   <Button
                     className="w-full"
                     data-testid="login"
-                    disabled={isBasicAuthLoading}
+                    disabled={loading}
                     htmlType="submit"
-                    loading={isBasicAuthLoading}
+                    loading={loading}
                     type="primary">
                     {t('label.login')}
                   </Button>

@@ -57,7 +57,6 @@ interface InitialContext {
   handleResetPassword: (payload: PasswordResetRequest) => Promise<void>;
   handleLogout: () => void;
   loginError?: string | null;
-  isBasicAuthLoading: boolean;
 }
 
 /**
@@ -74,7 +73,6 @@ const initialContext = {
   handleResetPassword: stub,
   handleLogout: stub,
   handleUserCreated: stub,
-  isBasicAuthLoading: false,
 };
 
 const BasicAuthProvider = ({
@@ -84,12 +82,10 @@ const BasicAuthProvider = ({
 }: BasicAuthProps) => {
   const { setLoadingIndicator } = useAuthContext();
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [isBasicAuthLoading, setIsBasicAuthLoading] = useState(false);
   const history = useHistory();
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      setIsBasicAuthLoading(true);
       setLoginError(null);
       try {
         const response = await basicAuthSignIn({ email, password });
@@ -120,8 +116,6 @@ const BasicAuthProvider = ({
         err as AxiosError,
         jsonData['api-error-messages']['unauthorized-user']
       );
-    } finally {
-      setIsBasicAuthLoading(false);
     }
   };
 
@@ -209,7 +203,6 @@ const BasicAuthProvider = ({
     handleResetPassword,
     handleLogout,
     loginError,
-    isBasicAuthLoading,
   };
 
   return (
