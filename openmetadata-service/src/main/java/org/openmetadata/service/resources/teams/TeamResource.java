@@ -87,7 +87,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  @Collection
   public TeamResource(CollectionDAO dao, Authorizer authorizer) {
     super(Team.class, new TeamRepository(dao), authorizer);
   }

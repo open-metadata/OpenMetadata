@@ -22,8 +22,8 @@ class UUIDEncoder(json.JSONEncoder):
     UUID Encoder class
     """
 
-    def default(self, obj):
-        if isinstance(obj, UUID):
+    def default(self, o):
+        if isinstance(o, UUID):
             # if the obj is uuid, we simply return the value of uuid
-            return str(obj)
-        return json.JSONEncoder.default(self, obj)
+            return str(o)
+        return json.JSONEncoder.default(self, o)

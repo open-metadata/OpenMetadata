@@ -86,7 +86,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return role;
   }
 
-  @Collection
   public RoleResource(CollectionDAO collectionDAO, Authorizer authorizer) {
     super(Role.class, new RoleRepository(collectionDAO), authorizer);
   }

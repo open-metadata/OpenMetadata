@@ -60,10 +60,11 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -333,7 +334,7 @@ class AmundsenSource(Source[Entity]):
                 data_type = self.get_type_primitive_type(data_type)
                 parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     data_type
-                )  # pylint: disable=protected-access
+                )
                 parsed_string["name"] = name
                 parsed_string["dataLength"] = 1
                 parsed_string["description"] = description

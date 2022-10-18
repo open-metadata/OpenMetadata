@@ -15,6 +15,7 @@ Test Profiler behavior
 import os
 from datetime import datetime, timezone
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -38,7 +39,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
@@ -79,9 +80,12 @@ class ProfilerTest(TestCase):
             )
         ],
     )
-    sqa_profiler_interface = SQAInterface(
-        sqlite_conn, table=User, table_entity=table_entity
-    )
+    with patch.object(
+        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQAProfilerInterface(
+            sqlite_conn, table_entity=table_entity, ometa_client=None
+        )
 
     @classmethod
     def setUpClass(cls) -> None:

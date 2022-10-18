@@ -15,42 +15,30 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Union
 
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-class InterfaceProtocol(ABC):
+class TestSuiteProtocol(ABC):
     """Protocol interface for the processor"""
 
     @abstractmethod
     def __init__(
         self,
-        metadata_config: OpenMetadataConnection = None,
-        profiler_config: ProfilerProcessorConfig = None,
-        workflow_profile_sample: float = None,
-        thread_count: int = 5,
-        table: Table = None,
+        ometa_client: OpenMetadata = None,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection] = None,
     ):
         """Required attribute for the interface"""
         raise NotImplementedError
 
     @abstractmethod
-    def create_sampler(*args, **kwargs) -> None:
-        """Method to instantiate a Sampler object"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def create_runner(*args, **kwargs) -> None:
-        """Method to instantiate a Runner object"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def run_test_case(*args, **kwargs) -> Optional[TestCaseResult]:
+    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResult]:
         """run column data quality tests"""
         raise NotImplementedError

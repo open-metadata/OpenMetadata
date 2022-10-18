@@ -30,6 +30,7 @@ import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   chartCollection,
   tickFormatter,
+  name,
 }) => {
   const { data, information } = chartCollection;
 
@@ -58,7 +59,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         </Col>
         <Col span={20}>
           {data.length > 0 ? (
-            <ResponsiveContainer minHeight={300}>
+            <ResponsiveContainer id={`${name}_graph`} minHeight={300}>
               <LineChart
                 className="tw-w-full"
                 data={data}

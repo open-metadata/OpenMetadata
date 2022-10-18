@@ -14,6 +14,7 @@ Test Sample behavior
 """
 import os
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
@@ -25,7 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.orm_profiler.profiler.core import Profiler
@@ -68,9 +69,12 @@ class SampleTest(TestCase):
         ],
     )
 
-    sqa_profiler_interface = SQAInterface(
-        sqlite_conn, table=User, table_entity=table_entity
-    )
+    with patch.object(
+        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQAProfilerInterface(
+            sqlite_conn, table_entity=table_entity, ometa_client=None
+        )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
 
@@ -125,19 +129,21 @@ class SampleTest(TestCase):
         """
 
         # Randomly pick table_count to init the Profiler, we don't care for this test
-        table_count = Metrics.ROW_COUNT.value
-        sqa_profiler_interface = SQAInterface(
-            self.sqlite_conn,
-            table=User,
-            table_entity=self.table_entity,
-            profile_sample=50,
-        )
-        profiler = Profiler(
-            table_count,
-            profiler_interface=sqa_profiler_interface,
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                self.sqlite_conn,
+                table_entity=self.table_entity,
+                table_sample_precentage=50,
+                ometa_client=None,
+            )
 
-        res = self.session.query(func.count()).select_from(profiler.sample).first()
+        sample = sqa_profiler_interface._create_thread_safe_sampler(
+            self.session, User
+        ).random_sample()
+
+        res = self.session.query(func.count()).select_from(sample).first()
         assert res[0] < 30
 
     def test_table_row_count(self):
@@ -162,15 +168,18 @@ class SampleTest(TestCase):
         """
 
         count = Metrics.COUNT.value
-        profiler = Profiler(
-            count,
-            profiler_interface=SQAInterface(
-                self.sqlite_conn,
-                table=User,
-                table_entity=self.table_entity,
-                profile_sample=50,
-            ),
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            profiler = Profiler(
+                count,
+                profiler_interface=SQAProfilerInterface(
+                    self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    table_sample_precentage=50,
+                    ometa_client=None,
+                ),
+            )
         res = profiler.compute_metrics()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
 
@@ -179,15 +188,18 @@ class SampleTest(TestCase):
         Histogram should run correctly
         """
         hist = Metrics.HISTOGRAM.value
-        profiler = Profiler(
-            hist,
-            profiler_interface=SQAInterface(
-                self.sqlite_conn,
-                table=User,
-                table_entity=self.table_entity,
-                profile_sample=50,
-            ),
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            profiler = Profiler(
+                hist,
+                profiler_interface=SQAProfilerInterface(
+                    self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    table_sample_precentage=50,
+                    ometa_client=None,
+                ),
+            )
         res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled

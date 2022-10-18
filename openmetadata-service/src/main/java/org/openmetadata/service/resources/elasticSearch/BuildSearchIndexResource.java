@@ -3,7 +3,6 @@ package org.openmetadata.service.resources.elasticSearch;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEAM;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -60,7 +59,6 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -84,19 +82,20 @@ public class BuildSearchIndexResource {
   private final ExecutorService threadScheduler;
   private final UserRepository userRepository;
 
-  @Collection(constructorType = Collection.ConstructorType.DAO_AUTH_SM_CONFIG)
-  public BuildSearchIndexResource(
-      CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager, OpenMetadataApplicationConfig config) {
-    if (config.getElasticSearchConfiguration() != null) {
-      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
-    }
+  public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = dao;
-    this.userRepository = new UserRepository(dao, secretsManager);
+    this.userRepository = new UserRepository(dao);
     this.authorizer = authorizer;
     this.threadScheduler =
         new ThreadPoolExecutor(
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (config.getElasticSearchConfiguration() != null) {
+      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+    }
   }
 
   private BulkProcessor getBulkProcessor(BulkProcessorListener listener, int bulkSize, int flushIntervalInSeconds) {
@@ -185,7 +184,7 @@ public class BuildSearchIndexResource {
           try {
             this.submitBatchJob(uriInfo, startedBy, createRequest);
           } catch (IOException e) {
-            throw new RuntimeException(e);
+            LOG.error("Reindexing Batch Job error", e);
           }
         });
     return Response.status(Response.Status.OK).entity("Reindexing Started").build();
@@ -229,7 +228,7 @@ public class BuildSearchIndexResource {
         dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_BATCH, ELASTIC_SEARCH_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
     long originalLastUpdate = lastRecord.getTimestamp();
-    lastRecord.setStatus(EventPublisherJob.Status.ACTIVE);
+    lastRecord.setStatus(EventPublisherJob.Status.STARTING);
     lastRecord.setStats(new Stats().withFailed(0).withTotal(0).withSuccess(0));
     lastRecord.setTimestamp(updateTime);
     lastRecord.setEntities(createRequest.getEntities());
@@ -246,7 +245,11 @@ public class BuildSearchIndexResource {
         getBulkProcessor(bulkProcessorListener, createRequest.getBatchSize(), createRequest.getFlushIntervalInSec());
 
     for (String entityName : createRequest.getEntities()) {
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
+      try {
+        updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
+      } catch (Exception ex) {
+        LOG.error("Reindexing intermittent failure for entityType : {}", entityName, ex);
+      }
     }
   }
 
@@ -257,6 +260,7 @@ public class BuildSearchIndexResource {
       String entityType,
       CreateEventPublisherJob createRequest) {
     listener.allowTotalRequestUpdate();
+
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
 
@@ -336,13 +340,15 @@ public class BuildSearchIndexResource {
       ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
       BulkProcessor bulkProcessor,
       String entityType,
-      List<EntityInterface> entities)
-      throws IOException {
+      List<EntityInterface> entities) {
     for (EntityInterface entity : entities) {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
       }
-      bulkProcessor.add(getUpdateRequest(indexType, entityType, entity));
+      UpdateRequest request = getUpdateRequest(indexType, entityType, entity);
+      if (request != null) {
+        bulkProcessor.add(request);
+      }
     }
   }
 
@@ -380,14 +386,18 @@ public class BuildSearchIndexResource {
   }
 
   private UpdateRequest getUpdateRequest(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, EntityInterface entity)
-      throws JsonProcessingException {
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-    updateRequest.doc(
-        JsonUtils.pojoToJson(
-            Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
-        XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    return updateRequest;
+      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, EntityInterface entity) {
+    try {
+      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      updateRequest.doc(
+          JsonUtils.pojoToJson(
+              Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
+          XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      return updateRequest;
+    } catch (Exception ex) {
+      LOG.error("Failed in creating update Request for indexType : {}, entityType: {}", indexType, entityType, ex);
+    }
+    return null;
   }
 }

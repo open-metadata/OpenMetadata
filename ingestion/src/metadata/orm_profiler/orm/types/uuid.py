@@ -12,7 +12,7 @@
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,abstract-method
 import traceback
 from uuid import UUID
 

@@ -49,3 +49,31 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: 'Tag',
   },
 ];
+
+export const ELASTIC_SEARCH_INITIAL_VALUES = {
+  entities: [
+    'table',
+    'topic',
+    'dashboard',
+    'pipeline',
+    'mlmodel',
+    'user',
+    'team',
+    'glossaryTerm',
+    'tag',
+  ],
+  batchSize: 100,
+  flushIntervalInSec: 30,
+  recreateIndex: false,
+};
+
+export const RECREATE_INDEX_OPTIONS = [
+  {
+    label: 'Yes',
+    value: true,
+  },
+  {
+    label: 'No',
+    value: false,
+  },
+];

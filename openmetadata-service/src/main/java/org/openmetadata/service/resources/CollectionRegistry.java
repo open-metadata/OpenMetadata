@@ -18,7 +18,6 @@ import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import java.io.File;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -42,7 +41,6 @@ import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.RestUtil;
 import org.reflections.Reflections;
@@ -181,11 +179,7 @@ public final class CollectionRegistry {
 
   /** Register resources from CollectionRegistry */
   public void registerResources(
-      Jdbi jdbi,
-      Environment environment,
-      OpenMetadataApplicationConfig config,
-      Authorizer authorizer,
-      SecretsManager secretsManager) {
+      Jdbi jdbi, Environment environment, OpenMetadataApplicationConfig config, Authorizer authorizer) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -193,7 +187,7 @@ public final class CollectionRegistry {
       try {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
         Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-        Object resource = createResource(daoObject, resourceClass, config, authorizer, secretsManager);
+        Object resource = createResource(daoObject, resourceClass, config, authorizer);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -212,28 +206,24 @@ public final class CollectionRegistry {
 
   /** Get collection details based on annotations in Resource classes */
   private static CollectionDetails getCollection(Class<?> cl) {
-    String href;
-    String doc;
-    String name;
     int order = 0;
-    href = null;
-    doc = null;
-    name = null;
+    CollectionInfo collectionInfo = new CollectionInfo();
     for (Annotation a : cl.getAnnotations()) {
       if (a instanceof Path) {
         // Use @Path annotation to compile href
-        href = ((Path) a).value();
+        collectionInfo.withHref(URI.create(((Path) a).value()));
       } else if (a instanceof Api) {
         // Use @Api annotation to get documentation about the collection
-        doc = ((Api) a).value();
+        collectionInfo.withDocumentation(((Api) a).value());
       } else if (a instanceof Collection) {
         // Use @Collection annotation to get initialization information for the class
-        name = ((Collection) a).name();
-        order = ((Collection) a).order();
+        Collection collection = (Collection) a;
+        collectionInfo.withName(collection.name());
+        order = collection.order();
       }
     }
     CollectionDescriptor cd = new CollectionDescriptor();
-    cd.setCollection(new CollectionInfo().withName(name).withDocumentation(doc).withHref(URI.create(href)));
+    cd.setCollection(collectionInfo);
     return new CollectionDetails(cd, cl.getCanonicalName(), order);
   }
 
@@ -253,57 +243,21 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject,
-      String resourceClass,
-      OpenMetadataApplicationConfig config,
-      Authorizer authorizer,
-      SecretsManager secretsManager)
+      CollectionDAO daoObject, String resourceClass, OpenMetadataApplicationConfig config, Authorizer authorizer)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
-    Object resource = null;
+    Object resource;
     Class<?> clz = Class.forName(resourceClass);
 
-    // NOTE: Currently this will work fine for One Constructor scenario since per resource only one constructor is
-    // present,
-    // for multiple constructor we can use order as the priority to qualify amongst multiple constructors
-    for (Constructor<?> constructor : clz.getConstructors()) {
-      Collection c = constructor.getAnnotation(Collection.class);
-      if (c != null) {
-        switch (c.constructorType()) {
-          case DAO_AUTH:
-            resource =
-                clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
-            break;
-          case DAO_AUTH_SM:
-            resource =
-                clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, SecretsManager.class)
-                    .newInstance(daoObject, authorizer, secretsManager);
-            break;
-          case CONFIG:
-            resource = clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
-            break;
-          case DAO_AUTH_CONFIG:
-            resource =
-                clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, OpenMetadataApplicationConfig.class)
-                    .newInstance(daoObject, authorizer, config);
-            break;
-          case DAO_AUTH_SM_CONFIG:
-            resource =
-                clz.getDeclaredConstructor(
-                        CollectionDAO.class,
-                        Authorizer.class,
-                        SecretsManager.class,
-                        OpenMetadataApplicationConfig.class)
-                    .newInstance(daoObject, authorizer, secretsManager, config);
-            break;
-          default:
-            resource = Class.forName(resourceClass).getConstructor().newInstance();
-        }
+    // Create the resource identified by resourceClass
+    try {
+      resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
+    } catch (NoSuchMethodException e) {
+      try {
+        resource = clz.getDeclaredConstructor().newInstance();
+      } catch (NoSuchMethodException exc) {
+        resource = Class.forName(resourceClass).getConstructor().newInstance();
       }
-    }
-
-    if (resource == null) {
-      resource = Class.forName(resourceClass).getConstructor().newInstance();
     }
 
     // Call initialize method, if it exists

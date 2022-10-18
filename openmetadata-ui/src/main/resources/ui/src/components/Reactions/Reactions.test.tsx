@@ -13,6 +13,7 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { ReactionType } from '../../generated/type/reaction';
 import Reactions from './Reactions';
 
 jest.mock('./Emoji', () =>
@@ -38,7 +39,7 @@ const onReactionSelect = jest.fn();
 
 const reactions = [
   {
-    reactionType: 'heart',
+    reactionType: ReactionType.Heart,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
@@ -49,7 +50,7 @@ const reactions = [
     },
   },
   {
-    reactionType: 'confused',
+    reactionType: ReactionType.Confused,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
@@ -60,7 +61,7 @@ const reactions = [
     },
   },
   {
-    reactionType: 'laugh',
+    reactionType: ReactionType.Laugh,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
@@ -71,7 +72,7 @@ const reactions = [
     },
   },
   {
-    reactionType: 'thumbsDown',
+    reactionType: ReactionType.ThumbsDown,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
@@ -82,7 +83,7 @@ const reactions = [
     },
   },
   {
-    reactionType: 'thumbsUp',
+    reactionType: ReactionType.ThumbsUp,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
@@ -93,7 +94,7 @@ const reactions = [
     },
   },
   {
-    reactionType: 'hooray',
+    reactionType: ReactionType.Hooray,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
@@ -104,7 +105,7 @@ const reactions = [
     },
   },
   {
-    reactionType: 'rocket',
+    reactionType: ReactionType.Rocket,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
@@ -115,7 +116,7 @@ const reactions = [
     },
   },
   {
-    reactionType: 'eyes',
+    reactionType: ReactionType.Eyes,
     user: {
       id: '2e424734-761a-443f-bf2a-a5b361823c80',
       type: 'user',
