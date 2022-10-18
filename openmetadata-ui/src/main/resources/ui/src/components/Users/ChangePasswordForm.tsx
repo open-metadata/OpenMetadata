@@ -23,6 +23,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
   return (
     <Modal
       centered
+      closable={false}
       okButtonProps={{
         form: 'change-password-form',
         type: 'primary',
