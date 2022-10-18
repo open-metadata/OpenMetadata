@@ -76,7 +76,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return chart;
   }
 
-  @Collection
   public ChartResource(CollectionDAO dao, Authorizer authorizer) {
     super(Chart.class, new ChartRepository(dao), authorizer);
   }

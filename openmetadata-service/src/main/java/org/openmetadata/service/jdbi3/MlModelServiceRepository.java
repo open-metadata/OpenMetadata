@@ -18,18 +18,16 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
-import org.openmetadata.service.secrets.SecretsManager;
 
 public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
   private static final String UPDATE_FIELDS = "owner,connection";
 
-  public MlModelServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
+  public MlModelServiceRepository(CollectionDAO dao) {
     super(
         MlModelServiceResource.COLLECTION_PATH,
         Entity.MLMODEL_SERVICE,
         dao,
         dao.mlModelServiceDAO(),
-        secretsManager,
         MlModelConnection.class,
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);

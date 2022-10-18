@@ -15,15 +15,34 @@ import '@github/g-emoji-element';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
+import React, { FC } from 'react';
 import { ReactionOperation } from '../../enums/reactions.enum';
+import { ReactionType } from '../../generated/type/reaction';
 import useImage from '../../hooks/useImage';
 
-const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
+interface ReactionProps {
+  reaction: {
+    emoji: string;
+    reaction: ReactionType;
+    alias: string;
+  };
+  isReacted: boolean;
+  onReactionSelect: (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => void;
+  onHide: () => void;
+}
+
+const Reaction: FC<ReactionProps> = ({
+  reaction,
+  isReacted,
+  onReactionSelect,
+  onHide,
+}) => {
   const { image } = useImage(`emojis/${reaction.reaction}.png`);
 
-  const handleOnClick = (e) => {
+  const handleOnClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const operation = isReacted
       ? ReactionOperation.REMOVE
@@ -44,26 +63,19 @@ const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
       title={reaction.reaction}
       type="text"
       onClick={handleOnClick}>
-      <g-emoji
-        alias={reaction.alias}
+      <div
+        dangerouslySetInnerHTML={{
+          __html: `<g-emoji
+        alias={${reaction.alias}}
         className="d-flex"
         data-testid="emoji"
-        fallback-src={image}>
-        {reaction.emoji}
-      </g-emoji>
+        fallback-src={${image}}>
+        ${reaction.emoji}
+      </g-emoji>`,
+        }}
+      />
     </Button>
   );
-};
-
-Reaction.propTypes = {
-  reaction: PropTypes.shape({
-    emoji: PropTypes.string.isRequired,
-    reaction: PropTypes.string.isRequired,
-    alias: PropTypes.string.isRequired,
-  }).isRequired,
-  isReacted: PropTypes.bool.isRequired,
-  onReactionSelect: PropTypes.func.isRequired,
-  onHide: PropTypes.func.isRequired,
 };
 
 export default Reaction;

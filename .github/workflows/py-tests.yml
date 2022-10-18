@@ -73,9 +73,17 @@ jobs:
       timeout-minutes: 30
 
     - name: Run Python Tests
+      if: ${{ matrix.py-version != '3.9' }}
       run: |
         source env/bin/activate
         make run_python_tests
+
+    - name: Run Python Tests & record coverage
+      if: ${{ matrix.py-version == '3.9' }}
+      run: |
+        source env/bin/activate
+        make coverage
+        rm pom.xml
 
       # we have to pass these args values since we are working with the 'pull_request_target' trigger
     - name: Push Results in PR to Sonar

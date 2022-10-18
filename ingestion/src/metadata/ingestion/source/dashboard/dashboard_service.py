@@ -23,6 +23,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -36,6 +37,8 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -47,7 +50,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
@@ -146,9 +148,9 @@ class DashboardSourceStatus(SourceStatus):
         self.success.append(record)
         logger.info(f"Scanned: {record}")
 
-    def filter(self, record: str, err: str) -> None:
-        self.filtered.append(record)
-        logger.warning(f"Filtered {record}: {err}")
+    def filter(self, key: str, reason: str) -> None:
+        self.filtered.append(key)
+        logger.warning(f"Filtered {key}: {reason}")
 
 
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -210,20 +212,24 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 dashboard_details, db_service_name
             ) or []
 
-    def yield_tag(self, *args, **kwargs) -> Optional[Iterable[OMetaTagAndCategory]]:
+    def yield_tag(
+        self, *args, **kwargs  # pylint: disable=W0613
+    ) -> Optional[Iterable[OMetaTagAndCategory]]:
         """
         Method to fetch dashboard tags
         """
         return  # Dashboard does not support fetching tags except Tableau
 
-    def yield_owner(self, *args, **kwargs) -> Optional[Iterable[CreateUserRequest]]:
+    def yield_owner(
+        self, *args, **kwargs  # pylint: disable=W0613
+    ) -> Optional[Iterable[CreateUserRequest]]:
         """
         Method to fetch dashboard owner
         """
         return  # Dashboard does not support fetching owner details except Tableau
 
     def yield_dashboard_usage(
-        self, *args, **kwargs
+        self, *args, **kwargs  # pylint: disable=W0613
     ) -> Optional[Iterable[DashboardUsage]]:
         """
         Method to pick up dashboard usage data
@@ -275,7 +281,24 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
+    def _get_add_lineage_request(self, to_entity: Dashboard, from_entity: Table):
+        if from_entity and to_entity:
+            return AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(
+                        id=from_entity.id.__root__, type="table"
+                    ),
+                    toEntity=EntityReference(
+                        id=to_entity.id.__root__, type="dashboard"
+                    ),
+                )
+            )
+        return None
+
     def get_dashboard(self) -> Any:
+        """
+        Method to iterate through dashboard lists filter dashbaords & yield dashboard details
+        """
         for dashboard in self.get_dashboards_list():
 
             try:

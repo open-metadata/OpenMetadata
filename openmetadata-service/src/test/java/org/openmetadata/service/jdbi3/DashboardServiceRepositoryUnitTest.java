@@ -22,7 +22,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.type.DashboardConnection;
-import org.openmetadata.service.secrets.SecretsManager;
 
 public class DashboardServiceRepositoryUnitTest
     extends ServiceEntityRepositoryTest<DashboardServiceRepository, DashboardService, DashboardConnection> {
@@ -32,9 +31,8 @@ public class DashboardServiceRepositoryUnitTest
   }
 
   @Override
-  protected DashboardServiceRepository newServiceRepository(
-      CollectionDAO collectionDAO, SecretsManager secretsManager) {
-    return new DashboardServiceRepository(collectionDAO, secretsManager);
+  protected DashboardServiceRepository newServiceRepository(CollectionDAO collectionDAO) {
+    return new DashboardServiceRepository(collectionDAO);
   }
 
   @Override

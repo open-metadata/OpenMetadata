@@ -89,20 +89,19 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: ${LOG_LEVEL:-DEBUG}
+  level: ${LOG_LEVEL:-INFO}
   loggers:
-    org.openmetadata.service.events: DEBUG
     io.swagger: ERROR
   appenders:
     - type: console
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       timeZone: UTC
     - type: file
       filterFactories:
         - type: audit-exclude-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/openmetadata.log
       archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
@@ -112,7 +111,7 @@ logging:
       filterFactories:
         - type: audit-only-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/audit.log
       archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 25
@@ -244,6 +243,7 @@ email:
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
   enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
   openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
+  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
   serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
   serverPort: ${SMTP_SERVER_PORT:-""}
   username: ${SMTP_SERVER_USERNAME:-""}

@@ -78,7 +78,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   @Inject
-  @Collection
   public TopicResource(CollectionDAO dao, Authorizer authorizer) {
     super(Topic.class, new TopicRepository(dao), authorizer);
   }

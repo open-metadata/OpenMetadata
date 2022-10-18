@@ -230,7 +230,7 @@ const RequestTag = () => {
                   Back
                 </Button>
                 <Button
-                  data-testid="submit-test"
+                  data-testid="submit-tag-request"
                   htmlType="submit"
                   type="primary">
                   {suggestion ? 'Suggest' : 'Submit'}

@@ -158,6 +158,7 @@ class OpenMetadata(
 
     client: REST
     _auth_provider: AuthenticationProvider
+    config: OpenMetadataConnection
 
     class_root = ".".join(["metadata", "generated", "schema"])
     entity_path = "entity"
@@ -588,7 +589,6 @@ class OpenMetadata(
         logger.warning("Cannot find the Entity %s", fqn)
         return None
 
-    # pylint: disable=too-many-arguments,dangerous-default-value
     def list_entities(
         self,
         entity: Type[T],

@@ -5,6 +5,7 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.DASHBOARD,
   EntityType.TOPIC,
   EntityType.PIPELINE,
+  EntityType.MLMODEL,
 ];
 
 export const validateMessages = {
