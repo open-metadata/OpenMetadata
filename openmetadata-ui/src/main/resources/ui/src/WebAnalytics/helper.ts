@@ -52,10 +52,9 @@ export const trackPageView = (pageData: WebPageData, userId: string) => {
         referrer: properties.referrer,
       };
 
+      // TODO: make an api call to collect the data once backend API is ready and remove the console log
       // eslint-disable-next-line
       console.log(eventData);
-
-      // TODO: make an api call to collect the data once backend API is ready
     }
   }
 };
