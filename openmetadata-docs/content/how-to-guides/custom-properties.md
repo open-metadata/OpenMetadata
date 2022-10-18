@@ -14,7 +14,7 @@ Let's assume in your organization you want to keep track of table size, so to ac
 All OpenMetadata APIs are secured so make sure to add the proper headers.
 
 ```commandline
-curl -X GET http://localhost:3000/api/v1/metadata/types/name/table
+curl -X GET http://localhost:8585/api/v1/metadata/types/name/table
 ```
 
 After the API call, you will get a response like this.
@@ -52,7 +52,7 @@ Now take the `id` from above response `7f0b032f-cdc8-4573-abb0-22165dcd8e07`.
 > - Integer
 
 ```commandline
- curl -X GET http://localhost:3000/api/v1/metadata/types?category=field
+ curl -X GET http://localhost:8585/api/v1/metadata/types?category=field
 ```
 
 This API will return all the available field types, for this tutorial grab the id of the `string` field type. i.e `7531f881-c37c-4e39-9154-4bdf0802e05e`
@@ -60,7 +60,7 @@ This API will return all the available field types, for this tutorial grab the i
 ### Step 3: Make a PUT call to create the custom property for the table entity
 
 ```commandline
-curl -X PUT http://localhost:3000/api/v1/metadata/types/7f0b032f-cdc8-4573-abb0-22165dcd8e07
+curl -X PUT http://localhost:8585/api/v1/metadata/types/7f0b032f-cdc8-4573-abb0-22165dcd8e07
 ```
 
 **Payload**
@@ -79,7 +79,7 @@ curl -X PUT http://localhost:3000/api/v1/metadata/types/7f0b032f-cdc8-4573-abb0-
 ### Step 4: Get the custom properties for the table entity
 
 ```commandline
-curl -X GET http://localhost:3000/api/v1/metadata/types/name/table?fields=customProperties
+curl -X GET http://localhost:8585/api/v1/metadata/types/name/table?fields=customProperties
 ```
 
 **Response**
@@ -115,7 +115,7 @@ All the custom properties value for the entity will be stored in the `extension`
 Let’s assume you have `raw_product_catalog` table and its id is `208598fc-bd5f-458c-bf98-59224e1620c7` so our PATCH API request will be like this.
 
 ```commandline
-curl -X PATCH http://localhost:3000/api/v1/tables/208598fc-bd5f-458c-bf98-59224e1620c7
+curl -X PATCH http://localhost:8585/api/v1/tables/208598fc-bd5f-458c-bf98-59224e1620c7
 ```
 
 For the first time if we want to add the value to the custom property then the payload should be like this.
