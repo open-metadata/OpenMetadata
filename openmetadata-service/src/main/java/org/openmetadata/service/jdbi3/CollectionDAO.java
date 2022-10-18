@@ -224,7 +224,7 @@ public interface CollectionDAO {
   TestCaseDAO testCaseDAO();
 
   @CreateSqlObject
-  AnalyticsReportDAO analyticsReportDAO();
+  ReportDefinitionDAO reportDefinitionDAO();
 
   @CreateSqlObject
   UtilDAO utilDAO();
@@ -2942,7 +2942,7 @@ public interface CollectionDAO {
     }
   }
 
-  interface AnalyticsReportDAO extends EntityDAO<ReportDefinition> {
+  interface ReportDefinitionDAO extends EntityDAO<ReportDefinition> {
     @Override
     default String getTableName() {
       return "report_definition";

@@ -35,7 +35,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.AnalyticsReportRepository;
+import org.openmetadata.service.jdbi3.ReportDefinitionRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -52,10 +52,10 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "AnalyticsReport")
-public class AnalyticsReportResource extends EntityResource<ReportDefinition, AnalyticsReportRepository> {
-  public static final String COLLECTION_PATH = AnalyticsReportRepository.COLLECTION_PATH;
+public class ReportDefinitionResource extends EntityResource<ReportDefinition, ReportDefinitionRepository> {
+  public static final String COLLECTION_PATH = ReportDefinitionRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
-  private final AnalyticsReportRepository daoReportDefinition;
+  private final ReportDefinitionRepository daoReportDefinition;
 
   @Override
   public ReportDefinition addHref(UriInfo uriInfo, ReportDefinition reportDefinition) {
@@ -65,9 +65,9 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
   }
 
   @Inject
-  public AnalyticsReportResource(CollectionDAO dao, Authorizer authorizer) {
-    super(ReportDefinition.class, new AnalyticsReportRepository(dao), authorizer);
-    this.daoReportDefinition = new AnalyticsReportRepository(dao);
+  public ReportDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
+    super(ReportDefinition.class, new ReportDefinitionRepository(dao), authorizer);
+    this.daoReportDefinition = new ReportDefinitionRepository(dao);
   }
 
   @SuppressWarnings("unused") // Method used for reflection of reportDefinitions
@@ -128,7 +128,7 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = AnalyticsReportResource.ReportDefinitionList.class)))
+                    schema = @Schema(implementation = ReportDefinitionResource.ReportDefinitionList.class)))
       })
   public ResultList<ReportDefinition> list(
       @Context UriInfo uriInfo,
@@ -421,7 +421,7 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = AnalyticsReportResource.ReportResultList.class)))
+                    schema = @Schema(implementation = ReportDefinitionResource.ReportResultList.class)))
       })
   public ResultList<ReportResult> listReportResults(
       @Context SecurityContext securityContext,

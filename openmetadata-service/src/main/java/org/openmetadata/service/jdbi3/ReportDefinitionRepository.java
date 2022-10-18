@@ -21,18 +21,18 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
-public class AnalyticsReportRepository extends EntityRepository<ReportDefinition> {
+public class ReportDefinitionRepository extends EntityRepository<ReportDefinition> {
   public static final String COLLECTION_PATH = "/v1/analytics/report";
   private static final String UPDATE_FIELDS = "owner";
   private static final String PATCH_FIELDS = "owner";
   private static final String REPORT_RESULT_EXTENSION = "reportDefinition.reportResult";
 
-  public AnalyticsReportRepository(CollectionDAO dao) {
+  public ReportDefinitionRepository(CollectionDAO dao) {
     super(
         COLLECTION_PATH,
         REPORT_DEFINITION,
         ReportDefinition.class,
-        dao.analyticsReportDAO(),
+        dao.reportDefinitionDAO(),
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);

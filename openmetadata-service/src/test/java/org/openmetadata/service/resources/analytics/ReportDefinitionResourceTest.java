@@ -22,14 +22,14 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
-public class AnalyticsReportResourceTest extends EntityResourceTest<ReportDefinition, CreateReportDefinition> {
-  public AnalyticsReportResourceTest() {
+public class ReportDefinitionResourceTest extends EntityResourceTest<ReportDefinition, CreateReportDefinition> {
+  public ReportDefinitionResourceTest() {
     super(
         Entity.REPORT_DEFINITION,
         ReportDefinition.class,
-        AnalyticsReportResource.ReportDefinitionList.class,
+        ReportDefinitionResource.ReportDefinitionList.class,
         "analytics/report",
-        AnalyticsReportResource.FIELDS);
+        ReportDefinitionResource.FIELDS);
     supportsEmptyDescription = false;
     supportsFollowers = false;
     supportsAuthorizedMetadataOperations = false;
@@ -115,7 +115,7 @@ public class AnalyticsReportResourceTest extends EntityResourceTest<ReportDefini
     WebTarget target = OpenMetadataApplicationTest.getResource("analytics/report/" + fqn + "/result");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
-    return TestUtils.get(target, AnalyticsReportResource.ReportResultList.class, authHeaders);
+    return TestUtils.get(target, ReportDefinitionResource.ReportResultList.class, authHeaders);
   }
 
   private void verifyReportResults(
