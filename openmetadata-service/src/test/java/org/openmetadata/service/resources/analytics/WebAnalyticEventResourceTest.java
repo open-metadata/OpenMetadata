@@ -64,9 +64,6 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
 
   @Test
   void put_web_analytic_event_data_200(TestInfo test) throws IOException, ParseException {
-    CreateWebAnalyticEvent create = createRequest(test);
-    create.withName("foo");
-    WebAnalyticEvent webAnalyticEvent = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     WebAnalyticEventData webAnalyticEventData =
         new WebAnalyticEventData()
             .withTimestamp(TestUtils.dateToTimestamp("2022-10-11"))
@@ -81,7 +78,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
 
     ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
         getWebAnalyticEventData(
-            webAnalyticEvent.getEventType().value(),
+            WebAnalyticEventType.PAGE_VIEW.value(),
             TestUtils.dateToTimestamp("2022-10-10"),
             TestUtils.dateToTimestamp("2022-10-12"),
             ADMIN_AUTH_HEADERS);

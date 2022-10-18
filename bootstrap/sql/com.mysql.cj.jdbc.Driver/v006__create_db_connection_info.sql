@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS report_definition (
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    UNIQUE (name)
+    UNIQUE(name),
+    INDEX name_index (name)
 );
 
 
@@ -19,5 +20,7 @@ CREATE TABLE IF NOT EXISTS web_analytic_event (
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    UNIQUE (name)
+    UNIQUE(name),
+    INDEX name_index (name),
+    INDEX event_type_index (eventType)
 );

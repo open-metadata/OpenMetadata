@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS report_definition (
     UNIQUE (name)
 );
 
+CREATE INDEX IF NOT EXISTS name_index ON report_definition(name);
+
+
 CREATE TABLE IF NOT EXISTS web_analytic_event (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
@@ -20,3 +23,6 @@ CREATE TABLE IF NOT EXISTS web_analytic_event (
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     UNIQUE (name)
 );
+
+CREATE INDEX IF NOT EXISTS name_index ON web_analytic_event(name);
+CREATE INDEX IF NOT EXISTS event_type_index ON web_analytic_event(eventType);

@@ -447,8 +447,18 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
+      "EditDisplayName"
+    ]
+  },
+  {
+    "name" : "webAnalyticEventResource",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName"
     ]
   }
 ]
