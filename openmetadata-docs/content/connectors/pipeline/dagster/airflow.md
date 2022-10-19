@@ -85,6 +85,13 @@ workflowConfig:
 
 
 - **hostPort**: host and port for dagster pipeline
+
+<Note>
+
+If dagster is deployed on `localhost` and entering `https://localhost:3000` into hostPort gives a connection refused error, please enter `https://127.0.0.1:3000` into the hostPort and try again.
+
+</Note>
+
 - **numberOfStatus**: 10
 - **dbConnection**
     - **type**: Name of the Database Service

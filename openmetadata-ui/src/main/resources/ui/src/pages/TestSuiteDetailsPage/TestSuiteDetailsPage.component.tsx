@@ -48,6 +48,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import { ACTION_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -185,6 +186,29 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
+  const updateTestSuiteData = (updatedTestSuite: TestSuite, type: string) => {
+    saveAndUpdateTestSuiteData(updatedTestSuite)
+      .then((res) => {
+        if (res) {
+          setTestSuite(res);
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages'][
+            type === ACTION_TYPE.UPDATE
+              ? 'update-owner-error'
+              : 'remove-owner-error'
+          ]
+        );
+      });
+  };
+
   const onUpdateOwner = (updatedOwner: TestSuite['owner']) => {
     if (updatedOwner) {
       const updatedTestSuite = {
@@ -195,22 +219,18 @@ const TestSuiteDetailsPage = () => {
         },
       } as TestSuite;
 
-      saveAndUpdateTestSuiteData(updatedTestSuite)
-        .then((res) => {
-          if (res) {
-            setTestSuite(res);
-          } else {
-            showErrorToast(
-              jsonData['api-error-messages']['unexpected-server-response']
-            );
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-owner-error']
-          );
-        });
+      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
+    }
+  };
+
+  const onRemoveOwner = () => {
+    if (testSuite) {
+      const updatedTestSuite = {
+        ...testSuite,
+        owner: undefined,
+      } as TestSuite;
+
+      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.REMOVE);
     }
   };
 
@@ -301,6 +321,7 @@ const TestSuiteDetailsPage = () => {
                 extraInfo={extraInfo}
                 handleDeleteWidgetVisible={handleDeleteWidgetVisible}
                 handleDescriptionUpdate={onDescriptionUpdate}
+                handleRemoveOwner={onRemoveOwner}
                 handleUpdateOwner={onUpdateOwner}
                 isDeleteWidgetVisible={isDeleteWidgetVisible}
                 isDescriptionEditable={isDescriptionEditable}

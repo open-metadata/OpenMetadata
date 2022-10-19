@@ -450,9 +450,9 @@ const Users = ({
                 <Select
                   isClearable
                   isMulti
+                  isSearchable
                   aria-label="Select teams"
                   className="tw-w-full"
-                  isSearchable={false}
                   options={teams?.map((team) => ({
                     label: getEntityName(team as unknown as EntityReference),
                     value: team.id,
@@ -587,10 +587,10 @@ const Users = ({
                 <Select
                   isClearable
                   isMulti
+                  isSearchable
                   aria-label="Select roles"
                   className="tw-w-full"
                   id="select-role"
-                  isSearchable={false}
                   options={userRolesOption}
                   placeholder="Roles..."
                   styles={reactSingleSelectCustomStyle}

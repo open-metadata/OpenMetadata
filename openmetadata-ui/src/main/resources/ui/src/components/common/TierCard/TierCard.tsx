@@ -1,4 +1,4 @@
-import { Card, Popover, Typography } from 'antd';
+import { Button, Card, Col, Popover, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Status, TableDetail } from 'Models';
@@ -23,9 +23,15 @@ export interface TierCardProps {
     tier?: TableDetail['tier'],
     isJoinable?: boolean
   ) => Promise<void>;
+  removeTier?: () => void;
 }
 
-const TierCard = ({ currentTier, hideTier, updateTier }: TierCardProps) => {
+const TierCard = ({
+  currentTier,
+  hideTier,
+  updateTier,
+  removeTier,
+}: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [activeTier, setActiveTier] = useState(currentTier);
   const [statusTier, setStatusTier] = useState<Status>('initial');
@@ -95,7 +101,29 @@ const TierCard = ({ currentTier, hideTier, updateTier }: TierCardProps) => {
           paddingLeft: '16px',
           paddingTop: '12px',
         }}
-        title={<Typography.Title level={5}>Edit Tier</Typography.Title>}>
+        title={
+          <Row>
+            <Col span={21}>
+              <Typography.Title className="m-b-0" level={5}>
+                Edit Tier
+              </Typography.Title>
+            </Col>
+            <Col span={3}>
+              {currentTier ? (
+                <Button
+                  className="font-medium"
+                  data-testid="remove-tier"
+                  type="link"
+                  onClick={removeTier}>
+                  {' '}
+                  Clear Tier
+                </Button>
+              ) : (
+                ''
+              )}
+            </Col>
+          </Row>
+        }>
         {tierData.map((card, i) => (
           <CardListItem
             card={card}
@@ -145,7 +173,11 @@ const TierCard = ({ currentTier, hideTier, updateTier }: TierCardProps) => {
     }
   }, [currentTier]);
 
-  return <Popover trigger="click">{getTierWidget()}</Popover>;
+  return (
+    <Popover data-testid="tier-card-container" trigger="click">
+      {getTierWidget()}
+    </Popover>
+  );
 };
 
 export default TierCard;

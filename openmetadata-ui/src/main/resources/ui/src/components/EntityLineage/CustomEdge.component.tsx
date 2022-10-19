@@ -12,7 +12,7 @@
  */
 
 import React, { Fragment } from 'react';
-import { EdgeProps, getBezierPath, getEdgeCenter } from 'react-flow-renderer';
+import { EdgeProps, getBezierPath } from 'reactflow';
 import { foreignObjectSize } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -33,7 +33,7 @@ export const CustomEdge = ({
   const { onEdgeClick, ...rest } = data;
   const offset = 4;
 
-  const edgePath = getBezierPath({
+  const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -41,7 +41,7 @@ export const CustomEdge = ({
     targetY,
     targetPosition,
   });
-  const invisibleEdgePath = getBezierPath({
+  const [invisibleEdgePath] = getBezierPath({
     sourceX: sourceX + offset,
     sourceY: sourceY + offset,
     sourcePosition,
@@ -49,20 +49,13 @@ export const CustomEdge = ({
     targetY: targetY + offset,
     targetPosition,
   });
-  const invisibleEdgePath1 = getBezierPath({
+  const [invisibleEdgePath1] = getBezierPath({
     sourceX: sourceX - offset,
     sourceY: sourceY - offset,
     sourcePosition,
     targetX: targetX - offset,
     targetY: targetY - offset,
     targetPosition,
-  });
-
-  const [edgeCenterX, edgeCenterY] = getEdgeCenter({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
   });
 
   const getInvisiblePath = (path: string) => {
