@@ -1,7 +1,5 @@
 package org.openmetadata.service.resources.dqtests;
 
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -36,7 +34,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
@@ -52,8 +49,6 @@ import org.openmetadata.service.jdbi3.TestDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -65,8 +60,6 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestDefinitions")
 public class TestDefinitionResource extends EntityResource<TestDefinition, TestDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/testDefinition";
-  private final TestDefinitionRepository daoTestDefinition;
-
   static final String FIELDS = "owner";
 
   @Override
@@ -79,27 +72,15 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Inject
   public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
-    this.daoTestDefinition = new TestDefinitionRepository(dao);
   }
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    List<String> testDefinitionFiles = EntityUtil.getJsonDataResources(".*json/data/tests/.*\\.json$");
-    testDefinitionFiles.forEach(
-        testDefinitionFile -> {
-          try {
-            LOG.info("Loading test definitions from file {}", testDefinitionFile);
-            String testDefinitionJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), testDefinitionFile);
-            testDefinitionJson = testDefinitionJson.replace("<separator>", Entity.SEPARATOR);
-            TestDefinition testDefinition = JsonUtils.readValue(testDefinitionJson, TestDefinition.class);
-            long now = System.currentTimeMillis();
-            testDefinition.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-            daoTestDefinition.initSeedData(testDefinition);
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the test definition files {}", testDefinitionFile, e);
-          }
-        });
+    List<TestDefinition> testDefinitions = dao.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
+    for (TestDefinition testDefinition : testDefinitions) {
+      dao.initializeEntity(testDefinition);
+    }
   }
 
   public static class TestDefinitionList extends ResultList<TestDefinition> {
