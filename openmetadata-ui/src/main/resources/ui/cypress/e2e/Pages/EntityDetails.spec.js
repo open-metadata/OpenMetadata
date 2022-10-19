@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from "../../../src/utils/TimeUtils";
-import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import {
+    getCurrentLocaleDate,
+    getFutureLocaleDateFromCurrentDate
+} from '../../../src/utils/TimeUtils';
+import {
+    descriptionBox,
+    interceptURL,
+    login,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
+} from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -181,7 +190,6 @@ describe('Entity Details Page', () => {
     cy.clickOnLogo();
   };
 
-
   const removeOwnerAndTier = (value) => {
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
@@ -189,7 +197,7 @@ describe('Entity Details Page', () => {
       'GET',
       '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
       'waitForTeams'
-    ); 
+    );
 
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
@@ -212,9 +220,12 @@ describe('Entity Details Page', () => {
 
     //Check if user exist
     cy.get('[data-testid="entity-summary-details"]')
-      .should('exist').contains('No Owner')
+      .first()
+      .scrollIntoView()
+      .should('exist')
+      .contains('No Owner');
 
-      cy.get('[data-testid="edit-Tier-icon"]')
+    cy.get('[data-testid="edit-Tier-icon"]')
       .scrollIntoView()
       .should('exist')
       .should('be.visible')
