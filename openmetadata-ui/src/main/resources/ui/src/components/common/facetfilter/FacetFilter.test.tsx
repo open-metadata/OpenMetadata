@@ -103,14 +103,47 @@ const aggregations: Aggregations = {
 const filters = {
   serviceType: ['BigQuery', 'Glue'],
   'service.name.keyword': ['bigquery_gcp', 'glue'],
-  tier: ['Tier1', 'Tier2'],
+  'tier.tagFQN': ['Tier1', 'Tier2'],
   'tags.tagFQN': ['PII.Sensitive', 'User.Address'],
   'database.name.keyword': ['ecommerce_db', 'default'],
   'databaseSchema.name.keyword': ['shopify', 'information_schema'],
 };
 
 describe('Test FacetFilter Component', () => {
-  it('Should render all aggregations with non-empty buckets', () => {
+  it('Should render all aggregations with non-empty buckets when no filters', () => {
+    const { container } = render(
+      <FacetFilter
+        aggregations={aggregations}
+        filters={{}}
+        onChangeShowDeleted={onChangeShowDelete}
+        onClearFilter={onClearFilter}
+        onSelectHandler={onSelectHandler}
+      />
+    );
+
+    const filterHeadings = getAllByTestId(container, (content) =>
+      content.startsWith('filter-heading-')
+    );
+
+    expect(filterHeadings.length).toBe(7);
+    expect(
+      filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
+    ).toStrictEqual(
+      [
+        'entityType',
+        'service.type',
+        'service.name.keyword',
+        'database.name.keyword',
+        'serviceType',
+        'tags.tagFQN',
+        'databaseSchema.name.keyword',
+      ]
+        .map((s) => `filter-heading-${s}`)
+        .sort()
+    );
+  });
+
+  it('Should render all aggregations with non-empty buckets or with filters', () => {
     const { container } = render(
       <FacetFilter
         aggregations={aggregations}
@@ -121,10 +154,26 @@ describe('Test FacetFilter Component', () => {
       />
     );
 
-    const filterHeading = getAllByTestId(container, (content) =>
+    const filterHeadings = getAllByTestId(container, (content) =>
       content.startsWith('filter-heading-')
     );
 
-    expect(filterHeading.length).toBe(7);
+    expect(filterHeadings.length).toBe(8);
+    expect(
+      filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
+    ).toStrictEqual(
+      [
+        'tier.tagFQN',
+        'entityType',
+        'service.type',
+        'service.name.keyword',
+        'database.name.keyword',
+        'serviceType',
+        'tags.tagFQN',
+        'databaseSchema.name.keyword',
+      ]
+        .map((s) => `filter-heading-${s}`)
+        .sort()
+    );
   });
 });

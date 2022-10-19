@@ -57,7 +57,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                   ...buckets,
                   ...filters[aggregationKey]
                     .filter((f) => !buckets.some((b) => b.key === f))
-                    .map((f) => ({ key: f, doc_count: 0 })),
+                    .map((f) => ({ key: f, doc_count: 0 })), // eslint-disable-line @typescript-eslint/camelcase
                 ]
               : buckets,
         },
@@ -72,7 +72,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
       )
       .map(([aggregationKey, values]) => [
         aggregationKey,
-        { buckets: values.map((v) => ({ key: v, doc_count: 0 })) },
+        { buckets: values.map((v) => ({ key: v, doc_count: 0 })) }, // eslint-disable-line @typescript-eslint/camelcase
       ]);
 
     const combinedAggregations = [
