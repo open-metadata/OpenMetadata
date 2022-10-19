@@ -33,10 +33,10 @@ import Appbar from './components/app-bar/Appbar';
 import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from './components/PermissionProvider/PermissionProvider';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
+import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { toastOptions } from './constants/toast.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
 import AppRouter from './router/AppRouter';
-import WebAnalyticsProvider from './WebAnalytics/WebAnalyticsProvider';
 
 const App: FunctionComponent = () => {
   library.add(

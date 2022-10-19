@@ -14,8 +14,8 @@
 import { observer } from 'mobx-react';
 import React, { ReactNode, useMemo } from 'react';
 import { AnalyticsProvider } from 'use-analytics';
-import AppState from '../AppState';
-import { getAnalyticInstance } from '../utils/WebAnalyticsUtils';
+import AppState from '../../AppState';
+import { getAnalyticInstance } from '../../utils/WebAnalyticsUtils';
 
 interface WebAnalyticsProps {
   children: ReactNode;
