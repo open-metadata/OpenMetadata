@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,30 @@
  *  limitations under the License.
  */
 
-@import '~antd/dist/antd.less';
-@import url('./variables.less');
-@import url('./position.less');
-@import url('./spacing.less');
-@import url('./components/table.less');
-@import url('./components/tabs.less');
-@import url('./components/toggle-switch.less');
-@import url('./components/button.less');
-@import url('./components/card.less');
+import { PageData } from 'analytics';
+
+export interface PayloadProperties {
+  title: string;
+  url: string;
+  path: string;
+  hash: string;
+  search: string;
+  width: number;
+  height: number;
+  referrer: string;
+}
+
+export interface Payload {
+  type: string;
+  properties: PayloadProperties;
+  anonymousId: string;
+  meta: {
+    rid: string;
+    ts: number;
+    hasCallback: boolean;
+  };
+}
+
+export interface WebPageData extends PageData {
+  payload: Payload;
+}

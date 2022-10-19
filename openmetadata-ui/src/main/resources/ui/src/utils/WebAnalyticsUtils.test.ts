@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 
-@import '~antd/dist/antd.less';
-@import url('./variables.less');
-@import url('./position.less');
-@import url('./spacing.less');
-@import url('./components/table.less');
-@import url('./components/tabs.less');
-@import url('./components/toggle-switch.less');
-@import url('./components/button.less');
-@import url('./components/card.less');
+import { getAnalyticInstance } from './WebAnalyticsUtils';
+
+const userId = 'userId';
+
+describe('Web Analytics utils', () => {
+  it('getAnalyticInstance Should return the analytic instance and must have plugins, storage, page and setAnonymousId property', () => {
+    const instance = getAnalyticInstance(userId);
+
+    expect(instance).toHaveProperty('plugins');
+
+    expect(instance).toHaveProperty('storage');
+
+    expect(instance).toHaveProperty('page');
+
+    expect(instance).toHaveProperty('setAnonymousId');
+  });
+});

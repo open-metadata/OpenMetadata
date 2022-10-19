@@ -93,6 +93,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+    DomoDatabaseConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -1004,6 +1007,31 @@ def _(connection: DomoClient) -> None:
 
 @get_connection.register
 def _(connection: DomoPipelineConnection) -> None:
+    from pydomo import Domo
+
+    try:
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoClient) -> None:
+    try:
+        connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: DomoDatabaseConnection) -> None:
     from pydomo import Domo
 
     try:

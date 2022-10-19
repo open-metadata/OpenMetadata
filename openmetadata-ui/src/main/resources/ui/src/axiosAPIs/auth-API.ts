@@ -101,3 +101,12 @@ export const generateRandomPwd = async () => {
 
   return response.data;
 };
+
+/**
+ * Logout a User(Only called for saml and basic Auth)
+ */
+export const logoutUser = async (token: string) => {
+  const response = await axiosClient.post(`${apiPath}/logout`, { token });
+
+  return response.data;
+};

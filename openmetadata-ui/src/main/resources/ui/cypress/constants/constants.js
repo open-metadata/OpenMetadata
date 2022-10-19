@@ -14,6 +14,10 @@
 export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
 
+export const BASE_URL = location.origin;
+
+export const LOGIN_ERROR_MESSAGE = 'You have entered an invalid username or password.';
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
