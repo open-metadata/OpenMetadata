@@ -12,7 +12,7 @@
  */
 
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { WebPageData } from './webanalytics.interface';
+import { WebPageData } from '../WebAnalytics/Webanalytics.interface';
 
 /**
  * track the page view if user id is available.
