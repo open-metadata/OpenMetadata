@@ -205,15 +205,12 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
-jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
-});
-
 jest.mock('../../utils/CommonUtils', () => {
   return {
     getEntityName: jest.fn().mockReturnValue('entityName'),
     getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
     getOwnerValue: jest.fn().mockReturnValue('Owner'),
+    getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
   };
 });
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table, Typography } from 'antd';
+import { Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
@@ -35,7 +35,6 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -48,6 +47,7 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getEmptyPlaceholder,
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
@@ -63,7 +63,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../containers/PageContainer';
@@ -404,11 +403,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         </h6>
         <div className="m-t-xs">
           {isEmpty(mlModelDetail.mlHyperParameters) ? (
-            <ErrorPlaceHolder dataTestId="no-table-data" size={SIZE.MEDIUM}>
-              <Typography.Paragraph>
-                {t('label.no-data-available')}{' '}
-              </Typography.Paragraph>
-            </ErrorPlaceHolder>
+            getEmptyPlaceholder()
           ) : (
             <Table
               columns={getMlHyperParametersColumn}
@@ -473,11 +468,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             </table>
           </div>
         ) : (
-          <ErrorPlaceHolder dataTestId="no-table-data" size={SIZE.MEDIUM}>
-            <Typography.Paragraph>
-              {t('label.no-data-available')}{' '}
-            </Typography.Paragraph>
-          </ErrorPlaceHolder>
+          getEmptyPlaceholder()
         )}
       </div>
     );
