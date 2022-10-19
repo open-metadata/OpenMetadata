@@ -82,12 +82,10 @@ const BasicAuthProvider = ({
 }: BasicAuthProps) => {
   const { setLoadingIndicator } = useAuthContext();
   const [loginError, setLoginError] = useState<string | null>(null);
-
   const history = useHistory();
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      setLoadingIndicator(true);
       setLoginError(null);
       try {
         const response = await basicAuthSignIn({ email, password });
@@ -118,8 +116,6 @@ const BasicAuthProvider = ({
         err as AxiosError,
         jsonData['api-error-messages']['unauthorized-user']
       );
-    } finally {
-      setLoadingIndicator(false);
     }
   };
 

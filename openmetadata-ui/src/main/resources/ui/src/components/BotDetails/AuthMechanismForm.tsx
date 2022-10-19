@@ -639,6 +639,7 @@ const AuthMechanismForm: FC<Props> = ({
         <Modal
           centered
           destroyOnClose
+          closable={false}
           okText="Confirm"
           title="Are you sure?"
           visible={isConfirmationModalOpen}

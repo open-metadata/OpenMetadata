@@ -203,6 +203,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         form.resetFields();
         onCancel();
       }}
+      closable={false}
       okText="Submit"
       title={`Edit ${testCase?.name}`}
       visible={visible}

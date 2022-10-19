@@ -20,7 +20,7 @@ import React, {
   useCallback,
   useState,
 } from 'react';
-import { FitViewOptions, useReactFlow } from 'react-flow-renderer';
+import { FitViewOptions, useReactFlow } from 'reactflow';
 import SVGIcons from '../../utils/SvgUtils';
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {

@@ -47,7 +47,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
-} from 'react-flow-renderer';
+} from 'reactflow';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';

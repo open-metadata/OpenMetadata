@@ -181,6 +181,53 @@ describe('Entity Details Page', () => {
     cy.clickOnLogo();
   };
 
+
+  const removeOwnerAndTier = (value) => {
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      'waitForTeams'
+    ); 
+
+    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@waitForTeams', 200);
+    //Clicking on users tab
+    cy.get('[data-testid="dropdown-tab"]')
+      .contains('Users')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
+    //Removing the user
+    cy.get('[data-testid="remove-owner"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@validateOwner', 200);
+
+    //Check if user exist
+    cy.get('[data-testid="entity-summary-details"]')
+      .should('exist').contains('No Owner')
+
+      cy.get('[data-testid="edit-Tier-icon"]')
+      .scrollIntoView()
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="remove-tier"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.clickOnLogo();
+  };
+
   const addAnnouncement = (value) => {
     const startDate = getCurrentLocaleDate();
     const endDate = getFutureLocaleDateFromCurrentDate(5);
@@ -223,6 +270,12 @@ describe('Entity Details Page', () => {
   it('Add Owner and Tier for entity', () => {
     Object.values(DELETE_ENTITY).forEach((value) => {
       addOwnerAndTier(value);
+    });
+  });
+
+  it('Remove Owner and Tier for entity', () => {
+    Object.values(DELETE_ENTITY).forEach((value) => {
+      removeOwnerAndTier(value);
     });
   });
 
