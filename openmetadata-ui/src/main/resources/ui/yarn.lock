@@ -2249,10 +2249,10 @@
     scroll-smooth "^1.1.0"
     scrollparent "^2.0.1"
 
-"@deuex-solutions/redoc@^2.0.0-rc.35":
-  version "2.0.0-rc.35"
-  resolved "https://registry.yarnpkg.com/@deuex-solutions/redoc/-/redoc-2.0.0-rc.35.tgz#abf48af1244e50036ad029b8bf5f8df1e3fca5e9"
-  integrity sha512-ebDvL8CrpzZjlU/WZ8auEMiHp5a0rgBrz05YzKDkqRcTu3cAAQ7WV2WfJNx7MAtdBP4PFxfUtBgp+vkraCN1jQ==
+"@deuex-solutions/redoc@^2.0.0-rc.36":
+  version "2.0.0-rc.36"
+  resolved "https://registry.yarnpkg.com/@deuex-solutions/redoc/-/redoc-2.0.0-rc.36.tgz#2717ee2d90183dd2214cc75943b759fd6bfe4d17"
+  integrity sha512-jnNNvXX/c5OYb/DuJWWnPG7GHsWd4PTO5TzgR4jM03Ax6zroJLAlE/nrdUZK7sizY8O+ccfpkj5AJr1vN98RCQ==
   dependencies:
     ajv "^6.4.0"
     ajv-errors "^1.0.0"
@@ -2265,7 +2265,7 @@
     json-schema-ref-parser "^6.1.0"
     lunr "2.3.8"
     mark.js "^8.11.1"
-    marked "^0.7.0"
+    marked "^4.0.10"
     memoize-one "~5.1.1"
     mobx-react "^7.0.0"
     mobx-state-tree "^4.0.1-rc.1"
@@ -9933,10 +9933,10 @@ markdown-table@^3.0.0:
   resolved "https://registry.yarnpkg.com/markdown-table/-/markdown-table-3.0.2.tgz#9b59eb2c1b22fe71954a65ff512887065a7bb57c"
   integrity sha512-y8j3a5/DkJCmS5x4dMCQL+OR0+2EAq3DOtio1COSHsmW2BGXnNCK3v12hJt1LrUz5iZH5g0LmuYOjDdI+czghA==
 
-marked@^0.7.0:
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/marked/-/marked-0.7.0.tgz#b64201f051d271b1edc10a04d1ae9b74bb8e5c0e"
-  integrity sha512-c+yYdCZJQrsRjTPhUx7VKkApw9bwDkNbHUKo1ovgcfDjb2kc8rLuRbIFyXL5WOEUwzSSKo3IXpph2K6DqB/KZg==
+marked@^4.0.10:
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/marked/-/marked-4.1.1.tgz#2f709a4462abf65a283f2453dc1c42ab177d302e"
+  integrity sha512-0cNMnTcUJPxbA6uWmCmjWz4NJRe/0Xfk2NhXCUHjew9qJzFN20krFnsUe7QynwqOwa5m1fZ4UDg0ycKFVC0ccw==
 
 mdast-util-find-and-replace@^2.0.0:
   version "2.1.0"
