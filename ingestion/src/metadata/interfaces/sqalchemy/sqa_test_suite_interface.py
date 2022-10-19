@@ -16,8 +16,8 @@ supporting sqlalchemy abstraction layer
 
 from datetime import datetime, timezone
 from typing import Optional, Union
-from sqlalchemy import MetaData
 
+from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 

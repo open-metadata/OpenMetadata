@@ -416,7 +416,9 @@ class TestSuiteWorkflow:
         for entity_fqn in unique_entity_fqns:
             sqa_metadata_obj = MetaData()
             try:
-                runner_interface = self._create_runner_interface(entity_fqn, sqa_metadata_obj)
+                runner_interface = self._create_runner_interface(
+                    entity_fqn, sqa_metadata_obj
+                )
                 data_test_runner = self._create_data_tests_runner(runner_interface)
 
                 for test_case in self._filter_test_cases_for_entity(
