@@ -289,6 +289,7 @@ const UserListV1: FC<UserListV1Props> = ({
           type: 'link',
         }}
         className="reactive-modal"
+        closable={false}
         okText="Restore"
         title="restore User"
         visible={showReactiveModal}

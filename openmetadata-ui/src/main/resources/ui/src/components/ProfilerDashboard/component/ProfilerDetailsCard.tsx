@@ -15,7 +15,6 @@ import { Card, Col, Row, Space, Statistic } from 'antd';
 import React from 'react';
 import {
   Legend,
-  LegendValueFormatter,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -34,8 +33,22 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
 }) => {
   const { data, information } = chartCollection;
 
-  const renderColorfulLegendText: LegendValueFormatter = (value, entry) => {
-    return <span style={{ color: entry?.color }}>{value}</span>;
+  const renderColorfulLegendText = (
+    value: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    entry: any
+  ) => <span style={{ color: entry?.color }}>{value}</span>;
+
+  const tooltipFormatter = (value: string | number | (string | number)[]) => {
+    const numValue = value as number;
+
+    return (
+      <>
+        {tickFormatter
+          ? `${numValue.toFixed(2)}${tickFormatter}`
+          : formatNumberWithComma(numValue)}
+      </>
+    );
   };
 
   return (
@@ -78,13 +91,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     tickFormatter ? `${props}${tickFormatter}` : props
                   }
                 />
-                <Tooltip
-                  formatter={(value) =>
-                    tickFormatter
-                      ? `${(value as number).toFixed(2)}${tickFormatter}`
-                      : formatNumberWithComma(value as number)
-                  }
-                />
+                <Tooltip formatter={tooltipFormatter} />
                 {information.map((info) => (
                   <Line
                     dataKey={info.dataKey}

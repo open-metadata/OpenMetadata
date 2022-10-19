@@ -284,6 +284,17 @@ const DashboardDetails = ({
       settingsUpdateHandler(updatedDashboardDetails);
     }
   };
+
+  const onOwnerRemove = () => {
+    if (dashboardDetails) {
+      const updatedDashboardDetails = {
+        ...dashboardDetails,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedDashboardDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Dashboard['tags'] = newTier
@@ -299,6 +310,16 @@ const DashboardDetails = ({
       const updatedDashboardDetails = {
         ...dashboardDetails,
         tags: tierTag,
+      };
+      settingsUpdateHandler(updatedDashboardDetails);
+    }
+  };
+
+  const onRemoveTier = () => {
+    if (dashboardDetails) {
+      const updatedDashboardDetails = {
+        ...dashboardDetails,
+        tags: undefined,
       };
       settingsUpdateHandler(updatedDashboardDetails);
     }
@@ -606,6 +627,7 @@ const DashboardDetails = ({
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
+          currentOwner={dashboardDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -626,6 +648,16 @@ const DashboardDetails = ({
           isFollowing={isFollowing}
           isTagEditable={
             dashboardPermissions.EditAll || dashboardPermissions.EditTags
+          }
+          removeOwner={
+            dashboardPermissions.EditAll || dashboardPermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            dashboardPermissions.EditAll || dashboardPermissions.EditTier
+              ? onRemoveTier
+              : undefined
           }
           tags={dashboardTags}
           tagsHandler={onTagUpdate}

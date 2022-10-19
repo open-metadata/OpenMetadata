@@ -439,6 +439,34 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const handleRemoveOwner = () => {
+    const updatedData = {
+      ...database,
+      owner: undefined,
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      saveUpdatedDatabaseData(updatedData as Database)
+        .then((res) => {
+          if (res) {
+            setDatabase(res);
+            resolve();
+          } else {
+            reject();
+
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-database-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
     getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN), after)
@@ -671,7 +699,9 @@ const DatabaseDetails: FunctionComponent = () => {
                   {extraInfo.map((info, index) => (
                     <span className="tw-flex" key={index}>
                       <EntitySummaryDetails
+                        currentOwner={database?.owner}
                         data={info}
+                        removeOwner={handleRemoveOwner}
                         updateOwner={
                           databasePermission.EditOwner ||
                           databasePermission.EditAll

@@ -24,6 +24,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
@@ -80,6 +81,7 @@ const EntityTable = ({
   entityFieldTasks,
 }: EntityTableProps) => {
   const history = useHistory();
+  const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
 
@@ -391,14 +393,14 @@ const EntityTable = ({
           destroyTooltipOnHide
           content={
             hasDescription
-              ? 'Request update description'
-              : 'Request description'
+              ? t('label.request-update-description')
+              : t('label.request-description')
           }
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
           <SVGIcons
-            alt="request-description"
+            alt={t('label.request-description')}
             icon={Icons.REQUEST}
             width="16px"
           />
@@ -409,7 +411,9 @@ const EntityTable = ({
 
   const getRequestTagsElement = (cell: Column) => {
     const hasTags = !isEmpty(cell?.tags || []);
-    const text = hasTags ? 'Update request tags' : 'Request tags';
+    const text = hasTags
+      ? t('label.update-request-tags')
+      : t('label.request-tags');
 
     return (
       <button
@@ -424,7 +428,11 @@ const EntityTable = ({
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
-          <SVGIcons alt="request-tags" icon={Icons.REQUEST} width="16px" />
+          <SVGIcons
+            alt={t('label.request-tags')}
+            icon={Icons.REQUEST}
+            width="16px"
+          />
         </Popover>
       </button>
     );
@@ -489,7 +497,9 @@ const EntityTable = ({
               {record?.description ? (
                 <RichTextEditorPreviewer markdown={record?.description} />
               ) : (
-                <span className="tw-no-description">No description</span>
+                <span className="tw-no-description">
+                  {t('label.no-description')}
+                </span>
               )}
             </div>
             <div className="tw-flex tw--mt-1.5">
@@ -501,9 +511,9 @@ const EntityTable = ({
                         className="tw-self-start tw-w-7 tw-h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
                         onClick={() => handleUpdate(record, index)}>
                         <SVGIcons
-                          alt="edit"
+                          alt={t('label.edit')}
                           icon="icon-edit"
-                          title="Edit"
+                          title={t('label.edit')}
                           width="16px"
                         />
                       </button>
@@ -543,7 +553,7 @@ const EntityTable = ({
         {checkIfJoinsAvailable(record?.name) && (
           <div className="tw-mt-3" data-testid="frequently-joined-columns">
             <span className="tw-text-grey-muted tw-mr-1">
-              Frequently joined columns:
+              {t('label.frequently-joined-columns')}:
             </span>
             <span>
               {getFrequentlyJoinedWithColumns(record?.name)
@@ -640,6 +650,7 @@ const EntityTable = ({
               }
             }}>
             <TagsContainer
+              className="w-max-256"
               editable={editColumnTag?.index === index}
               isLoading={isTagLoading && editColumnTag?.index === index}
               selectedTags={record?.tags || []}
@@ -724,7 +735,7 @@ const EntityTable = ({
   const columns = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
@@ -734,7 +745,7 @@ const EntityTable = ({
           renderCell(TABLE_HEADERS_V1.name, record, index),
       },
       {
-        title: 'Type',
+        title: t('label.type'),
         dataIndex: 'dataTypeDisplay',
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
@@ -745,7 +756,7 @@ const EntityTable = ({
         },
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
@@ -753,7 +764,7 @@ const EntityTable = ({
           renderCell(TABLE_HEADERS_V1.description, record, index),
       },
       {
-        title: 'Tags',
+        title: t('label.tags'),
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
@@ -801,8 +812,8 @@ const EntityTable = ({
       />
       {editColumn && (
         <ModalWithMarkdownEditor
-          header={`Edit column: "${editColumn.column.name}"`}
-          placeholder="Enter Column Description"
+          header={`${t('label:edit-column')}: "${editColumn.column.name}"`}
+          placeholder={t('label.enter-column-description')}
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}

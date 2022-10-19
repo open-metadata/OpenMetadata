@@ -187,10 +187,7 @@ describe('Test EntityLineage Component', () => {
     });
 
     const lineageContainer = await findByTestId(container, 'lineage-container');
-    const reactFlowElement = await findByTestId(
-      container,
-      'react-flow-component'
-    );
+    const reactFlowElement = await findByTestId(container, 'rf__wrapper');
 
     expect(reactFlowElement).toBeInTheDocument();
 
@@ -205,7 +202,7 @@ describe('Test EntityLineage Component', () => {
     });
 
     const lineageContainer = screen.queryByTestId('lineage-container');
-    const reactFlowElement = screen.queryByTestId('react-flow-component');
+    const reactFlowElement = screen.queryByTestId('rf__wrapper');
     const deletedMessage = await screen.findByText(
       /Lineage data is not available for deleted entities/i
     );
