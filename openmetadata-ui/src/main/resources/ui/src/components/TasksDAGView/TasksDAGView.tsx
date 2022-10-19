@@ -18,7 +18,7 @@ import ReactFlow, {
   MarkerType,
   useEdgesState,
   useNodesState,
-} from 'react-flow-renderer';
+} from 'reactflow';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';

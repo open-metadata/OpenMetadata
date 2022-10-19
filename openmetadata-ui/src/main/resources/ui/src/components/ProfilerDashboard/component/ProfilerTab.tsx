@@ -15,6 +15,7 @@ import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getListTestCase } from '../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
@@ -43,6 +44,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   profilerData,
   tableProfile,
 }) => {
+  const { t } = useTranslation();
   const { entityTypeFQN } = useParams<Record<string, string>>();
   const [countMetrics, setCountMetrics] = useState<MetricChartType>(
     INITIAL_COUNT_METRIC_VALUE
@@ -64,15 +66,15 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   const tableState = useMemo(
     () => [
       {
-        title: 'Row Count',
+        title: t('label.row-count'),
         value: tableProfile?.rowCount || 0,
       },
       {
-        title: 'Column Count',
+        title: t('label.column-count'),
         value: tableProfile?.columnCount || 0,
       },
       {
-        title: 'Table Sample %',
+        title: `${t('label.table-sample')} %`,
         value: `${tableProfile?.profileSample || 100}%`,
       },
     ],
@@ -83,15 +85,15 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
 
     return [
       {
-        title: 'Success',
+        title: t('label.success'),
         value: results.success,
       },
       {
-        title: 'Aborted',
+        title: t('label.aborted'),
         value: results.aborted,
       },
       {
-        title: 'Failed',
+        title: t('label.failed'),
         value: results.failed,
       },
     ];
@@ -108,34 +110,34 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
 
       countMetricData.push({
         name: x,
-        timestamp: col.timestamp || 0,
-        distinctCount: col?.distinctCount || 0,
-        nullCount: col?.nullCount || 0,
-        uniqueCount: col?.uniqueCount || 0,
-        valuesCount: col?.valuesCount || 0,
+        timestamp: col.timestamp,
+        distinctCount: col.distinctCount || 0,
+        nullCount: col.nullCount || 0,
+        uniqueCount: col.uniqueCount || 0,
+        valuesCount: col.valuesCount || 0,
       });
 
       sumMetricData.push({
         name: x,
         timestamp: col.timestamp || 0,
-        sum: col?.sum || 0,
+        sum: col.sum || 0,
       });
 
       mathMetricData.push({
         name: x,
         timestamp: col.timestamp || 0,
-        max: (col?.max as number) || 0,
-        min: (col?.min as number) || 0,
-        mean: col?.mean || 0,
-        median: col?.median || 0,
+        max: (col.max as number) || 0,
+        min: (col.min as number) || 0,
+        mean: col.mean || 0,
+        median: col.median || 0,
       });
 
       proportionMetricData.push({
         name: x,
         timestamp: col.timestamp || 0,
-        distinctProportion: Math.round((col?.distinctProportion || 0) * 100),
-        nullProportion: Math.round((col?.nullProportion || 0) * 100),
-        uniqueProportion: Math.round((col?.uniqueProportion || 0) * 100),
+        distinctProportion: Math.round((col.distinctProportion || 0) * 100),
+        nullProportion: Math.round((col.nullProportion || 0) * 100),
+        uniqueProportion: Math.round((col.uniqueProportion || 0) * 100),
       });
     });
 
@@ -219,23 +221,26 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   }, []);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row data-testid="profiler-tab-container" gutter={[16, 16]}>
       <Col span={8}>
         <Card className="tw-rounded-md tw-border tw-h-full">
           <Row gutter={16}>
             <Col span={16}>
-              <p className="tw-font-medium tw-text-base">Column summary</p>
+              <p className="tw-font-medium tw-text-base">
+                {t('label.column-summary')}
+              </p>
 
               <Typography.Paragraph
                 className="ant-typography-ellipsis-custom tw-text-grey-muted"
+                data-testid="description"
                 ellipsis={{ tooltip: true, rows: 4 }}>
-                {activeColumnDetails.description || 'No Description'}
+                {activeColumnDetails.description || t('label.no-description')}
               </Typography.Paragraph>
             </Col>
-            <Col span={8}>
+            <Col data-testid="data-type-container" span={8}>
               <Statistic
-                title="Data type"
-                value={activeColumnDetails.dataType || ''}
+                title={t('label.data-type')}
+                value={activeColumnDetails.dataType}
                 valueStyle={{
                   color: '#1890FF',
                   fontSize: '24px',
@@ -247,13 +252,16 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         </Card>
       </Col>
       <Col span={8}>
-        <ProfilerSummaryCard data={tableState} title="Table Metrics Summary" />
+        <ProfilerSummaryCard
+          data={tableState}
+          title={t('label.table-metrics-summary')}
+        />
       </Col>
       <Col span={8}>
         <ProfilerSummaryCard
           showIndicator
           data={testSummary}
-          title="Table Tests Summary"
+          title={t('label.table-tests-summary')}
         />
       </Col>
       <Col span={24}>

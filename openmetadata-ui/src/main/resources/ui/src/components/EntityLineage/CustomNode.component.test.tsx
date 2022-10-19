@@ -105,7 +105,7 @@ jest.mock('../../utils/TableUtils', () => ({
   getConstraintIcon: jest.fn(),
 }));
 
-jest.mock('react-flow-renderer', () => ({
+jest.mock('reactflow', () => ({
   Handle: jest.fn().mockReturnValue(<span>Handle</span>),
   Position: {
     Left: 'left',

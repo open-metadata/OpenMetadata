@@ -823,7 +823,7 @@ export const getTeamsUser = (
 
     if (dataFound) {
       return {
-        ownerName: currentUser?.displayName as string,
+        ownerName: (currentUser?.displayName || currentUser?.name) as string,
         id: currentUser?.id as string,
       };
     }
