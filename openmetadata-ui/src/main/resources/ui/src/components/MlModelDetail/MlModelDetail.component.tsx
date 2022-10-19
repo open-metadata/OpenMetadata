@@ -396,19 +396,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     []
   );
 
-  const getEmptyPlaceholder = useMemo(
-    () => () => {
-      return (
-        <ErrorPlaceHolder size={SIZE.MEDIUM}>
-          <Typography.Paragraph>
-            {t('label.no-data-available')}{' '}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      );
-    },
-    []
-  );
-
   const getMlHyperParameters = () => {
     return (
       <div className="flex flex-col m-t-xs">
@@ -417,7 +404,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         </h6>
         <div className="m-t-xs">
           {isEmpty(mlModelDetail.mlHyperParameters) ? (
-            getEmptyPlaceholder()
+            <ErrorPlaceHolder dataTestId="no-table-data" size={SIZE.MEDIUM}>
+              <Typography.Paragraph>
+                {t('label.no-data-available')}{' '}
+              </Typography.Paragraph>
+            </ErrorPlaceHolder>
           ) : (
             <Table
               columns={getMlHyperParametersColumn}
@@ -482,7 +473,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             </table>
           </div>
         ) : (
-          getEmptyPlaceholder()
+          <ErrorPlaceHolder dataTestId="no-table-data" size={SIZE.MEDIUM}>
+            <Typography.Paragraph>
+              {t('label.no-data-available')}{' '}
+            </Typography.Paragraph>
+          </ErrorPlaceHolder>
         )}
       </div>
     );
