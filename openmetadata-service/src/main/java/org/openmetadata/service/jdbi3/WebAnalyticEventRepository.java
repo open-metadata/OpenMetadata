@@ -20,7 +20,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
-  public static final String COLLECTION_PATH = "/v1/analytics/collect";
+  public static final String COLLECTION_PATH = "/v1/analytics/webAnalyticEvent";
   private static final String UPDATE_FIELDS = "owner";
   private static final String PATCH_FIELDS = "owner";
   private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION = "webAnalyticEvent.webAnalyticEventData";
