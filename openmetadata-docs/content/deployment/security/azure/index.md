@@ -195,7 +195,7 @@ Starting from 0.12.1, Navigate to `Settings >> Bots >> ingestion-bot` and click 
 
 Update the Auth Mechanism as Azure SSO and update `Email`, `ClientSecret`, `ClientId`, `Authority`, and `Scopes` as mentioned in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
 
-The `Email` will be in the format of `<azure-service-application-service-principal-object-id>@<your-domain-name>`.
+The `Email` will be in the format of `<object-id-for-azure-service-application-enterprise-application>@<your-domain-name>`.
 
 Next, Click on Save.
 
