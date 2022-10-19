@@ -45,6 +45,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateWebhook;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +63,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 @Path("/v1/webhook")
 @Api(value = "Webhook resource", tags = "webhook")
 @Produces(MediaType.APPLICATION_JSON)
@@ -99,6 +101,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       webhookList.forEach(dao::addWebhookPublisher);
     } catch (Exception ex) {
       // Starting application should not fail
+      LOG.warn("Exception during initialization", ex);
     }
   }
 

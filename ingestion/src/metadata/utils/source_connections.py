@@ -230,7 +230,8 @@ def _(connection: TrinoConnection):
             url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
     url += f"{connection.hostPort}"
-    url += f"/{connection.catalog}"
+    if connection.catalog:
+        url += f"/{connection.catalog}"
     if connection.params is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"
@@ -256,7 +257,8 @@ def _(connection: PrestoConnection):
             url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
     url += f"{connection.hostPort}"
-    url += f"/{connection.catalog}"
+    if connection.catalog:
+        url += f"/{connection.catalog}"
     if connection.databaseSchema:
         url += f"?schema={quote_plus(connection.databaseSchema)}"
     return url
