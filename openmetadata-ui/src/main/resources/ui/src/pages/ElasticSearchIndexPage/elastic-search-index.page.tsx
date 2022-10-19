@@ -136,7 +136,7 @@ const ElasticSearchIndexPage = () => {
               <Space>
                 <Button
                   data-testid="elastic-search-re-fetch-data"
-                  disabled={streamLoading}
+                  disabled={batchLoading}
                   icon={<ReloadOutlined />}
                   size="small"
                   title="Refresh log"
