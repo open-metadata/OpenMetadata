@@ -77,16 +77,22 @@ def column_values_sum_to_be_between(
 
     min_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "minValueForColSum"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "minValueForColSum"
+            ),
+            float("-inf")
         )
     )
     max_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "maxValueForColSum"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "maxValueForColSum"
+            ),
+            float("inf")
         )
     )
 

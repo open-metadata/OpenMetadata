@@ -77,16 +77,22 @@ def column_value_median_to_be_between(
 
     min_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "minValueForMedianInCol"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "minValueForMedianInCol"
+            ),
+            float("-inf")
         )
     )
     max_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "maxColValue"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "maxColValue"
+            ),
+            float("inf")
         )
     )
 

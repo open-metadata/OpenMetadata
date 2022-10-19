@@ -103,16 +103,22 @@ def column_value_length_to_be_between(
 
     min_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "minLength"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "minLength"
+            ),
+            float("-inf")
         )
     )
     max_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "maxLength"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "maxLength"
+            ),
+            float("inf")
         )
     )
 

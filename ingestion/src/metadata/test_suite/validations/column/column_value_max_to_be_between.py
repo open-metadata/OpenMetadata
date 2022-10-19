@@ -77,16 +77,22 @@ def column_value_max_to_be_between(
 
     min_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "minValueForMaxInCol"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "minValueForMaxInCol"
+            ),
+            float("-inf")
         )
     )
     max_bound = next(
         (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "maxValueForMaxInCol"
+            (
+                float(param.value)
+                for param in test_case.parameterValues
+                if param.name == "maxValueForMaxInCol"
+            ),
+            float("inf")
         )
     )
 
