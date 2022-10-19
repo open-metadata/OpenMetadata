@@ -1,0 +1,76 @@
+package org.openmetadata.service.security.auth;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.CheckForNull;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
+
+@Slf4j
+public class BotTokenCache {
+  private static BotTokenCache INSTANCE;
+  private final LoadingCache<String, String> BOTS_TOKEN_CACHE;
+
+  public BotTokenCache() {
+    BOTS_TOKEN_CACHE =
+        CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(2, TimeUnit.MINUTES).build(new BotTokenLoader());
+  }
+
+  public String getToken(String botName) {
+    try {
+      if (BOTS_TOKEN_CACHE.get(botName).equals("")) {
+        BOTS_TOKEN_CACHE.invalidate(botName);
+      }
+      return BOTS_TOKEN_CACHE.get(botName);
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      return null;
+    }
+  }
+
+  public void putToken(String botName, String token) {
+    BOTS_TOKEN_CACHE.put(botName, token);
+  }
+
+  public void invalidateToken(String botName) {
+    try {
+      BOTS_TOKEN_CACHE.invalidate(botName);
+    } catch (Exception ex) {
+      LOG.error("Failed to invalidate Bot token cache for Bot {}", botName, ex);
+    }
+  }
+
+  public static BotTokenCache getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE = new BotTokenCache();
+    }
+    return INSTANCE;
+  }
+
+  static class BotTokenLoader extends CacheLoader<String, String> {
+    @Override
+    public String load(@CheckForNull String botName) throws IOException {
+      UserRepository userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
+      User user =
+          userRepository.getByNameWithSecretManager(botName, new EntityUtil.Fields(List.of("authenticationMechanism")));
+      AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
+      if (authenticationMechanism != null) {
+        JWTAuthMechanism jwtAuthMechanism =
+            JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
+        return jwtAuthMechanism.getJWTToken();
+      }
+      return null;
+    }
+  }
+}
