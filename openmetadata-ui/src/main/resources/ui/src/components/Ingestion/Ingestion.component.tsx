@@ -27,7 +27,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { isEven } from '../../utils/CommonUtils';
+import { getIngestionStatusState, isEven } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
   getEditIngestionPath,
@@ -44,7 +44,7 @@ import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
-import { IngestionCurrentState, IngestionProps } from './ingestion.interface';
+import { IngestionProps } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
@@ -350,22 +350,6 @@ const Ingestion: React.FC<IngestionProps> = ({
         status
       );
     });
-  };
-
-  const getIngestionStatusState = (
-    current: IngestionCurrentState,
-    ingestion: IngestionPipeline,
-    text: string
-  ) => {
-    return current.id === ingestion.id ? (
-      current.state === 'success' ? (
-        <FontAwesomeIcon icon="check" />
-      ) : (
-        <Loader size="small" type="default" />
-      )
-    ) : (
-      text
-    );
   };
 
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {

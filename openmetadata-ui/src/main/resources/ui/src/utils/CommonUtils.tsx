@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -44,6 +45,8 @@ import {
   getHourCron,
 } from '../components/common/CronEditor/CronEditor.constant';
 import PopOver from '../components/common/popover/PopOver';
+import { IngestionCurrentState } from '../components/Ingestion/ingestion.interface';
+import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -1039,4 +1042,21 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
     default:
       return getDayCron(value);
   }
+};
+
+//  return the ingestion state
+export const getIngestionStatusState = (
+  current: IngestionCurrentState,
+  ingestion: IngestionPipeline,
+  text: string
+) => {
+  return current.id === ingestion.id ? (
+    current.state === 'success' ? (
+      <FontAwesomeIcon icon="check" />
+    ) : (
+      <Loader size="small" type="default" />
+    )
+  ) : (
+    text
+  );
 };

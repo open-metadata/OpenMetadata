@@ -34,14 +34,16 @@ import {
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
-import { getIngestionStatuses } from '../../utils/CommonUtils';
+import {
+  getIngestionStatuses,
+  getIngestionStatusState,
+} from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import PopOver from '../common/popover/PopOver';
-import { IngestionCurrentState } from '../Ingestion/ingestion.interface';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
@@ -221,22 +223,6 @@ const TestSuitePipelineTab = () => {
         jsonData['api-error-messages']['update-ingestion-error']
       );
     }
-  };
-
-  const getIngestionStatusState = (
-    current: IngestionCurrentState,
-    ingestion: IngestionPipeline,
-    text: string
-  ) => {
-    return current.id === ingestion.id ? (
-      current.state === 'success' ? (
-        <FontAwesomeIcon icon="check" />
-      ) : (
-        <Loader size="small" type="default" />
-      )
-    ) : (
-      text
-    );
   };
 
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
