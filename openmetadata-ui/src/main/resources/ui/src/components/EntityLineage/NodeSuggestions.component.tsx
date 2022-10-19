@@ -13,11 +13,19 @@
 
 import { Empty } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize } from 'lodash';
+import { capitalize, debounce } from 'lodash';
 import { FormattedTableData } from 'Models';
-import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import React, {
+  FC,
+  HTMLAttributes,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+import { searchData } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { PAGE_SIZE } from '../../constants/constants';
+import { INITIAL_FROM } from '../../constants/explore.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -53,31 +61,43 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     }
   };
 
+  const getSearchResults = async (value: string) => {
+    try {
+      const data = await searchData(
+        value,
+        INITIAL_FROM,
+        PAGE_SIZE,
+        '',
+        '',
+        '',
+        SearchIndex[entityType as keyof typeof SearchIndex]
+      );
+      setData(formatDataResponse(data.data.hits.hits));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-suggestions-error']
+      );
+    }
+  };
+
+  const debouncedOnSearch = useCallback((searchText: string): void => {
+    getSearchResults(searchText);
+  }, []);
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 300), [
+    debouncedOnSearch,
+  ]);
+
+  const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
+    const searchText = e.target.value;
+    setSearchValue(searchText);
+    debounceOnSearch(searchText);
+  };
+
   useEffect(() => {
-    getSuggestions(
-      searchValue,
-      SearchIndex[entityType as keyof typeof SearchIndex]
-    )
-      .then((res) => {
-        if (res.data) {
-          setData(
-            // TODO: fix types below
-            formatDataResponse(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            )
-          );
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-suggestions-error']
-        );
-      });
-  }, [searchValue]);
+    getSearchResults(searchValue);
+  }, []);
 
   useEffect(() => {
     setIsOpen(data.length > 0);
@@ -90,7 +110,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         placeholder={`Search for ${capitalize(entityType)}s...`}
         type="search"
         value={searchValue}
-        onChange={(e) => setSearchValue(e.target.value)}
+        onChange={handleChange}
       />
       {data.length > 0 && isOpen ? (
         <div
