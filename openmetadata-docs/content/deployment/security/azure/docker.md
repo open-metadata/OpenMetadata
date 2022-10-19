@@ -18,6 +18,12 @@ generated when setting up the account.
 
 ### 1.1 Before 0.12.1
 
+<Note>
+
+The Object Id will be `<object-id-for-azure-service-application-enterprise-application>` fetched from [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority). 
+
+</Note>
+
 ```shell
 # OpenMetadata Server Authentication Configuration
 AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer

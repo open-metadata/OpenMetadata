@@ -145,13 +145,16 @@ the application access scope.
 
 - The `secret_key` is required for ingestion.
 
-### Step 9: Note down the clientId and Authority
+### Step 9: Note down the information for OpenMetadata configurations
 
-- `clientID`: The Application (Client) ID is displayed in the Overview section of the registered application.
+- `clientID`: The Application (Client) ID is displayed in the Overview section of the registered applications (Azure Application for UI and Azure Service Application if any).
 - `authority`: When passing the details for authority, the Tenant ID is added to the URL as shown
 below. `https://login.microsoftonline.com/TenantID`
 - `clientSecret`: The clientSecret can be accessed from the Certificates & secret section of the application.
 - `scopes`: The scopes for running the ingestion to get token using Client Credentials Flow. This will be in the format of `<application-id-uri>/.default` (Application Id URI will be available from [Step 7](/deployment/security/azure#step-7-set-the-app-id-uri))
+- `object-id`: You can fetch the `object id` of Azure Application created for OpenMetadata Service Application as provided in the below image. This is required for setting the OpenMetadata with YAML configurations as well as Updating Ingestion-Bot from UI. You can find `object id` in Azure `Active Directory >> Enterprise Applications`.
+
+<Image src="/images/deployment/security/azure/azure-service-application-object-id.png" alt="object-id" />
 
 This information is required to configure ingestion-bot from OpenMetadata UI from 0.12.1 Release.
 
@@ -190,7 +193,11 @@ Starting from 0.12.1, Navigate to `Settings >> Bots >> ingestion-bot` and click 
 
 <Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png"/>
 
-Update the Auth Mechanism as Azure SSO and update `ClientSecret`, `ClientId`, `Authority`, and `Scopes` as mentioned in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority) and Save.
+Update the Auth Mechanism as Azure SSO and update `Email`, `ClientSecret`, `ClientId`, `Authority`, and `Scopes` as mentioned in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
+
+The `Email` will be in the format of `<azure-service-application-service-principal-object-id>@<your-domain-name>`.
+
+Next, Click on Save.
 
 <Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png" />
 
