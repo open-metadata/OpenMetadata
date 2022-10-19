@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Table, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
