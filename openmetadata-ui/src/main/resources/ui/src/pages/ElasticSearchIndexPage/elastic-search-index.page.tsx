@@ -21,7 +21,7 @@ import {
   reIndexByPublisher,
 } from '../../axiosAPIs/elastic-index-API';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import { Loader } from "../../components/Loader/Loader";
+import { Loader } from '../../components/Loader/Loader';
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
