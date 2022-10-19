@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
@@ -43,7 +43,7 @@ import {
   updateService,
 } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
-import { Button } from '../../components/buttons/Button/Button';
+import { Button as LegacyButton } from '../../components/buttons/Button/Button';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import Description from '../../components/common/description/Description';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
@@ -1011,7 +1011,7 @@ const ServicePage: FunctionComponent = () => {
                         ? 'Delete'
                         : NO_PERMISSION_FOR_ACTION
                     }>
-                    <Button
+                    <LegacyButton
                       data-testid="service-delete"
                       disabled={!servicePermission.Delete}
                       size="small"
@@ -1025,7 +1025,7 @@ const ServicePage: FunctionComponent = () => {
                         width={14}
                       />
                       Delete
-                    </Button>
+                    </LegacyButton>
                   </Tooltip>
                   <DeleteWidgetModal
                     isRecursiveDelete
@@ -1185,14 +1185,10 @@ const ServicePage: FunctionComponent = () => {
                                 : NO_PERMISSION_FOR_ACTION
                             }>
                             <Button
-                              className={classNames(
-                                'tw-h-8 tw-rounded tw-px-4 tw-py-1'
-                              )}
+                              ghost
                               data-testid="edit-connection-button"
                               disabled={!servicePermission.EditAll}
-                              size="small"
-                              theme="primary"
-                              variant="outlined"
+                              type="primary"
                               onClick={handleEditConnection}>
                               Edit Connection
                             </Button>
@@ -1205,30 +1201,15 @@ const ServicePage: FunctionComponent = () => {
                                   : NO_PERMISSION_FOR_ACTION
                               }>
                               <Button
-                                className={classNames(
-                                  'tw-h-8 tw-rounded tw-px-4 tw-py-1'
-                                )}
                                 data-testid="test-connection-button"
                                 disabled={
                                   !servicePermission.EditAll ||
                                   isTestingConnection
                                 }
-                                size="small"
-                                theme="primary"
-                                variant="outlined"
+                                loading={isTestingConnection}
+                                type="primary"
                                 onClick={checkTestConnect}>
-                                {isTestingConnection ? (
-                                  <>
-                                    <Loader
-                                      className="ml-4"
-                                      size="small"
-                                      type="white"
-                                    />{' '}
-                                    <span>Testing...</span>
-                                  </>
-                                ) : (
-                                  'Test Connection'
-                                )}
+                                Test Connection
                               </Button>
                             </Tooltip>
                           )}

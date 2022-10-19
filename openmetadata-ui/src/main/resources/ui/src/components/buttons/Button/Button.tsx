@@ -17,6 +17,9 @@ import React, { FunctionComponent } from 'react';
 import { ButtonProps, Ref } from './Button.interface';
 import { button } from './Button.styles';
 
+/**
+ * @deprecated use AntD button instead
+ */
 export const Button: FunctionComponent<ButtonProps> = React.forwardRef<
   Ref,
   ButtonProps
