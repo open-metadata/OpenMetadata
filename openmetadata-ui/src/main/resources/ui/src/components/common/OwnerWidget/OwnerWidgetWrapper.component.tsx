@@ -220,7 +220,10 @@ const OwnerWidgetWrapper = ({
       groupType="tab"
       isLoading={isUserLoading}
       listGroups={getOwnerGroup()}
-      removeOwner={removeOwner}
+      removeOwner={() => {
+        removeOwner && removeOwner();
+        hideWidget();
+      }}
       showSearchBar={isCurrentUserAdmin()}
       value={owner?.id || ''}
       onSearchTextChange={handleSearchOwnerDropdown}
