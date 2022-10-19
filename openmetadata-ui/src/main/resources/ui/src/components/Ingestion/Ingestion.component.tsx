@@ -27,7 +27,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getIngestionStatusState, isEven } from '../../utils/CommonUtils';
+import { getLoadingStatus, isEven } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
   getEditIngestionPath,
@@ -362,7 +362,7 @@ const Ingestion: React.FC<IngestionProps> = ({
             onClick={() =>
               handleTriggerIngestion(ingestion.id as string, ingestion.name)
             }>
-            {getIngestionStatusState(currTriggerId, ingestion, 'Run')}
+            {getLoadingStatus(currTriggerId, ingestion.id, 'Run')}
           </Button>
           {separator}
 
@@ -371,7 +371,7 @@ const Ingestion: React.FC<IngestionProps> = ({
             disabled={!isRequiredDetailsAvailable}
             type="link"
             onClick={() => handleDeployIngestion(ingestion.id as string)}>
-            {getIngestionStatusState(currDeployId, ingestion, 'Re Deploy')}
+            {getLoadingStatus(currDeployId, ingestion.id, 'Re Deploy')}
           </Button>
         </>
       );
@@ -381,7 +381,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           data-testid="deploy"
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
-          {getIngestionStatusState(currDeployId, ingestion, 'Deploy')}
+          {getLoadingStatus(currDeployId, ingestion.id, 'Deploy')}
         </Button>
       );
     }

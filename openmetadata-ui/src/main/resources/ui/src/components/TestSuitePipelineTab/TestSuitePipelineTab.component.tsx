@@ -36,7 +36,7 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import jsonData from '../../jsons/en';
 import {
   getIngestionStatuses,
-  getIngestionStatusState,
+  getLoadingStatus,
 } from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
@@ -237,7 +237,7 @@ const TestSuitePipelineTab = () => {
               onClick={() =>
                 handleTriggerIngestion(ingestion.id as string, ingestion.name)
               }>
-              {getIngestionStatusState(currTriggerId, ingestion, 'Run')}
+              {getLoadingStatus(currTriggerId, ingestion.id, 'Run')}
             </Button>
           </Tooltip>
           {separator}
@@ -250,7 +250,7 @@ const TestSuitePipelineTab = () => {
               onClick={() =>
                 handleDeployIngestion(ingestion.id as string, true)
               }>
-              {getIngestionStatusState(currDeployId, ingestion, 'Re Deploy')}
+              {getLoadingStatus(currDeployId, ingestion.id, 'Re Deploy')}
             </Button>
           </Tooltip>
         </>
@@ -265,7 +265,7 @@ const TestSuitePipelineTab = () => {
             onClick={() =>
               handleDeployIngestion(ingestion.id as string, false)
             }>
-            {getIngestionStatusState(currDeployId, ingestion, 'Deploy')}
+            {getLoadingStatus(currDeployId, ingestion.id, 'Deploy')}
           </Button>
         </Tooltip>
       );

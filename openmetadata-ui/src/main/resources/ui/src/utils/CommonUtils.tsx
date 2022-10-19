@@ -27,6 +27,7 @@ import {
   uniqueId,
 } from 'lodash';
 import {
+  CurrentState,
   EntityFieldThreadCount,
   ExtraInfo,
   RecentlySearched,
@@ -45,7 +46,6 @@ import {
   getHourCron,
 } from '../components/common/CronEditor/CronEditor.constant';
 import PopOver from '../components/common/popover/PopOver';
-import { IngestionCurrentState } from '../components/Ingestion/ingestion.interface';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -1044,19 +1044,19 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
   }
 };
 
-//  return the ingestion state
-export const getIngestionStatusState = (
-  current: IngestionCurrentState,
-  ingestion: IngestionPipeline,
-  text: string
+//  return the status like loading and success
+export const getLoadingStatus = (
+  current: CurrentState,
+  id: string | undefined,
+  displayText: string
 ) => {
-  return current.id === ingestion.id ? (
+  return current.id === id ? (
     current.state === 'success' ? (
       <FontAwesomeIcon icon="check" />
     ) : (
       <Loader size="small" type="default" />
     )
   ) : (
-    text
+    displayText
   );
 };
