@@ -48,7 +48,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
-public class NoopSecretsManagerTest {
+class NoopSecretsManagerTest {
 
   private static final boolean ENCRYPT = true;
   private static final boolean DECRYPT = false;
@@ -115,7 +115,7 @@ public class NoopSecretsManagerTest {
   @ParameterizedTest
   @MethodSource(
       "org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
-  public void testEncryptAndDecryptDbtConfigSource(
+  void testEncryptAndDecryptDbtConfigSource(
       Object config,
       EntityReference service,
       Class<? extends EntityInterface> serviceClass,

@@ -68,7 +68,7 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void entitiesCount(TestInfo test) throws HttpResponseException {
+  void entitiesCount(TestInfo test) throws HttpResponseException {
 
     // Get count before adding entities
     int beforeTableCount = getEntitiesCount().getTableCount();
@@ -143,7 +143,7 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void servicesCount(TestInfo test) throws HttpResponseException {
+  void servicesCount(TestInfo test) throws HttpResponseException {
 
     // Get count before adding services
     int beforeMessagingServiceCount = getServicesCount().getMessagingServiceCount();
@@ -190,7 +190,7 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void botUserCountCheck(TestInfo test) throws HttpResponseException {
+  void botUserCountCheck(TestInfo test) throws HttpResponseException {
     int beforeUserCount = getEntitiesCount().getUserCount();
 
     // Create a bot user.

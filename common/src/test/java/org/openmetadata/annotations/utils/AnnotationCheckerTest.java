@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.annotations.ExposedField;
 
-public class AnnotationCheckerTest {
+class AnnotationCheckerTest {
 
   @Test
   void testWhenClassHasExposedFields() {

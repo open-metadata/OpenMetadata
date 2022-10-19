@@ -53,7 +53,7 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService, CreateDashboardService> {
+class DashboardServiceResourceTest extends EntityResourceTest<DashboardService, CreateDashboardService> {
   public DashboardServiceResourceTest() {
     super(
         Entity.DASHBOARD_SERVICE,
