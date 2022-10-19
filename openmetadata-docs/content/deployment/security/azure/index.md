@@ -82,9 +82,9 @@ Admin permissions are required to register the application on the Azure portal.
 ### Step 4: Register Another Azure Application
 
 Another Azure Application must be registered for Service ingestion.
-- 
+
 - Provide an application name.
-- Create a `public client redirect URI`.
+- `public client redirect URI` will be blank.
 - Click on Register.
 
 <Image src="/images/deployment/security/azure/register-another-app.png" alt="add-app"/>
