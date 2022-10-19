@@ -16,7 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import WebAnalyticsProvider from './WebAnalyticsProvider';
 
-jest.mock('../AppState', () => {
+jest.mock('../../AppState', () => {
   const mockUser = {
     id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
     type: 'user',
