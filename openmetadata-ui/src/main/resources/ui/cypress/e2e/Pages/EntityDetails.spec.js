@@ -209,14 +209,14 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
+    interceptURL('PATCH', `/api/v1/*/*`, 'removeOwner');
     //Removing the user
     cy.get('[data-testid="remove-owner"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    verifyResponseStatusCode('@validateOwner', 200);
+    verifyResponseStatusCode('@removeOwner', 200);
 
     //Check if user exist
     cy.get('[data-testid="entity-summary-details"]')
