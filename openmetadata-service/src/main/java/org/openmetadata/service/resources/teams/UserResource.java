@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMINCREATE;
@@ -26,10 +27,31 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USERNAME_PASSWORD;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_USER_BIND_ERROR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.unboundid.ldap.sdk.Attribute;
+import com.unboundid.ldap.sdk.BindResult;
+import com.unboundid.ldap.sdk.Filter;
+import com.unboundid.ldap.sdk.LDAPConnection;
+import com.unboundid.ldap.sdk.LDAPConnectionOptions;
+import com.unboundid.ldap.sdk.LDAPConnectionPool;
+import com.unboundid.ldap.sdk.LDAPException;
+import com.unboundid.ldap.sdk.ResultCode;
+import com.unboundid.ldap.sdk.SearchRequest;
+import com.unboundid.ldap.sdk.SearchResult;
+import com.unboundid.ldap.sdk.SearchResultEntry;
+import com.unboundid.ldap.sdk.SearchScope;
+import com.unboundid.util.ssl.AggregateTrustManager;
+import com.unboundid.util.ssl.HostNameSSLSocketVerifier;
+import com.unboundid.util.ssl.JVMDefaultTrustManager;
+import com.unboundid.util.ssl.SSLSocketVerifier;
+import com.unboundid.util.ssl.SSLUtil;
+import com.unboundid.util.ssl.TrustAllSSLSocketVerifier;
+import com.unboundid.util.ssl.TrustStoreTrustManager;
 import freemarker.template.TemplateException;
 import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
@@ -44,6 +66,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -52,6 +75,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonObject;
@@ -79,6 +103,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -86,6 +111,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.auth.EmailVerificationToken;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
@@ -148,10 +174,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final TokenRepository tokenRepository;
   private boolean isEmailServiceEnabled;
   private LoginAttemptCache loginAttemptCache;
-
   private AuthenticationConfiguration authenticationConfiguration;
-
   private AuthorizerConfiguration authorizerConfiguration;
+  private LDAPConnectionPool ldapLookupConnectionPool;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -176,6 +201,56 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.loginAttemptCache = new LoginAttemptCache(config);
+    if (config.getAuthenticationConfiguration().getProvider().equals("ldap")
+        && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
+      initLdapConfig(config.getAuthenticationConfiguration().getLdapConfiguration());
+    }
+  }
+
+  private void initLdapConfig(LdapConfiguration ldapConfiguration) {
+    try {
+      if (ldapConfiguration.getSslEnabled()) {
+        AggregateTrustManager trustManager =
+            new AggregateTrustManager(
+                false,
+                JVMDefaultTrustManager.getInstance(),
+                new TrustStoreTrustManager(
+                    ldapConfiguration.getKeyStorePath(),
+                    ldapConfiguration.getKeyStorePassword().toCharArray(),
+                    ldapConfiguration.getTruststoreFormat(),
+                    true));
+        SSLUtil sslUtil = new SSLUtil(trustManager);
+
+        LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
+        SSLSocketVerifier sslSocketVerifier =
+            ldapConfiguration.getVerifyCertificateHostname()
+                ? new HostNameSSLSocketVerifier(true)
+                : TrustAllSSLSocketVerifier.getInstance();
+        connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
+
+        try (LDAPConnection connection =
+            new LDAPConnection(
+                sslUtil.createSSLSocketFactory(),
+                connectionOptions,
+                ldapConfiguration.getHost(),
+                ldapConfiguration.getPort())) {
+          // Use the connection here.
+          this.ldapLookupConnectionPool = new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
+        } catch (GeneralSecurityException e) {
+          LOG.warn("[LDAP] Issue in creating a LookUp Connection SSL");
+        }
+      } else {
+        LDAPConnection conn =
+            new LDAPConnection(
+                ldapConfiguration.getHost(),
+                ldapConfiguration.getPort(),
+                ldapConfiguration.getDnAdminPrincipal(),
+                ldapConfiguration.getDnAdminPassword());
+        this.ldapLookupConnectionPool = new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
+      }
+    } catch (LDAPException e) {
+      LOG.warn("[LDAP] Issue in creating a LookUp Connection");
+    }
   }
 
   public static class UserList extends ResultList<User> {
@@ -1075,9 +1150,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException, TemplateException {
+    if (authenticationConfiguration.getProvider().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString())) {
+      return handleBasicAuthLogin(uriInfo, loginRequest);
+    } else if (authenticationConfiguration.getProvider().equals("ldap")) {
+      return handleLdapAuthLogin(uriInfo, loginRequest);
+    }
+    return Response.status(404).build();
+  }
+
+  private Response handleBasicAuthLogin(UriInfo uriInfo, LoginRequest loginRequest)
+      throws IOException, TemplateException {
     String userName =
         loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
-
     if (!loginAttemptCache.isLoginBlocked(userName)) {
       User storedUser;
       try {
@@ -1101,17 +1185,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       String storedHashPassword = storedData.get("password");
       if (BCrypt.verifyer().verify(requestPassword.toCharArray(), storedHashPassword).verified) {
         // successfully verified create a jwt token for frontend
-        RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
-        JWTAuthMechanism jwtAuthMechanism =
-            jwtTokenGenerator.generateJWTToken(
-                storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
-
-        JwtResponse response = new JwtResponse();
-        response.setTokenType("Bearer");
-        response.setAccessToken(jwtAuthMechanism.getJWTToken());
-        response.setRefreshToken(refreshToken.getToken().toString());
-        response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
-        return Response.status(OK).entity(response).build();
+        return Response.status(OK).entity(getJwtResponse(storedUser)).build();
       } else {
         loginAttemptCache.recordFailedLogin(userName);
         int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(userName);
@@ -1127,6 +1201,112 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       return Response.status(BAD_REQUEST)
           .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), MAX_FAILED_LOGIN_ATTEMPT))
+          .build();
+    }
+  }
+
+  private Response handleLdapAuthLogin(UriInfo uriInfo, LoginRequest req) {
+    LdapConfiguration ldapConfiguration = authenticationConfiguration.getLdapConfiguration();
+    if (ldapConfiguration != null) {
+      try {
+        if (ldapConfiguration.getIsFullDn()) {
+          // Get the user using DN directly
+          SearchResultEntry searchResultEntry = ldapLookupConnectionPool.getEntry(req.getEmail());
+          return handleSearchEntryLdap(uriInfo, searchResultEntry, req);
+        } else {
+          Filter emailFilter =
+              Filter.create(String.format("%s=%s", ldapConfiguration.getMailAttributeName(), req.getEmail()));
+          SearchRequest searchRequest =
+              new SearchRequest(
+                  ldapConfiguration.getUserBaseDN(),
+                  SearchScope.SUB,
+                  emailFilter,
+                  ldapConfiguration.getMailAttributeName());
+          SearchResult result = ldapLookupConnectionPool.search(searchRequest);
+          // there has to be a unique entry for username and email in LDAP under the group
+          if (result.getSearchEntries().size() == 1) {
+            // Get the user using DN directly
+            SearchResultEntry searchResultEntry = result.getSearchEntries().get(0);
+            return handleSearchEntryLdap(uriInfo, searchResultEntry, req);
+          } else if (result.getSearchEntries().size() > 1) {
+            return Response.status(INTERNAL_SERVER_ERROR)
+                .entity(
+                    new ErrorMessage(
+                        INTERNAL_SERVER_ERROR.getStatusCode(), "Email corresponds to multiple entries in Directory."))
+                .build();
+          } else {
+            return Response.status(UNAUTHORIZED)
+                .entity(new ErrorMessage(UNAUTHORIZED.getStatusCode(), "Email or Password Invalid"))
+                .build();
+          }
+        }
+      } catch (LDAPException e) {
+        return Response.status(INTERNAL_SERVER_ERROR)
+            .entity(
+                new ErrorMessage(
+                    INTERNAL_SERVER_ERROR.getStatusCode(), "Multiple Entries Found for Username and Email Lookup."))
+            .build();
+      }
+    } else {
+      return Response.status(INTERNAL_SERVER_ERROR)
+          .entity(new ErrorMessage(INTERNAL_SERVER_ERROR.getStatusCode(), "Missing LDAP Configuration."))
+          .build();
+    }
+  }
+
+  private JwtResponse getJwtResponse(User storedUser) throws JsonProcessingException {
+    RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
+    JWTAuthMechanism jwtAuthMechanism =
+        jwtTokenGenerator.generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+
+    JwtResponse response = new JwtResponse();
+    response.setTokenType("Bearer");
+    response.setAccessToken(jwtAuthMechanism.getJWTToken());
+    response.setRefreshToken(refreshToken.getToken().toString());
+    response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
+    return response;
+  }
+
+  private Response handleSearchEntryLdap(UriInfo uriInfo, SearchResultEntry searchResultEntry, LoginRequest req) {
+    try {
+      String userDN = searchResultEntry.getDN();
+      Attribute emailAttr =
+          searchResultEntry.getAttribute(
+              this.authenticationConfiguration.getLdapConfiguration().getMailAttributeName());
+
+      if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
+        String email = emailAttr.getValue();
+        String userName = email.split("@")[0];
+
+        // Try to bind the user with DN and the Password entered
+        BindResult bindingResult = ldapLookupConnectionPool.bind(userDN, req.getPassword());
+        if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
+          // Check if the user exists in OM Database
+          try {
+            User storedUser = dao.getByName(uriInfo, userName, dao.getFields("id,name,email"));
+            return Response.status(OK).entity(getJwtResponse(storedUser)).build();
+          } catch (EntityNotFoundException e) {
+            // User does not exist
+            User newUser = getUserForLdap(userName, email);
+            dao.create(uriInfo, newUser);
+            return Response.status(OK).entity(getJwtResponse(newUser)).build();
+          }
+        } else {
+          return Response.status(INTERNAL_SERVER_ERROR)
+              .entity(
+                  new ErrorMessage(
+                      INTERNAL_SERVER_ERROR.getStatusCode(),
+                      String.format(LDAP_USER_BIND_ERROR, bindingResult.getResultCode().getName())))
+              .build();
+        }
+      } else {
+        return Response.status(BAD_REQUEST)
+            .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), LDAP_MISSING_ATTR))
+            .build();
+      }
+    } catch (Exception ex) {
+      return Response.status(UNAUTHORIZED)
+          .entity(new ErrorMessage(UNAUTHORIZED.getStatusCode(), "Email or Password Invalid."))
           .build();
     }
   }
@@ -1410,6 +1590,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.BASIC)
                 .withConfig(newAuthMechanism));
+  }
+
+  private User getUserForLdap(String userName, String email) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(userName)
+        .withFullyQualifiedName(userName)
+        .withEmail(email)
+        .withIsBot(false)
+        .withUpdatedBy(userName)
+        .withUpdatedAt(System.currentTimeMillis())
+        .withIsEmailVerified(false)
+        .withAuthenticationMechanism(null);
   }
 
   public void validateEmailAlreadyExists(String email) {

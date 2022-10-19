@@ -482,6 +482,7 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     switch (authConfig?.provider) {
+      case AuthTypes.LDAP:
       case AuthTypes.BASIC: {
         return (
           <BasicAuthProvider

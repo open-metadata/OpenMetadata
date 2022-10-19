@@ -48,7 +48,15 @@ const SigninPage = () => {
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
-      isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
+      isAuthProviderBasic:
+        authConfig?.provider === AuthTypes.BASIC ||
+        authConfig?.provider === AuthTypes.LDAP,
+    };
+  }, [authConfig]);
+
+  const { isAuthProviderLDAP } = useMemo(() => {
+    return {
+      isAuthProviderLDAP: authConfig?.provider === AuthTypes.LDAP,
     };
   }, [authConfig]);
 
@@ -198,11 +206,21 @@ const SigninPage = () => {
                   onFinish={handleSubmit}>
                   <Form.Item
                     data-testid="email"
-                    label={t('label.username-or-email')}
+                    label={
+                      isAuthProviderLDAP
+                        ? t('label.email')
+                        : t('label.username-or-email')
+                    }
                     name="email"
                     requiredMark={false}
                     rules={[{ required: true }]}>
-                    <Input placeholder={t('label.username-or-email')} />
+                    <Input
+                      placeholder={
+                        isAuthProviderLDAP
+                          ? t('label.email')
+                          : t('label.username-or-email')
+                      }
+                    />
                   </Form.Item>
                   <Form.Item
                     data-testid="password"
@@ -248,7 +266,7 @@ const SigninPage = () => {
                   </Typography.Link>
                 </div>
 
-                {authConfig?.enableSelfSignUp && (
+                {(authConfig?.enableSelfSignUp || isAuthProviderLDAP) && (
                   <>
                     <Divider className="w-min-0 mt-8 mb-12 justify-center">
                       <Typography.Text className="text-sm" type="secondary">

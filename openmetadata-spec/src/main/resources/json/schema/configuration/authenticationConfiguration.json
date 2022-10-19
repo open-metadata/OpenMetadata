@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.schema.api.security.AuthenticationConfiguration",
   "properties": {
     "provider": {
-      "description": "SSO provider , no-auth, okta, google , azure etc.",
+      "description": "SSO provider , no-auth, okta, google , azure, basic, ldap etc.",
       "type": "string"
     },
     "providerName": {
@@ -44,6 +44,10 @@
       "description": "Enable Self Sign Up",
       "type": "boolean",
       "default": false
+    },
+    "ldapConfiguration": {
+      "description": "LDAP Configuration in case the Provider is LDAP",
+      "$ref": "../auth/ldapConfiguration.json"
     }
   },
   "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],

@@ -47,6 +47,9 @@ public final class CatalogExceptionMessage {
   public static final String CREATE_GROUP =
       "Team of type Group can't have children of type team. Only users are allowed as part of the team";
   public static final String TEAM_HIERARCHY = "Unexpected error occurred while building the teams hierarchy";
+  public static final String LDAP_MISSING_ATTR =
+      "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
+  public static final String LDAP_USER_BIND_ERROR = "LDAP authentication failed due to : %s";
 
   private CatalogExceptionMessage() {}
 

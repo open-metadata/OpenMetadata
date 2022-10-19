@@ -148,6 +148,7 @@ export const getAuthConfig = (
 
       break;
     }
+    case AuthTypes.LDAP:
     case AuthTypes.BASIC: {
       config = {
         auth: {

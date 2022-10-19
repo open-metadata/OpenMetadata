@@ -105,7 +105,9 @@ const CreateUser = ({
   const [ssoClientConfig, setSSOClientConfig] = useState<SsoClientConfig>();
 
   const isAuthProviderBasic = useMemo(
-    () => authConfig?.provider === AuthTypes.BASIC,
+    () =>
+      authConfig?.provider === AuthTypes.BASIC ||
+      authConfig?.provider === AuthTypes.LDAP,
     [authConfig]
   );
 
