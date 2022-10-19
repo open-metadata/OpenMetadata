@@ -14,7 +14,8 @@
 import { AxiosError } from 'axios';
 import { SlackChatConfig } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
+import { useAnalytics } from 'use-analytics';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { fetchSlackConfig } from '../axiosAPIs/miscAPI';
 import Loader from '../components/Loader/Loader';
@@ -47,6 +48,11 @@ const BasicSignupPage = withSuspenseFallback(
 );
 
 const AppRouter = () => {
+  const location = useLocation();
+
+  // web analytics instance
+  const analytics = useAnalytics();
+
   const {
     authConfig,
     isAuthDisabled,
@@ -94,6 +100,11 @@ const AppRouter = () => {
     slackConfig && slackConfig.slackUrl ? (
       <SlackChat slackConfig={slackConfig} />
     ) : null;
+
+  useEffect(() => {
+    // track page view on route change
+    analytics.page();
+  }, [location]);
 
   return loading ? (
     <Loader />
