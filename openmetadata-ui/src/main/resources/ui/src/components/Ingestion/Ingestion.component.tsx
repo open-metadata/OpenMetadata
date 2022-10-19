@@ -44,7 +44,7 @@ import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
-import { IngestionProps } from './ingestion.interface';
+import { IngestionCurrentState, IngestionProps } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
@@ -352,25 +352,44 @@ const Ingestion: React.FC<IngestionProps> = ({
     });
   };
 
+  const getIngestionStatusState = (
+    current: IngestionCurrentState,
+    ingestion: IngestionPipeline,
+    text: string
+  ) => {
+    return current.id === ingestion.id ? (
+      current.state === 'success' ? (
+        <FontAwesomeIcon icon="check" />
+      ) : (
+        <Loader size="small" type="default" />
+      )
+    ) : (
+      text
+    );
+  };
+
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
-        <Button
-          data-testid="run"
-          type="link"
-          onClick={() =>
-            handleTriggerIngestion(ingestion.id as string, ingestion.name)
-          }>
-          {currTriggerId.id === ingestion.id ? (
-            currTriggerId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
-            ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Run'
-          )}
-        </Button>
+        <>
+          <Button
+            data-testid="run"
+            type="link"
+            onClick={() =>
+              handleTriggerIngestion(ingestion.id as string, ingestion.name)
+            }>
+            {getIngestionStatusState(currTriggerId, ingestion, 'Run')}
+          </Button>
+          {separator}
+
+          <Button
+            data-testid="re-deploy-btn"
+            disabled={!isRequiredDetailsAvailable}
+            type="link"
+            onClick={() => handleDeployIngestion(ingestion.id as string)}>
+            {getIngestionStatusState(currDeployId, ingestion, 'Re Deploy')}
+          </Button>
+        </>
       );
     } else {
       return (
@@ -378,15 +397,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           data-testid="deploy"
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
-          {currDeployId.id === ingestion.id ? (
-            currDeployId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
-            ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Deploy'
-          )}
+          {getIngestionStatusState(currDeployId, ingestion, 'Deploy')}
         </Button>
       );
     }

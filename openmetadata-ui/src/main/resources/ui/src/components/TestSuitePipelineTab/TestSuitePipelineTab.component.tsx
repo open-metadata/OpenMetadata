@@ -41,6 +41,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import PopOver from '../common/popover/PopOver';
+import { IngestionCurrentState } from '../Ingestion/ingestion.interface';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
@@ -222,6 +223,22 @@ const TestSuitePipelineTab = () => {
     }
   };
 
+  const getIngestionStatusState = (
+    current: IngestionCurrentState,
+    ingestion: IngestionPipeline,
+    text: string
+  ) => {
+    return current.id === ingestion.id ? (
+      current.state === 'success' ? (
+        <FontAwesomeIcon icon="check" />
+      ) : (
+        <Loader size="small" type="default" />
+      )
+    ) : (
+      text
+    );
+  };
+
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
@@ -234,15 +251,7 @@ const TestSuitePipelineTab = () => {
               onClick={() =>
                 handleTriggerIngestion(ingestion.id as string, ingestion.name)
               }>
-              {currTriggerId.id === ingestion.id ? (
-                currTriggerId.state === 'success' ? (
-                  <FontAwesomeIcon icon="check" />
-                ) : (
-                  <Loader size="small" type="default" />
-                )
-              ) : (
-                'Run'
-              )}
+              {getIngestionStatusState(currTriggerId, ingestion, 'Run')}
             </Button>
           </Tooltip>
           {separator}
@@ -255,15 +264,7 @@ const TestSuitePipelineTab = () => {
               onClick={() =>
                 handleDeployIngestion(ingestion.id as string, true)
               }>
-              {currDeployId.id === ingestion.id ? (
-                currDeployId.state === 'success' ? (
-                  <FontAwesomeIcon icon="check" />
-                ) : (
-                  <Loader size="small" type="default" />
-                )
-              ) : (
-                'Re Deploy'
-              )}
+              {getIngestionStatusState(currDeployId, ingestion, 'Re Deploy')}
             </Button>
           </Tooltip>
         </>
@@ -278,15 +279,7 @@ const TestSuitePipelineTab = () => {
             onClick={() =>
               handleDeployIngestion(ingestion.id as string, false)
             }>
-            {currDeployId.id === ingestion.id ? (
-              currDeployId.state === 'success' ? (
-                <FontAwesomeIcon icon="check" />
-              ) : (
-                <Loader size="small" type="default" />
-              )
-            ) : (
-              'Deploy'
-            )}
+            {getIngestionStatusState(currDeployId, ingestion, 'Deploy')}
           </Button>
         </Tooltip>
       );

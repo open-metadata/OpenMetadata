@@ -67,3 +67,8 @@ export interface IngestionProps {
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   onIngestionWorkflowsUpdate: () => void;
 }
+
+export interface IngestionCurrentState {
+  id: string;
+  state: string;
+}
