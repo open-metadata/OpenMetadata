@@ -121,6 +121,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -623,6 +624,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     user.setAuthenticationMechanism(authenticationMechanism);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
+    // Invalidate Bot Token in Cache
+    BotTokenCache.getInstance().invalidateToken(user.getName());
     return response.toResponse();
   }
 

@@ -24,7 +24,6 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import io.dropwizard.util.Strings;
-import java.io.IOException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
@@ -44,16 +43,10 @@ import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @Provider
@@ -66,7 +59,6 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private boolean enforcePrincipalDomain;
   private String providerType;
-
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "config",
@@ -233,17 +225,9 @@ public class JwtFilter implements ContainerRequestFilter {
     throw new AuthenticationException("Not Authorized! Token not present");
   }
 
-  private void validateBotToken(String tokenFromHeader, String userName) throws IOException {
-    UserRepository userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
-    User user =
-        userRepository.getByNameWithSecretManager(userName, new EntityUtil.Fields(List.of("authenticationMechanism")));
-    AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
-    if (authenticationMechanism != null) {
-      JWTAuthMechanism jwtAuthMechanism =
-          JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
-      if (tokenFromHeader.equals(jwtAuthMechanism.getJWTToken())) {
-        return;
-      }
+  private void validateBotToken(String tokenFromHeader, String userName) {
+    if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
+      return;
     }
     throw new AuthenticationException("Not Authorized! Invalid Token");
   }
