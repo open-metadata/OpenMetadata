@@ -21,3 +21,8 @@ export enum SIZE {
   MEDIUM = '80',
   LARGE = '100',
 }
+
+export enum ACTION_TYPE {
+  UPDATE = 'update',
+  REMOVE = 'remove',
+}

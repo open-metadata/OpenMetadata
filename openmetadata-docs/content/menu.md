@@ -156,15 +156,15 @@ site_menu:
 
   - category: Deployment / Airflow
     url: /deployment/airflow
-    
+
   - category: Connectors
     url: /connectors
     color: violet-70
     icon: openmetadata
 
-  - category:  Connectors / Database
+  - category: Connectors / Database
     url: /connectors/database
-  - category:  Connectors / Database / Athena
+  - category: Connectors / Database / Athena
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Airflow
     url: /connectors/database/athena/airflow
@@ -483,7 +483,6 @@ site_menu:
   - category: Connectors / Ingestion / Run Connectors in your Airflow
     url: /connectors/ingestion/run-connectors-in-airflow
 
-
   - category: How to guides
     url: /how-to-guides
     color: violet-70
@@ -499,14 +498,14 @@ site_menu:
     url: /how-to-guides/teams-and-users
   - category: How to guides / Teams and Users / How to Organise Teams and Users
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
-
-
+  - category: How to guides / How to add a custom property to an entity
+    url: /how-to-guides/how-to-add-custom-property-to-an-entity
 
   - category: Features
     url: /openmetadata
     color: violet-70
     icon: openmetadata
-  
+
   - category: Features / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
 
