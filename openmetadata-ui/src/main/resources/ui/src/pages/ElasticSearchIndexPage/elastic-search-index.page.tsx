@@ -21,6 +21,7 @@ import {
   reIndexByPublisher,
 } from '../../axiosAPIs/elastic-index-API';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { Loader } from "../../components/Loader/Loader";
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
@@ -155,11 +156,7 @@ const ElasticSearchIndexPage = () => {
             loading={batchLoading}
             size="small"
             title="ElasticSearch">
-            {streamLoading ?
-                <div className="spinner-container">
-                  <div className="loading-spinner"></div>
-                </div> : <div></div>
-            }
+            {streamLoading ? <Loader size="small" type="white" /> : ''}
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Space wrap direction="horizontal" size={0}>
@@ -291,11 +288,7 @@ const ElasticSearchIndexPage = () => {
             loading={streamLoading}
             size="small"
             title="ElasticSearch">
-            {streamLoading ?
-                <div className="spinner-container">
-                  <div className="loading-spinner"></div>
-                </div> : <div></div>
-            }
+            {streamLoading ? <Loader size="small" type="white" /> : ''}
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Space direction="horizontal" size={16}>
