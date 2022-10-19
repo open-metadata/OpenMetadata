@@ -3031,6 +3031,20 @@ public interface CollectionDAO {
     List<String> listByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
 
     @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND jsonSchema = :jsonSchema "
+            + "ORDER BY timestamp DESC LIMIT 1")
+    String getLatestExtensionByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and jsonSchema = :jsonSchema "
+            + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
+    List<String> listBetweenTimestampsByFQN(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") long endTs);
+
+    @SqlQuery(
         "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and extension = :extension "
             + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
     List<String> listBetweenTimestamps(

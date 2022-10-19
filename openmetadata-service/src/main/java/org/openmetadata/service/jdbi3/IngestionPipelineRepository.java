@@ -17,6 +17,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -198,13 +199,31 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public List<PipelineStatus> listPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
+  public ResultList<PipelineStatus> listPipelineStatus(String ingestionPipelineFQN, Long startTs, Long endTs)
+      throws IOException {
+    IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
+                .listBetweenTimestampsByFQN(
+                    ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
             PipelineStatus.class);
+    return new ResultList<>(
+        pipelineStatusList, String.valueOf(startTs), String.valueOf(endTs), pipelineStatusList.size());
+  }
+
+  public List<PipelineStatus> getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
+    List<PipelineStatus> pipelineStatusList = new ArrayList<>();
+    PipelineStatus pipelineStatus =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getLatestExtensionByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
+            PipelineStatus.class);
+    if (pipelineStatus != null) {
+      pipelineStatusList.add(pipelineStatus);
+    }
     return pipelineStatusList;
   }
 

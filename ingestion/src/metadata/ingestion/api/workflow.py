@@ -232,12 +232,12 @@ class Workflow:
             self.sink.close()
 
         pipeline_state = PipelineState.success
-        if self._get_source_success() >= 90 and self._get_source_success() < 100:
+        if (
+            self._get_source_success() >= SUCCESS_THRESHOLD_VALUE
+            and self._get_source_success() < 100
+        ):
             pipeline_state = PipelineState.partialSuccess
-        elif self._get_source_success() < 90:
-            pipeline_state = PipelineState.failed
         self.set_ingestion_pipeline_status(pipeline_state)
-
         self.source.close()
 
     def _get_source_success(self):

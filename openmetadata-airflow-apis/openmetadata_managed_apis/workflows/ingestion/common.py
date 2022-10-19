@@ -44,6 +44,7 @@ from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
+    PipelineState,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
@@ -156,14 +157,17 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     This is the callable used to create the PythonOperator
     """
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
-
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-
     workflow = Workflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
 
 
 def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
