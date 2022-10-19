@@ -157,6 +157,9 @@ class OMetaPatchMixin(Generic[T]):
         if not table:
             return None
 
+        if not table.columns:
+            return None
+
         col_index, col = next(
             (
                 (col_index, col)
