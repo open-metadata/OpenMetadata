@@ -84,7 +84,7 @@ public class AnalyticsReportResource extends EntityResource<ReportDefinition, An
             ReportDefinition reportDefinition = JsonUtils.readValue(reportDefinitionJson, ReportDefinition.class);
             long currentTimestamp = System.currentTimeMillis();
             reportDefinition.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(currentTimestamp);
-            daoReportDefinition.initSeedData(reportDefinition);
+            daoReportDefinition.initializeEntity(reportDefinition);
           } catch (Exception e) {
             LOG.warn("Failed to initialized report definition files {}", reportDefinitionFile, e);
           }

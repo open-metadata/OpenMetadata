@@ -103,7 +103,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
             WebAnalyticEvent webAnalyticEvent = JsonUtils.readValue(webAnalyticEventJson, WebAnalyticEvent.class);
             long currentTimestamp = System.currentTimeMillis();
             webAnalyticEvent.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(currentTimestamp);
-            daoWebAnalyticEvent.initSeedData(webAnalyticEvent);
+            daoWebAnalyticEvent.initializeEntity(webAnalyticEvent);
           } catch (Exception e) {
             LOG.warn("Failed to initialized report definition files {}", webAnalyticEventFile, e);
           }
