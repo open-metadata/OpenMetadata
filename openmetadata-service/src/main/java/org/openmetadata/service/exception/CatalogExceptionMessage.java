@@ -115,11 +115,6 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
-  // TODO delete this
-  public static String noPermission(String name) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
-  }
-
   public static String permissionDenied(
       String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
     if (roleName != null) {
