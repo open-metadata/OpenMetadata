@@ -15,22 +15,24 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class BotTokenCache {
+  public static final String EMPTY_STRING = "";
   private static BotTokenCache INSTANCE;
   private final LoadingCache<String, String> BOTS_TOKEN_CACHE;
 
   public BotTokenCache() {
     BOTS_TOKEN_CACHE =
-        CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(2, TimeUnit.MINUTES).build(new BotTokenLoader());
+        CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(15, TimeUnit.MINUTES).build(new BotTokenLoader());
   }
 
   public String getToken(String botName) {
     try {
-      if (BOTS_TOKEN_CACHE.get(botName).equals("")) {
+      if (BOTS_TOKEN_CACHE.get(botName).equals(EMPTY_STRING)) {
         BOTS_TOKEN_CACHE.invalidate(botName);
       }
       return BOTS_TOKEN_CACHE.get(botName);
@@ -63,7 +65,8 @@ public class BotTokenCache {
     public String load(@CheckForNull String botName) throws IOException {
       UserRepository userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
       User user =
-          userRepository.getByNameWithSecretManager(botName, new EntityUtil.Fields(List.of("authenticationMechanism")));
+          userRepository.getByNameWithSecretManager(
+              botName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)));
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       if (authenticationMechanism != null) {
         JWTAuthMechanism jwtAuthMechanism =
