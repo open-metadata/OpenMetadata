@@ -3,7 +3,7 @@
     "docs": "Docs",
     "date-filter": "Date Filter",
     "api-uppercase": "API",
-    "date-amd-time": "Date & Time",
+    "date-and-time": "Date & Time",
     "slack": "Slack",
     "logout": "Logout",
     "version": "Version",
@@ -27,8 +27,8 @@
     "table-metrics-summary": "Table Metrics Summary",
     "table-tests-summary": "Table Tests Summary",
     "summary": "Summary",
-    "list-hyphen-view-lowercase": "list-view",
-    "tree-hyphen-view-lowercase": "tree-view"
+    "list": "List",
+    "tree": "Tree"
   },
   "message": {
     "fetch-pipeline-status-error": "Error while fetching pipeline status."

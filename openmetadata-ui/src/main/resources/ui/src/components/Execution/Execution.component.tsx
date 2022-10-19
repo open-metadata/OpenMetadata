@@ -43,8 +43,8 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { getStatusLabel } from '../../utils/executionUtils';
 import {
-  getDateToMilliSecondsOfCurrentDate,
-  getPastDatesToMilliSecondsFromCurrentDate,
+  getCurrentDateTimeStamp,
+  getPastDatesTimeStampFromCurrentDate,
   getTimeStampByDate,
 } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -64,18 +64,16 @@ interface SummaryCardContentProps {
 const Execution = ({ pipelineFQN }: ExecutionProps) => {
   const { t } = useTranslation();
 
-  const listViewLabel = t('label.list-hyp-view');
-  const treeViewLabel = t('label.tree-hyp-view');
+  const listViewLabel = t('label.list');
+  const treeViewLabel = t('label.tree');
 
   const [view, setView] = useState(listViewLabel);
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
-    getPastDatesToMilliSecondsFromCurrentDate(
-      PROFILER_FILTER_RANGE.last365days.days
-    )
+    getPastDatesTimeStampFromCurrentDate(PROFILER_FILTER_RANGE.last365days.days)
   );
-  const [endTime, setEndTime] = useState(getDateToMilliSecondsOfCurrentDate());
+  const [endTime, setEndTime] = useState(getCurrentDateTimeStamp());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,11 +86,11 @@ const Execution = ({ pipelineFQN }: ExecutionProps) => {
       setIsLoading(true);
       const startTs =
         startRange ||
-        getPastDatesToMilliSecondsFromCurrentDate(
+        getPastDatesTimeStampFromCurrentDate(
           PROFILER_FILTER_RANGE.last365days.days
         );
 
-      const endTs = endRange || getDateToMilliSecondsOfCurrentDate();
+      const endTs = endRange || getCurrentDateTimeStamp();
 
       const response = await getPipelineStatus(pipelineFQN, {
         startTs,
@@ -186,11 +184,11 @@ const Execution = ({ pipelineFQN }: ExecutionProps) => {
       if (isNaN(startTime)) {
         setIsClickedCalendar(false);
         setStartTime(
-          getPastDatesToMilliSecondsFromCurrentDate(
+          getPastDatesTimeStampFromCurrentDate(
             PROFILER_FILTER_RANGE.last365days.days
           )
         );
-        setEndTime(getDateToMilliSecondsOfCurrentDate());
+        setEndTime(getCurrentDateTimeStamp());
 
         return setDatesSelected(false);
       }
@@ -264,33 +262,6 @@ const Execution = ({ pipelineFQN }: ExecutionProps) => {
                           open={isClickedCalendar}
                           placeholder={['', '']}
                           suffixIcon={null}
-                          //   ranges={{
-                          //     Today: [moment(), moment()],
-                          //     'This Month': [
-                          //       moment().startOf('month'),
-                          //       moment().endOf('month'),
-                          //     ],
-                          //     'Last 3 months': [
-                          //       moment().subtract(3, 'months'),
-                          //       moment(),
-                          //     ],
-                          //     'Last 6 months': [
-                          //       moment().subtract(6, 'months'),
-                          //       moment(),
-                          //     ],
-                          //     'Last 1 year': [
-                          //       moment().subtract(12, 'months'),
-                          //       moment(),
-                          //     ],
-                          //     "Last 5 year's": [
-                          //       moment().subtract(5, 'year'),
-                          //       moment(),
-                          //     ],
-                          //   }}
-                          //   value={[
-                          //     getDateFromTimestamp(startTime),
-                          //     getDateFromTimestamp(startTime),
-                          //   ]}
                           onChange={onDateChange}
                           onOpenChange={(isOpen) => {
                             setIsClickedCalendar(isOpen);

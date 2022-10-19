@@ -57,7 +57,7 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
       ),
     },
     {
-      title: t('label.date-amp-time'),
+      title: t('label.date-and-time'),
       dataIndex: 'timestamp',
       key: 'timestamp',
     },
