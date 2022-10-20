@@ -1,0 +1,5 @@
+{
+    "name": "PageView",
+    "description": "Captures web analytic page view events",
+    "eventType": "PageView"
+}

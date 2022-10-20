@@ -113,9 +113,12 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     return !isNil(value) && item.value === value ? (
       <Tooltip title="Remove owner">
         <button
-          className="tw-cursor-pointer"
+          className="cursor-pointer"
           data-testid="remove-owner"
-          onClick={removeOwner}>
+          onClick={(e) => {
+            e.stopPropagation();
+            removeOwner && removeOwner();
+          }}>
           <SVGIcons
             alt="remove owner"
             icon={Icons.ICON_REMOVE}
@@ -144,7 +147,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         id={`menu-item-${index}`}
         key={index}
         role="menuitem"
-        onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
+        onClick={(e) =>
+          !item.disabled && item.value !== value && onSelect?.(e, item.value)
+        }>
         {item.type === 'user' ? (
           <div className="w-full flex justify-between items-center">
             <UserTag id={item.value as string} name={item.name as string} />

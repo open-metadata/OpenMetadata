@@ -438,5 +438,16 @@
       "Delete",
       "ViewAll"
     ]
+  },
+  {
+    "name" : "webAnalyticEvent",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName"
+    ]
   }
 ]

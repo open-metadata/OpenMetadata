@@ -11,6 +11,7 @@ source:
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
+      type: DashboardMetadata
       dashboardFilterPattern: {}
       chartFilterPattern: {}
 sink:

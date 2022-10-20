@@ -37,7 +37,7 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueReques
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
-public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
+class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
 
   @Mock private SecretsManagerClient secretsManagerClient;
 

@@ -82,9 +82,9 @@ Admin permissions are required to register the application on the Azure portal.
 ### Step 4: Register Another Azure Application
 
 Another Azure Application must be registered for Service ingestion.
-- 
+
 - Provide an application name.
-- Create a `public client redirect URI`.
+- `public client redirect URI` will be blank.
 - Click on Register.
 
 <Image src="/images/deployment/security/azure/register-another-app.png" alt="add-app"/>
@@ -145,16 +145,18 @@ the application access scope.
 
 - The `secret_key` is required for ingestion.
 
-### Step 9: Note down the clientId and Authority
+### Step 9: Note down the information for OpenMetadata configurations
 
-- `clientID`: The Application (Client) ID is displayed in the Overview section of the registered application.
+- `clientID`: The Application (Client) ID is displayed in the Overview section of the registered applications (Azure Application for UI and Azure Service Application if any).
 - `authority`: When passing the details for authority, the Tenant ID is added to the URL as shown
 below. `https://login.microsoftonline.com/TenantID`
 - `clientSecret`: The clientSecret can be accessed from the Certificates & secret section of the application.
+- `scopes`: The scopes for running the ingestion to get token using Client Credentials Flow. This will be in the format of `<application-id-uri>/.default` (Application Id URI will be available from [Step 7](/deployment/security/azure#step-7-set-the-app-id-uri))
+- `object-id`: You can fetch the `object id` of Azure Application created for OpenMetadata Service Application as provided in the below image. This is required for setting the OpenMetadata with YAML configurations as well as Updating Ingestion-Bot from UI. You can find `object id` in Azure `Active Directory >> Enterprise Applications`.
 
-This information is required to configure Airflow.
+<Image src="/images/deployment/security/azure/azure-service-application-object-id.png" alt="object-id" />
 
-<Image src="/images/deployment/security/azure/client-id-and-authority.png" alt="client-id-authority"/>
+This information is required to configure ingestion-bot from OpenMetadata UI from 0.12.1 Release.
 
 After the applying these steps, you can update the configuration of your deployment:
 
@@ -185,7 +187,23 @@ After the applying these steps, you can update the configuration of your deploym
   </InlineCallout>
 </InlineCalloutContainer>
 
-## Configure Ingestion
+### Step 10: Update Ingestion Bot with Azure SSO Service Application
+
+Starting from 0.12.1, Navigate to `Settings >> Bots >> ingestion-bot` and click on edit.
+
+<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png"/>
+
+Update the Auth Mechanism as Azure SSO and update `Email`, `ClientSecret`, `ClientId`, `Authority`, and `Scopes` as mentioned in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
+
+The `Email` will be in the format of `<object-id-for-azure-service-application-enterprise-application>@<your-domain-name>`.
+
+Next, Click on Save.
+
+<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png" />
+
+This will enable all the Service Connector Ingestions created from UI to securely use Azure SSO Service Applications for connecting with OpenMetadata APIs.
+
+## Configure Ingestion from CLI
 
 After everything has been set up, you will need to configure your workflows if you are running them via the
 `metadata` CLI or with any custom scheduler.
@@ -202,8 +220,6 @@ workflowConfig:
       authority: '{your_authority_url}'
       clientId: '{your_client_id}'
       scopes:
-        - your_scopes
+        - <azure-service-application-id-uri>/.default
 
 ```
-
-

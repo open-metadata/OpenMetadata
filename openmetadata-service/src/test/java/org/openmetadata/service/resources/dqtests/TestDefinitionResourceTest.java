@@ -17,7 +17,7 @@ import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 
-public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
+class TestDefinitionResourceTest extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
   public TestDefinitionResourceTest() {
     super(
         Entity.TEST_DEFINITION,
