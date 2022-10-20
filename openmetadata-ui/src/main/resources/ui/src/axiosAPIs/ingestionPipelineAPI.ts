@@ -42,6 +42,32 @@ export const getIngestionPipelineByFqn = async (
   return response.data;
 };
 
+/**
+ * "Get an ingestion pipeline by its fully qualified name."
+ *
+ * The function takes two parameters:
+ *
+ * * `fqn`: The fully qualified name of the ingestion pipeline.
+ * * `arrQueryFields`: An array of query fields to include in the response
+ * @param {string} fqn - The fully qualified name of the ingestion pipeline.
+ * @param [arrQueryFields] - An array of strings that represent the query fields you want to include in
+ * the request.
+ * @returns IngestionPipeline
+ */
+export const getIngestionPipelineByName = async (
+  fqn: string,
+  arrQueryFields?: Array<string>
+) => {
+  const url = getURLWithQueryFields(
+    `/services/ingestionPipelines/name/${fqn}`,
+    arrQueryFields
+  );
+
+  const response = await APIClient.get<IngestionPipeline>(url);
+
+  return response.data;
+};
+
 export const getIngestionPipelines = async (
   arrQueryFields: Array<string>,
   serviceFilter?: string,
@@ -123,9 +149,14 @@ export const getPipelineServiceHostIp = async () => {
 };
 
 export const getIngestionPipelineLogById = (
-  id: string
+  id: string,
+  after?: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/ingestionPipelines/logs/${id}/last`);
+  return APIClient.get(`/services/ingestionPipelines/logs/${id}/last`, {
+    params: {
+      after,
+    },
+  });
 };
 
 export const postkillIngestionPipelineById = (
