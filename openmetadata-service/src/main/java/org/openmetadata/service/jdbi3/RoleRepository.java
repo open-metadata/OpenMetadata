@@ -114,8 +114,7 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   protected void preDelete(Role entity) {
     if (FALSE.equals(entity.getAllowDelete())) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.ROLE, entity.getName()));
     }
   }
 

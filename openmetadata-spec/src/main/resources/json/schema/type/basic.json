@@ -120,13 +120,6 @@
     },
     "entityExtension" : {
       "description": "Entity extension data with custom attributes added to the entity."
-    },
-    "providerType": {
-      "javaType": "org.openmetadata.schema.type.ProviderType",
-      "description": "Type of provider of an entity. Some entities are provided by the `system`. Some are are entities created and provided by the `user`. Typically `system` provide entities can't be deleted and can only be disabled.",
-      "type": "string",
-      "enum": ["system", "user"],
-      "default": "user"
     }
   }
 }

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -98,7 +99,7 @@ public class NoopAuthorizer implements Authorizer {
       LOG.debug("Added anonymous user entry: {}", addedUser);
     } catch (IOException exception) {
       // In HA set up the other server may have already added the user.
-      LOG.debug("Caught exception ", exception);
+      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Anonymous user entry: {} already exists.", user);
     }
   }
