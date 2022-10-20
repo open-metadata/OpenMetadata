@@ -19,7 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 
-public class SecretsManagerFactoryTest {
+class SecretsManagerFactoryTest {
 
   private SecretsManagerConfiguration config;
 

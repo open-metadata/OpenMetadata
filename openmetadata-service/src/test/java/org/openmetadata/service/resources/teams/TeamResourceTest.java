@@ -98,7 +98,7 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
+class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
