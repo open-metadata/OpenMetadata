@@ -13,7 +13,7 @@ DBT source methods.
 """
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -53,6 +53,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
+from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -259,9 +260,12 @@ class DBTMixin:
         """
         logger.info("Processing DBT lineage and Descriptions")
         for data_model_name, data_model in self.data_models.items():
-
-            to_entity: Table = self.metadata.get_by_name(
-                entity=Table, fqn=data_model_name
+            to_es_result = self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=data_model_name,
+            )
+            to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+                entity_list=to_es_result, fetch_multiple_entities=False
             )
             if to_entity:
                 try:
@@ -292,8 +296,14 @@ class DBTMixin:
             # Create Lineage from DBT
             for upstream_node in data_model.upstream:
                 try:
-                    from_entity: Table = self.metadata.get_by_name(
-                        entity=Table, fqn=upstream_node
+                    from_es_result = self.metadata.es_search_from_fqn(
+                        entity_type=Table,
+                        fqn_search_string=upstream_node,
+                    )
+                    from_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=from_es_result, fetch_multiple_entities=False
                     )
                     if from_entity and to_entity:
                         yield AddLineageRequest(
