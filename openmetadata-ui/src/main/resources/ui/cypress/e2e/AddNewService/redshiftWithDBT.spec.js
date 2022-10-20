@@ -11,22 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-    deleteCreatedService,
-    editOwnerforCreatedService,
-    goToAddNewServicePage,
-    interceptURL,
-    login,
-    testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables, verifyResponseStatusCode,
-    visitEntityDetailsPage
-} from '../../common/common';
-import {
-    DBT,
-    HTTP_CONFIG_SOURCE,
-    LOGIN,
-    SERVICE_TYPE
-} from '../../constants/constants';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, interceptURL, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import { DBT, HTTP_CONFIG_SOURCE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
 import { REDSHIFT } from '../../constants/service.constants';
 
 describe('RedShift Ingestion', () => {
@@ -123,9 +109,10 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="Lineage"]').should('be.visible').click();
 
-    cy.get('[data-testid="lineage-entity"]')
-      .should('contain', DBT.dbtLineageNode1)
-      .and('contain', DBT.dbtLineageNode2);
+    cy.get('[data-testid="lineage-entity"]').should(
+      'contain',
+      DBT.dbtLineageNode
+    );
 
     //Verify Data Quality
     cy.get('[data-testid="Profiler & Data Quality"]')

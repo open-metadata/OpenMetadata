@@ -75,6 +75,7 @@
         "MEDIUMTEXT",
         "TEXT",
         "CHAR",
+        "LONG",
         "VARCHAR",
         "BOOLEAN",
         "BINARY",

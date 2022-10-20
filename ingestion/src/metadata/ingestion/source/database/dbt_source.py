@@ -264,24 +264,30 @@ class DBTMixin:
                 entity=Table, fqn=data_model_name
             )
             if to_entity:
-                # Patch table descriptions from DBT
-                if data_model.description:
-                    self.metadata.patch_description(
-                        entity=Table,
-                        entity_id=to_entity.id,
-                        description=data_model.description.__root__,
-                        force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
-                    )
-
-                # Patch column descriptions from DBT
-                for column in data_model.columns:
-                    if column.description:
-                        self.metadata.patch_column_description(
+                try:
+                    # Patch table descriptions from DBT
+                    if data_model.description:
+                        self.metadata.patch_description(
+                            entity=Table,
                             entity_id=to_entity.id,
-                            column_name=column.name.__root__,
-                            description=column.description.__root__,
+                            description=data_model.description.__root__,
                             force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
                         )
+
+                    # Patch column descriptions from DBT
+                    for column in data_model.columns:
+                        if column.description:
+                            self.metadata.patch_column_description(
+                                entity_id=to_entity.id,
+                                column_name=column.name.__root__,
+                                description=column.description.__root__,
+                                force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                            )
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse the node {upstream_node} to update dbt desctiption: {exc}"
+                    )
 
             # Create Lineage from DBT
             for upstream_node in data_model.upstream:
