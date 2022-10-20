@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.analytics.type.ReportData;
+import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
