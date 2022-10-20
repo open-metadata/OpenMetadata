@@ -43,7 +43,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       const status = response.status;
       if (status === 200) {
         onClose();
-        showSuccessToast(` ${t('label.kill-successfully')}  ${pipelinName}.`);
+        showSuccessToast(` ${t('message.kill-successfully')}  ${pipelinName}.`);
         onIngestionWorkflowsUpdate();
       }
     } catch (error) {
@@ -66,7 +66,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       onCancel={onClose}
       onOk={handleConfirm}>
       <Typography.Text data-testid="kill-modal-body">
-        {t('label.kill-ingestion')}
+        {t('message.kill-ingestion')}
       </Typography.Text>
     </Modal>
   );

@@ -233,7 +233,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.secretKey-required'),
+                  message: t('message.secretKey-required'),
                 },
               ]}>
               <Input.Password
@@ -266,7 +266,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.secretKey-required'),
+                  message: t('message.secretKey-required'),
                 },
               ]}>
               <Input.Password
@@ -283,7 +283,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.clientId-required'),
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
@@ -300,7 +300,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.domain-required'),
+                  message: t('message.domain-required'),
                 },
               ]}>
               <Input
@@ -323,7 +323,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.clientSecret-required'),
+                  message: t('message.clientSecret-required'),
                 },
               ]}>
               <Input.Password
@@ -340,7 +340,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.clientId-required'),
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
@@ -357,7 +357,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.authority-required'),
+                  message: t('message.authority-required'),
                 },
               ]}>
               <Input
@@ -374,13 +374,13 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.scopes-required'),
+                  message: t('message.scopes-required'),
                 },
               ]}>
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder={t('label.scopes-comma-separated')}
+                placeholder={t('message.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes?.join(',')}
                 onChange={handleOnChange}
               />
@@ -397,7 +397,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.privateKey-required'),
+                  message: t('message.privateKey-required'),
                 },
               ]}>
               <Input.Password
@@ -414,7 +414,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.clientId-required'),
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
@@ -449,7 +449,7 @@ const AuthMechanismForm: FC<Props> = ({
                 {
                   required: true,
                   type: 'email',
-                  message: t('label.service-email-required'),
+                  message: t('message.service-email-required'),
                 },
               ]}>
               <Input
@@ -464,7 +464,7 @@ const AuthMechanismForm: FC<Props> = ({
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder={t('label.scopes-comma-separated')}
+                placeholder={t('message.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes?.join('')}
                 onChange={handleOnChange}
               />
@@ -481,7 +481,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.secretKey-required'),
+                  message: t('message.secretKey-required'),
                 },
               ]}>
               <Input.Password
@@ -498,7 +498,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.clientId-required'),
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
@@ -515,7 +515,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.tokenEndpoint-required'),
+                  message: t('message.tokenEndpoint-required'),
                 },
               ]}>
               <Input
@@ -553,7 +553,7 @@ const AuthMechanismForm: FC<Props> = ({
               required: true,
               validator: () => {
                 if (!authMechanism) {
-                  return Promise.reject(t('label.auth-mechanism-required'));
+                  return Promise.reject(t('message.auth-mechanism-required'));
                 }
 
                 return Promise.resolve();
@@ -581,7 +581,9 @@ const AuthMechanismForm: FC<Props> = ({
                 required: true,
                 validator: () => {
                   if (!tokenExpiry) {
-                    return Promise.reject(t('label.token-expiration-required'));
+                    return Promise.reject(
+                      t('message.token-expiration-required')
+                    );
                   }
 
                   return Promise.resolve();
@@ -651,8 +653,10 @@ const AuthMechanismForm: FC<Props> = ({
           onCancel={() => setIsConfirmationModalOpen(false)}
           onOk={handleAccountEmailChange}>
           <Typography.Text>
-            {BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION} {t('label.for')}{' '}
-            {botData.name} {t('label.bot')}.
+            {t('message.bot-email-confirmation', {
+              email: BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION,
+              botName: botData.name,
+            })}
           </Typography.Text>
         </Modal>
       )}

@@ -80,7 +80,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             key={name}
             label={t('label.sql-query')}
             name={name}
-            tooltip={t('label.queries-failing')}>
+            tooltip={t('label.sql-query-tooltip')}>
             <SchemaEditor
               className="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}

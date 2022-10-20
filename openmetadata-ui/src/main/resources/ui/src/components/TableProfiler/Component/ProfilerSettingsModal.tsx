@@ -201,7 +201,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       onOk={handleSave}>
       <Row gutter={[16, 16]}>
         <Col data-testid="profile-sample-container" span={24}>
-          <p>{t('label.profile-sample')}</p>
+          <p>{t('label.profile-sample-percentage')}</p>
           <div className="tw-px-2 tw-mb-1.5">
             <Row gutter={20}>
               <Col span={20}>
