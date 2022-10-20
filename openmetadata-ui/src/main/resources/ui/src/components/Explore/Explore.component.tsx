@@ -16,14 +16,14 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
-import classNames from 'classnames';
+import { Card, Tabs } from 'antd';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import { isNil, isNumber, lowerCase, noop, omit } from 'lodash';
 import React, { Fragment, useEffect, useRef } from 'react';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
 import { tabsInfo } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { getCountBadge } from '../../utils/CommonUtils';
 import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
@@ -85,80 +85,6 @@ const Explore: React.FC<ExploreProps> = ({
     key
   ) => onChangePostFilter(omit(postFilter, key));
 
-  const SortingElements: React.FC = () => {
-    return (
-      <div className="tw-flex">
-        <SortingDropDown
-          fieldList={tabsInfo[searchIndex].sortingFields}
-          handleFieldDropDown={onChangeSortValue}
-          sortField={sortValue}
-        />
-
-        <div className="tw-flex">
-          {sortOrder === 'asc' ? (
-            <button
-              className="tw-mt-2"
-              onClick={() => onChangeSortOder('desc')}>
-              <FontAwesomeIcon
-                className="tw-text-base tw-text-primary"
-                data-testid="last-updated"
-                icon={faSortAmountUpAlt}
-              />
-            </button>
-          ) : (
-            <button className="tw-mt-2" onClick={() => onChangeSortOder('asc')}>
-              <FontAwesomeIcon
-                className="tw-text-base tw-text-primary"
-                data-testid="last-updated"
-                icon={faSortAmountDownAlt}
-              />
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const Tabs: React.FC = () => (
-    <div className="tw-mb-5 centered-layout">
-      <nav
-        className={classNames(
-          'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
-        )}>
-        <div className="tw-flex">
-          <div>
-            {Object.entries(tabsInfo).map(
-              ([tabSearchIndex, tabDetail], index) => (
-                <button
-                  className={classNames(
-                    `tw-pb-2 tw-px-4 tw-gh-tabs`,
-                    tabSearchIndex === searchIndex && 'active'
-                  )}
-                  data-testid={`${lowerCase(tabDetail.label)}-tab`}
-                  key={index}
-                  onClick={() => {
-                    onChangeSearchIndex(tabSearchIndex as ExploreSearchIndex);
-                  }}>
-                  {tabDetail.label}
-                  <span className="tw-pl-1">
-                    {!isNil(tabCounts)
-                      ? getCountBadge(
-                          tabCounts[tabSearchIndex as ExploreSearchIndex],
-                          '',
-                          tabSearchIndex === searchIndex
-                        )
-                      : getCountBadge()}
-                  </span>
-                </button>
-              )
-            )}
-          </div>
-        </div>
-        <SortingElements />
-      </nav>
-    </div>
-  );
-
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -183,7 +109,65 @@ const Explore: React.FC<ExploreProps> = ({
             </Card>
           </div>
         }>
-        <Tabs />
+        <Tabs
+          defaultActiveKey={lowerCase(tabsInfo[SearchIndex.TABLE].label)}
+          size="small"
+          tabBarExtraContent={
+            <div className="tw-flex">
+              <SortingDropDown
+                fieldList={tabsInfo[searchIndex].sortingFields}
+                handleFieldDropDown={onChangeSortValue}
+                sortField={sortValue}
+              />
+
+              <div className="tw-flex">
+                {sortOrder === 'asc' ? (
+                  <button
+                    className="tw-mt-2"
+                    onClick={() => onChangeSortOder('desc')}>
+                    <FontAwesomeIcon
+                      className="tw-text-base tw-text-primary"
+                      data-testid="last-updated"
+                      icon={faSortAmountUpAlt}
+                    />
+                  </button>
+                ) : (
+                  <button
+                    className="tw-mt-2"
+                    onClick={() => onChangeSortOder('asc')}>
+                    <FontAwesomeIcon
+                      className="tw-text-base tw-text-primary"
+                      data-testid="last-updated"
+                      icon={faSortAmountDownAlt}
+                    />
+                  </button>
+                )}
+              </div>
+            </div>
+          }
+          onChange={(tab) => {
+            tab && onChangeSearchIndex(tab as ExploreSearchIndex);
+          }}>
+          {Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => (
+            <Tabs.TabPane
+              key={tabSearchIndex}
+              tab={
+                <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+                  {tabDetail.label}
+                  <span className="p-l-xs ">
+                    {!isNil(tabCounts)
+                      ? getCountBadge(
+                          tabCounts[tabSearchIndex as ExploreSearchIndex],
+                          '',
+                          tabSearchIndex === searchIndex
+                        )
+                      : getCountBadge()}
+                  </span>
+                </div>
+              }
+            />
+          ))}
+        </Tabs>
         <AdvancedSearch
           jsonTree={advancedSearchJsonTree}
           searchIndex={searchIndex}

@@ -25,7 +25,6 @@ import React, {
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
-import { INITIAL_FROM } from '../../constants/explore.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -65,7 +64,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     try {
       const data = await searchData(
         value,
-        INITIAL_FROM,
+        1,
         PAGE_SIZE,
         '',
         '',
