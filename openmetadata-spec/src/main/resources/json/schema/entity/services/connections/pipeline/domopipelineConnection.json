@@ -1,24 +1,24 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/domodashboardConnection.json",
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/domopipelineConnection.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "DomoDashboardConnection",
-    "description": "Domo Dasboard Connection Config",
+    "title": "DomoPipelineConnection",
+    "description": "Domo Pipeline Connection Config",
     "type": "object",
-    "javaType": "org.openmetadata.schema.services.connections.dashboard.DomoDashboardConnection",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.DomoPipelineConnection",
     "definitions": {
-      "domodashboardType": {
-        "description": " service type",
+      "DomoPipelineType": {
+        "description": "Service type.",
         "type": "string",
-        "enum": ["DomoDashboard"],
-        "default": "DomoDashboard"
+        "enum": ["DomoPipeline"],
+        "default": "DomoPipeline"
       }
     },
     "properties": {
       "type": {
         "title": "Service Type",
         "description": "Service Type",
-        "$ref": "#/definitions/domodashboardType",
-        "default": "DomoDashboard"
+        "$ref": "#/definitions/DomoPipelineType",
+        "default": "DomoPipeline"
       },
       "clientId": {
         "title": "Client ID",
@@ -56,6 +56,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["clientId", "secretToken", "sandboxDomain"]
+    "required": ["clientId","secretToken","sandboxDomain"]
   }
   

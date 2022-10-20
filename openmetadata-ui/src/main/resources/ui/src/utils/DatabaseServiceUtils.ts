@@ -23,6 +23,7 @@ import databricksConnection from '../jsons/connectionSchemas/connections/databas
 import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
 import db2Connection from '../jsons/connectionSchemas/connections/database/db2Connection.json';
 import deltaLakeConnection from '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json';
+import domodatabaseConnection from '../jsons/connectionSchemas/connections/database/domodatabaseConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
@@ -173,6 +174,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.CustomDatabase: {
       schema = customDatabaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.DomoDatabase: {
+      schema = domodatabaseConnection;
 
       break;
     }
