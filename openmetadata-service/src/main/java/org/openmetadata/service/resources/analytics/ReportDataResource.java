@@ -33,10 +33,10 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/analytic/reportData")
-@Api(value = "TestCase collection", tags = "TestCase collection")
+@Api(value = "ReportData collection", tags = "ReportData collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestCases")
+@Collection(name = "ReportData")
 public class ReportDataResource {
   public static final String COLLECTION_PATH = "v1/analytic/reportData";
   @Getter protected final ReportDataRepository dao;
@@ -84,13 +84,13 @@ public class ReportDataResource {
           @QueryParam("reportDataType")
           String reportDataType,
       @Parameter(
-              description = "Filter testCase results after the given start timestamp",
+              description = "Filter reportData results after the given start timestamp",
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
-              description = "Filter testCase results before the given end timestamp",
+              description = "Filter reportData results before the given end timestamp",
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
