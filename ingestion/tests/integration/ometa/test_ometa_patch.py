@@ -14,7 +14,6 @@ OpenMetadata high-level API Table test
 """
 from unittest import TestCase
 
-from ingestion.src.metadata.utils.helpers import find_column_in_table
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -40,6 +39,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import find_column_in_table
 
 
 class OMetaTableTest(TestCase):
@@ -191,3 +191,46 @@ class OMetaTableTest(TestCase):
 
         updated_col = find_column_in_table(column_name="another", table=force_updated)
         assert updated_col.description.__root__ == "Forced new"
+
+    def test_patch_tag(self):
+        """
+        Update table tags
+        """
+
+        updated: Table = self.metadata.patch_tag(
+            entity=Table,
+            entity_id=self.entity_id,
+            tag_fqn="PII.Sensitive",  # Shipped by default
+        )
+        assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
+
+        updated: Table = self.metadata.patch_tag(
+            entity=Table,
+            entity_id=self.entity_id,
+            tag_fqn="Tier.Tier2",  # Shipped by default
+        )
+        assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
+        assert updated.tags[1].tagFQN.__root__ == "Tier.Tier2"
+
+    def test_patch_column_tags(self):
+        """
+        Update column tags
+        """
+        updated: Table = self.metadata.patch_column_tag(
+            entity_id=self.entity_id,
+            tag_fqn="PII.Sensitive",  # Shipped by default
+            column_name="id",
+        )
+        updated_col = find_column_in_table(column_name="id", table=updated)
+
+        assert updated_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
+
+        updated_again: Table = self.metadata.patch_column_tag(
+            entity_id=self.entity_id,
+            tag_fqn="Tier.Tier2",  # Shipped by default
+            column_name="id",
+        )
+        updated_again_col = find_column_in_table(column_name="id", table=updated_again)
+
+        assert updated_again_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
+        assert updated_again_col.tags[1].tagFQN.__root__ == "Tier.Tier2"
