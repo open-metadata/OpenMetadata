@@ -35,12 +35,15 @@
     "table-metrics-summary": "Table Metrics Summary",
     "table-tests-summary": "Table Tests Summary",
     "frequently-joined-columns": "Frequently joined columns",
-    "no-description": "No description",
     "request-tags": "Request tags",
     "update-request-tags": "Update request tags",
     "request-description": "Request description",
     "request-update-description": "Request update description",
-    "enter-column-description": "Enter Column Description"
+    "enter-column-description": "Enter Column Description",
+    "hyper-parameters": "Hyper Parameters",
+    "model-store": "Model Store",
+    "value": "Value",
+    "no-data-available": "No data available"
   },
   "message": {},
   "server": {},

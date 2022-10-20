@@ -282,8 +282,7 @@ export const DBT = {
   tagCategory: 'DBTTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
-  dbtLineageNode1: 'dev.dbt_jaffle.stg_orders',
-  dbtLineageNode2: 'dev.dbt_jaffle.stg_payments',
+  dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
