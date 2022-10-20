@@ -99,7 +99,6 @@ public final class Entity {
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_SUITE = "testSuite";
   public static final String TEST_CASE = "testCase";
-  public static final String REPORT_DEFINITION = "reportDefinition";
 
   //
   // Policy entity
