@@ -38,7 +38,7 @@ export interface IngestionData {
   service: EntityReference;
   scheduleInterval: string;
   ingestionStatuses?: Array<{
-    state: string;
+    pipelineState: string;
     startDate: string;
     endDate: string;
   }>;

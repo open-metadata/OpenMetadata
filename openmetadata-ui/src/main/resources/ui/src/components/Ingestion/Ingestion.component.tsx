@@ -315,13 +315,13 @@ const Ingestion: React.FC<IngestionProps> = ({
       const status =
         i === lastFiveIngestions.length - 1 ? (
           <p
-            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.pipelineState} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
             key={i}>
-            {capitalize(r.state)}
+            {capitalize(r.pipelineState)}
           </p>
         ) : (
           <p
-            className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+            className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.pipelineState} tw-mr-1`}
             key={i}
           />
         );
