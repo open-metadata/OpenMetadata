@@ -25,7 +25,7 @@ import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.ResultList;
 
-class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
+public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
   public static EntityReference botUserRef;
 

@@ -113,7 +113,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class UserResourceTest extends EntityResourceTest<User, CreateUser> {
+public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {

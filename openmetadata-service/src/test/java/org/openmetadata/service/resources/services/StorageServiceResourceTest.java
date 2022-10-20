@@ -31,7 +31,7 @@ import org.openmetadata.service.resources.services.storage.StorageServiceResourc
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
+public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
   public StorageServiceResourceTest() {
     super(Entity.STORAGE_SERVICE, StorageService.class, StorageServiceList.class, "services/storageServices", "owner");
     this.supportsPatch = false;
