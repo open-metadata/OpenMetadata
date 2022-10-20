@@ -27,6 +27,7 @@ interface OwnerWidgetWrapperProps {
   currentUser?: EntityReference;
   allowTeamOwner?: boolean;
   hideWidget: () => void;
+  removeOwner?: () => void;
 }
 
 const OwnerWidgetWrapper = ({
@@ -36,6 +37,7 @@ const OwnerWidgetWrapper = ({
   allowTeamOwner = true,
   currentUser,
   hideWidget,
+  removeOwner,
 }: OwnerWidgetWrapperProps) => {
   const { isAuthDisabled } = useAuthContext();
   const { isAdminUser } = useAuth();
@@ -218,6 +220,7 @@ const OwnerWidgetWrapper = ({
       groupType="tab"
       isLoading={isUserLoading}
       listGroups={getOwnerGroup()}
+      removeOwner={removeOwner}
       showSearchBar={isCurrentUserAdmin()}
       value={owner?.id || ''}
       onSearchTextChange={handleSearchOwnerDropdown}

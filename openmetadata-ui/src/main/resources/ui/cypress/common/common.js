@@ -119,7 +119,8 @@ export const testServiceCreationAndIngestion = (
   addIngestionInput,
   serviceName,
   type = 'database',
-  testIngestionButton = true
+  testIngestionButton = true,
+  configureDBT
 ) => {
   //Storing the created service name and the type of service
   // Select Service in step 1
@@ -185,8 +186,7 @@ export const testServiceCreationAndIngestion = (
   // Configure DBT Model
   if (isDatabaseService(type)) {
     cy.contains('Configure DBT Model').should('be.visible');
-    cy.get('[data-testid="dbt-source"]').should('be.visible').select('');
-
+    configureDBT && configureDBT();
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
   }
 
@@ -449,7 +449,6 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
       cy.get(`[data-testid="${entity}-tab"]`)
         .should('be.visible')
-        .should('have.class', 'active');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
       cy.get(`[data-testid="${serviceName}-${term}"]`)
@@ -711,7 +710,7 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   cy.wait('@customProperties');
-  cy.get('[data-testid="data-row"]').should('contain', propertyName);
+  cy.get('.ant-table-row').should('contain', propertyName);
 
   //Navigating to home page
   cy.clickOnLogo();
@@ -805,7 +804,7 @@ export const editCreatedProperty = (propertyName) => {
   cy.get('.tw-modal-container').should('not.exist');
 
   //Fetching for updated descriptions for the created custom property
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .nextUntil('div')

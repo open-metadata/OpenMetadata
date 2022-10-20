@@ -44,7 +44,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.tags.CreateTag;
 import org.openmetadata.schema.api.tags.CreateTagCategory;
 import org.openmetadata.schema.entity.tags.Tag;
@@ -58,10 +57,8 @@ import org.openmetadata.service.jdbi3.TagCategoryRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -96,28 +93,19 @@ public class TagResource {
   @SuppressWarnings("unused") // Method used by reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    List<String> tagFiles = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");
-    tagFiles.forEach(
-        tagFile -> {
-          try {
-            LOG.info("Loading tag definitions from file {}", tagFile);
-            String tagJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), tagFile);
-            tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
-            TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
-            long now = System.currentTimeMillis();
-            tagCategory.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-            tagCategory
-                .getChildren()
-                .forEach(
-                    t -> {
-                      t.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-                      t.getChildren().forEach(c -> c.withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now));
-                    });
-            daoCategory.initCategory(tagCategory);
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the tag files {}", tagFile, e);
-          }
-        });
+    List<TagCategory> tagCategories = dao.getEntitiesFromSeedData(".*json/data/tags/.*\\.json$", TagCategory.class);
+    for (TagCategory tagCategory : tagCategories) {
+      long now = System.currentTimeMillis();
+      tagCategory.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
+      tagCategory
+          .getChildren()
+          .forEach(
+              t -> {
+                t.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
+                t.getChildren().forEach(c -> c.withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now));
+              });
+      daoCategory.initCategory(tagCategory);
+    }
   }
 
   static final String FIELDS = "usageCount";

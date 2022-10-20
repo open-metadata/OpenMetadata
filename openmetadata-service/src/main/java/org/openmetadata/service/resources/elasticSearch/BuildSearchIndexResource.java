@@ -3,7 +3,6 @@ package org.openmetadata.service.resources.elasticSearch;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEAM;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -32,6 +31,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
@@ -185,7 +185,7 @@ public class BuildSearchIndexResource {
           try {
             this.submitBatchJob(uriInfo, startedBy, createRequest);
           } catch (IOException e) {
-            throw new RuntimeException(e);
+            LOG.error("Reindexing Batch Job error", e);
           }
         });
     return Response.status(Response.Status.OK).entity("Reindexing Started").build();
@@ -229,7 +229,7 @@ public class BuildSearchIndexResource {
         dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_BATCH, ELASTIC_SEARCH_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
     long originalLastUpdate = lastRecord.getTimestamp();
-    lastRecord.setStatus(EventPublisherJob.Status.ACTIVE);
+    lastRecord.setStatus(EventPublisherJob.Status.STARTING);
     lastRecord.setStats(new Stats().withFailed(0).withTotal(0).withSuccess(0));
     lastRecord.setTimestamp(updateTime);
     lastRecord.setEntities(createRequest.getEntities());
@@ -246,7 +246,11 @@ public class BuildSearchIndexResource {
         getBulkProcessor(bulkProcessorListener, createRequest.getBatchSize(), createRequest.getFlushIntervalInSec());
 
     for (String entityName : createRequest.getEntities()) {
-      updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
+      try {
+        updateEntityBatch(processor, bulkProcessorListener, uriInfo, entityName, createRequest);
+      } catch (Exception ex) {
+        LOG.error("Reindexing intermittent failure for entityType : {}", entityName, ex);
+      }
     }
   }
 
@@ -257,6 +261,7 @@ public class BuildSearchIndexResource {
       String entityType,
       CreateEventPublisherJob createRequest) {
     listener.allowTotalRequestUpdate();
+
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
 
@@ -292,7 +297,13 @@ public class BuildSearchIndexResource {
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
-      LOG.error("Failed in listing all Entities of type : {}", entityType);
+      LOG.error("Failed in listing all Entities of type : {}, Reason : ", entityType, ex);
+      FailureDetails failureDetails =
+          new FailureDetails()
+              .withContext(String.format("%s:Failure in fetching Data", entityType))
+              .withLastFailedReason(
+                  String.format("Failed in listing all Entities \n Reason : %s", ExceptionUtils.getStackTrace(ex)));
+      listener.updateElasticSearchStatus(EventPublisherJob.Status.IDLE, failureDetails, null);
     }
   }
 
@@ -328,7 +339,7 @@ public class BuildSearchIndexResource {
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
-      LOG.error("Failed in listing all Entities of type : {}", entityType);
+      LOG.error("Failed in listing all Entities of type : {}, Reason {}", entityType, ex);
     }
   }
 
@@ -336,13 +347,15 @@ public class BuildSearchIndexResource {
       ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
       BulkProcessor bulkProcessor,
       String entityType,
-      List<EntityInterface> entities)
-      throws IOException {
+      List<EntityInterface> entities) {
     for (EntityInterface entity : entities) {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
       }
-      bulkProcessor.add(getUpdateRequest(indexType, entityType, entity));
+      UpdateRequest request = getUpdateRequest(indexType, entityType, entity);
+      if (request != null) {
+        bulkProcessor.add(request);
+      }
     }
   }
 
@@ -380,14 +393,18 @@ public class BuildSearchIndexResource {
   }
 
   private UpdateRequest getUpdateRequest(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, EntityInterface entity)
-      throws JsonProcessingException {
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-    updateRequest.doc(
-        JsonUtils.pojoToJson(
-            Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
-        XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    return updateRequest;
+      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, EntityInterface entity) {
+    try {
+      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      updateRequest.doc(
+          JsonUtils.pojoToJson(
+              Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
+          XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      return updateRequest;
+    } catch (Exception ex) {
+      LOG.error("Failed in creating update Request for indexType : {}, entityType: {}", indexType, entityType, ex);
+    }
+    return null;
   }
 }

@@ -18,6 +18,7 @@ import { isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { GROUP_TEAM_TYPE_CHANGE_MSG } from '../../../constants/HelperTextUtil';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -33,6 +34,7 @@ import './EntitySummaryDetails.style.less';
 export interface GetInfoElementsProps {
   data: ExtraInfo;
   updateOwner?: (value: Table['owner']) => void;
+  removeOwner?: () => void;
   tier?: TagLabel;
   currentTier?: string;
   teamType?: TeamType;
@@ -40,6 +42,8 @@ export interface GetInfoElementsProps {
   isGroupType?: boolean;
   updateTier?: (value: string) => void;
   updateTeamType?: (type: TeamType) => void;
+  currentOwner?: Dashboard['owner'];
+  removeTier?: () => void;
 }
 
 const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
@@ -68,9 +72,12 @@ const EntitySummaryDetails = ({
   tier,
   teamType,
   showGroupOption,
+  removeOwner,
   updateOwner,
   updateTier,
   updateTeamType,
+  removeTier,
+  currentOwner,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const displayVal = data.placeholderText || data.value;
@@ -150,6 +157,7 @@ const EntitySummaryDetails = ({
                 overlay={
                   <TierCard
                     currentTier={tier?.tagFQN}
+                    removeTier={removeTier}
                     updateTier={updateTier}
                   />
                 }
@@ -213,19 +221,6 @@ const EntitySummaryDetails = ({
                 rel="noopener noreferrer"
                 target={data.openInNewTab ? '_blank' : '_self'}>
                 {displayVal}
-                {isEntityDetails && (
-                  <InfoIcon
-                    content={
-                      displayVal
-                        ? `This Entity is Owned by ${displayVal} ${
-                            !isUndefined(userDetails)
-                              ? `and followed team owned by ${userDetails.ownerName}`
-                              : ''
-                          }`
-                        : ''
-                    }
-                  />
-                )}
                 {data.openInNewTab && (
                   <>
                     &nbsp;
@@ -238,6 +233,21 @@ const EntitySummaryDetails = ({
                   </>
                 )}
               </a>
+
+              {isEntityDetails && !isUndefined(userDetails) ? (
+                <InfoIcon
+                  content={
+                    displayVal
+                      ? `This Entity is Owned by ${displayVal} ${
+                          !isUndefined(userDetails)
+                            ? `and followed team owned by ${userDetails.ownerName}`
+                            : ''
+                        }`
+                      : ''
+                  }
+                />
+              ) : null}
+
               {(isOwner || isTier) && (
                 <span
                   data-testid={`edit-${data.key}-icon`}
@@ -284,6 +294,7 @@ const EntitySummaryDetails = ({
                 overlay={
                   <TierCard
                     currentTier={tier?.tagFQN}
+                    removeTier={removeTier}
                     updateTier={updateTier}
                   />
                 }
@@ -328,7 +339,9 @@ const EntitySummaryDetails = ({
         </>
       )}
       <OwnerWidgetWrapper
+        currentUser={currentOwner}
         hideWidget={() => setShow(false)}
+        removeOwner={removeOwner}
         updateUser={updateOwner}
         visible={show}
       />

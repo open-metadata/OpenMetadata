@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -52,7 +53,10 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
         if (bulkItemResponse.isFailed()) {
           BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
           failureDetails.setLastFailedReason(
-              String.format("ID [%s]. Reason : %s", failure.getId(), failure.getMessage()));
+              String.format(
+                  "Index Type: [%s], Reason: [%s] \n Trace : [%s]",
+                  failure.getIndex(), failure.getMessage(), ExceptionUtils.getStackTrace(failure.getCause())));
+          failureDetails.setContext(String.format("Entities Info : \n ID : [%s] ", failure.getId()));
           failedCount++;
           batchHasFailures = true;
         }
@@ -77,7 +81,11 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
     Stats stats = new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount).withTotal(totalRequests);
     FailureDetails hasFailureDetails =
         new FailureDetails()
-            .withLastFailedReason(String.format("Batch Failed Completely. Reason : %s ", throwable.getMessage()));
+            .withContext(String.format("Bulk Requests : [%s] ", bulkRequest.getDescription()))
+            .withLastFailedReason(
+                String.format(
+                    "Batch Failed Completely. \n Reason : [%s] \n Trace : [%s] ",
+                    throwable.getMessage(), ExceptionUtils.getStackTrace(throwable)));
     updateElasticSearchStatus(status, hasFailureDetails, stats);
   }
 
@@ -119,7 +127,10 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
       lastRecord.setTimestamp(updateTime);
       if (failDetails != null) {
         lastRecord.setFailureDetails(
-            new FailureDetails().withLastFailedAt(updateTime).withLastFailedReason(failDetails.getLastFailedReason()));
+            new FailureDetails()
+                .withContext(failDetails.getContext())
+                .withLastFailedAt(updateTime)
+                .withLastFailedReason(failDetails.getLastFailedReason()));
       }
       lastRecord.setStats(newStats);
       dao.entityExtensionTimeSeriesDao()
