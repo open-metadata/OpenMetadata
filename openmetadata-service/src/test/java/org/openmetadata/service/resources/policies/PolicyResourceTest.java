@@ -243,7 +243,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       assertResponse(
           () -> deleteEntity(policy.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(policy.getName(), Entity.POLICY));
+          CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, policy.getName()));
     }
   }
 

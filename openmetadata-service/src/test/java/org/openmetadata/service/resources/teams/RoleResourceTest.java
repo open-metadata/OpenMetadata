@@ -142,7 +142,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       assertResponse(
           () -> deleteEntity(role.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(role.getName(), Entity.ROLE));
+          CatalogExceptionMessage.deletionNotAllowed(Entity.ROLE, role.getName()));
     }
   }
 
