@@ -30,6 +30,7 @@ export enum GlobalSettingsMenuCategory {
   INTEGRATIONS = 'integrations',
   MEMBERS = 'members',
   SERVICES = 'services',
+  ANALYTICS = 'analytics',
 }
 
 export enum GlobalSettingOptions {
@@ -51,6 +52,7 @@ export enum GlobalSettingOptions {
   TEST_SUITE = 'testSuite',
   ACTIVITY_FEED = 'activityFeed',
   ELASTIC_SEARCH = 'elasticSearch',
+  DATA_INSIGHT = 'dataInsight',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

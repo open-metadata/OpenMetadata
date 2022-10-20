@@ -86,6 +86,10 @@ const ElasticSearchIndexPage = withSuspenseFallback(
   )
 );
 
+const DataInsightPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/DataInsightPage/DataInsightPage.component'))
+);
+
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -275,6 +279,14 @@ const GlobalSettingRouter = () => {
         )}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
+        )}
+      />
+      <Route
+        exact
+        component={DataInsightPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ANALYTICS,
+          GlobalSettingOptions.DATA_INSIGHT
         )}
       />
     </Switch>
