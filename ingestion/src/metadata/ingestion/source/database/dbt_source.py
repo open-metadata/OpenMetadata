@@ -332,8 +332,7 @@ class DBTMixin:
             try:
                 service_database_schema_table = fqn.split(data_model_name)
                 target_table_fqn = ".".join(service_database_schema_table[1:])
-                create_statement = f"create table {target_table_fqn} as"
-                query = f"{create_statement} {data_model.sql.__root__}"
+                query = f"create table {target_table_fqn} as {data_model.sql.__root__}"
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
