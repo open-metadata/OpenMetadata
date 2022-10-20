@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
@@ -31,9 +37,13 @@ import {
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getMlmodels } from '../../axiosAPIs/mlModelAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
-import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
+import {
+  getServiceByFQN,
+  TestConnection,
+  updateService,
+} from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
-import { Button } from '../../components/buttons/Button/Button';
+import { Button as LegacyButton } from '../../components/buttons/Button/Button';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import Description from '../../components/common/description/Description';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
@@ -91,14 +101,16 @@ import {
   getResourceEntityFromServiceCategory,
   getServiceCategoryFromType,
   getServiceRouteFromServiceType,
+  getTestConnectionType,
   servicePageTabs,
   serviceTypeLogo,
   setServiceSchemaCount,
   setServiceTableCount,
+  shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 export type ServicePageData = Database | Topic | Dashboard;
 
@@ -138,6 +150,13 @@ const ServicePage: FunctionComponent = () => {
   const [deleteWidgetVisible, setDeleteWidgetVisible] = useState(false);
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const [isTestingConnection, setIsTestingConnection] =
+    useState<boolean>(false);
+
+  const allowTestConn = useMemo(() => {
+    return shouldTestConnection(serviceType);
+  }, [serviceType]);
 
   const fetchServicePermission = async () => {
     setIsLoading(true);
@@ -683,6 +702,34 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const checkTestConnect = async () => {
+    if (connectionDetails) {
+      setIsTestingConnection(true);
+      try {
+        const response = await TestConnection(
+          connectionDetails,
+          getTestConnectionType(serviceCategory as ServiceCategory)
+        );
+        // This api only responds with status 200 on success
+        // No data sent on api success
+        if (response.status === 200) {
+          showSuccessToast(
+            jsonData['api-success-messages']['test-connection-success']
+          );
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          jsonData['api-error-messages']['test-connection-error']
+        );
+      } finally {
+        setIsTestingConnection(false);
+      }
+    }
+  };
+
   useEffect(() => {
     setServiceName(
       (serviceCategory as ServiceTypes) ||
@@ -964,7 +1011,7 @@ const ServicePage: FunctionComponent = () => {
                         ? 'Delete'
                         : NO_PERMISSION_FOR_ACTION
                     }>
-                    <Button
+                    <LegacyButton
                       data-testid="service-delete"
                       disabled={!servicePermission.Delete}
                       size="small"
@@ -978,7 +1025,7 @@ const ServicePage: FunctionComponent = () => {
                         width={14}
                       />
                       Delete
-                    </Button>
+                    </LegacyButton>
                   </Tooltip>
                   <DeleteWidgetModal
                     isRecursiveDelete
@@ -1130,7 +1177,7 @@ const ServicePage: FunctionComponent = () => {
 
                     {activeTab === 3 && (
                       <>
-                        <div className="tw-my-4 tw-flex tw-justify-end">
+                        <Space className="w-full my-4 justify-end">
                           <Tooltip
                             title={
                               servicePermission.EditAll
@@ -1138,19 +1185,35 @@ const ServicePage: FunctionComponent = () => {
                                 : NO_PERMISSION_FOR_ACTION
                             }>
                             <Button
-                              className={classNames(
-                                'tw-h-8 tw-rounded tw-px-4 tw-py-1'
-                              )}
-                              data-testid="add-new-service-button"
+                              ghost
+                              data-testid="edit-connection-button"
                               disabled={!servicePermission.EditAll}
-                              size="small"
-                              theme="primary"
-                              variant="outlined"
+                              type="primary"
                               onClick={handleEditConnection}>
                               Edit Connection
                             </Button>
                           </Tooltip>
-                        </div>
+                          {allowTestConn && isAirflowRunning && (
+                            <Tooltip
+                              title={
+                                servicePermission.EditAll
+                                  ? 'Test Connection'
+                                  : NO_PERMISSION_FOR_ACTION
+                              }>
+                              <Button
+                                data-testid="test-connection-button"
+                                disabled={
+                                  !servicePermission.EditAll ||
+                                  isTestingConnection
+                                }
+                                loading={isTestingConnection}
+                                type="primary"
+                                onClick={checkTestConnect}>
+                                Test Connection
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </Space>
                         <ServiceConnectionDetails
                           connectionDetails={connectionDetails || {}}
                           serviceCategory={serviceCategory}

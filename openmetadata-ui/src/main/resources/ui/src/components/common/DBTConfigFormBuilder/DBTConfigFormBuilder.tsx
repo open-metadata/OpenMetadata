@@ -57,12 +57,16 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtCloudAccountId={dbtConfig.dbtCloudAccountId}
         dbtCloudAuthToken={dbtConfig.dbtCloudAuthToken}
+        dbtCloudProjectId={dbtConfig.dbtCloudProjectId}
         dbtUpdateDescriptions={dbtConfig.dbtUpdateDescriptions}
         handleCloudAccountIdChange={(val) => {
           updateDbtConfig('dbtCloudAccountId', val);
         }}
         handleCloudAuthTokenChange={(val) => {
           updateDbtConfig('dbtCloudAuthToken', val);
+        }}
+        handleDbtCloudProjectId={(val) => {
+          updateDbtConfig('dbtCloudProjectId', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);

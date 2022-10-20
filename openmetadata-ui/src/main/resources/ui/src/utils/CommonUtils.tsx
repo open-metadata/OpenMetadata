@@ -12,10 +12,11 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover, Space, Tag } from 'antd';
+import { Popover, Space, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import i18n from 'i18next';
 import {
   capitalize,
   differenceWith,
@@ -45,6 +46,7 @@ import {
   getDayCron,
   getHourCron,
 } from '../components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PopOver from '../components/common/popover/PopOver';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -60,6 +62,7 @@ import {
   UrlEntityCharRegEx,
   validEmailRegEx,
 } from '../constants/regex.constants';
+import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { Bot } from '../generated/entity/bot';
@@ -1042,6 +1045,16 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
     default:
       return getDayCron(value);
   }
+};
+
+export const getEmptyPlaceholder = () => {
+  return (
+    <ErrorPlaceHolder size={SIZE.MEDIUM}>
+      <Typography.Paragraph>
+        {i18n.t('label.no-data-available')}
+      </Typography.Paragraph>
+    </ErrorPlaceHolder>
+  );
 };
 
 //  return the status like loading and success
