@@ -16,6 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
+import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -148,15 +149,15 @@ export const getPipelineServiceHostIp = async () => {
   return response.data;
 };
 
-export const getIngestionPipelineLogById = (
-  id: string,
-  after?: string
-): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/ingestionPipelines/logs/${id}/last`, {
-    params: {
-      after,
-    },
-  });
+export const getIngestionPipelineLogById = (id: string, after?: string) => {
+  return APIClient.get<IngestionPipelineLogByIdInterface>(
+    `/services/ingestionPipelines/logs/${id}/last`,
+    {
+      params: {
+        after,
+      },
+    }
+  );
 };
 
 export const postkillIngestionPipelineById = (

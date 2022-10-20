@@ -583,7 +583,6 @@ const Ingestion: React.FC<IngestionProps> = ({
                               ingestion?.name ||
                               ''
                           )}
-                          target="_blank"
                           type="link"
                           onClick={() => {
                             setSelectedPipeline(ingestion);

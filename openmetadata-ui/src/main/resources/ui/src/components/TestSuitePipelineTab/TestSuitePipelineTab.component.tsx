@@ -499,7 +499,6 @@ const TestSuitePipelineTab = () => {
                       record.service?.name || '',
                       record.fullyQualifiedName || ''
                     )}
-                    target="_blank"
                     type="link"
                     onClick={() => {
                       setSelectedPipeline(record);

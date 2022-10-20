@@ -12,7 +12,7 @@
  */
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import React, {
   Fragment,
@@ -38,10 +38,7 @@ import { getIngestionStatuses } from '../../utils/CommonUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
-import {
-  IngestionPipelineLogByIdInterface,
-  LogViewerParams,
-} from './LogsViewer.interfaces';
+import { LogViewerParams } from './LogsViewer.interfaces';
 import './LogsViewer.style.less';
 
 const LogsViewer = () => {
@@ -59,10 +56,10 @@ const LogsViewer = () => {
     pipelineType?: PipelineType
   ) => {
     try {
-      const res = (await getIngestionPipelineLogById(
+      const res = await getIngestionPipelineLogById(
         ingestionId || ingestionDetails?.id || '',
         paging?.total !== paging?.after ? paging?.after : ''
-      )) as AxiosResponse<IngestionPipelineLogByIdInterface>;
+      );
 
       if (res.data.after && res.data.total) {
         setPaging({
@@ -211,100 +208,93 @@ const LogsViewer = () => {
     <Loader />
   ) : (
     <div className="m-xs ">
-      {' '}
-      <div>
-        <Space
-          align="start"
-          className="w-full m-md m-t-xs"
-          direction="vertical">
-          <Space align="center">
-            <TitleBreadcrumb
-              titleLinks={getLogBreadCrumbs(
-                logEntityType,
-                ingestionName,
-                ingestionDetails
-              )}
-            />
-          </Space>
-          <Space>
-            <div>
-              <Typography.Title level={5}>
-                {ingestionDetails?.name}
-              </Typography.Title>
-            </div>
-          </Space>
+      <Space align="start" className="w-full m-md m-t-xs" direction="vertical">
+        <Space align="center">
+          <TitleBreadcrumb
+            titleLinks={getLogBreadCrumbs(
+              logEntityType,
+              ingestionName,
+              ingestionDetails
+            )}
+          />
         </Space>
+        <Space>
+          <Typography.Title level={5}>
+            {ingestionDetails?.name}
+          </Typography.Title>
+        </Space>
+      </Space>
 
-        <Card className="h-full p-0 log-card">
-          {!isEmpty(logs) ? (
-            <Row>
-              <Col className="p-md" span={18}>
-                <Row className="relative">
-                  <Col span={24}>
-                    <Row justify="end">
-                      <div className="flex m-b-md">
-                        <Button
-                          ghost
-                          data-testid="jump-to-end-button"
-                          type="primary"
-                          onClick={handleJumpToEnd}>
-                          {t('label.jump-to-end')}
-                        </Button>
+      <Card className="h-full p-0 log-card">
+        {!isEmpty(logs) ? (
+          <Row>
+            <Col className="p-md" span={18}>
+              <Row className="relative" gutter={[16, 16]}>
+                <Col span={24}>
+                  <Row justify="end">
+                    <Col>
+                      <Button
+                        ghost
+                        data-testid="jump-to-end-button"
+                        type="primary"
+                        onClick={handleJumpToEnd}>
+                        {t('label.jump-to-end')}
+                      </Button>
+                    </Col>
+                    <Col>
+                      <CopyToClipboardButton copyText={logs} />
+                    </Col>
+                  </Row>
+                </Col>
+                <Col
+                  className="h-min-80 lazy-log-container"
+                  data-testid="lazy-log"
+                  span={24}>
+                  <LazyLog
+                    caseInsensitive
+                    enableSearch
+                    selectableLines
+                    extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                    text={logs}
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col span={6}>
+              <Card className="h-full" data-testid="summary-card">
+                <Space className="p-md w-full" direction="vertical">
+                  <Typography.Title level={5}>
+                    {t('label.summary')}
+                  </Typography.Title>
 
-                        <CopyToClipboardButton copyText={logs} />
-                      </div>
+                  <div>
+                    <Typography.Text type="secondary">
+                      {t('label.basic-configuration')}
+                    </Typography.Text>
+
+                    <Row className="m-t-xs" gutter={[8, 8]}>
+                      {Object.entries(logSummaries).map(([key, value]) => {
+                        return (
+                          <Fragment key={key}>
+                            <Col className="summary-key" span={12}>
+                              {key}
+                            </Col>
+                            <Col className="flex" span={12}>
+                              {value}
+                            </Col>
+                          </Fragment>
+                        );
+                      })}
                     </Row>
-                  </Col>
-                  <Col
-                    className="h-min-80 lazy-log-container"
-                    data-testid="lazy-log"
-                    span={24}>
-                    <LazyLog
-                      caseInsensitive
-                      enableSearch
-                      selectableLines
-                      extraLines={1} // 1 is to be add so that linux users can see last line of the log
-                      text={logs}
-                    />
-                  </Col>
-                </Row>
-              </Col>
-              <Col span={6}>
-                <Card className="h-full" data-testid="summary-card">
-                  <Space className="p-md w-full" direction="vertical">
-                    <Typography.Title level={5}>
-                      {t('label.summary')}
-                    </Typography.Title>
-
-                    <div>
-                      <Typography.Text type="secondary">
-                        {t('label.basic-configuration')}
-                      </Typography.Text>
-
-                      <Row className="m-t-xs" gutter={[8, 8]}>
-                        {Object.entries(logSummaries).map(([key, value]) => {
-                          return (
-                            <Fragment key={key}>
-                              <Col className="summary-key" span={12}>
-                                {key}
-                              </Col>
-                              <Col className="flex" span={12}>
-                                {value}
-                              </Col>
-                            </Fragment>
-                          );
-                        })}
-                      </Row>
-                    </div>
-                  </Space>
-                </Card>
-              </Col>
-            </Row>
-          ) : (
-            <LogViewerSkeleton />
-          )}
-        </Card>
-      </div>
+                  </div>
+                </Space>
+              </Card>
+            </Col>
+          </Row>
+        ) : (
+          <LogViewerSkeleton />
+        )}
+      </Card>
     </div>
   );
 };
