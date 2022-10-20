@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { LoadingStatus } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import Loader from '../Loader/Loader';
 import CustomControls, { ControlButton } from './CustomControls.component';
 import { CustomControlElementsProps } from './EntityLineage.interface';
 
@@ -28,37 +27,34 @@ const CustomControlElements = ({
   loading,
   status,
 }: CustomControlElementsProps) => {
+  const getLoadingStatus = useCallback(() => {
+    const editIcon = (
+      <SVGIcons
+        alt="icon-edit-lineag"
+        className="m--t-xss"
+        icon={isEditMode ? 'icon-edit-lineage' : 'icon-edit-lineage-color'}
+        width="14"
+      />
+    );
+
+    return LoadingStatus(editIcon, loading, status);
+  }, [loading, status, isEditMode]);
+
   return (
     <CustomControls
-      className="tw-absolute tw-top-1 tw-right-3 tw-bottom-full tw-ml-4 tw-mt-4"
+      className="absolute top-1 right-3 bottom-full m-l-md m-t-md"
       fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
       {!deleted && (
         <ControlButton
-          className={classNames(
-            'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg',
-            {
-              'tw-bg-primary': isEditMode,
-              'tw-bg-primary-hover-lite': !isEditMode,
-            }
-          )}
+          className={classNames('h-9 w-9 rounded-full p-x-xss tw-shadow-lg', {
+            'bg-primary': isEditMode,
+            'bg-primary-hover-lite': !isEditMode,
+          })}
           data-testid="edit-lineage"
           disabled={!hasEditAccess}
           title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
           onClick={onClick}>
-          {loading ? (
-            <Loader size="small" type="white" />
-          ) : status === 'success' ? (
-            <FontAwesomeIcon className="tw-text-white" icon="check" />
-          ) : (
-            <SVGIcons
-              alt="icon-edit-lineag"
-              className="tw--mt-1"
-              icon={
-                !isEditMode ? 'icon-edit-lineage-color' : 'icon-edit-lineage'
-              }
-              width="14"
-            />
-          )}
+          {getLoadingStatus()}
         </ControlButton>
       )}
     </CustomControls>

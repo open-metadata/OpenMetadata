@@ -97,3 +97,9 @@ export interface CustomControlElementsProps {
   loading: boolean;
   status: LoadingState;
 }
+
+export enum EdgeTypeEnum {
+  UP_STREAM = 'upstream',
+  DOWN_STREAM = 'downstream',
+  NO_STREAM = '',
+}
