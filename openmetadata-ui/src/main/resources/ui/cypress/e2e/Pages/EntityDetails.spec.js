@@ -31,7 +31,7 @@ describe('Entity Details Page', () => {
   });
 
   const deleteEntity = (value) => {
-    const singuler = value.entity.slice(0, -1);
+    const singular = value.entity.slice(0, -1);
     // search for the term and redirect to the respective entity tab
 
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
@@ -51,7 +51,7 @@ describe('Entity Details Page', () => {
       .as('deleteBtn');
 
     cy.get('[data-testid="hard-delete-option"]')
-      .should('contain', `Permanently Delete ${singuler} “${value.term}”`)
+      .should('contain', `Permanently Delete ${singular} “${value.term}”`)
       .should('be.visible')
       .as('permanentDelete');
 
@@ -83,7 +83,7 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="message-container"]')
       .first()
       .scrollIntoView()
-      .contains(`Deleted ${singuler}`)
+      .contains(`Deleted ${singular}`)
       .should('be.visible');
 
     // data not found should be visible while redirecting to the deleted entity details page
@@ -92,7 +92,7 @@ describe('Entity Details Page', () => {
       const fqn = loc.split('/').pop();
       cy.get('.Toastify__toast-body > :nth-child(2)')
         .should('be.visible')
-        .should('contain', `${singuler} instance for ${fqn} not found`);
+        .should('contain', `${singular} instance for ${fqn} not found`);
 
       cy.get('.Toastify__close-button > svg')
         .first()
@@ -100,7 +100,7 @@ describe('Entity Details Page', () => {
         .click();
       cy.get('[data-testid="no-data-image"]').should('be.visible');
       cy.contains(
-        `${Cypress._.startCase(singuler)} instance for ${fqn} not found`
+        `${Cypress._.startCase(singular)} instance for ${fqn} not found`
       ).should('be.visible');
     });
     cy.clickOnLogo();
@@ -279,26 +279,19 @@ describe('Entity Details Page', () => {
   };
 
   it('Add Owner and Tier for entity', () => {
-    Object.values(DELETE_ENTITY).forEach((value) => {
-      addOwnerAndTier(value);
-    });
+    
+    addOwnerAndTier(DELETE_ENTITY.table);
   });
 
   it('Remove Owner and Tier for entity', () => {
-    Object.values(DELETE_ENTITY).forEach((value) => {
-      removeOwnerAndTier(value);
-    });
+    removeOwnerAndTier(DELETE_ENTITY.table);
   });
 
   it('Add and check active announcement for the entity', () => {
-    Object.values(DELETE_ENTITY).forEach((value) => {
-      addAnnouncement(value);
-    });
+    addAnnouncement(DELETE_ENTITY.table);
   });
 
   it('Delete entity flow should work properly', () => {
-    Object.values(DELETE_ENTITY).forEach((value) => {
-      deleteEntity(value);
-    });
+    deleteEntity(DELETE_ENTITY.table);
   });
 });
