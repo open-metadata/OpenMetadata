@@ -61,7 +61,7 @@ interface SummaryCardContentProps {
   name: string;
 }
 
-const Execution = ({ pipelineFQN }: ExecutionProps) => {
+const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
   const { t } = useTranslation();
 
   const listViewLabel = t('label.list');
@@ -314,4 +314,4 @@ const Execution = ({ pipelineFQN }: ExecutionProps) => {
   );
 };
 
-export default Execution;
+export default ExecutionsTab;

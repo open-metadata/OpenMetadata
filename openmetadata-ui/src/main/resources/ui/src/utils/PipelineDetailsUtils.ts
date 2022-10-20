@@ -33,6 +33,11 @@ export const pipelineDetailsTabs = [
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
+    name: 'Executions',
+    path: 'executions',
+    field: TabSpecificField.EXECUTIONS,
+  },
+  {
     name: 'Lineage',
     path: 'lineage',
     field: TabSpecificField.LINEAGE,

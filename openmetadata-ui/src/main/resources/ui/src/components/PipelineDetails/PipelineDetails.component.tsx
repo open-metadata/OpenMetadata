@@ -52,13 +52,12 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import Execution from '../Execution/Execution.component';
+import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
@@ -121,15 +120,13 @@ const PipelineDetails = ({
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-  const [selectedExecution, setSelectedExecution] = useState<PipelineStatus>(
-    () => {
-      if (pipelineStatus) {
-        return pipelineStatus;
-      } else {
-        return {} as PipelineStatus;
-      }
+  const [selectedExecution] = useState<PipelineStatus>(() => {
+    if (pipelineStatus) {
+      return pipelineStatus;
+    } else {
+      return {} as PipelineStatus;
     }
-  );
+  });
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -519,17 +516,6 @@ const PipelineDetails = ({
                       </div>
                     )}
                   </div>
-                  <hr className="tw-my-3" />
-                  <div className="tw-px-6">
-                    <PipelineStatusList
-                      pipelineFQN={pipelineFQN}
-                      pipelineStatus={pipelineStatus}
-                      selectedExec={selectedExecution}
-                      onSelectExecution={(exec) => {
-                        setSelectedExecution(exec);
-                      }}
-                    />
-                  </div>
                 </>
               )}
               {activeTab === 2 && (
@@ -551,11 +537,7 @@ const PipelineDetails = ({
                   <div />
                 </div>
               )}
-              {activeTab === 3 && (
-                <div className="w-full h-full">
-                  <Execution pipelineFQN={pipelineFQN} />
-                </div>
-              )}
+              {activeTab === 3 && <ExecutionsTab pipelineFQN={pipelineFQN} />}
               {activeTab === 4 && (
                 <div className="tw-h-full tw-px-3">
                   <EntityLineageComponent
