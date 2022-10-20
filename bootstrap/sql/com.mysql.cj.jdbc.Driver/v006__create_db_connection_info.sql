@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS web_analytic_event (
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     UNIQUE(name),
-    INDEX name_index (name),
+    INDEX name_index (name)
 );
