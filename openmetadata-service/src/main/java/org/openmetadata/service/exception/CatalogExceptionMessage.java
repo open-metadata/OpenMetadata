@@ -175,7 +175,7 @@ public final class CatalogExceptionMessage {
     return String.format("Failed to evaluate - %s", message);
   }
 
-  public static String deletionNotAllowed(String entityType, String name) {
-    return String.format("Deletion of %s %s is not allowed", entityType, name);
+  public static String systemEntityDeleteNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
   }
 }

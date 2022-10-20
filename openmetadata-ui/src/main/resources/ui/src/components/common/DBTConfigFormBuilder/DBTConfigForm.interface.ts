@@ -35,7 +35,10 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
 
 export type DbtConfigCloud = Pick<
   DbtConfigSource,
-  'dbtCloudAccountId' | 'dbtCloudAuthToken' | 'dbtUpdateDescriptions'
+  | 'dbtCloudAccountId'
+  | 'dbtCloudAuthToken'
+  | 'dbtUpdateDescriptions'
+  | 'dbtCloudProjectId'
 >;
 
 export type DbtConfigLocal = Pick<

@@ -1,0 +1,10 @@
+{
+  "name": "quality-bot",
+  "description": "Bot used for running quality tests.",
+  "fullyQualifiedName": "quality-bot",
+  "botUser": {
+    "name" : "quality-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}
