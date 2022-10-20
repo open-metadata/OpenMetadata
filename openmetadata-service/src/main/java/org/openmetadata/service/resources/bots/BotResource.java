@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.bots;
 
+import static org.openmetadata.service.security.DefaultAuthorizer.user;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,14 +47,16 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -62,9 +66,12 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 @Path("/v1/bots")
 @Api(value = "Bot collection", tags = "Bot collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -75,6 +82,23 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   public BotResource(CollectionDAO dao, Authorizer authorizer) {
     super(Bot.class, new BotRepository(dao), authorizer);
+  }
+
+  @SuppressWarnings("unused") // Method is used by reflection
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    // Load system bots
+    List<Bot> bots = dao.getEntitiesFromSeedData();
+    String domain = SecurityUtil.getDomain(config);
+    for (Bot bot : bots) {
+      String userName = bot.getBotUser().getName();
+      User user = user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
+      user = DefaultAuthorizer.addOrUpdateBotUser(user, config);
+      bot.withId(UUID.randomUUID())
+          .withBotUser(user.getEntityReference())
+          .withUpdatedBy(userName)
+          .withUpdatedAt(System.currentTimeMillis());
+      dao.initializeEntity(bot);
+    }
   }
 
   @Override
@@ -265,10 +289,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     Bot bot = getBot(securityContext, create);
     Response response = createOrUpdate(uriInfo, securityContext, bot, false);
     // ensures the secrets' manager store the credentials even when the botUser does not change
+    // TODO encrypt decrypt could be done twice
     bot = (Bot) response.getEntity();
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (!BotType.BOT.equals(bot.getBotType())) {
-      secretsManager.encryptOrDecryptBotCredentials(bot.getBotType().value(), bot.getBotUser().getName(), true);
+    if (!ProviderType.USER.equals(bot.getProvider())) { // User bots credentials are not stored. Only system bots.
+      secretsManager.encryptOrDecryptBotCredentials(bot.getName(), bot.getBotUser().getName(), true);
     }
     return response;
   }
@@ -319,17 +344,13 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    BotType botType = dao.get(null, id, EntityUtil.Fields.EMPTY_FIELDS).getBotType();
-    if (!BotType.BOT.equals(botType)) {
-      throw new IllegalArgumentException(String.format("[%s] can not be deleted.", botType.value()));
-    }
     return delete(uriInfo, securityContext, id, true, hardDelete, false);
   }
 
   private Bot getBot(CreateBot create, String user) throws IOException {
     return copy(new Bot(), create, user)
         .withBotUser(create.getBotUser())
-        .withBotType(BotType.BOT)
+        .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());
   }
 
