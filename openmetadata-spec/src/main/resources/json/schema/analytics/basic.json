@@ -4,48 +4,6 @@
     "title": "Basic",
     "description": "This schema defines basic types that are used by analytics classes",
     "definitions": {
-      "reportResultValue": {
-        "description": "Schema to capture test case result values.",
-        "javaType": "org.openmetadata.schema.analytics.type.ReportResultValue",
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "name of the value",
-            "type": "string"
-          },
-          "value": {
-            "description": "report result value",
-            "type": "string"
-          }
-        }
-      },
-      "reportResult": {
-        "description": "Schema to capture report result values.",
-        "javaType": "org.openmetadata.schema.analytics.type.ReportResult",
-        "type": "object",
-        "properties": {
-          "id": {
-              "description": "Unique identifier for a result.",
-              "$ref": "../type/basic.json#/definitions/uuid"
-          },
-          "timestamp": {
-            "description": "Data one which test case result is taken.",
-            "$ref": "../type/basic.json#/definitions/timestamp"
-          },
-          "dimensions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/reportResultValue"
-            }
-          },
-          "metrics": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/reportResultValue"
-            }
-          }
-        }
-      },
       "webAnalyticEventType": {
         "javaType": "org.openmetadata.schema.analytics.type.WebAnalyticEventType",
         "description": "event type",

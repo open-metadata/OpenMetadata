@@ -1,7 +1,5 @@
 package org.openmetadata.service.resources.analytics;
 
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -19,11 +17,24 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.*;
-import javax.ws.rs.core.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
@@ -37,8 +48,6 @@ import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -91,23 +100,12 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
 
   @SuppressWarnings("unused") // Method used for reflection of webAnalyticEventTypes
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find the existing reportDefinition and them from json files
-    List<String> webAnalyticEventFiles =
-        EntityUtil.getJsonDataResources(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
-    webAnalyticEventFiles.forEach(
-        webAnalyticEventFile -> {
-          try {
-            String webAnalyticEventJson =
-                CommonUtil.getResourceAsStream(getClass().getClassLoader(), webAnalyticEventFile);
-            webAnalyticEventJson = webAnalyticEventJson.replace("<separator>", Entity.SEPARATOR);
-            WebAnalyticEvent webAnalyticEvent = JsonUtils.readValue(webAnalyticEventJson, WebAnalyticEvent.class);
-            long currentTimestamp = System.currentTimeMillis();
-            webAnalyticEvent.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(currentTimestamp);
-            daoWebAnalyticEvent.initializeEntity(webAnalyticEvent);
-          } catch (Exception e) {
-            LOG.warn("Failed to initialized report definition files {}", webAnalyticEventFile, e);
-          }
-        });
+    // Find the existing webAnalyticEventTypes and add them from json files
+    List<WebAnalyticEvent> webAnalyticEvents =
+        dao.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
+    for (WebAnalyticEvent webAnalyticEvent : webAnalyticEvents) {
+      dao.initializeEntity(webAnalyticEvent);
+    }
   }
 
   @GET

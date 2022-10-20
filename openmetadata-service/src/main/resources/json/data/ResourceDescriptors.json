@@ -440,17 +440,6 @@
     ]
   },
   {
-    "name" : "reportDefinition",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName"
-    ]
-  },
-  {
     "name" : "webAnalyticEvent",
     "operations" : [
       "Create",
