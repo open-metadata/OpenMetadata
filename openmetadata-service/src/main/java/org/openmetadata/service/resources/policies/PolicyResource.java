@@ -95,7 +95,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     super(Policy.class, new PolicyRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method is used by reflection
+  @SuppressWarnings("unused") // Method is used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();

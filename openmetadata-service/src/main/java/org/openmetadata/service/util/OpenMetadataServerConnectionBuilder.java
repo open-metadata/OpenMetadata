@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.airflow.SSLConfig;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -108,7 +109,7 @@ public class OpenMetadataServerConnectionBuilder {
   }
 
   private User retrieveBotUser() {
-    User botUser = retrieveIngestionBotUser(Entity.INGESTION_BOT_NAME);
+    User botUser = retrieveIngestionBotUser(BotType.INGESTION_BOT.value());
     if (botUser == null) {
       throw new IllegalArgumentException("Please, verify that the ingestion-bot is present.");
     }
