@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -159,8 +158,6 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response =
           getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
-        List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
-        ingestionPipeline.setPipelineStatuses(statuses);
         ingestionPipeline.setDeployed(true);
         return ingestionPipeline;
       } else if (response.statusCode() == 404) {

@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -213,18 +212,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         pipelineStatusList, String.valueOf(startTs), String.valueOf(endTs), pipelineStatusList.size());
   }
 
-  public List<PipelineStatus> getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
-    List<PipelineStatus> pipelineStatusList = new ArrayList<>();
+  public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
     PipelineStatus pipelineStatus =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
                 .getLatestExtensionByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
             PipelineStatus.class);
-    if (pipelineStatus != null) {
-      pipelineStatusList.add(pipelineStatus);
-    }
-    return pipelineStatusList;
+    return pipelineStatus;
   }
 
   public PipelineStatus getPipelineStatus(String ingestionPipelineFQN, UUID pipelineStatusRunId) throws IOException {

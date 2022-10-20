@@ -161,12 +161,8 @@
       "$ref": "../../../type/entityReference.json"
     },
     "pipelineStatuses": {
-      "description": "List of executions and status for the Pipeline.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/pipelineStatus"
-      },
-      "default": null
+      "description": "Last of executions and status for the Pipeline.",
+      "$ref": "#/definitions/pipelineStatus"
     },
     "loggerLevel": {
       "description": "Set the logging level for the workflow.",

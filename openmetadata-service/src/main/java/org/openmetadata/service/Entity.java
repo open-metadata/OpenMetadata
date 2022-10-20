@@ -59,7 +59,7 @@ public final class Entity {
   public static final String FIELD_FOLLOWERS = "followers";
   public static final String FIELD_TAGS = "tags";
   public static final String FIELD_DELETED = "deleted";
-  public static final String FIELD_PIPELINE_STATUSES = "pipelineStatuses";
+  public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
   public static final String FIELD_DISPLAY_NAME = "displayName";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
