@@ -14,18 +14,11 @@ OpenMetadata high-level API Pipeline Service tests
 """
 import uuid
 from unittest import TestCase
-from datetime import datetime
 
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
-from metadata.generated.schema.entity.data.pipeline import (
-    Pipeline,
-    PipelineStatus,
-    StatusType,
-    Task,
-    TaskStatus,
-)
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -44,7 +37,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import datetime_to_ts
 
 class OMetaPipelineServiceTest(TestCase):
     """
