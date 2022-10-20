@@ -411,6 +411,34 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     });
   };
 
+  const handleRemoveOwner = () => {
+    const updatedData = {
+      ...databaseSchema,
+      owner: undefined,
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
+        .then((res) => {
+          if (res) {
+            setDatabaseSchema(res);
+            resolve();
+          } else {
+            reject();
+
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-databaseSchema-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
     getAllFeeds(
@@ -636,7 +664,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   {extraInfo.map((info, index) => (
                     <span className="tw-flex" key={index}>
                       <EntitySummaryDetails
+                        currentOwner={databaseSchema?.owner}
                         data={info}
+                        removeOwner={
+                          databaseSchemaPermission.EditOwner ||
+                          databaseSchemaPermission.EditAll
+                            ? handleRemoveOwner
+                            : undefined
+                        }
                         updateOwner={
                           databaseSchemaPermission.EditOwner ||
                           databaseSchemaPermission.EditAll

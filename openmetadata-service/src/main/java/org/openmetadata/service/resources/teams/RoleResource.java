@@ -48,7 +48,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
@@ -63,9 +62,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.RoleCache;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -92,23 +89,15 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    List<String> jsonFiles = EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", Entity.ROLE));
-    jsonFiles.forEach(
-        jsonFile -> {
-          try {
-            String roleJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonFile);
-            Role role = JsonUtils.readValue(roleJson, entityClass);
-            List<EntityReference> policies = role.getPolicies();
-            for (EntityReference policy : policies) {
-              EntityReference ref =
-                  Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
-              policy.setId(ref.getId());
-            }
-            dao.initSeedData(role);
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the {} from file {}", Entity.ROLE, jsonFile, e);
-          }
-        });
+    List<Role> roles = dao.getEntitiesFromSeedData();
+    for (Role role : roles) {
+      List<EntityReference> policies = role.getPolicies();
+      for (EntityReference policy : policies) {
+        EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
+        policy.setId(ref.getId());
+      }
+      dao.initializeEntity(role);
+    }
   }
 
   public static class RoleList extends ResultList<Role> {

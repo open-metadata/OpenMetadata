@@ -310,6 +310,27 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       settingsUpdateHandler(updatedTopicDetails);
     }
   };
+
+  const onOwnerRemove = () => {
+    if (topicDetails) {
+      const updatedTopicDetails = {
+        ...topicDetails,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedTopicDetails);
+    }
+  };
+
+  const onTierRemove = () => {
+    if (topicDetails) {
+      const updatedTopicDetails = {
+        ...topicDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedTopicDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Topic['tags'] = newTier
@@ -417,6 +438,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
+          currentOwner={topicDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -436,6 +458,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           followersList={followers}
           isFollowing={isFollowing}
           isTagEditable={topicPermissions.EditAll || topicPermissions.EditTags}
+          removeOwner={
+            topicPermissions.EditAll || topicPermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            topicPermissions.EditAll || topicPermissions.EditTier
+              ? onTierRemove
+              : undefined
+          }
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}

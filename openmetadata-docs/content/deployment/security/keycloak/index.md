@@ -103,5 +103,9 @@ workflowConfig:
     securityConfig:
       clientId: '{your_client_id}'
       secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
+      tokenEndpoint: '{your_token_endpoint}' # e.g. http://localhost:8081/realms/data-sec/protocol/openid-connect/token
 ```
+
+<Note>
+A dockerized demo for showing how this SSO works with OpenMetadata can be found [here](https://github.com/open-metadata/openmetadata-demo/tree/main/keycloak-sso).
+</Note>

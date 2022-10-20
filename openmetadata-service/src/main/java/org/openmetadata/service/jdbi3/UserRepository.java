@@ -73,12 +73,6 @@ public class UserRepository extends EntityRepository<User> {
     return new Fields(tempFields, fields);
   }
 
-  @Override
-  public EntityReference getOriginalOwner(User entity) {
-    // For User entity, the entity and the owner are the same
-    return entity.getEntityReference();
-  }
-
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user) throws IOException {
@@ -99,7 +93,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getInheritedRoles(User user) throws IOException {
     getTeams(user);
-    return SubjectCache.getInstance().getRolesForTeams(getTeams(user));
+    return SubjectCache.getInstance() != null ? SubjectCache.getInstance().getRolesForTeams(getTeams(user)) : null;
   }
 
   @Override

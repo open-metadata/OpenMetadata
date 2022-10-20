@@ -97,7 +97,7 @@ const ProfilerDashboardPage = () => {
         startTs,
         endTs,
       });
-      setProfilerData(data || []);
+      setProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

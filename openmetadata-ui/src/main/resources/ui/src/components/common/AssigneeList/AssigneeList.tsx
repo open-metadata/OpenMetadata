@@ -35,6 +35,7 @@ const AssigneeList: FC<Props> = ({ assignees, className }) => {
           userName={assignee.name || ''}>
           <span
             className="tw-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
+            data-testid="assignee"
             onClick={(e) => {
               e.stopPropagation();
               history.push(getUserPath(assignee.name ?? ''));

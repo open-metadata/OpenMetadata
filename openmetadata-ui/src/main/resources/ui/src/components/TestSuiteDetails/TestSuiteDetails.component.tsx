@@ -19,6 +19,7 @@ const TestSuiteDetails = ({
   isDescriptionEditable,
   testSuite,
   handleUpdateOwner,
+  handleRemoveOwner,
   testSuiteDescription,
   descriptionHandler,
   handleDescriptionUpdate,
@@ -70,7 +71,9 @@ const TestSuiteDetails = ({
         {extraInfo.map((info, index) => (
           <span className="tw-flex" key={index}>
             <EntitySummaryDetails
+              currentOwner={testSuite?.owner}
               data={info}
+              removeOwner={handleRemoveOwner}
               updateOwner={hasAccess ? handleUpdateOwner : undefined}
             />
           </span>
