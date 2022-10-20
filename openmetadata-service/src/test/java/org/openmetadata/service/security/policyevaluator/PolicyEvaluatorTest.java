@@ -7,7 +7,7 @@ import org.openmetadata.schema.type.Permission.Access;
 
 class PolicyEvaluatorTest {
   @Test
-  void test_AccessOrderOfPrecedence() {
+  public void test_AccessOrderOfPrecedence() {
     //
     // Order of precedence for access Deny > Allow > ConditionalDeny > ConditionalAllow > NotAllow
     //

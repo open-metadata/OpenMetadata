@@ -51,7 +51,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
+public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public RoleResourceTest() {
     super(Entity.ROLE, Role.class, RoleList.class, "roles", null);
     this.supportsAuthorizedMetadataOperations = false;

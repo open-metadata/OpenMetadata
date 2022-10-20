@@ -42,7 +42,7 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-class MlModelServiceResourceTest extends EntityResourceTest<MlModelService, CreateMlModelService> {
+public class MlModelServiceResourceTest extends EntityResourceTest<MlModelService, CreateMlModelService> {
   public MlModelServiceResourceTest() {
     super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;

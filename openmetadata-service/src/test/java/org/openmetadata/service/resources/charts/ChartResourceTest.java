@@ -40,7 +40,7 @@ import org.openmetadata.service.resources.charts.ChartResource.ChartList;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
+public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   public ChartResourceTest() {
     super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS);
