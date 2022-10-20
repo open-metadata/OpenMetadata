@@ -11,8 +11,22 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isArray, isNil, isObject, isString } from 'lodash';
 import { FilterObject } from '../components/AdvancedSearch/AdvancedSearch.interface';
+
+export function isFilterObject(obj: unknown): obj is FilterObject {
+  const typedObj = obj as FilterObject;
+
+  return (
+    isObject(typedObj) &&
+    Object.entries<unknown>(typedObj).every(
+      ([key, value]) =>
+        isString(key) &&
+        isArray(value) &&
+        value.every((e: unknown) => isString(e))
+    )
+  );
+}
 
 /**
  * Builds an Elasticsearch JSON query from a {@see FilterObject}

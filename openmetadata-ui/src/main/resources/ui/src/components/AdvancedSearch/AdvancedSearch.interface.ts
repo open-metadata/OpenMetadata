@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { isArray, isObject, isString } from 'lodash';
 import { JsonTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../enums/search.enum';
 
@@ -25,17 +24,3 @@ export interface AdvancedSearchProps {
 }
 
 export type FilterObject = Record<string, string[]>;
-
-export function isFilterObject(obj: unknown): obj is FilterObject {
-  const typedObj = obj as FilterObject;
-
-  return (
-    isObject(typedObj) &&
-    Object.entries<unknown>(typedObj).every(
-      ([key, value]) =>
-        isString(key) &&
-        isArray(value) &&
-        value.every((e: unknown) => isString(e))
-    )
-  );
-}

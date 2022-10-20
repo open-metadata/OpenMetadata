@@ -17,7 +17,6 @@ import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
-import { isFilterObject } from '../../components/AdvancedSearch/AdvancedSearch.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
@@ -36,7 +35,10 @@ import {
   INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
-import { filterObjectToElasticsearchQuery } from '../../utils/FilterUtils';
+import {
+  filterObjectToElasticsearchQuery,
+  isFilterObject,
+} from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
