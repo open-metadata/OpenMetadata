@@ -62,7 +62,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/config",
-          "/v1/users/signup",
+          "v1/users/signup",
           "v1/version",
           "v1/users/registrationConfirmation",
           "v1/users/resendRegistrationToken",
