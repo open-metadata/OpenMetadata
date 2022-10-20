@@ -32,11 +32,13 @@ interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAccountIdChange: (value: string) => void;
   handleCloudAuthTokenChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
+  handleDbtCloudProjectId: (value: string) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudAccountId = '',
   dbtCloudAuthToken = '',
+  dbtCloudProjectId,
   dbtUpdateDescriptions = false,
   okText,
   cancelText,
@@ -45,6 +47,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   handleCloudAccountIdChange,
   handleCloudAuthTokenChange,
   handleUpdateDescriptions,
+  handleDbtCloudProjectId,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -60,6 +63,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtCloudAccountId,
       dbtCloudAuthToken,
       dbtUpdateDescriptions,
+      dbtCloudProjectId,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -107,6 +111,27 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           onChange={(e) => handleCloudAuthTokenChange(e.target.value)}
         />
         {errors?.dbtCloudAuthToken && errorMsg(errors.dbtCloudAuthToken)}
+      </Field>
+
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="dbtCloudProjectId">
+          DBT Cloud Project Id
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          In case of multiple projects in a DBT cloud account, specify the
+          project&apos;s id from which you want to extract the DBT run artifacts
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="dbtCloudProjectId"
+          id="dbtCloudProjectId"
+          name="dbtCloudProjectId"
+          type="text"
+          value={dbtCloudProjectId}
+          onChange={(e) => handleDbtCloudProjectId(e.target.value)}
+        />
       </Field>
       {getSeparator('')}
 

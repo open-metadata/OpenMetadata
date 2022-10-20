@@ -44,6 +44,11 @@
           "description": "DBT cloud account Id",
           "type": "string"
         },
+        "dbtCloudProjectId": {
+          "title": "DBT Cloud Project Id",
+          "description": "In case of multiple projects in a DBT cloud account, specify the project's id from which you want to extract the DBT run artifacts",
+          "type": "string"
+        },
         "dbtUpdateDescriptions": {
           "description": "Optional configuration to update the description from DBT or not",
           "type": "boolean",
