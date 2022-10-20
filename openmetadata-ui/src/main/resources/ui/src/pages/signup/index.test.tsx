@@ -14,70 +14,14 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import Signup from '.';
-import * as AppState from '../../AppState';
+import AppState from '../../AppState';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { getImages } from '../../utils/CommonUtils';
+import { mockCreateUser } from './mocks/signup.mock';
 
 const mockChangeHandler = jest.fn();
 const mockSubmitHandler = jest.fn();
 const mockShowErrorToast = jest.fn();
-
-const mockCreateUser = {
-  data: {
-    id: '911d4be4-6ebf-48a0-9016-43a2cf716428',
-    name: 'test.user',
-    fullyQualifiedName: 'test.user',
-    displayName: 'Test User',
-    version: 0.1,
-    updatedAt: 1665145804919,
-    updatedBy: 'test.user',
-    email: 'test.user@test.com',
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/users/911d4be4-6ebf-48a0-9016-43a2cf716428',
-    isAdmin: false,
-    profile: {
-      images: {
-        image:
-          'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s96-c',
-        image24:
-          'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s24-c',
-        image32:
-          'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s32-c',
-        image48:
-          'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s48-c',
-        image72:
-          'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s72-c',
-        image192:
-          'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s192-c',
-        image512:
-          'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s512-c',
-      },
-    },
-    teams: [
-      {
-        id: '606c1d33-213b-4626-a619-0e4cef9f5069',
-        type: 'team',
-        name: 'Engineering',
-        fullyQualifiedName: 'Engineering',
-        deleted: false,
-        href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/606c1d33-213b-4626-a619-0e4cef9f5069',
-      },
-    ],
-    deleted: false,
-    inheritedRoles: [
-      {
-        id: '4509b668-2882-45c3-90e1-4551043f8cbd',
-        type: 'role',
-        name: 'DataConsumer',
-        fullyQualifiedName: 'DataConsumer',
-        description:
-          'Users with Data Consumer role use different data assets for their day to day work.',
-        displayName: 'Data Consumer',
-        deleted: false,
-        href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/4509b668-2882-45c3-90e1-4551043f8cbd',
-      },
-    ],
-  },
-};
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({
@@ -112,7 +56,9 @@ jest.mock('../../components/containers/PageContainer', () => {
 });
 
 jest.mock('../../axiosAPIs/userAPI', () => ({
-  createUser: jest.fn().mockResolvedValue(mockCreateUser),
+  createUser: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockCreateUser)),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -121,7 +67,13 @@ jest.mock('../../utils/ToastUtils', () => ({
 
 jest.mock('../../AppState', () => ({
   ...jest.requireActual('../../AppState'),
+  newUser: {
+    name: 'Sample Name',
+    email: 'sample123@sample.com',
+    picture: 'Profile Picture',
+  },
   updateUserDetails: jest.fn(),
+  updateUserPermissions: jest.fn(),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -138,13 +90,6 @@ describe('Signup page', () => {
   });
 
   it('Component should render properly', async () => {
-    AppState.default.newUser = {
-      name: 'Sample Name',
-      email: 'sample123@sample.com',
-      picture: 'Profile Picture',
-    };
-    AppState.default.updateUserDetails = jest.fn();
-
     (createUser as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: {} })
     );
@@ -187,14 +132,6 @@ describe('Signup page', () => {
   });
 
   it('Handlers in forms for change and submit should work properly', async () => {
-    AppState.default.newUser = {
-      name: 'Sample Name',
-      email: 'sample123@sample.com',
-      picture: 'Profile Picture',
-    };
-    AppState.default.updateUserPermissions = jest.fn();
-    AppState.default.updateUserDetails = jest.fn();
-
     (createUser as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve(undefined)
     );
@@ -238,14 +175,6 @@ describe('Signup page', () => {
   });
 
   it('Error should be thrown if createUser API fails', async () => {
-    AppState.default.newUser = {
-      name: 'Sample Name',
-      email: 'sample123@sample.com',
-      picture: 'Profile Picture',
-    };
-    AppState.default.updateUserPermissions = jest.fn();
-    AppState.default.updateUserDetails = jest.fn();
-
     const { getByTestId } = render(<Signup />);
 
     const form = getByTestId('create-user-form');
@@ -294,13 +223,11 @@ describe('Signup page', () => {
   it('Handlers in form should work if data is empty', async () => {
     (getImages as jest.Mock).mockImplementationOnce(() => Promise.reject(''));
 
-    AppState.default.newUser = {
+    AppState.newUser = {
       name: '',
       email: '',
       picture: '',
     };
-    AppState.default.updateUserPermissions = jest.fn();
-    AppState.default.updateUserDetails = jest.fn();
 
     const { getByTestId } = render(<Signup />);
 
