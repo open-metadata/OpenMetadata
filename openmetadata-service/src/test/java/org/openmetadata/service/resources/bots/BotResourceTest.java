@@ -16,10 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -103,14 +103,14 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Test
-  void delete_failIfUserIsIngestionBot() throws IOException {
+  void delete_failIfUserIsIngestionBot(TestInfo test) throws IOException {
     // get ingestion bot
-    Bot ingestionBot = getEntityByName(Entity.INGESTION_BOT_NAME, "", ADMIN_AUTH_HEADERS);
+    Bot ingestionBot = getEntityByName(BotType.INGESTION_BOT.value(), "", ADMIN_AUTH_HEADERS);
     // fail because it is a system bot
     assertResponse(
         () -> deleteEntity(ingestionBot.getId(), true, true, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        CatalogExceptionMessage.systemEntityDeleteNotAllowed(ingestionBot.getName(), Entity.BOT));
+        "[ingestion-bot] can not be deleted.");
   }
 
   @Override
