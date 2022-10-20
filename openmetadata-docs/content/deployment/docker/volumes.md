@@ -30,7 +30,7 @@ services:
   mysql:
     ...
     volumes:
-     - /opt/openmetadata/db:/var/lib/mysql
+      - /opt/openmetadata/db:/var/lib/mysql
     ...
 ```
 ## Volumes for PostgreSQL container:
@@ -48,7 +48,7 @@ services:
  postgresql:
     ...
     volumes:
-     - /opt/openmetadata/db:/var/lib/postgresql
+      - /opt/openmetadata/db:/var/lib/postgresql
     ...
 ```
 
@@ -87,7 +87,7 @@ services:
     expose:
       - 3306
     volumes:
-     - /opt/openmetadata/db:/var/lib/mysql
+      - /opt/openmetadata/db:/var/lib/mysql
     networks:
       app_net:
         ipv4_address: 172.16.240.10
@@ -107,7 +107,7 @@ services:
       - "localhost:172.16.240.11"
       - "localhost:172.16.240.13"
     volumes:
-      - /opt/openmetadata/dag_config:/opt//airflow/dag_generated_configs
+      - /opt/openmetadata/dag_config:/opt/airflow/dag_generated_configs
       - /opt/openmetadata/dags:/opt/airflow/dags
       - /opt/openmetadata/secrets:/tmp
 ```
