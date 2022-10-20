@@ -20,6 +20,7 @@ const mockSubmit = jest.fn();
 const mockAccountIdChange = jest.fn();
 const mockAuthTokenChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
+const mockDbtCloudProjectId = jest.fn();
 
 const mockProps = {
   dbtCloudAccountId: '',
@@ -32,6 +33,7 @@ const mockProps = {
   handleCloudAccountIdChange: mockAccountIdChange,
   handleCloudAuthTokenChange: mockAuthTokenChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleDbtCloudProjectId: mockDbtCloudProjectId,
 };
 
 jest.mock('./SwitchField.component', () =>

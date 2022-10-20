@@ -164,6 +164,7 @@ class OMetaPatchMixin(Generic[T]):
 
         col_index, col = find_column_in_table_with_index(
             column_name=column_name, table=table
+
         )
 
         if col_index is None:
