@@ -93,7 +93,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getInheritedRoles(User user) throws IOException {
     getTeams(user);
-    return SubjectCache.getInstance() != null ? SubjectCache.getInstance().getRolesForTeams(getTeams(user)) : null;
+    return SubjectCache.getInstance().getRolesForTeams(getTeams(user));
   }
 
   @Override
