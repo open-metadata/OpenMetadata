@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { omit } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -20,6 +21,8 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useHistory } from 'react-router-dom';
+import { restoreTopic } from '../../axiosAPIs/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -44,7 +47,7 @@ import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -108,6 +111,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   lineageTabData,
   onExtensionUpdate,
 }: TopicDetailsProps) => {
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -354,6 +358,41 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const handleRestoreTable = () => {
+    const restoreTopicData = omit(topicDetails, [
+      'id',
+      'fullyQualifiedName',
+      'version',
+      'updatedAt',
+      'updatedBy',
+      'href',
+      'database',
+      'serviceType',
+      'followers',
+      'changeDescription',
+      'deleted',
+    ]);
+
+    return new Promise<void>((resolve, reject) => {
+      restoreTopic(restoreTopicData)
+        .then(() => {
+          resolve();
+          showSuccessToast(
+            jsonData['api-success-messages']['restore-table-success'],
+            2000
+          );
+          history.push('/explore');
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['restore-table-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const followTopic = () => {
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
@@ -468,6 +507,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               ? onTierRemove
               : undefined
           }
+          restoreEntity={handleRestoreTable}
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}

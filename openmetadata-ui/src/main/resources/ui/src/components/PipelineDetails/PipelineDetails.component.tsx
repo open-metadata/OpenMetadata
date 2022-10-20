@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, omit } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -42,7 +45,7 @@ import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -107,6 +110,7 @@ const PipelineDetails = ({
   entityFieldTaskCount,
   onExtensionUpdate,
 }: PipeLineDetailsProp) => {
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -322,6 +326,42 @@ const PipelineDetails = ({
     }
   };
 
+  const handleRestorePipeline = () => {
+    const restorePipelineDetails = omit(pipelineDetails, [
+      'id',
+      'fullyQualifiedName',
+      'version',
+      'updatedAt',
+      'updatedBy',
+      'href',
+      'tasks',
+      'pipelineStatus',
+      'followers',
+      'serviceType',
+      'changeDescription',
+      'deleted',
+    ]);
+
+    return new Promise<void>((resolve, reject) => {
+      restorePipeline(restorePipelineDetails)
+        .then(() => {
+          resolve();
+          showSuccessToast(
+            jsonData['api-success-messages']['restore-table-success'],
+            2000
+          );
+          history.push('/explore');
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['restore-table-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -431,6 +471,7 @@ const PipelineDetails = ({
               ? onTierRemove
               : undefined
           }
+          restoreEntity={handleRestorePipeline}
           tags={pipelineTags}
           tagsHandler={onTagUpdate}
           tier={tier}

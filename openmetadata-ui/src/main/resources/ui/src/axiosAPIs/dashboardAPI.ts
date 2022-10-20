@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { EntityReference } from 'Models';
+import { RestoreDashboard } from '../components/DashboardDetails/DashboardDetails.interface';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
@@ -115,6 +116,19 @@ export const patchDashboardDetails = async (id: string, data: Operation[]) => {
     data,
     configOptions
   );
+
+  return response.data;
+};
+
+export const restoreDashboard = async (data: RestoreDashboard) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.put<
+    RestoreDashboard,
+    AxiosResponse<Dashboard>
+  >('/dashboards', data, configOptions);
 
   return response.data;
 };

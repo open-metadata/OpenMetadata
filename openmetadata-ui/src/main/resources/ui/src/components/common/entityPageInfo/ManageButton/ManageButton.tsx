@@ -38,6 +38,8 @@ interface Props {
   canDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
+  onRestoreClick?: () => void;
+  deleted?: boolean;
 }
 
 const ManageButton: FC<Props> = ({
@@ -54,6 +56,8 @@ const ManageButton: FC<Props> = ({
   isRecursiveDelete,
   extraDropdownContent,
   onAnnouncementClick,
+  onRestoreClick,
+  deleted,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -93,6 +97,45 @@ const ManageButton: FC<Props> = ({
           ),
           key: 'delete-button',
         },
+        ...(deleted
+          ? [
+              {
+                label: (
+                  <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+                    <Space
+                      className={classNames('tw-cursor-pointer manage-button', {
+                        'tw-cursor-not-allowed tw-opacity-50': !canDelete,
+                      })}
+                      size={8}
+                      onClick={(e) => {
+                        if (canDelete) {
+                          e.stopPropagation();
+                          setShowActions(false);
+                          onRestoreClick && onRestoreClick();
+                        }
+                      }}>
+                      <SVGIcons alt="Restore" icon={Icons.RESTORE} />
+                      <div
+                        className="tw-text-left"
+                        data-testid="restore-button">
+                        <p
+                          className="tw-font-medium"
+                          data-testid="delete-button-title">
+                          Restore
+                        </p>
+                        <p className="tw-text-grey-muted tw-text-xs">
+                          Restoring this {entityType} will restore its metadata
+                          in OpenMetadata.
+                        </p>
+                      </div>
+                    </Space>
+                  </Tooltip>
+                ),
+                key: 'restore-button',
+              },
+            ]
+          : []),
+
         ...(ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
           ? [
               {

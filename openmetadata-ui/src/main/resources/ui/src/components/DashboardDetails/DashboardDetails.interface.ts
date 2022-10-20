@@ -98,3 +98,13 @@ export interface DashboardDetailsProps {
   updateThreadHandler: ThreadUpdatedFunc;
   onExtensionUpdate: (updatedDashboard: Dashboard) => Promise<void>;
 }
+
+export interface RestoreDashboard {
+  dashboardUrl?: string;
+  description?: string;
+  displayName?: string;
+  name?: string;
+  service?: Dashboard['service'];
+  tags?: TagLabel[];
+  charts?: Dashboard['charts'];
+}

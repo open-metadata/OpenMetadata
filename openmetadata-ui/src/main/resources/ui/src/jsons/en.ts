@@ -164,6 +164,8 @@ const jsonData = {
     'unauthorized-user': 'UnAuthorized user! please check email or password',
     'fetch-re-index-all': 'Error while fetching re index data!',
     'update-re-index-all': 'Error while re indexing!',
+
+    'restore-table-error': 'Error while restoring table',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
@@ -188,6 +190,8 @@ const jsonData = {
     'account-verify-success': 'Email verified successfully!',
     'update-password-success': 'Password updated successfully!',
     'fetch-re-index-all': 'Re-index started',
+
+    'restore-table-success': 'Table restored successfully',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',

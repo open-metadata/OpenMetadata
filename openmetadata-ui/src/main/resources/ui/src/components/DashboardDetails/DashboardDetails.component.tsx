@@ -15,7 +15,7 @@ import { Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -24,7 +24,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -56,7 +57,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -122,6 +123,7 @@ const DashboardDetails = ({
   entityFieldTaskCount,
   onExtensionUpdate,
 }: DashboardDetailsProps) => {
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -332,6 +334,42 @@ const DashboardDetails = ({
       tagUpdateHandler(updatedDashboard);
     }
   };
+
+  const handleRestoreTable = () => {
+    const restoreDashboardData = omit(dashboardDetails, [
+      'id',
+      'fullyQualifiedName',
+      'version',
+      'updatedAt',
+      'updatedBy',
+      'href',
+      'serviceType',
+      'followers',
+      'usageSummary',
+      'changeDescription',
+      'deleted',
+    ]);
+
+    return new Promise<void>((resolve, reject) => {
+      restoreDashboard(restoreDashboardData)
+        .then(() => {
+          resolve();
+          showSuccessToast(
+            jsonData['api-success-messages']['restore-table-success'],
+            2000
+          );
+          history.push('/explore');
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['restore-table-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const followDashboard = () => {
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
@@ -659,6 +697,7 @@ const DashboardDetails = ({
               ? onRemoveTier
               : undefined
           }
+          restoreEntity={handleRestoreTable}
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
           tier={tier || ''}

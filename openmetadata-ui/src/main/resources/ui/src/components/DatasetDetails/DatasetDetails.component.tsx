@@ -12,10 +12,13 @@
  */
 
 import { Col, Row } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isNil, isUndefined, omit } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { restoreTable } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -49,7 +52,7 @@ import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -130,6 +133,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   updateThreadHandler,
   entityFieldTaskCount,
 }: DatasetDetailsProps) => {
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -526,6 +530,45 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const handleRestoreTable = () => {
+    const restoreTableData = omit(tableDetails, [
+      'id',
+      'fullyQualifiedName',
+      'version',
+      'updatedAt',
+      'updatedBy',
+      'href',
+      'database',
+      'service',
+      'serviceType',
+      'usageSummary',
+      'followers',
+      'joins',
+      'changeDescription',
+      'deleted',
+      'profile',
+    ]);
+
+    return new Promise<void>((resolve, reject) => {
+      restoreTable(restoreTableData)
+        .then(() => {
+          resolve();
+          showSuccessToast(
+            jsonData['api-success-messages']['restore-table-success'],
+            2000
+          );
+          history.push('/explore/tables');
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['restore-table-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const getSampleDataWithType = () => {
     const updatedColumns = sampleData?.columns?.map((column) => {
       const matchedColumn = columns.find((col) => col.name === column);
@@ -631,6 +674,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               ? onRemoveTier
               : undefined
           }
+          restoreEntity={handleRestoreTable}
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}

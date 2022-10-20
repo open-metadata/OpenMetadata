@@ -90,3 +90,19 @@ export interface TopicDetailsProps {
   };
   onExtensionUpdate: (updatedTopic: Topic) => Promise<void>;
 }
+
+export interface RestoreTopic {
+  description?: string;
+  displayName?: string;
+  name?: string;
+  tags?: TagLabel[];
+  owner?: Topic['owner'];
+  retentionSize?: number;
+  maximumMessageSize?: number;
+  replicationFactor?: number;
+  cleanupPolicies?: Topic['cleanupPolicies'];
+  partitions?: number;
+  schemaType?: Topic['schemaType'];
+  schemaText?: string;
+  service?: Topic['service'];
+}

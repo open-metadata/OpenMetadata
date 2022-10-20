@@ -85,3 +85,16 @@ export interface PipeLineDetailsProp {
   updateThreadHandler: ThreadUpdatedFunc;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
 }
+
+export interface RestorePipelineProps {
+  concurrency?: number;
+  description?: string;
+  displayName?: string;
+  name?: string;
+  owner?: Pipeline['owner'];
+  pipelineLocation?: string;
+  pipelineUrl?: string;
+  service?: Pipeline['service'];
+  startDate?: Date;
+  tags?: TagLabel[];
+}
