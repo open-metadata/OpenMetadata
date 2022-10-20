@@ -41,7 +41,7 @@ def read_tsv_from_s3(
     Read the tsv file from the s3 bucket and return a dataframe
     """
 
-    read_csv_from_s3(client, key, bucket_name, sep="\t", sample_size=sample_size)
+    return read_csv_from_s3(client, key, bucket_name, sep="\t", sample_size=sample_size)
 
 
 def read_json_from_s3(
@@ -50,9 +50,14 @@ def read_json_from_s3(
     """
     Read the json file from the s3 bucket and return a dataframe
     """
-
-    line_stream = client.get_object(Bucket=bucket_name, Key=key)["Body"].iter_lines()
-    return pd.DataFrame.from_records(map(json.loads, line_stream), nrows=sample_size)
+    obj = client.get_object(Bucket=bucket_name, Key=key)
+    json_text = obj["Body"].read().decode("utf-8")
+    data = json.loads(json_text)
+    if isinstance(data, list):
+        return pd.DataFrame.from_dict(data[:sample_size])
+    return pd.DataFrame.from_dict(
+        {key: pd.Series(value) for key, value in data.items()}
+    )
 
 
 def read_parquet_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:

@@ -149,6 +149,7 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockData)),
   updateService: jest.fn().mockImplementation(() => Promise.resolve()),
+  TestConnection: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../axiosAPIs/databaseAPI', () => ({
@@ -205,6 +206,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
   getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),
+  shouldTestConnection: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock(

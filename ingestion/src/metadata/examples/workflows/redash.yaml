@@ -9,6 +9,7 @@ source:
       username: random
   sourceConfig:
     config:
+      type: DashboardMetadata
       dashboardFilterPattern: {}
       chartFilterPattern: {}
 sink:

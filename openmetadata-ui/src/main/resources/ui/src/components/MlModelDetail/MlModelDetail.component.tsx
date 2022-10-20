@@ -14,7 +14,7 @@
 import { Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { isUndefined, startCase, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -26,6 +26,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -46,6 +47,7 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getEmptyPlaceholder,
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
@@ -95,6 +97,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   entityFieldTaskCount,
   entityFieldThreadCount,
 }) => {
+  const { t } = useTranslation();
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
@@ -319,6 +322,27 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       settingsUpdateHandler(updatedMlModelDetails);
     }
   };
+
+  const onOwnerRemove = () => {
+    if (mlModelDetail) {
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+
+  const onTierRemove = () => {
+    if (mlModelDetail) {
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Mlmodel['tags'] = newTier
@@ -358,12 +382,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlHyperParametersColumn: ColumnsType<MlHyperParameter> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
       },
       {
-        title: 'Value',
+        title: t('label.value'),
         dataIndex: 'value',
         key: 'value',
       },
@@ -374,16 +398,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlHyperParameters = () => {
     return (
       <div className="flex flex-col m-t-xs">
-        <h6 className="font-medium text-base">Hyper Parameters</h6>
+        <h6 className="font-medium text-base">
+          {t('label.hyper-parameters')}{' '}
+        </h6>
         <div className="m-t-xs">
-          <Table
-            columns={getMlHyperParametersColumn}
-            data-testid="hyperparameters-table"
-            dataSource={mlModelDetail.mlHyperParameters}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
+          {isEmpty(mlModelDetail.mlHyperParameters) ? (
+            getEmptyPlaceholder()
+          ) : (
+            <Table
+              columns={getMlHyperParametersColumn}
+              data-testid="hyperparameters-table"
+              dataSource={mlModelDetail.mlHyperParameters}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
+          )}
         </div>
       </div>
     );
@@ -392,7 +422,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlModelStore = () => {
     return (
       <div className="flex flex-col m-t-xs">
-        <h6 className="font-medium text-base">Model Store</h6>
+        <h6 className="font-medium text-base">{t('label.model-store')}</h6>
         {mlModelDetail.mlStore ? (
           <div className="m-t-xs tw-table-container">
             <table
@@ -438,7 +468,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             </table>
           </div>
         ) : (
-          <span className="tw-text-grey-muted tw-text-center">No Data</span>
+          getEmptyPlaceholder()
         )}
       </div>
     );
@@ -480,6 +510,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
+          currentOwner={mlModelDetail.owner}
           deleted={mlModelDetail.deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -500,6 +531,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           isFollowing={isFollowing}
           isTagEditable={
             mlModelPermissions.EditAll || mlModelPermissions.EditTags
+          }
+          removeOwner={
+            mlModelPermissions.EditAll || mlModelPermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            mlModelPermissions.EditAll || mlModelPermissions.EditTier
+              ? onTierRemove
+              : undefined
           }
           tags={mlModelTags}
           tagsHandler={onTagUpdate}

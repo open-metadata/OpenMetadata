@@ -138,6 +138,7 @@ const jsonData = {
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-ingestion-error': 'Error while updating ingestion workflow',
     'update-owner-error': 'Error while updating owner',
+    'remove-owner-error': 'Error while removing owner',
     'update-role-error': 'Error while updating role!',
     'update-service-config-error': 'Error while updating ingestion workflow',
     'update-tags-error': 'Error while updating tags!',

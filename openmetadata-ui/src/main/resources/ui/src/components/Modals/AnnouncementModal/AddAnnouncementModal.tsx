@@ -93,6 +93,7 @@ const AddAnnouncementModal: FC<Props> = ({
     <Modal
       centered
       className="announcement-modal"
+      closable={false}
       confirmLoading={isLoading}
       data-testid="add-announcement"
       okButtonProps={{

@@ -10,6 +10,7 @@ In this section, we provide guides and references to use the Dagster connector.
 Configure and schedule Dagster metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Dagster Versions](#dagster-versions)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -39,6 +40,11 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+## Dagster Versions
+OpenMetadata is integrated with dagster upto version [1.0.13](https://docs.dagster.io/getting-started) and will continue to work for future dagster versions.
+
+The ingestion framework uses [dagster graphql python client](https://docs.dagster.io/_apidocs/libraries/dagster-graphql#dagster_graphql.DagsterGraphQLClient) to connect to the dagster instance and perform the API calls
 
 ## Metadata Ingestion
 

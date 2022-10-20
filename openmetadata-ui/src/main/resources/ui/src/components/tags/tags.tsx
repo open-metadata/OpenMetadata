@@ -59,7 +59,7 @@ const Tags: FunctionComponent<TagProps> = ({
       );
     const tagName = showOnlyName
       ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
-      : getTagDisplay(tag);
+      : tag;
 
     return (
       <span
@@ -81,7 +81,7 @@ const Tags: FunctionComponent<TagProps> = ({
           )}
           data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}>
           {startIcon}
-          <span>{tagName}</span>
+          <span>{getTagDisplay(tagName)}</span>
         </span>
         {editable && isRemovable && (
           <span

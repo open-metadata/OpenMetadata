@@ -132,7 +132,7 @@ describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
 
   it('suggestQuery should return object and aggregations', async () => {
-    jest.mock('./index.js', () => ({
+    jest.mock('./index', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -196,7 +196,7 @@ describe('searchAPI tests', () => {
   });
 
   it('searchQuery should not return nulls', async () => {
-    jest.mock('./index.js', () => ({
+    jest.mock('./index', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -216,7 +216,7 @@ describe('searchAPI tests', () => {
   });
 
   it('searchQuery should have type field', async () => {
-    jest.mock('./index.js', () => ({
+    jest.mock('./index', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -231,7 +231,7 @@ describe('searchAPI tests', () => {
   });
 
   it('suggestQuery should return object and text', async () => {
-    jest.mock('./index.js', () => ({
+    jest.mock('./index', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -266,7 +266,7 @@ describe('searchAPI tests', () => {
   });
 
   it('suggestQuery should not return nulls', async () => {
-    jest.mock('./index.js', () => ({
+    jest.mock('./index', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -282,7 +282,7 @@ describe('searchAPI tests', () => {
   });
 
   it('suggestQuery should have type field', async () => {
-    jest.mock('./index.js', () => ({
+    jest.mock('./index', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
