@@ -9,7 +9,11 @@
     "glossary": "Glossary",
     "tags": "Tags",
     "settings": "Settings",
-    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models"
+    "search-global": "Search for Tables, Topics, Dashboards, Pipelines and ML Models",
+    "summary": "Summary",
+    "jump-to-end": "Jump to end",
+    "basic-configuration": "Basic Configuration",
+    "search-logs": "Search logs"
   },
   "message": {},
   "server": {},
