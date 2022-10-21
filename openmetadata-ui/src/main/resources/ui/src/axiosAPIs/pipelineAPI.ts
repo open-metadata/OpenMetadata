@@ -140,14 +140,9 @@ export const getPipelineStatus = async (
 };
 
 export const restorePipeline = async (data: CreatePipeline) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<CreatePipeline, AxiosResponse<Pipeline>>(
     '/pipelines',
-    data,
-    configOptions
+    data
   );
 
   return response.data;

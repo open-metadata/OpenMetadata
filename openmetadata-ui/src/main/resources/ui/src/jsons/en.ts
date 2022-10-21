@@ -166,6 +166,9 @@ const jsonData = {
     'update-re-index-all': 'Error while re indexing!',
 
     'restore-table-error': 'Error while restoring table',
+    'restore-topic-error': 'Error while restoring Topic',
+    'restore-pipeline-error': 'Error while restoring Pipeline',
+    'restore-dashboard-error': 'Error while restoring Dashboard',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
@@ -192,6 +195,9 @@ const jsonData = {
     'fetch-re-index-all': 'Re-index started',
 
     'restore-table-success': 'Table restored successfully',
+    'restore-topic-success': 'Topic restored successfully',
+    'restore-pipeline-success': 'Pipeline restored successfully',
+    'restore-dashboard-success': 'Dashboard restored successfully',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',

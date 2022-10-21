@@ -358,7 +358,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const handleRestoreTable = async () => {
+  const handleRestoreTopic = async () => {
     const data: CreateTopic = {
       cleanupPolicies: topicDetails.cleanupPolicies,
       maximumMessageSize: topicDetails.maximumMessageSize,
@@ -383,14 +383,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     try {
       await restoreTopic(data);
       showSuccessToast(
-        jsonData['api-success-messages']['restore-table-success'],
+        jsonData['api-success-messages']['restore-topic-success'],
         2000
       );
       history.push('/explore');
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['restore-table-error']
+        jsonData['api-error-messages']['restore-topic-error']
       );
     }
   };
@@ -509,7 +509,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               ? onTierRemove
               : undefined
           }
-          restoreEntity={handleRestoreTable}
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
@@ -526,6 +525,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreTopic}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

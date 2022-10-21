@@ -121,14 +121,10 @@ export const patchDashboardDetails = async (id: string, data: Operation[]) => {
 };
 
 export const restoreDashboard = async (data: CreateDashboard) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     CreateDashboard,
     AxiosResponse<Dashboard>
-  >('/dashboards', data, configOptions);
+  >('/dashboards', data);
 
   return response.data;
 };

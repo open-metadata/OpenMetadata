@@ -97,14 +97,9 @@ export const patchTableDetails = async (id: string, data: Operation[]) => {
 };
 
 export const restoreTable = async (data: CreateTable) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<CreateTable, AxiosResponse<Table>>(
     '/tables',
-    data,
-    configOptions
+    data
   );
 
   return response.data;

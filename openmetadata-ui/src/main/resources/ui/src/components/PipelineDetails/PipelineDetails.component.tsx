@@ -345,14 +345,14 @@ const PipelineDetails = ({
     try {
       await restorePipeline(data);
       showSuccessToast(
-        jsonData['api-success-messages']['restore-table-success'],
+        jsonData['api-success-messages']['restore-pipeline-success'],
         2000
       );
       history.push('/explore');
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['restore-table-error']
+        jsonData['api-error-messages']['restore-pipeline-error']
       );
     }
   };
@@ -466,7 +466,6 @@ const PipelineDetails = ({
               ? onTierRemove
               : undefined
           }
-          restoreEntity={handleRestorePipeline}
           tags={pipelineTags}
           tagsHandler={onTagUpdate}
           tier={tier}
@@ -483,6 +482,7 @@ const PipelineDetails = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestorePipeline}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow tw-w-full">

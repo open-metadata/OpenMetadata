@@ -85,7 +85,7 @@ interface Props {
   removeOwner?: () => void;
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
-  restoreEntity?: () => void;
+  onRestoreEntity?: () => void;
 }
 
 const EntityPageInfo = ({
@@ -116,7 +116,7 @@ const EntityPageInfo = ({
   currentOwner,
   entityFieldTasks,
   removeTier,
-  restoreEntity,
+  onRestoreEntity,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -503,7 +503,7 @@ const EntityPageInfo = ({
               entityName={entityName}
               entityType={entityType}
               onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
-              onRestoreClick={restoreEntity}
+              onRestoreEntity={onRestoreEntity}
             />
           )}
         </Space>

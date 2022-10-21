@@ -336,7 +336,7 @@ const DashboardDetails = ({
     }
   };
 
-  const handleRestoreTable = async () => {
+  const handleRestoreDashboard = async () => {
     const data: CreateDashboard = {
       charts: dashboardDetails.charts,
       dashboardUrl: dashboardDetails.dashboardUrl,
@@ -352,14 +352,14 @@ const DashboardDetails = ({
     try {
       await restoreDashboard(data);
       showSuccessToast(
-        jsonData['api-success-messages']['restore-table-success'],
+        jsonData['api-success-messages']['restore-dashboard-success'],
         2000
       );
       history.push('/explore');
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['restore-table-error']
+        jsonData['api-error-messages']['restore-dashboard-error']
       );
     }
   };
@@ -691,7 +691,6 @@ const DashboardDetails = ({
               ? onRemoveTier
               : undefined
           }
-          restoreEntity={handleRestoreTable}
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
           tier={tier || ''}
@@ -708,6 +707,7 @@ const DashboardDetails = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreDashboard}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

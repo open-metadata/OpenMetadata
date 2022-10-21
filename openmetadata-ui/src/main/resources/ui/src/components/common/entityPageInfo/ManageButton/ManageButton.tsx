@@ -38,7 +38,7 @@ interface Props {
   canDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
-  onRestoreClick?: () => void;
+  onRestoreEntity?: () => void;
   deleted?: boolean;
 }
 
@@ -56,7 +56,7 @@ const ManageButton: FC<Props> = ({
   isRecursiveDelete,
   extraDropdownContent,
   onAnnouncementClick,
-  onRestoreClick,
+  onRestoreEntity,
   deleted,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
@@ -111,7 +111,7 @@ const ManageButton: FC<Props> = ({
                         if (canDelete) {
                           e.stopPropagation();
                           setShowActions(false);
-                          onRestoreClick && onRestoreClick();
+                          onRestoreEntity && onRestoreEntity();
                         }
                       }}>
                       <SVGIcons alt="Restore" icon={Icons.RESTORE} />

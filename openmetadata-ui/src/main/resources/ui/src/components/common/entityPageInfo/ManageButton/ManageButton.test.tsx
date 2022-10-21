@@ -24,7 +24,7 @@ jest.mock('../../DeleteWidget/DeleteWidgetModal', () => {
 });
 
 const mockAnnouncementClick = jest.fn();
-const mockRestoreClick = jest.fn();
+const mockOnRestoreEntity = jest.fn();
 
 const mockProps = {
   allowSoftDelete: true,
@@ -36,7 +36,7 @@ const mockProps = {
   isRecursiveDelete: true,
   deleteMessage: 'string',
   onAnnouncementClick: mockAnnouncementClick,
-  onRestoreClick: mockRestoreClick,
+  onRestoreEntity: mockOnRestoreEntity,
 };
 
 describe('Test manage button component', () => {
@@ -129,7 +129,7 @@ describe('Test manage button component', () => {
 
       fireEvent.click(restoreOption);
 
-      expect(mockRestoreClick).toBeCalled();
+      expect(mockOnRestoreEntity).toBeCalled();
     });
   });
 });

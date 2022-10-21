@@ -668,7 +668,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               ? onRemoveTier
               : undefined
           }
-          restoreEntity={handleRestoreTable}
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
@@ -685,6 +684,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreTable}
           onThreadLinkSelect={onThreadLinkSelect}
         />
 

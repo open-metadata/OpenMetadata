@@ -127,14 +127,9 @@ export const patchTopicDetails = async (id: string, data: Operation[]) => {
 };
 
 export const restoreTopic = async (data: CreateTopic) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<CreateTopic, AxiosResponse<Topic>>(
     '/topics',
-    data,
-    configOptions
+    data
   );
 
   return response.data;
