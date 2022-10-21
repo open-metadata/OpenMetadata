@@ -1858,8 +1858,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       if (changeEvents == null || changeEvents.getData().size() == 0) {
         ResultList<ChangeEvent> finalChangeEvents = changeEvents;
-        Awaitility.await().atMost(iteration * 10L, TimeUnit.MILLISECONDS).
-                until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
+        Awaitility.await()
+            .atMost(iteration * 10L, TimeUnit.MILLISECONDS)
+            .until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
         continue;
       }
 
@@ -1917,8 +1918,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       if (changeEvents == null || changeEvents.getData().size() == 0) {
         ResultList<ChangeEvent> finalChangeEvents = changeEvents;
-        Awaitility.await().atMost(iteration * 10L, TimeUnit.MILLISECONDS).
-                until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
+        Awaitility.await()
+            .atMost(iteration * 10L, TimeUnit.MILLISECONDS)
+            .until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
         continue;
       }
       for (ChangeEvent event : changeEvents.getData()) {

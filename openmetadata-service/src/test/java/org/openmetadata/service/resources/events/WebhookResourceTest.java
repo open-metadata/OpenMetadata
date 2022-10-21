@@ -453,7 +453,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     return details;
   }
 
-  private AtomicBoolean hasEventOccured (String endpoint) {
+  private AtomicBoolean hasEventOccured(String endpoint) {
     EventDetails details = webhookCallbackResource.getEventDetails(endpoint);
     return new AtomicBoolean(details != null && details.getEvents() != null && details.getEvents().size() <= 0);
   }
