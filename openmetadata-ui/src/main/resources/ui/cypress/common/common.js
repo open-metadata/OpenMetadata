@@ -413,12 +413,12 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=*&from=*&size=*&index=${SEARCH_INDEX[entity]}`,
+    `/api/v1/search/query?q=*&from=*&size=*&index=*`,
     'explorePageTabSearch'
   );
   interceptURL(
     'GET',
-    `/api/v1/search/suggest?q=*&index=dashboard_search_index,table_search_index,topic_search_index,pipeline_search_index,mlmodel_search_index`,
+    `/api/v1/search/suggest?q=*&index=&index=*`,
     'searchQuery'
   );
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
