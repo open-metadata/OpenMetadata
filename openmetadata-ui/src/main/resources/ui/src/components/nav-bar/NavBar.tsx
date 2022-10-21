@@ -293,7 +293,7 @@ const NavBar = ({
                 trigger={['click']}>
                 <Space>
                   {t('label.governance')}
-                  <DropDownIcon />
+                  <DropDownIcon style={{ marginLeft: 0 }} />
                 </Space>
               </Dropdown>
 
