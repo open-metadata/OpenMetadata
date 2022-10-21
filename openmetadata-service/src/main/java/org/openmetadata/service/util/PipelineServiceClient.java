@@ -151,7 +151,7 @@ public abstract class PipelineServiceClient {
   public abstract IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline);
+  public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);

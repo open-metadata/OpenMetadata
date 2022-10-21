@@ -14,9 +14,9 @@ Return the last DagRun logs for each task
 import traceback
 from typing import Callable
 
-from flask import Blueprint, Response
+from flask import Blueprint, Response, request
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_arg_dag_id
+from openmetadata_managed_apis.api.utils import get_arg_dag_id, get_request_arg
 from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
 from openmetadata_managed_apis.utils.logger import routes_logger
 
@@ -45,9 +45,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
         """
 
         dag_id = get_arg_dag_id()
+        task_id = get_request_arg(request, "task_id")
+        after = get_request_arg(request, "after", raise_missing=False)
 
         try:
-            return last_dag_logs(dag_id)
+            return last_dag_logs(dag_id=dag_id, task_id=task_id, after=after)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

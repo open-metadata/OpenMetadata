@@ -1,11 +1,13 @@
 package org.openmetadata.service.resources.bots;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.SneakyThrows;
@@ -20,6 +22,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -49,6 +52,15 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
         createUser();
       } catch (Exception ignored) {
       }
+    }
+  }
+
+  @Test
+  void testBotInitialization() throws IOException {
+    // Ensure all the bots are bootstrapped from the data files
+    List<Bot> bots = EntityRepository.getEntitiesFromSeedData(Entity.BOT, ".*json/data/bot/.*\\.json$", Bot.class);
+    for (Bot bot : bots) {
+      assertNotNull(getEntityByName(bot.getName(), "", ADMIN_AUTH_HEADERS));
     }
   }
 

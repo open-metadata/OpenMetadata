@@ -17,6 +17,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   checkAirflowStatus,
@@ -32,24 +33,33 @@ import {
   NO_PERMISSION_TO_VIEW,
 } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/entity/policies/policy';
-import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
-import { getIngestionStatuses } from '../../utils/CommonUtils';
+import {
+  getIngestionStatuses,
+  getLoadingStatus,
+} from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
-import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
+import {
+  getLogsViewerPath,
+  getTestSuiteIngestionPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import PopOver from '../common/popover/PopOver';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
 const TestSuitePipelineTab = () => {
+  const { t } = useTranslation();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const { permissions } = usePermissionProvider();
   const history = useHistory();
@@ -58,7 +68,6 @@ const TestSuitePipelineTab = () => {
     IngestionPipeline[]
   >([]);
   const [airFlowEndPoint, setAirFlowEndPoint] = useState('');
-  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const [deleteSelection, setDeleteSelection] = useState({
@@ -211,7 +220,9 @@ const TestSuitePipelineTab = () => {
       setCurrDeployId({ id, state: 'success' });
       setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
       showSuccessToast(
-        `Pipeline ${reDeployed ? 'Re Deployed' : 'Deployed'} successfully`
+        `${t('label.pipeline')}  ${
+          reDeployed ? t('label.re-deploy') : t('label.deployed')
+        }  ${t('label.successfully-small')}`
       );
     } catch (error) {
       setCurrDeployId({ id: '', state: '' });
@@ -226,7 +237,8 @@ const TestSuitePipelineTab = () => {
     if (ingestion.deployed) {
       return (
         <>
-          <Tooltip title={editPermission ? 'Run' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip
+            title={editPermission ? t('label.run') : NO_PERMISSION_FOR_ACTION}>
             <Button
               data-testid="run"
               disabled={!editPermission}
@@ -234,20 +246,14 @@ const TestSuitePipelineTab = () => {
               onClick={() =>
                 handleTriggerIngestion(ingestion.id as string, ingestion.name)
               }>
-              {currTriggerId.id === ingestion.id ? (
-                currTriggerId.state === 'success' ? (
-                  <FontAwesomeIcon icon="check" />
-                ) : (
-                  <Loader size="small" type="default" />
-                )
-              ) : (
-                'Run'
-              )}
+              {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
             </Button>
           </Tooltip>
           {separator}
           <Tooltip
-            title={editPermission ? 'Re Deploy' : NO_PERMISSION_FOR_ACTION}>
+            title={
+              editPermission ? t('label.re-deploy') : NO_PERMISSION_FOR_ACTION
+            }>
             <Button
               data-testid="re-deploy-btn"
               disabled={!editPermission}
@@ -255,14 +261,10 @@ const TestSuitePipelineTab = () => {
               onClick={() =>
                 handleDeployIngestion(ingestion.id as string, true)
               }>
-              {currDeployId.id === ingestion.id ? (
-                currDeployId.state === 'success' ? (
-                  <FontAwesomeIcon icon="check" />
-                ) : (
-                  <Loader size="small" type="default" />
-                )
-              ) : (
-                'Re Deploy'
+              {getLoadingStatus(
+                currDeployId,
+                ingestion.id,
+                t('label.re-deploy')
               )}
             </Button>
           </Tooltip>
@@ -270,7 +272,8 @@ const TestSuitePipelineTab = () => {
       );
     } else {
       return (
-        <Tooltip title={editPermission ? 'Deploy' : NO_PERMISSION_FOR_ACTION}>
+        <Tooltip
+          title={editPermission ? t('label.deploy') : NO_PERMISSION_FOR_ACTION}>
           <Button
             data-testid="deploy"
             disabled={!editPermission}
@@ -278,15 +281,7 @@ const TestSuitePipelineTab = () => {
             onClick={() =>
               handleDeployIngestion(ingestion.id as string, false)
             }>
-            {currDeployId.id === ingestion.id ? (
-              currDeployId.state === 'success' ? (
-                <FontAwesomeIcon icon="check" />
-              ) : (
-                <Loader size="small" type="default" />
-              )
-            ) : (
-              'Deploy'
-            )}
+            {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
           </Button>
         </Tooltip>
       );
@@ -400,7 +395,9 @@ const TestSuitePipelineTab = () => {
                     {separator}
                     <Tooltip
                       title={
-                        editPermission ? 'Pause' : NO_PERMISSION_FOR_ACTION
+                        editPermission
+                          ? t('label.pause')
+                          : NO_PERMISSION_FOR_ACTION
                       }>
                       <Button
                         data-testid="pause"
@@ -409,14 +406,16 @@ const TestSuitePipelineTab = () => {
                         onClick={() =>
                           handleEnableDisableIngestion(record.id || '')
                         }>
-                        Pause
+                        {t('label.pause')}
                       </Button>
                     </Tooltip>
                   </Fragment>
                 ) : (
                   <Tooltip
                     title={
-                      editPermission ? 'UnPause' : NO_PERMISSION_FOR_ACTION
+                      editPermission
+                        ? t('label.unpause')
+                        : NO_PERMISSION_FOR_ACTION
                     }>
                     <Button
                       data-testid="unpause"
@@ -425,13 +424,15 @@ const TestSuitePipelineTab = () => {
                       onClick={() =>
                         handleEnableDisableIngestion(record.id || '')
                       }>
-                      Unpause
+                      {t('label.unpause')}
                     </Button>
                   </Tooltip>
                 )}
                 {separator}
                 <Tooltip
-                  title={editPermission ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                  title={
+                    editPermission ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     data-testid="edit"
                     disabled={!editPermission}
@@ -450,7 +451,9 @@ const TestSuitePipelineTab = () => {
                 {separator}
                 <Tooltip
                   title={
-                    deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+                    deletePermission
+                      ? t('label.delete')
+                      : NO_PERMISSION_FOR_ACTION
                   }>
                   <Button
                     data-testid="delete"
@@ -466,13 +469,15 @@ const TestSuitePipelineTab = () => {
                         <Loader size="small" type="default" />
                       )
                     ) : (
-                      'Delete'
+                      t('label.delete')
                     )}
                   </Button>
                 </Tooltip>
                 {separator}
                 <Tooltip
-                  title={editPermission ? 'Kill' : NO_PERMISSION_FOR_ACTION}>
+                  title={
+                    editPermission ? t('label.kill') : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     data-testid="kill"
                     disabled={!editPermission}
@@ -486,13 +491,19 @@ const TestSuitePipelineTab = () => {
                 </Tooltip>
                 {separator}
                 <Tooltip
-                  title={viewPermission ? 'Logs' : NO_PERMISSION_FOR_ACTION}>
+                  title={
+                    viewPermission ? t('label.logs') : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     data-testid="logs"
                     disabled={!viewPermission}
+                    href={getLogsViewerPath(
+                      PipelineType.TestSuite,
+                      record.service?.name || '',
+                      record.fullyQualifiedName || ''
+                    )}
                     type="link"
                     onClick={() => {
-                      setIsLogsModalOpen(true);
                       setSelectedPipeline(record);
                     }}>
                     Logs
@@ -500,20 +511,6 @@ const TestSuitePipelineTab = () => {
                 </Tooltip>
               </div>
 
-              {isLogsModalOpen &&
-                selectedPipeline &&
-                record.id === selectedPipeline?.id && (
-                  <IngestionLogsModal
-                    isModalOpen={isLogsModalOpen}
-                    pipelinName={selectedPipeline.name}
-                    pipelineId={selectedPipeline.id as string}
-                    pipelineType={selectedPipeline.pipelineType}
-                    onClose={() => {
-                      setIsLogsModalOpen(false);
-                      setSelectedPipeline(undefined);
-                    }}
-                  />
-                )}
               {isKillModalOpen &&
                 selectedPipeline &&
                 record.id === selectedPipeline?.id && (
@@ -538,7 +535,6 @@ const TestSuitePipelineTab = () => {
   }, [
     airFlowEndPoint,
     isKillModalOpen,
-    isLogsModalOpen,
     selectedPipeline,
     currDeployId,
     currTriggerId,

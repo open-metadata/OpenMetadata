@@ -16,6 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
+import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -29,6 +30,32 @@ export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
 };
 
 export const getIngestionPipelineByFqn = async (
+  fqn: string,
+  arrQueryFields?: Array<string>
+) => {
+  const url = getURLWithQueryFields(
+    `/services/ingestionPipelines/name/${fqn}`,
+    arrQueryFields
+  );
+
+  const response = await APIClient.get<IngestionPipeline>(url);
+
+  return response.data;
+};
+
+/**
+ * "Get an ingestion pipeline by its fully qualified name."
+ *
+ * The function takes two parameters:
+ *
+ * * `fqn`: The fully qualified name of the ingestion pipeline.
+ * * `arrQueryFields`: An array of query fields to include in the response
+ * @param {string} fqn - The fully qualified name of the ingestion pipeline.
+ * @param [arrQueryFields] - An array of strings that represent the query fields you want to include in
+ * the request.
+ * @returns IngestionPipeline
+ */
+export const getIngestionPipelineByName = async (
   fqn: string,
   arrQueryFields?: Array<string>
 ) => {
@@ -122,10 +149,15 @@ export const getPipelineServiceHostIp = async () => {
   return response.data;
 };
 
-export const getIngestionPipelineLogById = (
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/ingestionPipelines/logs/${id}/last`);
+export const getIngestionPipelineLogById = (id: string, after?: string) => {
+  return APIClient.get<IngestionPipelineLogByIdInterface>(
+    `/services/ingestionPipelines/logs/${id}/last`,
+    {
+      params: {
+        after,
+      },
+    }
+  );
 };
 
 export const postkillIngestionPipelineById = (

@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
+import { ServiceTypes } from 'Models';
 import { ProfilerDashboardTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getServiceDetailsPath,
+  INGESTION_NAME,
   IN_PAGE_SEARCH_ROUTES,
+  LOG_ENTITY_NAME,
+  LOG_ENTITY_TYPE,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
@@ -37,7 +43,10 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
+import { arrServiceTypes } from '../constants/services.const';
 import { ProfilerDashboardType } from '../enums/table.enum';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
 export const isDashboard = (pathname: string): boolean => {
@@ -376,4 +385,62 @@ export const getTestSuiteIngestionPath = (
   }
 
   return path;
+};
+
+/**
+ * It takes in a log entity type, log entity name, and ingestion name, and returns a path to the logs
+ * viewer
+ * @param {string} logEntityType - The type of entity that the logs are associated with.
+ * @param {string} logEntityName - The name of the log entity.
+ * @param {string} ingestionName - The name of the ingestion.
+ * @returns A string
+ */
+export const getLogsViewerPath = (
+  logEntityType: string,
+  logEntityName: string,
+  ingestionName: string
+) => {
+  let path = ROUTES.LOGS;
+
+  path = path.replace(LOG_ENTITY_TYPE, logEntityType);
+  path = path.replace(LOG_ENTITY_NAME, logEntityName);
+  path = path.replace(INGESTION_NAME, ingestionName);
+
+  return path;
+};
+
+/**
+ * It returns a path
+ * @param {string} path - The path of the current page.
+ * @param {string | undefined} logEntityType - The type of the log entity.
+ * @returns a string.
+ */
+export const getLogEntityPath = (
+  path: string,
+  logEntityType: string | undefined
+): string => {
+  if (isUndefined(logEntityType)) return '';
+
+  if (path === 'TestSuite') {
+    return getSettingPath(
+      GlobalSettingsMenuCategory.DATA_QUALITY,
+      GlobalSettingOptions.TEST_SUITE
+    );
+  }
+
+  if (logEntityType === 'testSuite') {
+    return getTestSuitePath(path);
+  }
+
+  if (
+    !arrServiceTypes.includes(path as ServiceTypes) &&
+    path !== PipelineType.TestSuite
+  ) {
+    return getServiceDetailsPath(path, logEntityType, 'ingestions');
+  }
+
+  return getSettingPath(
+    GlobalSettingsMenuCategory.SERVICES,
+    getServiceRouteFromServiceType(logEntityType as ServiceTypes)
+  );
 };

@@ -26,7 +26,6 @@ from pydantic import BaseModel
 from requests.utils import quote
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -180,7 +179,7 @@ class OpenMetadata(
 
         # Load auth provider config from Secret Manager if necessary
         self.secrets_manager_client.add_auth_provider_security_config(
-            self.config, BotType.ingestion_bot.value
+            self.config, "ingestion-bot"
         )
 
         # Load the auth provider init from the registry

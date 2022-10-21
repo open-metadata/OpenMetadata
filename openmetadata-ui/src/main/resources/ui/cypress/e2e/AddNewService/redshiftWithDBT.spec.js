@@ -18,7 +18,8 @@ import {
     interceptURL,
     login,
     testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables, verifyResponseStatusCode,
+    updateDescriptionForIngestedTables,
+    verifyResponseStatusCode,
     visitEntityDetailsPage
 } from '../../common/common';
 import {
@@ -123,9 +124,10 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="Lineage"]').should('be.visible').click();
 
-    cy.get('[data-testid="lineage-entity"]')
-      .should('contain', DBT.dbtLineageNode1)
-      .and('contain', DBT.dbtLineageNode2);
+    cy.get('[data-testid="lineage-entity"]').should(
+      'contain',
+      DBT.dbtLineageNode
+    );
 
     //Verify Data Quality
     cy.get('[data-testid="Profiler & Data Quality"]')
