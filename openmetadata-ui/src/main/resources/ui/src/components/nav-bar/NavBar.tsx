@@ -266,7 +266,7 @@ const NavBar = ({
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="90" />
+              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO_SMALL} />
             </NavLink>
             <Space className="tw-ml-5" size={16}>
               <NavLink
