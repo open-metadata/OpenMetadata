@@ -24,6 +24,7 @@ const CustomControlElements = ({
   isEditMode,
   hasEditAccess,
   onClick,
+  onExpandColumnClick,
   loading,
   status,
 }: CustomControlElementsProps) => {
@@ -57,6 +58,18 @@ const CustomControlElements = ({
           {getLoadingStatus()}
         </ControlButton>
       )}
+      {/* need to update below button once new mock comes */}
+      <ControlButton
+        className={classNames('h-9 w-9 rounded-full p-x-xss tw-shadow-lg', {
+          'bg-primary': isEditMode,
+          'bg-primary-hover-lite': !isEditMode,
+        })}
+        data-testid="edit-lineage"
+        disabled={!hasEditAccess}
+        title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
+        onClick={onExpandColumnClick}>
+        CL
+      </ControlButton>
     </CustomControls>
   );
 };

@@ -123,7 +123,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       zoomOnScroll={false}
       onEdgesChange={onEdgesChange}
       onInit={(reactFlowInstance) => {
-        onLoad(reactFlowInstance, nodesData.length, true);
+        onLoad(reactFlowInstance);
       }}
       onNodesChange={onNodesChange}
     />

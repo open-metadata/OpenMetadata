@@ -94,6 +94,7 @@ export interface CustomControlElementsProps {
   isEditMode: boolean;
   hasEditAccess: boolean | undefined;
   onClick: () => void;
+  onExpandColumnClick: () => void;
   loading: boolean;
   status: LoadingState;
 }

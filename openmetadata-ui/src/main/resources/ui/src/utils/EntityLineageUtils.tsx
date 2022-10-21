@@ -96,15 +96,9 @@ export const getHeaderLabel = (
   );
 };
 
-export const onLoad = (
-  reactFlowInstance: ReactFlowInstance,
-  length?: number,
-  forceZoomReset = false
-) => {
+export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  if (forceZoomReset || (length && length <= 2)) {
-    reactFlowInstance.zoomTo(zoomValue);
-  }
+  reactFlowInstance.zoomTo(zoomValue);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -168,10 +162,7 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLabel: (
-    node: EntityReference,
-    isExpanded?: boolean
-  ) => React.ReactNode,
+  getNodeLabel: (node: EntityReference) => React.ReactNode,
   isEditMode: boolean,
   edgeType: string,
   onEdgeClick: (
@@ -293,9 +284,7 @@ export const getLineageData = (
               </div>
             )}
 
-            <div>
-              {getNodeLabel(node, currentNode?.data?.isExpanded || false)}
-            </div>
+            <div>{getNodeLabel(node)}</div>
 
             {type === EntityLineageNodeType.OUTPUT && (
               <div
@@ -355,7 +344,7 @@ export const getLineageData = (
       type: getNodeType(entityLineage, mainNode.id),
       className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
-        label: getNodeLabel(mainNode, currentNode || false),
+        label: getNodeLabel(mainNode),
         isEditMode,
         removeNodeHandler,
         columns: mainCols,
