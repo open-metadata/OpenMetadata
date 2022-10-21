@@ -185,7 +185,7 @@ const NavBar = ({
           key: 'glossary',
           label: (
             <NavLink
-              className="focus:tw-no-underline"
+              className="focus:no-underline"
               data-testid="appbar-item-glossary"
               style={navStyle(pathname.startsWith('/glossary'))}
               to={{
@@ -199,7 +199,7 @@ const NavBar = ({
           key: 'tags',
           label: (
             <NavLink
-              className="focus:tw-no-underline"
+              className="focus:no-underline"
               data-testid="appbar-item-tags"
               style={navStyle(pathname.startsWith('/tags'))}
               to={{

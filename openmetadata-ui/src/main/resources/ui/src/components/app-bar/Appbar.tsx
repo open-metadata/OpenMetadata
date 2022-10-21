@@ -145,7 +145,7 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       name: (
         <Button
-          className="focus:tw-no-underline hover:tw-underline flex-shrink p-0"
+          className="focus:no-underline hover:underline flex-shrink p-0"
           data-testid="whatsnew-modal"
           type="text"
           onClick={() => handleFeatureModal(true)}>
@@ -156,7 +156,7 @@ const Appbar: React.FC = (): JSX.Element => {
       icon: (
         <SVGIcons
           alt="Doc icon"
-          className="tw-align-middle tw-mr-0.5"
+          className="align-middle tw-mr-0.5"
           icon={Icons.WHATS_NEW}
           width="12"
         />
@@ -165,7 +165,7 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       name: (
         <Button
-          className="focus:tw-no-underline hover:tw-underline flex-shrink p-0"
+          className="focus:no-underline hover:underline flex-shrink p-0"
           data-testid="tour"
           type="text"
           onClick={() => history.push(ROUTES.TOUR)}>
@@ -176,7 +176,7 @@ const Appbar: React.FC = (): JSX.Element => {
       icon: (
         <SVGIcons
           alt="tour-con"
-          className="tw-align-middle tw-mr-0.5"
+          className="align-middle tw-mr-0.5"
           icon={Icons.TOUR}
           width="12"
         />
