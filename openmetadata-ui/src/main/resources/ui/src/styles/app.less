@@ -15,6 +15,8 @@
 
 @primary: #7147e8;
 @primary-light: rgb(244, 240, 253);
+@primary-hover-light: rgba(219, 209, 249);
+@white: #fff;
 
 //font weight
 .font-medium {
@@ -43,6 +45,9 @@
 .error-text {
   color: #ff4c3b;
 }
+.text-white {
+  color: @white;
+}
 
 // text alignment
 
@@ -59,6 +64,9 @@
 // Width
 .w-8 {
   width: 32px;
+}
+.w-9 {
+  width: 36px;
 }
 .w-16 {
   width: 64px;
@@ -109,6 +117,9 @@
 //Height
 .h-7 {
   height: 28px;
+}
+.h-9 {
+  height: 36px;
 }
 .h-min-100 {
   min-height: 100vh;
@@ -180,8 +191,18 @@
   border-color: @primary;
 }
 
+.rounded-full {
+  border-radius: 9999px;
+}
+
 .bg-primary-lite {
   background: @primary-light;
+}
+.bg-primary {
+  background: @primary;
+}
+.bg-primary-hover-lite {
+  background-color: @primary-hover-light;
 }
 
 .activeCategory {
