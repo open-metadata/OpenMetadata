@@ -1,11 +1,13 @@
 package org.openmetadata.service.resources.bots;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.SneakyThrows;
@@ -16,10 +18,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -49,6 +52,15 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
         createUser();
       } catch (Exception ignored) {
       }
+    }
+  }
+
+  @Test
+  void testBotInitialization() throws IOException {
+    // Ensure all the bots are bootstrapped from the data files
+    List<Bot> bots = EntityRepository.getEntitiesFromSeedData(Entity.BOT, ".*json/data/bot/.*\\.json$", Bot.class);
+    for (Bot bot : bots) {
+      assertNotNull(getEntityByName(bot.getName(), "", ADMIN_AUTH_HEADERS));
     }
   }
 
@@ -103,14 +115,14 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Test
-  void delete_failIfUserIsIngestionBot(TestInfo test) throws IOException {
+  void delete_failIfUserIsIngestionBot() throws IOException {
     // get ingestion bot
-    Bot ingestionBot = getEntityByName(BotType.INGESTION_BOT.value(), "", ADMIN_AUTH_HEADERS);
+    Bot ingestionBot = getEntityByName(Entity.INGESTION_BOT_NAME, "", ADMIN_AUTH_HEADERS);
     // fail because it is a system bot
     assertResponse(
         () -> deleteEntity(ingestionBot.getId(), true, true, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[ingestion-bot] can not be deleted.");
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(ingestionBot.getName(), Entity.BOT));
   }
 
   @Override
