@@ -4,13 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import lombok.extern.slf4j.Slf4j;
+import org.awaitility.Awaitility;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+
+import java.time.Duration;
 
 @Slf4j
 public class LoginAttemptCacheTest {
   @Test
-  void testFailedLogin() throws InterruptedException {
+  void testFailedLogin() {
     String testKey = "test";
     LoginAttemptCache cache = new LoginAttemptCache(3, 1);
 
@@ -25,7 +29,7 @@ public class LoginAttemptCacheTest {
     assertTrue(cache.isLoginBlocked(testKey));
 
     // Check Eviction
-    Thread.sleep(2000);
+    Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> Assert.assertTrue(true));
     assertFalse(cache.isLoginBlocked(testKey));
 
     // Check Successful Login
@@ -39,7 +43,7 @@ public class LoginAttemptCacheTest {
     assertFalse(cache.isLoginBlocked(testKey));
 
     // Check Eviction
-    Thread.sleep(2000);
+    Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> Assert.assertTrue(true));
     assertFalse(cache.isLoginBlocked(testKey));
   }
 }

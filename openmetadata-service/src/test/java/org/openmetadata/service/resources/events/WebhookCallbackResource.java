@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
@@ -22,6 +24,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.awaitility.Awaitility;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
@@ -72,11 +75,7 @@ public class WebhookCallbackResource {
   public Response receiveEventWithTimeout(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, ChangeEventList events) {
     addEventDetails("simulate-timeout", events);
-    try {
-      Thread.sleep(15 * 1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    Awaitility.await().pollDelay(Duration.ofSeconds(15L)).untilTrue(new AtomicBoolean(true));
     return Response.ok().build();
   }
 
