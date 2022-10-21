@@ -19,6 +19,7 @@ import { getListTestSuites } from '../../axiosAPIs/testAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import Loader from '../../components/Loader/Loader';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
@@ -128,9 +129,9 @@ const TestSuitePage = () => {
         <Col span={24}>
           <Table
             columns={columns}
-            dataSource={testSuites.map((test) => ({ ...test, key: test.name }))}
-            loading={isLoading}
+            loading={{ spinning: isLoading, indicator: <Loader /> }}
             pagination={false}
+            rowKey="name"
             size="small"
           />
         </Col>
