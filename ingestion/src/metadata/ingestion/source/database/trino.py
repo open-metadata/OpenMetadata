@@ -25,7 +25,6 @@ from trino.sqlalchemy import datatype
 from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.utils.ansi import ANSI
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
@@ -38,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
+from metadata.utils.ansi import ANSI
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
