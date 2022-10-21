@@ -50,6 +50,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
@@ -254,7 +255,9 @@ class DBTMixin:
 
         return columns
 
-    def process_dbt_lineage_and_descriptions(self) -> Iterable[AddLineageRequest]:
+    def process_dbt_lineage_and_descriptions(
+        self,
+    ) -> Iterable[AddLineageRequest]:
         """
         After everything has been processed, add the lineage info
         """
@@ -293,7 +296,7 @@ class DBTMixin:
                         f"Failed to parse the node {upstream_node} to update dbt desctiption: {exc}"
                     )
 
-            # Create Lineage from DBT
+            # Create Lineage from DBT Files
             for upstream_node in data_model.upstream:
                 try:
                     from_es_result = self.metadata.es_search_from_fqn(
@@ -324,6 +327,26 @@ class DBTMixin:
                     logger.warning(
                         f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                     )
+
+            # Create Lineage from DBT Queries
+            try:
+                service_database_schema_table = fqn.split(data_model_name)
+                target_table_fqn = ".".join(service_database_schema_table[1:])
+                query = f"create table {target_table_fqn} as {data_model.sql.__root__}"
+                lineages = get_lineage_by_query(
+                    self.metadata,
+                    query=query,
+                    service_name=service_database_schema_table[0],
+                    database_name=service_database_schema_table[1],
+                    schema_name=service_database_schema_table[2],
+                )
+                for lineage_request in lineages or []:
+                    yield lineage_request
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to parse the query {data_model.sql.__root__} to capture lineage: {exc}"
+                )
 
     def create_dbt_tests_suite_definition(self):
         """
