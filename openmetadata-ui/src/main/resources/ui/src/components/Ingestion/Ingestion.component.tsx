@@ -16,6 +16,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
+import { useTranslation } from 'react-i18next';
+
 import { capitalize, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -27,7 +29,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { isEven } from '../../utils/CommonUtils';
+import { getLoadingStatus, isEven } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
   getEditIngestionPath,
@@ -64,7 +66,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   permissions,
 }: IngestionProps) => {
   const history = useHistory();
-
+  const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
@@ -330,13 +332,20 @@ const Ingestion: React.FC<IngestionProps> = ({
           html={
             <div className="tw-text-left">
               {r.timestamp ? (
-                <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
+                <p>
+                  {t('label.execution-date')} :{' '}
+                  {new Date(r.timestamp).toUTCString()}
+                </p>
               ) : null}
               {r.startDate ? (
-                <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+                <p>
+                  {t('label.start-date')}: {new Date(r.startDate).toUTCString()}
+                </p>
               ) : null}
               {r.endDate ? (
-                <p>End Date: {new Date(r.endDate).toUTCString()}</p>
+                <p>
+                  {t('label.end-date')} : {new Date(r.endDate).toUTCString()}
+                </p>
               ) : null}
             </div>
           }
@@ -355,22 +364,25 @@ const Ingestion: React.FC<IngestionProps> = ({
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
-        <Button
-          data-testid="run"
-          type="link"
-          onClick={() =>
-            handleTriggerIngestion(ingestion.id as string, ingestion.name)
-          }>
-          {currTriggerId.id === ingestion.id ? (
-            currTriggerId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
-            ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Run'
-          )}
-        </Button>
+        <>
+          <Button
+            data-testid="run"
+            type="link"
+            onClick={() =>
+              handleTriggerIngestion(ingestion.id as string, ingestion.name)
+            }>
+            {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
+          </Button>
+          {separator}
+
+          <Button
+            data-testid="re-deploy-btn"
+            disabled={!isRequiredDetailsAvailable}
+            type="link"
+            onClick={() => handleDeployIngestion(ingestion.id as string)}>
+            {getLoadingStatus(currDeployId, ingestion.id, t('label.re-deploy'))}
+          </Button>
+        </>
       );
     } else {
       return (
@@ -378,15 +390,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           data-testid="deploy"
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
-          {currDeployId.id === ingestion.id ? (
-            currDeployId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
-            ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Deploy'
-          )}
+          {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
         </Button>
       );
     }
@@ -429,11 +433,11 @@ const Ingestion: React.FC<IngestionProps> = ({
               data-testid="ingestion-table">
               <thead>
                 <tr className="tableHead-row" data-testid="table-header">
-                  <th className="tableHead-cell">Name</th>
-                  <th className="tableHead-cell">Type</th>
-                  <th className="tableHead-cell">Schedule</th>
-                  <th className="tableHead-cell">Recent Runs</th>
-                  <th className="tableHead-cell">Actions</th>
+                  <th className="tableHead-cell">{t('label.name')} </th>
+                  <th className="tableHead-cell">{t('label.type')}</th>
+                  <th className="tableHead-cell">{t('label.schedule')}</th>
+                  <th className="tableHead-cell">{t('label.recent-runs')}</th>
+                  <th className="tableHead-cell">{t('label.actions')}</th>
                 </tr>
               </thead>
               <tbody className="tableBody">
@@ -449,7 +453,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                         <Tooltip
                           title={
                             permissions.ViewAll || permissions.ViewBasic
-                              ? 'View Dag'
+                              ? t('label.view-dag')
                               : NO_PERMISSION_TO_VIEW
                           }>
                           <Button
@@ -517,7 +521,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                               onClick={() =>
                                 handleEnableDisableIngestion(ingestion.id || '')
                               }>
-                              Pause
+                              {t('label.pause')}
                             </Button>
                           </Fragment>
                         ) : (
@@ -528,7 +532,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                             onClick={() =>
                               handleEnableDisableIngestion(ingestion.id || '')
                             }>
-                            Unpause
+                            {t('label.unpause')}
                           </Button>
                         )}
                         {separator}
@@ -537,7 +541,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                           disabled={!isRequiredDetailsAvailable}
                           type="link"
                           onClick={() => handleUpdate(ingestion)}>
-                          Edit
+                          {t('label.edit')}
                         </Button>
                         {separator}
                         <Button
@@ -556,7 +560,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                               <Loader size="small" type="default" />
                             )
                           ) : (
-                            'Delete'
+                            t('label.delete')
                           )}
                         </Button>
                         {separator}
@@ -568,7 +572,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                             setIsKillModalOpen(true);
                             setSelectedPipeline(ingestion);
                           }}>
-                          Kill
+                          {t('label.kill')}
                         </Button>
                         {separator}
                         <Button
@@ -579,7 +583,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                             setIsLogsModalOpen(true);
                             setSelectedPipeline(ingestion);
                           }}>
-                          Logs
+                          {t('label.logs')}
                         </Button>
                       </div>
                       {isLogsModalOpen &&
@@ -631,14 +635,14 @@ const Ingestion: React.FC<IngestionProps> = ({
           isRequiredDetailsAvailable &&
           ingestionList.length === 0 && (
             <ErrorPlaceHolder>
-              <Typography.Text>No ingestion data available</Typography.Text>
               <Typography.Text>
-                To view Ingestion Data, run the MetaData Ingestion. Please refer
-                to this doc to schedule the{' '}
+                {t('label.no-ingestion-available')}
+              </Typography.Text>
+              <Typography.Text>
+                {t('label.no-ingestion-description')}
               </Typography.Text>
               <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-                {' '}
-                Metadata Ingestion
+                {t('label.metadata-ingestion')}
               </Typography.Link>
             </ErrorPlaceHolder>
           )
