@@ -54,7 +54,7 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateDashboard> {
+public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateDashboard> {
   public static EntityReference SUPERSET_INVALID_SERVICE_REFERENCE;
 
   public DashboardResourceTest() {

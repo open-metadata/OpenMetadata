@@ -40,7 +40,7 @@ import software.amazon.awssdk.services.ssm.model.Parameter;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 
-class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
+public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
 
   @Mock private SsmClient ssmClient;
 

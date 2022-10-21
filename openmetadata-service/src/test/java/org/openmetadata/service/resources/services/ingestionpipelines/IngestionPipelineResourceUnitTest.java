@@ -64,7 +64,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.PipelineServiceClient;
 
 @ExtendWith(MockitoExtension.class)
-class IngestionPipelineResourceUnitTest {
+public class IngestionPipelineResourceUnitTest {
 
   private static final UUID DAG_ID = UUID.randomUUID();
 

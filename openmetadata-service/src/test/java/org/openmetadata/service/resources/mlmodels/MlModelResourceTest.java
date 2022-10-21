@@ -65,7 +65,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlModel> {
+public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlModel> {
 
   public static final String ALGORITHM = "regression";
   public static Dashboard DASHBOARD;

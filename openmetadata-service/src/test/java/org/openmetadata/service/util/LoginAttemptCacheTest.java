@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 
 @Slf4j
-class LoginAttemptCacheTest {
+public class LoginAttemptCacheTest {
   @Test
   void testFailedLogin() throws InterruptedException {
     String testKey = "test";
