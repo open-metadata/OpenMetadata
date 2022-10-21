@@ -23,7 +23,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ENTITIES_DATA } from '../../pages/DataInsightPage/DataInsight.mock';
+import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
+import { generateEntityData } from '../../pages/DataInsightPage/DataInsight.mock';
 
 const TotalEntityInsight = () => {
   return (
@@ -33,14 +34,7 @@ const TotalEntityInsight = () => {
       </div>
       <div className="mt-4" data-testid="entity-summary-card-content">
         <ResponsiveContainer minHeight={400}>
-          <BarChart
-            data={ENTITIES_DATA}
-            margin={{
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}>
+          <BarChart data={generateEntityData()} margin={BAR_CHART_MARGIN}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />

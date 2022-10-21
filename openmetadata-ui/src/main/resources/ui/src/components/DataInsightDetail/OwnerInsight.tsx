@@ -24,12 +24,11 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis,
 } from 'recharts';
 import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
 import {
   COLORS,
-  ENTITIES_DATA_DESCRIPTION_PERCENTAGE,
+  generateRandomPercentageData,
   PIE_DATA,
 } from '../../pages/DataInsightPage/DataInsight.mock';
 
@@ -71,17 +70,27 @@ const OwnerInsight = () => {
         <Col span={18}>
           <ResponsiveContainer minHeight={400}>
             <BarChart
-              data={ENTITIES_DATA_DESCRIPTION_PERCENTAGE}
+              data={generateRandomPercentageData()}
               margin={BAR_CHART_MARGIN}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis />
+              {/* <YAxis /> */}
               <Tooltip />
               <Legend className="mt-4" />
-              <Bar barSize={20} dataKey="tables" fill="#8884d8" />
-              <Bar barSize={20} dataKey="topics" fill="#82ca9d" />
-              <Bar barSize={20} dataKey="pipelines" fill="#9cc5e9" />
-              <Bar barSize={20} dataKey="dashboards" fill="#e99c9c" />
+              <Bar barSize={20} dataKey="tables" fill="#8884d8" stackId="c" />
+              <Bar barSize={20} dataKey="topics" fill="#82ca9d" stackId="c" />
+              <Bar
+                barSize={20}
+                dataKey="pipelines"
+                fill="#9cc5e9"
+                stackId="c"
+              />
+              <Bar
+                barSize={20}
+                dataKey="dashboards"
+                fill="#e99c9c"
+                stackId="c"
+              />
             </BarChart>
           </ResponsiveContainer>
         </Col>

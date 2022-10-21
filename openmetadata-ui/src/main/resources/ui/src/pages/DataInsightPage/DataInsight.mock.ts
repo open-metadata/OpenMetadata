@@ -23,7 +23,7 @@ const getRandomDate = () => {
     start.getTime() + Math.random() * (end.getTime() - start.getTime())
   );
 
-  return `${date.getMonth()}/${date.getDate()}`;
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 };
 
 export const PIE_DATA = [
@@ -127,105 +127,36 @@ export const SUMMARY_DATA = [
   },
 ];
 
-export const ENTITIES_DATA = [
-  {
-    date: getRandomDate(),
-    tables: getRandomNumber(),
-    topics: getRandomNumber(),
-    pipelines: getRandomNumber(),
-    dashboards: getRandomNumber(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomNumber(),
-    topics: getRandomNumber(),
-    pipelines: getRandomNumber(),
-    dashboards: getRandomNumber(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomNumber(),
-    topics: getRandomNumber(),
-    pipelines: getRandomNumber(),
-    dashboards: getRandomNumber(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomNumber(),
-    topics: getRandomNumber(),
-    pipelines: getRandomNumber(),
-    dashboards: getRandomNumber(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomNumber(),
-    topics: getRandomNumber(),
-    pipelines: getRandomNumber(),
-    dashboards: getRandomNumber(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomNumber(),
-    topics: getRandomNumber(),
-    pipelines: getRandomNumber(),
-    dashboards: getRandomNumber(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomNumber(),
-    topics: getRandomNumber(),
-    pipelines: getRandomNumber(),
-    dashboards: getRandomNumber(),
-  },
-];
-export const ENTITIES_DATA_DESCRIPTION_PERCENTAGE = [
-  {
-    date: getRandomDate(),
-    tables: getRandomPercentage(),
-    topics: getRandomPercentage(),
-    pipelines: getRandomPercentage(),
-    dashboards: getRandomPercentage(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomPercentage(),
-    topics: getRandomPercentage(),
-    pipelines: getRandomPercentage(),
-    dashboards: getRandomPercentage(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomPercentage(),
-    topics: getRandomPercentage(),
-    pipelines: getRandomPercentage(),
-    dashboards: getRandomPercentage(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomPercentage(),
-    topics: getRandomPercentage(),
-    pipelines: getRandomPercentage(),
-    dashboards: getRandomPercentage(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomPercentage(),
-    topics: getRandomPercentage(),
-    pipelines: getRandomPercentage(),
-    dashboards: getRandomPercentage(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomPercentage(),
-    topics: getRandomPercentage(),
-    pipelines: getRandomPercentage(),
-    dashboards: getRandomPercentage(),
-  },
-  {
-    date: getRandomDate(),
-    tables: getRandomPercentage(),
-    topics: getRandomPercentage(),
-    pipelines: getRandomPercentage(),
-    dashboards: getRandomPercentage(),
-  },
-];
+export const DEFAULT_CAP = 30;
+
+export const generateEntityData = () => {
+  const dataList = [];
+
+  for (let index = 0; index < DEFAULT_CAP; index++) {
+    dataList.push({
+      date: getRandomDate(),
+      tables: getRandomNumber(),
+      topics: getRandomNumber(),
+      pipelines: getRandomNumber(),
+      dashboards: getRandomNumber(),
+    });
+  }
+
+  return dataList;
+};
+
+export const generateRandomPercentageData = () => {
+  const dataList = [];
+
+  for (let index = 0; index < DEFAULT_CAP; index++) {
+    dataList.push({
+      date: getRandomDate(),
+      tables: getRandomPercentage(),
+      topics: getRandomPercentage(),
+      pipelines: getRandomPercentage(),
+      dashboards: getRandomPercentage(),
+    });
+  }
+
+  return dataList;
+};
