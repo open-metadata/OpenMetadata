@@ -464,7 +464,7 @@ const AuthMechanismForm: FC<Props> = ({
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder={t('message.scopes-comma-separated')}
+                placeholder={t('label.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes?.join('')}
                 onChange={handleOnChange}
               />

@@ -150,7 +150,8 @@
     "table": "Table",
     "submit": "Submit",
     "sql-query": "SQL Query",
-    "sql-query-tooltip": "Queries returning 1 or more rows will result in the test failing."
+    "sql-query-tooltip": "Queries returning 1 or more rows will result in the test failing.",
+    "scopes-comma-separated": "Scopes value comma separated"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -160,13 +161,12 @@
     "clientId-required": "ClientId is required",
     "authority-required": "Authority is required",
     "scopes-required": "Scopes is required",
-    "scopes-comma-separated": "Scopes value comma separated",
     "secretKey-required": "SecretKey is required",
     "tokenEndpoint-required": "TokenEndpoint is required",
     "privateKey-required": "PrivateKey is required",
     "auth-mechanism-required": "Auth Mechanism is required",
     "kill-successfully": "Successfully killed running workflows for",
-    "kill-ingestion": "Once you kill this Ingestion, all running and queued workflows will be stopped and marked as Failed.",
+    "kill-ingestion-warning": "Once you kill this Ingestion, all running and queued workflows will be stopped and marked as Failed.",
     "bot-email-confirmation": "{{email}} for {{botName}} bot"
   },
   "server": {},

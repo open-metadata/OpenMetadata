@@ -66,7 +66,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       onCancel={onClose}
       onOk={handleConfirm}>
       <Typography.Text data-testid="kill-modal-body">
-        {t('message.kill-ingestion')}
+        {t('message.kill-ingestion-warning')}
       </Typography.Text>
     </Modal>
   );
