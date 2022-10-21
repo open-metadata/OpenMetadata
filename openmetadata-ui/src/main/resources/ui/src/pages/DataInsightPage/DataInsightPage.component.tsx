@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
 import { Card, Col, Dropdown, Menu, Row, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React from 'react';
@@ -39,44 +38,41 @@ import {
   TEAM_FILTER,
 } from './DataInsight.mock';
 
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+
 const getMenuItems = (items: ItemType[], defaultKey: string) => (
   <Menu selectable defaultSelectedKeys={[defaultKey]} items={items} />
 );
-
-const SummaryItem = ({ item }: { item: { key: string; value: number } }) => {
-  return (
-    <>
-      <Typography.Text>{item.key}</Typography.Text>
-      <Typography className="tw-font-semibold">{item.value}</Typography>
-    </>
-  );
-};
 
 const DataInsightPage = () => {
   return (
     <Row data-testid="dataInsight-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Space className="w-full justify-end" size={16}>
-          <Space align="baseline" size={12}>
-            <Dropdown overlay={getMenuItems(DAY_FILTER, '7')}>
-              <Space align="center">
-                <Typography.Text>Last 7 Days</Typography.Text>
-                <DownOutlined />
-              </Space>
-            </Dropdown>
-            <Dropdown overlay={getMenuItems(TEAM_FILTER, 'team1')}>
-              <Space align="center">
-                <Typography.Text>Cloud Infra</Typography.Text>
-                <DownOutlined />
-              </Space>
-            </Dropdown>
-            <Dropdown overlay={getMenuItems(ORG_FILTER, 'org1')}>
-              <Space align="center">
-                <Typography.Text>Organization1</Typography.Text>
-                <DownOutlined />
-              </Space>
-            </Dropdown>
-          </Space>
+        <Space className="w-full justify-end" size={12}>
+          <Dropdown
+            className="cursor-pointer"
+            overlay={getMenuItems(DAY_FILTER, '7')}>
+            <Space>
+              Last 7 Days
+              <DropDownIcon />
+            </Space>
+          </Dropdown>
+          <Dropdown
+            className="cursor-pointer"
+            overlay={getMenuItems(TEAM_FILTER, 'team1')}>
+            <Space>
+              Cloud Infra
+              <DropDownIcon />
+            </Space>
+          </Dropdown>
+          <Dropdown
+            className="cursor-pointer"
+            overlay={getMenuItems(ORG_FILTER, 'org1')}>
+            <Space>
+              Organization1
+              <DropDownIcon />
+            </Space>
+          </Dropdown>
         </Space>
       </Col>
       <Col span={24}>
@@ -95,7 +91,10 @@ const DataInsightPage = () => {
             gutter={[16, 16]}>
             {SUMMARY_DATA.map((summary, id) => (
               <Col data-testid="summary-item" key={id} span={4}>
-                <SummaryItem item={summary} />
+                <Typography.Text>{summary.key}</Typography.Text>
+                <Typography className="tw-font-semibold">
+                  {summary.value}
+                </Typography>
               </Col>
             ))}
           </Row>
