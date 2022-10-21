@@ -98,12 +98,3 @@ export interface DatasetDetailsProps {
   handleExtentionUpdate: (updatedTable: Table) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunc;
 }
-
-export interface RestoreTable {
-  columns: Column[];
-  databaseSchema?: Table['databaseSchema'];
-  description?: string;
-  displayName?: string;
-  name: string;
-  tags?: TagLabel[];
-}

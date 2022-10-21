@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreTable } from '../components/DatasetDetails/DatasetDetails.interface';
+import { CreateTable } from '../generated/api/data/createTable';
 import {
   ColumnProfile,
   Table,
@@ -96,12 +96,12 @@ export const patchTableDetails = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const restoreTable = async (data: RestoreTable) => {
+export const restoreTable = async (data: CreateTable) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  const response = await APIClient.put<RestoreTable, AxiosResponse<Table>>(
+  const response = await APIClient.put<CreateTable, AxiosResponse<Table>>(
     '/tables',
     data,
     configOptions

@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, omit } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -23,6 +23,7 @@ import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreatePipeline } from '../../generated/api/data/createPipeline';
 import {
   Pipeline,
   PipelineStatus,
@@ -326,40 +327,34 @@ const PipelineDetails = ({
     }
   };
 
-  const handleRestorePipeline = () => {
-    const restorePipelineDetails = omit(pipelineDetails, [
-      'id',
-      'fullyQualifiedName',
-      'version',
-      'updatedAt',
-      'updatedBy',
-      'href',
-      'tasks',
-      'pipelineStatus',
-      'followers',
-      'serviceType',
-      'changeDescription',
-      'deleted',
-    ]);
+  const handleRestorePipeline = async () => {
+    const data: CreatePipeline = {
+      concurrency: pipelineDetails.concurrency,
+      pipelineUrl: pipelineDetails.pipelineUrl,
+      description: pipelineDetails.description,
+      displayName: pipelineDetails.displayName,
+      extension: pipelineDetails.extension,
+      name: pipelineDetails.name,
+      owner: pipelineDetails.owner,
+      service: pipelineDetails.service,
+      tags: pipelineDetails.tags,
+      pipelineLocation: pipelineDetails.pipelineLocation,
+      startDate: pipelineDetails.startDate,
+    };
 
-    return new Promise<void>((resolve, reject) => {
-      restorePipeline(restorePipelineDetails)
-        .then(() => {
-          resolve();
-          showSuccessToast(
-            jsonData['api-success-messages']['restore-table-success'],
-            2000
-          );
-          history.push('/explore');
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['restore-table-error']
-          );
-          reject();
-        });
-    });
+    try {
+      await restorePipeline(data);
+      showSuccessToast(
+        jsonData['api-success-messages']['restore-table-success'],
+        2000
+      );
+      history.push('/explore');
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['restore-table-error']
+      );
+    }
   };
 
   const onDescriptionEdit = (): void => {

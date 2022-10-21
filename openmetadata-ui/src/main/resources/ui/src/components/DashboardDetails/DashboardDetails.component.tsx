@@ -15,7 +15,7 @@ import { Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omit } from 'lodash';
+import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -33,6 +33,7 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreateDashboard } from '../../generated/api/data/createDashboard';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -335,39 +336,32 @@ const DashboardDetails = ({
     }
   };
 
-  const handleRestoreTable = () => {
-    const restoreDashboardData = omit(dashboardDetails, [
-      'id',
-      'fullyQualifiedName',
-      'version',
-      'updatedAt',
-      'updatedBy',
-      'href',
-      'serviceType',
-      'followers',
-      'usageSummary',
-      'changeDescription',
-      'deleted',
-    ]);
+  const handleRestoreTable = async () => {
+    const data: CreateDashboard = {
+      charts: dashboardDetails.charts,
+      dashboardUrl: dashboardDetails.dashboardUrl,
+      description: dashboardDetails.description,
+      displayName: dashboardDetails.displayName,
+      extension: dashboardDetails.extension,
+      name: dashboardDetails.name,
+      owner: dashboardDetails.owner,
+      service: dashboardDetails.service,
+      tags: dashboardDetails.tags,
+    };
 
-    return new Promise<void>((resolve, reject) => {
-      restoreDashboard(restoreDashboardData)
-        .then(() => {
-          resolve();
-          showSuccessToast(
-            jsonData['api-success-messages']['restore-table-success'],
-            2000
-          );
-          history.push('/explore');
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['restore-table-error']
-          );
-          reject();
-        });
-    });
+    try {
+      await restoreDashboard(data);
+      showSuccessToast(
+        jsonData['api-success-messages']['restore-table-success'],
+        2000
+      );
+      history.push('/explore');
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['restore-table-error']
+      );
+    }
   };
 
   const followDashboard = () => {

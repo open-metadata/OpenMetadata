@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { omit } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -28,6 +27,7 @@ import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreateTopic } from '../../generated/api/data/createTopic';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -358,39 +358,41 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const handleRestoreTable = () => {
-    const restoreTopicData = omit(topicDetails, [
-      'id',
-      'fullyQualifiedName',
-      'version',
-      'updatedAt',
-      'updatedBy',
-      'href',
-      'database',
-      'serviceType',
-      'followers',
-      'changeDescription',
-      'deleted',
-    ]);
+  const handleRestoreTable = async () => {
+    const data: CreateTopic = {
+      cleanupPolicies: topicDetails.cleanupPolicies,
+      maximumMessageSize: topicDetails.maximumMessageSize,
+      description: topicDetails.description,
+      displayName: topicDetails.displayName,
+      extension: topicDetails.extension,
+      name: topicDetails.name,
+      owner: topicDetails.owner,
+      service: topicDetails.service,
+      tags: topicDetails.tags,
+      minimumInSyncReplicas: topicDetails.minimumInSyncReplicas,
+      partitions: topicDetails.partitions,
+      replicationFactor: topicDetails.replicationFactor,
+      retentionSize: topicDetails.retentionSize,
+      retentionTime: topicDetails.retentionTime,
+      sampleData: topicDetails.sampleData,
+      schemaText: topicDetails.schemaText,
+      schemaType: topicDetails.schemaType,
+      topicConfig: topicDetails.topicConfig,
+    };
 
-    return new Promise<void>((resolve, reject) => {
-      restoreTopic(restoreTopicData)
-        .then(() => {
-          resolve();
-          showSuccessToast(
-            jsonData['api-success-messages']['restore-table-success'],
-            2000
-          );
-          history.push('/explore');
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['restore-table-error']
-          );
-          reject();
-        });
-    });
+    try {
+      await restoreTopic(data);
+      showSuccessToast(
+        jsonData['api-success-messages']['restore-table-success'],
+        2000
+      );
+      history.push('/explore');
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['restore-table-error']
+      );
+    }
   };
 
   const followTopic = () => {

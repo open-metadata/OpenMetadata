@@ -14,7 +14,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isNil, isUndefined, omit } from 'lodash';
+import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -26,6 +26,7 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreateTable } from '../../generated/api/data/createTable';
 import {
   JoinedWith,
   Table,
@@ -530,43 +531,36 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
-  const handleRestoreTable = () => {
-    const restoreTableData = omit(tableDetails, [
-      'id',
-      'fullyQualifiedName',
-      'version',
-      'updatedAt',
-      'updatedBy',
-      'href',
-      'database',
-      'service',
-      'serviceType',
-      'usageSummary',
-      'followers',
-      'joins',
-      'changeDescription',
-      'deleted',
-      'profile',
-    ]);
+  const handleRestoreTable = async () => {
+    const data: CreateTable = {
+      columns: tableDetails.columns,
+      databaseSchema: tableDetails.databaseSchema as EntityReference,
+      description: tableDetails.description,
+      displayName: tableDetails.displayName,
+      extension: tableDetails.extension,
+      name: tableDetails.name,
+      owner: tableDetails.owner,
+      tableConstraints: tableDetails.tableConstraints,
+      tags: tableDetails.tags,
+      tablePartition: tableDetails.tablePartition,
+      tableProfilerConfig: tableDetails.tableProfilerConfig,
+      tableType: tableDetails.tableType,
+      viewDefinition: tableDetails.viewDefinition,
+    };
 
-    return new Promise<void>((resolve, reject) => {
-      restoreTable(restoreTableData)
-        .then(() => {
-          resolve();
-          showSuccessToast(
-            jsonData['api-success-messages']['restore-table-success'],
-            2000
-          );
-          history.push('/explore/tables');
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['restore-table-error']
-          );
-          reject();
-        });
-    });
+    try {
+      await restoreTable(data);
+      showSuccessToast(
+        jsonData['api-success-messages']['restore-table-success'],
+        2000
+      );
+      history.push('/explore');
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['restore-table-error']
+      );
+    }
   };
 
   const getSampleDataWithType = () => {
