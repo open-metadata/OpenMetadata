@@ -1,0 +1,10 @@
+{
+  "name": "profiler-bot",
+  "description": "Bot used for profiling data.",
+  "fullyQualifiedName": "profiler-bot",
+  "botUser": {
+    "name" : "profiler-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}

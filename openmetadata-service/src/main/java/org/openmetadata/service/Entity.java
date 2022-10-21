@@ -130,7 +130,7 @@ public final class Entity {
   //
   public static final String ADMIN_USER_NAME = "admin";
   public static final String ORGANIZATION_NAME = "Organization";
-  public static final String DATACONSUMER_ROLE = "DataConsumer";
+  public static final String INGESTION_BOT_NAME = "ingestion-bot";
 
   //
   // List of entities whose changes should not be published to the Activity Feed
