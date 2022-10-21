@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Dropdown, Menu, Row, Space, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Card, Col, Dropdown, Row, Space, Typography } from 'antd';
 import React from 'react';
 import {
   Bar,
@@ -38,11 +37,9 @@ import {
   TEAM_FILTER,
 } from './DataInsight.mock';
 
+import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
+import { getMenuItems } from '../../utils/DataInsightUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
-
-const getMenuItems = (items: ItemType[], defaultKey: string) => (
-  <Menu selectable defaultSelectedKeys={[defaultKey]} items={items} />
-);
 
 const DataInsightPage = () => {
   return (
@@ -149,12 +146,7 @@ const DataInsightPage = () => {
               <ResponsiveContainer minHeight={400}>
                 <BarChart
                   data={ENTITIES_DATA_DESCRIPTION_PERCENTAGE}
-                  margin={{
-                    top: 20,
-                    right: 30,
-                    left: 20,
-                    bottom: 5,
-                  }}>
+                  margin={BAR_CHART_MARGIN}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
@@ -229,12 +221,7 @@ const DataInsightPage = () => {
               <ResponsiveContainer minHeight={400}>
                 <BarChart
                   data={ENTITIES_DATA_DESCRIPTION_PERCENTAGE}
-                  margin={{
-                    top: 20,
-                    right: 30,
-                    left: 20,
-                    bottom: 5,
-                  }}>
+                  margin={BAR_CHART_MARGIN}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
