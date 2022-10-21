@@ -19,6 +19,9 @@ import AnchorDropDownList from './AnchorDropDownList';
 import CheckBoxDropDownList from './CheckBoxDropDownList';
 import { DropDownListItem, DropDownProp, DropDownType } from './types';
 
+/**
+ * @deprecated use AntD dropdown instead
+ */
 const DropDown: React.FC<DropDownProp> = ({
   className = '',
   disabled = false,

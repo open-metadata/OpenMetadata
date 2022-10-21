@@ -24,7 +24,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
-import { getTestSuitePath } from '../../../utils/RouterUtils';
+import { getTestSuiteDetailPath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
@@ -97,7 +97,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (value) => {
           return (
             <Link
-              to={getTestSuitePath(value?.fullyQualifiedName || '')}
+              to={getTestSuiteDetailPath(value?.fullyQualifiedName || '')}
               onClick={(e) => e.stopPropagation()}>
               {getEntityName(value)}
             </Link>

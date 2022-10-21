@@ -25,7 +25,7 @@ import {
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName, pluralize } from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
+import { getTestSuiteDetailPath } from '../../utils/RouterUtils';
 const { Text } = Typography;
 
 const TestSuitePage = () => {
@@ -60,7 +60,7 @@ const TestSuitePage = () => {
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
-          <Link to={getTestSuitePath(record.name)}>{record.name}</Link>
+          <Link to={getTestSuiteDetailPath(record.name)}>{record.name}</Link>
         ),
       },
       {

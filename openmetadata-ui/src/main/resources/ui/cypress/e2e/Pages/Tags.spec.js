@@ -30,6 +30,9 @@ describe('Tags page should work', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     interceptURL('GET', '/api/v1/tags*', 'getTags');
+    
+    cy.get('[data-testid="governance"]').should("exist").should("be.visible").click({ force: true })
+    
     cy.get('[data-testid="appbar-item-tags"]')
       .should('be.visible')
       .click({ force: true });

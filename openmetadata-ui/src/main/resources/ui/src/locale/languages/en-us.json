@@ -43,7 +43,13 @@
     "hyper-parameters": "Hyper Parameters",
     "model-store": "Model Store",
     "value": "Value",
-    "no-data-available": "No data available"
+    "no-data-available": "No data available",
+    "discover": "Discover",
+    "governance": "Governance",
+    "data-quality": "DataQuality",
+    "data-insight": "DataInsight",
+    "whats-new": "What's new",
+    "tour": "Tour"
   },
   "message": {},
   "server": {},
