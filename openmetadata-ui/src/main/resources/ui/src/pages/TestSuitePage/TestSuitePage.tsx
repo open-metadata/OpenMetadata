@@ -129,6 +129,7 @@ const TestSuitePage = () => {
         <Col span={24}>
           <Table
             columns={columns}
+            dataSource={testSuites}
             loading={{ spinning: isLoading, indicator: <Loader /> }}
             pagination={false}
             rowKey="name"
