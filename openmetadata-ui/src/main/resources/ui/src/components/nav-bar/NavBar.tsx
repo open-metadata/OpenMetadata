@@ -178,6 +178,41 @@ const NavBar = ({
     };
   };
 
+  const governanceMenu = (
+    <Menu
+      items={[
+        {
+          key: 'glossary',
+          label: (
+            <NavLink
+              className="focus:tw-no-underline"
+              data-testid="appbar-item-glossary"
+              style={navStyle(pathname.startsWith('/glossary'))}
+              to={{
+                pathname: ROUTES.GLOSSARY,
+              }}>
+              {t('label.glossary')}
+            </NavLink>
+          ),
+        },
+        {
+          key: 'tags',
+          label: (
+            <NavLink
+              className="focus:tw-no-underline"
+              data-testid="appbar-item-tags"
+              style={navStyle(pathname.startsWith('/tags'))}
+              to={{
+                pathname: ROUTES.TAGS,
+              }}>
+              {t('label.tags')}
+            </NavLink>
+          ),
+        },
+      ]}
+    />
+  );
+
   useEffect(() => {
     if (shouldRequestPermission()) {
       Notification.requestPermission();
@@ -256,40 +291,7 @@ const NavBar = ({
               <Dropdown
                 className="cursor-pointer"
                 data-testid="governance"
-                overlay={
-                  <Menu
-                    items={[
-                      {
-                        key: 'glossary',
-                        label: (
-                          <NavLink
-                            className="focus:tw-no-underline"
-                            data-testid="appbar-item-glossary"
-                            style={navStyle(pathname.startsWith('/glossary'))}
-                            to={{
-                              pathname: ROUTES.GLOSSARY,
-                            }}>
-                            {t('label.glossary')}
-                          </NavLink>
-                        ),
-                      },
-                      {
-                        key: 'tags',
-                        label: (
-                          <NavLink
-                            className="focus:tw-no-underline"
-                            data-testid="appbar-item-tags"
-                            style={navStyle(pathname.startsWith('/tags'))}
-                            to={{
-                              pathname: ROUTES.TAGS,
-                            }}>
-                            {t('label.tags')}
-                          </NavLink>
-                        ),
-                      },
-                    ]}
-                  />
-                }
+                overlay={governanceMenu}
                 trigger={['click']}>
                 <Space>
                   {t('label.governance')}
