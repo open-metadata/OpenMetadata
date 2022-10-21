@@ -356,12 +356,7 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Delete Test suite should work properly', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    cy.get('[data-testid="global-setting-left-panel"]')
-      .contains('Test Suite')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="appbar-item-data-quality"]').should('be.visible').click();
     cy.get(`[data-row-key="${NEW_TEST_SUITE.name}"] > :nth-child(1) > a`)
       .contains(NEW_TEST_SUITE.name)
       .should('be.visible')
