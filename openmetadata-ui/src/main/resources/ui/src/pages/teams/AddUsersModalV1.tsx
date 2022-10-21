@@ -11,81 +11,114 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { List, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import { toLower } from 'lodash';
+import { isUndefined } from 'lodash';
+import { SearchResponse } from 'Models';
+import VirtualList from 'rc-virtual-list';
 import React, { useEffect, useState } from 'react';
+import { searchData } from '../../axiosAPIs/miscAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
-import { Button } from '../../components/buttons/Button/Button';
 import Searchbar from '../../components/common/searchbar/Searchbar';
-import Loader from '../../components/Loader/Loader';
-import { API_RES_MAX_SIZE } from '../../constants/constants';
+import {
+  ADD_USER_CONTAINER_HEIGHT,
+  PAGE_SIZE_MEDIUM,
+  pagingObject,
+} from '../../constants/constants';
+import { INITIAL_FROM } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
+import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './AddUsersModal.less';
 import UserCard from './UserCard';
 
 type Props = {
+  isVisible: boolean;
   searchPlaceHolder?: string;
   header: string;
   list: Array<UserTeams>;
   onCancel: () => void;
   onSave: (data: Array<UserTeams>) => void;
 };
+type UserData = {
+  fqn: string;
+  type: string;
+  displayName: string;
+  id?: string;
+  name?: string;
+};
 
 const AddUsersModalV1 = ({
+  isVisible,
   header,
   list,
   onCancel,
   onSave,
   searchPlaceHolder,
 }: Props) => {
-  const [allUsers, setAllUsers] = useState<UserTeams[]>([]);
-  const [uniqueUser, setUniqueUser] = useState<UserTeams[]>([]);
-  const [selectedUsers, setSelectedusers] = useState<Array<string>>([]);
+  const [uniqueUser, setUniqueUser] = useState<UserData[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<Array<string>>([]);
   const [searchText, setSearchText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
+  const [currentPage, setCurrentPage] = useState(INITIAL_FROM);
+  const [totalESCount, setTotalESCount] = useState(0);
 
-  /**
-   * Filter out the already added user and return unique user list
-   * @returns - unique user list
-   */
-  const getUniqueUserList = () => {
-    setIsLoading(true);
-    const uniqueList = allUsers.filter((user) => {
-      const teamUser = list.some((teamUser) => user.id === teamUser.id);
+  const getFilterUserData = (data: User[]) => {
+    return data
+      .filter((user) => {
+        const teamUser = list.some((teamUser) => user.id === teamUser.id);
 
-      return !teamUser && user;
-    });
-
-    setUniqueUser(uniqueList);
-    setIsLoading(false);
+        return !teamUser && user;
+      })
+      .map((user) => {
+        return {
+          displayName: getEntityName(user),
+          fqn: user.fullyQualifiedName || '',
+          id: user.id,
+          type: OwnerType.USER,
+          name: user.name,
+        };
+      });
   };
 
-  const fetchAllUsers = async () => {
-    setIsLoading(true);
-    const { data } = await getUsers('', API_RES_MAX_SIZE);
+  const searchUsers = (text: string, page: number) => {
+    searchData(text, page, PAGE_SIZE_MEDIUM, '', '', '', SearchIndex.USER)
+      .then((res: SearchResponse) => {
+        const data = getFilterUserData(formatUsersResponse(res.data.hits.hits));
+        setTotalESCount(res.data.hits.total.value);
+        setCurrentPage((pre) => pre + 1);
+        setUniqueUser((pre) => [...pre, ...data]);
+      })
+      .catch(() => {
+        setUniqueUser([]);
+      });
+  };
 
+  const fetchAllUsers = async (param?: { after: string }) => {
     try {
-      if (data) {
-        // TODO: fix type issue
-        setAllUsers(data as unknown as UserTeams[]);
-      } else {
-        throw jsonData['api-error-messages']['fetch-users-error'];
-      }
+      const { data, paging } = await getUsers('', PAGE_SIZE_MEDIUM, param);
+      const filterData = getFilterUserData(data);
+      setUniqueUser((pre) => [...pre, ...filterData]);
+      setUserPaging(paging);
     } catch (error) {
+      setUniqueUser([]);
       showErrorToast(
         error as AxiosError,
         jsonData['api-error-messages']['fetch-users-error']
       );
     }
-    setIsLoading(false);
   };
 
   const selectionHandler = (id: string) => {
-    setSelectedusers((prevState) => {
+    setSelectedUsers((prevState) => {
       if (prevState.includes(id)) {
         const userArr = [...prevState];
         const index = userArr.indexOf(id);
@@ -96,36 +129,6 @@ const AddUsersModalV1 = ({
         return [...prevState, id];
       }
     });
-  };
-  const getUserCards = () => {
-    return uniqueUser
-      .filter((user) => {
-        return (
-          toLower(user.description)?.includes(toLower(searchText)) ||
-          toLower(user.displayName)?.includes(toLower(searchText)) ||
-          toLower(user?.name)?.includes(toLower(searchText))
-        );
-      })
-      .map((user, index) => {
-        const User = {
-          displayName: getEntityName(user),
-          fqn: user.fullyQualifiedName || '',
-          id: user.id,
-          type: user.type,
-          name: user.name,
-        };
-
-        return (
-          <UserCard
-            isActionVisible
-            isCheckBoxes
-            isIconVisible
-            item={User}
-            key={index}
-            onSelect={selectionHandler}
-          />
-        );
-      });
   };
 
   const handleSave = () => {
@@ -140,70 +143,76 @@ const AddUsersModalV1 = ({
   };
 
   const handleSearchAction = (searchValue: string) => {
+    setUniqueUser([]);
+    setCurrentPage(INITIAL_FROM);
     setSearchText(searchValue);
-  };
-
-  useEffect(() => {
-    if (allUsers.length > 0) {
-      getUniqueUserList();
+    if (searchValue) {
+      searchUsers(searchValue, currentPage);
+    } else {
+      fetchAllUsers();
     }
-  }, [allUsers]);
+  };
+  const onScroll = (e: React.UIEvent<HTMLElement, UIEvent>) => {
+    if (
+      e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
+      ADD_USER_CONTAINER_HEIGHT
+    ) {
+      if (searchText) {
+        // make API call only when current page size is less then total count
+        PAGE_SIZE_MEDIUM * currentPage < totalESCount &&
+          searchUsers(searchText, currentPage);
+      } else {
+        !isUndefined(userPaging.after) &&
+          fetchAllUsers({ after: userPaging.after });
+      }
+    }
+  };
 
   useEffect(() => {
     fetchAllUsers();
   }, []);
 
   return (
-    <dialog className="tw-modal " data-testid="modal-container">
-      <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-max-h-90vh tw-max-w-3xl">
-        <div className="tw-modal-header" data-testid="header">
-          <Typography.Text
-            className="ant-typography-ellipsis-custom tw-modal-title"
-            ellipsis={{ tooltip: true }}>
-            {header}
-          </Typography.Text>
-        </div>
-        <div className="tw-modal-body">
-          <Searchbar
-            placeholder={
-              searchPlaceHolder ? searchPlaceHolder : 'Search for a user...'
-            }
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchAction}
-          />
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <div className="tw-grid tw-grid-cols-3 tw-gap-4">
-              {getUserCards()}
-            </div>
+    <Modal
+      data-testid="modal-container"
+      okButtonProps={{
+        id: 'save-button',
+      }}
+      okText="Save"
+      title={header}
+      visible={isVisible}
+      width={750}
+      onCancel={onCancel}
+      onOk={handleSave}>
+      <Searchbar
+        placeholder={
+          searchPlaceHolder ? searchPlaceHolder : 'Search for a user...'
+        }
+        searchValue={searchText}
+        typingInterval={500}
+        onSearch={handleSearchAction}
+      />
+
+      <List>
+        <VirtualList
+          className="user-list"
+          data={uniqueUser}
+          height={ADD_USER_CONTAINER_HEIGHT}
+          itemKey="user"
+          onScroll={onScroll}>
+          {(User) => (
+            <UserCard
+              isActionVisible
+              isCheckBoxes
+              isIconVisible
+              item={User}
+              key={User.id}
+              onSelect={selectionHandler}
+            />
           )}
-        </div>
-        <div
-          className="tw-modal-footer tw-justify-end"
-          data-testid="cta-container">
-          <Button
-            className="tw-mr-2"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            data-testid="AddUserSave"
-            size="regular"
-            theme="primary"
-            type="submit"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
-        </div>
-      </div>
-    </dialog>
+        </VirtualList>
+      </List>
+    </Modal>
   );
 };
 
