@@ -10,6 +10,7 @@ source:
       env: env
   sourceConfig:
     config:
+      type: DashboardMetadata
       dashboardFilterPattern: {}
       chartFilterPattern: {}
 sink:

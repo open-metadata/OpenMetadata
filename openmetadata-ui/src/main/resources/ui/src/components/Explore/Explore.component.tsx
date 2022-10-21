@@ -16,9 +16,10 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, get, isEmpty, lowerCase } from 'lodash';
+import { cloneDeep, get, isEmpty, lowerCase, toNumber } from 'lodash';
 import {
   AggregationType,
   Bucket,
@@ -531,10 +532,6 @@ const Explore: React.FC<ExploreProps> = ({
     );
   };
 
-  const getActiveTabClass = (selectedTab: number) => {
-    return selectedTab === currentTab ? 'active' : '';
-  };
-
   const resetFilters = (isForceReset = false) => {
     onClearFilterHandler(visibleFilters, isForceReset);
   };
@@ -569,38 +566,6 @@ const Explore: React.FC<ExploreProps> = ({
         search: location.search,
       });
     }
-  };
-  const getTabs = () => {
-    return (
-      <div className="tw-mb-5 centered-layout">
-        <nav
-          className={classNames(
-            'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
-          )}>
-          <div className="tw-flex">
-            <div>
-              {tabsInfo.map((tabDetail, index) => (
-                <button
-                  className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
-                    tabDetail.tab
-                  )}`}
-                  data-testid={`${lowerCase(tabDetail.label)}-tab`}
-                  key={index}
-                  onClick={() => {
-                    onTabChange(tabDetail.tab);
-                  }}>
-                  {tabDetail.label}
-                  <span className="tw-pl-1">
-                    {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-          {getSortingElements()}
-        </nav>
-      </div>
-    );
   };
 
   const getData = () => {
@@ -758,7 +723,32 @@ const Explore: React.FC<ExploreProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <div>
-          {!connectionError && getTabs()}
+          {!connectionError && (
+            <Tabs
+              defaultActiveKey={lowerCase(tabsInfo[0].label)}
+              size="small"
+              tabBarExtraContent={getSortingElements()}
+              onChange={(tab) => {
+                tab && onTabChange(toNumber(tab));
+              }}>
+              {tabsInfo.map((tabDetail) => (
+                <Tabs.TabPane
+                  key={tabDetail.tab}
+                  tab={
+                    <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+                      {tabDetail.label}
+                      <span className="p-l-xs ">
+                        {getTabCount(
+                          tabDetail.index,
+                          tabDetail.tab === currentTab
+                        )}
+                      </span>
+                    </div>
+                  }
+                />
+              ))}
+            </Tabs>
+          )}
           {advanceFieldCheck && (
             <AdvancedFields
               fields={selectedAdvancedFields}

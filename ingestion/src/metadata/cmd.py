@@ -58,7 +58,7 @@ def check() -> None:
     help="Log level",
     required=False,
 )
-def metadata(debug: bool, log_level: str) -> None:
+def metadata(debug: bool = False, log_level: str = "INFO") -> None:
     """Method to set logger information"""
     if debug:
         set_loggers_level(logging.DEBUG)

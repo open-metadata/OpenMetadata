@@ -31,6 +31,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
@@ -296,7 +297,13 @@ public class BuildSearchIndexResource {
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
-      LOG.error("Failed in listing all Entities of type : {}", entityType);
+      LOG.error("Failed in listing all Entities of type : {}, Reason : ", entityType, ex);
+      FailureDetails failureDetails =
+          new FailureDetails()
+              .withContext(String.format("%s:Failure in fetching Data", entityType))
+              .withLastFailedReason(
+                  String.format("Failed in listing all Entities \n Reason : %s", ExceptionUtils.getStackTrace(ex)));
+      listener.updateElasticSearchStatus(EventPublisherJob.Status.IDLE, failureDetails, null);
     }
   }
 
@@ -332,7 +339,7 @@ public class BuildSearchIndexResource {
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
-      LOG.error("Failed in listing all Entities of type : {}", entityType);
+      LOG.error("Failed in listing all Entities of type : {}, Reason {}", entityType, ex);
     }
   }
 

@@ -99,6 +99,7 @@ public final class Entity {
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_SUITE = "testSuite";
   public static final String TEST_CASE = "testCase";
+  public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
 
   //
   // Policy entity
@@ -129,7 +130,7 @@ public final class Entity {
   //
   public static final String ADMIN_USER_NAME = "admin";
   public static final String ORGANIZATION_NAME = "Organization";
-  public static final String DATACONSUMER_ROLE = "DataConsumer";
+  public static final String INGESTION_BOT_NAME = "ingestion-bot";
 
   //
   // List of entities whose changes should not be published to the Activity Feed

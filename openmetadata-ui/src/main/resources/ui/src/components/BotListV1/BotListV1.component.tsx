@@ -29,7 +29,7 @@ import {
   NO_PERMISSION_FOR_ACTION,
 } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
-import { Bot, BotType } from '../../generated/entity/bot';
+import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
@@ -140,13 +140,13 @@ const BotListV1 = ({
         key: 'id',
         width: 90,
         render: (_, record) => {
-          const isIngestionBot = record.botType === BotType.IngestionBot;
-          const title = isIngestionBot
+          const isSystemBot = record.provider === ProviderType.System;
+          const title = isSystemBot
             ? INGESTION_BOT_CANT_BE_DELETED
             : deletePermission
             ? 'Delete'
             : NO_PERMISSION_FOR_ACTION;
-          const isDisabled = !deletePermission || isIngestionBot;
+          const isDisabled = !deletePermission || isSystemBot;
 
           return (
             <Space align="center" size={8}>

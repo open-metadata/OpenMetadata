@@ -90,7 +90,7 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    interceptURL('GET', '/api/v1/users?limit=100000', 'addUser');
+    interceptURL('GET', '/api/v1/users?limit=15', 'addUser');
     interceptURL('GET', '/api/v1/users/*', 'getUsers');
     cy.get('[data-testid="add-user"]')
       .scrollIntoView()
@@ -114,7 +114,7 @@ describe('Teams flow should work properly', () => {
 
     //Saving the added user
     interceptURL('PATCH', '/api/v1/teams/*', 'saveUser');
-    cy.get('[data-testid="AddUserSave"]').should('be.visible').click();
+    cy.get('[id="save-button"]').should('be.visible').click();
     verifyResponseStatusCode('@saveUser', 200);
     //Asseting the added user
     cy.get('[data-testid="Users"]')

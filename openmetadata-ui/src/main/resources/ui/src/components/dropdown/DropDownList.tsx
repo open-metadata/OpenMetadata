@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isNil, isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
@@ -18,6 +19,7 @@ import { SIZE } from '../../enums/common.enum';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getTopPosition } from '../../utils/DropDownUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { UserTag } from '../common/UserTag/UserTag.component';
 import Loader from '../Loader/Loader';
@@ -39,6 +41,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   domPosition,
   className = '',
   widthClass = 'tw-w-52',
+  removeOwner,
   getTotalCountForGroup,
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
@@ -106,6 +109,29 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     return count;
   };
 
+  const removeOwnerButton = (item: DropDownListItem) => {
+    return !isNil(value) && item.value === value && removeOwner ? (
+      <Tooltip title="Remove owner">
+        <button
+          className="cursor-pointer"
+          data-testid="remove-owner"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeOwner && removeOwner();
+          }}>
+          <SVGIcons
+            alt="remove owner"
+            icon={Icons.ICON_REMOVE}
+            title="Remove owner"
+            width="16px"
+          />
+        </button>
+      </Tooltip>
+    ) : (
+      ''
+    );
+  };
+
   const getDropDownElement = (item: DropDownListItem, index: number) => {
     return (
       <div
@@ -121,17 +147,28 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         id={`menu-item-${index}`}
         key={index}
         role="menuitem"
-        onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
+        onClick={(e) =>
+          !item.disabled && item.value !== value && onSelect?.(e, item.value)
+        }>
         {item.type === 'user' ? (
-          <UserTag id={item.value as string} name={item.name as string} />
+          <div className="w-full flex justify-between items-center">
+            <UserTag id={item.value as string} name={item.name as string} />
+
+            {removeOwnerButton(item)}
+          </div>
         ) : (
           <>
             {item.icon}
-            <p
-              className={classNames('tw-truncate', widthClass)}
+            <div
+              className={classNames(
+                'tw-truncate flex items-center justify-between',
+                widthClass
+              )}
               title={item.name as string}>
               {item.name}
-            </p>
+
+              {removeOwnerButton(item)}
+            </div>
           </>
         )}
       </div>
@@ -190,9 +227,27 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       return getEmptyTextElement();
     }
 
+    // Filter select owner to top of list
+    const filteredResult = results.reduce(
+      (acc: DropDownListItem[], cv: DropDownListItem) => {
+        if (cv.value === value) {
+          if (acc.length) {
+            acc.unshift(cv);
+
+            return acc;
+          } else {
+            return [...acc, cv];
+          }
+        } else {
+          return [...acc, cv];
+        }
+      },
+      []
+    );
+
     return (
       <>
-        {results.map((item: DropDownListItem, index: number) =>
+        {filteredResult.map((item: DropDownListItem, index: number) =>
           getDropDownElement(item, index)
         )}
       </>

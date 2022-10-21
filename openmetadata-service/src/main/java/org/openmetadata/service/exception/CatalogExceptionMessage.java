@@ -115,11 +115,6 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
-  // TODO delete this
-  public static String noPermission(String name) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
-  }
-
   public static String permissionDenied(
       String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
     if (roleName != null) {
@@ -180,7 +175,7 @@ public final class CatalogExceptionMessage {
     return String.format("Failed to evaluate - %s", message);
   }
 
-  public static String deletionNotAllowed(String entityType, String name) {
-    return String.format("Deletion of %s %s is not allowed", entityType, name);
+  public static String systemEntityDeleteNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
   }
 }

@@ -14,7 +14,6 @@ Test Local Secrets Manager
 """
 from copy import deepcopy
 
-from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
@@ -57,7 +56,7 @@ class TestLocalSecretsManager(TestSecretsManager.External):
         actual_om_connection.securityConfig = self.auth_provider_config
 
         noop_manager.add_auth_provider_security_config(
-            actual_om_connection, BotType.ingestion_bot.value
+            actual_om_connection, "ingestion-bot"
         )
 
         self.assertEqual(self.auth_provider_config, actual_om_connection.securityConfig)

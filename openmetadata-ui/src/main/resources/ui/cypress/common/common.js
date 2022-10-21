@@ -449,7 +449,6 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
       cy.get(`[data-testid="${entity}-tab"]`)
         .should('be.visible')
-        .should('have.class', 'active');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
       cy.get(`[data-testid="${serviceName}-${term}"]`)

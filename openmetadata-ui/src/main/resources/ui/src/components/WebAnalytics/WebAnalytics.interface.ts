@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,30 @@
  *  limitations under the License.
  */
 
-import { Buffer } from 'buffer';
-import { ungzip } from 'pako';
+import { PageData } from 'analytics';
 
-export const gzipToStringConverter = (data: string) => {
-  const gzipedDataBuffer = Buffer.from(data, 'base64');
-  const ungzipedData = ungzip(gzipedDataBuffer);
+export interface PayloadProperties {
+  title: string;
+  url: string;
+  path: string;
+  hash: string;
+  search: string;
+  width: number;
+  height: number;
+  referrer: string;
+}
 
-  return new TextDecoder().decode(ungzipedData);
-};
+export interface Payload {
+  type: string;
+  properties: PayloadProperties;
+  anonymousId: string;
+  meta: {
+    rid: string;
+    ts: number;
+    hasCallback: boolean;
+  };
+}
+
+export interface WebPageData extends PageData {
+  payload: Payload;
+}
