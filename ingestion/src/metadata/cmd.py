@@ -14,6 +14,7 @@ This module defines the CLI commands for OpenMetada
 import argparse
 import logging
 import pathlib
+from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from metadata.__version__ import get_metadata_version
@@ -30,10 +31,23 @@ from metadata.utils.logger import cli_logger, set_loggers_level
 
 logger = cli_logger()
 
+
+class MetadataCommands(Enum):
+    INGEST = "ingest"
+    PROFILE = "profile"
+    TEST = "test"
+    DOCKER = "docker"
+    BACKUP = "backup"
+    RESTORE = "restore"
+    WEBHOOK = "webhook"
+    OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
+
+
 OM_IMPORTS_MIGRATION = """
     Update DAG files generated after creating workflow in 0.11 and before.
-    In 0.12 the airflow managed API package name changed from `openmetadata` to `openmetadata_managed_apis`
-    hence breaking existing DAGs. The `dag_generated_config` folder also changed location in Docker.
+    In 0.12 the airflow managed API package name changed from `openmetadata` to 
+    `openmetadata_managed_apis` hence breaking existing DAGs. 
+    The `dag_generated_config` folder also changed location in Docker.
     This small CLI utility allows you to update both elements.
     """
 
@@ -49,7 +63,8 @@ BACKUP_HELP = """
 
     If `-s` or `--schema` is provided, we will trigger a Postgres backup instead
     of a MySQL backup. This is the value of the schema containing the OpenMetadata
-    tables."""
+    tables.
+    """
 RESTORE_HELP = """
     Run a restore for the metadata DB.
 
@@ -291,39 +306,45 @@ def metadata():
     sub_parser = parser.add_subparsers(dest="command")
 
     create_common_config_parser_args(
-        sub_parser.add_parser("ingest", help="Ingestion Workflow", prog="ingest")
+        sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
-            "profile", help="Workflow for profiling Table sources into Metadata"
+            MetadataCommands.PROFILE.value,
+            help="Workflow for profiling Table sources into Metadata",
         )
     )
     create_common_config_parser_args(
-        sub_parser.add_parser("test", help="Workflow for running test suites")
+        sub_parser.add_parser(
+            MetadataCommands.TEST.value, help="Workflow for running test suites"
+        )
     )
 
     create_openmetadata_imports_migration_args(
         sub_parser.add_parser(
-            "openmetadata_imports_migration",
+            MetadataCommands.OPENMETADATA_IMPORTS_MIGRATION.value,
             help=OM_IMPORTS_MIGRATION,
         )
     )
-    docker_args(sub_parser.add_parser("docker", help="Docker Quickstart"))
+    docker_args(
+        sub_parser.add_parser(MetadataCommands.DOCKER.value, help="Docker Quickstart")
+    )
     backup_args(
         sub_parser.add_parser(
-            "backup",
+            MetadataCommands.BACKUP.value,
             help=BACKUP_HELP,
         )
     )
     restore_args(
         sub_parser.add_parser(
-            "restore",
+            MetadataCommands.RESTORE.value,
             help=RESTORE_HELP,
         )
     )
     webhook_args(
         sub_parser.add_parser(
-            "webhook", help="Simple Webserver to test webhook metadata events"
+            MetadataCommands.WEBHOOK.value,
+            help="Simple Webserver to test webhook metadata events",
         )
     )
 
@@ -340,13 +361,13 @@ def metadata():
     else:
         set_loggers_level(logging.INFO)
 
-    if metadata_workflow == "ingest":
+    if metadata_workflow == MetadataCommands.INGEST.value:
         run_ingest(config_path=config_file)
-    elif metadata_workflow == "profile":
+    if metadata_workflow == MetadataCommands.PROFILE.value:
         run_profiler(config_path=config_file)
-    elif metadata_workflow == "test":
+    if metadata_workflow == MetadataCommands.TEST.value:
         run_test(config_path=config_file)
-    elif metadata_workflow == "backup":
+    if metadata_workflow == MetadataCommands.DOCKER.value:
         run_backup(
             contains_args.get("host"),
             contains_args.get("user"),
@@ -360,7 +381,7 @@ def metadata():
             contains_args.get("arguments"),
             contains_args.get("schema"),
         )
-    elif metadata_workflow == "restore":
+    if metadata_workflow == MetadataCommands.BACKUP.value:
         run_restore(
             contains_args.get("host"),
             contains_args.get("user"),
@@ -372,7 +393,7 @@ def metadata():
             contains_args.get("arguments"),
             contains_args.get("schema"),
         )
-    elif metadata_workflow == "docker":
+    if metadata_workflow == MetadataCommands.RESTORE.value:
         run_docker(
             contains_args.get("start"),
             contains_args.get("stop"),
@@ -385,7 +406,7 @@ def metadata():
             contains_args.get("ingest_sample_data"),
             contains_args.get("database"),
         )
-    elif metadata_workflow == "webhook":
+    if metadata_workflow == MetadataCommands.WEBHOOK.value:
 
         class WebhookHandler(BaseHTTPRequestHandler):
             def do_GET(self):  # pylint: disable=invalid-name
@@ -410,7 +431,7 @@ def metadata():
         ) as server:
             server.serve_forever()
 
-    elif metadata_workflow == "openmetadata_imports_migration":
+    if metadata_workflow == MetadataCommands.OPENMETADATA_IMPORTS_MIGRATION.value:
         run_openmetadata_imports_migration(
             contains_args.get("dir_path"), contains_args.get("change_config_file_path")
         )

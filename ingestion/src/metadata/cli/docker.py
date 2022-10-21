@@ -21,7 +21,6 @@ from base64 import b64encode
 from datetime import timedelta
 from typing import Optional
 
-import click
 import requests
 from requests._internal_utils import to_native_string
 
@@ -34,6 +33,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.ansi import ANSI
 from metadata.utils.client_version import get_client_version
 from metadata.utils.logger import cli_logger, ometa_logger
 
@@ -70,7 +70,9 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     """
 
     logger.info("Running docker compose for OpenMetadata..")
-    click.secho("It may take some time on the first run", fg="bright_yellow")
+    print(
+        f"{ANSI.YELLOW.value}It may take some time on the first run {ANSI.ENDC.value}"
+    )
     if file_path:
         docker.compose.up(detach=True, build=True)
     else:
@@ -103,8 +105,8 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
         ometa_logger().disabled = False
 
     # Wait until docker is not only running, but the server is up
-    click.secho(
-        "Waiting for server to be up at http://localhost:8585", fg="bright_yellow"
+    print(
+        f"{ANSI.YELLOW.value}Waiting for server to be up at http://localhost:8585 {ANSI.ENDC.value}"
     )
     while True:
         try:
@@ -119,21 +121,20 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     logger.info(
         f"Time taken to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
     )
-    click.secho(
-        "\n✅  OpenMetadata is up and running",
-        fg="bright_green",
+    print(
+        f"{ANSI.GREEN.value}\n✅  OpenMetadata is up and running{ANSI.ENDC.value}",
     )
-    click.secho(
-        "\nOpen http://localhost:8585 in your browser to access OpenMetadata."
-        "\nTo checkout Ingestion via Airflow, go to http://localhost:8080 \n(username: admin, password: admin)",
-        fg="bright_blue",
+    print(
+        f"{ANSI.BLUE.value}\nOpen http://localhost:8585 in your browser to access OpenMetadata."
+        f"\nTo checkout Ingestion via Airflow, go to http://localhost:8080 "
+        f"\n(username: admin, password: admin){ANSI.ENDC.value}",
     )
-    click.secho(
-        "We are available on Slack, https://slack.open-metadata.org/. Reach out to us if you have any questions."
-        "\nIf you like what we are doing, please consider giving us a star on github at"
-        " https://github.com/open-metadata/OpenMetadata. It helps OpenMetadata reach wider audience and helps"
-        " our community.\n",
-        fg="bright_magenta",
+    print(
+        f"{ANSI.MAGENTA.value}We are available on Slack, https://slack.open-metadata.org/."
+        f"Reach out to us if you have any questions."
+        f"\nIf you like what we are doing, please consider giving us a star on github at"
+        f" https://github.com/open-metadata/OpenMetadata. It helps OpenMetadata reach wider audience and helps"
+        f" our community.\n{ANSI.ENDC.value}",
     )
 
 
@@ -256,14 +257,13 @@ def run_docker(  # pylint: disable=too-many-arguments,too-many-locals
 
     except MemoryError:
         logger.debug(traceback.format_exc())
-        click.secho(
-            f"Please Allocate More memory to Docker.\nRecommended: 6GB+\nCurrent: "
-            f"{round(float(dict(docker_info).get('mem_total')) / CALC_GB)}",
-            fg="red",
+        print(
+            f"{ANSI.BRIGHT_RED.value}Please Allocate More memory to Docker.\nRecommended: 6GB+\nCurrent: "
+            f"{round(float(dict(docker_info).get('mem_total')) / CALC_GB)}{ANSI.ENDC.value}",
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        click.secho(str(exc), fg="red")
+        print(f"{ANSI.BRIGHT_RED.value}{str(exc)}{ANSI.ENDC.value}")
 
 
 def reset_db_om(docker):
@@ -272,9 +272,8 @@ def reset_db_om(docker):
     """
 
     if docker.container.inspect("openmetadata_server").state.running:
-        click.secho(
-            "Resetting OpenMetadata.\nThis will clear out all the data",
-            fg="red",
+        print(
+            f"{ANSI.BRIGHT_RED.value}Resetting OpenMetadata.\nThis will clear out all the data{ANSI.ENDC.value}",
         )
         docker.container.execute(
             container="openmetadata_server",
@@ -286,7 +285,9 @@ def reset_db_om(docker):
             ],
         )
     else:
-        click.secho("OpenMetadata Instance is not up and running", fg="yellow")
+        print(
+            f"{ANSI.YELLOW.value}OpenMetadata Instance is not up and running{ANSI.ENDC.value}"
+        )
 
 
 def wait_for_containers(docker) -> None:

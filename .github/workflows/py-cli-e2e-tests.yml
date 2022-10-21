@@ -61,9 +61,9 @@ jobs:
       run: ./docker/run_local_docker.sh -m no-ui
       timeout-minutes: 30
 
-    - name: Run Python Tests
-      env:
-        E2E_TEST: ${{ matrix.e2e-test }}
-      run: |
-        source env/bin/activate
-        python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+    # - name: Run Python Tests
+    #   env:
+    #     E2E_TEST: ${{ matrix.e2e-test }}
+    #   run: |
+    #     source env/bin/activate
+    #     python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py

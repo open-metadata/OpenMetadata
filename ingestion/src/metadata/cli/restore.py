@@ -14,10 +14,10 @@ Restore utility for the metadata CLI
 """
 from typing import List, Optional
 
-import click
 from sqlalchemy.engine import Engine
 
 from metadata.cli.utils import get_engine
+from metadata.utils.ansi import ANSI
 from metadata.utils.logger import cli_logger
 
 logger = cli_logger()
@@ -62,9 +62,8 @@ def run_restore(  # pylint: disable=too-many-arguments
     :param arguments: list of connection arguments
     :param schema: Run the process against Postgres with the given schema
     """
-    click.secho(
-        f"Restoring OpenMetadata backup for {host}:{port}/{database}...",
-        fg="bright_green",
+    print(
+        f"{ANSI.GREEN.value}Restoring OpenMetadata backup for {host}:{port}/{database}...{ANSI.ENDC.value}",
     )
 
     engine = get_engine(
@@ -73,7 +72,6 @@ def run_restore(  # pylint: disable=too-many-arguments
 
     execute_sql_file(engine=engine, sql_file=sql_file)
 
-    click.secho(
-        f"Backup restored from {sql_file}",
-        fg="bright_green",
+    print(
+        f"{ANSI.GREEN.value}Backup restored from {sql_file}{ANSI.ENDC.value}",
     )

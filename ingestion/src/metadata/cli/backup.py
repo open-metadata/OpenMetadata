@@ -18,11 +18,10 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import click
-
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
 from metadata.utils.constants import UTF_8
+from metadata.utils.ansi import ANSI
 from metadata.utils.logger import cli_logger
 
 
@@ -83,9 +82,8 @@ def upload_backup_aws(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
     s3_key = Path(key) / file.name
-    click.secho(
-        f"Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}...",
-        fg="bright_green",
+    print(
+        f"{ANSI.GREEN.value}Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}... {ANSI.ENDC.value}"
     )
 
     try:
@@ -185,9 +183,8 @@ def run_backup(  # pylint: disable=too-many-arguments, too-many-locals
     :param arguments: list of connection arguments
     :param schema: Run the process against Postgres with the given schema
     """
-    click.secho(
-        f"Creating OpenMetadata backup for {host}:{port}/{database}...",
-        fg="bright_green",
+    print(
+        f"{ANSI.GREEN.value}Creating OpenMetadata backup for {host}:{port}/{database}... {ANSI.ENDC.value}"
     )
 
     out = get_output(output)
@@ -197,10 +194,7 @@ def run_backup(  # pylint: disable=too-many-arguments, too-many-locals
     )
     dump(engine=engine, output=out, schema=schema)
 
-    click.secho(
-        f"Backup stored locally under {out}",
-        fg="bright_green",
-    )
+    print(f"{ANSI.GREEN.value}Backup stored locally under {out} {ANSI.ENDC.value}")
 
     if upload:
         if upload_destination_type == UploadDestinationType.AWS.value:

@@ -18,7 +18,6 @@ import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-import click
 from sqlalchemy import inspect, sql, util
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.sql import sqltypes
@@ -26,6 +25,7 @@ from trino.sqlalchemy import datatype
 from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.utils.ansi import ANSI
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
@@ -140,10 +140,9 @@ class TrinoSource(CommonDbSourceService):
                 dbapi,
             )
         except ModuleNotFoundError:
-            click.secho(
-                "Trino source dependencies are missing. Please run\n"
-                + "$ pip install --upgrade 'openmetadata-ingestion[trino]'",
-                fg="red",
+            print(
+                f"{ANSI.BRIGHT_RED.value}Trino source dependencies are missing. Please run\n"
+                f"$ pip install --upgrade 'openmetadata-ingestion[trino]'{ANSI.ENDC.value}",
             )
             if logger.isEnabledFor(logging.DEBUG):
                 raise
