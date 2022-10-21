@@ -27,7 +27,7 @@ import { showErrorToast } from './ToastUtils';
  * @param referrerURL referrer URL
  * @returns pathname
  */
-const getReferrerPath = (referrerURL: string) => {
+export const getReferrerPath = (referrerURL: string) => {
   try {
     const referrerURLObj = new URL(referrerURL);
 
@@ -42,7 +42,7 @@ const getReferrerPath = (referrerURL: string) => {
  * @param performance
  * @returns pageLoadTime (in S)
  */
-const getPageLoadTime = (performance: Performance) => {
+export const getPageLoadTime = (performance: Performance) => {
   // get the performance navigation timing
   const performanceNavigationTiming = performance.getEntriesByType(
     'navigation'
