@@ -140,13 +140,13 @@ const BotListV1 = ({
         key: 'id',
         width: 90,
         render: (_, record) => {
-          const isIngestionBot = record.provider === ProviderType.System;
-          const title = isIngestionBot
+          const isSystemBot = record.provider === ProviderType.System;
+          const title = isSystemBot
             ? INGESTION_BOT_CANT_BE_DELETED
             : deletePermission
             ? 'Delete'
             : NO_PERMISSION_FOR_ACTION;
-          const isDisabled = !deletePermission || isIngestionBot;
+          const isDisabled = !deletePermission || isSystemBot;
 
           return (
             <Space align="center" size={8}>
