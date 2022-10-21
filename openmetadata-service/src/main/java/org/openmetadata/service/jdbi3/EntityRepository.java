@@ -254,16 +254,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public List<T> getEntitiesFromSeedData(String path) throws IOException {
-    return getEntitiesFromSeedData(path, entityClass);
+    return getEntitiesFromSeedData(entityType, path, entityClass);
   }
 
-  public <U> List<U> getEntitiesFromSeedData(String path, Class<U> clazz) throws IOException {
+  public static <U> List<U> getEntitiesFromSeedData(String entityType, String path, Class<U> clazz) throws IOException {
     List<U> entities = new ArrayList<>();
     List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
+            String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFile);
             json = json.replace("<separator>", Entity.SEPARATOR);
             entities.add(JsonUtils.readValue(json, clazz));
           } catch (Exception e) {
