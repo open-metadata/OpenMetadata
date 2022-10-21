@@ -18,7 +18,6 @@ from unittest import TestCase
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.entity.data.messaging import Messaging
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -194,7 +193,7 @@ class OMetaMessagingServiceTest(TestCase):
         )
 
         # Then we should not find it
-        res = self.metadata.list_entities(entity=Messaging)
+        res = self.metadata.list_entities(entity=MessagingService)
 
         assert self.entity.name not in (ent.name for ent in res.entities)
 
