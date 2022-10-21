@@ -596,6 +596,11 @@ declare module 'Models' {
 
   export type Status = 'initial' | 'waiting' | 'success';
 
+  export interface CurrentState {
+    id: string;
+    state: string;
+  }
+
   // ES interface end
 
   //   interface ESUserResponse {}

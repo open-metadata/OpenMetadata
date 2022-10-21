@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Space, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -27,6 +28,7 @@ import {
   uniqueId,
 } from 'lodash';
 import {
+  CurrentState,
   EntityFieldThreadCount,
   ExtraInfo,
   RecentlySearched,
@@ -46,6 +48,7 @@ import {
 } from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PopOver from '../components/common/popover/PopOver';
+import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -1051,5 +1054,22 @@ export const getEmptyPlaceholder = () => {
         {i18n.t('label.no-data-available')}
       </Typography.Paragraph>
     </ErrorPlaceHolder>
+  );
+};
+
+//  return the status like loading and success
+export const getLoadingStatus = (
+  current: CurrentState,
+  id: string | undefined,
+  displayText: string
+) => {
+  return current.id === id ? (
+    current.state === 'success' ? (
+      <FontAwesomeIcon icon="check" />
+    ) : (
+      <Loader size="small" type="default" />
+    )
+  ) : (
+    displayText
   );
 };

@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { getAnalyticInstance } from './WebAnalyticsUtils';
+import { getAnalyticInstance, getReferrerPath } from './WebAnalyticsUtils';
 
 const userId = 'userId';
+
+const mockReferrer =
+  'http://localhost:3000/settings/members/teams/Organization';
 
 describe('Web Analytics utils', () => {
   it('getAnalyticInstance Should return the analytic instance and must have plugins, storage, page and setAnonymousId property', () => {
@@ -26,5 +29,17 @@ describe('Web Analytics utils', () => {
     expect(instance).toHaveProperty('page');
 
     expect(instance).toHaveProperty('setAnonymousId');
+  });
+
+  it('getReferrerPath should return pathname if url is correct', () => {
+    const pathname = getReferrerPath(mockReferrer);
+
+    expect(pathname).toStrictEqual('/settings/members/teams/Organization');
+  });
+
+  it('getReferrerPath should return empty string if url is incorrect', () => {
+    const pathname = getReferrerPath('incorrectURL');
+
+    expect(pathname).toStrictEqual('');
   });
 });

@@ -68,7 +68,7 @@ const Signup = () => {
       });
   };
 
-  const onChangeHadler = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.persist();
     setDetails((prevState) => {
       return {
@@ -100,20 +100,26 @@ const Signup = () => {
               <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
                 <SVGIcons
                   alt="OpenMetadata Logo"
+                  data-testid="om-logo"
                   icon={Icons.LOGO_SMALL}
                   width="50"
                 />
               </div>
               <div className="tw-mb-7">
-                <h4 className="tw-font-semibold">
+                <h4 className="tw-font-semibold" data-testid="om-heading">
                   Join <span className="tw-text-primary">OpenMetadata</span>
                 </h4>
               </div>
               <div className="tw-px-8 tw-w-full">
-                <form action="." method="POST" onSubmit={onSubmitHandler}>
+                <form
+                  action="."
+                  data-testid="create-user-form"
+                  method="POST"
+                  onSubmit={onSubmitHandler}>
                   <div className="tw-mb-4">
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                      data-testid="full-name-label"
                       htmlFor="displayName">
                       Full name
                     </label>
@@ -123,17 +129,19 @@ const Signup = () => {
                       className="tw-appearance-none tw-border tw-border-main  
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                      data-testid="full-name-input"
                       id="displayName"
                       name="displayName"
                       placeholder="Your Full name"
                       type="text"
                       value={details.displayName}
-                      onChange={onChangeHadler}
+                      onChange={onChangeHandler}
                     />
                   </div>
                   <div className="tw-mb-4">
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                      data-testid="username-label"
                       htmlFor="name">
                       Username
                     </label>
@@ -143,17 +151,19 @@ const Signup = () => {
                       autoComplete="off"
                       className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                     tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                      data-testid="username-input"
                       id="name"
                       name="name"
                       placeholder="Username"
                       type="text"
                       value={details.name}
-                      onChange={onChangeHadler}
+                      onChange={onChangeHandler}
                     />
                   </div>
                   <div className="tw-mb-4">
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                      data-testid="email-label"
                       htmlFor="email">
                       Email
                     </label>
@@ -163,16 +173,19 @@ const Signup = () => {
                       autoComplete="off"
                       className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                     tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                      data-testid="email-input"
                       id="email"
                       name="email"
                       placeholder="Your email address"
                       type="email"
                       value={details.email}
-                      onChange={onChangeHadler}
+                      onChange={onChangeHandler}
                     />
                   </div>
                   <div className="tw-mb-4">
-                    <label className="tw-block tw-text-body tw-text-grey-body tw-mb-2">
+                    <label
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      data-testid="select-team-label">
                       Select teams
                     </label>
                     <TeamsSelectable
@@ -185,6 +198,7 @@ const Signup = () => {
                     <Button
                       className="tw-text-white 
                        tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"
+                      data-testid="create-button"
                       size="regular"
                       theme="primary"
                       type="submit"
@@ -199,7 +213,9 @@ const Signup = () => {
         </PageContainer>
       )}
       {loading && (
-        <p className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center">
+        <p
+          className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center"
+          data-testid="loading-content">
           Creating Account ....
         </p>
       )}

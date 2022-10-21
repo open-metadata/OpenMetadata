@@ -11,43 +11,17 @@
  *  limitations under the License.
  */
 
-// Position
-.relative {
-  position: relative;
-}
-.absolute {
-  position: absolute;
-}
+import { AxiosResponse } from 'axios';
+import { WebAnalyticEventData } from '../generated/analytics/webAnalyticEventData';
+import APIClient from './index';
 
-// Align
-.align-start {
-  align-items: start;
-}
+export const postPageView = async (
+  webAnalyticEventData: WebAnalyticEventData
+) => {
+  const response = await APIClient.put<
+    WebAnalyticEventData,
+    AxiosResponse<WebAnalyticEventData>
+  >('/analytics/webAnalyticEvent/collect', webAnalyticEventData);
 
-.items-center {
-  align-items: center;
-}
-
-// Display
-.d-flex {
-  display: flex;
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-//top
-.top-1 {
-  top: 4px;
-}
-
-//right
-.right-3 {
-  right: 12px;
-}
-
-//bottom
-.bottom-full {
-  bottom: 100%;
-}
+  return response.data;
+};

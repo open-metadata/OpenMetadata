@@ -11,43 +11,10 @@
  *  limitations under the License.
  */
 
-// Position
-.relative {
-  position: relative;
-}
-.absolute {
-  position: absolute;
-}
-
-// Align
-.align-start {
-  align-items: start;
-}
-
-.items-center {
-  align-items: center;
-}
-
-// Display
-.d-flex {
-  display: flex;
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-//top
-.top-1 {
-  top: 4px;
-}
-
-//right
-.right-3 {
-  right: 12px;
-}
-
-//bottom
-.bottom-full {
-  bottom: 100%;
+.user-list {
+  .rc-virtual-list-holder-inner {
+    display: grid !important;
+    gap: 1rem /* 16px */;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

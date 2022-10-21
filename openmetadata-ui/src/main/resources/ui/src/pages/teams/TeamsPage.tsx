@@ -538,12 +538,12 @@ const TeamsPage = () => {
           {isAddingUsers && (
             <AddUsersModalV1
               header={`Adding new users to ${getEntityName(selectedTeam)}`}
+              isVisible={isAddingUsers}
               list={selectedTeam.users || []}
               onCancel={() => setIsAddingUsers(false)}
               onSave={(data) => addUsersToTeam(data)}
             />
           )}
-
           <AddTeamForm
             isLoading={isLoading}
             visible={isAddingTeam}
