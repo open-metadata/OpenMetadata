@@ -27,6 +27,7 @@ import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.util.JsonUtils;
@@ -36,6 +37,14 @@ import org.openmetadata.service.util.PipelineServiceClient;
 public class AirflowRESTClient extends PipelineServiceClient {
   private static final String API_ENDPOINT = "api/v1/openmetadata";
   private static final String DAG_ID = "dag_id";
+
+  private static final Map<String, String> TYPE_TO_TASK =
+      Map.of(
+          PipelineType.METADATA.toString(), "ingestion_task",
+          PipelineType.PROFILER.toString(), "profiler_task",
+          PipelineType.LINEAGE.toString(), "lineage_task",
+          PipelineType.USAGE.toString(), "usage_task",
+          PipelineType.TEST_SUITE.toString(), "test_suite_task");
 
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     super(
@@ -248,12 +257,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
+  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
     HttpResponse<String> response;
+    String taskId = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString());
+    // Init empty after query param
+    String afterParam = "";
+    if (after != null) {
+      afterParam = String.format("&after=%s", after);
+    }
     try {
       response =
           getRequestAuthenticatedForJsonContent(
-              "%s/%s/last_dag_logs?dag_id=%s", serviceURL, API_ENDPOINT, ingestionPipeline.getName());
+              "%s/%s/last_dag_logs?dag_id=%s&task_id=%s%s",
+              serviceURL, API_ENDPOINT, ingestionPipeline.getName(), taskId, afterParam);
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }

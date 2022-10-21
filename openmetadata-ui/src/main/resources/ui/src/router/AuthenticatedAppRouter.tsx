@@ -213,6 +213,10 @@ const TestSuitePage = withSuspenseFallback(
   React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
 );
 
+const LogsViewer = withSuspenseFallback(
+  React.lazy(() => import('../pages/LogsViewer/LogsViewer.component'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -487,6 +491,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={TestSuiteDetailsPage}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
+      <Route exact component={LogsViewer} path={ROUTES.LOGS} />
       <Route
         exact
         component={TestSuiteIngestionPage}

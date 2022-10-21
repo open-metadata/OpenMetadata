@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export interface IngestionPipelineLogByIdInterface {
+  ingestion_task?: string;
+  profiler_task?: string;
+  usage_task?: string;
+  lineage_task?: string;
+  test_suite_task?: string;
+  total?: string;
+  after?: string;
+}
 
-import { Buffer } from 'buffer';
-import { ungzip } from 'pako';
-
-export const gzipToStringConverter = (data: string) => {
-  const gzipedDataBuffer = Buffer.from(data, 'base64');
-  const ungzipedData = ungzip(gzipedDataBuffer);
-
-  return new TextDecoder().decode(ungzipedData);
-};
+export interface LogViewerParams {
+  logEntityType: string;
+  ingestionName: string;
+}
