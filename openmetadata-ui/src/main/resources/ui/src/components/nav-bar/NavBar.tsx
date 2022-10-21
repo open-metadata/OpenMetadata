@@ -290,10 +290,9 @@ const NavBar = ({
 
               <Dropdown
                 className="cursor-pointer"
-                data-testid="governance"
                 overlay={governanceMenu}
                 trigger={['click']}>
-                <Space>
+                <Space data-testid="governance">
                   {t('label.governance')}
                   <DropDownIcon style={{ marginLeft: 0 }} />
                 </Space>
