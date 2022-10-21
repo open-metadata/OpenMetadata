@@ -30,7 +30,7 @@ import { PageLayoutType } from '../../enums/layout.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
 import jsonData from '../../jsons/en';
-import { getTestSuiteDetailPath } from '../../utils/RouterUtils';
+import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
@@ -74,7 +74,7 @@ const TestSuiteIngestionPage = () => {
         },
         {
           name: startCase(response.displayName || response.name),
-          url: getTestSuiteDetailPath(response.fullyQualifiedName || ''),
+          url: getTestSuitePath(response.fullyQualifiedName || ''),
         },
         {
           name: `${ingestionFQN ? 'Edit' : 'Add'} Ingestion`,
@@ -98,7 +98,7 @@ const TestSuiteIngestionPage = () => {
   };
 
   const handleCancelBtn = () => {
-    history.push(getTestSuiteDetailPath(testSuiteFQN || ''));
+    history.push(getTestSuitePath(testSuiteFQN || ''));
   };
 
   useEffect(() => {

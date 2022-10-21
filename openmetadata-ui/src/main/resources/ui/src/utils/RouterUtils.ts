@@ -364,7 +364,7 @@ export const getAddDataQualityTableTestPath = (
   return path;
 };
 
-export const getTestSuiteDetailPath = (testSuiteName: string) => {
+export const getTestSuitePath = (testSuiteName: string) => {
   let path = ROUTES.TEST_SUITES_WITH_FQN;
   path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
 
@@ -426,7 +426,7 @@ export const getLogEntityPath = (
   }
 
   if (logEntityType === 'testSuite') {
-    return getTestSuiteDetailPath(path);
+    return getTestSuitePath(path);
   }
 
   if (

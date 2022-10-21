@@ -39,7 +39,7 @@ import {
   getEntityName,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import { getTestSuiteDetailPath } from '../../utils/RouterUtils';
+import { getTestSuitePath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -129,7 +129,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
 
   const handleViewTestSuiteClick = () => {
     history.push(
-      getTestSuiteDetailPath(
+      getTestSuitePath(
         selectedTestSuite?.data?.fullyQualifiedName ||
           testSuiteData?.fullyQualifiedName ||
           ''

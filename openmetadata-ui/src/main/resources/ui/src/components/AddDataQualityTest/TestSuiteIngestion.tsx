@@ -38,7 +38,7 @@ import {
   getIngestionFrequency,
   replaceSpaceWith_,
 } from '../../utils/CommonUtils';
-import { getTestSuiteDetailPath } from '../../utils/RouterUtils';
+import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -187,7 +187,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const handleViewTestSuiteClick = () => {
-    history.push(getTestSuiteDetailPath(testSuite?.fullyQualifiedName || ''));
+    history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
   };
 
   const handleDeployClick = () => {
