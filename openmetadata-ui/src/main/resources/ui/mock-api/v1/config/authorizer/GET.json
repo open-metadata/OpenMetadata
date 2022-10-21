@@ -4,8 +4,5 @@
   "adminPrincipals": [
     "admin"
   ],
-  "botPrincipals": [
-    "ingestion-bot"
-  ],
   "principalDomain": ""
 }

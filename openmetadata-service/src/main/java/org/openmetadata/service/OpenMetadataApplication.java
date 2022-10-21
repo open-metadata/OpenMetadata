@@ -40,6 +40,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.Optional;
+import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
 import javax.servlet.ServletException;
@@ -94,7 +95,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException {
+          InvocationTargetException, IOException, ConfigurationException {
+    validateConfiguration(catalogConfig);
+
     // init email Util for handling
     if (catalogConfig.getSmtpSettings() != null && catalogConfig.getSmtpSettings().getEnableSmtpServer()) {
       EmailUtil.EmailUtilBuilder.build(catalogConfig.getSmtpSettings());
@@ -156,7 +159,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
-    intializeWebsockets(catalogConfig, environment);
+    initializeWebsockets(catalogConfig, environment);
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
@@ -227,6 +230,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {
+    if (catalogConfig.getAuthorizerConfiguration().getBotPrincipals() != null) {
+      throw new ConfigurationException(
+          "'botPrincipals' configuration is deprecated. Please remove it from "
+              + "'openmetadata.yaml and restart the server");
+    }
+  }
+
   private void registerAuthorizer(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
@@ -280,7 +291,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.getApplicationContext().setErrorHandler(eph);
   }
 
-  private void intializeWebsockets(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+  private void initializeWebsockets(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
     if (catalogConfig.getAuthorizerConfiguration() != null) {

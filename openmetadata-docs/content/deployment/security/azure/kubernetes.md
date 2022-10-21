@@ -30,8 +30,6 @@ global:
     initialAdmins:
       - "user1"
       - "user2"
-    botPrincipals:
-      - "<object-id-for-azure-service-application-enterprise-application>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "azure"
@@ -62,8 +60,6 @@ global:
     initialAdmins:
       - "user1"
       - "user2"
-    botPrincipals:
-      - "ingestion-bot"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "azure"
