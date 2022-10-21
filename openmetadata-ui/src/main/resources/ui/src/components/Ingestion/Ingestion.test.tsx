@@ -199,13 +199,6 @@ describe('Test Ingestion page', () => {
     expect(ingestionTable).toBeInTheDocument();
     expect(tableHeaderContainer).toBeInTheDocument();
     expect(tableHeaders.length).toBe(5);
-    expect(tableHeaders).toStrictEqual([
-      'Name',
-      'Type',
-      'Schedule',
-      'Recent Runs',
-      'Actions',
-    ]);
     expect(runButton).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
