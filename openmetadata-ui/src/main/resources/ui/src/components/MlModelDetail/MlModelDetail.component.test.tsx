@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findAllByText,
+  findByTestId,
+  findByText,
+  render,
+} from '@testing-library/react';
 import { LeafNodes } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -205,6 +210,7 @@ jest.mock('../../utils/CommonUtils', () => {
     getEntityName: jest.fn().mockReturnValue('entityName'),
     getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
     getOwnerValue: jest.fn().mockReturnValue('Owner'),
+    getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
   };
 });
 
@@ -244,6 +250,32 @@ describe('Test MlModel entity detail component', () => {
   });
 
   it('Should render hyper parameter and ml store table for details tab', async () => {
+    const mockPropDetails = {
+      ...mockProp,
+      mlModelDetail: {
+        ...mockProp.mlModelDetail,
+        mlHyperParameters: [],
+        mlStore: undefined,
+      },
+    };
+    const { container } = render(
+      <MlModelDetailComponent {...mockPropDetails} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const emptyTablePlaceholder = await findAllByText(
+      container,
+      'ErrorPlaceHolder'
+    );
+
+    expect(detailContainer).toBeInTheDocument();
+    expect(emptyTablePlaceholder).toHaveLength(2);
+  });
+
+  it('Should render no data placeholder hyper parameter and ml store details tab', async () => {
     const { container } = render(
       <MlModelDetailComponent {...mockProp} activeTab={3} />,
       {

@@ -15,13 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -52,9 +51,9 @@ public class BotRepository extends EntityRepository<Bot> {
     EntityReference botUser = entity.getBotUser();
     entity.withBotUser(null);
     store(entity.getId(), entity, update);
-    if (!ProviderType.USER.equals(entity.getProvider())) { // encryption is done only for system bots
+    if (!BotType.BOT.equals(entity.getBotType())) {
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      secretsManager.encryptOrDecryptBotCredentials(entity.getName(), botUser.getName(), true);
+      secretsManager.encryptOrDecryptBotCredentials(entity.getBotType().value(), botUser.getName(), true);
     }
     entity.withBotUser(botUser);
   }
@@ -67,14 +66,6 @@ public class BotRepository extends EntityRepository<Bot> {
   @Override
   public EntityUpdater getUpdater(Bot original, Bot updated, Operation operation) {
     return new BotUpdater(original, updated, operation);
-  }
-
-  @Override
-  protected void preDelete(Bot entity) {
-    if (entity.getProvider() == ProviderType.SYSTEM) { // System provided bot can't be deleted
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.BOT));
-    }
   }
 
   @Override
@@ -95,6 +86,9 @@ public class BotRepository extends EntityRepository<Bot> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateUser(original, updated);
+      if (original.getBotType() != null) {
+        updated.setBotType(original.getBotType());
+      }
     }
 
     private void updateUser(Bot original, Bot updated) throws IOException {
