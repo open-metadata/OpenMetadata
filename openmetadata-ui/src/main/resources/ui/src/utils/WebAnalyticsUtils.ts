@@ -73,9 +73,9 @@ export const trackPageView = async (pageData: WebPageData, userId: string) => {
 
   const { anonymousId, properties, meta } = payload;
 
-  const previousPathRef = getReferrerPath(
-    properties.referrer ?? document.referrer
-  );
+  const referrer = properties.referrer ?? document.referrer;
+
+  const previousPathRef = getReferrerPath(referrer);
 
   // timestamp for the current event
   const timestamp = meta.ts;
@@ -96,7 +96,7 @@ export const trackPageView = async (pageData: WebPageData, userId: string) => {
         screenSize: `${properties.width}x${properties.height}`,
         userId,
         sessionId: anonymousId,
-        referrer: properties.referrer,
+        referrer,
         pageLoadTime,
       };
 
