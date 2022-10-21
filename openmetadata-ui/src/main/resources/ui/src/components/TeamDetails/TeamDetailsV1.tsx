@@ -33,6 +33,7 @@ import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
+import { reactivateTeam } from '../../axiosAPIs/teamsAPI';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -45,6 +46,7 @@ import {
 } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreateTeam } from '../../generated/api/teams/createTeam';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import {
@@ -58,6 +60,7 @@ import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttrib
 import UserCard from '../../pages/teams/UserCard';
 import {
   commonUserDetailColumns,
+  generateIdArray,
   getEntityName,
   hasEditAccess,
 } from '../../utils/CommonUtils';
@@ -72,7 +75,7 @@ import {
   filterChildTeams,
   getDeleteMessagePostFix,
 } from '../../utils/TeamUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
@@ -501,6 +504,41 @@ const TeamDetailsV1 = ({
     updateTeamHandler(updatedTeamData);
   };
 
+  const handleReactiveTeam = async () => {
+    const teamChildren = generateIdArray(childTeams as EntityReference[]);
+    const updatedUserData: CreateTeam = {
+      teamType: currentTeam.teamType as TeamType,
+      name: currentTeam.name,
+      isJoinable: currentTeam.isJoinable,
+      defaultRoles: generateIdArray(currentTeam.defaultRoles),
+      children: isEmpty(teamChildren) ? undefined : teamChildren,
+      description: currentTeam.description,
+      displayName: currentTeam.displayName,
+      parents: generateIdArray(currentTeam.parents),
+      owner: currentTeam.owner,
+      policies: generateIdArray(currentTeam.policies),
+      profile: currentTeam.profile,
+      users: generateIdArray(currentTeam.users),
+    };
+
+    try {
+      const res = await reactivateTeam(updatedUserData);
+      if (res) {
+        afterDeleteAction();
+        showSuccessToast(
+          jsonData['api-success-messages']['team-restored-success']
+        );
+      } else {
+        throw jsonData['api-error-messages']['update-team-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-team-error']
+      );
+    }
+  };
+
   const fetchPermissions = async () => {
     setLoading(true);
     try {
@@ -581,8 +619,41 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
+  const restoreIcon = useMemo(
+    () => <SVGIcons alt="Restore" icon={Icons.RESTORE} width="16px" />,
+    [currentTeam.isJoinable]
+  );
+
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
+      ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
+        ? [
+            {
+              label: (
+                <Space
+                  className="cursor-pointer manage-button"
+                  size={8}
+                  onClick={handleReactiveTeam}>
+                  {restoreIcon}
+                  <div
+                    className="text-left open-group"
+                    data-testid="restore-team">
+                    <p className="font-medium" data-testid="restore-team-label">
+                      Restore Team
+                    </p>
+
+                    <p className="tw-text-grey-muted tw-text-xs">
+                      Restoring the Team will add all the metadata back to
+                      OpenMetadata
+                    </p>
+                  </div>
+                </Space>
+              ),
+              key: 'restore-team-dropdown',
+            },
+          ]
+        : []),
+
       {
         label: (
           <Space
@@ -615,7 +686,7 @@ const TeamDetailsV1 = ({
         key: 'open-group-dropdown',
       },
     ],
-    [entityPermissions, currentTeam]
+    [entityPermissions, currentTeam, childTeams]
   );
 
   /**

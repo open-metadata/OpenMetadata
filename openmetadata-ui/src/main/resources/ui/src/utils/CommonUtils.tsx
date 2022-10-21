@@ -1073,3 +1073,7 @@ export const getLoadingStatus = (
     displayText
   );
 };
+
+// return array of id's
+export const generateIdArray = (arr: EntityReference[] | undefined) =>
+  arr?.map((item) => item.id);

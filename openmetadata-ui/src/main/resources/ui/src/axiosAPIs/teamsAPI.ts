@@ -101,3 +101,12 @@ export const deleteTeam = async (id: string) => {
 
   return response.data;
 };
+
+export const reactivateTeam = async (data: CreateTeam) => {
+  const response = await APIClient.put<CreateTeam, AxiosResponse<Team>>(
+    '/teams',
+    data
+  );
+
+  return response.data;
+};
