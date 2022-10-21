@@ -101,6 +101,9 @@ export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const PLACEHOLDER_TEST_SUITE_FQN = ':testSuiteFQN';
+export const LOG_ENTITY_TYPE = ':logEntityType';
+export const INGESTION_NAME = ':ingestionName';
+export const LOG_ENTITY_NAME = ':logEntityName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -253,6 +256,9 @@ export const ROUTES = {
   TEST_SUITES: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}`,
   TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/add-ingestion`,
   TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
+
+  // logs viewer
+  LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
 };
 
 export const SOCKET_EVENTS = {
