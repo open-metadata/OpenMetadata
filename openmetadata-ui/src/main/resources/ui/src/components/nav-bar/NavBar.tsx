@@ -278,16 +278,6 @@ const NavBar = ({
                 }}>
                 {t('label.discover')}
               </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-quality"
-                style={navStyle(pathname.includes(ROUTES.TEST_SUITES))}
-                to={{
-                  pathname: ROUTES.TEST_SUITES,
-                }}>
-                {t('label.data-quality')}
-              </NavLink>
-
               <Dropdown
                 className="cursor-pointer"
                 overlay={governanceMenu}
@@ -297,15 +287,14 @@ const NavBar = ({
                   <DropDownIcon style={{ marginLeft: 0 }} />
                 </Space>
               </Dropdown>
-
               <NavLink
                 className="focus:tw-no-underline"
-                data-testid="appbar-item-settings"
-                style={navStyle(pathname.startsWith('/settings'))}
+                data-testid="appbar-item-data-quality"
+                style={navStyle(pathname.includes(ROUTES.TEST_SUITES))}
                 to={{
-                  pathname: ROUTES.SETTINGS,
+                  pathname: ROUTES.TEST_SUITES,
                 }}>
-                {t('label.settings')}
+                {t('label.data-quality')}
               </NavLink>
             </Space>
           </div>
@@ -370,6 +359,15 @@ const NavBar = ({
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">
             <Space size={24}>
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-settings"
+                style={navStyle(pathname.startsWith('/settings'))}
+                to={{
+                  pathname: ROUTES.SETTINGS,
+                }}>
+                {t('label.settings')}
+              </NavLink>
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown
                   destroyPopupOnHide
