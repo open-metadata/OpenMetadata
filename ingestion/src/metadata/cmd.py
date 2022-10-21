@@ -108,28 +108,23 @@ def docker_args(parser: argparse.ArgumentParser):
     Addtional Parser Arguments for Docker
     """
     parser.add_argument(
-        "--start", help="Start release docker containers", default=True, type=bool
+        "--start", help="Start release docker containers", action="store_false"
     )
     parser.add_argument(
-        "--stop",
-        help="Stops openmetadata docker containers",
-        default=True,
-        type=bool,
+        "--stop", help="Stops openmetadata docker containers", action="store_false"
     )
     parser.add_argument(
-        "--pause", help="Pause openmetadata docker containers", default=True, type=bool
+        "--pause", help="Pause openmetadata docker containers", action="store_false"
     )
     parser.add_argument(
         "--resume",
         help="Resume/Unpause openmetadata docker containers",
-        default=True,
-        type=bool,
+        action="store_false",
     )
     parser.add_argument(
         "--clean",
         help="Stops and remove openmetadata docker containers along with images, volumes, networks associated",
-        default=True,
-        type=bool,
+        action="store_false",
     )
     parser.add_argument(
         "-f",
@@ -146,13 +141,12 @@ def docker_args(parser: argparse.ArgumentParser):
         required=False,
     )
     parser.add_argument(
-        "--reset-db", help="Reset OpenMetadata Data", type=bool, default=True
+        "--reset-db", help="Reset OpenMetadata Data", action="store_false"
     )
     parser.add_argument(
         "--ingest-sample-data",
         help="Enable the sample metadata ingestion",
-        type=bool,
-        default=True,
+        action="store_false",
     )
     parser.add_argument(
         "-db",
@@ -201,7 +195,6 @@ def backup_args(parser: argparse.ArgumentParser):
         "--port",
         help="Database service port",
         default="3306",
-        required=False,
     )
     parser.add_argument(
         "--output",
@@ -221,7 +214,6 @@ def backup_args(parser: argparse.ArgumentParser):
         "-s",
         "--schema",
         default=None,
-        required=False,
     )
 
 
@@ -267,7 +259,7 @@ def restore_args(parser: argparse.ArgumentParser):
         "--input",
         help="Local backup file path for restore",
         type=pathlib.Path,
-        default=None,
+        required=True,
     )
 
     parser.add_argument("-o", "--options", default=None, action="append")
@@ -298,10 +290,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     )
 
 
-def metadata():
-    """
-    This method implements parsing of the arguments passed from CLI
-    """
+def get_parser(args=None):
     parser = argparse.ArgumentParser(prog="metadata", description="Ingestion Framework")
     sub_parser = parser.add_subparsers(dest="command")
 
@@ -350,8 +339,14 @@ def metadata():
 
     add_metadata_args(parser)
     parser.add_argument("--debug", help="Debug Mode", action="store_true")
+    return parser.parse_args(args)
 
-    contains_args = vars(parser.parse_args())
+
+def metadata(args=None):
+    """
+    This method implements parsing of the arguments passed from CLI
+    """
+    contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
     config_file = contains_args.get("config")
     if contains_args.get("debug"):
@@ -367,44 +362,43 @@ def metadata():
         run_profiler(config_path=config_file)
     if metadata_workflow == MetadataCommands.TEST.value:
         run_test(config_path=config_file)
-    if metadata_workflow == MetadataCommands.DOCKER.value:
-        run_backup(
-            contains_args.get("host"),
-            contains_args.get("user"),
-            contains_args.get("password"),
-            contains_args.get("database"),
-            contains_args.get("port"),
-            contains_args.get("output"),
-            contains_args.get("upload_destination_type"),
-            contains_args.get("upload"),
-            contains_args.get("options"),
-            contains_args.get("arguments"),
-            contains_args.get("schema"),
-        )
     if metadata_workflow == MetadataCommands.BACKUP.value:
-        run_restore(
-            contains_args.get("host"),
-            contains_args.get("user"),
-            contains_args.get("password"),
-            contains_args.get("database"),
-            contains_args.get("port"),
-            contains_args.get("input"),
-            contains_args.get("options"),
-            contains_args.get("arguments"),
-            contains_args.get("schema"),
+        run_backup(
+            host=contains_args.get("host"),
+            user=contains_args.get("user"),
+            password=contains_args.get("password"),
+            database=contains_args.get("database"),
+            port=contains_args.get("port"),
+            output=contains_args.get("output"),
+            upload=contains_args.get("upload"),
+            options=contains_args.get("options"),
+            arguments=contains_args.get("arguments"),
+            schema=contains_args.get("schema"),
         )
     if metadata_workflow == MetadataCommands.RESTORE.value:
+        run_restore(
+            host=contains_args.get("host"),
+            user=contains_args.get("user"),
+            password=contains_args.get("password"),
+            database=contains_args.get("database"),
+            port=contains_args.get("port"),
+            sql_file=contains_args.get("input"),
+            options=contains_args.get("options"),
+            arguments=contains_args.get("arguments"),
+            schema=contains_args.get("schema"),
+        )
+    if metadata_workflow == MetadataCommands.DOCKER.value:
         run_docker(
-            contains_args.get("start"),
-            contains_args.get("stop"),
-            contains_args.get("pause"),
-            contains_args.get("resume"),
-            contains_args.get("clean"),
-            contains_args.get("file_path"),
-            contains_args.get("env_file_path"),
-            contains_args.get("reset_db"),
-            contains_args.get("ingest_sample_data"),
-            contains_args.get("database"),
+            start=contains_args.get("start"),
+            stop=contains_args.get("stop"),
+            pause=contains_args.get("pause"),
+            resume=contains_args.get("resume"),
+            clean=contains_args.get("clean"),
+            file_path=contains_args.get("file_path"),
+            env_file_path=contains_args.get("env_file_path"),
+            reset_db=contains_args.get("reset_db"),
+            ingest_sample_data=contains_args.get("ingest_sample_data"),
+            database=contains_args.get("database"),
         )
     if metadata_workflow == MetadataCommands.WEBHOOK.value:
 
