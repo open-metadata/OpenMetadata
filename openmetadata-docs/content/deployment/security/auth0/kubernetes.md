@@ -19,8 +19,6 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins: 
     - "suresh"
-    botPrincipals: 
-    - "<client_id>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "auth0"
