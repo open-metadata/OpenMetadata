@@ -81,6 +81,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
@@ -89,6 +90,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1842,7 +1844,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     ChangeEvent changeEvent = null;
 
     int iteration = 0;
-    while (changeEvent == null && iteration < 25) {
+    while (changeEvent == null && iteration < 10) {
       iteration++;
       // Sometimes change event is not returned on quickly querying with a millisecond
       // Try multiple times before giving up
@@ -1855,11 +1857,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
 
       if (changeEvents == null || changeEvents.getData().size() == 0) {
-        try {
-          Thread.sleep(iteration * 10L); // Sleep with backoff
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+        ResultList<ChangeEvent> finalChangeEvents = changeEvents;
+        Awaitility.await()
+            .atLeast(iteration * 100L, TimeUnit.MILLISECONDS)
+            .until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
         continue;
       }
 
@@ -1916,11 +1917,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       changeEvents = getChangeEvents(null, null, entityType, timestamp, authHeaders);
 
       if (changeEvents == null || changeEvents.getData().size() == 0) {
-        try {
-          Thread.sleep(iteration * 10L); // Sleep with backoff
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+        ResultList<ChangeEvent> finalChangeEvents = changeEvents;
+        Awaitility.await()
+            .atMost(iteration * 10L, TimeUnit.MILLISECONDS)
+            .until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
         continue;
       }
       for (ChangeEvent event : changeEvents.getData()) {

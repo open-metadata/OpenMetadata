@@ -25,16 +25,14 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.Duration;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.events.CreateWebhook;
@@ -141,7 +139,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     // Ensure callback back notification is disabled with no new events
     int iterations = 0;
     while (iterations < 100) {
-      Thread.sleep(10);
+      Awaitility.await().atLeast(Duration.ofMillis(10L)).untilFalse(new AtomicBoolean(false));
       iterations++;
       assertEquals(1, details.getEvents().size()); // Event counter remains the same
     }
@@ -158,14 +156,12 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
 
     // Wait for webhook to be marked as failed
     int iteration = 0;
-    Webhook getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    LOG.info("getWebhook {}", getWebhook);
-    while (getWebhook.getStatus() != Status.FAILED && iteration < 100) {
-      getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-      LOG.info("getWebhook {}", getWebhook);
-      Thread.sleep(100);
+    while (iteration < 100) {
+      Awaitility.await().atLeast(Duration.ofMillis(100L)).untilFalse(hasWebHookFailed(webhook.getId()));
       iteration++;
     }
+    Webhook getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
+    LOG.info("getWebhook {}", getWebhook);
     assertEquals(Status.FAILED, getWebhook.getStatus());
 
     // Now change the webhook URL to a valid URL and ensure callbacks resume
@@ -176,6 +172,12 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     fieldUpdated(change, "status", Status.FAILED, Status.ACTIVE);
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  private AtomicBoolean hasWebHookFailed(UUID webhookId) throws HttpResponseException {
+    Webhook getWebhook = getEntity(webhookId, ADMIN_AUTH_HEADERS);
+    LOG.info("getWebhook {}", getWebhook);
+    return new AtomicBoolean(getWebhook.getStatus() == Status.FAILED);
   }
 
   @Test
@@ -362,8 +364,6 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     Webhook w5 = createWebhook("callbackResponse500", baseUri + "/simulate/500"); // 5xx response
     Webhook w6 = createWebhook("invalidEndpoint", "http://invalidUnknownHost"); // Invalid URL
 
-    Thread.sleep(10000);
-
     // Now check state of webhooks created
     EventDetails details = waitForFirstEvent("simulate-slowServer", 25, 100);
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
@@ -419,12 +419,12 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
       Collection<ChangeEvent> received,
       int iteration,
       long sleepMillis)
-      throws InterruptedException, HttpResponseException {
+      throws HttpResponseException {
     int i = 0;
     List<ChangeEvent> expected =
         getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
     while (expected.size() < received.size() && i < iteration) {
-      Thread.sleep(sleepMillis);
+      Awaitility.await().atLeast(Duration.ofMillis(sleepMillis)).untilFalse(new AtomicBoolean(false));
       i++;
     }
     // Refresh the expected events again by getting list of events to compare with webhook received events
@@ -445,12 +445,16 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   public EventDetails waitForFirstEvent(String endpoint, int iteration, long sleepMillis) throws InterruptedException {
     EventDetails details = webhookCallbackResource.getEventDetails(endpoint);
     int i = 0;
-    while ((details == null || details.getEvents() == null || details.getEvents().size() <= 0) && i < iteration) {
-      details = webhookCallbackResource.getEventDetails(endpoint);
-      Thread.sleep(sleepMillis);
+    while (i < iteration) {
+      Awaitility.await().atLeast(Duration.ofMillis(sleepMillis)).untilFalse(hasEventOccured(endpoint));
       i++;
     }
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
     return details;
+  }
+
+  private AtomicBoolean hasEventOccured(String endpoint) {
+    EventDetails details = webhookCallbackResource.getEventDetails(endpoint);
+    return new AtomicBoolean(details != null && details.getEvents() != null && details.getEvents().size() <= 0);
   }
 }
