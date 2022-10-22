@@ -1844,7 +1844,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     ChangeEvent changeEvent = null;
 
     int iteration = 0;
-    while (changeEvent == null && iteration < 25) {
+    while (changeEvent == null && iteration < 10) {
       iteration++;
       // Sometimes change event is not returned on quickly querying with a millisecond
       // Try multiple times before giving up
@@ -1859,7 +1859,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       if (changeEvents == null || changeEvents.getData().size() == 0) {
         ResultList<ChangeEvent> finalChangeEvents = changeEvents;
         Awaitility.await()
-            .atMost(iteration * 10L, TimeUnit.MILLISECONDS)
+            .atLeast(iteration * 100L, TimeUnit.MILLISECONDS)
             .until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
         continue;
       }
