@@ -56,7 +56,7 @@ def column_values_to_not_match_regex(
             if param.name == "forbiddenRegex"
         )
     )
-    not_like_count = add_props(expression=forbidden_regex)(Metrics.NOT_LIKE_COUNT.value)
+    not_like_count = add_props(expression=forbidden_regex)(Metrics.NOT_MATCH_REGEX_COUNT.value)
 
     try:
         column_name = get_decoded_column(test_case.entityLink.__root__)
