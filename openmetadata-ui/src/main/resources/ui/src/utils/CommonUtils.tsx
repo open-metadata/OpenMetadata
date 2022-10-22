@@ -1053,3 +1053,5 @@ export const getEmptyPlaceholder = () => {
     </ErrorPlaceHolder>
   );
 };
+
+export const refreshPage = () => window.location.reload();

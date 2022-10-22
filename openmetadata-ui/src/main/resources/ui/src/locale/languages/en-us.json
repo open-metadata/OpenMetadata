@@ -43,9 +43,16 @@
     "hyper-parameters": "Hyper Parameters",
     "model-store": "Model Store",
     "value": "Value",
-    "no-data-available": "No data available"
+    "no-data-available": "No data available",
+    "table": "Table",
+    "topic": "Topic",
+    "pipeline": "pipeline",
+    "dashboard": "Dashboard"
   },
-  "message": {},
+  "message": {
+    "restore-entities-success": "{{entity}} restored successfully",
+    "restore-entities-error": "Error while restoring {{entity}}"
+  },
   "server": {},
   "url": {}
 }

@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -40,6 +40,7 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -111,7 +112,7 @@ const PipelineDetails = ({
   entityFieldTaskCount,
   onExtensionUpdate,
 }: PipeLineDetailsProp) => {
-  const history = useHistory();
+  const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -345,14 +346,18 @@ const PipelineDetails = ({
     try {
       await restorePipeline(data);
       showSuccessToast(
-        jsonData['api-success-messages']['restore-pipeline-success'],
+        t('message.restore-entities-success', {
+          entity: t('label.pipeline'),
+        }),
         2000
       );
-      history.push('/explore');
+      refreshPage();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['restore-pipeline-error']
+        t('message.restore-entities-error', {
+          entity: t('label.pipeline'),
+        })
       );
     }
   };

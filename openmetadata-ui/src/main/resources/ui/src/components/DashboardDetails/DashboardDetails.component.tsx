@@ -24,7 +24,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -46,6 +47,7 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -124,7 +126,7 @@ const DashboardDetails = ({
   entityFieldTaskCount,
   onExtensionUpdate,
 }: DashboardDetailsProps) => {
-  const history = useHistory();
+  const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -352,14 +354,18 @@ const DashboardDetails = ({
     try {
       await restoreDashboard(data);
       showSuccessToast(
-        jsonData['api-success-messages']['restore-dashboard-success'],
+        t('message.restore-entities-success', {
+          entity: t('label.dashboard'),
+        }),
         2000
       );
-      history.push('/explore');
+      refreshPage();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['restore-dashboard-error']
+        t('message.restore-entities-error', {
+          entity: t('label.dashboard'),
+        })
       );
     }
   };

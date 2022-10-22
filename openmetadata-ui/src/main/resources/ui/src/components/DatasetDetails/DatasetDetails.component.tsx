@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { restoreTable } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
@@ -47,6 +47,7 @@ import {
   getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -134,7 +135,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   updateThreadHandler,
   entityFieldTaskCount,
 }: DatasetDetailsProps) => {
-  const history = useHistory();
+  const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -551,14 +552,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     try {
       await restoreTable(data);
       showSuccessToast(
-        jsonData['api-success-messages']['restore-table-success'],
+        t('message.restore-entities-success', {
+          entity: t('label.table'),
+        }),
         2000
       );
-      history.push('/explore');
+      refreshPage();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['restore-table-error']
+        t('message.restore-entities-error', {
+          entity: t('label.table'),
+        })
       );
     }
   };
