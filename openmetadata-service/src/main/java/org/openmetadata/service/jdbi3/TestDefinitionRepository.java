@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import java.io.IOException;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -34,7 +35,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   public void prepare(TestDefinition entity) {
     setFullyQualifiedName(entity);
     // validate test platforms
-    if (entity.getTestPlatforms() == null || entity.getTestPlatforms().isEmpty()) {
+    if (CommonUtil.nullOrEmpty(entity.getTestPlatforms())) {
       throw new IllegalArgumentException("testPlatforms must not be empty");
     }
   }
