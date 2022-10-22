@@ -396,10 +396,10 @@ def openmetadata_imports_migration(
     required=False,
 )
 @click.option(
-    "--input",
-    help="Local backup file path for restore",
-    type=click.Path(exists=False, dir_okay=True),
-    default=None,
+    "-b",
+    "--backup-file",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Backup file",
     required=True,
 )
 @click.option(
@@ -426,7 +426,7 @@ def restore(
     password: str,
     database: str,
     port: str,
-    sql_file: str,
+    backup_file: str,
     options: List[str],
     arguments: List[str],
     schema: str,
@@ -447,7 +447,7 @@ def restore(
         password,
         database,
         port,
-        sql_file,
+        backup_file,
         options,
         arguments,
         schema,
