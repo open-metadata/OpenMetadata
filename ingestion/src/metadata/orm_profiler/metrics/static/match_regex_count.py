@@ -35,8 +35,8 @@ class MatchRegexCount(StaticMetric):
     def fn(self):
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Not Like Count requires an expression to be set: add_props(expression=...)(Metrics.MATCH_REGEX_COUNT)"
+                "Match Regex Count requires an expression to be set: add_props(expression=...)(Metrics.MATCH_REGEX_COUNT)"
             )
         return SumFn(
-            case([(column(self.col.name).MatchRegexFn(self.expression), 1)], else_=0)
+            case([(MatchRegexFn(self.col.name,self.expression), 1)], else_=0)
         )

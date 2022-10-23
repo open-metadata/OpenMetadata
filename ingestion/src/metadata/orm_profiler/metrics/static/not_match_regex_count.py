@@ -35,8 +35,8 @@ class NotMatchRegexCount(StaticMetric):
     def fn(self):
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Not Like Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_MATCH_REGEX_COUNT)"
+                "Not Match Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_MATCH_REGEX_COUNT)"
             )
         return SumFn(
-            case([(column(self.col.name).MatchRegexFn(self.expression), 0)], else_=1)
+            case([(MatchRegexFn(self.col.name,self.expression), 0)], else_=1)
         )
