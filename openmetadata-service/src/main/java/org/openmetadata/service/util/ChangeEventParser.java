@@ -37,6 +37,7 @@ import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -258,7 +259,7 @@ public final class ChangeEventParser {
   }
 
   public static String getFieldValue(Object fieldValue) {
-    if (fieldValue == null || fieldValue.toString().isEmpty()) {
+    if (CommonUtil.nullOrEmpty(fieldValue)) {
       return StringUtils.EMPTY;
     }
 
@@ -454,7 +455,7 @@ public final class ChangeEventParser {
       return StringUtils.EMPTY;
     }
 
-    if (oldValue == null || oldValue.toString().isEmpty()) {
+    if (nullOrEmpty(oldValue)) {
       String format = String.format("Updated %s to %s", getBold(publishTo), getFieldValue(newValue));
       return String.format(format, updatedField);
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {

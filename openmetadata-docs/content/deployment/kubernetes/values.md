@@ -27,7 +27,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.authorizer.enforcePrincipalDomain | bool | `false` |
 | global.authorizer.enableSecureSocketConnection | bool | `false` |
 | global.authorizer.initialAdmins | list | `[admin]` |
-| global.authorizer.botPrincipals | list | `[ingestion-bot]` |
 | global.authorizer.principalDomain | string | `open-metadata.org` |
 | global.airflow.auth.password.secretRef | string | `airflow-secrets` |
 | global.airflow.auth.password.secretKey | string | `openmetadata-airflow-password` |

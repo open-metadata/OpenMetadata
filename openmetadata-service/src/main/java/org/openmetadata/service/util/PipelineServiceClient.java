@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.service.OpenMetadataApplication;
@@ -119,7 +120,7 @@ public abstract class PipelineServiceClient {
 
   public final Map<String, String> getHostIp() {
     try {
-      if (this.hostIp == null || this.hostIp.isEmpty()) {
+      if (CommonUtil.nullOrEmpty(this.hostIp)) {
         return requestGetHostIp();
       } else {
         return Map.of("ip", this.hostIp);

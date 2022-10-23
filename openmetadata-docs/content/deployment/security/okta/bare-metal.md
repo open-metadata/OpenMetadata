@@ -22,7 +22,6 @@ authenticationConfiguration:
 Then, 
 - Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
 - Update the `principalDomain` to your company domain name.
-- update the `botPrincipals`, add the Ingestion Client ID for the Service application. This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
 
 ```yaml
 authorizerConfiguration:
@@ -32,9 +31,6 @@ authorizerConfiguration:
   adminPrincipals:
     - "user1"
     - "user2"
-  botPrincipals:
-    - "ingestion-bot"
-    - "<service_application_client_id>"
   principalDomain: "open-metadata.org"
 ```
 

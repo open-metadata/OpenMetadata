@@ -61,10 +61,6 @@ public final class CatalogExceptionMessage {
     return entityNotFound(entityType, id.toString());
   }
 
-  public static String entitiesNotFound(String entityType) {
-    return String.format("%s instances not found", entityType);
-  }
-
   public static String readOnlyAttribute(String entityType, String attribute) {
     return String.format("%s attribute %s can't be modified", entityType, attribute);
   }
@@ -136,10 +132,6 @@ public final class CatalogExceptionMessage {
 
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
-  }
-
-  public static String invalidEntity(String entity) {
-    return String.format("Invalid entity %s", entity);
   }
 
   public static String unknownCustomField(String fieldName) {
