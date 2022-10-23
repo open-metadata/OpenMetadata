@@ -29,6 +29,7 @@ import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
@@ -66,6 +67,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private final TokenRepository tokenRepository;
   private final LoginAttemptCache loginAttemptCache;
   private final AuthorizerConfiguration authorizerConfiguration;
+
+  private final LoginConfiguration loginConfiguration;
   private final boolean isEmailServiceEnabled;
   private final boolean isSelfSignUpAvailable;
 
@@ -78,6 +81,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
+    this.loginConfiguration = config.getLoginSettings();
   }
 
   @Override
@@ -433,11 +437,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void recordFailedLoginAttempt(User storedUser) throws TemplateException, IOException {
     loginAttemptCache.recordFailedLogin(storedUser.getName());
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(storedUser.getName());
-    if (failedLoginAttempt == 3 /*TODO : take it from config*/) {
-      /*TODO : 10 mins is configurable*/
+    if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
       EmailUtil.getInstance()
           .sendAccountStatus(
-              storedUser, "Multiple Failed Login Attempts.", "Login Blocked for 10 mins. Please change your password.");
+              storedUser,
+              "Multiple Failed Login Attempts.",
+              String.format(
+                  "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
+                  loginConfiguration.getAccessBlockTime()));
     }
   }
 
