@@ -71,6 +71,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,13 +82,13 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -1832,6 +1833,30 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateChangeEvents(entityInterface, timestamp, expectedEventType, expectedChangeDescription, authHeaders, false);
   }
 
+  public static class EventHolder {
+    @Getter ChangeEvent expectedEvent;
+
+    public boolean hasExpectedEvent(ResultList<ChangeEvent> changeEvents, long timestamp) {
+      for (ChangeEvent event : listOrEmpty(changeEvents.getData())) {
+        if (event.getTimestamp() == timestamp) {
+          expectedEvent = event;
+          break;
+        }
+      }
+      return expectedEvent != null;
+    }
+
+    public boolean hasDeletedEvent(ResultList<ChangeEvent> changeEvents, UUID id) {
+      for (ChangeEvent event : changeEvents.getData()) {
+        if (event.getEntityId().equals(id)) {
+          expectedEvent = event;
+          break;
+        }
+      }
+      return expectedEvent != null;
+    }
+  }
+
   private void validateChangeEvents(
       T entity,
       long timestamp,
@@ -1840,38 +1865,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Map<String, String> authHeaders,
       boolean withEventFilter)
       throws IOException {
-    ResultList<ChangeEvent> changeEvents;
-    ChangeEvent changeEvent = null;
+    // Get change event with an event filter for specific entity type if withEventFilter is True. Else get all entities.
+    String createdFilter = withEventFilter ? entityType : "*";
+    String updatedFilter = withEventFilter ? entityType : "*";
+    EventHolder eventHolder = new EventHolder();
 
-    int iteration = 0;
-    while (changeEvent == null && iteration < 10) {
-      iteration++;
-      // Sometimes change event is not returned on quickly querying with a millisecond
-      // Try multiple times before giving up
-      if (withEventFilter) {
-        // Get change event with an event filter for specific entity type
-        changeEvents = getChangeEvents(entityType, entityType, null, timestamp, authHeaders);
-      } else {
-        // Get change event with no event filter for entity types
-        changeEvents = getChangeEvents("*", "*", null, timestamp, authHeaders);
-      }
-
-      if (changeEvents == null || changeEvents.getData().size() == 0) {
-        ResultList<ChangeEvent> finalChangeEvents = changeEvents;
-        Awaitility.await()
-            .atLeast(iteration * 100L, TimeUnit.MILLISECONDS)
-            .until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
-        continue;
-      }
-
-      for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getTimestamp() == timestamp) {
-          changeEvent = event;
-          break;
-        }
-      }
-    }
-
+    Awaitility.await("Wait for expected change event at timestamp " + timestamp)
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .until(
+            () ->
+                eventHolder.hasExpectedEvent(
+                    getChangeEvents(createdFilter, updatedFilter, null, timestamp, authHeaders), timestamp));
+    ChangeEvent changeEvent = eventHolder.getExpectedEvent();
     assertNotNull(
         changeEvent,
         "Expected change event "
@@ -1905,31 +1911,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   private void validateDeletedEvent(
-      UUID id, long timestamp, EventType expectedEventType, Double expectedVersion, Map<String, String> authHeaders)
-      throws IOException {
+      UUID id, long timestamp, EventType expectedEventType, Double expectedVersion, Map<String, String> authHeaders) {
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
-    ResultList<ChangeEvent> changeEvents;
-    ChangeEvent changeEvent = null;
+    EventHolder eventHolder = new EventHolder();
 
-    int iteration = 0;
-    while (changeEvent == null && iteration < 25) {
-      iteration++;
-      changeEvents = getChangeEvents(null, null, entityType, timestamp, authHeaders);
-
-      if (changeEvents == null || changeEvents.getData().size() == 0) {
-        ResultList<ChangeEvent> finalChangeEvents = changeEvents;
-        Awaitility.await()
-            .atMost(iteration * 10L, TimeUnit.MILLISECONDS)
-            .until(() -> finalChangeEvents != null && finalChangeEvents.getData().size() > 0);
-        continue;
-      }
-      for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getEntityId().equals(id)) {
-          changeEvent = event;
-          break;
-        }
-      }
-    }
+    Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .until(() -> eventHolder.hasDeletedEvent(getChangeEvents(null, null, entityType, timestamp, authHeaders), id));
+    ChangeEvent changeEvent = eventHolder.getExpectedEvent();
 
     assertNotNull(changeEvent, "Deleted event after " + timestamp + " was not found for entity " + id);
     assertEquals(expectedEventType, changeEvent.getEventType());

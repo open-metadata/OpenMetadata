@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
-import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 
@@ -28,7 +27,7 @@ public class LoginAttemptCacheTest {
     assertTrue(cache.isLoginBlocked(testKey));
 
     // Check Eviction
-    Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> Assert.assertTrue(true));
+    Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> assertTrue(true));
     assertFalse(cache.isLoginBlocked(testKey));
 
     // Check Successful Login
@@ -42,7 +41,7 @@ public class LoginAttemptCacheTest {
     assertFalse(cache.isLoginBlocked(testKey));
 
     // Check Eviction
-    Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> Assert.assertTrue(true));
+    Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> assertTrue(true));
     assertFalse(cache.isLoginBlocked(testKey));
   }
 }
