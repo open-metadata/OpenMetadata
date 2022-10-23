@@ -403,7 +403,7 @@
     <dependency>
       <groupId>com.unboundid</groupId>
       <artifactId>unboundid-ldapsdk</artifactId>
-      <version>6.0.6</version>
+      <version>${unboundsdk.version}</version>
     </dependency>
   </dependencies>
 
