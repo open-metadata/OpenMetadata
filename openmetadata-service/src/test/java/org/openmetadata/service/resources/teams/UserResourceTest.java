@@ -725,7 +725,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void get_generateRandomPassword(TestInfo test) throws HttpResponseException {
+  void get_generateRandomPassword() throws HttpResponseException {
     String randomPwd = TestUtils.get(getResource("users/generateRandomPwd"), String.class, ADMIN_AUTH_HEADERS);
     assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
   }
@@ -787,7 +787,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void post_createUser_BasicAuth_SignUp_200_ok(TestInfo test) throws HttpResponseException {
+  void post_createUser_BasicAuth_SignUp_200_ok() throws HttpResponseException {
     // Create a user with Auth and Try Logging in
     RegistrationRequest newRegistrationRequest =
         new RegistrationRequest()

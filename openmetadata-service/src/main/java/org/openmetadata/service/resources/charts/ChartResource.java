@@ -274,7 +274,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, chart, true);
+    return create(uriInfo, securityContext, chart);
   }
 
   @PATCH
@@ -319,7 +319,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, chart, true);
+    return createOrUpdate(uriInfo, securityContext, chart);
   }
 
   @PUT
@@ -382,7 +382,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           boolean hardDelete,
       @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   private Chart getChart(CreateChart create, String user) throws IOException {

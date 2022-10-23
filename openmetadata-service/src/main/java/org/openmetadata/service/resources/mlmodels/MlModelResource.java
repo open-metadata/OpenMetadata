@@ -230,7 +230,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException {
     MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, mlModel, true);
+    return create(uriInfo, securityContext, mlModel);
   }
 
   @PATCH
@@ -276,7 +276,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException {
     MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, mlModel, true);
+    return createOrUpdate(uriInfo, securityContext, mlModel);
   }
 
   @PUT
@@ -398,7 +398,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           boolean hardDelete,
       @Parameter(description = "ML Model Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   private MlModel getMlModel(CreateMlModel create, String user) throws IOException {

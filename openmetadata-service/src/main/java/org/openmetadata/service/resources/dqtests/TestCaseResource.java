@@ -339,7 +339,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     test = addHref(uriInfo, dao.create(uriInfo, test));
     LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(test), test.getId());
     return Response.created(test.getHref()).entity(test).build();
@@ -371,7 +371,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // Override OperationContext to change the entity to table and operation from UPDATE to EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCase> response = dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -396,12 +396,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
 
     dao.prepare(test);
-    authorizer.authorize(
-        securityContext, operationContext, getResourceContextByName(test.getFullyQualifiedName()), true);
     PutResponse<TestCase> response = dao.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -430,7 +428,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // Override OperationContext to change the entity to table and operation from DELETE to EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     DeleteResponse<TestCase> response = dao.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
