@@ -6,8 +6,7 @@ Return true if the value contains part that matches the regex
 
 from shutil import copyfile
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import ClauseElement
-
+from sqlalchemy.sql.expression import FunctionElement
 from metadata.orm_profiler.metrics.core import CACHE
 from metadata.orm_profiler.orm.registry import Dialects
 from metadata.utils.logger import profiler_logger
