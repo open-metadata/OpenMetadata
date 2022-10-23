@@ -37,7 +37,6 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
 @Slf4j
 public abstract class OpenMetadataApplicationTest {
   protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
-  private static JdbcDatabaseContainer<?> SQL_CONTAINER;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
@@ -54,19 +53,19 @@ public abstract class OpenMetadataApplicationTest {
     final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
     LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
-    SQL_CONTAINER =
+    JdbcDatabaseContainer<?> sqlContainer =
         (JdbcDatabaseContainer<?>)
             Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
-    SQL_CONTAINER.withReuse(true);
-    SQL_CONTAINER.withStartupTimeoutSeconds(240);
-    SQL_CONTAINER.withConnectTimeoutSeconds(240);
-    SQL_CONTAINER.start();
+    sqlContainer.withReuse(true);
+    sqlContainer.withStartupTimeoutSeconds(240);
+    sqlContainer.withConnectTimeoutSeconds(240);
+    sqlContainer.start();
 
     final String migrationScripsLocation =
-        ResourceHelpers.resourceFilePath("db/sql/" + SQL_CONTAINER.getDriverClassName());
+        ResourceHelpers.resourceFilePath("db/sql/" + sqlContainer.getDriverClassName());
     Flyway flyway =
         Flyway.configure()
-            .dataSource(SQL_CONTAINER.getJdbcUrl(), SQL_CONTAINER.getUsername(), SQL_CONTAINER.getPassword())
+            .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
             .table("DATABASE_CHANGE_LOG")
             .locations("filesystem:" + migrationScripsLocation)
             .sqlMigrationPrefix("v")
@@ -79,10 +78,10 @@ public abstract class OpenMetadataApplicationTest {
             OpenMetadataApplication.class,
             CONFIG_PATH,
             // Database overrides
-            ConfigOverride.config("database.driverClass", SQL_CONTAINER.getDriverClassName()),
-            ConfigOverride.config("database.url", SQL_CONTAINER.getJdbcUrl()),
-            ConfigOverride.config("database.user", SQL_CONTAINER.getUsername()),
-            ConfigOverride.config("database.password", SQL_CONTAINER.getPassword()),
+            ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()),
+            ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()),
+            ConfigOverride.config("database.user", sqlContainer.getUsername()),
+            ConfigOverride.config("database.password", sqlContainer.getPassword()),
             // Migration overrides
             ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
 

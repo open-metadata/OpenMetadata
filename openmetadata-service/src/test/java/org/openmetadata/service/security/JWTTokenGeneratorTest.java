@@ -14,7 +14,6 @@ import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.teams.User;
@@ -31,7 +30,7 @@ class JWTTokenGeneratorTest {
   protected JWTTokenGenerator jwtTokenGenerator;
 
   @BeforeAll
-  public void setup(TestInfo test) {
+  public void setup() {
     jwtTokenConfiguration = new JWTTokenConfiguration();
     jwtTokenConfiguration.setJwtissuer("open-metadata.org");
     jwtTokenConfiguration.setRsaprivateKeyFilePath(rsaPrivateKeyPath);

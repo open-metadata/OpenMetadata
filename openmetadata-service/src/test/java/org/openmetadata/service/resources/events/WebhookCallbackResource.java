@@ -75,7 +75,7 @@ public class WebhookCallbackResource {
   public Response receiveEventWithTimeout(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, ChangeEventList events) {
     addEventDetails("simulate-timeout", events);
-    Awaitility.await().pollDelay(Duration.ofSeconds(15L)).untilTrue(new AtomicBoolean(true));
+    Awaitility.await().pollDelay(Duration.ofSeconds(100L)).untilTrue(new AtomicBoolean(true));
     return Response.ok().build();
   }
 
