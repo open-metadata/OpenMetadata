@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.exception;
 
+import io.dropwizard.jersey.errors.ErrorMessage;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -27,6 +28,12 @@ public abstract class WebServiceException extends RuntimeException {
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
+  }
+
+  protected WebServiceException(int status, String msg) {
+    super(msg);
+    response =
+        Response.status(status).entity(new ErrorMessage(status, msg)).type(MediaType.APPLICATION_JSON_TYPE).build();
   }
 
   protected WebServiceException(Response.Status status, String msg, Throwable cause) {

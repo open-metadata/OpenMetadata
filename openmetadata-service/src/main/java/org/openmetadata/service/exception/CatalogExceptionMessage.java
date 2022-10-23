@@ -50,6 +50,13 @@ public final class CatalogExceptionMessage {
   public static final String LDAP_MISSING_ATTR =
       "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
   public static final String LDAP_USER_BIND_ERROR = "LDAP authentication failed due to : %s";
+  public static final String MUTIPLE_EMAIl_ENTRIES = "Email corresponds to multiple entries in Directory.";
+
+  public static final String INVALID_EMAIL_PASSWORD = "You have entered an invalid email or password.";
+
+  public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
+
+  public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
   private CatalogExceptionMessage() {}
 
