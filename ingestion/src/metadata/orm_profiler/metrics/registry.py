@@ -70,6 +70,8 @@ class Metrics(MetricRegistry):
     MAX_LENGTH = MaxLength
     MIN = Min
     MIN_LENGTH = MinLength
+    MATCH_REGEX_COUNT = MatchRegexCount
+    NOT_MATCH_REGEX_COUNT = NotMatchRegexCount
     NULL_COUNT = NullCount
     ROW_COUNT = RowCount
     STDDEV = StdDev

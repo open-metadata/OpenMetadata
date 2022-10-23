@@ -52,7 +52,7 @@ def column_values_to_match_regex(
     regex = next(
         (param.value for param in test_case.parameterValues if param.name == "regex")
     )
-    like_count = add_props(expression=regex)(Metrics.LIKE_COUNT.value)
+    like_count = add_props(expression=regex)(Metrics.MATCH_REGEX_COUNT.value)
 
     try:
         column_name = get_decoded_column(test_case.entityLink.__root__)
