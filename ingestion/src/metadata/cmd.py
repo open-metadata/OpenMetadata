@@ -283,6 +283,13 @@ def docker(
     required=False,
 )
 @click.option(
+    "--uploadDestinationType",
+    help="AWS or AZURE",
+    type=click.Choice(['AZURE', 'AWS'], case_sensitive=False),
+    default=None,
+    required=False,
+)
+@click.option(
     "--upload",
     help="S3 endpoint, bucket & key to upload the backup file",
     nargs=3,
@@ -314,6 +321,7 @@ def backup(
     database: str,
     port: str,
     output: Optional[str],
+    uploadDestinationType: Optional[str],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
@@ -334,7 +342,7 @@ def backup(
     tables.
     """
     run_backup(
-        host, user, password, database, port, output, upload, options, arguments, schema
+        host, user, password, database, port, output, uploadDestinationType, upload, options, arguments, schema
     )
 
 

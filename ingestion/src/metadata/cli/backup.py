@@ -49,7 +49,7 @@ def get_output(output: Optional[str] = None) -> Path:
     return Path(name)
 
 
-def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
+def upload_backup_aws(endpoint: str, bucket: str, key: str, file: Path) -> None:
     """
     Upload the mysqldump backup file.
     We will use boto3 to upload the file to the endpoint
@@ -98,6 +98,48 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
 
+def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
+    """
+    Upload the mysqldump backup file.
+
+    :param account_url: Azure account url
+    :param container: Azure container to upload file to
+    :param file: file to upload
+    """
+
+    try:
+        from azure.identity import DefaultAzureCredential
+    except ModuleNotFoundError as err:
+        logger.debug(traceback.format_exc())
+        logger.error(
+            "Trying to import DefaultAzureCredential to run the backup upload."
+        )
+        raise err
+
+    click.secho(
+        f"Uploading {file} to {account_url}/{container}...",
+        fg="bright_green",
+    )
+
+    try:
+        # Create a blob client using the local file name as the name for the blob
+        blob_client = blob_service_client.get_blob_client(container=container, blob=file.name)
+
+        # Upload the created file
+        with open(file=file.absolute, mode="rb") as data:
+            blob_client.upload_blob(data)
+        
+
+    except ValueError as err:
+        logger.debug(traceback.format_exc())
+        logger.error("Revisit the values of --upload")
+        raise err
+    except Exception as err:
+        logger.debug(traceback.format_exc())
+        logger.error(err)
+        raise err
+
+
 def run_backup(  # pylint: disable=too-many-arguments
     host: str,
     user: str,
@@ -105,6 +147,7 @@ def run_backup(  # pylint: disable=too-many-arguments
     database: str,
     port: str,
     output: Optional[str],
+    uploadDestinationType: Optional[str],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
@@ -143,5 +186,11 @@ def run_backup(  # pylint: disable=too-many-arguments
     )
 
     if upload:
-        endpoint, bucket, key = upload
-        upload_backup(endpoint, bucket, key, out)
+        if uploadDestinationType == "AWS":
+            endpoint, bucket, key = upload
+            upload_backup_aws(endpoint, bucket, key, out)
+        elif uploadDestinationType == "AZURE":
+            # only need two parameters from upload, key would be null
+            account_url, container, key = upload
+            upload_backup_azure(account_url, container, out)
+            
