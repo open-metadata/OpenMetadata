@@ -29,6 +29,9 @@ public class ResourceContext implements ResourceContextInterface {
   private String name;
   private EntityInterface entity; // Will be lazily initialized
 
+  // Builder class added for getting around javadoc errors. This class will be filled in by lombok.
+  public static class ResourceContextBuilder {}
+
   @Override
   public EntityReference getOwner() throws IOException {
     resolveEntity();
