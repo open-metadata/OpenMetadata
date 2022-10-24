@@ -76,7 +76,7 @@
     <mockito.version>4.8.0</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.4</jackson.version>
-    <jackson-databind.version>2.13.4</jackson-databind.version>
+    <jackson-databind.version>2.13.4.1</jackson-databind.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
