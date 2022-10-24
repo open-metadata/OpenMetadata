@@ -83,8 +83,9 @@ public final class TestUtils {
       String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
-  public static final String BOT_USER_NAME = "ingestion-bot";
-  public static final Map<String, String> BOT_AUTH_HEADERS = authHeaders(BOT_USER_NAME + "@open-metadata.org");
+  public static final String INGESTION_BOT = "ingestion-bot";
+  public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
+      authHeaders(INGESTION_BOT + "@open-metadata.org");
   public static final String TEST_USER_NAME = "test";
   public static final Map<String, String> TEST_AUTH_HEADERS = authHeaders(TEST_USER_NAME + "@open-metadata.org");
 

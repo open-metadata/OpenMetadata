@@ -39,7 +39,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -143,7 +143,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     List<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");
-    BOT_USER = getEntityByName(BOT_USER_NAME, String.join(",", userFields), ADMIN_AUTH_HEADERS);
+    BOT_USER = getEntityByName(INGESTION_BOT, String.join(",", userFields), ADMIN_AUTH_HEADERS);
   }
 
   @Test
