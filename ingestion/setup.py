@@ -41,7 +41,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.6",
+    "sqllineage==1.3.7",
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
