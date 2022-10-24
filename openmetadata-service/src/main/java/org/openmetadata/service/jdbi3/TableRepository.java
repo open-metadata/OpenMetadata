@@ -779,7 +779,7 @@ public class TableRepository extends EntityRepository<Table> {
    */
   private List<DailyCount> aggregateAndFilterDailyCounts(
       List<DailyCount> currentDailyCounts, DailyCount newDailyCount) {
-    var joinCountByDay =
+    Map<String, List<DailyCount>> joinCountByDay =
         Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount)).collect(groupingBy(DailyCount::getDate));
 
     return joinCountByDay.entrySet().stream()
