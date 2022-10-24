@@ -441,3 +441,17 @@ def insensitive_replace(raw_str: str, to_replace: str, replace_by: str) -> str:
     """
 
     return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE)
+
+
+def insensitive_match(raw_str: str, to_match: str) -> bool:
+    """Match `to_match` in `raw_str` ignoring the raw_str case.
+
+    Args:
+        raw_str:str: Define the string that will be searched
+        to_match:str: Specify the string to be matched
+
+    Returns:
+        True if `to_match` matches in `raw_str`, ignoring case. Otherwise, false.
+    """
+
+    return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None

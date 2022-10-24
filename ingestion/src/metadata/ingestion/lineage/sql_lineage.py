@@ -25,7 +25,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.helpers import insensitive_replace
+from metadata.utils.helpers import insensitive_match, insensitive_replace
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRUCache
 
@@ -54,7 +54,20 @@ def clean_raw_query(raw_query: str) -> str:
         replace_by=" ",  # remove it as it does not add any value to lineage
     )
 
-    return clean_query
+    clean_query = insensitive_replace(
+        raw_str=clean_query.strip(),
+        to_replace="\n",  # remove line breaks
+        replace_by=" ",
+    )
+
+    if insensitive_match(clean_query, "merge into .*when matched.*"):
+        clean_query = insensitive_replace(
+            raw_str=clean_query,
+            to_replace="when matched.*",  # merge into queries specific
+            replace_by="",  # remove it as LineageRunner is not able to perform the lineage
+        )
+
+    return clean_query.strip()
 
 
 def split_raw_table_name(database: str, raw_name: str) -> dict:

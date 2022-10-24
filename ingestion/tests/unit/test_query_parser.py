@@ -151,7 +151,7 @@ class QueryParserTests(TestCase):
             ],
         )
 
-    def test_clean_raw_query(self):
+    def test_clean_raw_query_copy_grants(self):
         """
         Validate query cleaning logic
         """
@@ -159,4 +159,17 @@ class QueryParserTests(TestCase):
         self.assertEqual(
             clean_raw_query(query),
             "create or replace view my_view as select * from my_table",
+        )
+
+    def test_clean_raw_query_merge_into(self):
+        """
+        Validate query cleaning logic
+        """
+        query = """
+            merge into table_1 using (select a, b from table_2) when matched update set t.a = 'value' 
+            when not matched then insert (table_1.a, table_2.b) values ('value1', 'value2')
+        """
+        self.assertEqual(
+            clean_raw_query(query),
+            "merge into table_1 using (select a, b from table_2)",
         )
