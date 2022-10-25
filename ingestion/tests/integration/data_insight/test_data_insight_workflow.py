@@ -13,6 +13,7 @@
 Validate workflow configs and filters
 """
 
+import time
 import unittest
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -82,6 +83,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
         workflow.execute()
 
+        time.sleep(1)  # wait for data to be available
         indexes = requests.get(
             "http://localhost:9200/entity_report_data_index/_search", timeout=30
         )
