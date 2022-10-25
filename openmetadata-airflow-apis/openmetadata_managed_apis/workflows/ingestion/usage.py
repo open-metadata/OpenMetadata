@@ -97,7 +97,7 @@ def build_usage_dag(airflow_pipeline: IngestionPipeline) -> DAG:
     """
     workflow_config = build_usage_workflow_config(airflow_pipeline)
     dag = build_dag(
-        task_name="usage_task",
+        task_name=getattr(ingestion_pipeline.pipelineTypeToTask, ingestion_pipeline.type),
         ingestion_pipeline=airflow_pipeline,
         workflow_config=workflow_config,
         workflow_fn=metadata_ingestion_workflow,

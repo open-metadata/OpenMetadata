@@ -13,6 +13,40 @@
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
       "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite"]
     },
+    "pipelineTypeToTask": {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.pipelineTypeToTask",
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "string",
+          "default": "ingestion_task"
+        },
+        "profiler": {
+          "type": "string",
+          "default": "profiler_task"
+        },
+        "lineage": {
+          "type": "string",
+          "default": "lineage_task"
+        },
+        "usage": {
+          "type": "string",
+          "default": "usage_task"
+        },
+        "TestSuite": {
+          "type": "string",
+          "default": "test_suite_task"
+        }
+      },
+      "required": [
+        "metadata",
+        "profiler",
+        "lineage",
+        "usage",
+        "TestSuite"
+      ]
+    },
     "pipelineStatus": {
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus",
