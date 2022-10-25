@@ -552,7 +552,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       // we are trying to update. One option is to set users.owner as user, however thats not supported User entity.
       OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
       ResourceContext resourceContext = getResourceContextByName(user.getName());
-      authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
+      authorizer.authorize(securityContext, createOperationContext, resourceContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBot(user, create, uriInfo, securityContext);
@@ -765,7 +765,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
   }
@@ -1438,6 +1438,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException(
           String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
     }
+    // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     decryptOrNullify(securityContext, response.getEntity());
@@ -1475,6 +1476,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return dao.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
+  // TODO remove this
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
@@ -1564,11 +1566,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(user.getId()),
-            secretsManager.isLocal());
+        if (!secretsManager.isLocal()) {
+          authorizer.authorize(
+              securityContext,
+              new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+              getResourceContextById(user.getId()));
+        }
       } catch (AuthorizationException | IOException e) {
         user.getAuthenticationMechanism().setConfig(null);
         return user;

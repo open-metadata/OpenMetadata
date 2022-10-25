@@ -63,6 +63,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
@@ -92,12 +93,29 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
       User user = user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
+
+      // Add role corresponding to the bot to the user
+      user.setRoles(List.of(RoleResource.getRole(getRoleForBot(bot.getName()))));
       user = DefaultAuthorizer.addOrUpdateBotUser(user, config);
+
       bot.withId(UUID.randomUUID())
           .withBotUser(user.getEntityReference())
           .withUpdatedBy(userName)
           .withUpdatedAt(System.currentTimeMillis());
       dao.initializeEntity(bot);
+    }
+  }
+
+  private static String getRoleForBot(String botName) {
+    switch (botName) {
+      case Entity.INGESTION_BOT_NAME:
+        return Entity.INGESTION_BOT_ROLE;
+      case Entity.QUALITY_BOT_NAME:
+        return Entity.QUALITY_BOT_ROLE;
+      case Entity.PROFILER_BOT_NAME:
+        return Entity.PROFILER_BOT_ROLE;
+      default:
+        throw new IllegalArgumentException("No role found for the bot " + botName);
     }
   }
 
@@ -268,7 +286,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create)
       throws IOException {
     Bot bot = getBot(securityContext, create);
-    return create(uriInfo, securityContext, bot, false);
+    return create(uriInfo, securityContext, bot);
   }
 
   @PUT
@@ -287,7 +305,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
     Bot bot = getBot(securityContext, create);
-    Response response = createOrUpdate(uriInfo, securityContext, bot, false);
+    Response response = createOrUpdate(uriInfo, securityContext, bot);
     // ensures the secrets' manager store the credentials even when the botUser does not change
     // TODO encrypt decrypt could be done twice
     bot = (Bot) response.getEntity();
@@ -344,7 +362,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, true, hardDelete, false);
+    return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   private Bot getBot(CreateBot create, String user) throws IOException {

@@ -36,7 +36,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
@@ -46,8 +45,8 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -768,7 +767,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void post_entityWithOwner_200(TestInfo test) throws IOException {
+  void post_delete_entity_as_admin_200(TestInfo test) throws IOException {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void post_delete_entityWithOwner_200(TestInfo test) throws IOException {
     if (!supportsOwner) {
       return;
     }
@@ -777,23 +783,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     CreateTeam createTeam = teamResourceTest.createRequest(test);
     Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
 
-    // Entity with user as owner is created successfully
-    createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+    // Entity with user as owner is created successfully. Owner should be able to delete the dentity
+    T entity1 = createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+    deleteEntity(entity1.getId(), true, true, authHeaders(USER1.getName()));
+    assertEntityDeleted(entity1.getId(), true);
 
     // Entity with team as owner is created successfully
-    T entity =
+    T entity2 =
         createAndCheckEntity(
             createRequest(getEntityName(test, 2), "", "", team.getEntityReference()), ADMIN_AUTH_HEADERS);
 
-    // Delete team and ensure the entity still exists but with owner as deleted
+    // As ADMIN delete the team and ensure the entity still exists but with owner as deleted
     teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
-    entity = getEntity(entity.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
-    assertTrue(entity.getOwner().getDeleted());
+    entity2 = getEntity(entity2.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    assertTrue(entity2.getOwner().getDeleted());
+  }
+
+  @Test
+  protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
+    // Ingestion bot can create and delete all the entities except websocket and bot
+    if (List.of(Entity.WEBHOOK, Entity.BOT).contains(entityType)) {
+      return;
+    }
+    T entity = createEntity(createRequest(test), INGESTION_BOT_AUTH_HEADERS);
+    assertNotNull(entity);
+    deleteAndCheckEntity(entity, INGESTION_BOT_AUTH_HEADERS);
   }
 
   @Test
   protected void post_entity_as_non_admin_401(TestInfo test) {
-    assertResponse(() -> createEntity(createRequest(test), TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+    assertResponse(
+        () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
   }
 
   @Test
@@ -1031,7 +1053,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       fieldAdded(change, "description", "description");
     }
     fieldAdded(change, "displayName", "displayName");
-    entity = updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, MINOR_UPDATE, change);
+    entity = updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is allowed for users other than bots
     request = createRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
@@ -1042,7 +1064,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Updating non-empty description and non-empty displayName is ignored for bot users
     request = createRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
-    updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
+    updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -1336,7 +1358,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
     create = createRequest(test).withExtension(jsonNode);
-    entity = updateEntity(create, Status.OK, BOT_AUTH_HEADERS);
+    entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
 
@@ -1380,26 +1402,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> deleteEntity(NON_EXISTENT_ENTITY, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(entityType, NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  void delete_entity_as_admin_200(TestInfo test) throws IOException {
-    K request = createRequest(getEntityName(test), "", "", null);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  protected void delete_entity_as_owner_401(TestInfo test) throws IOException {
-    if (!supportsOwner) {
-      return;
-    }
-    K request = createRequest(getEntityName(test), "", "", USER1_REF);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-
-    // Deleting as the owner user should succeed
-    deleteEntity(entity.getId(), true, true, authHeaders(USER1.getName()));
-    assertEntityDeleted(entity, true);
   }
 
   @Test

@@ -338,7 +338,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, team, true);
+    return create(uriInfo, securityContext, team);
   }
 
   @PUT
@@ -357,7 +357,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, team, true);
+    return createOrUpdate(uriInfo, securityContext, team);
   }
 
   @PATCH
@@ -410,7 +410,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean hardDelete,
       @Parameter(description = "Team Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private Team getTeam(CreateTeam ct, String user) throws IOException {

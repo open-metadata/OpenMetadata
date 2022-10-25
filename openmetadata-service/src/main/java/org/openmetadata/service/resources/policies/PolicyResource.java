@@ -328,7 +328,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, policy, true);
+    return create(uriInfo, securityContext, policy);
   }
 
   @PATCH
@@ -377,7 +377,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, policy, true);
+    Response response = createOrUpdate(uriInfo, securityContext, policy);
     PolicyCache.getInstance().invalidatePolicy(policy.getId());
     return response;
   }
@@ -402,7 +402,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           boolean hardDelete,
       @Parameter(description = "Policy Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     PolicyCache.getInstance().invalidatePolicy(id);
     return response;
   }
