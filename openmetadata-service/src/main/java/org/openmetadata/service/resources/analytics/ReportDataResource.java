@@ -25,6 +25,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.resources.Collection;
@@ -79,10 +80,10 @@ public class ReportDataResource {
       })
   public ResultList<ReportData> list(
       @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(type = "String"))
+      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
           @NonNull
           @QueryParam("reportDataType")
-          String reportDataType,
+          ReportDataType reportDataType,
       @Parameter(
               description = "Filter reportData results after the given start timestamp",
               schema = @Schema(type = "number"))

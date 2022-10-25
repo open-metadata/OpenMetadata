@@ -19,6 +19,7 @@ import abc
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
+from metadata.ingestion.api.source import SourceStatus
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -48,6 +49,7 @@ class DataProcessor(abc.ABC):
     def __init__(self, metadata: OpenMetadata):
         self.metadata = metadata
         self.timestamp = datetime.now(timezone.utc).timestamp() * 1000
+        self.processor_status = SourceStatus()
 
     @abc.abstractmethod
     def fetch_data(self):
@@ -59,4 +61,8 @@ class DataProcessor(abc.ABC):
 
     @abc.abstractmethod
     def process(self) -> Iterable[ReportData]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_status(self) -> SourceStatus:
         raise NotImplementedError

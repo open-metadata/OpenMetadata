@@ -24,6 +24,9 @@ from typing import cast
 
 from pydantic import ValidationError
 
+from metadata.ingestion.api.processor import ProcessorStatus
+from metadata.config.common import WorkflowExecutionError
+from metadata.utils.workflow_output_handler import print_data_insight_status
 from metadata.config.workflow import get_sink
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportDataType
@@ -36,7 +39,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import data_insight_logger
 
 logger = data_insight_logger()
@@ -56,10 +58,12 @@ class DataInsightWorkflow:
         )
         self.metadata = OpenMetadata(self.metadata_config)
 
+        self.status = ProcessorStatus()
+
         if self.config.sink:
             self.sink = get_sink(
                 sink_type="metadata-rest",
-                sink_config=Sink(type="metadata-rest", config={}),
+                sink_config=Sink(type="metadata-rest", config={}),  # type: ignore
                 metadata_config=self.metadata_config,
                 _from="data_insight",
             )
@@ -95,13 +99,47 @@ class DataInsightWorkflow:
             )
             raise err
 
-    @calculate_execution_time
     def execute(self):
         for report_data_type in ReportDataType:
-            data_processor: DataProcessor = DataProcessor.create(
-                _data_processor_type=report_data_type.value, metadata=self.metadata
+            try:
+                self.data_processor: DataProcessor = DataProcessor.create(  # pylint: disable=attribute-defined-outside-init
+                    _data_processor_type=report_data_type.value, metadata=self.metadata
+                )
+                for record in self.data_processor.process():
+                    if hasattr(self, "sink"):
+                        self.sink.write_record(record)
+                        self.es_sink.write_record(record)
+
+            except Exception as exc:
+                logger.error(f"Error while executing data insight workflow for report type {report_data_type} -- {exc}")
+                logger.debug(traceback.format_exc())
+                self.status.failure(f"Error while executing data insight workflow for report type {report_data_type} -- {exc}")
+
+    def raise_from_status(self, raise_warnings=False):
+        if self.data_processor.get_status().failures:
+            raise WorkflowExecutionError(
+                "Source reported errors", self.data_processor.get_status()
             )
-            for record in data_processor.process():
-                if hasattr(self, "sink"):
-                    self.sink.write_record(record)
-                    self.es_sink.write_record(record)
+        if hasattr(self, "sink") and self.sink.get_status().failures:
+            raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
+        if raise_warnings and (
+            self.data_processor.get_status().warnings or self.sink.get_status().warnings
+        ):
+            raise WorkflowExecutionError(
+                "Source reported warnings", self.data_processor.get_status()
+            )
+
+    def print_status(self) -> None:
+        print_data_insight_status(self)
+
+    def result_status(self) -> int:
+        """
+        Returns 1 if status is failed, 0 otherwise.
+        """
+        if (
+            self.data_processor.get_status().failures
+            or self.status.failures
+            or (hasattr(self, "sink") and self.sink.get_status().failures)
+        ):
+            return 1
+        return 0

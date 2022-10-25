@@ -242,3 +242,33 @@ def print_test_suite_status(workflow) -> None:
         click.secho("Workflow finished with failures", fg="bright_red", bold=True)
     else:
         click.secho("Workflow finished successfully", fg="green", bold=True)
+
+
+def print_data_insight_status(workflow) -> None:
+    """Runs click echo to print the test suite workflow results
+
+    Args:
+        workflow (DataInsightWorkflow): workflow object
+    """
+    click.echo()
+    click.secho("Source Status:", bold=True)
+    click.echo(workflow.data_processor.get_status().as_string())
+    print_sink_status(workflow)
+
+    if workflow.data_processor.get_status().source_start_time:
+        click.secho(
+            f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.data_processor.get_status().source_start_time)} ",  # pylint: disable=line-too-long
+            fg="bright_cyan",
+            bold=True,
+        )
+
+    if workflow.result_status() == 1:
+        click.secho("Workflow finished with failures", fg="bright_red", bold=True)
+    elif (
+        workflow.data_processor.get_status().warnings
+        or workflow.status.warnings
+        or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
+    ):
+        click.secho("Workflow finished with warnings", fg="yellow", bold=True)
+    else:
+        click.secho("Workflow finished successfully", fg="green", bold=True)

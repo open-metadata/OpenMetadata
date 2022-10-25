@@ -18,6 +18,7 @@ from __future__ import annotations
 import ast
 from collections import Counter, defaultdict
 from functools import singledispatchmethod
+import traceback
 from typing import Iterable, Optional, TypeVar, Union, cast
 
 from metadata.data_insight.processor.data_processor import DataProcessor
@@ -197,10 +198,14 @@ class EntityReportDataProcessor(DataProcessor):
 
     def fetch_data(self) -> Iterable[T]:
         for entity in ENTITIES:
-            yield from self.metadata.list_all_entities(
-                entity,
-                fields="*",  # type: ignore
-            )
+            try:
+                yield from self.metadata.list_all_entities(
+                    entity,
+                    fields="*",  # type: ignore
+                )
+            except Exception as err:
+                logger.error(f"Error trying to fetch entity -- {err}")
+                logger.debug(traceback.format_exc())
 
     def refine(self) -> dict:
         """Aggegate data. We'll return a dictionary of the following shape
@@ -232,7 +237,23 @@ class EntityReportDataProcessor(DataProcessor):
                 logger.warning(
                     f"`tags` attribute not supported for entity type {entity.__class__.__name__}"
                 )
-            entity_description = self._check_entity_description(entity)
+                self.processor_status.warning(
+                    entity.__class__.__name__,
+                    "`tags` attribute not supported for entity type"
+                )
+
+            try:
+                entity_description = self._check_entity_description(entity)
+            except Exception as exc:
+                entity_description = None
+                logger.warning(
+                    f"`Something happened when retrieving description for entity type {entity.__class__.__name__}"
+                    f"-- {exc}"
+                )
+                self.processor_status.warning(
+                    entity.__class__.__name__,
+                    "`tags` attribute not supported for entity type"
+                )
 
             data_blob_for_entity["hasOwner"] = 1 if team else 0
             data_blob_for_entity["missingOwner"] = 0 if team else 1
@@ -260,3 +281,6 @@ class EntityReportDataProcessor(DataProcessor):
     def process(self) -> Iterable[ReportData]:
         refined_data: dict = self.refine()
         yield from self._flatten_results(refined_data)
+
+    def get_status(self):
+        return self.processor_status

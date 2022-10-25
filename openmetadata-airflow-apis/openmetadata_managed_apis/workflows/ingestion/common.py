@@ -19,11 +19,17 @@ import airflow
 from airflow import DAG
 from openmetadata_managed_apis.api.utils import clean_dag_id
 
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.mlmodelService import MlModelService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.data_insight.api.workflow import DataInsightWorkflow
+from metadata.generated.schema.entity.services.dashboardService import \
+    DashboardService
+from metadata.generated.schema.entity.services.databaseService import \
+    DatabaseService
+from metadata.generated.schema.entity.services.messagingService import \
+    MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import \
+    MlModelService
+from metadata.generated.schema.entity.services.pipelineService import \
+    PipelineService
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
@@ -37,20 +43,15 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import \
+    build_secrets_manager_credentials
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import \
+    IngestionPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
-    LogLevels,
-    OpenMetadataWorkflowConfig,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
+    LogLevels, OpenMetadataWorkflowConfig)
+from metadata.generated.schema.metadataIngestion.workflow import \
+    Source as WorkflowSource
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
 
@@ -100,6 +101,13 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             raise InvalidServiceException(
                 f"Could not get service from type {service_type}"
             )
+        return WorkflowSource(
+            type=service_type,
+            serviceName=ingestion_pipeline.service.name,
+            sourceConfig=ingestion_pipeline.sourceConfig,
+        )
+
+    if service_type == "dataInsight":
         return WorkflowSource(
             type=service_type,
             serviceName=ingestion_pipeline.service.name,
@@ -198,6 +206,26 @@ def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
+
+
+def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
+    """Task that creates and runs the data insight workflow.
+
+    The workflow_config gets created form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+
+    Args:
+        workflow_config (OpenMetadataWorkflowConfig): _description_
+    """
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    workflow = DataInsightWorkflow.create(config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
 
 
 def date_to_datetime(

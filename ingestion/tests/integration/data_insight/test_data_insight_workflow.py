@@ -33,11 +33,11 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 data_insight_config = {
     "source": {
-        "type": "DataInsight",
-        "serviceName": "DataInsightWorkflow",
+        "type": "dataInsight",
+        "serviceName": "dataInsightWorkflow",
         "sourceConfig": {"config": {"type": "DataInsight"}},
     },
-    "processor": {"type": "orm-test-runner", "config": {}},
+    "processor": {"type": "data-insight-processor", "config": {}},
     "sink": {
         "type": "elasticsearch",
         "config": {"es_host": "localhost", "es_port": 9200},
