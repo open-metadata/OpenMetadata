@@ -127,8 +127,8 @@ class EntityReportProcessorTest(unittest.TestCase):
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
-                    team="None",
-                    entityTier="None",
+                    team=None,
+                    entityTier=None,
                     missingOwner=12,
                     completedDescriptions=12,
                     hasOwner=0,
@@ -140,7 +140,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
-                    team="None",
+                    team=None,
                     entityTier="Tier.Tier1",
                     missingOwner=5,
                     completedDescriptions=1,
@@ -166,8 +166,8 @@ class EntityReportProcessorTest(unittest.TestCase):
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Table",
-                    team="None",
-                    entityTier="None",
+                    team=None,
+                    entityTier=None,
                     missingOwner=12,
                     completedDescriptions=12,
                     hasOwner=0,
