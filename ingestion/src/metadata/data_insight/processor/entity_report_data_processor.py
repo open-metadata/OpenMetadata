@@ -16,9 +16,9 @@ Processor class used to compute refined report data
 from __future__ import annotations
 
 import ast
+import traceback
 from collections import Counter, defaultdict
 from functools import singledispatchmethod
-import traceback
 from typing import Iterable, Optional, TypeVar, Union, cast
 
 from metadata.data_insight.processor.data_processor import DataProcessor
@@ -239,7 +239,7 @@ class EntityReportDataProcessor(DataProcessor):
                 )
                 self.processor_status.warning(
                     entity.__class__.__name__,
-                    "`tags` attribute not supported for entity type"
+                    "`tags` attribute not supported for entity type",
                 )
 
             try:
@@ -252,7 +252,7 @@ class EntityReportDataProcessor(DataProcessor):
                 )
                 self.processor_status.warning(
                     entity.__class__.__name__,
-                    "`tags` attribute not supported for entity type"
+                    "`tags` attribute not supported for entity type",
                 )
 
             data_blob_for_entity["hasOwner"] = 1 if team else 0

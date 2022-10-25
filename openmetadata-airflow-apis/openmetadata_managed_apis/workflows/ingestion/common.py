@@ -20,16 +20,11 @@ from airflow import DAG
 from openmetadata_managed_apis.api.utils import clean_dag_id
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
-from metadata.generated.schema.entity.services.dashboardService import \
-    DashboardService
-from metadata.generated.schema.entity.services.databaseService import \
-    DatabaseService
-from metadata.generated.schema.entity.services.messagingService import \
-    MessagingService
-from metadata.generated.schema.entity.services.mlmodelService import \
-    MlModelService
-from metadata.generated.schema.entity.services.pipelineService import \
-    PipelineService
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
@@ -43,15 +38,20 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import \
-    build_secrets_manager_credentials
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import \
-    IngestionPipeline
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
-    LogLevels, OpenMetadataWorkflowConfig)
-from metadata.generated.schema.metadataIngestion.workflow import \
-    Source as WorkflowSource
+    LogLevels,
+    OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
 

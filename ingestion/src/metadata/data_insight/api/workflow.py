@@ -24,9 +24,7 @@ from typing import cast
 
 from pydantic import ValidationError
 
-from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.config.common import WorkflowExecutionError
-from metadata.utils.workflow_output_handler import print_data_insight_status
 from metadata.config.workflow import get_sink
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportDataType
@@ -38,8 +36,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Sink,
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger
+from metadata.utils.workflow_output_handler import print_data_insight_status
 
 logger = data_insight_logger()
 
@@ -111,9 +111,13 @@ class DataInsightWorkflow:
                         self.es_sink.write_record(record)
 
             except Exception as exc:
-                logger.error(f"Error while executing data insight workflow for report type {report_data_type} -- {exc}")
+                logger.error(
+                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
+                )
                 logger.debug(traceback.format_exc())
-                self.status.failure(f"Error while executing data insight workflow for report type {report_data_type} -- {exc}")
+                self.status.failure(
+                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
+                )
 
     def raise_from_status(self, raise_warnings=False):
         if self.data_processor.get_status().failures:
