@@ -62,7 +62,9 @@ def build_lineage_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
     """
     workflow_config = build_lineage_workflow_config(ingestion_pipeline)
     dag = build_dag(
-        task_name=getattr(ingestion_pipeline.pipelineTypeToTask, ingestion_pipeline.type),
+        task_name=getattr(
+            ingestion_pipeline.pipelineTypeToTask, ingestion_pipeline.type
+        ),
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=workflow_config,
         workflow_fn=metadata_ingestion_workflow,

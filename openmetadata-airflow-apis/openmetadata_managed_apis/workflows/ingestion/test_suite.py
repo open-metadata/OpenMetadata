@@ -61,7 +61,9 @@ def build_test_suite_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
     """Build a simple testSuite DAG"""
     workflow_config = build_test_suite_workflow_config(ingestion_pipeline)
     dag = build_dag(
-        task_name=getattr(ingestion_pipeline.pipelineTypeToTask, ingestion_pipeline.type),
+        task_name=getattr(
+            ingestion_pipeline.pipelineTypeToTask, ingestion_pipeline.type
+        ),
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=workflow_config,
         workflow_fn=test_suite_workflow,
