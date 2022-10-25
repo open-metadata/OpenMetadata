@@ -35,6 +35,7 @@ from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
 from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
+from metadata.utils.upload_destination_type import Upload_Destination_Type
 
 logger = cli_logger()
 
@@ -283,9 +284,9 @@ def docker(
     required=False,
 )
 @click.option(
-    "--uploadDestinationType",
+    "--upload_destination_type",
     help="AWS or AZURE",
-    type=click.Choice(['AZURE', 'AWS'], case_sensitive=False),
+    type=click.Choice(const.Upload_Destination_Type),
     default=None,
     required=False,
 )
@@ -321,7 +322,7 @@ def backup(
     database: str,
     port: str,
     output: Optional[str],
-    uploadDestinationType: Optional[str],
+    upload_destination_type: Optional[Upload_Destination_Type],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
@@ -342,7 +343,7 @@ def backup(
     tables.
     """
     run_backup(
-        host, user, password, database, port, output, uploadDestinationType, upload, options, arguments, schema
+        host, user, password, database, port, output, upload_destination_type, upload, options, arguments, schema
     )
 
 
