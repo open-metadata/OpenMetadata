@@ -76,6 +76,7 @@
     <mockito.version>4.8.0</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.4</jackson.version>
+    <jackson-databind.version>2.13.4.1</jackson-databind.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
@@ -90,7 +91,7 @@
     <jakarta.version>3.0.2</jakarta.version>
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
-    <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
+    <jacoco-plugin.version>0.8.8</jacoco-plugin.version>
     <jdbi3.version>3.34.0</jdbi3.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
@@ -142,6 +143,7 @@
     <bcrypt.version>0.9.0</bcrypt.version>
     <simplejavamail.version>7.5.0</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
+    <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
     <unboundsdk.version>6.0.6</unboundsdk.version>
   </properties>
   <dependencyManagement>
@@ -176,7 +178,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>${jackson.version}</version>
+        <version>${jackson-databind.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -549,10 +551,10 @@
       </activation>
       <build>
         <plugins>
-
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco-plugin.version}</version>
             <executions>
               <execution>
                 <id>prepare-agent</id>
@@ -573,6 +575,7 @@
           <plugin>
             <groupId>org.sonarsource.scanner.maven</groupId>
             <artifactId>sonar-maven-plugin</artifactId>
+            <version>${maven.sonar-plugin.version}</version>
             <executions>
               <execution>
                 <id>sonar-verify-execution</id>
@@ -627,23 +630,16 @@
         <plugin>
            <groupId>org.apache.maven.plugins</groupId>
            <artifactId>maven-checkstyle-plugin</artifactId>
-           <version>3.1.2</version>
+           <version>3.2.0</version>
            <configuration>
              <configLocation>./checkstyle/checkstyle.xml</configLocation>
                <includeTestSourceDirectory>true</includeTestSourceDirectory>
            </configuration>
-           <dependencies>
-             <dependency>
-               <groupId>com.puppycrawl.tools</groupId>
-               <artifactId>checkstyle</artifactId>
-               <version>10.3.4</version>
-             </dependency>
-          </dependencies>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-release-plugin</artifactId>
-          <version>2.5</version>
+          <version>${maven-release-plugin.version}</version>
           <configuration>
             <arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
           </configuration>
@@ -651,6 +647,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.10.1</version>
           <configuration>
             <source>11</source>
             <target>11</target>
@@ -677,10 +674,9 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>2.10.3</version>
+          <version>${maven-javadoc-plugin.version}</version>
           <configuration>
-            <additionalparam>-Xdoclint:none</additionalparam>
-            <source>8</source>
+            <doclint>none</doclint>
           </configuration>
           <executions>
             <execution>
@@ -694,7 +690,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-gpg-plugin</artifactId>
-          <version>1.5</version>
+          <version>1.6</version>
           <executions>
             <execution>
               <id>sign-artifacts</id>
@@ -759,6 +755,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
+        <version>${maven-release-plugin.version}</version>
         <configuration>
           <autoVersionSubmodules>true</autoVersionSubmodules>
           <tagNameFormat>v@{project.version}</tagNameFormat>
@@ -767,7 +764,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
-        <version>2.5</version>
+        <version>2.12.0</version>
         <configuration>
           <generateBackupPoms>false</generateBackupPoms>
         </configuration>

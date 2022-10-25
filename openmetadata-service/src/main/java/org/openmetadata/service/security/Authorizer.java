@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -38,13 +37,8 @@ public interface Authorizer {
   ResourcePermission getPermission(
       SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
 
-  boolean isOwner(SecurityContext ctx, EntityReference entityReference);
-
   void authorize(
-      SecurityContext securityContext,
-      OperationContext operationContext,
-      ResourceContextInterface resourceContext,
-      boolean allowBots)
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
       throws IOException;
 
   void authorizeAdmin(SecurityContext securityContext, boolean allowBots);

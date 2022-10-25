@@ -534,7 +534,7 @@ public class FeedResource {
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = new ThreadResourceContext(dao.getOwnerReference(thread.getCreatedBy()));
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteThread(thread, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
@@ -566,7 +566,7 @@ public class FeedResource {
     // TODO fix this
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerReference(post.getFrom()));
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 

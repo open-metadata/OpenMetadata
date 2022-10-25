@@ -277,7 +277,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dashboard, true);
+    return create(uriInfo, securityContext, dashboard);
   }
 
   @PATCH
@@ -323,7 +323,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dashboard, true);
+    return createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
   @PUT
@@ -384,7 +384,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           boolean hardDelete,
       @Parameter(description = "Dashboard Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   private Dashboard getDashboard(CreateDashboard create, String user) throws IOException {

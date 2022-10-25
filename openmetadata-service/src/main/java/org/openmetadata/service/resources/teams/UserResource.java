@@ -19,6 +19,8 @@ import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.AD
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -536,17 +538,21 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
+
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
+    MetadataOperation operation = resourceContext.getEntity() == null ? CREATE : EDIT_ALL;
+
     dao.prepare(user);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext, true);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user same as the user
-      // we are trying to update. One option is to set users.owner as user, however thats not supported User entity.
-      OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-      ResourceContext resourceContext = getResourceContextByName(user.getName());
-      authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
+      // we are trying to update. One option is to set users.owner as user, however that is not supported for User.
+      OperationContext createOperationContext = new OperationContext(entityType, operation);
+      authorizer.authorize(securityContext, createOperationContext, resourceContext);
     }
-    if (Boolean.TRUE.equals(create.getIsBot())) {
+    if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately
       return createOrUpdateBot(user, create, uriInfo, securityContext);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -757,7 +763,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
   }
@@ -1034,6 +1040,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException(
           String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
     }
+    // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     decryptOrNullify(securityContext, response.getEntity());
@@ -1071,6 +1078,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return dao.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
+  // TODO remove this
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
@@ -1160,11 +1168,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(user.getId()),
-            secretsManager.isLocal());
+        if (!secretsManager.isLocal()) {
+          authorizer.authorize(
+              securityContext,
+              new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+              getResourceContextById(user.getId()));
+        }
       } catch (AuthorizationException | IOException e) {
         user.getAuthenticationMechanism().setConfig(null);
         return user;

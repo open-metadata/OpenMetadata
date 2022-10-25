@@ -45,7 +45,6 @@ import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
@@ -219,27 +218,11 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean isOwner(SecurityContext securityContext, EntityReference owner) {
-    if (owner == null) {
-      return false;
-    }
-    try {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      return subjectContext.isOwner(owner);
-    } catch (EntityNotFoundException ex) {
-      return false;
-    }
-  }
-
-  @Override
   public void authorize(
-      SecurityContext securityContext,
-      OperationContext operationContext,
-      ResourceContextInterface resourceContext,
-      boolean allowBots)
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
       throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+    if (subjectContext.isAdmin()) {
       return;
     }
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
@@ -384,14 +367,14 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
-  private SubjectContext getSubjectContext(SecurityContext securityContext) {
+  public static SubjectContext getSubjectContext(SecurityContext securityContext) {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
     return getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
   }
 
-  private SubjectContext getSubjectContext(String userName) {
+  public static SubjectContext getSubjectContext(String userName) {
     return SubjectCache.getInstance().getSubjectContext(userName);
   }
 

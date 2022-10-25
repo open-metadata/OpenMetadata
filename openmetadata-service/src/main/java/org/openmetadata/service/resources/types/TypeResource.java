@@ -304,7 +304,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create)
       throws IOException {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, type, true);
+    return create(uriInfo, securityContext, type);
   }
 
   @PATCH
@@ -348,7 +348,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) throws IOException {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, type, true);
+    return createOrUpdate(uriInfo, securityContext, type);
   }
 
   @DELETE
@@ -367,7 +367,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, true, true);
+    return delete(uriInfo, securityContext, id, false, true);
   }
 
   @PUT
@@ -386,7 +386,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response addOrUpdateProperty(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Valid CustomProperty property)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, false);

@@ -323,7 +323,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, ingestionPipeline, true);
+    Response response = create(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
     return response;
   }
@@ -374,7 +374,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline, true);
+    Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
     return response;
   }
@@ -449,7 +449,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
     pipelineServiceClient.toggleIngestion(pipeline);
-    return createOrUpdate(uriInfo, securityContext, pipeline, true);
+    return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
   @POST
@@ -557,7 +557,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @GET
@@ -614,11 +614,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-          getResourceContextById(ingestionPipeline.getId()),
-          secretsManager.isLocal());
+      if (!secretsManager.isLocal()) { // TODO fix this correctly
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+            getResourceContextById(ingestionPipeline.getId()));
+      }
     } catch (AuthorizationException | IOException e) {
       ingestionPipeline.getSourceConfig().setConfig(null);
       return ingestionPipeline;

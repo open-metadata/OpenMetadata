@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -185,7 +186,7 @@ public final class ChangeEventParser {
     Map<EntityLink, String> messages =
         getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<SlackAttachment> attachmentList = new ArrayList<>();
-    for (var entry : messages.entrySet()) {
+    for (Entry<EntityLink, String> entry : messages.entrySet()) {
       SlackAttachment attachment = new SlackAttachment();
       List<String> mark = new ArrayList<>();
       mark.add("text");
@@ -209,7 +210,7 @@ public final class ChangeEventParser {
     Map<EntityLink, String> messages =
         getFormattedMessages(PUBLISH_TO.TEAMS, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<TeamsMessage.Section> attachmentList = new ArrayList<>();
-    for (var entry : messages.entrySet()) {
+    for (Entry<EntityLink, String> entry : messages.entrySet()) {
       TeamsMessage.Section section = new TeamsMessage.Section();
       section.setActivityTitle(teamsSections.getActivityTitle());
       section.setActivityText(entry.getValue());
@@ -240,7 +241,7 @@ public final class ChangeEventParser {
       PUBLISH_TO publishTo, EntityInterface entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
     Map<EntityLink, String> messages = new HashMap<>();
 
-    for (var field : fields) {
+    for (FieldChange field : fields) {
       // if field name has dots, then it is an array field
       String fieldName = field.getName();
 
@@ -269,7 +270,7 @@ public final class ChangeEventParser {
       if (json.getValueType() == ValueType.ARRAY) {
         JsonArray jsonArray = json.asJsonArray();
         List<String> labels = new ArrayList<>();
-        for (var item : jsonArray) {
+        for (JsonValue item : jsonArray) {
           if (item.getValueType() == ValueType.OBJECT) {
             Set<String> keys = item.asJsonObject().keySet();
             if (keys.contains("tagFQN")) {
@@ -323,7 +324,7 @@ public final class ChangeEventParser {
       }
       return messages;
     }
-    for (var field : deletedFields) {
+    for (FieldChange field : deletedFields) {
       Optional<FieldChange> addedField =
           addedFields.stream().filter(f -> f.getName().equals(field.getName())).findAny();
       if (addedField.isPresent()) {
@@ -433,7 +434,7 @@ public final class ChangeEventParser {
     List<String> labels = new ArrayList<>();
     Set<String> keys = newJson.keySet();
     // check if each key's value is the same
-    for (var key : keys) {
+    for (String key : keys) {
       if (!newJson.get(key).equals(oldJson.get(key))) {
         labels.add(
             String.format(
@@ -542,7 +543,7 @@ public final class ChangeEventParser {
 
     // merge rows by %n for new line
     String diff = null;
-    for (var row : rows) {
+    for (DiffRow row : rows) {
       if (diff == null) {
         diff = row.getOldLine();
       } else {

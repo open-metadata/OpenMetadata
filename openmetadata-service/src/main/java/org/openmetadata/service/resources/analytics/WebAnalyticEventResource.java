@@ -60,7 +60,6 @@ import org.openmetadata.service.util.ResultList;
 public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
-  private final WebAnalyticEventRepository daoWebAnalyticEvent;
 
   @Override
   public WebAnalyticEvent addHref(UriInfo uriInfo, WebAnalyticEvent entity) {
@@ -72,7 +71,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Inject
   public WebAnalyticEventResource(CollectionDAO dao, Authorizer authorizer) {
     super(WebAnalyticEvent.class, new WebAnalyticEventRepository(dao), authorizer);
-    this.daoWebAnalyticEvent = new WebAnalyticEventRepository(dao);
   }
 
   public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {
@@ -179,7 +177,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebAnalyticEvent create)
       throws IOException {
     WebAnalyticEvent webAnalyticEvent = getWebAnalyticEvent(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, webAnalyticEvent, true);
+    return create(uriInfo, securityContext, webAnalyticEvent);
   }
 
   @PUT
@@ -199,7 +197,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebAnalyticEvent create)
       throws IOException {
     WebAnalyticEvent webAnalyticEvent = getWebAnalyticEvent(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, webAnalyticEvent, true);
+    return createOrUpdate(uriInfo, securityContext, webAnalyticEvent);
   }
 
   @GET
@@ -282,7 +280,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
           boolean hardDelete,
       @Parameter(description = "Web Analytic event Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @GET

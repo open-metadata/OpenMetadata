@@ -114,10 +114,6 @@ public class SubjectCache {
     }
   }
 
-  public List<EntityReference> getInheritedRolesForUser(String userName) {
-    return getRolesForTeams(getSubjectContext(userName).getTeams());
-  }
-
   public List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
