@@ -55,8 +55,10 @@ public final class CatalogExceptionMessage {
   public static final String INVALID_EMAIL_PASSWORD = "You have entered an invalid email or password.";
 
   public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
-
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
+
+  public static final String TOKEN_EXPIRY_ERROR =
+      "Email Verification Token %s is expired. Please issue a new request for email verification.";
 
   private CatalogExceptionMessage() {}
 

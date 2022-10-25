@@ -34,46 +34,46 @@ public interface AuthenticatorHandler {
   User lookUserInProvider(String userName);
 
   default User registerUser(RegistrationRequest registrationRequest) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default void sendEmailVerification(UriInfo uriInfo, User user) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void resendRegistrationToken(UriInfo uriInfo, String registeredUser) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+  default void resendRegistrationToken(UriInfo uriInfo, User registeredUser) throws IOException {
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
       throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest req) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest req) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default JwtResponse getNewAccessToken(String userName, TokenRefreshRequest request) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default void sendInviteMailToUser(
       UriInfo uriInfo, User user, String subject, CreateUser.CreatePasswordType requestType, String pwd)
       throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_FOUND, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default JwtResponse getJwtResponse(User storedUser) throws JsonProcessingException {

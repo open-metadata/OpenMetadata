@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
@@ -57,6 +58,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private final LoginAttemptCache loginAttemptCache;
   private final LdapConfiguration ldapConfiguration;
   private final LDAPConnectionPool ldapLookupConnectionPool;
+  private final LoginConfiguration loginConfiguration;
 
   public LdapAuthenticator(
       UserRepository userRepository, TokenRepository tokenRepository, OpenMetadataApplicationConfig config) {
@@ -70,6 +72,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = tokenRepository;
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
+    this.loginConfiguration = config.getLoginSettings();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
@@ -152,13 +155,16 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void recordFailedLoginAttempt(User storedUser) throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(storedUser.getEmail());
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(storedUser.getEmail());
-    if (failedLoginAttempt == 3 /*TODO : take it from config*/) {
-      /*TODO : 10 mins is configurable*/
+    loginAttemptCache.recordFailedLogin(storedUser.getName());
+    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(storedUser.getName());
+    if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
       EmailUtil.getInstance()
           .sendAccountStatus(
-              storedUser, "Multiple Failed Login Attempts.", "Login Blocked for 10 mins. Please change your password.");
+              storedUser,
+              "Multiple Failed Login Attempts.",
+              String.format(
+                  "Someone is tried accessing your account. Login is Blocked for %s minutes.",
+                  loginConfiguration.getAccessBlockTime()));
     }
   }
 
@@ -234,11 +240,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
-    // first delete the existing user mapping for the token
-    // TODO: Currently one user will be mapped to one refreshToken , so essentially each user is assigned one
-    // refreshToken
-    // TODO: Future : Each user will have multiple Devices to login with, where each will have refresh token, i.e per
-    // devie
     // just delete the existing token
     tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());

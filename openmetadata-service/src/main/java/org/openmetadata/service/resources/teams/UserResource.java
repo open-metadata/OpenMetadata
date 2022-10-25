@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMINCREATE;
+import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
@@ -24,7 +24,6 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import freemarker.template.TemplateException;
 import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
@@ -71,7 +70,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
-import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailRequest;
@@ -111,7 +109,6 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
-import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -136,10 +133,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private boolean isEmailServiceEnabled;
-  private LoginAttemptCache loginAttemptCache;
   private AuthenticationConfiguration authenticationConfiguration;
-  private AuthorizerConfiguration authorizerConfiguration;
-  private LDAPConnectionPool ldapLookupConnectionPool;
   private AuthenticatorHandler authHandler;
 
   @Override
@@ -161,15 +155,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    this.loginAttemptCache = new LoginAttemptCache(config);
     if (config.getAuthenticationConfiguration().getProvider().equals("ldap")) {
       authHandler = new LdapAuthenticator(dao, tokenRepository, config);
       // initLdapConfig(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else if (config.getAuthenticationConfiguration().getProvider().equals("basic")) {
       authHandler = new BasicAuthenticator(dao, tokenRepository, config);
+    } else {
+
     }
   }
 
@@ -495,7 +489,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       // this is also important since username is used for a lot of stuff
       user.setName(user.getEmail().split("@")[0]);
-      if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMINCREATE) {
+      if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
       // else the user will get a mail if configured smtp
@@ -825,7 +819,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("user")
           String user)
       throws IOException {
-    authHandler.resendRegistrationToken(uriInfo, user);
+    User registeredUser = dao.getByName(uriInfo, user, getFields("isEmailVerified"));
+    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
+      return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
+    }
+    authHandler.resendRegistrationToken(uriInfo, registeredUser);
     return Response.status(Response.Status.OK)
         .entity("Email Verification Mail Sent. Please check your Mailbox.")
         .build();
@@ -842,7 +840,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
+  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
@@ -852,12 +850,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new BadRequestException("Email is not valid.");
     }
     // send a mail to the User with the Update
+    authHandler.sendPasswordResetLink(
+        uriInfo,
+        registeredUser,
+        EmailUtil.getInstance().getPasswordResetSubject(),
+        EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
     try {
-      authHandler.sendPasswordResetLink(
-          uriInfo,
-          registeredUser,
-          EmailUtil.getInstance().getPasswordResetSubject(),
-          EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
