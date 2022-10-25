@@ -64,7 +64,7 @@ public class EmailUtil {
       this.mailer = this.createMailer(smtpServerSettings);
       this.templateConfiguration = new Configuration(VERSION_2_3_28);
     } catch (Exception ex) {
-      LOG.error("Error in instantiating [MAILER] : Reason {} ", ex.getMessage());
+      LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
     }
   }
 
@@ -95,46 +95,51 @@ public class EmailUtil {
   }
 
   public void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put(ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
-    templatePopulator.put(USERNAME, user.getName());
-    templatePopulator.put(ACTION_KEY, action);
-    templatePopulator.put(ACTION_STATUS_KEY, status);
-    sendMail(
-        getAccountStatusChangeSubject(),
-        templatePopulator,
-        user.getEmail(),
-        EMAIL_TEMPLATE_BASEPATH,
-        ACCOUNT_STATUS_TEMPLATE_FILE);
+    if (defaultSmtpSettings.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put(ENTITY, EmailUtil.getInstance().getEmailingEntity());
+      templatePopulator.put(SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
+      templatePopulator.put(USERNAME, user.getName());
+      templatePopulator.put(ACTION_KEY, action);
+      templatePopulator.put(ACTION_STATUS_KEY, status);
+      sendMail(
+          getAccountStatusChangeSubject(),
+          templatePopulator,
+          user.getEmail(),
+          EMAIL_TEMPLATE_BASEPATH,
+          ACCOUNT_STATUS_TEMPLATE_FILE);
+    }
   }
 
   public void sendEmailVerification(String emailVerificationLink, User user) throws IOException, TemplateException {
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put(ENTITY, getEmailingEntity());
-    templatePopulator.put(SUPPORT_URL, getSupportUrl());
-    templatePopulator.put(USERNAME, user.getName());
-    templatePopulator.put(EMAIL_VERIFICATION_LINKKEY, emailVerificationLink);
-    templatePopulator.put(EXPIRATION_TIME_KEY, "24");
-    sendMail(
-        getEmailVerificationSubject(),
-        templatePopulator,
-        user.getEmail(),
-        EMAIL_TEMPLATE_BASEPATH,
-        EMAIL_VERIFICATION_TEMPLATE_PATH);
+    if (defaultSmtpSettings.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put(ENTITY, getEmailingEntity());
+      templatePopulator.put(SUPPORT_URL, getSupportUrl());
+      templatePopulator.put(USERNAME, user.getName());
+      templatePopulator.put(EMAIL_VERIFICATION_LINKKEY, emailVerificationLink);
+      templatePopulator.put(EXPIRATION_TIME_KEY, "24");
+      sendMail(
+          getEmailVerificationSubject(),
+          templatePopulator,
+          user.getEmail(),
+          EMAIL_TEMPLATE_BASEPATH,
+          EMAIL_VERIFICATION_TEMPLATE_PATH);
+    }
   }
 
   public void sendPasswordResetLink(String passwordResetLink, User user, String subject, String templateFilePath)
       throws IOException, TemplateException {
+    if (defaultSmtpSettings.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put(ENTITY, getEmailingEntity());
+      templatePopulator.put(SUPPORT_URL, getSupportUrl());
+      templatePopulator.put(USERNAME, user.getName());
+      templatePopulator.put(PASSWORD_RESET_LINKKEY, passwordResetLink);
+      templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
 
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put(ENTITY, getEmailingEntity());
-    templatePopulator.put(SUPPORT_URL, getSupportUrl());
-    templatePopulator.put(USERNAME, user.getName());
-    templatePopulator.put(PASSWORD_RESET_LINKKEY, passwordResetLink);
-    templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
-
-    sendMail(subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+      sendMail(subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    }
   }
 
   public Email buildEmailWithDefaultSender(EmailRequest request) {
@@ -207,20 +212,22 @@ public class EmailUtil {
   public void sendMail(
       String subject, Map<String, String> model, String to, String baseTemplatePackage, String templatePath)
       throws IOException, TemplateException {
-    EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
-    emailBuilder.withSubject(subject);
-    emailBuilder.to(to);
-    emailBuilder.from(defaultSmtpSettings.getSenderMail());
+    if (defaultSmtpSettings.getEnableSmtpServer()) {
+      EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
+      emailBuilder.withSubject(subject);
+      emailBuilder.to(to);
+      emailBuilder.from(defaultSmtpSettings.getSenderMail());
 
-    templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
-    Template template = templateConfiguration.getTemplate(templatePath);
+      templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+      Template template = templateConfiguration.getTemplate(templatePath);
 
-    // write the freemarker output to a StringWriter
-    StringWriter stringWriter = new StringWriter();
-    template.process(model, stringWriter);
-    String mailContent = stringWriter.toString();
-    emailBuilder.withHTMLText(mailContent);
-    sendMail(emailBuilder.buildEmail());
+      // write the freemarker output to a StringWriter
+      StringWriter stringWriter = new StringWriter();
+      template.process(model, stringWriter);
+      String mailContent = stringWriter.toString();
+      emailBuilder.withHTMLText(mailContent);
+      sendMail(emailBuilder.buildEmail());
+    }
   }
 
   public void sendMail(Email email) {

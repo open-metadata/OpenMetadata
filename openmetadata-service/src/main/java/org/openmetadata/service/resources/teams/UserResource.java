@@ -106,9 +106,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.BotTokenCache;
-import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -146,25 +144,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer) {
+  public UserResource(CollectionDAO dao, Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
     super(User.class, new UserRepository(dao), authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
+    authHandler = authenticatorHandler;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    if (config.getAuthenticationConfiguration().getProvider().equals("ldap")) {
-      authHandler = new LdapAuthenticator(dao, tokenRepository, config);
-      // initLdapConfig(config.getAuthenticationConfiguration().getLdapConfiguration());
-    } else if (config.getAuthenticationConfiguration().getProvider().equals("basic")) {
-      authHandler = new BasicAuthenticator(dao, tokenRepository, config);
-    } else {
-
-    }
   }
 
   public static class UserList extends ResultList<User> {

@@ -7,7 +7,7 @@ import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_EMAIL_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.MUTIPLE_EMAIl_ENTRIES;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIl_ENTRIES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.unboundid.ldap.sdk.Attribute;
@@ -45,6 +45,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
@@ -60,16 +61,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private final LDAPConnectionPool ldapLookupConnectionPool;
   private final LoginConfiguration loginConfiguration;
 
-  public LdapAuthenticator(
-      UserRepository userRepository, TokenRepository tokenRepository, OpenMetadataApplicationConfig config) {
+  public LdapAuthenticator(CollectionDAO dao, OpenMetadataApplicationConfig config) {
     if (config.getAuthenticationConfiguration().getProvider().equals("ldap")
         && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
       ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
-      throw new RuntimeException("Invalid or Missing Ldap Configuration.");
+      throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
-    this.userRepository = userRepository;
-    this.tokenRepository = tokenRepository;
+    this.userRepository = new UserRepository(dao);
+    this.tokenRepository = new TokenRepository(dao);
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.loginConfiguration = config.getLoginSettings();
@@ -105,7 +105,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           // Use the connection here.
           return new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
         } catch (GeneralSecurityException e) {
-          LOG.warn("[LDAP] Issue in creating a LookUp Connection SSL");
+          LOG.error("[LDAP] Issue in creating a LookUp Connection SSL", e);
+          throw new IllegalStateException("[LDAP] Issue in creating a LookUp Connection SSL", e);
         }
       } else {
         LDAPConnection conn =
@@ -124,15 +125,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    // validate Login is Not Blocked
     checkIfLoginBlocked(loginRequest.getEmail());
-    // Fetch the User from Database
     User storedUser = lookUserInProvider(loginRequest.getEmail());
-    // validate User's Password
     validatePassword(storedUser, loginRequest.getPassword());
-    // check db if OM db contains user else create
     User omUser = checkAndCreateUser(loginRequest.getEmail());
-    // Return a Jwt Response
     return getJwtResponse(omUser);
   }
 
@@ -215,7 +211,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           throw new CustomExceptionMessage(FORBIDDEN, LDAP_MISSING_ATTR);
         }
       } else if (result.getSearchEntries().size() > 1) {
-        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, MUTIPLE_EMAIl_ENTRIES);
+        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, MULTIPLE_EMAIl_ENTRIES);
       } else {
         throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, INVALID_EMAIL_PASSWORD);
       }

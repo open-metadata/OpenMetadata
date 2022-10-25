@@ -6,6 +6,7 @@ import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
+import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.USER;
 import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
 import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
@@ -52,6 +53,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
@@ -75,10 +77,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private final boolean isEmailServiceEnabled;
   private final boolean isSelfSignUpAvailable;
 
-  public BasicAuthenticator(
-      UserRepository userRepository, TokenRepository tokenRepository, OpenMetadataApplicationConfig config) {
-    this.userRepository = userRepository;
-    this.tokenRepository = tokenRepository;
+  public BasicAuthenticator(CollectionDAO dao, OpenMetadataApplicationConfig config) {
+    this.userRepository = new UserRepository(dao);
+    this.tokenRepository = new TokenRepository(dao);
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     SmtpSettings smtpSettings = config.getSmtpSettings();
@@ -244,37 +245,28 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throw new IllegalArgumentException("Password and Confirm Password should match");
     }
     PasswordUtil.validatePassword(request.getNewPassword());
-    List<String> fields = userRepository.getAllowedFieldsCopy();
-    fields.add(USER_PROTECTED_FIELDS);
 
     // Fetch user
-    User storedUser =
-        userRepository.getByName(uriInfo, userName, new EntityUtil.Fields(fields, String.join(",", fields)));
+    User storedUser = userRepository.getByName(uriInfo, userName, userRepository.getFieldsWithUserAuth("*"));
     BasicAuthMechanism storedBasicAuthMechanism =
         JsonUtils.convertValue(storedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class);
-    if (request.getRequestType() == SELF) {
-      String storedHashPassword = storedBasicAuthMechanism.getPassword();
-      if (BCrypt.verifyer().verify(request.getOldPassword().toCharArray(), storedHashPassword).verified) {
-        String newHashedPassword =
-            BCrypt.withDefaults().hashToString(HASHING_COST, request.getNewPassword().toCharArray());
-        storedBasicAuthMechanism.setPassword(newHashedPassword);
-        storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-        userRepository.createOrUpdate(uriInfo, storedUser);
-        // remove login/details from cache
-        loginAttemptCache.recordSuccessfulLogin(userName);
-      } else {
-        throw new CustomExceptionMessage(UNAUTHORIZED, "Old Password is not correct");
-      }
-    } else {
-      String newHashedPassword =
-          BCrypt.withDefaults().hashToString(HASHING_COST, request.getNewPassword().toCharArray());
-      // Admin is allowed to set password for User directly
-      storedBasicAuthMechanism.setPassword(newHashedPassword);
-      storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-      RestUtil.PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
-      // remove login/details from cache
-      loginAttemptCache.recordSuccessfulLogin(request.getUsername());
 
+    String storedHashPassword = storedBasicAuthMechanism.getPassword();
+    String newHashedPassword = BCrypt.withDefaults().hashToString(HASHING_COST, request.getNewPassword().toCharArray());
+
+    if (request.getRequestType() == SELF
+        && !BCrypt.verifyer().verify(request.getOldPassword().toCharArray(), storedHashPassword).verified) {
+      throw new CustomExceptionMessage(UNAUTHORIZED, "Old Password is not correct");
+    }
+
+    storedBasicAuthMechanism.setPassword(newHashedPassword);
+    storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
+    RestUtil.PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
+    // remove login/details from cache
+    loginAttemptCache.recordSuccessfulLogin(userName);
+
+    // in case admin updates , send email to user
+    if (request.getRequestType() == USER && isEmailServiceEnabled) {
       // Send mail
       sendInviteMailToUser(
           uriInfo,
@@ -410,13 +402,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
     String userName =
         loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
-    // validate Login is Not Blocked
     checkIfLoginBlocked(userName);
-    // Fetch the User from Database
     User storedUser = lookUserInProvider(userName);
-    // validate User's Password
     validatePassword(storedUser, loginRequest.getPassword());
-    // Return a Jwt Response
     return getJwtResponse(storedUser);
   }
 
