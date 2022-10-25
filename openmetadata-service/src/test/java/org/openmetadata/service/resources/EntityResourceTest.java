@@ -1008,7 +1008,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_ALL)));
   }
 
   @Test

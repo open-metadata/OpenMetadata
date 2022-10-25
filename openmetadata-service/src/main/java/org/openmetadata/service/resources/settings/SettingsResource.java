@@ -64,6 +64,10 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "settings")
 @Slf4j
+/**
+ * Resource for managing OpenMetadata settings that an admin can change. Example - using APIs here, the conversation
+ * thread notification can be changed to include only events that an organization uses.
+ */
 public class SettingsResource {
   private final SettingsRepository settingsRepository;
   private final Authorizer authorizer;
@@ -236,6 +240,7 @@ public class SettingsResource {
           @PathParam("entityName")
           String entityName,
       @Valid List<Filters> newFilter) {
+    authorizer.authorizeAdmin(securityContext, false);
     return settingsRepository.updateEntityFilter(entityName, newFilter);
   }
 
