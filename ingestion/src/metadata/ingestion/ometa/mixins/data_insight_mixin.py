@@ -15,10 +15,12 @@ To be used by OpenMetadata class
 """
 
 from typing import List
+
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 
+
 class DataInisghtMixin:
-    """data insight mixin used to write results"""    
+    """data insight mixin used to write results"""
 
     def add_data_insight_report_data(self, record: ReportData) -> ReportData:
         """Given a ReportData object convert it to a json payload
@@ -26,17 +28,15 @@ class DataInisghtMixin:
 
         Args:
             record (ReportData): report data
-        """        
+        """
 
-        resp = self.client.post(
-            "/analytic/reportData",
-            record.json()
-        )
+        resp = self.client.post("/analytic/reportData", record.json())
 
         return resp
 
-
-    def get_data_insight_report_data(self, start_ts: int, end_ts: int, report_data_type: str) -> dict[str, List[ReportData]]:
+    def get_data_insight_report_data(
+        self, start_ts: int, end_ts: int, report_data_type: str
+    ) -> dict[str, List[ReportData]]:
         """Return dict with a list of report data given a start and end date
 
         Args:
@@ -50,11 +50,7 @@ class DataInisghtMixin:
 
         resp = self.client.get(
             "/analytic/reportData",
-            {
-                "startTs": start_ts,
-                "endTs": end_ts,
-                "reportDataType": report_data_type
-            }
-        )    
+            {"startTs": start_ts, "endTs": end_ts, "reportDataType": report_data_type},
+        )
 
         return resp

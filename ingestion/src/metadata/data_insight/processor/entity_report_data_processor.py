@@ -15,14 +15,16 @@ Processor class used to compute refined report data
 
 from __future__ import annotations
 
+import ast
 from collections import Counter, defaultdict
 from functools import singledispatchmethod
 from typing import Iterable, Optional, TypeVar, Union, cast
-import ast
 
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
-from metadata.generated.schema.analytics.reportDataType.entityReportData import EntityReportData
+from metadata.generated.schema.analytics.reportDataType.entityReportData import (
+    EntityReportData,
+)
 from metadata.generated.schema.entity.data import (
     chart,
     dashboard,
@@ -48,10 +50,11 @@ ENTITIES = [
     mlmodel.MlModel,
     pipeline.Pipeline,
     table.Table,
-    topic.Topic
+    topic.Topic,
 ]
 
 T = TypeVar("T", *ENTITIES)  # type: ignore
+
 
 class EntityReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
@@ -100,16 +103,16 @@ class EntityReportDataProcessor(DataProcessor):
             tags (list[TagLabel]): list of tags
 
         Returns:
-            Optional[str] 
-        """        
+            Optional[str]
+        """
         return next(
             (
-                tag.tagFQN.__root__ for tag in tags
+                tag.tagFQN.__root__
+                for tag in tags
                 if tag.tagFQN.__root__.lower().startswith("tier")
             ),
-            None
+            None,
         )
-
 
     @singledispatchmethod
     def _check_entity_description(self, entity: T):
@@ -120,11 +123,11 @@ class EntityReportDataProcessor(DataProcessor):
 
         Raises:
             TypeError: if single dispatch not implemented for the class
-        """        
+        """
         raise TypeError(
             f"Could not get description for {entity.__class__.__name__}."
             f"Type {type(entity.__class__.__name__)} not supported."
-            )
+        )
 
     @_check_entity_description.register(dashboard.Dashboard)
     @_check_entity_description.register(chart.Chart)
@@ -142,8 +145,8 @@ class EntityReportDataProcessor(DataProcessor):
             databaseSchema.DatabaseSchema,
             mlmodel.MlModel,
             pipeline.Pipeline,
-            topic.Topic
-        ]
+            topic.Topic,
+        ],
     ) -> bool:
         """Get description for dashboard entity
 
@@ -152,7 +155,7 @@ class EntityReportDataProcessor(DataProcessor):
 
         Returns:
             bool:
-        """  
+        """
         if entity.description:
             return True
         return False
@@ -183,19 +186,20 @@ class EntityReportDataProcessor(DataProcessor):
             for key, value in value.items():
                 items["team"] = ast.literal_eval(key) if key == "None" else key
                 for key, value in value.items():
-                    items["entityTier"] = ast.literal_eval(key) if key == "None" else key
+                    items["entityTier"] = (
+                        ast.literal_eval(key) if key == "None" else key
+                    )
                     yield ReportData(
                         timestamp=self.timestamp,
                         reportDataType=ReportDataType.EntityReportData.value,
-                        data=EntityReportData.parse_obj({**items, **value})
+                        data=EntityReportData.parse_obj({**items, **value}),
                     )  # type: ignore
-
 
     def fetch_data(self) -> Iterable[T]:
         for entity in ENTITIES:
             yield from self.metadata.list_all_entities(
                 entity,
-                fields="*", # type: ignore
+                fields="*",  # type: ignore
             )
 
     def refine(self) -> dict:
@@ -232,16 +236,24 @@ class EntityReportDataProcessor(DataProcessor):
 
             data_blob_for_entity["hasOwner"] = 1 if team else 0
             data_blob_for_entity["missingOwner"] = 0 if team else 1
-            data_blob_for_entity["completedDescriptions"] = 1 if entity_description else 0
+            data_blob_for_entity["completedDescriptions"] = (
+                1 if entity_description else 0
+            )
             data_blob_for_entity["missingDescriptions"] = 0 if entity_description else 1
             data_blob_for_entity["entityCount"] = 1
 
             data_blob_for_entity_counter = Counter(data_blob_for_entity)
 
-            if not refined_data[entity.__class__.__name__][str(team)].get(str(entity_tier)):
-                refined_data[entity.__class__.__name__][str(team)][str(entity_tier)] = data_blob_for_entity_counter
+            if not refined_data[entity.__class__.__name__][str(team)].get(
+                str(entity_tier)
+            ):
+                refined_data[entity.__class__.__name__][str(team)][
+                    str(entity_tier)
+                ] = data_blob_for_entity_counter
             else:
-                refined_data[entity.__class__.__name__][str(team)][str(entity_tier)].update(data_blob_for_entity_counter)
+                refined_data[entity.__class__.__name__][str(team)][
+                    str(entity_tier)
+                ].update(data_blob_for_entity_counter)
 
         return refined_data
 

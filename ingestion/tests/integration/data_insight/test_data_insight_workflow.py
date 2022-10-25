@@ -13,21 +13,20 @@
 Validate workflow configs and filters
 """
 
-from datetime import datetime, timedelta
-import json
 import unittest
 from copy import deepcopy
-from metadata.generated.schema.analytics.reportData import ReportDataType
+from datetime import datetime, timedelta
 
 import pytest
 import requests
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.data_insight.processor.entity_report_data_processor import (
     EntityReportDataProcessor,
+)
+from metadata.generated.schema.analytics.reportData import ReportDataType
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -39,7 +38,10 @@ data_insight_config = {
         "sourceConfig": {"config": {"type": "DataInsight"}},
     },
     "processor": {"type": "orm-test-runner", "config": {}},
-    "sink": {"type": "elasticsearch","config": {"es_host": "localhost","es_port": 9200}},
+    "sink": {
+        "type": "elasticsearch",
+        "config": {"es_host": "localhost", "es_port": 9200},
+    },
     "workflowConfig": {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
@@ -57,8 +59,8 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        """Set up om client for the test class"""        
-        
+        """Set up om client for the test class"""
+
         cls.metadata = OpenMetadata(
             OpenMetadataConnection.parse_obj(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
@@ -66,26 +68,29 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
 
     def test_create_method(self):
-        """Test validation of the workflow config is properly happening"""        
+        """Test validation of the workflow config is properly happening"""
         DataInsightWorkflow.create(data_insight_config)
         assert True
 
         with pytest.raises(ParsingConfigurationError):
             insight = deepcopy(data_insight_config)
-            insight["source"]["sourceConfig"]["config"].update({"type":"Foo"})
+            insight["source"]["sourceConfig"]["config"].update({"type": "Foo"})
             DataInsightWorkflow.create(insight)
-
 
     def test_execute_method(self):
         """test method excution"""
         workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
         workflow.execute()
 
-        indexes = requests.get("http://localhost:9200/entity_report_data_index/_search", timeout=30)
-        assert indexes.json()["hits"]["total"]["value"] > 0  # check data have been correctly indexed in ES
+        indexes = requests.get(
+            "http://localhost:9200/entity_report_data_index/_search", timeout=30
+        )
+        assert (
+            indexes.json()["hits"]["total"]["value"] > 0
+        )  # check data have been correctly indexed in ES
         report_data = self.metadata.get_data_insight_report_data(
             int((datetime.now() - timedelta(days=1)).timestamp() * 1000),
             int((datetime.now() + timedelta(days=1)).timestamp() * 1000),
-            ReportDataType.EntityReportData.value
+            ReportDataType.EntityReportData.value,
         )
         assert report_data.get("data")

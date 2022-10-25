@@ -21,11 +21,10 @@ from __future__ import annotations
 
 import traceback
 from typing import cast
-from metadata.config.workflow import get_sink
 
 from pydantic import ValidationError
 
-from metadata.utils.helpers import calculate_execution_time
+from metadata.config.workflow import get_sink
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.sink.metadata_rest import MetadataRestSink
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -38,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import data_insight_logger
 
 logger = data_insight_logger()
@@ -97,11 +97,10 @@ class DataInsightWorkflow:
             raise err
 
     @calculate_execution_time
-    def execute(self):            
+    def execute(self):
         for report_data_type in ReportDataType:
             data_processor: DataProcessor = DataProcessor.create(
-                _data_processor_type=report_data_type.value,
-                metadata=self.metadata
+                _data_processor_type=report_data_type.value, metadata=self.metadata
             )
             for record in data_processor.process():
                 if hasattr(self, "sink"):
