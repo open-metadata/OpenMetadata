@@ -36,8 +36,8 @@ class DataInisghtMixin:
         return resp
 
 
-    def get_data_insight_report_data(self, start_ts: int, end_ts: int, report_data_type: ReportDataType) -> List[ReportData]:
-        """Return list of report data given a start and end date
+    def get_data_insight_report_data(self, start_ts: int, end_ts: int, report_data_type: str) -> dict[str, List[ReportData]]:
+        """Return dict with a list of report data given a start and end date
 
         Args:
             start_ts (_type_): start_timestamp
@@ -46,4 +46,15 @@ class DataInisghtMixin:
 
         Returns:
             List[ReportData]:
-        """        
+        """
+
+        resp = self.client.get(
+            "/analytic/reportData",
+            {
+                "startTs": start_ts,
+                "endTs": end_ts,
+                "reportDataType": report_data_type
+            }
+        )    
+
+        return resp
