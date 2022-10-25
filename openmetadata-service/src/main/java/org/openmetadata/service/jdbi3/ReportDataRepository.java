@@ -34,7 +34,8 @@ public class ReportDataRepository {
     return Response.ok(reportData).build();
   }
 
-  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs) throws IOException {
+  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs)
+      throws IOException {
     List<ReportData> reportData;
     reportData =
         JsonUtils.readObjects(
