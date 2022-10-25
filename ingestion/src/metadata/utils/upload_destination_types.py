@@ -12,7 +12,9 @@
 """
 Enum for upload destination type 
 """
-from enum import Enum 
+from enum import Enum
+
+
 class Upload_Destination_Type(Enum):
     AWS = 1
     AZURE = 2

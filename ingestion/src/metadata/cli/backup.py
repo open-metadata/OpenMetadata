@@ -21,8 +21,8 @@ import click
 
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
-from metadata.utils.logger import cli_logger
 from metadata.utils.constants import UTF_8
+from metadata.utils.logger import cli_logger
 from metadata.utils.upload_destination_type import Upload_Destination_Type
 
 logger = cli_logger()
@@ -111,9 +111,12 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
 
     try:
         from azure.identity import DefaultAzureCredential
+
         default_credential = DefaultAzureCredential()
         # Create the BlobServiceClient object
-        blob_service_client = BlobServiceClient(account_url, credential=default_credential)
+        blob_service_client = BlobServiceClient(
+            account_url, credential=default_credential
+        )
     except ModuleNotFoundError as err:
         logger.debug(traceback.format_exc())
         logger.error(
@@ -128,12 +131,13 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
 
     try:
         # Create a blob client using the local file name as the name for the blob
-        blob_client = blob_service_client.get_blob_client(container=container, blob=file.name)
+        blob_client = blob_service_client.get_blob_client(
+            container=container, blob=file.name
+        )
 
         # Upload the created file
         with open(file=file.absolute, mode="rb", encoding=UTF_8) as data:
             blob_client.upload_blob(data)
-        
 
     except ValueError as err:
         logger.debug(traceback.format_exc())
@@ -198,4 +202,3 @@ def run_backup(  # pylint: disable=too-many-arguments
             # only need two parameters from upload, key would be null
             account_url, container, key = upload
             upload_backup_azure(account_url, container, out)
-            

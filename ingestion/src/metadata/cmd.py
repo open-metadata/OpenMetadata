@@ -34,8 +34,8 @@ from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
-from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
 from metadata.utils.upload_destination_type import Upload_Destination_Type
+from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
 
@@ -343,7 +343,17 @@ def backup(
     tables.
     """
     run_backup(
-        host, user, password, database, port, output, upload_destination_type, upload, options, arguments, schema
+        host,
+        user,
+        password,
+        database,
+        port,
+        output,
+        upload_destination_type,
+        upload,
+        options,
+        arguments,
+        schema,
     )
 
 
