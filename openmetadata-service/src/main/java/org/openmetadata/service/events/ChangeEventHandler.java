@@ -102,7 +102,7 @@ public class ChangeEventHandler implements EventHandler {
         boolean filterEnabled;
         filterEnabled = FilterUtil.shouldProcessRequest(changeEvent, FilterRegistry.getAllFilters());
         if (filterEnabled) {
-          for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
+          for (Thread thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message
             if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
               EntityInterface entity;
@@ -220,7 +220,7 @@ public class ChangeEventHandler implements EventHandler {
     if (responseCode == Status.CREATED.getStatusCode()
         && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
         && !responseContext.getEntity().getClass().equals(Thread.class)) {
-      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -237,7 +237,7 @@ public class ChangeEventHandler implements EventHandler {
     // Entity was updated by either PUT .../entities or PATCH .../entities
     // Entity was soft deleted by DELETE .../entities/{id} that updated the attribute `deleted` to true
     if (changeType.equals(RestUtil.ENTITY_UPDATED) || changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
-      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -261,7 +261,7 @@ public class ChangeEventHandler implements EventHandler {
 
     // Entity was hard deleted by DELETE .../entities/{id}
     if (changeType.equals(RestUtil.ENTITY_DELETED)) {
-      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -314,7 +314,7 @@ public class ChangeEventHandler implements EventHandler {
       return Collections.emptyList(); // Cannot create a thread without entity
     }
 
-    var entityInterface = (EntityInterface) entity;
+    EntityInterface entityInterface = (EntityInterface) entity;
     if (RestUtil.ENTITY_DELETED.equals(changeType)) {
       String entityType = Entity.getEntityTypeFromClass(entity.getClass());
       // In this case, the entity itself got deleted
@@ -348,7 +348,7 @@ public class ChangeEventHandler implements EventHandler {
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, entity);
 
     // Create an automated thread
-    for (var link : messages.keySet()) {
+    for (EntityLink link : messages.keySet()) {
       threads.add(getThread(link.getLinkString(), messages.get(link), loggedInUserName));
     }
 

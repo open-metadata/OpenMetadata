@@ -19,6 +19,7 @@
       "EditTier",
       "EditCustomFields",
       "EditLineage",
+      "EditStatus",
       "EditReviewers",
       "EditTests",
       "EditQueries",
@@ -227,7 +228,8 @@
       "EditDescription",
       "EditDisplayName",
       "EditCustomFields",
-      "EditLineage"
+      "EditLineage",
+      "EditStatus"
     ]
   },
   {
@@ -441,6 +443,17 @@
   },
   {
     "name" : "webAnalyticEvent",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName"
+    ]
+  },
+  {
+    "name" : "type",
     "operations" : [
       "Create",
       "Delete",

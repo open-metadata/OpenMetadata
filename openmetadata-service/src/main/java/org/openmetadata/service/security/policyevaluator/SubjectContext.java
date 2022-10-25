@@ -224,9 +224,12 @@ public class SubjectContext {
         iterators.add(new RolePolicyIterator(Entity.USER, user.getName(), user.getRoles()));
       }
 
-      // Finally, iterate over policies of teams to which the user belongs to
-      for (EntityReference team : user.getTeams()) {
-        iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited));
+      if (!Boolean.TRUE.equals(user.getIsBot())) {
+        // Finally, iterate over policies of teams to which the user belongs to
+        // Note that ** Bots don't inherit policies or default roles from teams **
+        for (EntityReference team : user.getTeams()) {
+          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited));
+        }
       }
     }
 

@@ -39,7 +39,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -143,7 +143,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     List<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");
-    BOT_USER = getEntityByName(BOT_USER_NAME, String.join(",", userFields), ADMIN_AUTH_HEADERS);
+    BOT_USER = getEntityByName(INGESTION_BOT, String.join(",", userFields), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -725,7 +725,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void get_generateRandomPassword(TestInfo test) throws HttpResponseException {
+  void get_generateRandomPassword() throws HttpResponseException {
     String randomPwd = TestUtils.get(getResource("users/generateRandomPwd"), String.class, ADMIN_AUTH_HEADERS);
     assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
   }
@@ -787,7 +787,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void post_createUser_BasicAuth_SignUp_200_ok(TestInfo test) throws HttpResponseException {
+  void post_createUser_BasicAuth_SignUp_200_ok() throws HttpResponseException {
     // Create a user with Auth and Try Logging in
     RegistrationRequest newRegistrationRequest =
         new RegistrationRequest()

@@ -269,7 +269,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
       throws IOException {
     StorageService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, true);
+    return create(uriInfo, securityContext, service);
   }
 
   @PUT
@@ -290,7 +290,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException {
     StorageService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, true);
+    return createOrUpdate(uriInfo, securityContext, service);
   }
 
   @DELETE
@@ -317,7 +317,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           boolean hardDelete,
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private StorageService getService(CreateStorageService create, String user) throws IOException {

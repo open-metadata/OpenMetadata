@@ -226,7 +226,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void delete_recursive_validTeam_200_OK(TestInfo test) throws IOException {
+  void delete_recursive_validTeam_200_OK() throws IOException {
     //
     // Create hierarchy of business unit, division, and department under organization:
     // Organization -- has children --> [bu1], bu1 has children --> [div2], div2 has children [dep3]
@@ -391,7 +391,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     children = bu1Hierarchy.getChildren();
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
-    TeamHierarchy div12Hierarchy = children.stream().filter(t -> t.getId().equals(div12Id)).findAny().get();
+    TeamHierarchy div12Hierarchy = children.stream().filter(t -> t.getId().equals(div12Id)).findAny().orElse(null);
     assertNotNull(div12Hierarchy);
     assertEquals(1, div12Hierarchy.getChildren().size());
     assertEquals(div121.getId(), div12Hierarchy.getChildren().get(0).getId());
