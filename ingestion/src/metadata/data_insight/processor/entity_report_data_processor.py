@@ -79,7 +79,7 @@ class EntityReportDataProcessor(DataProcessor):
             return owner.name
 
         owner_fqn = owner.fullyQualifiedName
-        owner_fqn = cast(str, owner.fullyQualifiedName)  # To satisfy type checker
+        owner_fqn = cast(str, owner_fqn)  # To satisfy type checker
 
         entity_reference: Optional[User] = self.metadata.get_by_name(
             User,
@@ -255,12 +255,20 @@ class EntityReportDataProcessor(DataProcessor):
                     "`tags` attribute not supported for entity type",
                 )
 
-            data_blob_for_entity["hasOwner"] = 1 if team else 0
-            data_blob_for_entity["missingOwner"] = 0 if team else 1
-            data_blob_for_entity["completedDescriptions"] = (
-                1 if entity_description else 0
-            )
-            data_blob_for_entity["missingDescriptions"] = 0 if entity_description else 1
+            if team:
+                data_blob_for_entity["hasOwner"] = 1
+                data_blob_for_entity["missingOwner"] = 0
+            else:
+                data_blob_for_entity["hasOwner"] = 0
+                data_blob_for_entity["missingOwner"] = 1
+
+            if entity_description:
+                data_blob_for_entity["completedDescriptions"] = 1
+                data_blob_for_entity["missingDescriptions"] = 0
+            else:
+                data_blob_for_entity["completedDescriptions"] = 0
+                data_blob_for_entity["missingDescriptions"] = 1
+
             data_blob_for_entity["entityCount"] = 1
 
             data_blob_for_entity_counter = Counter(data_blob_for_entity)

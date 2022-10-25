@@ -14,7 +14,7 @@ Mixin class containing data specific methods
 To be used by OpenMetadata class
 """
 
-from typing import List
+from __future__ import annotations
 
 from metadata.generated.schema.analytics.reportData import ReportData
 
@@ -36,7 +36,7 @@ class DataInisghtMixin:
 
     def get_data_insight_report_data(
         self, start_ts: int, end_ts: int, report_data_type: str
-    ) -> dict[str, List[ReportData]]:
+    ) -> dict[str, list[ReportData]]:
         """Return dict with a list of report data given a start and end date
 
         Args:

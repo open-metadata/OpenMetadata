@@ -251,7 +251,7 @@ def print_data_insight_status(workflow) -> None:
         workflow (DataInsightWorkflow): workflow object
     """
     click.echo()
-    click.secho("Source Status:", bold=True)
+    click.secho("Processor Status:", bold=True)
     click.echo(workflow.data_processor.get_status().as_string())
     print_sink_status(workflow)
 

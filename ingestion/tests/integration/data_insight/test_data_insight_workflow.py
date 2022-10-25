@@ -22,9 +22,6 @@ import pytest
 import requests
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
-from metadata.data_insight.processor.entity_report_data_processor import (
-    EntityReportDataProcessor,
-)
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -71,7 +68,6 @@ class DataInsightWorkflowTests(unittest.TestCase):
     def test_create_method(self):
         """Test validation of the workflow config is properly happening"""
         DataInsightWorkflow.create(data_insight_config)
-        assert True
 
         with pytest.raises(ParsingConfigurationError):
             insight = deepcopy(data_insight_config)

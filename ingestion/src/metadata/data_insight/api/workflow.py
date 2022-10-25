@@ -20,13 +20,16 @@ Workflow definition for the ORM Profiler.
 from __future__ import annotations
 
 import traceback
-from typing import cast
+from typing import Union, cast
 
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.data_insight.processor.data_processor import DataProcessor
+from metadata.data_insight.processor.entity_report_data_processor import (
+    EntityReportDataProcessor,
+)
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -102,7 +105,9 @@ class DataInsightWorkflow:
     def execute(self):
         for report_data_type in ReportDataType:
             try:
-                self.data_processor: DataProcessor = DataProcessor.create(  # pylint: disable=attribute-defined-outside-init
+                self.data_processor: Union[  # pylint: disable=attribute-defined-outside-init
+                    DataProcessor, EntityReportDataProcessor
+                ] = DataProcessor.create(
                     _data_processor_type=report_data_type.value, metadata=self.metadata
                 )
                 for record in self.data_processor.process():
