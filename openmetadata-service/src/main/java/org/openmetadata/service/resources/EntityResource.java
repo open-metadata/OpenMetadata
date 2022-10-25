@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 
 import java.io.IOException;
 import java.util.List;
@@ -182,7 +184,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    OperationContext operationContext = new OperationContext(entityType, CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     entity = addHref(uriInfo, dao.create(uriInfo, entity));
     LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
@@ -191,8 +193,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
     dao.prepare(entity);
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(entity.getFullyQualifiedName()));
+
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
+    MetadataOperation operation = resourceContext.getEntity() == null ? CREATE : EDIT_ALL;
+
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
