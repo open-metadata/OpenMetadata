@@ -26,8 +26,7 @@ from pydantic import ValidationError
 
 from metadata.config.workflow import get_sink
 from metadata.data_insight.processor.data_processor import DataProcessor
-from metadata.data_insight.sink.metadata_rest import MetadataRestSink
-from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
+from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )

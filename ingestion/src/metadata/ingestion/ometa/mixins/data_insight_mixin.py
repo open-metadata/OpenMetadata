@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 
 from typing import List
 
-from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
+from metadata.generated.schema.analytics.reportData import ReportData
 
 
 class DataInisghtMixin:

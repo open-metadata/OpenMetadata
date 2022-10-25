@@ -230,7 +230,7 @@ class EntityReportDataProcessor(DataProcessor):
             except AttributeError:
                 entity_tier = None
                 logger.warning(
-                    f"`tags` attribute not supported for entity type {entity.__class__.__name__}"  # pylint: disable=protected-access
+                    f"`tags` attribute not supported for entity type {entity.__class__.__name__}"
                 )
             entity_description = self._check_entity_description(entity)
 
