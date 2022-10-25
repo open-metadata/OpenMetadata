@@ -166,10 +166,10 @@ class QueryParserTests(TestCase):
         Validate query cleaning logic
         """
         query = """
-            merge into table_1 using (select a, b from table_2) when matched update set t.a = 'value' 
+            /* comment */ merge into table_1 using (select a, b from table_2) when matched update set t.a = 'value' 
             when not matched then insert (table_1.a, table_2.b) values ('value1', 'value2')
         """
         self.assertEqual(
             clean_raw_query(query),
-            "merge into table_1 using (select a, b from table_2)",
+            "/* comment */ merge into table_1 using (select a, b from table_2)",
         )
