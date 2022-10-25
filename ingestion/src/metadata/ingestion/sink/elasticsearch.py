@@ -158,6 +158,8 @@ class ElasticsearchSink(Sink[Entity]):
         config = ElasticSearchConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
+    # to be fix in https://github.com/open-metadata/OpenMetadata/issues/8352
+    # pylint: disable=too-many-branches
     def __init__(
         self,
         config: ElasticSearchConfig,
