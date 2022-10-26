@@ -21,7 +21,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +41,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 
 @ExtendWith(MockitoExtension.class)
@@ -105,21 +103,16 @@ public abstract class ServiceResourceTest<
       throws IOException {
     lenient().when(secretsManager.isLocal()).thenReturn(isLocalSecretManager);
 
-    if (isLocalSecretManager && !isAdmin && !isBot) {
-      lenient()
-          .doThrow(new AuthorizationException(""))
-          .when(authorizer)
-          .authorizeAdmin(any(SecurityContext.class), eq(true));
-    } else if (!isLocalSecretManager && !isAdmin) {
-      lenient()
-          .doThrow(new AuthorizationException(""))
-          .when(authorizer)
-          .authorizeAdmin(any(SecurityContext.class), eq(false));
+    if (isAdmin) {
+      lenient().doReturn(true).when(authorizer).decryptSecret(any(SecurityContext.class));
+    } else if (isLocalSecretManager && isBot) {
+      lenient().doReturn(true).when(authorizer).decryptSecret(any(SecurityContext.class));
+    } else {
+      lenient().doReturn(false).when(authorizer).decryptSecret(any(SecurityContext.class));
     }
 
     R actual = callGetFromResource(serviceResource);
 
-    verify(secretsManager, times(1)).isLocal();
     verify(secretsManager)
         .encryptOrDecryptServiceConnectionConfig(
             notNull(), eq(serviceConnectionType()), any(), eq(serviceType()), eq(false));

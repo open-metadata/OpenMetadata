@@ -22,6 +22,7 @@ import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceTyp
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdminOrBot;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -229,12 +230,35 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {
+  public void authorizeAdmin(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+    if (subjectContext.isAdmin()) {
       return;
     }
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
+  }
+
+  @Override
+  public void authorizeAdminOrBot(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      return;
+    }
+    throw new AuthorizationException(notAdminOrBot(securityContext.getUserPrincipal().getName()));
+  }
+
+  @Override
+  public boolean decryptSecret(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin()) { // Always decrypt secrets for admin
+      return true;
+    }
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (subjectContext.isBot() && secretsManager.isLocal()) {
+      // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
+      return true;
+    }
+    return false;
   }
 
   private void addUsers(Set<String> users, String domain, Boolean isAdmin) {

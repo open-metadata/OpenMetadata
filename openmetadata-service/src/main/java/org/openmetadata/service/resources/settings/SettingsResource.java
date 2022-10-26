@@ -245,7 +245,6 @@ public class SettingsResource {
           @PathParam("entityName")
           String entityName,
       @Valid List<Filters> newFilter) {
-    authorizer.authorizeAdmin(securityContext, false);
     return settingsRepository.updateEntityFilter(entityName, newFilter);
   }
 

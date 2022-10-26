@@ -125,7 +125,7 @@ public class BuildSearchIndexResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventPublisherJob createRequest)
       throws IOException {
     // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     User user =
         userRepository.getByName(null, securityContext.getUserPrincipal().getName(), userRepository.getFields("id"));
     if (createRequest.getRunMode() == RunMode.BATCH) {
@@ -150,7 +150,7 @@ public class BuildSearchIndexResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("runMode") String runMode)
       throws IOException {
     // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     // Check if there is a running job for reindex for requested entity
     String record;
     if (runMode.equals(RunMode.BATCH.toString())) {

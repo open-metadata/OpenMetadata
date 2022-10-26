@@ -82,6 +82,7 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -90,6 +91,7 @@ import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
@@ -418,12 +420,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   private CreateUser createBotUserRequest(TestInfo test, int index) {
-    return createRequest(test, index)
-        .withIsBot(true)
-        .withAuthenticationMechanism(
-            new AuthenticationMechanism()
-                .withAuthType(AuthenticationMechanism.AuthType.JWT)
-                .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
+    return createBotUserRequest(getEntityName(test, index));
   }
 
   @Test
@@ -685,21 +682,18 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Test
   void put_generateToken_bot_user_200_ok(TestInfo test) throws HttpResponseException {
-    User user =
-        createEntity(
-            createRequest(test, 6)
-                .withName("ingestion-bot-jwt")
-                .withDisplayName("ingestion-bot-jwt")
-                .withEmail("ingestion-bot-jwt@email.com")
-                .withIsBot(true)
-                .withAuthenticationMechanism(
-                    new AuthenticationMechanism()
-                        .withAuthType(AuthenticationMechanism.AuthType.SSO)
-                        .withConfig(
-                            new SSOAuthMechanism()
-                                .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
-                                .withAuthConfig(new GoogleSSOClientConfig().withSecretKey("/path/to/secret.json")))),
-            authHeaders("ingestion-bot-jwt@email.com"));
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthType.SSO)
+            .withConfig(
+                new SSOAuthMechanism()
+                    .withSsoServiceType(SsoServiceType.GOOGLE)
+                    .withAuthConfig(new GoogleSSOClientConfig().withSecretKey("/path/to/secret.json")));
+    CreateUser create =
+        createBotUserRequest("ingestion-bot-jwt")
+            .withEmail("ingestion-bot-jwt@email.com")
+            .withAuthenticationMechanism(authMechanism);
+    User user = createEntity(create, authHeaders("ingestion-bot-jwt@email.com"));
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
         new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
@@ -865,14 +859,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     BotResourceTest botResourceTest = new BotResourceTest();
     String botName = "test-bot-user-fail";
     // create bot user
-    CreateUser createBotUser = creatBotUserRequest("test-bot-user", true).withBotName(botName);
+    CreateUser createBotUser = createBotUserRequest("test-bot-user").withBotName(botName);
     User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
     EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
     // assign bot user to a bot
     CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
     botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     // put user with a different bot name
-    CreateUser createWrongBotUser = creatBotUserRequest("test-bot-user", true).withBotName("test-bot-user-fail-2");
+    CreateUser createWrongBotUser = createBotUserRequest("test-bot-user").withBotName("test-bot-user-fail-2");
     assertResponse(
         () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -884,14 +878,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     BotResourceTest botResourceTest = new BotResourceTest();
     String botName = "test-bot-ok";
     // create bot user
-    CreateUser createBotUser = creatBotUserRequest("test-bot-user-ok", true).withBotName(botName);
+    CreateUser createBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);
     User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
     EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
     // assign bot user to a bot
     CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
     botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     // put again user with same bot name
-    CreateUser createDifferentBotUser = creatBotUserRequest("test-bot-user-ok", true).withBotName(botName);
+    CreateUser createDifferentBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);
     updateEntity(createDifferentBotUser, OK, ADMIN_AUTH_HEADERS);
     assertNotNull(createDifferentBotUser);
   }
@@ -1044,19 +1038,18 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     return String.join(",", allowedFields);
   }
 
-  public User createUser(String botName, boolean isBot) {
+  public User createUser(String userName, boolean isBot) {
     try {
-      CreateUser createUser = creatBotUserRequest(botName, isBot);
+      CreateUser createUser = createBotUserRequest(userName).withIsBot(isBot);
       return createEntity(createUser, ADMIN_AUTH_HEADERS);
     } catch (Exception ignore) {
       return null;
     }
   }
 
-  private CreateUser creatBotUserRequest(String botUserName, boolean isBot) {
+  private CreateUser createBotUserRequest(String botUserName) {
     return createRequest(botUserName, "", "", null)
-        .withIsBot(isBot)
-        .withIsAdmin(false)
+        .withIsBot(true)
         .withAuthenticationMechanism(
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.JWT)
