@@ -92,6 +92,23 @@ Then, check the Connector Modules guide above to learn how to install the `openm
 necessary plugins. They are necessary because even if we install the APIs, the Airflow instance needs to have the
 required libraries to connect to each source.
 
+### AIRFLOW_HOME
+
+The APIs will look for the `AIRFLOW_HOME` environment variable to place the dynamically generated DAGs. Make
+sure that the variable is set and reachable from Airflow.
+
+### Airflow APIs Basic Auth
+
+Note that the integration of OpenMetadata with Airflow requires Basic Auth in the APIs. Make sure that your
+Airflow configuration supports that. You can read more about it [here](https://airflow.apache.org/docs/apache-airflow/stable/security/api.html).
+
+A possible approach here is to update your `airflow.cfg` entries with:
+
+```
+[api]
+auth_backends = airflow.api.auth.backend.basic_auth
+```
+
 ### Configure in the OpenMetadata Server
 
 After installing the Airflow APIs, you will need to update your OpenMetadata Server.
@@ -134,50 +151,23 @@ It is important to do this validation passing the command as is (i.e., `curl -XG
 and allowing the environment to do the substitution for you. That's the only way we can be sure that the setup is
 correct.
 
-#### Adding SSO
+#### More validations in the installation
 
-If you are running OpenMetadata with the security enabled, you can take a look at the server
-configuration for each security mode:
+If you have an existing DAG in Airflow, you can further test your setup by running the following:
 
-<InlineCalloutContainer>
-  <InlineCallout
-    color="violet-70"
-    bold="Auth0 SSO"
-    icon="add_moderator"
-    href="/deployment/security/auth0"
-  >
-    Configure Auth0 SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Azure SSO"
-    icon="add_moderator"
-    href="/deployment/security/azure"
-  >
-    Configure Azure SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Custom OIDC SSO"
-    icon="add_moderator"
-    href="/deployment/security/custom-oidc"
-  >
-    Configure a Custom OIDC SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Google SSO"
-    icon="add_moderator"
-    href="/deployment/security/google"
-  >
-    Configure Google SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Okta SSO"
-    icon="add_moderator"
-    href="/deployment/security/okta"
-  >
-    Configure Okta SSO to access the UI and APIs
-  </InlineCallout>
-</InlineCalloutContainer>
+```bash
+curl -XPOST http://localhost:8080/api/v1/openmetadata/enable --data-raw '{"dag_id": "example_bash_operator"}' -u "admin:admin" --header 'Content-Type: application/json'
+```
+
+Note that in this example we are assuming:
+- There is an Airflow instance running at `localhost:8080`,
+- There is a user `admin` with password `admin`
+- There is a DAG named `example_bash_operator`.
+
+A generic call would look like:
+
+```bash
+curl -XPOST <AIRFLOW_HOST>/api/v1/openmetadata/enable --data-raw '{"dag_id": "<DAG name>"}' -u "<user>:<password>" --header 'Content-Type: application/json'
+```
+
+Please update it accordingly.
