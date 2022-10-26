@@ -60,7 +60,7 @@ def clean_raw_query(raw_query: str) -> str:
         replace_by=" ",
     )
 
-    if insensitive_match(clean_query, "merge into .*when matched.*"):
+    if insensitive_match(clean_query, ".*merge into .*when matched.*"):
         clean_query = insensitive_replace(
             raw_str=clean_query,
             to_replace="when matched.*",  # merge into queries specific
