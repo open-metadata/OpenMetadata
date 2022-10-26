@@ -78,15 +78,16 @@ class DomopipelineSource(PipelineServiceSource):
 
     def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
         try:
-            pipeline_name = pipeline_details["name"]
+            pipeline_name = pipeline_details["id"]
             task = Task(
                 name=pipeline_name,
-                displayName=pipeline_name,
+                displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
             )
 
             pipeline_yield = CreatePipelineRequest(
                 name=pipeline_name,
+                displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
                 tasks=[task],
                 service=EntityReference(
@@ -118,9 +119,17 @@ class DomopipelineSource(PipelineServiceSource):
         return
 
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
-        pipeline_name = pipeline_details["name"]
-        runs = self.client.get_runs(pipeline_details["id"])
+
+        pipeline_id = pipeline_details.get("id")
+        if not pipeline_id:
+            logger.debug(
+                f"Could not extract ID from {pipeline_details} while getting status."
+            )
+            return None
+
+        runs = self.client.get_runs(pipeline_id)
         try:
+
             for run in runs or []:
 
                 start_time = run["beginTime"] // 1000 if run.get("beginTime") else None
@@ -128,7 +137,7 @@ class DomopipelineSource(PipelineServiceSource):
                 run_state = run.get("state", "Pending")
 
                 task_status = TaskStatus(
-                    name=pipeline_name,
+                    name=pipeline_id,
                     executionStatus=STATUS_MAP.get(
                         run_state.lower(), StatusType.Pending.value
                     ),
@@ -149,9 +158,11 @@ class DomopipelineSource(PipelineServiceSource):
                     pipeline_status=pipeline_status,
                 )
         except KeyError as err:
-            logger.error(f"Error extracting status data for {pipeline_name} - {err}")
+            logger.error(f"Error extracting status data for {pipeline_id} - {err}")
             logger.debug(traceback.format_exc())
 
         except Exception as err:
-            logger.error(f"Wild error extracting status for {pipeline_name} - {err}")
+            logger.error(f"Wild error extracting status for {pipeline_id} - {err}")
             logger.debug(traceback.format_exc())
+
+        return None
