@@ -7,15 +7,15 @@
       "dataInsightConfigType": {
         "description": "Pipeline Source Config Metadata Pipeline type",
         "type": "string",
-        "enum": ["DataInsight"],
-        "default": "DataInsight"
+        "enum": ["dataInsight"],
+        "default": "dataInsight"
       }
     },
     "properties": {
       "type": {
         "description": "Pipeline type",
         "$ref": "#/definitions/dataInsightConfigType",
-        "default": "DataInsight"
+        "default": "dataInsight"
       }
     },
     "required": ["type"],

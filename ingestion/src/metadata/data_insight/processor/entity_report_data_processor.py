@@ -18,8 +18,7 @@ from __future__ import annotations
 import ast
 import traceback
 from collections import Counter, defaultdict
-from functools import singledispatchmethod
-from typing import Iterable, Optional, TypeVar, Union, cast
+from typing import Iterable, Optional, TypeVar, cast
 
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -38,7 +37,7 @@ from metadata.generated.schema.entity.data import (
 )
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
 
 logger = data_insight_logger()
@@ -97,25 +96,6 @@ class EntityReportDataProcessor(DataProcessor):
 
         return None
 
-    def _get_entity_tier(self, tags: list[TagLabel]) -> Optional[str]:
-        """_summary_
-
-        Args:
-            tags (list[TagLabel]): list of tags
-
-        Returns:
-            Optional[str]
-        """
-        return next(
-            (
-                tag.tagFQN.__root__
-                for tag in tags
-                if tag.tagFQN.__root__.lower().startswith("tier")
-            ),
-            None,
-        )
-
-    @singledispatchmethod
     def _check_entity_description(self, entity: T):
         """dispatch function
 
@@ -125,60 +105,19 @@ class EntityReportDataProcessor(DataProcessor):
         Raises:
             TypeError: if single dispatch not implemented for the class
         """
-        raise TypeError(
-            f"Could not get description for {entity.__class__.__name__}."
-            f"Type {type(entity.__class__.__name__)} not supported."
-        )
+        if isinstance(entity, table.Table):
+            if not entity.description:
+                return False
 
-    @_check_entity_description.register(dashboard.Dashboard)
-    @_check_entity_description.register(chart.Chart)
-    @_check_entity_description.register(database.Database)
-    @_check_entity_description.register(databaseSchema.DatabaseSchema)
-    @_check_entity_description.register(mlmodel.MlModel)
-    @_check_entity_description.register(pipeline.Pipeline)
-    @_check_entity_description.register(topic.Topic)
-    def _(
-        self,
-        entity: Union[
-            dashboard.Dashboard,
-            chart.Chart,
-            database.Database,
-            databaseSchema.DatabaseSchema,
-            mlmodel.MlModel,
-            pipeline.Pipeline,
-            topic.Topic,
-        ],
-    ) -> bool:
-        """Get description for dashboard entity
+            for column in entity.columns:
+                if not column.description:
+                    return False
 
-        Args:
-            entity (dashboard.Dashboard): entity
+            return True
 
-        Returns:
-            bool:
-        """
         if entity.description:
             return True
         return False
-
-    @_check_entity_description.register(table.Table)
-    def _(self, entity: table.Table) -> bool:
-        """Get description for table entity
-
-        Args:
-            entity (table.Table): entity
-
-        Returns:
-            bool:
-        """
-        if not entity.description:
-            return False
-
-        for column in entity.columns:
-            if not column.description:
-                return False
-
-        return True
 
     def _flatten_results(self, data: dict) -> Iterable[ReportData]:
         items = {}
@@ -231,7 +170,7 @@ class EntityReportDataProcessor(DataProcessor):
             data_blob_for_entity = {}
             team = self._get_team(entity.owner)
             try:
-                entity_tier = self._get_entity_tier(entity.tags)
+                entity_tier = get_entity_tier_from_tags(entity.tags)
             except AttributeError:
                 entity_tier = None
                 logger.warning(

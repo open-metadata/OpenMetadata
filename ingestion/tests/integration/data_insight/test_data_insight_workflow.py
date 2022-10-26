@@ -33,7 +33,7 @@ data_insight_config = {
     "source": {
         "type": "dataInsight",
         "serviceName": "dataInsightWorkflow",
-        "sourceConfig": {"config": {"type": "DataInsight"}},
+        "sourceConfig": {"config": {"type": "dataInsight"}},
     },
     "processor": {"type": "data-insight-processor", "config": {}},
     "sink": {

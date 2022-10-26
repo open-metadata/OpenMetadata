@@ -20,7 +20,7 @@ Workflow definition for the ORM Profiler.
 from __future__ import annotations
 
 import traceback
-from typing import Union, cast
+from typing import Optional, Union, cast
 
 from pydantic import ValidationError
 
@@ -62,6 +62,7 @@ class DataInsightWorkflow:
         self.metadata = OpenMetadata(self.metadata_config)
 
         self.status = ProcessorStatus()
+        self.data_processor: Optional[Union[DataProcessor, EntityReportDataProcessor]] = None
 
         if self.config.sink:
             self.sink = get_sink(
@@ -105,9 +106,7 @@ class DataInsightWorkflow:
     def execute(self):
         for report_data_type in ReportDataType:
             try:
-                self.data_processor: Union[  # pylint: disable=attribute-defined-outside-init
-                    DataProcessor, EntityReportDataProcessor
-                ] = DataProcessor.create(
+                self.data_processor = DataProcessor.create(
                     _data_processor_type=report_data_type.value, metadata=self.metadata
                 )
                 for record in self.data_processor.process():
@@ -125,17 +124,17 @@ class DataInsightWorkflow:
                 )
 
     def raise_from_status(self, raise_warnings=False):
-        if self.data_processor.get_status().failures:
+        if self.data_processor and self.data_processor.get_status().failures:
             raise WorkflowExecutionError(
                 "Source reported errors", self.data_processor.get_status()
             )
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
         if raise_warnings and (
-            self.data_processor.get_status().warnings or self.sink.get_status().warnings
+            (self.data_processor and self.data_processor.get_status().warnings) or self.sink.get_status().warnings
         ):
             raise WorkflowExecutionError(
-                "Source reported warnings", self.data_processor.get_status()
+                "Source reported warnings", self.data_processor.get_status() if self.data_processor else None
             )
 
     def print_status(self) -> None:
@@ -146,7 +145,7 @@ class DataInsightWorkflow:
         Returns 1 if status is failed, 0 otherwise.
         """
         if (
-            self.data_processor.get_status().failures
+            (self.data_processor and self.data_processor.get_status().failures)
             or self.status.failures
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
