@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import axios from 'axios';
-import Qs from 'qs';
+import { JsonTree } from 'react-awesome-query-builder';
+import { SearchIndex } from '../../enums/search.enum';
 
-const axiosClient = axios.create({
-  baseURL: '/api/v1',
-  paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'repeat' }),
-});
+export interface AdvancedSearchProps {
+  jsonTree: JsonTree | undefined;
+  searchIndex: SearchIndex;
+  onChangeJsonTree: (tree: JsonTree) => void;
+  onChangeQueryFilter: (
+    queryFilter: Record<string, unknown> | undefined
+  ) => void;
+}
 
-export default axiosClient;
+export type FilterObject = Record<string, string[]>;
