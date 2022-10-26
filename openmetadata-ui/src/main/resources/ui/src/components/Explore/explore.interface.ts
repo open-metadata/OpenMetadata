@@ -11,53 +11,50 @@
  *  limitations under the License.
  */
 
-import { JsonTree } from 'react-awesome-query-builder';
-import { SearchIndex } from '../../enums/search.enum';
-import { SearchResponse } from '../../interface/search.interface';
-import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
+import { FilterObject, SearchResponse } from 'Models';
 
 export type UrlParams = {
   searchQuery: string;
   tab: string;
 };
 
-export type ExploreSearchIndex =
-  | SearchIndex.TABLE
-  | SearchIndex.PIPELINE
-  | SearchIndex.DASHBOARD
-  | SearchIndex.MLMODEL
-  | SearchIndex.TOPIC;
-
-export type SearchHitCounts = Record<ExploreSearchIndex, number>;
+export type ExploreSearchData = {
+  resSearchResults: SearchResponse;
+  resAggServiceType: SearchResponse;
+  resAggTier: SearchResponse;
+  resAggTag: SearchResponse;
+  resAggDatabase: SearchResponse;
+  resAggDatabaseSchema: SearchResponse;
+  resAggServiceName: SearchResponse;
+};
 
 export interface ExploreProps {
-  tabCounts?: SearchHitCounts;
-
-  searchResults?: SearchResponse<ExploreSearchIndex>;
-
-  advancedSearchJsonTree?: JsonTree;
-  onChangeAdvancedSearchJsonTree: (jsonTree: JsonTree | undefined) => void;
-  onChangeAdvancedSearchQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined
-  ) => void;
-
-  postFilter?: FilterObject;
-  onChangePostFilter: (filter: FilterObject) => void;
-
-  searchIndex: ExploreSearchIndex;
-  onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
-
+  tabCounts: TabCounts;
+  searchText: string;
+  initialFilter?: FilterObject;
+  searchFilter?: FilterObject;
   sortValue: string;
-  onChangeSortValue: (sortValue: string) => void;
-
-  sortOrder: string;
-  onChangeSortOder: (sortOder: string) => void;
-
+  tab: string;
+  searchQuery: string;
   showDeleted: boolean;
-  onChangeShowDeleted: (showDeleted: boolean) => void;
+  isFilterSelected: boolean;
+  fetchCount: () => void;
+  handleFilterChange: (data: FilterObject) => void;
+  handlePathChange: (path: string) => void;
+  handleSearchText?: (text: string) => void;
+  onShowDeleted: (checked: boolean) => void;
+  handleTabCounts: (value: { [key: string]: number }) => void;
+}
 
-  page?: number;
-  onChangePage?: (page: number) => void;
+export interface AdvanceField {
+  key: string;
+  value: string | undefined;
+}
 
-  loading?: boolean;
+export interface TabCounts {
+  table: number;
+  topic: number;
+  dashboard: number;
+  pipeline: number;
+  mlmodel: number;
 }

@@ -14,14 +14,7 @@
 import { findAllByTestId, findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import {
-  INITIAL_SORT_FIELD,
-  INITIAL_SORT_ORDER,
-} from '../../constants/explore.constants';
-import { SearchIndex } from '../../enums/search.enum';
-import { mockResponse } from './exlore.mock';
 import Explore from './Explore.component';
-
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useLocation: jest
@@ -56,8 +49,16 @@ jest.mock('../../components/searched-data/SearchedData', () => {
     ));
 });
 
+jest.mock('../../components/common/facetfilter/FacetFilter', () =>
+  jest.fn().mockImplementation(() => <div>FacetFilter</div>)
+);
+
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  searchData: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
 jest.mock(
-  '../containers/PageLayout',
+  '../containers/PageLayoutV1',
   () =>
     ({
       children,
@@ -69,7 +70,7 @@ jest.mock(
       leftPanel: React.ReactNode;
     }) =>
       (
-        <div data-testid="PageLayout">
+        <div data-testid="PageLayoutV1">
           <div data-testid="left-panel-content">{leftPanel}</div>
           <div data-testid="right-panel-content">{rightPanel}</div>
           {children}
@@ -83,31 +84,31 @@ describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <Explore
-        showDeleted
-        searchIndex={SearchIndex.TABLE}
-        searchResults={mockResponse}
-        sortOrder={INITIAL_SORT_ORDER}
-        sortValue={INITIAL_SORT_FIELD}
+        isFilterSelected
+        fetchCount={mockFunction}
+        handleFilterChange={mockFunction}
+        handlePathChange={mockFunction}
+        handleSearchText={mockFunction}
+        handleTabCounts={mockFunction}
+        searchQuery=""
+        searchText=""
+        showDeleted={false}
+        sortValue=""
+        tab=""
         tabCounts={{
-          [SearchIndex.TABLE]: 15,
-          [SearchIndex.TOPIC]: 2,
-          [SearchIndex.DASHBOARD]: 8,
-          [SearchIndex.PIPELINE]: 5,
-          [SearchIndex.MLMODEL]: 2,
+          table: 15,
+          topic: 2,
+          dashboard: 8,
+          pipeline: 5,
+          mlmodel: 2,
         }}
-        onChangeAdvancedSearchJsonTree={mockFunction}
-        onChangeAdvancedSearchQueryFilter={mockFunction}
-        onChangePostFilter={mockFunction}
-        onChangeSearchIndex={mockFunction}
-        onChangeShowDeleted={mockFunction}
-        onChangeSortOder={mockFunction}
-        onChangeSortValue={mockFunction}
+        onShowDeleted={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const pageContainer = await findByTestId(container, 'PageLayout');
+    const pageContainer = await findByTestId(container, 'PageLayoutV1');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
     const tabs = await findAllByTestId(container, /tab/i);

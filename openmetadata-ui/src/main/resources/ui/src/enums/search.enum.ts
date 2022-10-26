@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+export enum FilterType {
+  TAGS = 'tags',
+  PLATFORM = 'platform',
+  CLUSTER = 'cluster',
+}
+
 export enum SearchIndex {
   TABLE = 'table_search_index',
   TOPIC = 'topic_search_index',
@@ -22,11 +28,3 @@ export enum SearchIndex {
   MLMODEL = 'mlmodel_search_index',
   TAG = 'tag_search_index',
 }
-
-export const GENERAL_SEARCH_INDEX = [
-  SearchIndex.DASHBOARD,
-  SearchIndex.TABLE,
-  SearchIndex.TOPIC,
-  SearchIndex.PIPELINE,
-  SearchIndex.MLMODEL,
-];

@@ -13,30 +13,30 @@
 
 import { Dropdown, Menu } from 'antd';
 import React, { FC } from 'react';
+import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { normalLink } from '../../utils/styleconstant';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
+import { AdvanceField } from '../Explore/explore.interface';
 
 interface Props {
-  sortField: string;
-  fieldList: Array<{ name: string; value: string }>;
-  handleFieldDropDown: (value: string) => void;
+  index: string;
+  selectedItems: Array<AdvanceField>;
+  onSelect: (filter: string) => void;
 }
 
-const SortingDropDown: FC<Props> = ({
-  fieldList,
-  handleFieldDropDown,
-  sortField,
+const AdvancedSearchDropDown: FC<Props> = ({
+  index,
+  onSelect,
+  selectedItems,
 }) => {
-  const items = fieldList.map((field) => ({
-    label: field.name,
-    key: field.value,
-    onClick: () => handleFieldDropDown(field.value),
+  const items = getDropDownItems(index).map((item) => ({
+    ...item,
+    onClick: () => onSelect(item.key),
+    disabled: selectedItems.some((i) => item.key === i.key),
     'data-testid': 'dropdown-menu-item',
   }));
 
   const menu = <Menu data-testid="dropdown-menu" items={items} />;
-
-  const label = fieldList.find((field) => field.value === sortField)?.name;
 
   return (
     <Dropdown
@@ -45,11 +45,11 @@ const SortingDropDown: FC<Props> = ({
       overlay={menu}
       trigger={['click']}>
       <div className="tw-text-primary" data-testid="dropdown-label">
-        <span className="tw-mr-2">{label}</span>
-        <DropDownIcon style={{ color: normalLink, margin: '0px' }} />
+        <span className="tw-mr-2">Advanced Search</span>
+        <DropdownIcon style={{ color: normalLink, margin: '0px' }} />
       </div>
     </Dropdown>
   );
 };
 
-export default SortingDropDown;
+export default AdvancedSearchDropDown;
