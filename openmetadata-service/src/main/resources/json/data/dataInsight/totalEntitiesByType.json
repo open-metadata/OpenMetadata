@@ -1,0 +1,13 @@
+{
+  "name": "percentageOfEntitiesWithOwnerByType",
+  "displayName": "Percentage of Entities With Owner",
+  "description": "Display the percentage of entities with owner by type.",
+  "dataIndexType": "entity_report_data_index",
+  "dimensions": [
+    {"name": "timestamp","dataType":"INT"},
+    {"name": "entityType", "displayName": "Entity Tier", "dataType": "STRING"}
+  ],
+  "metrics": [
+    {"name": "entityCountFraction", "displayName": "Percentage of Entity", "dataType": "FLOAT"}
+  ]
+}

@@ -44,6 +44,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.datatInsight.DataInsightChart;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
@@ -225,6 +226,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   WebAnalyticEventDAO webAnalyticEventDAO();
+
+  @CreateSqlObject
+  DataInsightChartDAO dataInsightChartDAO();
 
   @CreateSqlObject
   UtilDAO utilDAO();
@@ -2951,6 +2955,23 @@ public interface CollectionDAO {
     @Override
     default Class<WebAnalyticEvent> getEntityClass() {
       return WebAnalyticEvent.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+  }
+
+  interface DataInsightChartDAO extends EntityDAO<DataInsightChart> {
+    @Override
+    default String getTableName() {
+      return "data_insight_chart";
+    }
+
+    @Override
+    default Class<DataInsightChart> getEntityClass() {
+      return DataInsightChart.class;
     }
 
     @Override

@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/datatInsight/datatInsightChartResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatatInsightChartResult",
+  "description": "DatatInsightChartResult represents data that will be consummed by a specific chart",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.datatInsight.DatatInsightChartResult",
+  "definitions": {
+    "dataInsightChartType": {
+      "description": "chart type. Must match `name` of a `dataInsightChartDefinition`.",
+      "type": "string",
+      "enum": [
+        "totalEntitiesByType",
+        "totalEntitiesByTier",
+        "percentageOfEntitiesWithDescriptionByType",
+        "percentageOfEntitiesWithOwnerByType"
+      ]
+    }
+  },
+  "properties": {
+    "chartType": {
+      "description": "Chart Type that will consume the data.",
+      "$ref": "#/definitions/dataInsightChartType"
+    },
+    "data": {
+      "description": "Array of consumable data.",
+      "type": "array",
+      "oneOf": [
+        {"$ref": "./type/percentageOfEntitiesWithDescriptionByType.json"},
+        {"$ref": "./type/percentageOfEntitiesWithOwnerByType.json"},
+        {"$ref": "./type/totalEntitiesByTier.json"},
+        {"$ref": "./type/totalEntitiesByType.json"}
+      ]
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}
