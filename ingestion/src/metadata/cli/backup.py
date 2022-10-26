@@ -14,6 +14,7 @@ Backup utility for the metadata CLI
 """
 import traceback
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -23,7 +24,12 @@ from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import cli_logger
-from metadata.utils.upload_destination_type import Upload_Destination_Type
+
+
+class UploadDestinationType(Enum):
+    AWS = "AWS"
+    AZURE = "Azure"
+
 
 logger = cli_logger()
 
@@ -111,6 +117,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
 
     try:
         from azure.identity import DefaultAzureCredential
+        from azure.storage.blob import BlobServiceClient
 
         default_credential = DefaultAzureCredential()
         # Create the BlobServiceClient object
@@ -156,7 +163,7 @@ def run_backup(  # pylint: disable=too-many-arguments
     database: str,
     port: str,
     output: Optional[str],
-    upload_destination_type: Optional[Upload_Destination_Type],
+    upload_destination_type: Optional[UploadDestinationType],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
@@ -195,10 +202,10 @@ def run_backup(  # pylint: disable=too-many-arguments
     )
 
     if upload:
-        if upload_destination_type is Upload_Destination_Type.AWS:
+        if upload_destination_type == UploadDestinationType.AWS.value:
             endpoint, bucket, key = upload
             upload_backup_aws(endpoint, bucket, key, out)
-        elif upload_destination_type is Upload_Destination_Type.AZURE:
+        elif upload_destination_type == UploadDestinationType.AZURE.value:
             # only need two parameters from upload, key would be null
             account_url, container, key = upload
             upload_backup_azure(account_url, container, out)

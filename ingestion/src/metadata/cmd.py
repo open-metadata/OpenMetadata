@@ -21,9 +21,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
 import click
+import const
 
 from metadata.__version__ import get_metadata_version
-from metadata.cli.backup import run_backup
+from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.docker import BACKEND_DATABASES, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.cli.openmetadata_imports_migration import (
@@ -34,7 +35,6 @@ from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
-from metadata.utils.upload_destination_type import Upload_Destination_Type
 from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
@@ -322,7 +322,7 @@ def backup(
     database: str,
     port: str,
     output: Optional[str],
-    upload_destination_type: Optional[Upload_Destination_Type],
+    upload_destination_type: Optional[UploadDestinationType],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
