@@ -13,14 +13,17 @@
 Helpers module for ingestion related methods
 """
 
+from __future__ import annotations
+
 import re
 from datetime import datetime, timedelta
 from functools import wraps
 from time import perf_counter
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -78,7 +81,7 @@ def calculate_execution_time_generator(func):
     return calculate_debug_time
 
 
-def pretty_print_time_duration(duration: int) -> str:
+def pretty_print_time_duration(duration: Union[int, float]) -> str:
     """
     Method to format and display the time
     """
@@ -262,3 +265,22 @@ def insensitive_match(raw_str: str, to_match: str) -> bool:
     """
 
     return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None
+
+
+def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
+    """_summary_
+
+    Args:
+        tags (list[TagLabel]): list of tags
+
+    Returns:
+        Optional[str]
+    """
+    return next(
+        (
+            tag.tagFQN.__root__
+            for tag in tags
+            if tag.tagFQN.__root__.lower().startswith("tier")
+        ),
+        None,
+    )

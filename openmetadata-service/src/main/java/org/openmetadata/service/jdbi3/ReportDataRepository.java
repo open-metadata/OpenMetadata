@@ -6,6 +6,7 @@ import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -33,13 +34,14 @@ public class ReportDataRepository {
     return Response.ok(reportData).build();
   }
 
-  public ResultList<ReportData> getReportData(String reportDataType, Long startTs, Long endTs) throws IOException {
+  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs)
+      throws IOException {
     List<ReportData> reportData;
     reportData =
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(reportDataType, REPORT_DATA_EXTENSION, startTs, endTs),
+                .listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
             ReportData.class);
 
     return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());
