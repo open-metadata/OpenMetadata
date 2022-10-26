@@ -144,6 +144,7 @@ public class SettingsResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
   public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext, false);
     return settingsRepository.listAllConfigs();
   }
 
@@ -161,6 +162,7 @@ public class SettingsResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
   public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext, false);
     return bootStrappedFilters;
   }
 
@@ -178,6 +180,7 @@ public class SettingsResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
   public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext, false);
     Settings settings =
         new Settings().withConfigType(ACTIVITY_FEED_FILTER_SETTING).withConfigValue(bootStrappedFilters);
     return settingsRepository.createNewSetting(settings);
@@ -200,6 +203,7 @@ public class SettingsResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("settingName") String settingName) {
+    authorizer.authorizeAdmin(securityContext, false);
     return settingsRepository.getConfigWithKey(settingName);
   }
 
@@ -217,6 +221,7 @@ public class SettingsResource {
       })
   public Response createOrUpdateSetting(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Settings settingName) {
+    authorizer.authorizeAdmin(securityContext, false);
     return settingsRepository.createOrUpdate(settingName);
   }
 
@@ -267,6 +272,7 @@ public class SettingsResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext, false);
     return settingsRepository.patchSetting(settingName, patch);
   }
 }
