@@ -21,9 +21,9 @@ from functools import wraps
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -265,6 +265,7 @@ def insensitive_match(raw_str: str, to_match: str) -> bool:
     """
 
     return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None
+
 
 def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     """_summary_

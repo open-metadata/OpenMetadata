@@ -62,7 +62,9 @@ class DataInsightWorkflow:
         self.metadata = OpenMetadata(self.metadata_config)
 
         self.status = ProcessorStatus()
-        self.data_processor: Optional[Union[DataProcessor, EntityReportDataProcessor]] = None
+        self.data_processor: Optional[
+            Union[DataProcessor, EntityReportDataProcessor]
+        ] = None
 
         if self.config.sink:
             self.sink = get_sink(
@@ -131,10 +133,12 @@ class DataInsightWorkflow:
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
         if raise_warnings and (
-            (self.data_processor and self.data_processor.get_status().warnings) or self.sink.get_status().warnings
+            (self.data_processor and self.data_processor.get_status().warnings)
+            or self.sink.get_status().warnings
         ):
             raise WorkflowExecutionError(
-                "Source reported warnings", self.data_processor.get_status() if self.data_processor else None
+                "Source reported warnings",
+                self.data_processor.get_status() if self.data_processor else None,
             )
 
     def print_status(self) -> None:
