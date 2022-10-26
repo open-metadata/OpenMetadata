@@ -43,7 +43,7 @@ MOCK_PIPELINE_SERVICE = PipelineService(
 MOCK_PIPELINE = Pipeline(
     id="a58b1856-729c-493b-bc87-6d2269b43ec0",
     name="do_it_all_with_default_config",
-    fullyQualifiedName="local_domo_pipeline.Nihar Dataflows",
+    fullyQualifiedName="local_domo_pipeline.1",
     displayName="do_it_all_with_default_config",
     description="",
     tasks=[
@@ -97,13 +97,13 @@ mock_domopipeline_config = {
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.Nihar Dataflows",
+        pipeline_fqn="local_domo_pipeline.1",
         pipeline_status=PipelineStatus(
             timestamp=1665476792,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
-                    name="Nihar Dataflows",
+                    name="1",
                     executionStatus="Successful",
                     startTime=1665476783,
                     endTime=1665476792,
@@ -113,13 +113,13 @@ EXPECTED_PIPELINE_STATUS = [
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.Nihar Dataflows",
+        pipeline_fqn="local_domo_pipeline.1",
         pipeline_status=PipelineStatus(
             timestamp=1665470252,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
-                    name="Nihar Dataflows",
+                    name="1",
                     executionStatus="Successful",
                     startTime=1665470244,
                     endTime=1665470252,
@@ -129,13 +129,13 @@ EXPECTED_PIPELINE_STATUS = [
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.Nihar Dataflows",
+        pipeline_fqn="local_domo_pipeline.1",
         pipeline_status=PipelineStatus(
             timestamp=1665148827,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
-                    name="Nihar Dataflows",
+                    name="1",
                     executionStatus="Successful",
                     startTime=1665148818,
                     endTime=1665148827,
@@ -148,8 +148,8 @@ EXPECTED_PIPELINE_STATUS = [
 
 EXPECTED_PIPELINE = [
     CreatePipelineRequest(
-        name="Nihar Dataflows",
-        displayName=None,
+        name="1",
+        displayName="Nihar Dataflows",
         description="THis is description for Nihar dataflow",
         pipelineUrl=None,
         concurrency=None,
@@ -157,7 +157,7 @@ EXPECTED_PIPELINE = [
         startDate=datetime(2022, 10, 7, 13, 20, 16, tzinfo=timezone.utc),
         tasks=[
             Task(
-                name="Nihar Dataflows",
+                name="1",
                 displayName="Nihar Dataflows",
                 fullyQualifiedName=None,
                 description="THis is description for Nihar dataflow",
