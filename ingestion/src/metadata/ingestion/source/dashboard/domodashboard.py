@@ -15,6 +15,8 @@ DomoDashboard source to extract metadata
 import traceback
 from typing import Any, Iterable, List, Optional
 
+from pydantic import ValidationError
+
 from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -76,29 +78,44 @@ class DomodashboardSource(DashboardServiceSource):
     def yield_dashboard(
         self, dashboard_details: dict
     ) -> Iterable[CreateDashboardRequest]:
-        dashboard_url = (
-            f"{self.service_connection.sandboxDomain}/page/{dashboard_details['id']}"
-        )
+        try:
+            dashboard_url = f"{self.service_connection.sandboxDomain}/page/{dashboard_details['id']}"
 
-        yield CreateDashboardRequest(
-            name=dashboard_details["name"],
-            dashboardUrl=dashboard_url,
-            displayName=dashboard_details["name"],
-            description=dashboard_details.get("description", ""),
-            charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
-                for chart in self.context.charts
-            ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
-        )
+            yield CreateDashboardRequest(
+                name=dashboard_details["name"],
+                dashboardUrl=dashboard_url,
+                displayName=dashboard_details["name"],
+                description=dashboard_details.get("description", ""),
+                charts=[
+                    EntityReference(id=chart.id.__root__, type="chart")
+                    for chart in self.context.charts
+                ],
+                service=EntityReference(
+                    id=self.context.dashboard_service.id.__root__,
+                    type="dashboardService",
+                ),
+            )
+        except KeyError as err:
+            logger.warning(
+                f"Error extracting data from {dashboard_details.get('name', 'unknown')} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+        except ValidationError as err:
+            logger.warning(
+                f"Error building pydantic model for {dashboard_details.get('name', 'unknown')} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+        except Exception as err:
+            logger.warning(
+                f"Wild error ingesting dashboard {dashboard_details.get('name', 'unknown')} - {err}"
+            )
+            logger.debug(traceback.format_exc())
 
     def yield_dashboard_chart(
         self, dashboard_details: Any
     ) -> Optional[Iterable[CreateChartRequest]]:
         charts = self.client.get_chart_details(page_id=dashboard_details["id"])
-        for chart in charts["cards"]:
+        for chart in charts.get("cards") or []:
             try:
                 chart_url = (
                     f"{self.service_connection.sandboxDomain}/page/"
@@ -116,7 +133,7 @@ class DomodashboardSource(DashboardServiceSource):
                     description=chart.get("description", ""),
                     displayName=chart["title"],
                     chartType=get_standard_chart_type(
-                        chart["metadata"].get("chartType") or ""
+                        chart["metadata"].get("chartType", "")
                     ).value,
                     chartUrl=chart_url,
                     service=EntityReference(
@@ -126,8 +143,8 @@ class DomodashboardSource(DashboardServiceSource):
                 )
                 self.status.scanned(chart["title"])
             except Exception as exc:
-                logger.debug(traceback.format_exc())
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
+                logger.debug(traceback.format_exc())
                 continue
 
     def yield_dashboard_lineage_details(

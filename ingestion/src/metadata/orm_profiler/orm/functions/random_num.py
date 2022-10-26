@@ -94,7 +94,7 @@ def _(*_, **__):
 
 @compiles(RandomNumFn, Dialects.Snowflake)
 def _(*_, **__):
-    """We use FROM <table> SAMPLE SYSTEM (n) for sampling
+    """We use FROM <table> SAMPLE BERNOULLI (n) for sampling
     in snowflake. We'll return 0 to make sure we get all the rows
     from the already sampled results when executing row::MOD(0, 100) < profile_sample.
     """

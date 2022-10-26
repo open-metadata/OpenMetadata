@@ -58,10 +58,6 @@ public final class CatalogExceptionMessage {
     return entityNotFound(entityType, id.toString());
   }
 
-  public static String entitiesNotFound(String entityType) {
-    return String.format("%s instances not found", entityType);
-  }
-
   public static String readOnlyAttribute(String entityType, String attribute) {
     return String.format("%s attribute %s can't be modified", entityType, attribute);
   }
@@ -135,10 +131,6 @@ public final class CatalogExceptionMessage {
     return String.format("%s is not empty", entityType);
   }
 
-  public static String invalidEntity(String entity) {
-    return String.format("Invalid entity %s", entity);
-  }
-
   public static String unknownCustomField(String fieldName) {
     return String.format("Unknown custom field %s", fieldName);
   }
@@ -175,7 +167,7 @@ public final class CatalogExceptionMessage {
     return String.format("Failed to evaluate - %s", message);
   }
 
-  public static String deletionNotAllowed(String entityType, String name) {
-    return String.format("Deletion of %s %s is not allowed", entityType, name);
+  public static String systemEntityDeleteNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
   }
 }

@@ -293,7 +293,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, pipeline, true);
+    return create(uriInfo, securityContext, pipeline);
   }
 
   @PATCH
@@ -339,7 +339,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, pipeline, true);
+    return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
   @PUT
@@ -499,7 +499,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   private Pipeline getPipeline(CreatePipeline create, String user) throws IOException {

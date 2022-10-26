@@ -12,36 +12,83 @@
  */
 
 import Analytics, { AnalyticsInstance } from 'analytics';
+import { AxiosError } from 'axios';
+import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
 import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
+import { PageViewEvent } from '../generated/analytics/pageViewEvent';
+import {
+  WebAnalyticEventData,
+  WebAnalyticEventType,
+} from '../generated/analytics/webAnalyticEventData';
+import { showErrorToast } from './ToastUtils';
+
+/**
+ * Check if url is valid or not and return the pathname
+ * @param referrerURL referrer URL
+ * @returns pathname
+ */
+export const getReferrerPath = (referrerURL: string) => {
+  try {
+    const referrerURLObj = new URL(referrerURL);
+
+    return referrerURLObj.pathname;
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * Calculate the page load time and then convert it into seconds
+ * @param performance
+ * @returns pageLoadTime (in S)
+ */
+export const getPageLoadTime = (performance: Performance) => {
+  // get the performance navigation timing
+  const performanceNavigationTiming = performance.getEntriesByType(
+    'navigation'
+  )[0] as PerformanceNavigationTiming;
+
+  return (
+    (performanceNavigationTiming.loadEventEnd -
+      performanceNavigationTiming.loadEventStart) /
+    1000
+  );
+};
 
 /**
  * track the page view if user id is available.
- * @param _pageData PageData
+ * @param pageData PageData
  * @param userId string
  */
-export const trackPageView = (pageData: WebPageData, userId: string) => {
-  const { location, navigator } = window;
+export const trackPageView = async (pageData: WebPageData, userId: string) => {
+  const { payload } = pageData;
+
+  const { location, navigator, performance, document } = window;
   const { hostname, pathname } = location;
 
-  // store the current path
+  // store the current path reference
   let currentPathRef = pathname;
 
+  const pageLoadTime = getPageLoadTime(performance);
+
+  const { anonymousId, properties, meta } = payload;
+
+  const referrer = properties.referrer ?? document.referrer;
+
+  const previousPathRef = getReferrerPath(referrer);
+
+  // timestamp for the current event
+  const timestamp = meta.ts;
+
   if (userId) {
-    const { payload } = pageData;
-
-    const { anonymousId, properties } = payload;
-
-    // get the previous page url
-    const previousURL = new URL(properties.referrer);
-
     /**
      *  Check if the previous path and current path is not matching
      *  then only collect the data
      */
-    if (currentPathRef !== previousURL.pathname) {
-      currentPathRef = properties.path;
+    if (currentPathRef !== previousPathRef) {
+      currentPathRef = previousPathRef;
 
-      const eventData = {
+      const pageViewEvent: PageViewEvent = {
         fullUrl: properties.url,
         url: properties.path,
         hostname,
@@ -49,12 +96,22 @@ export const trackPageView = (pageData: WebPageData, userId: string) => {
         screenSize: `${properties.width}x${properties.height}`,
         userId,
         sessionId: anonymousId,
-        referrer: properties.referrer,
+        referrer,
+        pageLoadTime,
       };
 
-      // TODO: make an api call to collect the data once backend API is ready and remove the console log
-      // eslint-disable-next-line
-      console.log(eventData);
+      const webAnalyticEventData: WebAnalyticEventData = {
+        eventType: WebAnalyticEventType.PageView,
+        eventData: pageViewEvent,
+        timestamp,
+      };
+
+      try {
+        // collect the page event
+        await postPageView(webAnalyticEventData);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   }
 };

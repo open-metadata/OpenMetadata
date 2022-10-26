@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
@@ -222,7 +222,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
           assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
           assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
           assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
-        } else if (BOT_AUTH_HEADERS.equals(authHeaders)) {
+        } else if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertNull(actualSupersetConnection.getUsername());
           assertNull(actualSupersetConnection.getPassword());
         }

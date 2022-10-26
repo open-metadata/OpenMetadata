@@ -209,6 +209,10 @@ const EditRulePage = withSuspenseFallback(
   )
 );
 
+const LogsViewer = withSuspenseFallback(
+  React.lazy(() => import('../pages/LogsViewer/LogsViewer.component'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -478,6 +482,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlobalSettingPage}
         path={ROUTES.SETTINGS_WITH_TAB_FQN}
       />
+      <Route exact component={LogsViewer} path={ROUTES.LOGS} />
       <Route exact component={TestSuiteDetailsPage} path={ROUTES.TEST_SUITES} />
       <Route
         exact

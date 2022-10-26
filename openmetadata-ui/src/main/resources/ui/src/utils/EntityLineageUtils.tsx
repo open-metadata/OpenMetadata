@@ -17,15 +17,24 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
-import { isUndefined } from 'lodash';
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import { isEmpty, isNil, isUndefined } from 'lodash';
+import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Edge, MarkerType, Node, Position, ReactFlowInstance } from 'reactflow';
+import {
+  Connection,
+  Edge,
+  MarkerType,
+  Node,
+  Position,
+  ReactFlowInstance,
+} from 'reactflow';
 import {
   CustomEdgeData,
-  CustomeElement,
-  CustomeFlow,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
   ModifiedColumn,
   SelectedEdge,
   SelectedNode,
@@ -44,7 +53,12 @@ import {
   FqnPart,
 } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
-import { EntityLineage } from '../generated/type/entityLineage';
+import {
+  ColumnLineage,
+  Edge as EntityLineageEdge,
+  EntityLineage,
+  LineageDetails,
+} from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
   getPartialNameFromFQN,
@@ -420,7 +434,7 @@ const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 export const getLayoutedElements = (
-  elements: CustomeElement,
+  elements: CustomElement,
   direction = EntityLineageDirection.LEFT_RIGHT
 ) => {
   const { node, edge } = elements;
@@ -487,9 +501,9 @@ export const getModalBodyText = (selectedEdge: SelectedEdge) => {
   } and ${target.displayName ? target.displayName : targetEntity}"?`;
 };
 
-export const getUniqueFlowElements = (elements: CustomeFlow[]) => {
+export const getUniqueFlowElements = (elements: CustomFlow[]) => {
   const flag: { [x: string]: boolean } = {};
-  const uniqueElements: CustomeFlow[] = [];
+  const uniqueElements: CustomFlow[] = [];
 
   elements.forEach((elem) => {
     if (!flag[elem.id]) {
@@ -514,4 +528,293 @@ export const getNodeRemoveButton = (onClick: () => void) => {
       <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
     </button>
   );
+};
+
+export const getSelectedEdgeArr = (
+  edgeArr: EntityLineageEdge[],
+  edgeData: EdgeData
+) => {
+  return edgeArr.filter(
+    (edge) =>
+      !edgeArr.find(
+        () =>
+          edgeData.fromId === edge.fromEntity && edgeData.toId === edge.toEntity
+      )
+  );
+};
+
+/**
+ * Finds the upstream/downstream edge based on selected edge
+ * @param edgeArr edge[]
+ * @param data selected edge
+ * @returns edge
+ */
+
+export const findUpstreamDownStreamEdge = (
+  edgeArr: EntityLineageEdge[] | undefined,
+  data: SelectedEdge
+) => {
+  return edgeArr?.find(
+    (edge) =>
+      edge.fromEntity === data.source.id && edge.toEntity === data.target.id
+  );
+};
+
+/**
+ * Get upstream/downstream column lineage array
+ * @param lineageDetails LineageDetails
+ * @param data SelectedEdge
+ * @returns Updated LineageDetails
+ */
+
+export const getUpStreamDownStreamColumnLineageArr = (
+  lineageDetails: LineageDetails,
+  data: SelectedEdge
+) => {
+  const columnsLineage = lineageDetails.columnsLineage.reduce((col, curr) => {
+    if (curr.toColumn === data.data?.targetHandle) {
+      const newCol = {
+        ...curr,
+        fromColumns:
+          curr.fromColumns?.filter(
+            (column) => column !== data.data?.sourceHandle
+          ) || [],
+      };
+      if (newCol.fromColumns?.length) {
+        return [...col, newCol];
+      } else {
+        return col;
+      }
+    }
+
+    return [...col, curr];
+  }, [] as ColumnLineage[]);
+
+  return {
+    sqlQuery: lineageDetails.sqlQuery || '',
+    columnsLineage: columnsLineage,
+  };
+};
+
+/**
+ * Get updated EntityLineageEdge Array based on selected data
+ * @param edge EntityLineageEdge[]
+ * @param data SelectedEdge
+ * @param lineageDetails updated LineageDetails
+ * @returns updated EntityLineageEdge[]
+ */
+export const getUpdatedUpstreamDownStreamEdgeArr = (
+  edge: EntityLineageEdge[],
+  data: SelectedEdge,
+  lineageDetails: LineageDetails
+) => {
+  return edge.map((down) => {
+    if (
+      down.fromEntity === data.source.id &&
+      down.toEntity === data.target.id
+    ) {
+      return {
+        ...down,
+        lineageDetails: lineageDetails,
+      };
+    }
+
+    return down;
+  });
+};
+
+/**
+ * Get array of the removed node
+ * @param nodes All the node
+ * @param edge selected edge
+ * @param entity main entity
+ * @param selectedEntity selected entity
+ * @returns details of removed node
+ */
+export const getRemovedNodeData = (
+  nodes: EntityReference[],
+  edge: Edge,
+  entity: EntityReference,
+  selectedEntity: EntityReference
+) => {
+  let targetNode = nodes.find((node) => edge.target?.includes(node.id));
+  let sourceNode = nodes.find((node) => edge.source?.includes(node.id));
+  const selectedNode = isEmpty(selectedEntity) ? entity : selectedEntity;
+
+  if (isUndefined(targetNode)) {
+    targetNode = selectedNode;
+  }
+  if (isUndefined(sourceNode)) {
+    sourceNode = selectedNode;
+  }
+
+  return {
+    id: edge.id,
+    source: sourceNode,
+    target: targetNode,
+  };
+};
+
+/**
+ * Get source/target edge based on query string
+ * @param edge upstream/downstream edge array
+ * @param queryStr source/target string
+ * @param id main entity id
+ * @returns source/target edge
+ */
+const getSourceTargetNode = (
+  edge: EntityLineageEdge[],
+  queryStr: string | null,
+  id: string
+) => {
+  return edge.find(
+    (d) =>
+      (queryStr?.includes(d.fromEntity) || queryStr?.includes(d.toEntity)) &&
+      queryStr !== id
+  );
+};
+
+export const getEdgeType = (
+  updatedLineageData: EntityLineage,
+  params: Edge | Connection
+) => {
+  const { entity } = updatedLineageData;
+  const { target, source } = params;
+  const sourceDownstreamNode = getSourceTargetNode(
+    updatedLineageData.downstreamEdges || [],
+    source,
+    entity.id
+  );
+
+  const sourceUpStreamNode = getSourceTargetNode(
+    updatedLineageData.upstreamEdges || [],
+    source,
+    entity.id
+  );
+
+  const targetDownStreamNode = getSourceTargetNode(
+    updatedLineageData.downstreamEdges || [],
+    target,
+    entity.id
+  );
+
+  const targetUpStreamNode = getSourceTargetNode(
+    updatedLineageData.upstreamEdges || [],
+    target,
+    entity.id
+  );
+
+  const isUpstream =
+    (!isNil(sourceUpStreamNode) && !isNil(targetDownStreamNode)) ||
+    !isNil(sourceUpStreamNode) ||
+    !isNil(targetUpStreamNode) ||
+    target?.includes(entity.id);
+
+  const isDownstream =
+    (!isNil(sourceDownstreamNode) && !isNil(targetUpStreamNode)) ||
+    !isNil(sourceDownstreamNode) ||
+    !isNil(targetDownStreamNode) ||
+    source?.includes(entity.id);
+
+  if (isUpstream) {
+    return EdgeTypeEnum.UP_STREAM;
+  } else if (isDownstream) {
+    return EdgeTypeEnum.DOWN_STREAM;
+  }
+
+  return EdgeTypeEnum.NO_STREAM;
+};
+
+/**
+ * Get updated Edge with lineageDetails
+ * @param edges Array of Edge
+ * @param params new connected edge
+ * @param lineageDetails updated lineage details
+ * @returns updated edge array
+ */
+export const getUpdatedEdge = (
+  edges: EntityLineageEdge[],
+  params: Edge | Connection,
+  lineageDetails: LineageDetails | undefined
+) => {
+  const updatedEdge: EntityLineageEdge[] = [];
+  const { target, source } = params;
+  edges.forEach((edge) => {
+    if (edge.fromEntity === source && edge.toEntity === target) {
+      updatedEdge.push({
+        ...edge,
+        lineageDetails: lineageDetails,
+      });
+    } else {
+      updatedEdge.push(edge);
+    }
+  });
+
+  return updatedEdge;
+};
+
+// create new edge
+export const createNewEdge = (
+  params: Edge | Connection,
+  isEditMode: boolean,
+  sourceNodeType: string,
+  targetNodeType: string,
+  isColumnLineage: boolean,
+  onEdgeClick: (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
+  ) => void
+) => {
+  const { target, source, sourceHandle, targetHandle } = params;
+  let data: Edge = {
+    id: `edge-${source}-${target}`,
+    source: `${source}`,
+    target: `${target}`,
+    type: isEditMode ? 'buttonedge' : 'custom',
+    style: { strokeWidth: '2px' },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+    },
+    data: {
+      id: `edge-${source}-${target}`,
+      source: source,
+      target: target,
+      sourceType: sourceNodeType,
+      targetType: targetNodeType,
+      isColumnLineage: isColumnLineage,
+      onEdgeClick,
+    },
+  };
+
+  if (isColumnLineage) {
+    data = {
+      ...data,
+      id: `column-${sourceHandle}-${targetHandle}-edge-${source}-${target}`,
+      sourceHandle: sourceHandle,
+      targetHandle: targetHandle,
+      style: undefined,
+      data: {
+        ...data.data,
+        id: `column-${sourceHandle}-${targetHandle}-edge-${source}-${target}`,
+        sourceHandle: sourceHandle,
+        targetHandle: targetHandle,
+      },
+    };
+  }
+
+  return data;
+};
+
+export const LoadingStatus = (
+  defaultState: string | JSX.Element,
+  loading: boolean,
+  status: LoadingState
+) => {
+  if (loading) {
+    return <Loader size="small" type="white" />;
+  } else if (status === 'success') {
+    return <FontAwesomeIcon className="text-white" icon="check" />;
+  } else {
+    return defaultState;
+  }
 };

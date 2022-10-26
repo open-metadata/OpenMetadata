@@ -1,0 +1,16 @@
+{
+  "name": "QualityBotRole",
+  "displayName": "Quality bot role",
+  "description": "Role corresponding to a Quality bot.",
+  "allowDelete": false,
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "QualityBotPolicy"
+    }
+  ]
+}

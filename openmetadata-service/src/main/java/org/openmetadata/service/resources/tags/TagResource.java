@@ -93,7 +93,8 @@ public class TagResource {
   @SuppressWarnings("unused") // Method used by reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    List<TagCategory> tagCategories = dao.getEntitiesFromSeedData(".*json/data/tags/.*\\.json$", TagCategory.class);
+    List<TagCategory> tagCategories =
+        dao.getEntitiesFromSeedData(Entity.TAG_CATEGORY, ".*json/data/tags/.*\\.json$", TagCategory.class);
     for (TagCategory tagCategory : tagCategories) {
       long now = System.currentTimeMillis();
       tagCategory.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
