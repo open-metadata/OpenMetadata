@@ -129,9 +129,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
 
-    // Register Authenticator
-    registerAuthenticator(catalogConfig, jdbi);
-
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
     environment.jersey().property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
@@ -165,6 +162,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig, jdbi);
+
+    // Register Authenticator
+    registerAuthenticator(catalogConfig, jdbi);
+
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
