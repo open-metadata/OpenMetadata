@@ -43,8 +43,5 @@ public interface Authorizer {
 
   void authorizeAdmin(SecurityContext securityContext);
 
-  // TODO delete this and move the operation that depends on this authorization to be based on Roles and Policies
-  void authorizeAdminOrBot(SecurityContext securityContext);
-
   boolean decryptSecret(SecurityContext securityContext);
 }

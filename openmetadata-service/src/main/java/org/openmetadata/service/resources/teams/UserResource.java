@@ -590,7 +590,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorizeAdmin(securityContext);
     jwtTokenGenerator.setAuthMechanism(user, generateTokenRequest);
     User updatedUser = dao.createOrUpdate(uriInfo, user).getEntity();
     return Response.status(Response.Status.OK).entity(jwtTokenGenerator.getAuthMechanism(updatedUser)).build();
@@ -615,7 +615,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorizeAdmin(securityContext);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);

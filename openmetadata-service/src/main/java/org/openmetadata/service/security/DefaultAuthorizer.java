@@ -22,7 +22,6 @@ import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceTyp
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdminOrBot;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -236,15 +235,6 @@ public class DefaultAuthorizer implements Authorizer {
       return;
     }
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
-  }
-
-  @Override
-  public void authorizeAdminOrBot(SecurityContext securityContext) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      return;
-    }
-    throw new AuthorizationException(notAdminOrBot(securityContext.getUserPrincipal().getName()));
   }
 
   @Override

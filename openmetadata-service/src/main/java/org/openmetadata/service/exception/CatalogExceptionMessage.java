@@ -111,10 +111,6 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
-  public static String notAdminOrBot(String name) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} is not admin or bot", name);
-  }
-
   public static String permissionDenied(
       String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
     if (roleName != null) {

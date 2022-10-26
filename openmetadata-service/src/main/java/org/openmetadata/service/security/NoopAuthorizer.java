@@ -100,11 +100,6 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public void authorizeAdminOrBot(SecurityContext securityContext) {
-    /* Always authorize */
-  }
-
-  @Override
   public boolean decryptSecret(SecurityContext securityContext) {
     return true; // Always decrypt
   }
