@@ -12,8 +12,10 @@
 """
 Domo Pipeline source to extract metadata
 """
+import traceback
+from typing import Dict, Iterable, Optional
 
-from typing import Dict, Iterable, List, Optional
+from pydantic import ValidationError
 
 from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -38,6 +40,9 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster import STATUS_MAP
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class DomopipelineSource(PipelineServiceSource):
@@ -72,24 +77,40 @@ class DomopipelineSource(PipelineServiceSource):
             yield result
 
     def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
-        task_list: List[Task] = []
-        task = Task(
-            name=pipeline_details["name"],
-            displayName=pipeline_details["name"],
-            description=pipeline_details.get("description", ""),
-        )
-        task_list.append(task)
+        try:
+            pipeline_name = pipeline_details["name"]
+            task = Task(
+                name=pipeline_name,
+                displayName=pipeline_name,
+                description=pipeline_details.get("description", ""),
+            )
 
-        pipeline_yield = CreatePipelineRequest(
-            name=pipeline_details["name"],
-            description=pipeline_details.get("description", ""),
-            tasks=task_list,
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
-            startDate=pipeline_details["created"],
-        )
-        yield pipeline_yield
+            pipeline_yield = CreatePipelineRequest(
+                name=pipeline_name,
+                description=pipeline_details.get("description", ""),
+                tasks=[task],
+                service=EntityReference(
+                    id=self.context.pipeline_service.id.__root__, type="pipelineService"
+                ),
+                startDate=pipeline_details.get("created"),
+            )
+            yield pipeline_yield
+
+        except KeyError as err:
+            logger.error(
+                f"Error extracting data from {pipeline_details.get('name', 'unknown')} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+        except ValidationError as err:
+            logger.error(
+                f"Error building pydantic model for {pipeline_details.get('name', 'unknown')} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+        except Exception as err:
+            logger.error(
+                f"Wild error ingesting pipeline {pipeline_details.get('name', 'unknown')} - {err}"
+            )
+            logger.debug(traceback.format_exc())
 
     def yield_pipeline_lineage_details(
         self, pipeline_details
@@ -97,26 +118,40 @@ class DomopipelineSource(PipelineServiceSource):
         return
 
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
+        pipeline_name = pipeline_details["name"]
         runs = self.client.get_runs(pipeline_details["id"])
-        for run in runs:
-            task_status = TaskStatus(
-                name=pipeline_details["name"],
-                executionStatus=STATUS_MAP.get(
-                    run["state"].lower(), StatusType.Pending.value
-                ),
-                startTime=run["beginTime"] // 1000,
-                endTime=run["endTime"] // 1000,
-            )
+        try:
+            for run in runs or []:
 
-            pipeline_status = PipelineStatus(
-                taskStatus=[task_status],
-                executionStatus=STATUS_MAP.get(
-                    run["state"].lower(), StatusType.Pending.value
-                ),
-                timestamp=run["endTime"] // 1000,
-            )
+                start_time = run["beginTime"] // 1000 if run.get("beginTime") else None
+                end_time = run["endTime"] // 1000 if run.get("endTime") else None
+                run_state = run.get("state", "Pending")
 
-            yield OMetaPipelineStatus(
-                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                pipeline_status=pipeline_status,
-            )
+                task_status = TaskStatus(
+                    name=pipeline_name,
+                    executionStatus=STATUS_MAP.get(
+                        run_state.lower(), StatusType.Pending.value
+                    ),
+                    startTime=start_time,
+                    endTime=end_time,
+                )
+
+                pipeline_status = PipelineStatus(
+                    taskStatus=[task_status],
+                    executionStatus=STATUS_MAP.get(
+                        run_state.lower(), StatusType.Pending.value
+                    ),
+                    timestamp=end_time,
+                )
+
+                yield OMetaPipelineStatus(
+                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                    pipeline_status=pipeline_status,
+                )
+        except KeyError as err:
+            logger.error(f"Error extracting status data for {pipeline_name} - {err}")
+            logger.debug(traceback.format_exc())
+
+        except Exception as err:
+            logger.error(f"Wild error extracting status for {pipeline_name} - {err}")
+            logger.debug(traceback.format_exc())
