@@ -164,3 +164,5 @@ class DomopipelineSource(PipelineServiceSource):
         except Exception as err:
             logger.error(f"Wild error extracting status for {pipeline_id} - {err}")
             logger.debug(traceback.format_exc())
+
+        return None
