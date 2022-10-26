@@ -116,6 +116,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
     """
 
     try:
+        # pylint: disable=import-outside-toplevel
         from azure.identity import DefaultAzureCredential
         from azure.storage.blob import BlobServiceClient
 
@@ -156,7 +157,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         raise err
 
 
-def run_backup(  # pylint: disable=too-many-arguments
+def run_backup(  # pylint: disable=too-many-arguments, too-many-locals
     host: str,
     user: str,
     password: str,
