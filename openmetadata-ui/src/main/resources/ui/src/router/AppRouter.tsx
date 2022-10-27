@@ -102,9 +102,12 @@ const AppRouter = () => {
     ) : null;
 
   useEffect(() => {
-    // track page view on route change
-    analytics.page();
-  }, [location]);
+    const { pathname } = location;
+    if (pathname !== '/') {
+      // track page view on route change
+      analytics.page();
+    }
+  }, [location.pathname]);
 
   return loading ? (
     <Loader />
