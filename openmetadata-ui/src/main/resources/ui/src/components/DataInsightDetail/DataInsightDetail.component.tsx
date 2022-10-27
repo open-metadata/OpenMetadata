@@ -15,6 +15,9 @@ import React from 'react';
 import DataInsightSummary from './DataInsightSummary';
 import DescriptionInsight from './DescriptionInsight';
 import OwnerInsight from './OwnerInsight';
+import TierInsight from './TierInsight';
+import TopActiveUsers from './TopActiveUsers';
+import TopViewEntities from './TopViewEntities';
 import TotalEntityInsight from './TotalEntityInsight';
 
 const DataInsightDetail = () => {
@@ -24,6 +27,9 @@ const DataInsightDetail = () => {
       <TotalEntityInsight />
       <DescriptionInsight />
       <OwnerInsight />
+      <TierInsight />
+      <TopViewEntities />
+      <TopActiveUsers />
     </>
   );
 };

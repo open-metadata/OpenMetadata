@@ -588,3 +588,38 @@ export const getEntityOwnersData = () => {
 
   return { data: graphData, entities };
 };
+
+export const getEntityTiersData = () => {
+  const tiers: string[] = [];
+  const timestamps: string[] = [];
+  const NO_TIER = 'No Tier';
+
+  const data = ENTITY_TIER.map((data) => {
+    const tiering = data.entityTier ?? NO_TIER;
+    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    if (!tiers.includes(tiering)) {
+      tiers.push(tiering);
+    }
+
+    if (!timestamps.includes(timestamp)) {
+      timestamps.push(timestamp);
+    }
+
+    return {
+      timestamp: timestamp,
+      [tiering]: data.entityCount,
+    };
+  });
+
+  const graphData = timestamps.map((timestamp) => {
+    return data.reduce((previous, current) => {
+      if (current.timestamp === timestamp) {
+        return { ...previous, ...current };
+      }
+
+      return previous;
+    }, {});
+  });
+
+  return { data: graphData, tiers };
+};
