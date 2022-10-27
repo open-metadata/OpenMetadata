@@ -24,6 +24,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -116,8 +117,10 @@ const Users = ({
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const location = useLocation();
   const isTaskType = isEqual(threadType, ThreadType.Task);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { authConfig } = useAuthContext();
+  const { t } = useTranslation();
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
@@ -241,6 +244,7 @@ const Users = ({
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
+      setIsLoading(true);
       const sendData = {
         ...data,
         ...(isAdminUser &&
@@ -256,6 +260,8 @@ const Users = ({
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(true);
     }
   };
 
@@ -368,6 +374,7 @@ const Users = ({
         </Typography.Text>
 
         <ChangePasswordForm
+          isLoading={isLoading}
           isLoggedinUser={isLoggedinUser}
           visible={isChangePassword}
           onCancel={() => setIsChangePassword(false)}
@@ -529,7 +536,9 @@ const Users = ({
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
-          <span className="tw-no-description ">No roles assigned</span>
+          <span className="tw-no-description ">
+            {t('label.no-roles-assigned')}
+          </span>
         )}
       </Fragment>
     );
@@ -545,7 +554,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
             </div>
           }>
           <div className="tw-flex tw-items-center tw-justify-between tw-mb-4">
@@ -564,7 +573,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
               {!isRolesEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
@@ -645,7 +654,7 @@ const Users = ({
         title={
           <div className="tw-flex">
             <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
-              Inherited Roles
+              {t('label.inherited-roles')}
             </h6>
           </div>
         }>
@@ -653,7 +662,7 @@ const Users = ({
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
               <span className="tw-no-description">
-                No inherited roles found
+                {t('label.no-inherited-found')}
               </span>
             </div>
           ) : (
@@ -771,7 +780,7 @@ const Users = ({
           {isTaskType ? (
             <Space align="end" size={5}>
               <Switch onChange={onSwitchChange} />
-              <span className="tw-ml-1">Closed Tasks</span>
+              <span className="tw-ml-1">{t('label.closed-tasks')}</span>
             </Space>
           ) : null}
         </div>
@@ -883,9 +892,9 @@ const Users = ({
           data-testid="dataset-card">
           {isEmpty(updatedEntityData) ? (
             tabNumber === 3 ? (
-              <div className="tw-mx-2">You have not owned anything yet.</div>
+              <div className="tw-mx-2"> {t('label.not-owned-yet')}.</div>
             ) : (
-              <div className="tw-mx-2">You have not followed anything yet.</div>
+              <div className="tw-mx-2"> {t('label.not-followed-yet')}.</div>
             )
           ) : null}
           {updatedEntityData.map((dataset, index) => {

@@ -23,6 +23,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getTestDefinitionById,
   updateTestCaseById,
@@ -49,6 +50,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   onCancel,
   onUpdate,
 }) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [selectedDefinition, setSelectedDefinition] =
     useState<TestDefinition>();
@@ -59,6 +61,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
+
   const markdownRef = useRef<EditorContentRef>();
 
   const isColumn = useMemo(
@@ -74,9 +78,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           <Form.Item
             data-testid="sql-editor-container"
             key={name}
-            label="SQL Query"
+            label={t('label.sql-query')}
             name={name}
-            tooltip="Queries returning 1 or more rows will result in the test failing.">
+            tooltip={t('label.sql-query-tooltip')}>
             <SchemaEditor
               className="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
@@ -144,16 +148,18 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
     if (jsonPatch.length) {
       try {
+        setIsLoadingOnSave(true);
         await updateTestCaseById(testCase.id || '', jsonPatch);
         onUpdate && onUpdate();
         showSuccessToast(
           jsonData['api-success-messages']['update-test-case-success']
         );
         onCancel();
+        form.resetFields();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        form.resetFields();
+        setIsLoadingOnSave(false);
       }
     }
   };
@@ -204,8 +210,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         onCancel();
       }}
       closable={false}
-      okText="Submit"
-      title={`Edit ${testCase?.name}`}
+      confirmLoading={isLoadingOnSave}
+      okText={t('label.submit')}
+      title={`${t('label.edit')} ${testCase?.name}`}
       visible={visible}
       width={600}
       onCancel={onCancel}
@@ -219,24 +226,27 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
-          <Form.Item required label="Table:" name="table">
+          <Form.Item required label={`${t('label.table')}:`} name="table">
             <Input disabled />
           </Form.Item>
           {isColumn && (
-            <Form.Item required label="Column:" name="column">
+            <Form.Item required label={`${t('label.column')}:`} name="column">
               <Input disabled />
             </Form.Item>
           )}
-          <Form.Item required label="Name:" name="name">
-            <Input disabled placeholder="Enter test case name" />
+          <Form.Item required label={`${t('label.name')}:`} name="name">
+            <Input disabled placeholder={t('label.enter-test-case-name')} />
           </Form.Item>
-          <Form.Item required label="Test Type:" name="testDefinition">
-            <Input disabled placeholder="Enter test case name" />
+          <Form.Item
+            required
+            label={`${t('label.test-type')}:`}
+            name="testDefinition">
+            <Input disabled placeholder={t('label.enter-test-case-name')} />
           </Form.Item>
 
           {GenerateParamsField()}
 
-          <Form.Item label="Description:" name="description">
+          <Form.Item label={`${t('label.description')}:`} name="description">
             <RichTextEditor
               height="200px"
               initialValue={testCase?.description || ''}

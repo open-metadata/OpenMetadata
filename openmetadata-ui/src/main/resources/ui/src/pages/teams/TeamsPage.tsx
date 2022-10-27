@@ -78,6 +78,7 @@ const TeamsPage = () => {
   const [userSearchValue, setUserSearchValue] = useState<string>('');
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -223,6 +224,7 @@ const TeamsPage = () => {
    */
   const createNewTeam = async (data: Team) => {
     try {
+      setIsLoading(true);
       const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
@@ -235,6 +237,7 @@ const TeamsPage = () => {
         const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
         fetchAllTeams(true, parent);
         fetchTeamByFqn(selectedTeam.name);
+        handleAddTeam(false);
       }
     } catch (error) {
       showErrorToast(
@@ -242,7 +245,7 @@ const TeamsPage = () => {
         jsonData['api-error-messages']['create-team-error']
       );
     } finally {
-      handleAddTeam(false);
+      setIsLoading(false);
     }
   };
 
@@ -543,6 +546,7 @@ const TeamsPage = () => {
             />
           )}
           <AddTeamForm
+            isLoading={isLoading}
             visible={isAddingTeam}
             onCancel={() => setIsAddingTeam(false)}
             onSave={(data) => createNewTeam(data as Team)}

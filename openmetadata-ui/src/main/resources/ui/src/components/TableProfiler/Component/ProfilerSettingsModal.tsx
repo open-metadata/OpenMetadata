@@ -22,6 +22,7 @@ import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
+import { useTranslation } from 'react-i18next';
 import {
   getTableProfilerConfig,
   putTableProfileConfig,
@@ -47,6 +48,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   visible,
   onVisibilityChange,
 }) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
@@ -55,6 +57,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
     DEFAULT_INCLUDE_PROFILE
   );
+  const [isLoading, setIsLoading] = useState(false);
 
   const selectOptions = useMemo(() => {
     return columns.map(({ name }) => ({
@@ -65,7 +68,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const metricsOptions = useMemo(() => {
     const metricsOptions = [
       {
-        title: 'All',
+        title: t('label.all'),
         value: 'all',
         key: 'all',
         children: PROFILER_METRIC.map((metric) => ({
@@ -140,6 +143,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   };
 
   const handleSave = async () => {
+    setIsLoading(true);
     const profileConfig: TableProfilerConfig = {
       excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
       profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
@@ -164,6 +168,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         error as AxiosError,
         jsonData['api-error-messages']['update-profiler-config-error']
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -184,17 +190,18 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         type: 'link',
       }}
       closable={false}
+      confirmLoading={isLoading}
       data-testid="profiler-settings-modal"
       maskClosable={false}
-      okText="Save"
-      title="Settings"
+      okText={t('label.save')}
+      title={t('label.settings')}
       visible={visible}
       width={630}
       onCancel={handleCancel}
       onOk={handleSave}>
       <Row gutter={[16, 16]}>
         <Col data-testid="profile-sample-container" span={24}>
-          <p>Profile Sample %</p>
+          <p>{t('label.profile-sample-percentage')}</p>
           <div className="tw-px-2 tw-mb-1.5">
             <Row gutter={20}>
               <Col span={20}>
@@ -230,7 +237,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </div>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
-          <p className="tw-mb-1.5">Profile Sample Query</p>
+          <p className="tw-mb-1.5">{t('label.profile-sample-query')} </p>
           <CodeMirror
             className="profiler-setting-sql-editor"
             data-testid="profiler-setting-sql-editor"
@@ -245,15 +252,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <p className="tw-mb-4">Enable column profile</p>
-          <p className="tw-text-xs tw-mb-1.5">Exclude:</p>
+          <p className="tw-mb-4">{t('label.enable-column-profile')}</p>
+          <p className="tw-text-xs tw-mb-1.5">{t('label.exclude')}:</p>
           <Select
             allowClear
             className="tw-w-full"
             data-testid="exclude-column-select"
             mode="tags"
             options={selectOptions}
-            placeholder="Select columns to exclude"
+            placeholder={t('label.select-column-exclude')}
             size="middle"
             value={excludeCol}
             onChange={(value) => setExcludeCol(value)}
@@ -276,7 +283,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               {(fields, { add, remove }) => (
                 <>
                   <div className="tw-flex tw-items-center tw-mb-1.5">
-                    <p className="w-form-label tw-text-xs tw-mr-3">Include:</p>
+                    <p className="w-form-label tw-text-xs tw-mr-3">
+                      {t('label.include')}:
+                    </p>
                     <Button
                       className="include-columns-add-button"
                       icon={<PlusOutlined />}
@@ -300,7 +309,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             className="tw-w-full"
                             data-testid="exclude-column-select"
                             options={selectOptions}
-                            placeholder="Select columns to include"
+                            placeholder={t('label.select-column-include')}
                             size="middle"
                           />
                         </Form.Item>
@@ -312,7 +321,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             treeCheckable
                             className="tw-w-full"
                             maxTagCount={2}
-                            placeholder="Please select"
+                            placeholder={t('label.please-select')}
                             showCheckedStrategy="SHOW_PARENT"
                             treeData={metricsOptions}
                           />
@@ -320,7 +329,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         <Button
                           icon={
                             <SVGIcons
-                              alt="delete"
+                              alt={t('label.delete')}
                               className="tw-w-4"
                               icon={Icons.DELETE}
                             />
