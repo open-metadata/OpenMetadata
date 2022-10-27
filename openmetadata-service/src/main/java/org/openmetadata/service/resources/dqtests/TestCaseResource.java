@@ -454,7 +454,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.addTestCaseResult(uriInfo, fqn, testCaseResult).toResponse();
   }
 
@@ -522,7 +524,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteTestCaseResult(fqn, timestamp).toResponse();
   }
 

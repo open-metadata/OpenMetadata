@@ -39,6 +39,10 @@ public class OperationContext {
     return operations;
   }
 
+  public boolean isCreateOperation() {
+    return operations.contains(MetadataOperation.CREATE);
+  }
+
   public static boolean isEditOperation(MetadataOperation operation) {
     return operation.value().startsWith("Edit");
   }

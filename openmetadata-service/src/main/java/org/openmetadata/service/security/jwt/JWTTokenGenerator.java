@@ -20,10 +20,13 @@ import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class JWTTokenGenerator {
@@ -63,6 +66,17 @@ public class JWTTokenGenerator {
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
     }
+  }
+
+  public void setAuthMechanism(User user, GenerateTokenRequest generateTokenRequest) {
+    JWTAuthMechanism jwtAuthMechanism = generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
+    user.setAuthenticationMechanism(authenticationMechanism);
+  }
+
+  public JWTAuthMechanism getAuthMechanism(User user) {
+    return JsonUtils.convertValue(user.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
   }
 
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {

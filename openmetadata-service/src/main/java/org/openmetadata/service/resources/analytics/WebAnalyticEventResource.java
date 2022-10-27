@@ -389,7 +389,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    authorizer.authorizeAdmin(securityContext);
     return dao.addWebAnalyticEventData(uriInfo, webAnalyticEventData);
   }
 
