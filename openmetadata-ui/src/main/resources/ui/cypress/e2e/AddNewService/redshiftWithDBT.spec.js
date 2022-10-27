@@ -94,6 +94,7 @@ describe('RedShift Ingestion', () => {
   it('Validate DBT is ingested properly', () => {
     //Verify DBT tags
     interceptURL('GET', '/api/v1/tags?fields=usageCount', 'getTagList');
+    cy.get('[data-testid="governance"]').should("exist").should("be.visible").click({force:true})
     cy.get('[data-testid="appbar-item-tags"]')
       .should('exist')
       .should('be.visible')

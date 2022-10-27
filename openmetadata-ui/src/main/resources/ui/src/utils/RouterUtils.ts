@@ -365,7 +365,7 @@ export const getAddDataQualityTableTestPath = (
 };
 
 export const getTestSuitePath = (testSuiteName: string) => {
-  let path = ROUTES.TEST_SUITES;
+  let path = ROUTES.TEST_SUITES_WITH_FQN;
   path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
 
   return path;
@@ -422,10 +422,7 @@ export const getLogEntityPath = (
   if (isUndefined(logEntityType)) return '';
 
   if (path === 'TestSuite') {
-    return getSettingPath(
-      GlobalSettingsMenuCategory.DATA_QUALITY,
-      GlobalSettingOptions.TEST_SUITE
-    );
+    return ROUTES.TEST_SUITES;
   }
 
   if (logEntityType === 'testSuite') {

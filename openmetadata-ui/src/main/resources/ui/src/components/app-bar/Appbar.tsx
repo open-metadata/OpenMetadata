@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
@@ -138,6 +138,46 @@ const Appbar: React.FC = (): JSX.Element => {
           alt="slack icon"
           className="tw-align-middle tw-mr-0.5"
           icon={Icons.SLACK_GREY}
+          width="12"
+        />
+      ),
+    },
+    {
+      name: (
+        <Button
+          className="focus:no-underline hover:underline flex-shrink p-0"
+          data-testid="whatsnew-modal"
+          type="text"
+          onClick={() => handleFeatureModal(true)}>
+          {t('label.whats-new')}
+        </Button>
+      ),
+      disabled: false,
+      icon: (
+        <SVGIcons
+          alt="Doc icon"
+          className="align-middle tw-mr-0.5"
+          icon={Icons.WHATS_NEW}
+          width="12"
+        />
+      ),
+    },
+    {
+      name: (
+        <Button
+          className="focus:no-underline hover:underline flex-shrink p-0"
+          data-testid="tour"
+          type="text"
+          onClick={() => history.push(ROUTES.TOUR)}>
+          {t('label.tour')}
+        </Button>
+      ),
+      disabled: false,
+      icon: (
+        <SVGIcons
+          alt="tour-con"
+          className="align-middle tw-mr-0.5"
+          icon={Icons.TOUR}
           width="12"
         />
       ),
