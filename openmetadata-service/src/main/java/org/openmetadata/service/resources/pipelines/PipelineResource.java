@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -60,6 +61,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -362,7 +364,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     Pipeline pipeline = dao.addPipelineStatus(fqn, pipelineStatus);
     return addHref(uriInfo, pipeline);
   }
@@ -427,7 +430,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     Pipeline pipeline = dao.deletePipelineStatus(fqn, timestamp);
     return addHref(uriInfo, pipeline);
   }

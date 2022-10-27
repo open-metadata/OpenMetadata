@@ -48,6 +48,7 @@ import org.openmetadata.schema.api.tags.CreateTag;
 import org.openmetadata.schema.api.tags.CreateTagCategory;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -56,7 +57,10 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagCategoryRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -279,7 +283,9 @@ public class TagResource {
   public Response createCategory(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(Entity.TAG_CATEGORY, MetadataOperation.CREATE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(Entity.TAG_CATEGORY, daoCategory).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     TagCategory category = getTagCategory(securityContext, create);
     category = addHref(uriInfo, daoCategory.create(uriInfo, category));
     return Response.created(category.getHref()).entity(category).build();
@@ -306,7 +312,9 @@ public class TagResource {
           String category,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(Entity.TAG, MetadataOperation.CREATE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(Entity.TAG, dao).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     tag = addHref(categoryHref, dao.create(uriInfo, tag));
@@ -342,7 +350,9 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(Entity.TAG, MetadataOperation.CREATE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(Entity.TAG, dao).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
@@ -364,7 +374,10 @@ public class TagResource {
           String categoryName,
       @Valid CreateTagCategory create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(Entity.TAG_CATEGORY, MetadataOperation.EDIT_ALL);
+    ResourceContext resourceContext =
+        EntityResource.getResourceContext(Entity.TAG_CATEGORY, daoCategory).name(categoryName).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     TagCategory category = getTagCategory(securityContext, create);
     // TODO clean this up
     if (categoryName.equals(create.getName())) { // Not changing the name
@@ -398,8 +411,12 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
+
+    OperationContext operationContext = new OperationContext(Entity.TAG, MetadataOperation.EDIT_ALL);
+    ResourceContext resourceContext = EntityResource.getResourceContext(Entity.TAG, dao).name(categoryName).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     RestUtil.PutResponse<?> response;
     if (primaryTag.equals(create.getName())) { // Not changing the name
@@ -442,7 +459,7 @@ public class TagResource {
           String secondaryTag,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
@@ -471,7 +488,10 @@ public class TagResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Tag category id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(Entity.TAG_CATEGORY, MetadataOperation.EDIT_ALL);
+    ResourceContext resourceContext =
+        EntityResource.getResourceContext(Entity.TAG_CATEGORY, daoCategory).id(id).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     TagCategory tagCategory = daoCategory.delete(uriInfo, id);
     addHref(uriInfo, tagCategory);
     return new RestUtil.DeleteResponse<>(tagCategory, RestUtil.ENTITY_DELETED).toResponse();
@@ -490,7 +510,10 @@ public class TagResource {
       @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
       @Parameter(description = "Tag id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(Entity.TAG, MetadataOperation.EDIT_ALL);
+    ResourceContext resourceContext = EntityResource.getResourceContext(Entity.TAG, dao).id(id).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     Tag tag = dao.delete(uriInfo, id);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     addHref(categoryHref, tag);

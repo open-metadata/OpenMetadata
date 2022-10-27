@@ -41,5 +41,7 @@ public interface Authorizer {
       SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
       throws IOException;
 
-  void authorizeAdmin(SecurityContext securityContext, boolean allowBots);
+  void authorizeAdmin(SecurityContext securityContext);
+
+  boolean decryptSecret(SecurityContext securityContext);
 }
