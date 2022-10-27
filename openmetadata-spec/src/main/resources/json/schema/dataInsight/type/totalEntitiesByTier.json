@@ -14,7 +14,7 @@
       "description": "Tier of entity. Derived from tags.",
       "type": "string"
     },
-    "entityCountFraction": {
+    "entityCount": {
       "description": "Total count of entity for the given entity type",
       "type": "integer"
     }

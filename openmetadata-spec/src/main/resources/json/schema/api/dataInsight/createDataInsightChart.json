@@ -42,6 +42,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "description", "dataIndexType"],
+  "required": ["name"],
   "additionalProperties": false
 }

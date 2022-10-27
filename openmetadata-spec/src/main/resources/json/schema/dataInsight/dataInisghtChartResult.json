@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/datatInsight/datatInsightChartResult.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/dataInsightChartResult.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DatatInsightChartResult",
-  "description": "DatatInsightChartResult represents data that will be consummed by a specific chart",
+  "title": "DataInsightChartResult",
+  "description": "DataInsightChartResult represents data that will be consummed by a specific chart",
   "type": "object",
-  "javaType": "org.openmetadata.schema.datatInsight.DatatInsightChartResult",
+  "javaType": "org.openmetadata.schema.dataInsight.DataInsightChartResult",
   "definitions": {
     "dataInsightChartType": {
       "description": "chart type. Must match `name` of a `dataInsightChartDefinition`.",

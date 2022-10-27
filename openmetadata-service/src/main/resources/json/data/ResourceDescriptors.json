@@ -477,7 +477,8 @@
     "operations" : [
       "Create",
       "Delete",
-      "ViewAll"
+      "ViewAll",
+      "EditDescription"
     ]
   }
 ]

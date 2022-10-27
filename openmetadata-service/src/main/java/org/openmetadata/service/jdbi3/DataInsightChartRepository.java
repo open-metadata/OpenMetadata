@@ -1,10 +1,9 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART_DEFINITION;
+import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
 import java.io.IOException;
-import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.datatInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
@@ -17,7 +16,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   public DataInsightChartRepository(CollectionDAO dao) {
     super(
         COLLECTION_PATH,
-        DATA_INSIGHT_CHART_DEFINITION,
+        DATA_INSIGHT_CHART,
         DataInsightChart.class,
         dao.dataInsightChartDAO(),
         dao,
@@ -34,18 +33,6 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   @Override
   public void prepare(DataInsightChart entity) throws IOException {
     setFullyQualifiedName(entity);
-
-    if (CommonUtil.nullOrEmpty(entity.getDescription())) {
-      throw new IllegalArgumentException("description must not be empty");
-    }
-
-    if (CommonUtil.nullOrEmpty(entity.getDimensions())) {
-      throw new IllegalArgumentException("dimensions must not be empty");
-    }
-
-    if (CommonUtil.nullOrEmpty(entity.getMetrics())) {
-      throw new IllegalArgumentException("Metrics must not be empty");
-    }
   }
 
   @Override
@@ -54,7 +41,6 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     entity.withOwner(null).withHref(null);
     store(entity.getId(), entity, update);
-
     // Restore the relationships
     entity.withOwner(owner);
   }

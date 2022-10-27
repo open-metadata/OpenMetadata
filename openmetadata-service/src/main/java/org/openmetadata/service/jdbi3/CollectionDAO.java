@@ -49,7 +49,7 @@ import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
-import org.openmetadata.schema.datatInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Chart;
@@ -65,6 +65,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.metadata.Metadata;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -229,6 +230,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataInsightChartDAO dataInsightChartDAO();
+
+  @CreateSqlObject
+  MetadataDAO metadataDAO();
 
   @CreateSqlObject
   UtilDAO utilDAO();
@@ -2972,6 +2976,23 @@ public interface CollectionDAO {
     @Override
     default Class<DataInsightChart> getEntityClass() {
       return DataInsightChart.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+  }
+
+  interface MetadataDAO extends EntityDAO<Metadata> {
+    @Override
+    default String getTableName() {
+      return "metadata_entity";
+    }
+
+    @Override
+    default Class<Metadata> getEntityClass() {
+      return Metadata.class;
     }
 
     @Override
