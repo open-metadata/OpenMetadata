@@ -264,8 +264,10 @@ public final class CollectionRegistry {
     try {
       Method initializeMethod = resource.getClass().getMethod("initialize", OpenMetadataApplicationConfig.class);
       initializeMethod.invoke(resource, config);
-    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
+    } catch (NoSuchMethodException ignored) {
       // Method does not exist and initialize is not called
+    } catch (Exception ex) {
+      LOG.warn("Encountered exception ", ex);
     }
     return resource;
   }

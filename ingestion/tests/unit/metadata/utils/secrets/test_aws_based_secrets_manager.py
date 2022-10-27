@@ -17,7 +17,6 @@ from copy import deepcopy
 from typing import Any, Dict
 from unittest.mock import Mock, patch
 
-from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
@@ -88,7 +87,7 @@ class AWSBasedSecretsManager(object):
             actual_om_connection.securityConfig = None
 
             aws_manager.add_auth_provider_security_config(
-                actual_om_connection, BotType.ingestion_bot.value
+                actual_om_connection, "ingestion-bot"
             )
 
             self.assert_client_called_once(
@@ -111,7 +110,7 @@ class AWSBasedSecretsManager(object):
 
             with self.assertRaises(ValueError) as value_error:
                 aws_manager.add_auth_provider_security_config(
-                    self.om_connection, BotType.ingestion_bot.value
+                    self.om_connection, "ingestion-bot"
                 )
             self.assertTrue(
                 "/openmetadata/bot/ingestion-bot" in str(value_error.exception)

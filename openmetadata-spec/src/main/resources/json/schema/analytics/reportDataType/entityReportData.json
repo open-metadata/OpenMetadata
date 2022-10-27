@@ -31,8 +31,16 @@
       "description": "Number of missing description for the entity"
     },
     "hasOwner": {
-      "type": "boolean",
-      "description": "Weather"
+      "type": "integer",
+      "description": "number of entities with owner"
+    },
+    "missingOwner": {
+      "type": "integer",
+      "description": "number of entities missing owners"
+    },
+    "entityCount": {
+      "type": "integer",
+      "description": "number of entities"
     }
   }
 }

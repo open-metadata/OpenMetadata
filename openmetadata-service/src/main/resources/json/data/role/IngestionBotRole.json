@@ -1,0 +1,16 @@
+{
+  "name": "IngestionBotRole",
+  "displayName": "Ingestion bot role",
+  "description": "Role corresponding to a Ingestion bot.",
+  "allowDelete": false,
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "IngestionBotPolicy"
+    }
+  ]
+}

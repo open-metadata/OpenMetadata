@@ -179,6 +179,10 @@ public final class CommonUtil {
     return list == null || list.isEmpty();
   }
 
+  public static boolean nullOrEmpty(Object object) {
+    return object == null || nullOrEmpty(object.toString());
+  }
+
   public static String getResourceAsStream(ClassLoader loader, String file) throws IOException {
     return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
   }

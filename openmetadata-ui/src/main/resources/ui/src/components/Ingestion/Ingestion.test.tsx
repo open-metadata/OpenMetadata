@@ -100,10 +100,6 @@ jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
 });
 
-jest.mock('../Modals/IngestionLogsModal/IngestionLogsModal', () => {
-  return jest.fn().mockImplementation(() => <div>IngestionLogsModal</div>);
-});
-
 jest.mock(
   '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',
   () => {
@@ -448,47 +444,6 @@ describe('Test Ingestion page', () => {
     fireEvent.click(unpause);
 
     expect(handleEnableDisableIngestion).toBeCalled();
-  });
-
-  it('Should render logs modal on click of logs button', async () => {
-    const mockPagingAfter = {
-      after: 'afterKey',
-      before: 'beforeKey',
-      total: 0,
-    };
-
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        currrentPage={1}
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPagingAfter}
-        pagingHandler={mockPaginghandler}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceList={[]}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const logsButton = await findByTestId(container, 'logs');
-    fireEvent.click(logsButton);
-
-    expect(
-      await findByText(container, /IngestionLogsModal/i)
-    ).toBeInTheDocument();
   });
 
   it('Should render kill modal on click of kill button', async () => {

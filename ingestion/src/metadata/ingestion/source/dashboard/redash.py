@@ -32,7 +32,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.lineage.sql_lineage import (
+    clean_raw_query,
+    search_table_entities,
+)
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
@@ -123,7 +126,7 @@ class RedashSource(DashboardServiceSource):
             if not visualization.get("query"):
                 continue
             if visualization.get("query", {}).get("query"):
-                parser = LineageRunner(visualization["query"]["query"])
+                parser = LineageRunner(clean_raw_query(visualization["query"]["query"]))
             for table in parser.source_tables:
                 table_name = str(table)
                 database_schema = None

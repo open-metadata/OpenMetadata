@@ -143,7 +143,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   protected void preDelete(Policy entity) {
     if (FALSE.equals(entity.getAllowDelete())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, entity.getName()));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));
     }
   }
 

@@ -275,7 +275,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, database, true);
+    return create(uriInfo, securityContext, database);
   }
 
   @PATCH
@@ -320,7 +320,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, database, true);
+    return createOrUpdate(uriInfo, securityContext, database);
   }
 
   @DELETE
@@ -364,7 +364,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           boolean hardDelete,
       @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private Database getDatabase(CreateDatabase create, String user) throws IOException {

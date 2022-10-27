@@ -12,177 +12,98 @@
  */
 
 import classNames from 'classnames';
-import { toLower } from 'lodash';
-import { AggregationType, Bucket, FilterObject } from 'Models';
-import PropTypes from 'prop-types';
-import React, { Fragment, FunctionComponent, useState } from 'react';
+import { isEmpty, isNil } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AggregationEntry } from '../../../interface/search.interface';
 import {
-  facetFilterPlaceholder,
-  LIST_SIZE,
-} from '../../../constants/constants';
-import { checkSelected } from '../../../utils/FilterUtils';
-import { getTagsWithLabel } from '../../../utils/TagsUtils';
-import { FacetProp } from './FacetTypes';
+  compareAggregationKey,
+  translateAggregationKeyToTitle,
+} from './facetFilter.constants';
+import { FacetFilterProps } from './facetFilter.interface';
 import FilterContainer from './FilterContainer';
 
-const FacetFilter: FunctionComponent<FacetProp> = ({
-  aggregations,
-  filters,
-  showDeletedOnly = false,
+const FacetFilter: React.FC<FacetFilterProps> = ({
+  aggregations = {},
+  filters = {},
+  showDeleted = false,
   onSelectHandler,
-  onSelectDeleted,
+  onChangeShowDeleted,
   onClearFilter,
-  onSelectAllFilter,
-}: FacetProp) => {
-  const [showAllTags, setShowAllTags] = useState<boolean>(false);
-  const [showAllServices, setShowAllServices] = useState<boolean>(false);
-  const [showAllTier, setShowAllTier] = useState<boolean>(false);
-  const [showAllDatabase, setShowAllDatabase] = useState<boolean>(false);
-  const [showAllDatabaseSchema, setShowAllDatabaseSchema] =
-    useState<boolean>(false);
-  const [showAllServiceName, setShowAllServiceName] = useState<boolean>(false);
+}) => {
+  const [aggregationsPageSize, setAggregationsPageSize] = useState(
+    Object.fromEntries(Object.keys(aggregations).map((k) => [k, 5]))
+  );
 
-  const getLinkText = (
-    length: number,
-    state: boolean,
-    setState: (value: boolean) => void
-  ) => {
-    return (
-      length > 5 && (
-        <p className="link-text tw-text-xs" onClick={() => setState(!state)}>
-          {state ? 'View less' : 'View more'}
-        </p>
+  /**
+   * Merging aggregations with filters.
+   * The aim is to ensure that if there a filter on aggregationKey `k` with value `v`,
+   * but in `aggregations[k]` there is not bucket with value `v`,
+   * we add an empty bucket with value `v` and 0 elements so the UI displays that the filter exists.
+   */
+  const aggregationEntries = useMemo(() => {
+    if (isNil(filters) || isEmpty(filters)) {
+      return Object.entries(aggregations)
+        .filter(([, { buckets }]) => buckets.length)
+        .sort(([key1], [key2]) => compareAggregationKey(key1, key2));
+    }
+
+    const aggregationEntriesWithZeroFilterBuckets: AggregationEntry[] =
+      Object.entries(aggregations).map(([aggregationKey, { buckets }]) => [
+        aggregationKey,
+        {
+          buckets:
+            aggregationKey in filters
+              ? [
+                  ...buckets,
+                  ...filters[aggregationKey]
+                    .filter((f) => !buckets.some((b) => b.key === f))
+                    .map((f) => ({ key: f, doc_count: 0 })), // eslint-disable-line @typescript-eslint/camelcase
+                ]
+              : buckets,
+        },
+      ]);
+
+    const missingAggregationEntries: AggregationEntry[] = Object.entries(
+      filters
+    )
+      .filter(
+        ([aggregationKey, values]) =>
+          !(aggregationKey in aggregations) && !isEmpty(values)
       )
-    );
-  };
+      .map(([aggregationKey, values]) => [
+        aggregationKey,
+        { buckets: values.map((v) => ({ key: v, doc_count: 0 })) }, // eslint-disable-line @typescript-eslint/camelcase
+      ]);
 
-  const getSeparator = (length: number, index: number) => {
-    return length !== 1 && index < length - 1 ? (
-      <div className="tw-filter-seperator" />
-    ) : null;
-  };
-  const sortBuckets = (buckets: Array<Bucket>) => {
-    return buckets.sort((a, b) => (a.key > b.key ? 1 : -1));
-  };
+    const combinedAggregations = [
+      ...aggregationEntriesWithZeroFilterBuckets,
+      ...missingAggregationEntries,
+    ];
 
-  const sortBucketbyCount = (buckets: Array<Bucket>) => {
-    return buckets.sort((a, b) => (a.doc_count < b.doc_count ? 1 : -1));
-  };
+    return combinedAggregations
+      .filter(([, { buckets }]) => buckets.length)
+      .sort(([key1], [key2]) => compareAggregationKey(key1, key2));
+  }, [aggregations, filters]);
 
-  const getBuckets = (
-    buckets: Array<Bucket>,
-    state: boolean,
-    sortBycount = false
-  ) => {
-    if (sortBycount) {
-      return sortBucketbyCount(buckets).slice(
-        0,
-        state ? buckets.length : LIST_SIZE
-      );
-    } else {
-      return sortBuckets(buckets).slice(0, state ? buckets.length : LIST_SIZE);
-    }
-  };
-
-  const getLinkTextByTitle = (title: string, bucketLength: number) => {
-    switch (title) {
-      case 'Service':
-        return getLinkText(bucketLength, showAllServices, setShowAllServices);
-      case 'Tags':
-        return getLinkText(bucketLength, showAllTags, setShowAllTags);
-      case 'Tier':
-        return getLinkText(bucketLength, showAllTier, setShowAllTier);
-      case 'Database':
-        return getLinkText(bucketLength, showAllDatabase, setShowAllDatabase);
-      case 'DatabaseSchema':
-        return getLinkText(
-          bucketLength,
-          showAllDatabaseSchema,
-          setShowAllDatabaseSchema
-        );
-      case 'ServiceName':
-        return getLinkText(
-          bucketLength,
-          showAllServiceName,
-          setShowAllServiceName
-        );
-      default:
-        return null;
-    }
-  };
-
-  const getBucketsByTitle = (title: string, buckets: Array<Bucket>) => {
-    switch (title) {
-      case 'Service':
-        return getBuckets(buckets, showAllServices, true);
-      case 'Tags':
-        return getTagsWithLabel(getBuckets(buckets, showAllTags, true));
-      case 'Tier':
-        return getBuckets(buckets, showAllTier);
-      case 'Database':
-        return getBuckets(buckets, showAllDatabase, true);
-      case 'DatabaseSchema':
-        return getBuckets(buckets, showAllDatabaseSchema, true);
-      case 'ServiceName':
-        return getBuckets(buckets, showAllServiceName, true);
-      default:
-        return [];
-    }
-  };
-
-  const getFilterItems = (aggregation: AggregationType) => {
-    return (
-      <>
-        {getBucketsByTitle(aggregation.title, aggregation.buckets).map(
-          (bucket: Bucket, index: number) => (
-            <FilterContainer
-              count={bucket.doc_count}
-              isSelected={checkSelected(
-                filters[toLower(aggregation.title) as keyof FilterObject],
-                bucket.key.replace(/ /g, '+')
-              )}
-              key={index}
-              label={bucket.label}
-              name={bucket.key}
-              type={toLower(aggregation.title) as keyof FilterObject}
-              onSelect={onSelectHandler}
-            />
+  useEffect(
+    () =>
+      setAggregationsPageSize(
+        Object.fromEntries(
+          Object.keys(aggregations).map((k) =>
+            k in aggregationsPageSize ? [k, aggregationsPageSize[k]] : [k, 5]
           )
-        )}
-        {getLinkTextByTitle(aggregation.title, aggregation.buckets.length)}
-      </>
-    );
-  };
-
-  const isClearFilter = (aggregation: AggregationType) => {
-    const buckets = getBucketsByTitle(aggregation.title, aggregation.buckets);
-    const flag = buckets.some((bucket) =>
-      filters[toLower(aggregation.title) as keyof FilterObject].includes(
-        bucket.key
-      )
-    );
-
-    return flag;
-  };
-
-  const isSelectAllFilter = (aggregation: AggregationType) => {
-    const buckets = getBucketsByTitle(aggregation.title, aggregation.buckets);
-    const flag = buckets.every((bucket) =>
-      filters[toLower(aggregation.title) as keyof FilterObject].includes(
-        bucket.key
-      )
-    );
-
-    return !flag;
-  };
+        )
+      ),
+    [aggregations]
+  );
 
   return (
     <>
       <div
-        className="sidebar-my-data-holder my-3"
+        className="sidebar-my-data-holder mt-2 mb-3"
         data-testid="show-deleted-cntnr">
         <div
-          className="filter-group tw-justify-between tw-my-3 tw-px-3"
+          className="filter-group tw-justify-between tw-mb-1"
           data-testid="filter-container-deleted">
           <div className="tw-flex">
             <div className="filters-title tw-w-36 tw-truncate custom-checkbox-label">
@@ -192,88 +113,93 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           <div
             className={classNames(
               'toggle-switch tw-mr-0',
-              showDeletedOnly ? 'open' : null
+              showDeleted ? 'open' : null
             )}
             data-testid="show-deleted"
             onClick={() => {
-              onSelectDeleted?.(!showDeletedOnly);
+              onChangeShowDeleted(!showDeleted);
             }}>
             <div className="switch" />
           </div>
         </div>
       </div>
-      {getSeparator(aggregations.length, 0)}
-      {aggregations.map((aggregation: AggregationType, index: number) => {
-        return (
-          <Fragment key={index}>
-            {aggregation.buckets.length > 0 ? (
-              <div data-testid={aggregation.title}>
-                <div className="tw-flex tw-justify-between tw-flex-col">
-                  <h6
-                    className="tw-heading tw-my-1 tw-px-3"
-                    data-testid="filter-heading">
-                    {
-                      facetFilterPlaceholder.find(
-                        (filter) => filter.name === aggregation.title
-                      )?.value
-                    }
-                  </h6>
-                  <div className="tw-flex tw-mt-1.5">
-                    {onSelectAllFilter && (
-                      <span
-                        className="link-text tw-text-xs"
-                        onClick={() => {
-                          if (isSelectAllFilter(aggregation)) {
-                            onSelectAllFilter(
-                              toLower(aggregation.title) as keyof FilterObject,
-                              aggregation.buckets.map((b) => b.key)
-                            );
-                          }
-                        }}>
-                        Select All
-                      </span>
-                    )}
-                    {onClearFilter && (
-                      <>
-                        <span className="tw-text-xs tw-px-2">|</span>
-                        <span
-                          className="link-text tw-text-xs tw-text-grey-muted"
-                          onClick={() => {
-                            if (isClearFilter(aggregation)) {
-                              onClearFilter(
-                                toLower(aggregation.title) as keyof FilterObject
-                              );
-                            }
-                          }}>
-                          Deselect All
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div
-                  className="sidebar-my-data-holder tw-px-3"
-                  data-testid={`filter-containers-${index}`}>
-                  {getFilterItems(aggregation)}
-                </div>
-                {getSeparator(aggregations.length, index)}
+      <div className="tw-filter-seperator" />
+      {aggregationEntries.map(
+        (
+          [aggregationKey, aggregation],
+          index,
+          { length: aggregationsLength }
+        ) => (
+          <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
+            <div className="tw-flex tw-justify-between tw-flex-col">
+              <h6 className="tw-heading tw-my-1">
+                {translateAggregationKeyToTitle(aggregationKey)}
+              </h6>
+              <div className="tw-flex tw-my-1.5">
+                {!isEmpty(filters[aggregationKey]) && (
+                  <span
+                    className="link-text tw-text-xs tw-text-grey-muted"
+                    onClick={() => onClearFilter(aggregationKey)}>
+                    Deselect All
+                  </span>
+                )}
               </div>
-            ) : null}
-          </Fragment>
-        );
-      })}
+            </div>
+            <div
+              className="sidebar-my-data-holder"
+              data-testid="filter-container">
+              {aggregation.buckets
+                .slice(0, aggregationsPageSize[aggregationKey])
+                .map((bucket, index) => (
+                  <FilterContainer
+                    count={bucket.doc_count}
+                    isSelected={
+                      !isNil(filters) && aggregationKey in filters
+                        ? filters[aggregationKey].includes(bucket.key)
+                        : false
+                    }
+                    key={index}
+                    name={bucket.key}
+                    type={aggregationKey}
+                    onSelect={onSelectHandler}
+                  />
+                ))}
+              <div className="tw-flex tw-justify-around tw-flex-row tw-my-1.5">
+                {aggregationsPageSize[aggregationKey] <
+                  aggregation.buckets.length && (
+                  <p
+                    className="link-text tw-text-xs"
+                    onClick={() =>
+                      setAggregationsPageSize((prev) => ({
+                        ...prev,
+                        [aggregationKey]: prev[aggregationKey] + 5,
+                      }))
+                    }>
+                    View more
+                  </p>
+                )}
+                {aggregationsPageSize[aggregationKey] > 5 && (
+                  <p
+                    className="link-text tw-text-xs"
+                    onClick={() =>
+                      setAggregationsPageSize((prev) => ({
+                        ...prev,
+                        [aggregationKey]: Math.max(5, prev[aggregationKey] - 5),
+                      }))
+                    }>
+                    View less
+                  </p>
+                )}
+              </div>
+            </div>
+            {index !== aggregationsLength - 1 && (
+              <div className="tw-filter-seperator" />
+            )}
+          </div>
+        )
+      )}
     </>
   );
-};
-
-FacetFilter.propTypes = {
-  aggregations: PropTypes.array.isRequired,
-  onSelectHandler: PropTypes.func.isRequired,
-  filters: PropTypes.shape({
-    tags: PropTypes.array.isRequired,
-    service: PropTypes.array.isRequired,
-    tier: PropTypes.array.isRequired,
-  }).isRequired,
 };
 
 export default FacetFilter;

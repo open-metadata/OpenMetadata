@@ -33,21 +33,26 @@ import {
   NO_PERMISSION_TO_VIEW,
 } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/entity/policies/policy';
-import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
 import {
   getIngestionStatuses,
   getLoadingStatus,
 } from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
-import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
+import {
+  getLogsViewerPath,
+  getTestSuiteIngestionPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import PopOver from '../common/popover/PopOver';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -63,7 +68,6 @@ const TestSuitePipelineTab = () => {
     IngestionPipeline[]
   >([]);
   const [airFlowEndPoint, setAirFlowEndPoint] = useState('');
-  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const [deleteSelection, setDeleteSelection] = useState({
@@ -493,9 +497,13 @@ const TestSuitePipelineTab = () => {
                   <Button
                     data-testid="logs"
                     disabled={!viewPermission}
+                    href={getLogsViewerPath(
+                      PipelineType.TestSuite,
+                      record.service?.name || '',
+                      record.fullyQualifiedName || ''
+                    )}
                     type="link"
                     onClick={() => {
-                      setIsLogsModalOpen(true);
                       setSelectedPipeline(record);
                     }}>
                     Logs
@@ -503,20 +511,6 @@ const TestSuitePipelineTab = () => {
                 </Tooltip>
               </div>
 
-              {isLogsModalOpen &&
-                selectedPipeline &&
-                record.id === selectedPipeline?.id && (
-                  <IngestionLogsModal
-                    isModalOpen={isLogsModalOpen}
-                    pipelinName={selectedPipeline.name}
-                    pipelineId={selectedPipeline.id as string}
-                    pipelineType={selectedPipeline.pipelineType}
-                    onClose={() => {
-                      setIsLogsModalOpen(false);
-                      setSelectedPipeline(undefined);
-                    }}
-                  />
-                )}
               {isKillModalOpen &&
                 selectedPipeline &&
                 record.id === selectedPipeline?.id && (
@@ -541,7 +535,6 @@ const TestSuitePipelineTab = () => {
   }, [
     airFlowEndPoint,
     isKillModalOpen,
-    isLogsModalOpen,
     selectedPipeline,
     currDeployId,
     currTriggerId,

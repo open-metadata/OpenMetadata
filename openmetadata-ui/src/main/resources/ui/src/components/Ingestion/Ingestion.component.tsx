@@ -33,7 +33,9 @@ import { getLoadingStatus, isEven } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
   getEditIngestionPath,
+  getLogsViewerPath,
 } from '../../utils/RouterUtils';
+import { getServiceCategoryFromType } from '../../utils/ServiceUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';
@@ -44,7 +46,6 @@ import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { IngestionProps } from './ingestion.interface';
 
@@ -72,7 +73,6 @@ const Ingestion: React.FC<IngestionProps> = ({
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
   const [deleteSelection, setDeleteSelection] = useState({
     id: '',
@@ -578,28 +578,22 @@ const Ingestion: React.FC<IngestionProps> = ({
                         <Button
                           data-testid="logs"
                           disabled={!isRequiredDetailsAvailable}
+                          href={getLogsViewerPath(
+                            getServiceCategoryFromType(
+                              ingestion?.service?.type || ''
+                            ),
+                            ingestion.service?.name || '',
+                            ingestion?.fullyQualifiedName ||
+                              ingestion?.name ||
+                              ''
+                          )}
                           type="link"
                           onClick={() => {
-                            setIsLogsModalOpen(true);
                             setSelectedPipeline(ingestion);
                           }}>
                           {t('label.logs')}
                         </Button>
                       </div>
-                      {isLogsModalOpen &&
-                        selectedPipeline &&
-                        ingestion.id === selectedPipeline?.id && (
-                          <IngestionLogsModal
-                            isModalOpen={isLogsModalOpen}
-                            pipelinName={selectedPipeline.name}
-                            pipelineId={selectedPipeline.id as string}
-                            pipelineType={selectedPipeline.pipelineType}
-                            onClose={() => {
-                              setIsLogsModalOpen(false);
-                              setSelectedPipeline(undefined);
-                            }}
-                          />
-                        )}
                       {isKillModalOpen &&
                         selectedPipeline &&
                         ingestion.id === selectedPipeline?.id && (
