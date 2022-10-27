@@ -15,45 +15,48 @@ import { Col, Dropdown, Row, Space } from 'antd';
 import React from 'react';
 import { DAY_FILTER, ORG_FILTER, TEAM_FILTER } from './DataInsight.mock';
 
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataInsightDetail from '../../components/DataInsightDetail/DataInsightDetail.component';
 import { getMenuItems } from '../../utils/DataInsightUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 
 const DataInsightPage = () => {
   return (
-    <Row data-testid="dataInsight-container" gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-end" size={12}>
-          <Dropdown
-            className="cursor-pointer"
-            overlay={getMenuItems(DAY_FILTER, '7')}>
-            <Space>
-              Last 7 Days
-              <DropDownIcon />
-            </Space>
-          </Dropdown>
-          <Dropdown
-            className="cursor-pointer"
-            overlay={getMenuItems(TEAM_FILTER, 'team1')}>
-            <Space>
-              Cloud Infra
-              <DropDownIcon />
-            </Space>
-          </Dropdown>
-          <Dropdown
-            className="cursor-pointer"
-            overlay={getMenuItems(ORG_FILTER, 'org1')}>
-            <Space>
-              Organization1
-              <DropDownIcon />
-            </Space>
-          </Dropdown>
-        </Space>
-      </Col>
-      <Col span={24}>
-        <DataInsightDetail />
-      </Col>
-    </Row>
+    <PageLayoutV1>
+      <Row data-testid="dataInsight-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <Space className="w-full justify-end" size={12}>
+            <Dropdown
+              className="cursor-pointer"
+              overlay={getMenuItems(DAY_FILTER, '7')}>
+              <Space>
+                Last 7 Days
+                <DropDownIcon />
+              </Space>
+            </Dropdown>
+            <Dropdown
+              className="cursor-pointer"
+              overlay={getMenuItems(TEAM_FILTER, 'team1')}>
+              <Space>
+                Cloud Infra
+                <DropDownIcon />
+              </Space>
+            </Dropdown>
+            <Dropdown
+              className="cursor-pointer"
+              overlay={getMenuItems(ORG_FILTER, 'org1')}>
+              <Space>
+                Organization1
+                <DropDownIcon />
+              </Space>
+            </Dropdown>
+          </Space>
+        </Col>
+        <Col span={24}>
+          <DataInsightDetail />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 
