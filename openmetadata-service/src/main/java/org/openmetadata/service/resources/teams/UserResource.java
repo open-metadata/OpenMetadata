@@ -184,10 +184,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static class UserList extends ResultList<User> {
     @SuppressWarnings("unused") // Used for deserialization
     public UserList() {}
-
-    public UserList(List<User> users, String beforeCursor, String afterCursor, int total) {
-      super(users, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";

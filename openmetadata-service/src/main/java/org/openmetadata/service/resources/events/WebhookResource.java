@@ -82,10 +82,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
     @SuppressWarnings("unused") /* Required for tests */
     public WebhookList() {}
-
-    public WebhookList(List<Webhook> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {

@@ -130,10 +130,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     public BotList() {
       /* Required for serde */
     }
-
-    public BotList(List<Bot> data) {
-      super(data);
-    }
   }
 
   @GET
