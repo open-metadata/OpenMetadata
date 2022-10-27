@@ -10,3 +10,6 @@ CREATE TABLE IF NOT EXISTS web_analytic_event (
     UNIQUE(name),
     INDEX name_index (name)
 );
+
+UPDATE bot_entity
+SET json = JSON_INSERT(JSON_REMOVE(json, '$.botType'), '$.provider', 'system');

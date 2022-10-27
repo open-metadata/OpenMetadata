@@ -27,5 +27,5 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, LineageSource):
     sql_stmt = SNOWFLAKE_SQL_STATEMENT
 
     filters = """
-        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','COPY','CREATE_TABLE_AS_SELECT')
+        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
     """

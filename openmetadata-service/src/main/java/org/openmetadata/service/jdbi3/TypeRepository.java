@@ -98,9 +98,9 @@ public class TypeRepository extends EntityRepository<Type> {
     return new TypeUpdater(original, updated, operation);
   }
 
-  public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, String id, CustomProperty property)
+  public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property)
       throws IOException {
-    Type type = dao.findEntityById(UUID.fromString(id), Include.NON_DELETED);
+    Type type = dao.findEntityById(id, Include.NON_DELETED);
     property.setPropertyType(dao.findEntityReferenceById(property.getPropertyType().getId(), Include.NON_DELETED));
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException("Only entity types can be extended and field types can't be extended");

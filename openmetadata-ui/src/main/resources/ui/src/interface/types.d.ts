@@ -39,9 +39,6 @@ declare module 'Models' {
       searchQuery: string;
     };
   };
-  export type FilterObject = {
-    [key: string]: Array<string>;
-  };
   export type PaginationProps = {
     sizePerPage: number;
     totalNumberOfValues: number;

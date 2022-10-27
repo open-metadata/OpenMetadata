@@ -15,7 +15,7 @@ import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getExplorePathWithSearch } from '../../constants/constants';
+import { getExplorePathWithSearch, ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -73,10 +73,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         icon: Icons.TEST_SUITE,
         data: 'Test Suites',
         count: entityCounts.testSuiteCount,
-        link: getSettingPath(
-          GlobalSettingsMenuCategory.DATA_QUALITY,
-          GlobalSettingOptions.TEST_SUITE
-        ),
+        link: ROUTES.TEST_SUITES,
         dataTestId: 'test-suite',
       },
       service: {

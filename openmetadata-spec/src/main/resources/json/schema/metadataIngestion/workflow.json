@@ -38,6 +38,9 @@
             },
             {
               "$ref": "testSuitePipeline.json"
+            },
+            {
+              "$ref": "dataInsightPipeline.json"
             }
           ]
         }

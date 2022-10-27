@@ -24,6 +24,8 @@ import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USERNAME_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
@@ -141,7 +143,7 @@ import org.openmetadata.service.util.TokenUtil;
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "users")
+@Collection(name = "users", order = 8) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
@@ -284,7 +286,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       description = "Generate a random pwd",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     return Response.status(OK).entity(PasswordUtil.generateRandomPassword()).build();
   }
 
@@ -483,7 +485,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
-      authorizer.authorizeAdmin(securityContext, true);
+      authorizer.authorizeAdmin(securityContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
@@ -544,17 +546,21 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
+
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
+    MetadataOperation operation = resourceContext.getEntity() == null ? CREATE : EDIT_ALL;
+
     dao.prepare(user);
-    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext, true);
+    if (Boolean.TRUE.equals(create.getIsAdmin())) {
+      authorizer.authorizeAdmin(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user same as the user
-      // we are trying to update. One option is to set users.owner as user, however thats not supported User entity.
-      OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-      ResourceContext resourceContext = getResourceContextByName(user.getName());
-      authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
+      // we are trying to update. One option is to set users.owner as user, however that is not supported for User.
+      OperationContext createOperationContext = new OperationContext(entityType, operation);
+      authorizer.authorize(securityContext, createOperationContext, resourceContext);
     }
-    if (Boolean.TRUE.equals(create.getIsBot())) {
+    if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately
       return createOrUpdateBot(user, create, uriInfo, securityContext);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -584,17 +590,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    authorizeGenerateJWT(user);
-    authorizer.authorizeAdmin(securityContext, false);
-    JWTAuthMechanism jwtAuthMechanism =
-        jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
-    AuthenticationMechanism authenticationMechanism =
-        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
-    user.setAuthenticationMechanism(authenticationMechanism);
+    authorizer.authorizeAdmin(securityContext);
+    jwtTokenGenerator.setAuthMechanism(user, generateTokenRequest);
     User updatedUser = dao.createOrUpdate(uriInfo, user).getEntity();
-    jwtAuthMechanism =
-        JsonUtils.convertValue(updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
-    return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
+    return Response.status(Response.Status.OK).entity(jwtTokenGenerator.getAuthMechanism(updatedUser)).build();
   }
 
   @PUT
@@ -616,8 +615,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    authorizeGenerateJWT(user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
@@ -652,7 +650,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null
         && authenticationMechanism.getConfig() != null
@@ -687,7 +685,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
   }
 
@@ -718,8 +716,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot")) {
-          authorizer.authorizeAdmin(securityContext, true);
+        if (path.equals("/isAdmin")) {
+          authorizer.authorizeAdmin(securityContext);
         }
         // if path contains team, check if team is joinable by any user
         if (patchOpObject.containsKey("op")
@@ -736,7 +734,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             dao.validateTeamAddition(id, UUID.fromString(teamId));
             if (!dao.isTeamJoinable(teamId)) {
               // Only admin can join closed teams
-              authorizer.authorizeAdmin(securityContext, false);
+              authorizer.authorizeAdmin(securityContext);
             }
           }
         }
@@ -765,7 +763,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
   }
@@ -995,7 +993,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         return Response.status(403).entity(new ErrorMessage(403, "Old Password is not correct")).build();
       }
     } else {
-      authorizer.authorizeAdmin(securityContext, false);
+      authorizer.authorizeAdmin(securityContext);
       User storedUser = dao.getByName(uriInfo, request.getUsername(), new Fields(fields, String.join(",", fields)));
       String newHashedPassword = BCrypt.withDefaults().hashToString(12, request.getNewPassword().toCharArray());
       // Admin is allowed to set password for User directly
@@ -1183,12 +1181,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
-  }
-
-  private void authorizeGenerateJWT(User user) {
-    if (!Boolean.TRUE.equals(user.getIsBot())) {
-      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
-    }
   }
 
   public User registerUser(UriInfo uriInfo, RegistrationRequest newRegistrationRequest) throws IOException {
@@ -1438,6 +1430,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException(
           String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
     }
+    // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     decryptOrNullify(securityContext, response.getEntity());
@@ -1475,6 +1468,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return dao.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
+  // TODO remove this
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
@@ -1564,11 +1558,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(user.getId()),
-            secretsManager.isLocal());
+        if (!secretsManager.isLocal()) {
+          authorizer.authorize(
+              securityContext,
+              new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+              getResourceContextById(user.getId()));
+        }
       } catch (AuthorizationException | IOException e) {
         user.getAuthenticationMechanism().setConfig(null);
         return user;

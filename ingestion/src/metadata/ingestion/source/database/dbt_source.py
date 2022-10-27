@@ -494,8 +494,12 @@ class DBTMixin:
                                 self.metadata,
                                 entity_type=TestCase,
                                 service_name=self.config.serviceName,
-                                database_name=model.get("database"),
-                                schema_name=model.get("schema"),
+                                database_name=model["database"]
+                                if model["database"]
+                                else "default",
+                                schema_name=model["schema"]
+                                if model["schema"]
+                                else "default",
                                 table_name=model.get("name"),
                                 column_name=dbt_test_node.get("column_name"),
                                 test_case_name=self.dbt_tests.get(
@@ -541,8 +545,8 @@ class DBTMixin:
                 self.metadata,
                 entity_type=Table,
                 service_name=self.config.serviceName,
-                database_name=model.get("database"),
-                schema_name=model.get("schema"),
+                database_name=model["database"] if model["database"] else "default",
+                schema_name=model["schema"] if model["schema"] else "default",
                 table_name=model.get("name"),
             )
             column_name = dbt_test.get("column_name")

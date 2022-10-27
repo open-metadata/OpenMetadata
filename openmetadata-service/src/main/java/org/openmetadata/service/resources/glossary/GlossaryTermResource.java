@@ -324,7 +324,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, term, true);
+    return create(uriInfo, securityContext, term);
   }
 
   @PATCH
@@ -370,7 +370,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, term, true);
+    return createOrUpdate(uriInfo, securityContext, term);
   }
 
   @DELETE
@@ -396,7 +396,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           boolean hardDelete,
       @Parameter(description = "Glossary Term Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {

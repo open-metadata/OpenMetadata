@@ -11,11 +11,11 @@
       "type": "string"
     },
     "containerRequestFilter": {
-      "description": "Filter for the request authorization",
+      "description": "Filter for the request authorization.",
       "type": "string"
     },
     "adminPrincipals": {
-      "description": "List of unique admin principals",
+      "description": "List of unique admin principals.",
       "type": "array",
       "items": {
         "type": "string"
@@ -23,12 +23,13 @@
       "uniqueItems": true
     },
     "botPrincipals": {
-      "description": "List of unique bot principals",
+      "description": "**@Deprecated** List of unique bot principals",
       "type": "array",
       "items": {
         "type": "string"
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "default": null
     },
     "testPrincipals": {
       "description": "List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT TO BE USED IN PRODUCTION SETUP**",
@@ -55,10 +56,10 @@
       "type": "boolean"
     },
     "enableSecureSocketConnection": {
-      "description": "Enable Secure Socket Connection",
+      "description": "Enable Secure Socket Connection.",
       "type": "boolean"
     }
   },
-  "required": ["className", "containerRequestFilter", "adminPrincipals", "botPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],
+  "required": ["className", "containerRequestFilter", "adminPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],
   "additionalProperties": false
 }

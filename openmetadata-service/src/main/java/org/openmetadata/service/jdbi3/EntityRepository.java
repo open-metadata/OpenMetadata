@@ -254,16 +254,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public List<T> getEntitiesFromSeedData(String path) throws IOException {
-    return getEntitiesFromSeedData(path, entityClass);
+    return getEntitiesFromSeedData(entityType, path, entityClass);
   }
 
-  public <U> List<U> getEntitiesFromSeedData(String path, Class<U> clazz) throws IOException {
+  public static <U> List<U> getEntitiesFromSeedData(String entityType, String path, Class<U> clazz) throws IOException {
     List<U> entities = new ArrayList<>();
     List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
+            String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFile);
             json = json.replace("<separator>", Entity.SEPARATOR);
             entities.add(JsonUtils.readValue(json, clazz));
           } catch (Exception e) {
@@ -305,6 +305,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
+  public final T findOrNull(UUID id, String fields, Include include) throws IOException {
+    String json = dao.findJsonById(id, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+  }
+
+  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
     return getByName(uriInfo, fqn, fields, NON_DELETED);
   }
@@ -312,6 +318,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
     return withHref(uriInfo, setFieldsInternal(dao.findEntityByName(fqn, include), fields));
+  }
+
+  @Transaction
+  public final T findByNameOrNull(String fqn, String fields, Include include) throws IOException {
+    String json = dao.findJsonByFqn(fqn, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
   }
 
   @Transaction

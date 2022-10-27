@@ -171,10 +171,7 @@ public class LineageResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
       throws IOException {
     authorizer.authorize(
-        securityContext,
-        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext(),
-        true);
+        securityContext, new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE), new LineageResourceContext());
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -211,10 +208,7 @@ public class LineageResource {
           String toId)
       throws IOException {
     authorizer.authorize(
-        securityContext,
-        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext(),
-        true);
+        securityContext, new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE), new LineageResourceContext());
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {

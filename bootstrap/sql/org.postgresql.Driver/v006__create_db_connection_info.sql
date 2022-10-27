@@ -11,3 +11,9 @@ CREATE TABLE IF NOT EXISTS web_analytic_event (
 );
 
 CREATE INDEX IF NOT EXISTS name_index ON web_analytic_event(name);
+
+UPDATE bot_entity
+SET json = JSONB_SET(json::jsonb, '{provider}', '"system"', true);
+
+UPDATE bot_entity
+SET json = json::jsonb #- '{botType}';
