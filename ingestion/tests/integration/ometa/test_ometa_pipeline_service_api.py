@@ -38,6 +38,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+
 class OMetaPipelineServiceTest(TestCase):
     """
     Run this integration test with the local API available
@@ -59,7 +60,7 @@ class OMetaPipelineServiceTest(TestCase):
         config=AirflowConnection(
              hostPort="http://localhost:8080",
              connection=BackendConnection(),
-        ),
+        )
     )
 
     @classmethod
@@ -123,7 +124,7 @@ class OMetaPipelineServiceTest(TestCase):
             config=AirflowConnection(
                 hostPort="http://localhost:2000",
                 connection=BackendConnection(),
-            ),
+            )
         )
 
         update_request = CreatePipelineServiceRequest(
