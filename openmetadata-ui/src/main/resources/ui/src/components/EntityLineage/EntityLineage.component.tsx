@@ -90,7 +90,7 @@ import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
-import CustomControlElements from './CustomControlElements.component';
+import CustomControlsComponent from './CustomControls.component';
 import { CustomEdge } from './CustomEdge.component';
 import CustomNode from './CustomNode.component';
 import {
@@ -117,6 +117,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  onFullScreenClick,
   hasEditAccess,
 }: EntityLineageProp) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -851,7 +852,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }, 500);
   };
 
-  const handleCustomControlClick = () => {
+  const handleEditLineageClick = () => {
     setEditMode((pre) => !pre && !deleted);
     resetSelectedData();
     setIsDrawerOpen(false);
@@ -1001,13 +1002,17 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeMouseMove={onNodeMouseMove}
             onNodesChange={onNodesChange}>
-            <CustomControlElements
+            <CustomControlsComponent
+              className="absolute top-1 right-3 bottom-full m-l-md m-t-md"
               deleted={deleted}
+              fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}
+              handleFullScreenViewClick={onFullScreenClick}
               hasEditAccess={hasEditAccess}
+              isColumnsExpanded={expandAllColumns}
               isEditMode={isEditMode}
               loading={loading}
               status={status}
-              onClick={handleCustomControlClick}
+              onEditLinageClick={handleEditLineageClick}
               onExpandColumnClick={handleExpandColumnClick}
             />
             {isEditMode && (

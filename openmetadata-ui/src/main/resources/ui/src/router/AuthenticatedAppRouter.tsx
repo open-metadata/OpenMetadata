@@ -19,6 +19,7 @@ import { usePermissionProvider } from '../components/PermissionProvider/Permissi
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { Operation } from '../generated/entity/policies/policy';
+import LineagePage from '../pages/LineagePage/LineagePage';
 import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -450,6 +451,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
+      <Route
+        exact
+        component={LineagePage}
+        path={ROUTES.LINEAGE_FULL_SCREEN_VIEW}
+      />
 
       {/* keep these route above the setting route always */}
       <AdminProtectedRoute

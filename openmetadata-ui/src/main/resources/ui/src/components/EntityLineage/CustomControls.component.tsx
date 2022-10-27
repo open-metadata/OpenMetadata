@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { LoadingState } from 'Models';
 import React, {
   ButtonHTMLAttributes,
   FC,
@@ -21,6 +22,8 @@ import React, {
   useState,
 } from 'react';
 import { FitViewOptions, useReactFlow } from 'reactflow';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { LoadingStatus } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
@@ -30,6 +33,15 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onFitView?: () => void;
+  handleFullScreenViewClick?: () => void;
+  deleted: boolean | undefined;
+  isEditMode: boolean;
+  hasEditAccess: boolean | undefined;
+  isColumnsExpanded: boolean;
+  onEditLinageClick: () => void;
+  onExpandColumnClick: () => void;
+  loading: boolean;
+  status: LoadingState;
 }
 
 export const ControlButton: FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
@@ -48,11 +60,19 @@ export const ControlButton: FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
 
 const CustomControls: FC<ControlProps> = ({
   style,
+  isColumnsExpanded,
   showFitView = true,
   showZoom = true,
   fitViewParams,
   className,
-  children,
+  deleted,
+  isEditMode,
+  hasEditAccess,
+  onEditLinageClick,
+  onExpandColumnClick,
+  handleFullScreenViewClick,
+  loading,
+  status,
 }: ControlProps) => {
   const { fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
   const [zoom, setZoom] = useState<number>(1.5);
@@ -77,6 +97,19 @@ const CustomControls: FC<ControlProps> = ({
     },
     [zoomTo]
   );
+
+  const getLoadingStatus = useCallback(() => {
+    const editIcon = (
+      <SVGIcons
+        alt="icon-edit-lineag"
+        className="m--t-xss"
+        icon={isEditMode ? 'icon-edit-lineage' : 'icon-edit-lineage-color'}
+        width="14"
+      />
+    );
+
+    return LoadingStatus(editIcon, loading, status);
+  }, [loading, status, isEditMode]);
 
   return (
     <div
@@ -126,10 +159,40 @@ const CustomControls: FC<ControlProps> = ({
         <ControlButton
           className="tw-border tw-border-tag tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
           onClick={onFitViewHandler}>
-          <SVGIcons alt="fitview-icon" icon="icon-fitview" width="16" />
+          FS
         </ControlButton>
       )}
-      {children}
+      {handleFullScreenViewClick && (
+        <ControlButton
+          className="tw-border tw-border-tag tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
+          onClick={handleFullScreenViewClick}>
+          <SVGIcons alt="fullScreenViewicon" icon="icon-fitview" width="16" />
+        </ControlButton>
+      )}
+      {!deleted && (
+        <ControlButton
+          className={classNames('h-9 w-9 rounded-full p-x-xss tw-shadow-lg', {
+            'bg-primary': isEditMode,
+            'bg-primary-hover-lite': !isEditMode,
+          })}
+          data-testid="edit-lineage"
+          disabled={!hasEditAccess}
+          title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
+          onClick={onEditLinageClick}>
+          {getLoadingStatus()}
+        </ControlButton>
+      )}
+      {/* need to update below button once new mock comes */}
+      <ControlButton
+        className={classNames('h-9 w-9 rounded-full p-x-xss tw-shadow-lg', {
+          'bg-primary': isColumnsExpanded,
+          'bg-primary-hover-lite': !isColumnsExpanded,
+        })}
+        data-testid="expand-column"
+        title="Expand Columns"
+        onClick={onExpandColumnClick}>
+        CL
+      </ControlButton>
     </div>
   );
 };
