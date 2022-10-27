@@ -366,7 +366,7 @@ const NavBar = ({
                 />
               ))}
           </div>
-          <div className="tw-flex tw-ml-auto tw-pl-36">
+          <Space className="tw-ml-auto">
             <Space size={24}>
               <NavLink
                 className="focus:tw-no-underline"
@@ -403,7 +403,7 @@ const NavBar = ({
                     <SVGIcons
                       alt="Alert bell icon"
                       icon={Icons.ALERT_BELL}
-                      width="20"
+                      width="18"
                     />
                   </Badge>
                 </Dropdown>
@@ -416,7 +416,7 @@ const NavBar = ({
                       alt="Doc icon"
                       className="tw-align-middle tw-mt-0.5 tw-mr-1"
                       icon={Icons.HELP_CIRCLE}
-                      width="20"
+                      width="18"
                     />
                   }
                   isDropDownIconVisible={false}
@@ -455,7 +455,7 @@ const NavBar = ({
                 type="link"
               />
             </div>
-          </div>
+          </Space>
         </div>
         {isFeatureModalOpen && (
           <WhatsNewModal
