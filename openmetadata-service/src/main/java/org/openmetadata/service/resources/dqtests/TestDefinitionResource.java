@@ -88,10 +88,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     public TestDefinitionList() {
       // Empty constructor needed for deserialization
     }
-
-    public TestDefinitionList(List<TestDefinition> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET

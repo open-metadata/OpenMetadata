@@ -81,10 +81,6 @@ public class TagResource {
   static class CategoryList extends ResultList<TagCategory> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
     CategoryList() {}
-
-    CategoryList(List<TagCategory> data) {
-      super(data);
-    }
   }
 
   public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {

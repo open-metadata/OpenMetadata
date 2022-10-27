@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -92,20 +91,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     public TestCaseList() {
       // Empty constructor needed for deserialization
     }
-
-    public TestCaseList(List<TestCase> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class TestCaseResultList extends ResultList<TestCaseResult> {
     @SuppressWarnings("unused")
     public TestCaseResultList() {
       /* Required for serde */
-    }
-
-    public TestCaseResultList(List<TestCaseResult> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 

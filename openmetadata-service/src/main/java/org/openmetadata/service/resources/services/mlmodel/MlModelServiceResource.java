@@ -84,10 +84,6 @@ public class MlModelServiceResource
   public static class MlModelServiceList extends ResultList<MlModelService> {
     @SuppressWarnings("unused") /* Required for tests */
     public MlModelServiceList() {}
-
-    public MlModelServiceList(List<MlModelService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET

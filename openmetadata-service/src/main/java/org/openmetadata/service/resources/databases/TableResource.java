@@ -125,10 +125,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     public TableList() {
       /* Required for serde */
     }
-
-    public TableList(List<Table> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class TableProfileList extends ResultList<TableProfile> {
@@ -136,20 +132,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     public TableProfileList() {
       /* Required for serde */
     }
-
-    public TableProfileList(List<TableProfile> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class ColumnProfileList extends ResultList<ColumnProfile> {
     @SuppressWarnings("unused")
     public ColumnProfileList() {
       /* Required for serde */
-    }
-
-    public ColumnProfileList(List<ColumnProfile> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
