@@ -14,40 +14,56 @@ GraphQL queries used during ingestion
 """
 
 DAGSTER_PIPELINE_DETAILS_GRAPHQL = """
-            query AssetNodeQuery {
-            assetNodes {
-                __typename
-                ... on AssetNode {
-                    id
-                    jobNames
-                    groupName
-                    graphName
-                    opName
-                    opNames
-                    jobs{
-                        id
-                        name
-                        description
-                        runs{
-                            id
-                            runId
-                            status
-                            stats{
-                                    ... on RunStatsSnapshot {
-                                            startTime
-                                            endTime
-                                            stepsFailed
-                                        }
-                                }
-                    
-                        }
-                    }
-                
-                
+            query PipelineRuns{
+  repositoriesOrError{
+    __typename 
+    ... on RepositoryConnection{
+      nodes{
+        id,
+        name,
+        pipelines{
+          id,
+          name,
+          description,
+          runs{
+            id,
+            runId,
+            status,
+            startTime,
+            stats{
+                ... on RunStatsSnapshot {
+                        startTime
+                        endTime
+                        stepsFailed
                     }
                 }
+            executionPlan{
+              steps{
+                inputs{
+                  name,
+                  dependsOn{
+                    inputs{
+                      name
+                    },
+                    outputs{
+                      name
+                    }
+                  }
+                },
+                outputs{
+                  name
+                }
+              }
+              
             }
-        """
+          }
+        }
+      }
+    }
+    
+  }
+}
+"""
 
 
 TEST_QUERY_GRAPHQL = """query Pipeline {
