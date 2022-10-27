@@ -17,20 +17,13 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from 'recharts';
 import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
-import {
-  COLORS,
-  generateRandomPercentageData,
-  PIE_DATA,
-} from '../../pages/DataInsightPage/DataInsight.mock';
+import { generateRandomPercentageData } from '../../pages/DataInsightPage/DataInsight.mock';
 
 const OwnerInsight = () => {
   return (
@@ -43,31 +36,7 @@ const OwnerInsight = () => {
       <Row
         className="mt-4"
         data-testid="entity-summary-card-percentage-content">
-        <Col span={6}>
-          <ResponsiveContainer minHeight={400}>
-            <PieChart>
-              <Pie
-                cx="50%"
-                cy="50%"
-                data={PIE_DATA}
-                dataKey="value"
-                fill="#8884d8"
-                innerRadius={120}
-                nameKey="name"
-                outerRadius={130}>
-                {PIE_DATA.map((_, index) => (
-                  <Cell
-                    fill={COLORS[index % COLORS.length]}
-                    key={`cell-${index}`}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend className="mt-4" />
-            </PieChart>
-          </ResponsiveContainer>
-        </Col>
-        <Col span={18}>
+        <Col span={24}>
           <ResponsiveContainer minHeight={400}>
             <BarChart
               data={generateRandomPercentageData()}
