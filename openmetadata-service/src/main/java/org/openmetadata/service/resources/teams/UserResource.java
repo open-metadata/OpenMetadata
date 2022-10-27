@@ -263,7 +263,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       description = "Generate a random pwd",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     return Response.status(OK).entity(PasswordUtil.generateRandomPassword()).build();
   }
 
@@ -462,7 +462,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
-      authorizer.authorizeAdmin(securityContext, true);
+      authorizer.authorizeAdmin(securityContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
@@ -530,7 +530,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     dao.prepare(user);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext, true);
+      authorizer.authorizeAdmin(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user same as the user
       // we are trying to update. One option is to set users.owner as user, however that is not supported for User.
@@ -568,7 +568,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     authorizeGenerateJWT(user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
@@ -600,7 +600,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     authorizeGenerateJWT(user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
@@ -635,7 +635,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null
         && authenticationMechanism.getConfig() != null
@@ -670,7 +670,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
   }
 
@@ -702,7 +702,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
         if (path.equals("/isAdmin") || path.equals("/isBot")) {
-          authorizer.authorizeAdmin(securityContext, true);
+          authorizer.authorizeAdmin(securityContext);
         }
         // if path contains team, check if team is joinable by any user
         if (patchOpObject.containsKey("op")
@@ -719,7 +719,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             dao.validateTeamAddition(id, UUID.fromString(teamId));
             if (!dao.isTeamJoinable(teamId)) {
               // Only admin can join closed teams
-              authorizer.authorizeAdmin(securityContext, false);
+              authorizer.authorizeAdmin(securityContext);
             }
           }
         }
@@ -895,7 +895,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (request.getRequestType() == SELF) {
       authHandler.changeUserPwdWithOldPwd(uriInfo, securityContext.getUserPrincipal().getName(), request);
     } else {
-      authorizer.authorizeAdmin(securityContext, false);
+      authorizer.authorizeAdmin(securityContext);
       authHandler.changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
     }
     return Response.status(OK).entity("Password Updated Successfully").build();
