@@ -1,92 +1,49 @@
 {
- "assetNodes": {
-    "__typename": "AssetNode",
-    "id": "cereal.py.__repository__.[\"cereals\"]",
-    "jobNames": [
-      "__ASSET_JOB"
-    ],
-    "groupName": "default",
-    "graphName": null,
-    "opName": "cereals",
-    "opNames": [
-      "cereals"
-    ],
-    "jobs": [
-      {
-        "id": "f15cdd9d3feb2d9e56d89a40f6703da423328a6a",
-        "name": "__ASSET_JOB",
-        "description": "",
-        "runs": [
-          {
-            "id": "7900d6e2-6964-4855-b28e-9914725a920f",
-            "runId": "7900d6e2-6964-4855-b28e-9914725a920f",
-            "status": "SUCCESS",
-            "stats": {
-              "startTime": 1663664768.595747,
-              "endTime": 1663664771.090511,
-              "stepsFailed": 0
-            },
-            "assets": [
+  "repositoriesOrError":{
+     "__typename":"RepositoryConnection",
+     "nodes":[
+        {
+           "id":"94b7fa480233a06e57af0d416f5595859a8013af",
+           "name":"cereal_repository",
+           "pipelines":[
               {
-                "assetMaterializations": [
-                  {
-                    "label": "nabisco_cereals"
-                  },
-                  {
-                    "label": "nabisco_cereals"
-                  }
-                ],
-                "definition": null
-              },
-              {
-                "assetMaterializations": [
-                  {
-                    "label": "cereals"
-                  },
-                  {
-                    "label": "cereals"
-                  }
-                ],
-                "definition": null
+                 "id":"b77121d84d3bbe6afd665271fbb7836a42e0c530",
+                 "name":"compute_cereal_properties",
+                 "runs":[
+                    {
+                       "id":"bb412b6c-8258-4e84-a0db-41178bdda6a0",
+                       "runId":"bb412b6c-8258-4e84-a0db-41178bdda6a0",
+                       "status":"SUCCESS",
+                       "startTime":1666177338.308364
+                    },
+                    {
+                       "id":"e4ce4f4d-20c5-401a-800a-c9c06750621b",
+                       "runId":"e4ce4f4d-20c5-401a-800a-c9c06750621b",
+                       "status":"SUCCESS",
+                       "startTime":1666176057.250346
+                    }
+                 ]
               }
-            ]
-          },
-          {
-            "id": "9aa6e271-47fe-4d87-b620-12cbff9ba4db",
-            "runId": "9aa6e271-47fe-4d87-b620-12cbff9ba4db",
-            "status": "SUCCESS",
-            "stats": {
-              "startTime": 1663663736.870997,
-              "endTime": 1663663739.504256,
-              "stepsFailed": 0
-            },
-            "assets": [
+           ]
+        },
+        {
+           "id":"a1daed9875a50d1cba68202020d3e6ec5fce7ae1",
+           "name":"cereal_repository",
+           "pipelines":[
               {
-                "assetMaterializations": [
-                  {
-                    "label": "nabisco_cereals"
-                  },
-                  {
-                    "label": "nabisco_cereals"
-                  }
-                ],
-                "definition": null
-              },
-              {
-                "assetMaterializations": [
-                  {
-                    "label": "cereals"
-                  },
-                  {
-                    "label": "cereals"
-                  }
-                ],
-                "definition": null
+                 "id":"962fe56fcfff524411aff1a990f2d6525a7337e6",
+                 "name":"compute_cereal",
+                 "runs":[
+                    {
+                       "id":"419f6c45-c37f-4125-bf79-38e0586c3430",
+                       "runId":"419f6c45-c37f-4125-bf79-38e0586c3430",
+                       "status":"SUCCESS",
+                       "startTime":1666178055.90106
+                    }
+                 ]
               }
-            ]
-          }
-        ]
-      }
-    ]
- }    
+           ]
+        }
+     ]
+  }
 }

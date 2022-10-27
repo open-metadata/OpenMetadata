@@ -134,7 +134,7 @@ class DagsterSource(PipelineServiceSource):
             tags=self.get_tag_labels(self.context.repository_name),
         )
 
-    def yield_tag(self, _) -> OMetaTagAndCategory: # pylint: disable=arguments-differ
+    def yield_tag(self, _) -> OMetaTagAndCategory:  # pylint: disable=arguments-differ
         tag_category = OMetaTagAndCategory(
             category_name=CreateTagCategoryRequest(
                 name="DagsterTags",
