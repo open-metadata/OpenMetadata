@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Row, Typography } from 'antd';
+import { random, uniqueId } from 'lodash';
 import React from 'react';
 import {
   Bar,
@@ -23,9 +24,14 @@ import {
   XAxis,
 } from 'recharts';
 import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
-import { generateRandomPercentageData } from '../../pages/DataInsightPage/DataInsight.mock';
+import {
+  DATA_INSIGHT_GRAPH_COLORS,
+  getEntityDescriptionData,
+} from '../../pages/DataInsightPage/DataInsight.mock';
 
 const DescriptionInsight = () => {
+  const { data, entities } = getEntityDescriptionData();
+
   return (
     <Card className="mt-4" data-testid="entity-summary-card-percentage">
       <div data-testid="entity-summary-card-percentage-heder">
@@ -38,28 +44,25 @@ const DescriptionInsight = () => {
         data-testid="entity-summary-card-percentage-content">
         <Col span={24}>
           <ResponsiveContainer minHeight={400}>
-            <BarChart
-              data={generateRandomPercentageData()}
-              margin={BAR_CHART_MARGIN}>
+            <BarChart data={data} margin={BAR_CHART_MARGIN}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+              <XAxis dataKey="timestamp" />
               {/* <YAxis /> */}
               <Tooltip />
-              <Legend className="mt-4" />
-              <Bar barSize={20} dataKey="tables" fill="#8884d8" stackId="b" />
-              <Bar barSize={20} dataKey="topics" fill="#82ca9d" stackId="b" />
-              <Bar
-                barSize={20}
-                dataKey="pipelines"
-                fill="#9cc5e9"
-                stackId="b"
-              />
-              <Bar
-                barSize={20}
-                dataKey="dashboards"
-                fill="#e99c9c"
-                stackId="b"
-              />
+              <Legend />
+              {entities.map((entity) => (
+                <Bar
+                  barSize={20}
+                  dataKey={entity}
+                  fill={
+                    DATA_INSIGHT_GRAPH_COLORS[
+                      random(0, DATA_INSIGHT_GRAPH_COLORS.length)
+                    ]
+                  }
+                  key={uniqueId()}
+                  stackId="description"
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </Col>

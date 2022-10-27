@@ -292,3 +292,12 @@ export const getFormattedDateFromSeconds = (
   timeStamp: number,
   format?: string
 ) => DateTime.fromSeconds(timeStamp || 0).toFormat(format || 'dd/MMM HH:mm');
+/**
+ * It takes a timestamp in milliseconds and returns a formatted date string
+ * @param {number} timeStamp - The timeStamp in seconds.
+ * @param {string} [format] - The format of the date you want to get default format is 'dd/MMM'.
+ */
+export const getFormattedDateFromMilliSeconds = (
+  timeStamp: number,
+  format?: string
+) => DateTime.fromMillis(timeStamp || 0).toFormat(format || 'dd/MMM');

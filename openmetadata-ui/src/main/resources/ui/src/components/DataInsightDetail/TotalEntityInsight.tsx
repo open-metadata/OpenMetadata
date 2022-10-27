@@ -12,6 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
+import { random, uniqueId } from 'lodash';
 import React from 'react';
 import {
   Bar,
@@ -24,9 +25,14 @@ import {
   YAxis,
 } from 'recharts';
 import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
-import { generateEntityData } from '../../pages/DataInsightPage/DataInsight.mock';
+import {
+  DATA_INSIGHT_GRAPH_COLORS,
+  getEntityCountData,
+} from '../../pages/DataInsightPage/DataInsight.mock';
 
 const TotalEntityInsight = () => {
+  const { data, entities } = getEntityCountData();
+
   return (
     <Card className="mt-4" data-testid="entity-summary-card">
       <div data-testid="entity-summary-card-heder">
@@ -34,16 +40,25 @@ const TotalEntityInsight = () => {
       </div>
       <div className="mt-4" data-testid="entity-summary-card-content">
         <ResponsiveContainer minHeight={400}>
-          <BarChart data={generateEntityData()} margin={BAR_CHART_MARGIN}>
+          <BarChart data={data} margin={BAR_CHART_MARGIN}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
+            <XAxis dataKey="timestamp" />
             <YAxis />
             <Tooltip />
-            <Legend className="mt-4" />
-            <Bar barSize={20} dataKey="tables" fill="#8884d8" stackId="a" />
-            <Bar barSize={20} dataKey="topics" fill="#82ca9d" stackId="a" />
-            <Bar barSize={20} dataKey="pipelines" fill="#9cc5e9" stackId="a" />
-            <Bar barSize={20} dataKey="dashboards" fill="#e99c9c" stackId="a" />
+            <Legend />
+            {entities.map((entity) => (
+              <Bar
+                barSize={20}
+                dataKey={entity}
+                fill={
+                  DATA_INSIGHT_GRAPH_COLORS[
+                    random(0, DATA_INSIGHT_GRAPH_COLORS.length)
+                  ]
+                }
+                key={uniqueId()}
+                stackId="entityCount"
+              />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>

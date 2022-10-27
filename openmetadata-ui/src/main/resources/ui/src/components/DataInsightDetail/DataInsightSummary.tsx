@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import React from 'react';
-import { SUMMARY_DATA } from '../../pages/DataInsightPage/DataInsight.mock';
+import { OVERVIEW } from '../../pages/DataInsightPage/DataInsight.mock';
 
 const DataInsightSummary = () => {
   return (
@@ -30,11 +30,11 @@ const DataInsightSummary = () => {
         className="mt-4"
         data-testid="summary-card-content"
         gutter={[16, 16]}>
-        {SUMMARY_DATA.map((summary, id) => (
+        {OVERVIEW.map((summary, id) => (
           <Col data-testid="summary-item" key={id} span={4}>
-            <Typography.Text>{summary.key}</Typography.Text>
+            <Typography.Text>{summary.entityType}</Typography.Text>
             <Typography className="tw-font-semibold">
-              {summary.value}
+              {summary.count}
             </Typography>
           </Col>
         ))}

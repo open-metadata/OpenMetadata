@@ -11,20 +11,14 @@
  *  limitations under the License.
  */
 
-export const RADIAN = Math.PI / 180;
+import { getFormattedDateFromMilliSeconds } from '../../utils/TimeUtils';
 
-const getRandomNumber = () => Math.floor(1000 + Math.random() * 9000);
-const getRandomPercentage = () => Math.floor(Math.random() * 100) + 1;
-const getRandomDate = () => {
-  const start = new Date(2022, 0, 1);
-  const end = new Date();
-
-  const date = new Date(
-    start.getTime() + Math.random() * (end.getTime() - start.getTime())
-  );
-
-  return `${date.getMonth() + 1}/${date.getDate()}`;
-};
+export const DATA_INSIGHT_GRAPH_COLORS = [
+  '#E7B85D',
+  '#416BB3',
+  '#66B5AD',
+  '#8D6AF1',
+];
 
 export const PIE_DATA = [
   { name: 'Tables', value: 40 },
@@ -80,83 +74,517 @@ export const ORG_FILTER = [
   },
 ];
 
-export const SUMMARY_DATA = [
+export const OVERVIEW = [
   {
-    key: 'Total Entities',
-    value: 897,
+    entityType: 'All',
+    count: 657,
   },
   {
-    key: 'Total Users',
-    value: 26,
+    entityType: 'Users',
+    count: 45,
   },
   {
-    key: 'Total Sessions',
-    value: 151,
+    entityType: 'Sessions',
+    count: 657,
   },
   {
-    key: 'Total Activity',
-    value: 151,
+    entityType: 'Activity',
+    count: 157,
   },
   {
-    key: 'Total Activity Users',
-    value: 20,
+    entityType: 'ActiveUsers',
+    count: 33,
   },
   {
-    key: 'Total Tables',
-    value: 200,
+    entityType: 'Tables',
+    count: 479,
   },
   {
-    key: 'Total Topics',
-    value: 150,
+    entityType: 'Topics',
+    count: 11,
   },
   {
-    key: 'Total Pipelines',
-    value: 15,
+    entityType: 'Dashboards',
+    count: 36,
   },
   {
-    key: 'Total Dashboards',
-    value: 120,
+    entityType: 'MlModels',
+    count: 4,
   },
   {
-    key: 'Total Ml Models',
-    value: 12,
-  },
-  {
-    key: 'Total Test Cases',
-    value: 123,
+    entityType: 'TestCases',
+    count: 98,
   },
 ];
 
-export const DEFAULT_CAP = 30;
+export const ENTITY_DESCRIPTION = [
+  {
+    timestamp: 1666862122147,
+    entityType: 'Table',
+    completedDescriptionFraction: 0.5674,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Topic',
+    completedDescriptionFraction: 0.0453,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Database',
+    completedDescriptionFraction: 0.9874,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Pipeline',
+    completedDescriptionFraction: 0.5432,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Messaging',
+    completedDescriptionFraction: 0.3215,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Table',
+    completedDescriptionFraction: 0.3674,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Topic',
+    completedDescriptionFraction: 0.0353,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Database',
+    completedDescriptionFraction: 0.9874,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Pipeline',
+    completedDescriptionFraction: 0.4432,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Messaging',
+    completedDescriptionFraction: 0.3115,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Table',
+    completedDescriptionFraction: 0.3374,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Topic',
+    completedDescriptionFraction: 0.0353,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Database',
+    completedDescriptionFraction: 0.9774,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Pipeline',
+    completedDescriptionFraction: 0.4482,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Messaging',
+    completedDescriptionFraction: 0.3105,
+  },
+];
 
-export const generateEntityData = () => {
-  const dataList = [];
+export const ENTITY_OWNERS = [
+  {
+    timestamp: 1666862122147,
+    entityType: 'Table',
+    hasOwnerFraction: 0.5674,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Topic',
+    hasOwnerFraction: 0.0453,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Database',
+    hasOwnerFraction: 0.9874,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Pipeline',
+    hasOwnerFraction: 0.5432,
+  },
+  {
+    timestamp: 1666862122147,
+    entityType: 'Messaging',
+    hasOwnerFraction: 0.3215,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Table',
+    hasOwnerFraction: 0.3674,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Topic',
+    hasOwnerFraction: 0.0353,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Database',
+    hasOwnerFraction: 0.9874,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Pipeline',
+    hasOwnerFraction: 0.4432,
+  },
+  {
+    timestamp: 1666689322147,
+    entityType: 'Messaging',
+    hasOwnerFraction: 0.3115,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Table',
+    hasOwnerFraction: 0.3374,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Topic',
+    hasOwnerFraction: 0.0353,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Database',
+    hasOwnerFraction: 0.9774,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Pipeline',
+    hasOwnerFraction: 0.4482,
+  },
+  {
+    timestamp: 1666602922147,
+    entityType: 'Messaging',
+    hasOwnerFraction: 0.3105,
+  },
+];
 
-  for (let index = 0; index < DEFAULT_CAP; index++) {
-    dataList.push({
-      date: getRandomDate(),
-      tables: getRandomNumber(),
-      topics: getRandomNumber(),
-      pipelines: getRandomNumber(),
-      dashboards: getRandomNumber(),
-    });
-  }
+export const ENTITY_TIER = [
+  {
+    timestamp: 1666862122147,
+    entityTier: 'Tier.Tier1',
+    entityCount: 56,
+  },
+  {
+    timestamp: 1666862122147,
+    entityTier: 'Tier.Tier2',
+    entityCount: 47,
+  },
+  {
+    timestamp: 1666862122147,
+    entityTier: 'Tier.Tier3',
+    entityCount: 78,
+  },
+  {
+    timestamp: 1666862122147,
+    entityTier: null,
+    entityCount: 101,
+  },
+  {
+    timestamp: 1666689322147,
+    entityTier: 'Tier.Tier1',
+    entityCount: 51,
+  },
+  {
+    timestamp: 1666689322147,
+    entityTier: 'Tier.Tier2',
+    entityCount: 47,
+  },
+  {
+    timestamp: 1666689322147,
+    entityTier: 'Tier.Tier3',
+    entityCount: 78,
+  },
+  {
+    timestamp: 1666689322147,
+    entityTier: null,
+    entityCount: 154,
+  },
+  {
+    timestamp: 1666602922147,
+    entityTier: 'Tier.Tier1',
+    entityCount: 45,
+  },
+  {
+    timestamp: 1666602922147,
+    entityTier: 'Tier.Tier2',
+    entityCount: 55,
+  },
+  {
+    timestamp: 1666602922147,
+    entityTier: 'Tier.Tier3',
+    entityCount: 99,
+  },
+  {
+    timestamp: 1666602922147,
+    entityTier: null,
+    entityCount: 162,
+  },
+];
 
-  return dataList;
+export const ENTITY_COUNT = [
+  {
+    timestamp: 1666862122147,
+    Type: 'Table',
+    entityCount: 56,
+  },
+  {
+    timestamp: 1666862122147,
+    Type: 'Pipeline',
+    entityCount: 47,
+  },
+  {
+    timestamp: 1666862122147,
+    Type: 'Dashboard',
+    entityCount: 78,
+  },
+  {
+    timestamp: 1666862122147,
+    Type: 'Chart',
+    entityCount: 101,
+  },
+  {
+    timestamp: 1666862122147,
+    Type: 'Messaging',
+    entityCount: 101,
+  },
+  {
+    timestamp: 1666689322147,
+    Type: 'Table',
+    entityCount: 51,
+  },
+  {
+    timestamp: 1666689322147,
+    Type: 'Pipeline',
+    entityCount: 47,
+  },
+  {
+    timestamp: 1666689322147,
+    Type: 'Dashboard',
+    entityCount: 78,
+  },
+  {
+    timestamp: 1666689322147,
+    Type: 'Topic',
+    entityCount: 78,
+  },
+  {
+    timestamp: 1666689322147,
+    Type: 'Chart',
+    entityCount: 154,
+  },
+  {
+    timestamp: 1666602922147,
+    Type: 'Table',
+    entityCount: 45,
+  },
+  {
+    timestamp: 1666602922147,
+    Type: 'Pipeline',
+    entityCount: 55,
+  },
+  {
+    timestamp: 1666602922147,
+    Type: 'Dashboard',
+    entityCount: 99,
+  },
+  {
+    timestamp: 1666602922147,
+    Type: 'Chart',
+    entityCount: 162,
+  },
+];
+
+export const TOP_VIEW_ENTITIES = [
+  {
+    entityName: 'foo.bar.entity',
+    owner: 'Aaron Smith',
+    tags: ['Tag', 'AnotherTag'],
+    entityType: 'Table',
+    totalViews: 156,
+    uniqueViews: 101,
+  },
+  {
+    entityName: 'foo.bar.entity',
+    owner: 'Aaron Smith',
+    tags: ['Tag', 'AnotherTag'],
+    entityType: 'Table',
+    totalViews: 156,
+    uniqueViews: 101,
+  },
+  {
+    entityName: 'foo.bar.entity',
+    owner: 'Aaron Smith',
+    tags: ['Tag', 'AnotherTag'],
+    entityType: 'Table',
+    totalViews: 156,
+    uniqueViews: 101,
+  },
+  {
+    entityName: 'foo.bar.entity',
+    owner: 'Aaron Smith',
+    tags: ['Tag', 'AnotherTag'],
+    entityType: 'Table',
+    totalViews: 156,
+    uniqueViews: 101,
+  },
+  {
+    entityName: 'foo.bar.entity',
+    owner: 'Aaron Smith',
+    tags: ['Tag', 'AnotherTag'],
+    entityType: 'Table',
+    totalViews: 156,
+    uniqueViews: 101,
+  },
+];
+
+export const TOP_ACTIVE_USER = [
+  {
+    userName: 'AaronSmith',
+    Team: null,
+    mostRecentSession: 1666862122147,
+    totalSessions: 134,
+    avgSessionDuration: 22.65,
+  },
+  {
+    userName: 'AaronSmith',
+    Team: null,
+    mostRecentSession: 1666862122147,
+    totalSessions: 134,
+    avgSessionDuration: 22.65,
+  },
+  {
+    userName: 'AaronSmith',
+    Team: null,
+    mostRecentSession: 1666862122147,
+    totalSessions: 134,
+    avgSessionDuration: 22.65,
+  },
+  {
+    userName: 'AaronSmith',
+    Team: null,
+    mostRecentSession: 1666862122147,
+    totalSessions: 134,
+    avgSessionDuration: 22.65,
+  },
+  {
+    userName: 'AaronSmith',
+    Team: null,
+    mostRecentSession: 1666862122147,
+    totalSessions: 134,
+    avgSessionDuration: 22.65,
+  },
+];
+
+export const getEntityCountData = () => {
+  const entities: string[] = [];
+  const timestamps: string[] = [];
+
+  const data = ENTITY_COUNT.map((data) => {
+    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    if (!entities.includes(data.Type)) {
+      entities.push(data.Type);
+    }
+
+    if (!timestamps.includes(timestamp)) {
+      timestamps.push(timestamp);
+    }
+
+    return {
+      timestamp: timestamp,
+      [data.Type]: data.entityCount,
+    };
+  });
+
+  const graphData = timestamps.map((timestamp) => {
+    return data.reduce((previous, current) => {
+      if (current.timestamp === timestamp) {
+        return { ...previous, ...current };
+      }
+
+      return previous;
+    }, {});
+  });
+
+  return { data: graphData, entities };
 };
 
-export const generateRandomPercentageData = () => {
-  const dataList = [];
+export const getEntityDescriptionData = () => {
+  const entities: string[] = [];
+  const timestamps: string[] = [];
 
-  for (let index = 0; index < DEFAULT_CAP; index++) {
-    dataList.push({
-      date: getRandomDate(),
-      tables: getRandomPercentage(),
-      topics: getRandomPercentage(),
-      pipelines: getRandomPercentage(),
-      dashboards: getRandomPercentage(),
-    });
-  }
+  const data = ENTITY_DESCRIPTION.map((data) => {
+    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    if (!entities.includes(data.entityType)) {
+      entities.push(data.entityType);
+    }
 
-  return dataList;
+    if (!timestamps.includes(timestamp)) {
+      timestamps.push(timestamp);
+    }
+
+    return {
+      timestamp: timestamp,
+      [data.entityType]: data.completedDescriptionFraction,
+    };
+  });
+
+  const graphData = timestamps.map((timestamp) => {
+    return data.reduce((previous, current) => {
+      if (current.timestamp === timestamp) {
+        return { ...previous, ...current };
+      }
+
+      return previous;
+    }, {});
+  });
+
+  return { data: graphData, entities };
+};
+
+export const getEntityOwnersData = () => {
+  const entities: string[] = [];
+  const timestamps: string[] = [];
+
+  const data = ENTITY_OWNERS.map((data) => {
+    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    if (!entities.includes(data.entityType)) {
+      entities.push(data.entityType);
+    }
+
+    if (!timestamps.includes(timestamp)) {
+      timestamps.push(timestamp);
+    }
+
+    return {
+      timestamp: timestamp,
+      [data.entityType]: data.hasOwnerFraction,
+    };
+  });
+
+  const graphData = timestamps.map((timestamp) => {
+    return data.reduce((previous, current) => {
+      if (current.timestamp === timestamp) {
+        return { ...previous, ...current };
+      }
+
+      return previous;
+    }, {});
+  });
+
+  return { data: graphData, entities };
 };
