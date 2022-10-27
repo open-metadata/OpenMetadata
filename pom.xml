@@ -144,6 +144,7 @@
     <simplejavamail.version>7.5.0</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
+    <unboundsdk.version>6.0.6</unboundsdk.version>
   </properties>
   <dependencyManagement>
     <dependencies>

@@ -400,6 +400,11 @@
       <artifactId>expiringmap</artifactId>
       <version>${expiring.map.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.unboundid</groupId>
+      <artifactId>unboundid-ldapsdk</artifactId>
+      <version>${unboundsdk.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

@@ -124,7 +124,9 @@ const Users = ({
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
-      isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
+      isAuthProviderBasic:
+        authConfig?.provider === AuthTypes.BASIC ||
+        authConfig?.provider === AuthTypes.LDAP,
     };
   }, [authConfig]);
 
