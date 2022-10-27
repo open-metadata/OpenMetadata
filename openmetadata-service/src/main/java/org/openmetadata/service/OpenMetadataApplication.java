@@ -349,8 +349,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   public static void main(String[] args) throws Exception {
-    OpenMetadataApplication OpenMetadataApplication = new OpenMetadataApplication();
-    OpenMetadataApplication.run(args);
+    OpenMetadataApplication openMetadataApplication = new OpenMetadataApplication();
+    openMetadataApplication.run(args);
   }
 
   public static class ManagedShutdown implements Managed {

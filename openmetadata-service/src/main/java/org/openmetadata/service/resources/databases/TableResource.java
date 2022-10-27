@@ -760,7 +760,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid SQLQuery sqlQuery)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addQuery(id, sqlQuery);
     return addHref(uriInfo, table);
   }
@@ -784,7 +785,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Valid DataModel dataModel)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addDataModel(id, dataModel);
     return addHref(uriInfo, table);
   }

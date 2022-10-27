@@ -21,9 +21,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
 import click
+import const
 
 from metadata.__version__ import get_metadata_version
-from metadata.cli.backup import run_backup
+from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.docker import BACKEND_DATABASES, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.cli.openmetadata_imports_migration import (
@@ -283,6 +284,13 @@ def docker(
     required=False,
 )
 @click.option(
+    "--upload_destination_type",
+    help="AWS or AZURE",
+    type=click.Choice(const.Upload_Destination_Type),
+    default=None,
+    required=False,
+)
+@click.option(
     "--upload",
     help="S3 endpoint, bucket & key to upload the backup file",
     nargs=3,
@@ -314,6 +322,7 @@ def backup(
     database: str,
     port: str,
     output: Optional[str],
+    upload_destination_type: Optional[UploadDestinationType],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
@@ -334,7 +343,17 @@ def backup(
     tables.
     """
     run_backup(
-        host, user, password, database, port, output, upload, options, arguments, schema
+        host,
+        user,
+        password,
+        database,
+        port,
+        output,
+        upload_destination_type,
+        upload,
+        options,
+        arguments,
+        schema,
     )
 
 

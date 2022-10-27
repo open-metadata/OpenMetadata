@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight"]
     },
     "pipelineStatus": {
       "type": "object",
@@ -203,6 +203,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "sink": {
+      "description": "Sink configuration",
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sink"
     }
   },
   "required": [

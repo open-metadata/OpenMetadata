@@ -37,6 +37,7 @@ class Loggers(Enum):
     GREAT_EXPECTATIONS = "GreatExpectations"
     SQA_PROFILER_INTERFACE = "SQAInterface"
     TEST_SUITE = "TestSuite"
+    DATA_INSIGHT = "DataInsight"
 
 
 def ometa_logger():
@@ -85,6 +86,14 @@ def ingestion_logger():
     """
 
     return logging.getLogger(Loggers.INGESTION.value)
+
+
+def data_insight_logger():
+    """
+    Function to get the DATA INSIGHT logger
+    """
+
+    return logging.getLogger(Loggers.DATA_INSIGHT.value)
 
 
 def utils_logger():

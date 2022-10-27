@@ -25,7 +25,6 @@ import {
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
-import { INITIAL_FROM } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
@@ -68,7 +67,7 @@ const AddUsersModalV1 = ({
   const [selectedUsers, setSelectedUsers] = useState<Array<string>>([]);
   const [searchText, setSearchText] = useState('');
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState(INITIAL_FROM);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalESCount, setTotalESCount] = useState(0);
 
   const getFilterUserData = (data: User[]) => {
@@ -144,7 +143,7 @@ const AddUsersModalV1 = ({
 
   const handleSearchAction = (searchValue: string) => {
     setUniqueUser([]);
-    setCurrentPage(INITIAL_FROM);
+    setCurrentPage(1);
     setSearchText(searchValue);
     if (searchValue) {
       searchUsers(searchValue, currentPage);

@@ -357,7 +357,7 @@ public class FeedResource {
         // don't throw any exception
       } else {
         // Only admins or bots can close or resolve task other than the above-mentioned users
-        authorizer.authorizeAdmin(securityContext, true);
+        authorizer.authorizeAdmin(securityContext);
       }
     }
   }

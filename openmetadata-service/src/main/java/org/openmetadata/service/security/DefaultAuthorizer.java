@@ -229,12 +229,26 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {
+  public void authorizeAdmin(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+    if (subjectContext.isAdmin()) {
       return;
     }
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
+  }
+
+  @Override
+  public boolean decryptSecret(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin()) { // Always decrypt secrets for admin
+      return true;
+    }
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (subjectContext.isBot() && secretsManager.isLocal()) {
+      // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
+      return true;
+    }
+    return false;
   }
 
   private void addUsers(Set<String> users, String domain, Boolean isAdmin) {

@@ -13,7 +13,7 @@
 DomoClient source to extract data from DOMO
 """
 
-from typing import List, Union
+from typing import Union
 
 from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
     DomoDashboardConnection,
@@ -57,7 +57,7 @@ class DomoClient:
         )
         self.client = REST(client_config)
 
-    def get_chart_details(self, page_id) -> List[dict]:
+    def get_chart_details(self, page_id) -> dict:
         url = (
             f"content/v3/stacks/{page_id}/"
             f"{CARDS_URL}"
