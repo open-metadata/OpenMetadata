@@ -29,6 +29,22 @@ RUN apt-get update \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
+
+# Security patches for base image
+# monitor no fixed version for
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-LIBTASN16-3061097
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-MARIADB105-2940589
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-BIND9-3027852
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-EXPAT-3023031 we are already installed the latest
+RUN echo "deb http://deb.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list
+RUN apt-get update \
+    && apt-get install -t bullseye-backports -y \
+    curl \
+    libpcre2-8-0 \
+    postgresql-common \
+    expat=2.2.10-2+deb11u4 \
+    bind9=1:9.18.4-2~bpo11+1
+
 # Required for Starting Ingestion Container in Docker Compose
 COPY --chown=airflow:airflow ingestion/ingestion_dependency.sh /opt/airflow
 # Required for Ingesting Sample Data
