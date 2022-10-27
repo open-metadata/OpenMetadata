@@ -162,7 +162,7 @@ class DBTMixin:
                         else None,
                         path=f"{mnode['root_path']}/{mnode['original_file_path']}",
                         rawSql=mnode.get("raw_sql", ""),
-                        sql=mnode.get("compiled_sql", mnode.get("raw_sql", "")),
+                        sql=self.get_dbt_query(mnode),
                         columns=columns,
                         upstream=upstream_nodes,
                         owner=self.get_dbt_owner(mnode=mnode, cnode=cnode),
@@ -558,3 +558,12 @@ class DBTMixin:
                 entity_link = f"<#E::table::" f"{table_fqn}>"
             entity_link_list.append(entity_link)
         return entity_link_list
+
+    def get_dbt_query(self, mnode):
+        dbt_query_key_names = ["compiled_sql", "compiled_code", "raw_sql", "raw_code"]
+        query = ""
+        for key_name in dbt_query_key_names:
+            query = mnode.get(key_name)
+            if query:
+                return query
+        return query
