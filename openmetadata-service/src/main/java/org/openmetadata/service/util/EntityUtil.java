@@ -70,6 +70,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public final class EntityUtil {
@@ -460,5 +461,9 @@ public final class EntityUtil {
   public static void fieldUpdated(ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
     FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
     change.getFieldsUpdated().add(fieldChange);
+  }
+
+  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) throws IOException {
+    return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
   }
 }
