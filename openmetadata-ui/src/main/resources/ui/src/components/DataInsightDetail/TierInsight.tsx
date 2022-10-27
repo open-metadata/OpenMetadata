@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from 'recharts';
 import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
 import {
@@ -44,8 +45,8 @@ const TierInsight = () => {
           <ResponsiveContainer minHeight={400}>
             <BarChart data={data} margin={BAR_CHART_MARGIN}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              {/* <YAxis /> */}
+              <XAxis dataKey="timestamp" />
+              <YAxis />
               <Tooltip />
               <Legend />
               {tiers.map((tier) => (
