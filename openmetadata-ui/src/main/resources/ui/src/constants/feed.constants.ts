@@ -18,6 +18,7 @@ export const EntityRegEx = new RegExp(EntityRegExPattern);
 export const mentionRegEx = /\[@(.+?)?\]\((.+?)?\)/g;
 export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
 export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
+export const teamsLinkRegEx = /\((.+?\/\/.+?)\/(.+?\/.+?\/.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
 export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
