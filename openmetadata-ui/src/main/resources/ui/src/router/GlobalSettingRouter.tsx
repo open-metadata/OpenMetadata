@@ -15,6 +15,7 @@ import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { usePermissionProvider } from '../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
+import { ROUTES } from '../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -266,14 +267,7 @@ const GlobalSettingRouter = () => {
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}
       />
-      <Route
-        exact
-        component={DataInsightPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.ANALYTICS,
-          GlobalSettingOptions.DATA_INSIGHT
-        )}
-      />
+      <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
     </Switch>
   );
 };

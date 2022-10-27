@@ -147,16 +147,6 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: 'Analytics',
-      items: [
-        {
-          label: 'Data Insight',
-          isProtected: true,
-          icon: <AllActivityIcon className="side-panel-icons" />,
-        },
-      ],
-    },
-    {
       category: 'Collaboration',
       items: [
         {
