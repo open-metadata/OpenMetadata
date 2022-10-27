@@ -103,6 +103,11 @@ const AppRouter = () => {
 
   useEffect(() => {
     const { pathname } = location;
+
+    /**
+     * Ignore the slash path because we are treating my data as
+     * default path.
+     */
     if (pathname !== '/') {
       // track page view on route change
       analytics.page();
