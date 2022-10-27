@@ -102,7 +102,6 @@ public final class Entity {
 
   public static final String DATA_INSIGHT_CHART_DEFINITION = "dataInsightChartDefinition";
 
-
   //
   // Policy entity
   //
