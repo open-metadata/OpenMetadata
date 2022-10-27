@@ -18,7 +18,7 @@ from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from metadata.__version__ import get_metadata_version
-from metadata.cli.backup import UploadDestinationType,run_backup
+from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, run_docker
 from metadata.cli.ingest import run_ingest
@@ -203,6 +203,12 @@ def backup_args(parser: argparse.ArgumentParser):
         default=None,
     )
     parser.add_argument(
+        "--upload-destination-type",
+        help="AWS or AZURE",
+        choices=UploadDestinationType.__members__,
+        default=None,
+    )
+    parser.add_argument(
         "--upload",
         help="S3 endpoint, bucket & key to upload the backup file",
         nargs=3,
@@ -291,6 +297,9 @@ def add_metadata_args(parser: argparse.ArgumentParser):
 
 
 def get_parser(args=None):
+    """
+    Parser method that returns parsed_args
+    """
     parser = argparse.ArgumentParser(prog="metadata", description="Ingestion Framework")
     sub_parser = parser.add_subparsers(dest="command")
 
@@ -370,6 +379,7 @@ def metadata(args=None):
             database=contains_args.get("database"),
             port=contains_args.get("port"),
             output=contains_args.get("output"),
+            upload_destination_type=contains_args.get("upload_destination_type"),
             upload=contains_args.get("upload"),
             options=contains_args.get("options"),
             arguments=contains_args.get("arguments"),
@@ -429,9 +439,3 @@ def metadata(args=None):
         run_openmetadata_imports_migration(
             contains_args.get("dir_path"), contains_args.get("change_config_file_path")
         )
-
-
-# "--upload_destination_type",
-#     help="AWS or AZURE",
-#     type=UploadDestinationType,
-#     default=None,

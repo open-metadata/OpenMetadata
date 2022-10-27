@@ -61,7 +61,7 @@ DEFAULT_EXAMPLE_FILE = {
 
 def print_more_info(workflow_type: WorkflowType) -> None:
     """
-    Click echo print more information message
+    Print more information message
     """
     print(
         f"\nFor more information, please visit: {URLS[workflow_type]}"
@@ -71,14 +71,14 @@ def print_more_info(workflow_type: WorkflowType) -> None:
 
 def print_error_msg(msg: str) -> None:
     """
-    Click echo print message with error style
+    Print message with error style
     """
     print(f"{ANSI.BRIGHT_RED.value}{msg}{ANSI.ENDC.value}")
 
 
 def print_sink_status(workflow) -> None:
     """
-    Common click echo prints for Sink status
+    Common prints for Sink status
     """
 
     print(f"{ANSI.BOLD.value} Processor Status:{ANSI.ENDC.value}")
@@ -116,7 +116,7 @@ def calculate_example_file(source_type_name: str, workflow_type: WorkflowType) -
 
 def print_file_example(source_type_name: str, workflow_type: WorkflowType):
     """
-    Click echo print an example file for a given configuration
+    Print an example file for a given configuration
     """
     if source_type_name is not None:
         example_file = calculate_example_file(source_type_name, workflow_type)
@@ -139,7 +139,7 @@ def print_init_error(
     workflow_type: WorkflowType = WorkflowType.INGEST,
 ) -> None:
     """
-    Click echo print a workflow initialization error
+    Print a workflow initialization error
     """
     source_type_name = None
     if (
@@ -168,7 +168,7 @@ def print_init_error(
 
 def print_status(workflow) -> None:
     """
-    Runs click echo to print the workflow results
+    Print the workflow results
     """
     print(f"{ANSI.BOLD.value} Source Status:{ANSI.ENDC.value}")
     print(workflow.source.get_status().as_string())
@@ -210,7 +210,7 @@ def print_status(workflow) -> None:
 
 def print_profiler_status(workflow) -> None:
     """
-    Runs click echo to print the profiler workflow results
+    Print the profiler workflow results
     """
     print(f"{ANSI.BOLD.value} Source Status:{ANSI.ENDC.value}")
     print(workflow.source_status.as_string())
@@ -236,7 +236,7 @@ def print_profiler_status(workflow) -> None:
 
 def print_test_suite_status(workflow) -> None:
     """
-    Runs click echo to print the test suite workflow results
+    Print the test suite workflow results
     """
     print_sink_status(workflow)
 
@@ -245,12 +245,14 @@ def print_test_suite_status(workflow) -> None:
             f"{ANSI.BOLD.value}{ANSI.BRIGHT_RED.value} Workflow finished with failures {ANSI.ENDC.value}"
         )
     else:
-        click.secho("Workflow finished successfully", fg="green", bold=True)
+        print(
+            f"{ANSI.BOLD.value}{ANSI.GREEN.value}Workflow finished successfully{ANSI.ENDC.value}"
+        )
 
 
 def print_data_insight_status(workflow) -> None:
-    """Runs click echo to print the test suite workflow results
-
+    """
+    Print the test suite workflow results
     Args:
         workflow (DataInsightWorkflow): workflow object
     """

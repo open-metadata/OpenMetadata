@@ -20,8 +20,8 @@ from typing import List, Optional, Tuple
 
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
-from metadata.utils.constants import UTF_8
 from metadata.utils.ansi import ANSI
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import cli_logger
 
 
@@ -130,7 +130,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         )
         raise err
 
-    click.secho(
+    print(
         f"Uploading {file} to {account_url}/{container}...",
         fg="bright_green",
     )
