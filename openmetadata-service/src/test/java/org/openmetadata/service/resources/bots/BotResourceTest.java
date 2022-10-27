@@ -65,13 +65,6 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Test
-  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) {
-    // PUT based updates are categorized as create operation
-    // PUT from a bot to update itself is rejected because of that
-    // TODO turning off the test for now which requires BOT to make update using PUT
-  }
-
-  @Test
   void delete_ensureBotUserDelete(TestInfo test) throws IOException {
     User testUser = new UserResourceTest().createUser("test-deleter", true);
     EntityReference testUserRef = testUser.getEntityReference();

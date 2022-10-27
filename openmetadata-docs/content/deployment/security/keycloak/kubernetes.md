@@ -26,9 +26,6 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "admin-user"
-    botPrincipals:
-      - "ingestion-bot"
-      - "service-account-open-metadata"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"
@@ -57,9 +54,6 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "admin-user"
-    botPrincipals:
-      - "ingestion-bot"
-      - "service-account-open-metadata"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"

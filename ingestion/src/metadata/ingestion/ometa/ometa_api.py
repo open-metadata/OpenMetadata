@@ -64,6 +64,7 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInisghtMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
@@ -145,6 +146,7 @@ class OpenMetadata(
     OMetaDashboardMixin,
     OMetaPatchMixin,
     OMetaTestsMixin,
+    DataInisghtMixin,
     Generic[T, C],
 ):
     """

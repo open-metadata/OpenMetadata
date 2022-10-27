@@ -41,7 +41,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.6",
+    "sqllineage==1.3.7",
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
@@ -68,7 +68,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
-    "backup": {"boto3~=1.19.12"},
+    "backup": {"boto3~=1.19.12", "azure-identity", "azure-storage-blob"},
     "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2", "dagster_graphql"},
     "datalake": {
         "google-cloud-storage==1.43.0",

@@ -37,7 +37,7 @@ interface TeamsProps {
   data: Team[];
   onAddTeamClick: (value: boolean) => void;
   onTeamExpand: (
-    isPageLoading?: boolean,
+    loading?: boolean,
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;

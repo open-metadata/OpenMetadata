@@ -20,7 +20,6 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
@@ -60,16 +59,8 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean isOwner(SecurityContext securityContext, EntityReference entityReference) {
-    return true;
-  }
-
-  @Override
   public void authorize(
-      SecurityContext securityContext,
-      OperationContext operationContext,
-      ResourceContextInterface resourceContext,
-      boolean allowBots) {
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
     /* Always authorize */
   }
 
@@ -104,7 +95,12 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {
+  public void authorizeAdmin(SecurityContext securityContext) {
     /* Always authorize */
+  }
+
+  @Override
+  public boolean decryptSecret(SecurityContext securityContext) {
+    return true; // Always decrypt
   }
 }

@@ -9,9 +9,9 @@ This guide will help you set up all prerequisites to develop on OpenMetadata.
 OpenMetadata being a full stack project, we use the following for development:
 
 - [Docker 20 or higher](https://docs.docker.com/engine/install/)
-- [Java JDK 11 or higher](https://docs.oracle.com/en/java/javase/17/install/overview-jdk-installation.html)
+- [Java JDK 11](https://docs.oracle.com/en/java/javase/11/install/overview-jdk-installation.html)
 - [Antlr 4.9.2](https://www.antlr.org/) - `sudo make install_antlr_cli`
-- [Maven 3.5.x or higher](https://maven.apache.org/install.html)
+- [Maven 3.5.x or higher](https://maven.apache.org/install.html) - (with Java JDK 11)
 - [Python 3.7 or higher](https://www.python.org/downloads/)
 - [Node >=10.0.0](https://nodejs.org/en/download/)
 - [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)

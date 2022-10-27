@@ -279,7 +279,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
     DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, schema, true);
+    return create(uriInfo, securityContext, schema);
   }
 
   @PATCH
@@ -324,7 +324,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
     DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, schema, true);
+    return createOrUpdate(uriInfo, securityContext, schema);
   }
 
   @DELETE
@@ -351,7 +351,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           boolean hardDelete,
       @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {

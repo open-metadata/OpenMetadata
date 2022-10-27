@@ -81,7 +81,7 @@ devgenerate:  ## Generate the pydantic models from the JSON Schemas to the inges
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
