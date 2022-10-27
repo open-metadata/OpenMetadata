@@ -17,6 +17,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getListTestSuites } from '../../axiosAPIs/testAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import Loader from '../../components/Loader/Loader';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
@@ -112,28 +115,40 @@ const TestSuitePage = () => {
   }, []);
 
   return (
-    <Row className="tw-w-full">
-      <Col span={24}>
-        <Table
-          columns={columns}
-          dataSource={testSuites.map((test) => ({ ...test, key: test.name }))}
-          loading={isLoading}
-          pagination={false}
-          size="small"
-        />
-      </Col>
-      {testSuites.length > PAGE_SIZE_MEDIUM && (
+    <PageLayoutV1>
+      <TitleBreadcrumb
+        titleLinks={[
+          {
+            name: 'Test Suites',
+            url: '',
+            activeTitle: true,
+          },
+        ]}
+      />
+      <Row className="w-full mt-4">
         <Col span={24}>
-          <NextPrevious
-            currentPage={testSuitePage}
-            pageSize={PAGE_SIZE_MEDIUM}
-            paging={testSuitePaging}
-            pagingHandler={testSuitePagingHandler}
-            totalCount={testSuitePaging.total}
+          <Table
+            columns={columns}
+            dataSource={testSuites}
+            loading={{ spinning: isLoading, indicator: <Loader /> }}
+            pagination={false}
+            rowKey="name"
+            size="small"
           />
         </Col>
-      )}
-    </Row>
+        {testSuites.length > PAGE_SIZE_MEDIUM && (
+          <Col span={24}>
+            <NextPrevious
+              currentPage={testSuitePage}
+              pageSize={PAGE_SIZE_MEDIUM}
+              paging={testSuitePaging}
+              pagingHandler={testSuitePagingHandler}
+              totalCount={testSuitePaging.total}
+            />
+          </Col>
+        )}
+      </Row>
+    </PageLayoutV1>
   );
 };
 

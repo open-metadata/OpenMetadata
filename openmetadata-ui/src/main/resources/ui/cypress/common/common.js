@@ -418,7 +418,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   );
   interceptURL(
     'GET',
-    `/api/v1/search/suggest?q=*&index=dashboard_search_index,table_search_index,topic_search_index,pipeline_search_index,mlmodel_search_index`,
+    `/api/v1/search/suggest?q=*&index=*`,
     'searchQuery'
   );
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');

@@ -11,121 +11,245 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
-import { Bucket, FilterObject } from 'Models';
+import { isNil, isString } from 'lodash';
+import Qs from 'qs';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
-  TabCounts,
+  ExploreProps,
+  ExploreSearchIndex,
+  SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/explore.interface';
-import { getExplorePathWithSearch } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { SearchResponse } from '../../interface/search.interface';
+
+import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
-  emptyValue,
-  getCurrentTab,
-  getEntityTypeByIndex,
-  getInitialFilter,
-  getQueryParam,
-  getSearchFilter,
-  INITIAL_TAB_COUNTS,
+  INITIAL_SORT_FIELD,
+  INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
-import { SearchIndex } from '../../enums/search.enum';
-import { getTotalEntityCountByType } from '../../utils/EntityUtils';
-import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
+import {
+  filterObjectToElasticsearchQuery,
+  isFilterObject,
+} from '../../utils/FilterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
-  const initialFilter = useMemo(
-    () => getQueryParam(getInitialFilter(location.search)),
+
+  const { searchQuery: searchQueryParam = '', tab } = useParams<UrlParams>();
+
+  const [searchResults, setSearchResults] =
+    useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [advancesSearchQueryFilter, setAdvancedSearchQueryFilter] =
+    useState<Record<string, unknown>>();
+
+  const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
+
+  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
+
+  const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const parsedSearch = useMemo(
+    () =>
+      Qs.parse(
+        location.search.startsWith('?')
+          ? location.search.substr(1)
+          : location.search
+      ),
     [location.search]
   );
-  const searchFilter = useMemo(
-    () => getQueryParam(getSearchFilter(location.search)),
-    [location.search]
-  );
 
-  const { searchQuery, tab } = useParams<UrlParams>();
-
-  const [searchText, setSearchText] = useState<string>(searchQuery || '');
-  const [tabCounts, setTabCounts] = useState<TabCounts>(INITIAL_TAB_COUNTS);
-  const [showDeleted, setShowDeleted] = useState(false);
-  const [initialSortField] = useState<string>(
-    tabsInfo[getCurrentTab(tab) - 1].sortField
-  );
-
-  const handleTabCounts = (value: { [key: string]: number }) => {
-    setTabCounts((prev) => ({ ...prev, ...value }));
-  };
-
-  const handleSearchText = (text: string) => {
-    setSearchText(text);
-  };
-
-  const handlePathChange = (path: string) => {
-    AppState.updateExplorePageTab(path);
-  };
-
-  /**
-   * on filter change , change the route
-   * @param filterData - filter object
-   */
-  const handleFilterChange = (filterData: FilterObject) => {
-    const params = prepareQueryParams(filterData, initialFilter);
-
-    const explorePath = getExplorePathWithSearch(searchQuery, tab);
-
+  const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
+    nSearchIndex
+  ) =>
     history.push({
-      pathname: explorePath,
-      search: params,
+      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
     });
-  };
 
-  const fetchEntityCount = async (indexType: SearchIndex) => {
-    const entityType = getEntityTypeByIndex(indexType);
-    try {
-      const { data } = await searchData(
-        searchText,
-        0,
-        0,
-        getFilterString(initialFilter),
-        emptyValue,
-        emptyValue,
-        indexType,
-        showDeleted,
-        true
-      );
-      const count = getTotalEntityCountByType(
-        data.aggregations?.['sterms#EntityType']?.buckets as Bucket[]
-      );
+  const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
+    (queryFilter) =>
+      history.push({
+        search: Qs.stringify({
+          ...parsedSearch,
+          queryFilter: JSON.stringify(queryFilter),
+        }),
+      });
 
-      setTabCounts((prev) => ({ ...prev, [entityType]: count }));
-    } catch (_error) {
-      // eslint-disable-next-line no-console
-      console.error(_error);
+  const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
+    postFilter
+  ) =>
+    history.push({
+      search: Qs.stringify({ ...parsedSearch, postFilter }),
+    });
+
+  const handlePageChange: ExploreProps['onChangePage'] = (page) =>
+    history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
+
+  const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
+    showDeleted
+  ) => history.push({ search: Qs.stringify({ ...parsedSearch, showDeleted }) });
+
+  const postFilter = useMemo(
+    () =>
+      isFilterObject(parsedSearch.postFilter)
+        ? parsedSearch.postFilter
+        : undefined,
+    [location.search]
+  );
+
+  const elasticsearchPostFilterQuery = useMemo(
+    () => filterObjectToElasticsearchQuery(postFilter),
+    [postFilter]
+  );
+
+  const queryFilter = useMemo(() => {
+    if (!isString(parsedSearch.queryFilter)) {
+      return undefined;
     }
-  };
 
-  const fetchCounts = () => {
-    fetchEntityCount(SearchIndex.TABLE);
+    try {
+      const queryFilter = JSON.parse(parsedSearch.queryFilter);
+      const immutableTree = QbUtils.loadTree(queryFilter as JsonTree);
+      if (QbUtils.isValidTree(immutableTree)) {
+        return queryFilter as JsonTree;
+      }
+    } catch {
+      return undefined;
+    }
 
-    fetchEntityCount(SearchIndex.TOPIC);
-
-    fetchEntityCount(SearchIndex.DASHBOARD);
-
-    fetchEntityCount(SearchIndex.PIPELINE);
-
-    fetchEntityCount(SearchIndex.MLMODEL);
-  };
+    return undefined;
+  }, [location.search]);
 
   useEffect(() => {
-    fetchCounts();
-  }, [searchText, showDeleted, initialFilter]);
+    handleQueryFilterChange(queryFilter);
+  }, [queryFilter]);
+
+  const searchIndex = useMemo(() => {
+    const tabInfo = Object.entries(tabsInfo).find(
+      ([, tabInfo]) => tabInfo.path === tab
+    );
+    if (isNil(tabInfo)) {
+      return SearchIndex.TABLE;
+    }
+
+    return tabInfo[0] as ExploreSearchIndex;
+  }, [tab]);
+
+  useEffect(() => {
+    handleSearchIndexChange(searchIndex);
+  }, [searchIndex]);
+
+  const page = useMemo(() => {
+    const pageParam = parsedSearch.page;
+    if (!isString(pageParam) || isNaN(Number.parseInt(pageParam))) {
+      return 1;
+    }
+
+    return Number.parseInt(pageParam);
+  }, [parsedSearch.page]);
+
+  useEffect(() => {
+    handlePageChange(page);
+  }, [page]);
+
+  const showDeleted = useMemo(() => {
+    const showDeletedParam = parsedSearch.showDeleted;
+
+    return showDeletedParam === 'true';
+  }, [parsedSearch.showDeleted]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    Promise.all([
+      searchQuery({
+        query: searchQueryParam,
+        searchIndex,
+        queryFilter: advancesSearchQueryFilter,
+        postFilter: elasticsearchPostFilterQuery,
+        sortField: sortValue,
+        sortOrder,
+        pageNumber: page,
+        pageSize: PAGE_SIZE,
+        includeDeleted: showDeleted,
+      })
+        .then((res) => res)
+        .then((res) => setSearchResults(res)),
+      Promise.all(
+        [
+          SearchIndex.TABLE,
+          SearchIndex.TOPIC,
+          SearchIndex.DASHBOARD,
+          SearchIndex.PIPELINE,
+          SearchIndex.MLMODEL,
+        ].map((index) =>
+          searchQuery({
+            query: searchQueryParam,
+            pageNumber: 0,
+            pageSize: 0,
+            queryFilter: advancesSearchQueryFilter,
+            postFilter: elasticsearchPostFilterQuery,
+            searchIndex: index,
+            includeDeleted: showDeleted,
+            trackTotalHits: true,
+            fetchSource: false,
+          })
+        )
+      ).then(
+        ([
+          tableResponse,
+          topicResponse,
+          dashboardResponse,
+          pipelineResponse,
+          mlmodelResponse,
+        ]) => {
+          setSearchHitCounts({
+            [SearchIndex.TABLE]: tableResponse.hits.total.value,
+            [SearchIndex.TOPIC]: topicResponse.hits.total.value,
+            [SearchIndex.DASHBOARD]: dashboardResponse.hits.total.value,
+            [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
+            [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
+          });
+        }
+      ),
+    ])
+      .catch((err) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
+  }, [
+    searchIndex,
+    searchQueryParam,
+    sortValue,
+    sortOrder,
+    showDeleted,
+    advancesSearchQueryFilter,
+    elasticsearchPostFilterQuery,
+    page,
+  ]);
+
+  // Return to first page on filter change
+  useEffect(
+    () => handlePageChange(1),
+    [
+      searchIndex,
+      searchQueryParam,
+      sortValue,
+      sortOrder,
+      showDeleted,
+      advancesSearchQueryFilter,
+      elasticsearchPostFilterQuery,
+    ]
+  );
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -134,21 +258,24 @@ const ExplorePage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <Explore
-        fetchCount={fetchCounts}
-        handleFilterChange={handleFilterChange}
-        handlePathChange={handlePathChange}
-        handleSearchText={handleSearchText}
-        handleTabCounts={handleTabCounts}
-        initialFilter={initialFilter}
-        isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
-        searchFilter={searchFilter}
-        searchQuery={searchQuery}
-        searchText={searchText}
+        advancedSearchJsonTree={queryFilter}
+        loading={isLoading}
+        page={page}
+        postFilter={postFilter}
+        searchIndex={searchIndex}
+        searchResults={searchResults}
         showDeleted={showDeleted}
-        sortValue={initialSortField}
-        tab={tab}
-        tabCounts={tabCounts}
-        onShowDeleted={(checked) => setShowDeleted(checked)}
+        sortOrder={sortOrder}
+        sortValue={sortValue}
+        tabCounts={searchHitCounts}
+        onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
+        onChangeAdvancedSearchQueryFilter={setAdvancedSearchQueryFilter}
+        onChangePage={handlePageChange}
+        onChangePostFilter={handlePostFilterChange}
+        onChangeSearchIndex={handleSearchIndexChange}
+        onChangeShowDeleted={handleShowDeletedChange}
+        onChangeSortOder={setSortOrder}
+        onChangeSortValue={setSortValue}
       />
     </PageContainerV1>
   );

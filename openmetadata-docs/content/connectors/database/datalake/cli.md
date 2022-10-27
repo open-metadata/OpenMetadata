@@ -21,6 +21,29 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+** S3 Permissions **
+
+<p> To execute metadata extraction AWS account should have enough access to fetch required data. The <strong>Bucket Policy</strong> in AWS requires at least these permissions: </p>
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::<my bucket>",
+                "arn:aws:s3:::<my bucket>/*"
+            ]
+        }
+    ]
+}
+```
+
 ### Python Requirements
 
 To run the Datalake ingestion, you will need to install:

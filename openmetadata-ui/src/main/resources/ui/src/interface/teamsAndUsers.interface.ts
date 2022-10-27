@@ -95,7 +95,7 @@ export interface TeamDetailsProp {
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
-  isTeamMemberLoading: boolean;
+  isTeamMemberLoading: number;
   hasAccess: boolean;
   handleAddTeam: (value: boolean) => void;
   descriptionHandler: (value: boolean) => void;
@@ -116,7 +116,7 @@ export interface TeamDetailsProp {
   showDeletedTeam: boolean;
   onShowDeletedTeamChange: (checked: boolean) => void;
   onTeamExpand: (
-    isPageLoading?: boolean,
+    loading?: boolean,
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;

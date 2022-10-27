@@ -29,10 +29,10 @@ public interface OktaAccessTokenApi extends ApiClient.Api {
     "Accept: application/json",
   })
   AccessTokenResponse getAccessToken(
-      @Param("grant_type") String grant_type,
+      @Param("grant_type") String grantType,
       @Param("scope") String scope,
-      @Param("client_assertion_type") String client_assertion_type,
-      @Param("client_assertion") String client_assertion);
+      @Param("client_assertion_type") String clientAssertionType,
+      @Param("client_assertion") String clientAssertion);
 
   @RequestLine(
       "POST /v1/token?grant_type={grant_type}&scope={scope}&client_assertion_type={client_assertion_type}&client_assertion={client_assertion}")
@@ -47,5 +47,5 @@ public interface OktaAccessTokenApi extends ApiClient.Api {
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  AccessTokenResponse getAccessToken(@Param("grant_type") String grant_type, @Param("scope") String scope);
+  AccessTokenResponse getAccessToken(@Param("grant_type") String grantType, @Param("scope") String scope);
 }

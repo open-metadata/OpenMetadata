@@ -13,21 +13,40 @@
 
 /* eslint-disable @typescript-eslint/camelcase */
 
-import { getAllByTestId, getByTestId, render } from '@testing-library/react';
+import { getAllByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { facetFilterPlaceholder } from '../../../constants/constants';
+import { Aggregations } from '../../../interface/search.interface';
 import FacetFilter from './FacetFilter';
 
 const onSelectHandler = jest.fn();
 const onClearFilter = jest.fn();
-const onSelectAllFilter = jest.fn();
-const aggregations = [
-  {
-    title: 'Service',
+const onChangeShowDelete = jest.fn();
+
+const aggregations: Aggregations = {
+  ['entityType']: {
     buckets: [
       {
-        key: 'BigQuery',
-        doc_count: 15,
+        key: 'table',
+        doc_count: 18,
+      },
+    ],
+  },
+  ['service.type']: {
+    buckets: [
+      {
+        key: 'databaseService',
+        doc_count: 18,
+      },
+    ],
+  },
+  tier: {
+    buckets: [],
+  },
+  'service.name.keyword': {
+    buckets: [
+      {
+        key: 'sample_data',
+        doc_count: 16,
       },
       {
         key: 'Glue',
@@ -35,70 +54,11 @@ const aggregations = [
       },
     ],
   },
-  {
-    title: 'ServiceName',
-    buckets: [
-      {
-        key: 'bigquery_gcp',
-        doc_count: 15,
-      },
-      {
-        key: 'glue',
-        doc_count: 2,
-      },
-    ],
-  },
-  {
-    title: 'Tier',
-    buckets: [
-      {
-        key: 'Tier.Tier1',
-        doc_count: 0,
-      },
-      {
-        key: 'Tier.Tier2',
-        doc_count: 0,
-      },
-      {
-        key: 'Tier.Tier3',
-        doc_count: 0,
-      },
-      {
-        key: 'Tier.Tier4',
-        doc_count: 0,
-      },
-      {
-        key: 'Tier.Tier5',
-        doc_count: 0,
-      },
-    ],
-  },
-  {
-    title: 'Tags',
-    buckets: [
-      {
-        key: 'PII.Sensitive',
-        doc_count: 1,
-        label: 'Sensitive',
-      },
-      {
-        key: 'PersonalData.Personal',
-        doc_count: 1,
-        label: 'Personal',
-      },
-      {
-        key: 'User.Address',
-        doc_count: 1,
-        label: 'Address',
-      },
-    ],
-  },
-  {
-    title: 'Database',
+  'database.name.keyword': {
     buckets: [
       {
         key: 'ecommerce_db',
-        doc_count: 15,
+        doc_count: 16,
       },
       {
         key: 'default',
@@ -106,12 +66,31 @@ const aggregations = [
       },
     ],
   },
-  {
-    title: 'DatabaseSchema',
+  serviceType: {
+    buckets: [
+      {
+        key: 'BigQuery',
+        doc_count: 16,
+      },
+      {
+        key: 'Glue',
+        doc_count: 2,
+      },
+    ],
+  },
+  'tags.tagFQN': {
+    buckets: [
+      {
+        key: 'PII.Sensitive',
+        doc_count: 1,
+      },
+    ],
+  },
+  'databaseSchema.name.keyword': {
     buckets: [
       {
         key: 'shopify',
-        doc_count: 15,
+        doc_count: 16,
       },
       {
         key: 'information_schema',
@@ -119,178 +98,82 @@ const aggregations = [
       },
     ],
   },
-];
+};
 
 const filters = {
-  service: ['BigQuery', 'Glue'],
-  servicename: ['bigquery_gcp', 'glue'],
-  tier: ['Tier1', 'Tier2'],
-  tags: ['PII.Sensitive', 'User.Address'],
-  database: ['ecommerce_db', 'default'],
-  databaseschema: ['shopify', 'information_schema'],
+  serviceType: ['BigQuery', 'Glue'],
+  'service.name.keyword': ['bigquery_gcp', 'glue'],
+  'tier.tagFQN': ['Tier1', 'Tier2'],
+  'tags.tagFQN': ['PII.Sensitive', 'User.Address'],
+  'database.name.keyword': ['ecommerce_db', 'default'],
+  'databaseSchema.name.keyword': ['shopify', 'information_schema'],
 };
 
 describe('Test FacetFilter Component', () => {
-  it('Should render all filters', () => {
+  it('Should render all aggregations with non-empty buckets when no filters', () => {
     const { container } = render(
       <FacetFilter
         aggregations={aggregations}
-        filters={filters}
+        filters={{}}
+        onChangeShowDeleted={onChangeShowDelete}
         onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
         onSelectHandler={onSelectHandler}
       />
     );
-    const filterHeading = getAllByTestId(container, 'filter-heading');
 
-    expect(filterHeading.length).toBe(6);
+    const filterHeadings = getAllByTestId(container, (content) =>
+      content.startsWith('filter-heading-')
+    );
+
+    expect(filterHeadings.length).toBe(7);
+    expect(
+      filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
+    ).toStrictEqual(
+      [
+        'entityType',
+        'service.type',
+        'service.name.keyword',
+        'database.name.keyword',
+        'serviceType',
+        'tags.tagFQN',
+        'databaseSchema.name.keyword',
+      ]
+        .map((s) => `filter-heading-${s}`)
+        .sort()
+    );
   });
 
-  it('Should render matching placeholder heading for filters', () => {
+  it('Should render all aggregations with non-empty buckets or with filters', () => {
     const { container } = render(
       <FacetFilter
         aggregations={aggregations}
         filters={filters}
+        onChangeShowDeleted={onChangeShowDelete}
         onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
         onSelectHandler={onSelectHandler}
       />
     );
-    const filterHeading = getAllByTestId(container, 'filter-heading');
 
-    for (let index = 0; index < aggregations.length; index++) {
-      const element = aggregations[index];
-      const placeholder = facetFilterPlaceholder.find(
-        (p) => p.name === element.title
-      );
-
-      expect(filterHeading[index]).toHaveTextContent(placeholder?.value || '');
-    }
-  });
-
-  it('Should render all filters for service', () => {
-    const { container } = render(
-      <FacetFilter
-        aggregations={aggregations}
-        filters={filters}
-        onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
-        onSelectHandler={onSelectHandler}
-      />
+    const filterHeadings = getAllByTestId(container, (content) =>
+      content.startsWith('filter-heading-')
     );
-    const serviceAgg = getByTestId(container, aggregations[0].title);
 
-    for (let index = 0; index < aggregations[0].buckets.length; index++) {
-      const element = aggregations[0].buckets[index];
-
-      expect(
-        getByTestId(serviceAgg, `filter-container-${element.key}`)
-      ).toBeInTheDocument();
-    }
-  });
-
-  it('Should render all filters for service name', () => {
-    const { container } = render(
-      <FacetFilter
-        aggregations={aggregations}
-        filters={filters}
-        onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
-        onSelectHandler={onSelectHandler}
-      />
+    expect(filterHeadings.length).toBe(8);
+    expect(
+      filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
+    ).toStrictEqual(
+      [
+        'tier.tagFQN',
+        'entityType',
+        'service.type',
+        'service.name.keyword',
+        'database.name.keyword',
+        'serviceType',
+        'tags.tagFQN',
+        'databaseSchema.name.keyword',
+      ]
+        .map((s) => `filter-heading-${s}`)
+        .sort()
     );
-    const serviceNameAgg = getByTestId(container, aggregations[1].title);
-
-    for (let index = 0; index < aggregations[1].buckets.length; index++) {
-      const element = aggregations[1].buckets[index];
-
-      expect(
-        getByTestId(serviceNameAgg, `filter-container-${element.key}`)
-      ).toBeInTheDocument();
-    }
-  });
-
-  it('Should render all filters for tier', () => {
-    const { container } = render(
-      <FacetFilter
-        aggregations={aggregations}
-        filters={filters}
-        onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
-        onSelectHandler={onSelectHandler}
-      />
-    );
-    const serviceNameAgg = getByTestId(container, aggregations[2].title);
-
-    for (let index = 0; index < aggregations[2].buckets.length; index++) {
-      const element = aggregations[2].buckets[index];
-
-      expect(
-        getByTestId(serviceNameAgg, `filter-container-${element.key}`)
-      ).toBeInTheDocument();
-    }
-  });
-
-  it('Should render all filters for tags', () => {
-    const { container } = render(
-      <FacetFilter
-        aggregations={aggregations}
-        filters={filters}
-        onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
-        onSelectHandler={onSelectHandler}
-      />
-    );
-    const serviceNameAgg = getByTestId(container, aggregations[3].title);
-
-    for (let index = 0; index < aggregations[3].buckets.length; index++) {
-      const element = aggregations[3].buckets[index];
-
-      expect(
-        getByTestId(serviceNameAgg, `filter-container-${element.key}`)
-      ).toBeInTheDocument();
-    }
-  });
-
-  it('Should render all filters for database', () => {
-    const { container } = render(
-      <FacetFilter
-        aggregations={aggregations}
-        filters={filters}
-        onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
-        onSelectHandler={onSelectHandler}
-      />
-    );
-    const serviceNameAgg = getByTestId(container, aggregations[4].title);
-
-    for (let index = 0; index < aggregations[4].buckets.length; index++) {
-      const element = aggregations[4].buckets[index];
-
-      expect(
-        getByTestId(serviceNameAgg, `filter-container-${element.key}`)
-      ).toBeInTheDocument();
-    }
-  });
-
-  it('Should render all filters for database schema', () => {
-    const { container } = render(
-      <FacetFilter
-        aggregations={aggregations}
-        filters={filters}
-        onClearFilter={onClearFilter}
-        onSelectAllFilter={onSelectAllFilter}
-        onSelectHandler={onSelectHandler}
-      />
-    );
-    const serviceNameAgg = getByTestId(container, aggregations[5].title);
-
-    for (let index = 0; index < aggregations[5].buckets.length; index++) {
-      const element = aggregations[5].buckets[index];
-
-      expect(
-        getByTestId(serviceNameAgg, `filter-container-${element.key}`)
-      ).toBeInTheDocument();
-    }
   });
 });

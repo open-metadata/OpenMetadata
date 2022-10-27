@@ -44,11 +44,11 @@ class WorkflowType(Enum):
 EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflows"
 
 URLS = {
-    WorkflowType.INGEST: "https://docs.open-metadata.org/openmetadata/ingestion",
-    WorkflowType.PROFILE: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler",
-    WorkflowType.TEST: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/data-quality",
-    WorkflowType.LINEAGE: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/lineage",
-    WorkflowType.USAGE: "https://docs.open-metadata.org/openmetadata/ingestion/workflows/usage",
+    WorkflowType.INGEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/metadata",
+    WorkflowType.PROFILE: "https://docs.open-metadata.org/connectors/ingestion/workflows/profiler",
+    WorkflowType.TEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality",
+    WorkflowType.LINEAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/lineage",
+    WorkflowType.USAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/usage",
 }
 
 DEFAULT_EXAMPLE_FILE = {
@@ -65,7 +65,8 @@ def print_more_info(workflow_type: WorkflowType) -> None:
     Click echo print more information message
     """
     click.echo(
-        f"\nFor more information, please visit: {URLS[workflow_type]}\nOr join us in Slack: https://slack.open-metadata.org/"  # pylint: disable=line-too-long
+        f"\nFor more information, please visit: {URLS[workflow_type]}"
+        f"\nOr join us in Slack: https://slack.open-metadata.org/"
     )
 
 
@@ -104,6 +105,10 @@ def calculate_example_file(source_type_name: str, workflow_type: WorkflowType) -
     """
     Calculates the ingestion type depending on the source type name and workflow_type
     """
+    if workflow_type == WorkflowType.USAGE:
+        return f"{source_type_name}_usage"
+    if workflow_type == WorkflowType.LINEAGE:
+        return f"{source_type_name}_lineage"
     if workflow_type == WorkflowType.PROFILE:
         return f"{source_type_name}_profiler"
     if workflow_type == WorkflowType.TEST:
@@ -117,7 +122,7 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
     """
     if source_type_name is not None:
         example_file = calculate_example_file(source_type_name, workflow_type)
-        example_path = EXAMPLES_WORKFLOW_PATH / example_file
+        example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
         if not example_path.exists():
             example_file = DEFAULT_EXAMPLE_FILE[workflow_type]
             example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
@@ -152,14 +157,11 @@ def print_init_error(
             else workflow_type
         )
 
-    if isinstance(exc, ParsingConfigurationError):
+    if isinstance(
+        exc, (ParsingConfigurationError, ConfigurationError, InvalidWorkflowException)
+    ):
         print_error_msg(f"Error loading {workflow_type.name} configuration: {exc}")
         print_file_example(source_type_name, workflow_type)
-        print_more_info(workflow_type)
-    elif isinstance(exc, (ConfigurationError, InvalidWorkflowException)):
-        print_error_msg(f"Error loading {workflow_type.name} configuration: {exc}")
-        if workflow_type == WorkflowType.USAGE:
-            print_file_example(source_type_name, workflow_type)
         print_more_info(workflow_type)
     else:
         print_error_msg(f"\nError initializing {workflow_type.name}: {exc}")
@@ -240,3 +242,30 @@ def print_test_suite_status(workflow) -> None:
         click.secho("Workflow finished with failures", fg="bright_red", bold=True)
     else:
         click.secho("Workflow finished successfully", fg="green", bold=True)
+
+
+def print_data_insight_status(workflow) -> None:
+    """Runs click echo to print the test suite workflow results
+
+    Args:
+        workflow (DataInsightWorkflow): workflow object
+    """
+    print("Processor Status:")
+    print(workflow.data_processor.get_status().as_string())
+    print_sink_status(workflow)
+
+    if workflow.data_processor.get_status().source_start_time:
+        print(
+            f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.data_processor.get_status().source_start_time)} ",  # pylint: disable=line-too-long
+        )
+
+    if workflow.result_status() == 1:
+        print("Workflow finished with failures")
+    elif (
+        workflow.data_processor.get_status().warnings
+        or workflow.status.warnings
+        or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
+    ):
+        print("Workflow finished with warnings")
+    else:
+        print("Workflow finished successfully")

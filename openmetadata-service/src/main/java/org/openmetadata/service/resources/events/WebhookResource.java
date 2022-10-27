@@ -276,7 +276,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
     Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, webhook, false);
+    Response response = create(uriInfo, securityContext, webhook);
     dao.addWebhookPublisher(webhook);
     return response;
   }
@@ -298,7 +298,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
     Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, webhook, true);
+    Response response = createOrUpdate(uriInfo, securityContext, webhook);
     dao.updateWebhookPublisher((Webhook) response.getEntity());
     return response;
   }
@@ -351,7 +351,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
-    Response response = delete(uriInfo, securityContext, id, false, true, false);
+    Response response = delete(uriInfo, securityContext, id, false, true);
     dao.deleteWebhookPublisher(id);
     return response;
   }

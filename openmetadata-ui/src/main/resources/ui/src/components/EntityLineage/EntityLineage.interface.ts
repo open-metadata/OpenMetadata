@@ -83,8 +83,23 @@ export interface SelectedEdge {
 
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 
-export type CustomeElement = { node: Node[]; edge: FlowEdge[] };
-export type CustomeFlow = Node | FlowEdge;
+export type CustomElement = { node: Node[]; edge: FlowEdge[] };
+export type CustomFlow = Node | FlowEdge;
 export type ModifiedColumn = Column & {
   type: string;
 };
+
+export interface CustomControlElementsProps {
+  deleted: boolean | undefined;
+  isEditMode: boolean;
+  hasEditAccess: boolean | undefined;
+  onClick: () => void;
+  loading: boolean;
+  status: LoadingState;
+}
+
+export enum EdgeTypeEnum {
+  UP_STREAM = 'upstream',
+  DOWN_STREAM = 'downstream',
+  NO_STREAM = '',
+}

@@ -15,6 +15,7 @@ source:
       personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
+      type: DashboardMetadata
       dashboardFilterPattern: {}
       chartFilterPattern: {}
 sink:

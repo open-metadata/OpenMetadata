@@ -274,7 +274,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
     Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, glossary, true);
+    return create(uriInfo, securityContext, glossary);
   }
 
   @PATCH
@@ -320,7 +320,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
     Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, glossary, true);
+    return createOrUpdate(uriInfo, securityContext, glossary);
   }
 
   @DELETE
@@ -347,7 +347,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           boolean hardDelete,
       @Parameter(description = "Glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {

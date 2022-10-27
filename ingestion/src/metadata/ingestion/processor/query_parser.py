@@ -30,6 +30,7 @@ from metadata.ingestion.lineage.parser import (
     get_parser_table_aliases,
     get_table_joins,
 )
+from metadata.ingestion.lineage.sql_lineage import clean_raw_query
 from metadata.utils.logger import ingestion_logger
 
 configure = DictConfigurator.configure
@@ -57,7 +58,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
             str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
         ).date()
 
-    parser = LineageRunner(record.query)
+    parser = LineageRunner(clean_raw_query(record.query))
 
     tables = get_involved_tables_from_parser(parser)
 

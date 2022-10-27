@@ -20,8 +20,6 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins: 
     - "suresh"
-    botPrincipals: 
-    - "ingestion-bot"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"
@@ -50,8 +48,6 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins: 
     - "suresh"
-    botPrincipals: 
-    - "ingestion-bot"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"

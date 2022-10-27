@@ -209,6 +209,14 @@ const EditRulePage = withSuspenseFallback(
   )
 );
 
+const TestSuitePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
+);
+
+const LogsViewer = withSuspenseFallback(
+  React.lazy(() => import('../pages/LogsViewer/LogsViewer.component'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -478,7 +486,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlobalSettingPage}
         path={ROUTES.SETTINGS_WITH_TAB_FQN}
       />
-      <Route exact component={TestSuiteDetailsPage} path={ROUTES.TEST_SUITES} />
+      <Route
+        exact
+        component={TestSuiteDetailsPage}
+        path={ROUTES.TEST_SUITES_WITH_FQN}
+      />
+      <Route exact component={LogsViewer} path={ROUTES.LOGS} />
       <Route
         exact
         component={TestSuiteIngestionPage}
@@ -488,6 +501,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={TestSuiteIngestionPage}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TestSuitePage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.TEST_SUITES}
       />
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />

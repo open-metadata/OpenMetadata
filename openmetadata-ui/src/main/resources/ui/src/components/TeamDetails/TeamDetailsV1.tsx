@@ -162,7 +162,7 @@ const TeamDetailsV1 = ({
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [selectedEntity, setEntity] = useState<{
     attribute: 'defaultRoles' | 'policies';
     record: EntityReference;
@@ -629,7 +629,7 @@ const TeamDetailsV1 = ({
       <div>
         {isEmpty(currentTeamUsers) &&
         !teamUsersSearchText &&
-        !isTeamMemberLoading ? (
+        isTeamMemberLoading <= 0 ? (
           fetchErrorPlaceHolder({
             description: (
               <div className="tw-mb-2">
@@ -687,7 +687,7 @@ const TeamDetailsV1 = ({
               )}
             </div>
 
-            {isTeamMemberLoading ? (
+            {isTeamMemberLoading > 0 ? (
               <Loader />
             ) : (
               <div>
@@ -873,7 +873,7 @@ const TeamDetailsV1 = ({
   const viewPermission =
     entityPermissions.ViewAll || entityPermissions.ViewBasic;
 
-  if (loading) {
+  if (loading || isTeamMemberLoading > 0) {
     return <Loader />;
   }
 
