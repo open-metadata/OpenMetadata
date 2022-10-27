@@ -35,6 +35,7 @@ import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -54,22 +55,23 @@ import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
 public class LdapAuthenticator implements AuthenticatorHandler {
-  private final UserRepository userRepository;
-  private final TokenRepository tokenRepository;
-  private final LoginAttemptCache loginAttemptCache;
-  private final LdapConfiguration ldapConfiguration;
-  private final LDAPConnectionPool ldapLookupConnectionPool;
-  private final LoginConfiguration loginConfiguration;
+  private UserRepository userRepository;
+  private TokenRepository tokenRepository;
+  private LoginAttemptCache loginAttemptCache;
+  private LdapConfiguration ldapConfiguration;
+  private LDAPConnectionPool ldapLookupConnectionPool;
+  private LoginConfiguration loginConfiguration;
 
-  public LdapAuthenticator(CollectionDAO dao, OpenMetadataApplicationConfig config) {
+  @Override
+  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     if (config.getAuthenticationConfiguration().getProvider().equals("ldap")
         && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
       ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
-    this.userRepository = new UserRepository(dao);
-    this.tokenRepository = new TokenRepository(dao);
+    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
+    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.loginConfiguration = config.getLoginSettings();

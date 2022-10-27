@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.LoginRequest;
@@ -18,11 +19,14 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 public interface AuthenticatorHandler {
+  void init(OpenMetadataApplicationConfig config, Jdbi jdbi);
+
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;
 
   void checkIfLoginBlocked(String userName);

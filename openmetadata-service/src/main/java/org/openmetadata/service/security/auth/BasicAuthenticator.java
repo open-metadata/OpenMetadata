@@ -32,6 +32,7 @@ import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -69,17 +70,18 @@ import org.openmetadata.service.util.TokenUtil;
 public class BasicAuthenticator implements AuthenticatorHandler {
   // No of cycles to perform hashing, increasing too much slows the algorithm
   private static final int HASHING_COST = 12;
-  private final UserRepository userRepository;
-  private final TokenRepository tokenRepository;
-  private final LoginAttemptCache loginAttemptCache;
-  private final AuthorizerConfiguration authorizerConfiguration;
-  private final LoginConfiguration loginConfiguration;
-  private final boolean isEmailServiceEnabled;
-  private final boolean isSelfSignUpAvailable;
+  private UserRepository userRepository;
+  private TokenRepository tokenRepository;
+  private LoginAttemptCache loginAttemptCache;
+  private AuthorizerConfiguration authorizerConfiguration;
+  private LoginConfiguration loginConfiguration;
+  private boolean isEmailServiceEnabled;
+  private boolean isSelfSignUpAvailable;
 
-  public BasicAuthenticator(CollectionDAO dao, OpenMetadataApplicationConfig config) {
-    this.userRepository = new UserRepository(dao);
-    this.tokenRepository = new TokenRepository(dao);
+  @Override
+  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
+    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     SmtpSettings smtpSettings = config.getSmtpSettings();

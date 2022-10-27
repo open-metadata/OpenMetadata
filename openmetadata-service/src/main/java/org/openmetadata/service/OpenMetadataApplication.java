@@ -129,6 +129,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
 
+    // Register Authenticator
+    registerAuthenticator(catalogConfig, jdbi);
+
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
     environment.jersey().property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
@@ -163,8 +166,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig, jdbi);
 
-    // Register Authenticator
-    registerAuthenticator(catalogConfig, jdbi);
+    // authenticationHandler Handles auth related activities
+    authenticatorHandler.init(catalogConfig, jdbi);
 
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
@@ -280,10 +283,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
       case "basic":
-        authenticatorHandler = new BasicAuthenticator(jdbi.onDemand(CollectionDAO.class), catalogConfig);
+        authenticatorHandler = new BasicAuthenticator();
         break;
       case "ldap":
-        authenticatorHandler = new LdapAuthenticator(jdbi.onDemand(CollectionDAO.class), catalogConfig);
+        authenticatorHandler = new LdapAuthenticator();
         break;
       default:
         // For all other types, google, okta etc. auth is handled externally
