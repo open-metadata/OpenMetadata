@@ -19,8 +19,6 @@ import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.AD
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
-import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -522,7 +520,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
-    MetadataOperation operation = resourceContext.getEntity() == null ? CREATE : EDIT_ALL;
 
     dao.prepare(user);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
@@ -530,7 +527,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user same as the user
       // we are trying to update. One option is to set users.owner as user, however that is not supported for User.
-      OperationContext createOperationContext = new OperationContext(entityType, operation);
+      OperationContext createOperationContext =
+          new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately

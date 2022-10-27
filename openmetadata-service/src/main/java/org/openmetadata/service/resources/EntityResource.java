@@ -2,7 +2,7 @@ package org.openmetadata.service.resources;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
+import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import java.io.IOException;
 import java.util.List;
@@ -196,9 +196,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
-    MetadataOperation operation = resourceContext.getEntity() == null ? CREATE : EDIT_ALL;
-
-    OperationContext operationContext = new OperationContext(entityType, operation);
+    OperationContext operationContext = new OperationContext(entityType, createOrUpdateOperation(resourceContext));
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
