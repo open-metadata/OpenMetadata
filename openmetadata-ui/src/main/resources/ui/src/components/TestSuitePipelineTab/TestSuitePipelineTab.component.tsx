@@ -18,7 +18,7 @@ import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import {
   checkAirflowStatus,
   deleteIngestionPipelineById,
@@ -33,10 +33,7 @@ import {
   NO_PERMISSION_TO_VIEW,
 } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/entity/policies/policy';
-import {
-  IngestionPipeline,
-  PipelineType,
-} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
 import {
   getIngestionStatuses,
@@ -63,6 +60,7 @@ const TestSuitePipelineTab = () => {
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const { permissions } = usePermissionProvider();
   const history = useHistory();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
     IngestionPipeline[]
@@ -79,6 +77,11 @@ const TestSuitePipelineTab = () => {
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
   const [isAirflowRunning, setIsAirflowRunning] = useState(false);
+
+  const testSuitePath = useMemo(
+    () => location.pathname.split('/')[1],
+    [location]
+  );
 
   const viewPermission = useMemo(
     () =>
@@ -498,7 +501,7 @@ const TestSuitePipelineTab = () => {
                     data-testid="logs"
                     disabled={!viewPermission}
                     href={getLogsViewerPath(
-                      PipelineType.TestSuite,
+                      testSuitePath,
                       record.service?.name || '',
                       record.fullyQualifiedName || ''
                     )}
