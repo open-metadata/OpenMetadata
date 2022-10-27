@@ -22,7 +22,7 @@ export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
 export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
 export const entityUrlMap = {
-  team: 'teams-and-users',
+  team: 'settings/members/teams',
   user: 'users',
 };
 
