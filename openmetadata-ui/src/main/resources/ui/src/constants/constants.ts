@@ -507,3 +507,11 @@ export const configOptions = {
 
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
+
+export const ENTITY_PATH = {
+  tables: 'table',
+  topics: 'topic',
+  dashboards: 'dashboard',
+  pipelines: 'pipeline',
+  mlmodels: 'mlmodel',
+};
