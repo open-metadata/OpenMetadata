@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
@@ -66,12 +67,14 @@ const UserListV1: FC<UserListV1Props> = ({
   onPagingChange,
   afterDeleteAction,
 }) => {
+  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const history = useHistory();
   const [selectedUser, setSelectedUser] = useState<User>();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const showRestore = showDeletedUser && !isDataLoading;
+  const [isLoading, setIsLoading] = useState(false);
 
   const createPermission = useMemo(
     () => checkPermission(Operation.Create, ResourceEntity.USER, permissions),
@@ -91,7 +94,7 @@ const UserListV1: FC<UserListV1Props> = ({
     if (isUndefined(selectedUser)) {
       return;
     }
-
+    setIsLoading(true);
     const updatedUserData: CreateUser = {
       description: selectedUser.description,
       displayName: selectedUser.displayName,
@@ -110,6 +113,7 @@ const UserListV1: FC<UserListV1Props> = ({
         showSuccessToast(
           jsonData['api-success-messages']['user-restored-success']
         );
+        setShowReactiveModal(false);
       } else {
         throw jsonData['api-error-messages']['update-user-error'];
       }
@@ -118,16 +122,17 @@ const UserListV1: FC<UserListV1Props> = ({
         error as AxiosError,
         jsonData['api-error-messages']['update-user-error']
       );
+    } finally {
+      setIsLoading(false);
     }
     setSelectedUser(undefined);
-    setShowReactiveModal(false);
   };
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
       ...commonUserDetailColumns,
       {
-        title: 'Actions',
+        title: t('label.actions'),
         dataIndex: 'actions',
         key: 'actions',
         width: 90,
@@ -137,11 +142,11 @@ const UserListV1: FC<UserListV1Props> = ({
             className="tw-w-full tw-justify-center action-icons"
             size={8}>
             {showRestore && (
-              <Tooltip placement="bottom" title="Restore">
+              <Tooltip placement="bottom" title={t('label.restore')}>
                 <Button
                   icon={
                     <SVGIcons
-                      alt="Restore"
+                      alt={t('label.restore')}
                       className="tw-w-4 tw-mb-2.5"
                       data-testid={`restore-user-btn-${
                         record.displayName || record.name
@@ -159,7 +164,9 @@ const UserListV1: FC<UserListV1Props> = ({
             )}
             <Tooltip
               placement="bottom"
-              title={deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+              title={
+                deletePermission ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 disabled={!deletePermission}
                 icon={
@@ -196,7 +203,7 @@ const UserListV1: FC<UserListV1Props> = ({
                 size="small"
                 onClick={onShowDeletedUserChange}
               />
-              <span className="tw-ml-2">Deleted Users</span>
+              <span className="tw-ml-2">{t('label.deleted-users')}</span>
             </span>
           </Col>
           <Col span={24}>
@@ -208,7 +215,7 @@ const UserListV1: FC<UserListV1Props> = ({
                   disabled={!createPermission}
                   type="primary"
                   onClick={handleAddNewUser}>
-                  Add User
+                  {t('label.add-user')}
                 </Button>
               }
               heading="User"
@@ -243,16 +250,18 @@ const UserListV1: FC<UserListV1Props> = ({
               checked={showDeletedUser}
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">Deleted Users</span>
+            <span className="tw-ml-2">{t('label.deleted-users')}</span>
           </span>
           <Tooltip
-            title={createPermission ? 'Add User' : NO_PERMISSION_FOR_ACTION}>
+            title={
+              createPermission ? t('label.add-user') : NO_PERMISSION_FOR_ACTION
+            }>
             <Button
               data-testid="add-user"
               disabled={!createPermission}
               type="primary"
               onClick={handleAddNewUser}>
-              Add User
+              {t('label.add-user')}
             </Button>
           </Tooltip>
         </Space>
@@ -290,15 +299,18 @@ const UserListV1: FC<UserListV1Props> = ({
         }}
         className="reactive-modal"
         closable={false}
-        okText="Restore"
-        title="restore User"
+        confirmLoading={isLoading}
+        okText={t('label.restore')}
+        title={t('label.restore-user')}
         visible={showReactiveModal}
         onCancel={() => {
           setShowReactiveModal(false);
           setSelectedUser(undefined);
         }}
         onOk={handleReactiveUser}>
-        <p>Are you sure you want to restore {getEntityName(selectedUser)}?</p>
+        <p>
+          {t('label.want-to-restore')} {getEntityName(selectedUser)}?
+        </p>
       </Modal>
 
       <DeleteWidgetModal

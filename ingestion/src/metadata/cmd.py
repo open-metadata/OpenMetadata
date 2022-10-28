@@ -21,7 +21,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
 import click
-import const
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import UploadDestinationType, run_backup
@@ -286,7 +285,7 @@ def docker(
 @click.option(
     "--upload_destination_type",
     help="AWS or AZURE",
-    type=click.Choice(const.Upload_Destination_Type),
+    type=click.Choice(UploadDestinationType.__members__),
     default=None,
     required=False,
 )

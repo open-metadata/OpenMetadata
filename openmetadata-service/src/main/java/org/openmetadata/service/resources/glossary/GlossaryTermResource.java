@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -92,10 +91,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     @SuppressWarnings("unused")
     GlossaryTermList() {
       // Empty constructor needed for deserialization
-    }
-
-    public GlossaryTermList(List<GlossaryTerm> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 

@@ -110,10 +110,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     public IngestionPipelineList() {
       // Empty constructor needed for deserialization
     }
-
-    public IngestionPipelineList(List<IngestionPipeline> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = FIELD_OWNER;

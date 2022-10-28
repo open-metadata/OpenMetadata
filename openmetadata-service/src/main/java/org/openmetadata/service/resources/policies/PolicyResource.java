@@ -107,10 +107,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     PolicyList() {
       // Empty constructor needed for deserialization
     }
-
-    public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {

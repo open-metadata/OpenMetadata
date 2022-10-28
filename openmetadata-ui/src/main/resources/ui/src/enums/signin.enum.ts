@@ -20,5 +20,6 @@ export enum AuthTypes {
   CUSTOM_OIDC = 'custom-oidc',
   AWS_COGNITO = 'aws-cognito',
   BASIC = 'basic',
+  LDAP = 'ldap',
   NO_AUTH = 'no-auth',
 }

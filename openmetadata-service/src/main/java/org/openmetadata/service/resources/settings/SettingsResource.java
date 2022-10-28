@@ -118,10 +118,6 @@ public class SettingsResource {
     public SettingsList() {
       /* Required for serde */
     }
-
-    public SettingsList(List<Settings> data) {
-      super(data);
-    }
   }
 
   public SettingsResource(CollectionDAO dao, Authorizer authorizer) {
