@@ -12,7 +12,6 @@
  */
 
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { AxiosError } from 'axios';
 import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
 import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
 import { PageViewEvent } from '../generated/analytics/pageViewEvent';
@@ -20,7 +19,6 @@ import {
   WebAnalyticEventData,
   WebAnalyticEventType,
 } from '../generated/analytics/webAnalyticEventData';
-import { showErrorToast } from './ToastUtils';
 
 /**
  * Check if url is valid or not and return the pathname
@@ -97,8 +95,8 @@ export const trackPageView = async (pageData: WebPageData, userId: string) => {
     try {
       // collect the page event
       await postPageView(webAnalyticEventData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    } catch (_error) {
+      // handle page view error
     }
   }
 };
