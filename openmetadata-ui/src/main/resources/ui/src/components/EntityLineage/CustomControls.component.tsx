@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
 import React, {
@@ -24,7 +25,7 @@ import React, {
 import { FitViewOptions, useReactFlow } from 'reactflow';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { LoadingStatus } from '../../utils/EntityLineageUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   showZoom?: boolean;
@@ -118,6 +119,14 @@ const CustomControls: FC<ControlProps> = ({
         className
       )}
       style={style}>
+      <Button
+        ghost
+        data-testid="expand-column"
+        type="primary"
+        onClick={onExpandColumnClick}>
+        {isColumnsExpanded ? 'Collapse All' : 'Expand All'}
+      </Button>
+
       {showZoom && (
         <div className="flow-control tw-flex tw-gap-x-2 tw-bg-body-hover tw-border tw-border-tag tw-h-8 tw-shadow-md tw-rounded">
           <ControlButton
@@ -159,14 +168,18 @@ const CustomControls: FC<ControlProps> = ({
         <ControlButton
           className="tw-border tw-border-tag tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
           onClick={onFitViewHandler}>
-          FS
+          <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
         </ControlButton>
       )}
       {handleFullScreenViewClick && (
         <ControlButton
           className="tw-border tw-border-tag tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
           onClick={handleFullScreenViewClick}>
-          <SVGIcons alt="fullScreenViewicon" icon="icon-fitview" width="16" />
+          <SVGIcons
+            alt="fullScreenViewicon"
+            icon={Icons.EXTERNAL_LINK}
+            width="16"
+          />
         </ControlButton>
       )}
       {!deleted && (
@@ -182,17 +195,6 @@ const CustomControls: FC<ControlProps> = ({
           {getLoadingStatus()}
         </ControlButton>
       )}
-      {/* need to update below button once new mock comes */}
-      <ControlButton
-        className={classNames('h-9 w-9 rounded-full p-x-xss tw-shadow-lg', {
-          'bg-primary': isColumnsExpanded,
-          'bg-primary-hover-lite': !isColumnsExpanded,
-        })}
-        data-testid="expand-column"
-        title="Expand Columns"
-        onClick={onExpandColumnClick}>
-        CL
-      </ControlButton>
     </div>
   );
 };

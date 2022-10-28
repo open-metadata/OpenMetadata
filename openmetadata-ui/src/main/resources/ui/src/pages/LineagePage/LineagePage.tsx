@@ -18,6 +18,7 @@ import { useParams } from 'react-router-dom';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+import { getMlModelByFQN } from '../../axiosAPIs/mlModelAPI';
 import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import { getTopicByFqn } from '../../axiosAPIs/topicsAPI';
@@ -204,7 +205,7 @@ const LineagePage = () => {
 
         case EntityType.MLMODEL:
           {
-            const mlmodelRes = await getPipelineByFqn(entityFQN, '');
+            const mlmodelRes = await getMlModelByFQN(entityFQN, '');
             updateBreadcrumb(mlmodelRes, getMlModelPath(entityFQN, 'lineage'));
           }
 
