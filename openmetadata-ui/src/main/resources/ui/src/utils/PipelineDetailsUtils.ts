@@ -56,12 +56,17 @@ export const getCurrentPipelineTab = (tab: string) => {
 
       break;
 
-    case 'lineage':
+    case 'executions':
       currentTab = 3;
 
       break;
-    case 'custom_properties':
+
+    case 'lineage':
       currentTab = 4;
+
+      break;
+    case 'custom_properties':
+      currentTab = 5;
 
       break;
 

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { toNumber } from 'lodash';
+import { isNil, toNumber } from 'lodash';
 import { DateTime } from 'luxon';
 
 const msPerSecond = 1000;
@@ -229,7 +229,7 @@ export const getTimeZone = (): string => {
     })
     .slice(4);
 
-  // Line below finds out the abbrevation for time zone
+  // Line below finds out the abbreviation for time zone
   // e.g. India Standard Time --> IST
   const abbreviation = timeZoneToString.match(/\b[A-Z]+/g)?.join('') || '';
 
@@ -322,3 +322,31 @@ export const getDateTimeByTimeStampWithCommaSeparated = (
  * @param {string} date - The date you want to convert to a timestamp.
  */
 export const getTimeStampByDate = (date: string) => Date.parse(date);
+
+/**
+ * @param date EPOCH Millis
+ * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM TimeZone
+ */
+export const formatDateTimeWithTimeZone = (date: number) => {
+  if (isNil(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromMillis(date);
+
+  return dateTime.toLocaleString(DateTime.DATETIME_FULL);
+};
+
+/**
+ * @param date EPOCH Millis
+ * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
+ */
+export const formatDateTime = (date: number) => {
+  if (isNil(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromMillis(date);
+
+  return dateTime.toLocaleString(DateTime.DATETIME_MED);
+};

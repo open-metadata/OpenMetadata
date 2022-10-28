@@ -22,6 +22,7 @@ import {
   StatusIndicator,
   ViewDataInterface,
 } from '../../../utils/executionUtils';
+import Loader from '../../Loader/Loader';
 
 interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;
@@ -44,11 +45,6 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
       key: 'name',
     },
     {
-      title: t('label.type'),
-      dataIndex: 'type',
-      key: 'type',
-    },
-    {
       title: t('label.status'),
       dataIndex: 'status',
       key: 'status',
@@ -68,8 +64,19 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
       <Table
         columns={columns}
         dataSource={tableData}
-        loading={loading}
+        // expandable={{
+        //   expandedRowRender: (record) => (
+        //     <Table
+        //       columns={columns}
+        //       dataSource={record.taskStatus}
+        //       rowKey="startTime"
+        //     />
+        //   ),
+        //   rowExpandable: true,
+        // }}
+        loading={{ spinning: loading, indicator: <Loader /> }}
         pagination={false}
+        rowKey="name"
       />
     </div>
   );

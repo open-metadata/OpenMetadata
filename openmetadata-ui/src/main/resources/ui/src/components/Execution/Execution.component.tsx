@@ -14,7 +14,6 @@
 import { CloseCircleOutlined } from '@ant-design/icons';
 import {
   Button,
-  Card,
   Col,
   DatePicker,
   Dropdown,
@@ -49,8 +48,8 @@ import {
 } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './Execution.style.less';
-import ListView from './ListView/list-view-tab.component';
-import TreeViewTab from './TreeView/tree-view-tab.component';
+import ListView from './ListView/ListViewTab.component';
+import TreeViewTab from './TreeView/TreeViewTab.component';
 
 interface ExecutionProps {
   pipelineFQN: string;
@@ -202,14 +201,14 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
   return (
-    <Row className="h-full" gutter={16}>
-      <Col className="" flex="1 1 200px">
-        <div className="p-y-md p-l-lg p-b-lg">
-          <Row justify="space-between">
-            <Col>
+    <Row className="h-full p-md" gutter={16}>
+      <Col flex="auto">
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Space className="justify-between w-full">
               <Radio.Group
-                buttonStyle="outline"
-                style={{ marginBottom: 8 }}
+                // buttonStyle="outline"
+                // style={{ marginBottom: 8 }}
                 value={view}
                 onChange={handleModeChange}>
                 <Radio.Button value={listViewLabel}>
@@ -219,9 +218,7 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
                   {treeViewLabel}
                 </Radio.Button>
               </Radio.Group>
-            </Col>
-            <Col>
-              <Space className="w-full">
+              <Space>
                 <Dropdown overlay={menu} placement="bottom">
                   <Button ghost type="primary">
                     <Space>
@@ -272,31 +269,27 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
                   </>
                 ) : null}
               </Space>
-            </Col>
-          </Row>
-
-          {view === listViewLabel ? (
-            <div className="mt-1">
+            </Space>
+          </Col>
+          <Col span={24}>
+            {view === listViewLabel ? (
               <ListView
                 executions={executions}
                 loading={isLoading}
                 status={status}
               />
-            </div>
-          ) : null}
-          {view === treeViewLabel ? (
-            <div className="mt-1">
+            ) : (
               <TreeViewTab
                 endTime={endTime}
                 executions={executions}
                 startTime={startTime}
                 status={status}
               />
-            </div>
-          ) : null}
-        </div>
+            )}
+          </Col>
+        </Row>
       </Col>
-      <Col flex="0 1 400px">
+      {/* <Col flex="0 1 400px">
         <Card className="h-full">
           <Space direction="vertical">
             <Typography.Title level={5}>{t('label.summary')}</Typography.Title>
@@ -309,7 +302,7 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
             </Row>
           </Space>
         </Card>
-      </Col>
+      </Col> */}
     </Row>
   );
 };
