@@ -81,6 +81,10 @@ import org.openmetadata.service.secrets.SecretsManagerMigrationService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
+import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.BasicAuthenticator;
+import org.openmetadata.service.security.auth.LdapAuthenticator;
+import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -91,6 +95,8 @@ import org.openmetadata.service.util.EmailUtil;
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
+
+  private AuthenticatorHandler authenticatorHandler;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -122,6 +128,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
+
+    // Register Authenticator
+    registerAuthenticator(catalogConfig, jdbi);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -156,6 +165,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig, jdbi);
+
+    // authenticationHandler Handles auth related activities
+    authenticatorHandler.init(catalogConfig, jdbi);
+
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
@@ -266,6 +279,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig, Jdbi jdbi) {
+    AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
+    switch (authenticationConfiguration.getProvider()) {
+      case "basic":
+        authenticatorHandler = new BasicAuthenticator();
+        break;
+      case "ldap":
+        authenticatorHandler = new LdapAuthenticator();
+        break;
+      default:
+        // For all other types, google, okta etc. auth is handled externally
+        authenticatorHandler = new NoopAuthenticator();
+    }
+  }
+
   private void registerEventFilter(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
@@ -284,7 +312,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
-    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
+    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

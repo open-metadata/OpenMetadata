@@ -35,7 +35,6 @@ import {
   getEditIngestionPath,
   getLogsViewerPath,
 } from '../../utils/RouterUtils';
-import { getServiceCategoryFromType } from '../../utils/ServiceUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';
@@ -579,9 +578,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                           data-testid="logs"
                           disabled={!isRequiredDetailsAvailable}
                           href={getLogsViewerPath(
-                            getServiceCategoryFromType(
-                              ingestion?.service?.type || ''
-                            ),
+                            serviceCategory,
                             ingestion.service?.name || '',
                             ingestion?.fullyQualifiedName ||
                               ingestion?.name ||

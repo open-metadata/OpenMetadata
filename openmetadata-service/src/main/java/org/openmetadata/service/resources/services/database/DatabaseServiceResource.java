@@ -86,10 +86,6 @@ public class DatabaseServiceResource
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
     @SuppressWarnings("unused") /* Required for tests */
     public DatabaseServiceList() {}
-
-    public DatabaseServiceList(List<DatabaseService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
