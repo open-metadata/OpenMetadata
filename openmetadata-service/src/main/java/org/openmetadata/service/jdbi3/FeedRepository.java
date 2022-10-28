@@ -91,6 +91,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 @Slf4j
 public class FeedRepository {
+  private static final String UNSUPPORTED_FIELD_NAME_FOR_TASK = "The field name %s is not supported for %s task.";
   private final CollectionDAO dao;
 
   public FeedRepository(CollectionDAO dao) {
@@ -250,8 +251,7 @@ public class FeedRepository {
             } else {
               // Not supported
               throw new IllegalArgumentException(
-                  String.format(
-                      "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+                  String.format(UNSUPPORTED_FIELD_NAME_FOR_TASK, entityLink.getFieldName(), task.getType()));
             }
           } else {
             // Not supported
@@ -275,8 +275,7 @@ public class FeedRepository {
           } else {
             // Not supported
             throw new IllegalArgumentException(
-                String.format(
-                    "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+                String.format(UNSUPPORTED_FIELD_NAME_FOR_TASK, entityLink.getFieldName(), task.getType()));
           }
           updatedEntityJson = JsonUtils.pojoToJson(topic);
           patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
@@ -305,8 +304,7 @@ public class FeedRepository {
           } else {
             // Not supported
             throw new IllegalArgumentException(
-                String.format(
-                    "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+                String.format(UNSUPPORTED_FIELD_NAME_FOR_TASK, entityLink.getFieldName(), task.getType()));
           }
           updatedEntityJson = JsonUtils.pojoToJson(dashboard);
           patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
@@ -338,8 +336,7 @@ public class FeedRepository {
           } else {
             // Not supported
             throw new IllegalArgumentException(
-                String.format(
-                    "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+                String.format(UNSUPPORTED_FIELD_NAME_FOR_TASK, entityLink.getFieldName(), task.getType()));
           }
           updatedEntityJson = JsonUtils.pojoToJson(pipeline);
           patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);

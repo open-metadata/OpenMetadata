@@ -129,6 +129,7 @@ import org.openmetadata.service.util.ResultList;
  */
 @Slf4j
 public abstract class EntityRepository<T extends EntityInterface> {
+  private static final String EXTENSION = "extension";
   private final String collectionPath;
   private final Class<T> entityClass;
   protected final String entityType;
@@ -431,7 +432,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   T setFieldsInternal(T entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
-    entity.setExtension(fields.contains("extension") ? getExtension(entity) : null);
+    entity.setExtension(fields.contains(EXTENSION) ? getExtension(entity) : null);
     setFields(entity, fields);
     return entity;
   }
@@ -1301,10 +1302,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
       if (!added.isEmpty()) {
-        fieldAdded(changeDescription, "extension", JsonUtils.pojoToJson(added));
+        fieldAdded(changeDescription, EXTENSION, JsonUtils.pojoToJson(added));
       }
       if (!deleted.isEmpty()) {
-        fieldDeleted(changeDescription, "extension", JsonUtils.pojoToJson(deleted));
+        fieldDeleted(changeDescription, EXTENSION, JsonUtils.pojoToJson(deleted));
       }
       removeExtension(original);
       storeExtension(updated);
