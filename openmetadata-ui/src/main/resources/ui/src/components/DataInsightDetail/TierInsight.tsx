@@ -48,7 +48,7 @@ const TierInsight = () => {
               <XAxis dataKey="timestamp" />
               <YAxis />
               <Tooltip />
-              <Legend />
+              <Legend align="left" layout="vertical" verticalAlign="middle" />
               {tiers.map((tier) => (
                 <Bar
                   barSize={20}

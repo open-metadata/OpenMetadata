@@ -51,7 +51,7 @@ const DescriptionInsight = () => {
 
               <YAxis />
               <Tooltip />
-              <Legend />
+              <Legend align="left" layout="vertical" verticalAlign="middle" />
               {entities.map((entity) => (
                 <Bar
                   barSize={20}
