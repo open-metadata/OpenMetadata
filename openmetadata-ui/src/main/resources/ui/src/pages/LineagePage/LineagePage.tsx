@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
+import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
+import { getTopicByFqn } from '../../axiosAPIs/topicsAPI';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import EntityLineageComponent from '../../components/EntityLineage/EntityLineage.component';
@@ -25,13 +30,33 @@ import {
   Edge,
   EdgeData,
 } from '../../components/EntityLineage/EntityLineage.interface';
-import { EntityType } from '../../enums/entity.enum';
+import {
+  getDashboardDetailsPath,
+  getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
+  getMlModelPath,
+  getPipelineDetailsPath,
+  getServiceDetailsPath,
+  getTableTabPath,
+  getTopicDetailsPath,
+} from '../../constants/constants';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Topic } from '../../generated/entity/data/topic';
 import {
   EntityLineage,
   EntityReference,
 } from '../../generated/type/entityLineage';
 import jsonData from '../../jsons/en';
+import {
+  getEntityName,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
+import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const LineagePage = () => {
@@ -46,6 +71,9 @@ const LineagePage = () => {
     id: undefined,
     state: false,
   });
+  const [titleBreadcrumb, setTitleBreadcrumb] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
 
   const getLineageData = async () => {
     setIsLineageLoading(true);
@@ -60,6 +88,136 @@ const LineagePage = () => {
       );
     } finally {
       setIsLineageLoading(false);
+    }
+  };
+
+  const updateBreadcrumb = (
+    apiRes: Topic | Dashboard | Pipeline | Mlmodel,
+    currentEntityPath: string
+  ) => {
+    const { service, serviceType } = apiRes;
+    const serviceName = service.name ?? '';
+    setTitleBreadcrumb([
+      {
+        name: serviceName,
+        url: serviceName
+          ? getServiceDetailsPath(
+              serviceName,
+              ServiceCategory.MESSAGING_SERVICES
+            )
+          : '',
+        imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+      },
+      {
+        name: getEntityName(apiRes),
+        url: currentEntityPath,
+      },
+      {
+        name: 'Lineage',
+        url: '',
+        activeTitle: true,
+      },
+    ]);
+  };
+
+  const fetchEntityDetails = async () => {
+    try {
+      switch (entityType) {
+        case EntityType.TABLE:
+          {
+            const tableRes = await getTableDetailsByFQN(entityFQN, '');
+            const { database, service, serviceType, databaseSchema } = tableRes;
+            const serviceName = service?.name ?? '';
+            setTitleBreadcrumb([
+              {
+                name: serviceName,
+                url: serviceName
+                  ? getServiceDetailsPath(
+                      serviceName,
+                      ServiceCategory.DATABASE_SERVICES
+                    )
+                  : '',
+                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+              },
+              {
+                name: getPartialNameFromTableFQN(
+                  database?.fullyQualifiedName ?? '',
+                  [FqnPart.Database]
+                ),
+                url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
+              },
+              {
+                name: getPartialNameFromTableFQN(
+                  databaseSchema?.fullyQualifiedName ?? '',
+                  [FqnPart.Schema]
+                ),
+                url: getDatabaseSchemaDetailsPath(
+                  databaseSchema?.fullyQualifiedName ?? ''
+                ),
+              },
+              {
+                name: getEntityName(tableRes),
+                url: getTableTabPath(entityFQN, 'lineage'),
+              },
+              {
+                name: 'Lineage',
+                url: '',
+                activeTitle: true,
+              },
+            ]);
+          }
+
+          break;
+
+        case EntityType.TOPIC:
+          {
+            const topicRes = await getTopicByFqn(entityFQN, '');
+            updateBreadcrumb(
+              topicRes,
+              getTopicDetailsPath(entityFQN, 'lineage')
+            );
+          }
+
+          break;
+
+        case EntityType.DASHBOARD:
+          {
+            const dashboardRes = await getDashboardByFqn(entityFQN, '');
+            updateBreadcrumb(
+              dashboardRes,
+              getDashboardDetailsPath(entityFQN, 'lineage')
+            );
+          }
+
+          break;
+
+        case EntityType.PIPELINE:
+          {
+            const pipelineRes = await getPipelineByFqn(entityFQN, '');
+            updateBreadcrumb(
+              pipelineRes,
+              getPipelineDetailsPath(entityFQN, 'lineage')
+            );
+          }
+
+          break;
+
+        case EntityType.MLMODEL:
+          {
+            const mlmodelRes = await getPipelineByFqn(entityFQN, '');
+            updateBreadcrumb(mlmodelRes, getMlModelPath(entityFQN, 'lineage'));
+          }
+
+          break;
+
+        default:
+          break;
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-entity-details-error']
+      );
     }
   };
 
@@ -82,44 +240,39 @@ const LineagePage = () => {
     setEntityLineage(lineage);
   };
 
-  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+  const loadNodeHandler = async (node: EntityReference, pos: LineagePos) => {
     setIsNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
-      .then((res) => {
-        if (res) {
-          setLeafNode(res, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res, pos));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-lineage-node-error']
-          );
-        }
-        setTimeout(() => {
-          setIsNodeLoading((prev) => ({ ...prev, state: false }));
-        }, 500);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-node-error']
-        );
-      });
+
+    try {
+      const res = await getLineageByFQN(
+        node.fullyQualifiedName ?? '',
+        node.type
+      );
+      setLeafNode(res, pos);
+      setEntityLineage(getEntityLineage(entityLineage, res, pos));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-lineage-node-error']
+      );
+    } finally {
+      setTimeout(() => {
+        setIsNodeLoading((prev) => ({ ...prev, state: false }));
+      }, 500);
+    }
   };
 
-  const addLineageHandler = (edge: Edge): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      addLineage(edge)
-        .then(() => {
-          resolve();
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['add-lineage-error']
-          );
-          reject();
-        });
-    });
+  const addLineageHandler = async (edge: Edge) => {
+    try {
+      await addLineage(edge);
+      Promise.resolve();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['add-lineage-error']
+      );
+      Promise.reject();
+    }
   };
 
   const removeLineageHandler = (data: EdgeData) => {
@@ -138,31 +291,31 @@ const LineagePage = () => {
 
   useEffect(() => {
     if (entityFQN && entityType) {
+      fetchEntityDetails();
       getLineageData();
     }
   }, [entityFQN, entityType]);
 
   return (
     <PageContainerV1>
-      <PageLayoutV1 className="h-full p-x-lg">
-        <Row className="h-full" gutter={[16, 16]}>
-          <Col className="tw-bg-white" span={24}>
-            <div className="p-lg h-full">
-              <EntityLineageComponent
-                hasEditAccess
-                addLineageHandler={addLineageHandler}
-                entityLineage={entityLineage}
-                entityLineageHandler={entityLineageHandler}
-                entityType={entityType}
-                isLoading={isLineageLoading}
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={leafNodes}
-                loadNodeHandler={loadNodeHandler}
-                removeLineageHandler={removeLineageHandler}
-              />
-            </div>
-          </Col>
-        </Row>
+      <PageLayoutV1 className="p-x-lg">
+        <div className="tw-flex tw-flex-col tw-gap-4 h-full">
+          <TitleBreadcrumb titleLinks={titleBreadcrumb} />
+          <div className="p-y-sm p-x-lg h-full tw-flex-1 tw-bg-white">
+            <EntityLineageComponent
+              hasEditAccess
+              addLineageHandler={addLineageHandler}
+              entityLineage={entityLineage}
+              entityLineageHandler={entityLineageHandler}
+              entityType={entityType}
+              isLoading={isLineageLoading}
+              isNodeLoading={isNodeLoading}
+              lineageLeafNodes={leafNodes}
+              loadNodeHandler={loadNodeHandler}
+              removeLineageHandler={removeLineageHandler}
+            />
+          </div>
+        </div>
       </PageLayoutV1>
     </PageContainerV1>
   );
