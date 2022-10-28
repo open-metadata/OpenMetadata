@@ -53,6 +53,7 @@ const mockProps = {
   isOpen: true,
   onSave,
   onCancel,
+  isModalLoading: false,
 };
 
 describe('Test Add attribute modal', () => {

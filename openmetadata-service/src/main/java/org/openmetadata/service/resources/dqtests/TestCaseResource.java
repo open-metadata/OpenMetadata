@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -92,20 +91,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     public TestCaseList() {
       // Empty constructor needed for deserialization
     }
-
-    public TestCaseList(List<TestCase> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class TestCaseResultList extends ResultList<TestCaseResult> {
     @SuppressWarnings("unused")
     public TestCaseResultList() {
       /* Required for serde */
-    }
-
-    public TestCaseResultList(List<TestCaseResult> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -454,7 +445,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.addTestCaseResult(uriInfo, fqn, testCaseResult).toResponse();
   }
 
@@ -522,7 +515,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteTestCaseResult(fqn, timestamp).toResponse();
   }
 

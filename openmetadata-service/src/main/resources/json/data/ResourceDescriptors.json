@@ -462,5 +462,16 @@
       "EditDescription",
       "EditDisplayName"
     ]
+  },
+  {
+    "name" : "type",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName"
+    ]
   }
 ]

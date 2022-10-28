@@ -45,6 +45,7 @@ import {
   hashtagRegEx,
   linkRegEx,
   mentionRegEx,
+  teamsLinkRegEx,
 } from '../constants/feed.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -272,6 +273,10 @@ const getHashTagList = (message: string) => {
 };
 
 const getEntityDetail = (item: string) => {
+  if (item.includes('teams')) {
+    return item.match(teamsLinkRegEx);
+  }
+
   return item.match(linkRegEx);
 };
 

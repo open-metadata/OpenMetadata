@@ -25,15 +25,12 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+import { ROUTES } from '../../constants/constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
 import jsonData from '../../jsons/en';
-import { getSettingPath, getTestSuitePath } from '../../utils/RouterUtils';
+import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
@@ -73,10 +70,7 @@ const TestSuiteIngestionPage = () => {
       setSlashedBreadCrumb([
         {
           name: 'Test Suites',
-          url: getSettingPath(
-            GlobalSettingsMenuCategory.DATA_QUALITY,
-            GlobalSettingOptions.TEST_SUITE
-          ),
+          url: ROUTES.TEST_SUITES,
         },
         {
           name: startCase(response.displayName || response.name),

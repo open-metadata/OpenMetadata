@@ -27,7 +27,6 @@ import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -50,10 +49,7 @@ public abstract class ServiceEntityResource<
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    try {
-      authorizer.authorizeAdmin(securityContext, secretsManager.isLocal());
-    } catch (AuthorizationException e) {
+    if (!authorizer.decryptSecret(securityContext)) {
       return nullifyRequiredConnectionParameters(service);
     }
     service.getConnection().setConfig(retrieveServiceConnectionConfig(service));

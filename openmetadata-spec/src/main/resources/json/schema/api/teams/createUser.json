@@ -67,8 +67,8 @@
     "createPasswordType": {
       "description": "User Password Method",
       "type": "string",
-      "enum": ["ADMINCREATE", "USERCREATE"],
-      "default": "USERCREATE"
+      "enum": ["ADMIN_CREATE", "USER_CREATE"],
+      "default": "USER_CREATE"
     },
     "password": {
       "description": "Password for User",

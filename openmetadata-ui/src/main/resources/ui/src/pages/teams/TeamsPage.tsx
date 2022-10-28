@@ -69,7 +69,7 @@ const TeamsPage = () => {
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
   const [users, setUsers] = useState<User[]>([]);
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
-  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(0);
   const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGING_VALUE);
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
@@ -78,6 +78,7 @@ const TeamsPage = () => {
   const [userSearchValue, setUserSearchValue] = useState<string>('');
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -126,11 +127,12 @@ const TeamsPage = () => {
   };
 
   const fetchAllTeams = async (
-    isPageLoading = true,
+    loading = true,
     parentTeam?: string,
     updateChildNode = false
   ) => {
-    isPageLoading && setIsPageLoading(true);
+    loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
+
     try {
       const { data } = await getTeams(
         ['defaultRoles', 'userCount', 'childrenCount'],
@@ -159,7 +161,7 @@ const TeamsPage = () => {
         jsonData['api-error-messages']['unexpected-server-response']
       );
     }
-    setIsPageLoading(false);
+    loading && setIsDataLoading((isDataLoading) => --isDataLoading);
   };
 
   /**
@@ -169,7 +171,7 @@ const TeamsPage = () => {
     team: string,
     paging = {} as { [key: string]: string }
   ) => {
-    setIsDataLoading(true);
+    setIsDataLoading((isDataLoading) => ++isDataLoading);
     getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
       .then((res) => {
         if (res.data) {
@@ -181,7 +183,7 @@ const TeamsPage = () => {
         setUsers([]);
         setUserPaging({ total: 0 });
       })
-      .finally(() => setIsDataLoading(false));
+      .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
   const fetchTeamByFqn = async (name: string) => {
@@ -222,6 +224,7 @@ const TeamsPage = () => {
    */
   const createNewTeam = async (data: Team) => {
     try {
+      setIsLoading(true);
       const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
@@ -234,6 +237,7 @@ const TeamsPage = () => {
         const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
         fetchAllTeams(true, parent);
         fetchTeamByFqn(selectedTeam.name);
+        handleAddTeam(false);
       }
     } catch (error) {
       showErrorToast(
@@ -241,12 +245,12 @@ const TeamsPage = () => {
         jsonData['api-error-messages']['create-team-error']
       );
     } finally {
-      handleAddTeam(false);
+      setIsLoading(false);
     }
   };
 
   const searchUsers = (text: string, currentPage: number) => {
-    setIsDataLoading(true);
+    setIsDataLoading((isDataLoading) => ++isDataLoading);
     searchData(
       text,
       currentPage,
@@ -266,7 +270,7 @@ const TeamsPage = () => {
       .catch(() => {
         setUsers([]);
       })
-      .finally(() => setIsDataLoading(false));
+      .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
   const updateTeamHandler = (updatedData: Team, fetchTeam = true) => {
@@ -478,7 +482,7 @@ const TeamsPage = () => {
       if (fqn) {
         fetchTeamByFqn(fqn);
       }
-      fetchAllTeams(false, fqn);
+      fetchAllTeams(true, fqn);
       setCurrentFqn(fqn);
     }
   }, [entityPermissions, fqn]);
@@ -542,6 +546,7 @@ const TeamsPage = () => {
             />
           )}
           <AddTeamForm
+            isLoading={isLoading}
             visible={isAddingTeam}
             onCancel={() => setIsAddingTeam(false)}
             onSave={(data) => createNewTeam(data as Team)}

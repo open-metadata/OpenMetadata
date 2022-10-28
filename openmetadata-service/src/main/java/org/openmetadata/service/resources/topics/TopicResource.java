@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -51,6 +50,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -59,6 +59,7 @@ import org.openmetadata.service.jdbi3.TopicRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/topics")
@@ -86,10 +87,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     @SuppressWarnings("unused")
     public TopicList() {
       // Empty constructor needed for deserialization
-    }
-
-    public TopicList(List<Topic> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -344,7 +341,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the topic", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Valid TopicSampleData sampleData)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Topic topic = dao.addSampleData(id, sampleData);
     return addHref(uriInfo, topic);
   }

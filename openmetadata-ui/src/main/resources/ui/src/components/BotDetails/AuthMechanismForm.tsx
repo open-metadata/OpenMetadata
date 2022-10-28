@@ -15,6 +15,7 @@ import { Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { checkEmailInUse } from '../../axiosAPIs/auth-API';
 import { createBotWithPut } from '../../axiosAPIs/botsAPI';
@@ -62,6 +63,7 @@ const AuthMechanismForm: FC<Props> = ({
   botData,
   onEmailChange,
 }) => {
+  const { t } = useTranslation();
   const { authConfig } = useAuthContext();
 
   const [authMechanism, setAuthMechanism] = useState<AuthType>(
@@ -79,6 +81,8 @@ const AuthMechanismForm: FC<Props> = ({
 
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] =
     useState<boolean>(false);
+
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const authType = authenticationMechanism.authType;
@@ -172,16 +176,18 @@ const AuthMechanismForm: FC<Props> = ({
         displayName: botData.displayName,
         botUser: { id: response.id, type: EntityType.USER },
       });
+      setIsConfirmationModalOpen(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       onEmailChange();
-      setIsConfirmationModalOpen(false);
+      setIsLoading(false);
     }
   };
 
   const handleAccountEmailChange = async () => {
     try {
+      setIsLoading(true);
       const isUserExists = await checkEmailInUse(accountEmail);
       if (isUserExists) {
         const userResponse = await getUserByName(
@@ -213,8 +219,6 @@ const AuthMechanismForm: FC<Props> = ({
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsConfirmationModalOpen(false);
     }
   };
 
@@ -224,27 +228,27 @@ const AuthMechanismForm: FC<Props> = ({
         return (
           <>
             <Form.Item
-              label="SecretKey"
+              label={t('label.secretKey')}
               name="secretKey"
               rules={[
                 {
                   required: true,
-                  message: 'SecretKey is required',
+                  message: t('message.secretKey-required'),
                 },
               ]}>
               <Input.Password
                 data-testid="secretKey"
                 name="secretKey"
-                placeholder="secretKey"
+                placeholder={t('label.secretKey')}
                 value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
-            <Form.Item label="Audience" name="audience">
+            <Form.Item label={t('label.audience')} name="audience">
               <Input
                 data-testid="audience"
                 name="audience"
-                placeholder="audience"
+                placeholder={t('label.audience')}
                 value={ssoClientConfig?.audience}
                 onChange={handleOnChange}
               />
@@ -257,52 +261,52 @@ const AuthMechanismForm: FC<Props> = ({
         return (
           <>
             <Form.Item
-              label="SecretKey"
+              label={t('label.secretKey')}
               name="secretKey"
               rules={[
                 {
                   required: true,
-                  message: 'SecretKey is required',
+                  message: t('message.secretKey-required'),
                 },
               ]}>
               <Input.Password
                 data-testid="secretKey"
                 name="secretKey"
-                placeholder="secretKey"
+                placeholder={t('label.secretKey')}
                 value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.clientId')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.clientId')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Domain"
+              label={t('label.domain')}
               name="domain"
               rules={[
                 {
                   required: true,
-                  message: 'Domain is required',
+                  message: t('message.domain-required'),
                 },
               ]}>
               <Input
                 data-testid="domain"
                 name="domain"
-                placeholder="domain"
+                placeholder={t('label.domain')}
                 value={ssoClientConfig?.domain}
                 onChange={handleOnChange}
               />
@@ -314,69 +318,69 @@ const AuthMechanismForm: FC<Props> = ({
         return (
           <>
             <Form.Item
-              label="ClientSecret"
+              label={t('label.clientSecret')}
               name="clientSecret"
               rules={[
                 {
                   required: true,
-                  message: 'ClientSecret is required',
+                  message: t('message.clientSecret-required'),
                 },
               ]}>
               <Input.Password
                 data-testid="clientSecret"
                 name="clientSecret"
-                placeholder="clientSecret"
+                placeholder={t('label.clientSecret')}
                 value={ssoClientConfig?.clientSecret}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.clientId')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.clientId')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Authority"
+              label={t('label.authority')}
               name="authority"
               rules={[
                 {
                   required: true,
-                  message: 'Authority is required',
+                  message: t('message.authority-required'),
                 },
               ]}>
               <Input
                 data-testid="authority"
                 name="authority"
-                placeholder="authority"
+                placeholder={t('label.authority')}
                 value={ssoClientConfig?.authority}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Scopes"
+              label={t('label.scopes')}
               name="scopes"
               rules={[
                 {
                   required: true,
-                  message: 'Scopes is required',
+                  message: t('message.scopes-required'),
                 },
               ]}>
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder="Scopes value comma separated"
+                placeholder={t('message.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes?.join(',')}
                 onChange={handleOnChange}
               />
@@ -388,79 +392,79 @@ const AuthMechanismForm: FC<Props> = ({
         return (
           <>
             <Form.Item
-              label="PrivateKey"
+              label={t('label.privateKey')}
               name="privateKey"
               rules={[
                 {
                   required: true,
-                  message: 'PrivateKey is required',
+                  message: t('message.privateKey-required'),
                 },
               ]}>
               <Input.Password
                 data-testid="privateKey"
                 name="privateKey"
-                placeholder="privateKey"
+                placeholder={t('label.privateKey')}
                 value={ssoClientConfig?.privateKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.clientId')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.clientId')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="OrgURL"
+              label={t('label.orgUrl')}
               name="orgURL"
               rules={[
                 {
                   required: true,
-                  message: 'OrgURL is required',
+                  message: t('label.orgUrl-required'),
                 },
               ]}>
               <Input
                 data-testid="orgURL"
                 name="orgURL"
-                placeholder="orgURL"
+                placeholder={t('label.orgUrl')}
                 value={ssoClientConfig?.orgURL}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Email"
+              label={t('label.email')}
               name="oktaEmail"
               rules={[
                 {
                   required: true,
                   type: 'email',
-                  message: 'Service account Email is required',
+                  message: t('message.service-email-required'),
                 },
               ]}>
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder="Okta Service account Email"
+                placeholder={t('label.okta-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
             </Form.Item>
-            <Form.Item label="Scopes" name="scopes">
+            <Form.Item label={t('label.scopes')} name="scopes">
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder="Scopes value comma separated"
+                placeholder={t('label.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes?.join('')}
                 onChange={handleOnChange}
               />
@@ -472,52 +476,52 @@ const AuthMechanismForm: FC<Props> = ({
         return (
           <>
             <Form.Item
-              label="SecretKey"
+              label={t('label.secretKey')}
               name="secretKey"
               rules={[
                 {
                   required: true,
-                  message: 'SecretKey is required',
+                  message: t('message.secretKey-required'),
                 },
               ]}>
               <Input.Password
                 data-testid="secretKey"
                 name="secretKey"
-                placeholder="secretKey"
+                placeholder={t('label.secretKey')}
                 value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.clientId')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('message.clientId-required'),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.clientId')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="TokenEndpoint"
+              label={t('label.tokenEndpoint')}
               name="tokenEndpoint"
               rules={[
                 {
                   required: true,
-                  message: 'TokenEndpoint is required',
+                  message: t('message.tokenEndpoint-required'),
                 },
               ]}>
               <Input
                 data-testid="tokenEndpoint"
                 name="tokenEndpoint"
-                placeholder="tokenEndpoint"
+                placeholder={t('label.tokenEndpoint')}
                 value={ssoClientConfig?.tokenEndpoint}
                 onChange={handleOnChange}
               />
@@ -542,14 +546,14 @@ const AuthMechanismForm: FC<Props> = ({
         layout="vertical"
         onFinish={handleSave}>
         <Form.Item
-          label="Auth Mechanism"
+          label={t('label.auth-mechanism')}
           name="auth-mechanism"
           rules={[
             {
               required: true,
               validator: () => {
                 if (!authMechanism) {
-                  return Promise.reject('Auth Mechanism is required');
+                  return Promise.reject(t('message.auth-mechanism-required'));
                 }
 
                 return Promise.resolve();
@@ -560,7 +564,7 @@ const AuthMechanismForm: FC<Props> = ({
             className="w-full"
             data-testid="auth-mechanism"
             defaultValue={authMechanism}
-            placeholder="Select Auth Mechanism"
+            placeholder={t('label.select-auth-mechanism')}
             onChange={(value) => setAuthMechanism(value)}>
             {getAuthMechanismTypeOptions(authConfig).map((option) => (
               <Option key={option.value}>{option.label}</Option>
@@ -570,14 +574,16 @@ const AuthMechanismForm: FC<Props> = ({
 
         {authMechanism === AuthType.Jwt && (
           <Form.Item
-            label="Token Expiration"
+            label={t('label.token-expiration')}
             name="token-expiration"
             rules={[
               {
                 required: true,
                 validator: () => {
                   if (!tokenExpiry) {
-                    return Promise.reject('Token Expiration is required');
+                    return Promise.reject(
+                      t('message.token-expiration-required')
+                    );
                   }
 
                   return Promise.resolve();
@@ -588,7 +594,7 @@ const AuthMechanismForm: FC<Props> = ({
               className="w-full"
               data-testid="token-expiry"
               defaultValue={tokenExpiry}
-              placeholder="Select Token Expiration"
+              placeholder={t('label.select-token-expiration')}
               onChange={(value) => setTokenExpiry(value)}>
               {getJWTTokenExpiryOptions().map((option) => (
                 <Option key={option.value}>{option.label}</Option>
@@ -599,7 +605,7 @@ const AuthMechanismForm: FC<Props> = ({
         {authMechanism === AuthType.Sso && (
           <>
             <Form.Item
-              label="Email"
+              label={t('label.email')}
               name="email"
               rules={[
                 {
@@ -612,7 +618,7 @@ const AuthMechanismForm: FC<Props> = ({
               <Input
                 data-testid="email"
                 name="email"
-                placeholder="email"
+                placeholder={t('label.email')}
                 value={accountEmail}
                 onChange={handleOnChange}
               />
@@ -623,7 +629,7 @@ const AuthMechanismForm: FC<Props> = ({
         <Space className="w-full tw-justify-end" size={4}>
           {!isEmpty(authenticationMechanism) && (
             <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
-              Cancel
+              {t('label.cancel')}
             </Button>
           )}
           <Button
@@ -631,7 +637,7 @@ const AuthMechanismForm: FC<Props> = ({
             form="update-auth-mechanism-form"
             htmlType="submit"
             type="primary">
-            {isUpdating ? <Loader size="small" /> : 'Save'}
+            {isUpdating ? <Loader size="small" /> : t('label.save')}
           </Button>
         </Space>
       </Form>
@@ -640,13 +646,17 @@ const AuthMechanismForm: FC<Props> = ({
           centered
           destroyOnClose
           closable={false}
-          okText="Confirm"
-          title="Are you sure?"
+          confirmLoading={isLoading}
+          okText={t('label.confirm')}
+          title={t('label.are-you-sure')}
           visible={isConfirmationModalOpen}
           onCancel={() => setIsConfirmationModalOpen(false)}
           onOk={handleAccountEmailChange}>
           <Typography.Text>
-            {BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION} for {botData.name} bot.
+            {t('message.bot-email-confirmation', {
+              email: BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION,
+              botName: botData.name,
+            })}
           </Typography.Text>
         </Modal>
       )}
