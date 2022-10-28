@@ -339,7 +339,7 @@ const CreateUser = ({
             confirmPassword: isPasswordGenerated
               ? generatedPassword
               : confirmPassword,
-            createPasswordType: CreatePasswordType.AdminCreate,
+            createPasswordType: CreatePasswordType.Admincreate,
           }),
     };
     onSave(userProfile);
