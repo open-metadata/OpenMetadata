@@ -20,6 +20,7 @@ import { Card, Tabs } from 'antd';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import { isNil, isNumber, lowerCase, noop, omit } from 'lodash';
 import React, { Fragment, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
 import { tabsInfo } from '../../constants/explore.constants';
@@ -29,7 +30,11 @@ import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
-import { ExploreProps, ExploreSearchIndex } from './explore.interface';
+import {
+  ExploreProps,
+  ExploreSearchIndex,
+  ExploreSearchIndexKey,
+} from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -53,7 +58,14 @@ const Explore: React.FC<ExploreProps> = ({
   loading,
 }) => {
   const isMounting = useRef(true);
+  const { tab } = useParams() as Record<string, string>;
 
+  // get entity active tab by URL params
+  const defaultActiveTab = () => {
+    const entityName = tab.slice(0, -1).toUpperCase();
+
+    return SearchIndex[entityName as ExploreSearchIndexKey];
+  };
   const handleFacetFilterChange: FacetFilterProps['onSelectHandler'] = (
     checked,
     value,
@@ -110,7 +122,7 @@ const Explore: React.FC<ExploreProps> = ({
           </div>
         }>
         <Tabs
-          defaultActiveKey={lowerCase(tabsInfo[SearchIndex.TABLE].label)}
+          defaultActiveKey={defaultActiveTab()}
           size="small"
           tabBarExtraContent={
             <div className="tw-flex">
