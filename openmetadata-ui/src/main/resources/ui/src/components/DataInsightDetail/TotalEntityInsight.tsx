@@ -19,6 +19,7 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  LegendProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -29,6 +30,7 @@ import {
   DATA_INSIGHT_GRAPH_COLORS,
   getEntityCountData,
 } from '../../pages/DataInsightPage/DataInsight.mock';
+import { renderLegend } from '../../utils/DataInsightUtils';
 
 const TotalEntityInsight = () => {
   const { data, entities } = getEntityCountData();
@@ -45,7 +47,13 @@ const TotalEntityInsight = () => {
             <XAxis dataKey="timestamp" />
             <YAxis />
             <Tooltip />
-            <Legend align="left" layout="vertical" verticalAlign="middle" />
+            <Legend
+              align="left"
+              content={(props) => renderLegend(props as LegendProps, `897`)}
+              layout="vertical"
+              verticalAlign="top"
+              wrapperStyle={{ left: '0px' }}
+            />
             {entities.map((entity) => (
               <Bar
                 barSize={20}

@@ -19,6 +19,7 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  LegendProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -29,6 +30,7 @@ import {
   DATA_INSIGHT_GRAPH_COLORS,
   getEntityTiersData,
 } from '../../pages/DataInsightPage/DataInsight.mock';
+import { renderLegend } from '../../utils/DataInsightUtils';
 
 const TierInsight = () => {
   const { data, tiers } = getEntityTiersData();
@@ -48,7 +50,13 @@ const TierInsight = () => {
               <XAxis dataKey="timestamp" />
               <YAxis />
               <Tooltip />
-              <Legend align="left" layout="vertical" verticalAlign="middle" />
+              <Legend
+                align="left"
+                content={(props) => renderLegend(props as LegendProps, `970`)}
+                layout="vertical"
+                verticalAlign="top"
+                wrapperStyle={{ left: '0px' }}
+              />
               {tiers.map((tier) => (
                 <Bar
                   barSize={20}
