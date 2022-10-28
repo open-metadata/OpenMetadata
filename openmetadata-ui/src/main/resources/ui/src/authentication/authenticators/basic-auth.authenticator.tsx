@@ -38,7 +38,10 @@ const BasicAuthenticator = forwardRef(
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
       const refreshToken = localState.getRefreshToken();
 
-      if (authConfig.provider !== AuthTypes.BASIC) {
+      if (
+        authConfig.provider !== AuthTypes.BASIC &&
+        authConfig.provider !== AuthTypes.LDAP
+      ) {
         Promise.reject('AuthProvider is not Basic');
       }
 

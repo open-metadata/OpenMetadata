@@ -85,10 +85,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public static class LocationList extends ResultList<Location> {
     @SuppressWarnings("unused") /* Required for tests */
     public LocationList() {}
-
-    public LocationList(List<Location> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = "owner,followers,tags,path";

@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -80,10 +79,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public static class StorageServiceList extends ResultList<StorageService> {
     @SuppressWarnings("unused") /* Required for tests */
     public StorageServiceList() {}
-
-    public StorageServiceList(List<StorageService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET

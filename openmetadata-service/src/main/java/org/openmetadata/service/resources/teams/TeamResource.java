@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -99,10 +98,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
     TeamList() {}
-
-    public TeamList(List<Team> teams, String beforeCursor, String afterCursor, int total) {
-      super(teams, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class TeamHierarchyList extends ResultList<TeamHierarchy> {

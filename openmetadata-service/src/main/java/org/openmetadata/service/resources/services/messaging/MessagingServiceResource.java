@@ -85,10 +85,6 @@ public class MessagingServiceResource
   public static class MessagingServiceList extends ResultList<MessagingService> {
     @SuppressWarnings("unused") /* Required for tests */
     public MessagingServiceList() {}
-
-    public MessagingServiceList(List<MessagingService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET

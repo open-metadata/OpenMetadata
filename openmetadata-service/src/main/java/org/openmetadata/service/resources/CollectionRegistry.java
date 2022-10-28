@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.util.RestUtil;
 import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
@@ -179,7 +180,11 @@ public final class CollectionRegistry {
 
   /** Register resources from CollectionRegistry */
   public void registerResources(
-      Jdbi jdbi, Environment environment, OpenMetadataApplicationConfig config, Authorizer authorizer) {
+      Jdbi jdbi,
+      Environment environment,
+      OpenMetadataApplicationConfig config,
+      Authorizer authorizer,
+      AuthenticatorHandler authenticatorHandler) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -187,7 +192,7 @@ public final class CollectionRegistry {
       try {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
         Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-        Object resource = createResource(daoObject, resourceClass, config, authorizer);
+        Object resource = createResource(daoObject, resourceClass, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -243,7 +248,11 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject, String resourceClass, OpenMetadataApplicationConfig config, Authorizer authorizer)
+      CollectionDAO daoObject,
+      String resourceClass,
+      OpenMetadataApplicationConfig config,
+      Authorizer authorizer,
+      AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     Object resource;
@@ -254,8 +263,10 @@ public final class CollectionRegistry {
       resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
     } catch (NoSuchMethodException e) {
       try {
-        resource = clz.getDeclaredConstructor().newInstance();
-      } catch (NoSuchMethodException exc) {
+        resource =
+            clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, AuthenticatorHandler.class)
+                .newInstance(daoObject, authorizer, authHandler);
+      } catch (NoSuchMethodException ex) {
         resource = Class.forName(resourceClass).getConstructor().newInstance();
       }
     }

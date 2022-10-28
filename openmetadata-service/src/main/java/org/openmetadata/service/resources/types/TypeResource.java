@@ -125,10 +125,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     TypeList() {
       // Empty constructor needed for deserialization
     }
-
-    public TypeList(List<Type> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static final String PROPERTIES = "customProperties";
