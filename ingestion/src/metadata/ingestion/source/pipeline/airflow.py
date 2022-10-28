@@ -335,19 +335,19 @@ class AirflowSource(PipelineServiceSource):
                 ),
             )
         except TypeError as err:
-            logger.error(
+            logger.debug(traceback.format_exc())
+            logger.warning(
                 f"Error building DAG information from {pipeline_details}. There might be Airflow version"
                 f" incompatibilities - {err}"
             )
-            logger.debug(traceback.format_exc())
         except ValidationError as err:
-            logger.error(
+            logger.debug(traceback.format_exc())
+            logger.warning(
                 f"Error building pydantic model for {pipeline_details} - {err}"
             )
-            logger.debug(traceback.format_exc())
         except Exception as err:
-            logger.error(f"Wild error ingesting pipeline {pipeline_details} - {err}")
             logger.debug(traceback.format_exc())
+            logger.warning(f"Wild error ingesting pipeline {pipeline_details} - {err}")
 
     @staticmethod
     def parse_xlets(xlet: List[Any]) -> Optional[List[str]]:
