@@ -177,7 +177,7 @@ const CustomControls: FC<ControlProps> = ({
           onClick={handleFullScreenViewClick}>
           <SVGIcons
             alt="fullScreenViewicon"
-            icon={Icons.EXTERNAL_LINK}
+            icon={Icons.FULL_SCREEN}
             width="16"
           />
         </ControlButton>
