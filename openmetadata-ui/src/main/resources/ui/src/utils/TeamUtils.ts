@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
-import { EntityReference, Team } from '../generated/entity/teams/team';
+import { cloneDeep, isEmpty, isNil, omit } from 'lodash';
+import {
+  EntityReference,
+  Team,
+  TeamType,
+} from '../generated/entity/teams/team';
+import { generateIdArray } from './CommonUtils';
 
 /**
  * To get filtered list of non-deleted(active) users
@@ -33,4 +38,33 @@ export const getDeleteMessagePostFix = (
   deleteType: string
 ) => {
   return `Any teams under "${teamName}" will be ${deleteType} deleted as well.`;
+};
+
+export const getRestoreTeamData = (team: Team, childTeams: Team[]) => {
+  const teamChildren = generateIdArray(childTeams as EntityReference[]);
+
+  const userDetails = omit(cloneDeep(team), [
+    'id',
+    'fullyQualifiedName',
+    'href',
+    'version',
+    'updatedAt',
+    'updatedBy',
+    'userCount',
+    'childrenCount',
+    'owns',
+    'changeDescription',
+    'deleted',
+    'inheritedRoles',
+  ]);
+
+  return {
+    ...userDetails,
+    teamType: userDetails.teamType as TeamType,
+    defaultRoles: generateIdArray(userDetails.defaultRoles),
+    children: isEmpty(teamChildren) ? undefined : teamChildren,
+    parents: generateIdArray(userDetails.parents),
+    policies: generateIdArray(userDetails.policies),
+    users: generateIdArray(userDetails.users),
+  };
 };

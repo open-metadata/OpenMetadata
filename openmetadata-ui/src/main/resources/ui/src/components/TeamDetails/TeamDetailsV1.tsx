@@ -47,7 +47,6 @@ import {
 } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateTeam } from '../../generated/api/teams/createTeam';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import {
@@ -61,7 +60,6 @@ import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttrib
 import UserCard from '../../pages/teams/UserCard';
 import {
   commonUserDetailColumns,
-  generateIdArray,
   getEntityName,
   hasEditAccess,
 } from '../../utils/CommonUtils';
@@ -75,6 +73,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
+  getRestoreTeamData,
 } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
@@ -514,36 +513,28 @@ const TeamDetailsV1 = ({
   };
 
   const handleReactiveTeam = async () => {
-    const teamChildren = generateIdArray(childTeams as EntityReference[]);
-    const updatedUserData: CreateTeam = {
-      teamType: currentTeam.teamType as TeamType,
-      name: currentTeam.name,
-      isJoinable: currentTeam.isJoinable,
-      defaultRoles: generateIdArray(currentTeam.defaultRoles),
-      children: isEmpty(teamChildren) ? undefined : teamChildren,
-      description: currentTeam.description,
-      displayName: currentTeam.displayName,
-      parents: generateIdArray(currentTeam.parents),
-      owner: currentTeam.owner,
-      policies: generateIdArray(currentTeam.policies),
-      profile: currentTeam.profile,
-      users: generateIdArray(currentTeam.users),
-    };
-
     try {
-      const res = await reactivateTeam(updatedUserData);
+      const res = await reactivateTeam(
+        getRestoreTeamData(currentTeam, childTeams)
+      );
       if (res) {
         afterDeleteAction();
         showSuccessToast(
-          jsonData['api-success-messages']['team-restored-success']
+          t('message.entity-restored-success', {
+            entity: 'Team',
+          })
         );
       } else {
-        throw jsonData['api-error-messages']['update-team-error'];
+        throw t('message.entity-restored-error', {
+          entity: 'Team',
+        });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-team-error']
+        t('message.entity-restored-error', {
+          entity: 'Team',
+        })
       );
     }
   };

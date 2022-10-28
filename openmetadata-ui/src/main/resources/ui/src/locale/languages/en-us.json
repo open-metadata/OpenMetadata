@@ -187,7 +187,9 @@
     "auth-mechanism-required": "Auth Mechanism is required",
     "kill-successfully": "Successfully killed running workflows for",
     "kill-ingestion-warning": "Once you kill this Ingestion, all running and queued workflows will be stopped and marked as Failed.",
-    "bot-email-confirmation": "{{email}} for {{botName}} bot"
+    "bot-email-confirmation": "{{email}} for {{botName}} bot",
+    "entity-restored-success": "{{entity}} restored successfully",
+    "entity-restored-error": "Error while restoring {{entity}}"
   },
   "server": {},
   "url": {}

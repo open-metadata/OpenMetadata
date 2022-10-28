@@ -179,7 +179,6 @@ const jsonData = {
     'test-connection-success': 'Connection tested successfully!',
 
     'user-restored-success': 'User restored successfully!',
-    'team-restored-success': 'Team restored successfully!',
 
     'update-profile-congif-success': 'Profile config updated successfully!',
     'update-test-case-success': 'Test case updated successfully!',
