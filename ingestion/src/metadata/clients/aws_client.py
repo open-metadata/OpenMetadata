@@ -83,7 +83,7 @@ class AWSClient:
             )
         return session.resource(service_name=service_name)
 
-    def get_dynomo_client(self) -> DynamoClient:
+    def get_dynamo_client(self) -> DynamoClient:
         return DynamoClient(self.get_resource("dynamodb"))
 
     def get_glue_db_client(self) -> GlueDBClient:

@@ -1,0 +1,23 @@
+source:
+  type: sagemaker
+  serviceName: local_sagemaker
+  serviceConnection:
+    config:
+      type: SageMaker
+      awsConfig:
+        awsAccessKeyId: aws_access_key_id
+        awsSecretAccessKey: aws_secret_access_key
+        awsRegion: aws region
+        endPointURL: https://sagemaker.<region_name>.amazonaws.com
+      database: custom_database_name
+  sourceConfig:
+    config:
+      type: MlModelMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: "DEBUG"
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
