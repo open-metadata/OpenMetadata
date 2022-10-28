@@ -97,7 +97,7 @@ class DBTMixin:
                 else:
                     logger.warning(
                         "Unable to ingest owner from DBT since no user or"
-                        f"team was found with name {dbt_owner}"
+                        f" team was found with name {dbt_owner}"
                     )
         return owner
 
