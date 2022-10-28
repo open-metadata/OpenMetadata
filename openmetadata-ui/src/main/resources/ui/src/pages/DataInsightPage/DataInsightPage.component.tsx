@@ -13,7 +13,12 @@
 
 import { Col, Dropdown, Row, Space } from 'antd';
 import React from 'react';
-import { DAY_FILTER, ORG_FILTER, TEAM_FILTER } from './DataInsight.mock';
+import {
+  DAY_FILTER,
+  ORG_FILTER,
+  TEAM_FILTER,
+  TIER_FILTER,
+} from './DataInsight.mock';
 
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataInsightDetail from '../../components/DataInsightDetail/DataInsightDetail.component';
@@ -47,6 +52,14 @@ const DataInsightPage = () => {
               overlay={getMenuItems(ORG_FILTER, 'org1')}>
               <Space>
                 Organization1
+                <DropDownIcon />
+              </Space>
+            </Dropdown>
+            <Dropdown
+              className="cursor-pointer"
+              overlay={getMenuItems(TIER_FILTER, 'Tier.Tier1')}>
+              <Space>
+                Tier1
                 <DropDownIcon />
               </Space>
             </Dropdown>

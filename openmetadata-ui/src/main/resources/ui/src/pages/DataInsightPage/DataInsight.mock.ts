@@ -74,6 +74,29 @@ export const ORG_FILTER = [
   },
 ];
 
+export const TIER_FILTER = [
+  {
+    key: 'Tier.Tier1',
+    label: 'Tier1',
+  },
+  {
+    key: 'Tier.Tier2',
+    label: 'Tier2',
+  },
+  {
+    key: 'Tier.Tier3',
+    label: 'Tier3',
+  },
+  {
+    key: 'Tier.Tier4',
+    label: 'Tier4',
+  },
+  {
+    key: 'Tier.Tier5',
+    label: 'Tier5',
+  },
+];
+
 export const OVERVIEW = [
   {
     entityType: 'All',
