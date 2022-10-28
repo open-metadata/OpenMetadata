@@ -734,7 +734,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .withDisplayName("Test")
                 .withEmail("testBasicAuth@email.com")
                 .withIsBot(false)
-                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMINCREATE)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
                 .withPassword("Test@1234")
                 .withConfirmPassword("Test@1234"),
             authHeaders("testBasicAuth@email.com"));

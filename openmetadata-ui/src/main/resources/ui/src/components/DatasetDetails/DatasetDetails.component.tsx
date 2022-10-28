@@ -372,7 +372,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           <span
             className={classNames({
               'tw--ml-6': rowData.length > 1,
-            })}>{`${tableProfile.rowCount || 0} rows`}</span>
+            })}>{`${tableProfile?.rowCount?.toLocaleString() || 0} rows`}</span>
         </div>
       );
     } else {

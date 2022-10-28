@@ -69,6 +69,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -109,19 +110,11 @@ public class FeedResource {
   static class ThreadList extends ResultList<Thread> {
     @SuppressWarnings("unused") // Used for deserialization
     ThreadList() {}
-
-    ThreadList(List<Thread> data) {
-      super(data);
-    }
   }
 
   public static class PostList extends ResultList<Post> {
     @SuppressWarnings("unused") /* Required for tests */
     public PostList() {}
-
-    public PostList(List<Post> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
 
     public PostList(List<Post> listPosts) {
       super(listPosts);
