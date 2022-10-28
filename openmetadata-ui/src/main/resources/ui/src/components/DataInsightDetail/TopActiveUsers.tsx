@@ -20,7 +20,7 @@ import './DataInsightTables.less';
 
 interface ActiveUserView {
   userName: string;
-  Team: null;
+  Team: string;
   mostRecentSession: number;
   totalSessions: number;
   avgSessionDuration: number;
@@ -30,7 +30,7 @@ const TopActiveUsers = () => {
   const columns: ColumnsType<ActiveUserView> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: 'User',
         dataIndex: 'userName',
         key: 'userName',
         render: (_, record) => (
@@ -46,17 +46,20 @@ const TopActiveUsers = () => {
         ),
       },
       {
-        title: 'Recent Session',
+        title: 'Most Recent Session',
         dataIndex: 'mostRecentSession',
         key: 'mostRecentSession',
         render: (_, record) => (
           <Typography.Text>
-            {getDateTimeByTimeStamp(record.mostRecentSession)}
+            {getDateTimeByTimeStamp(
+              record.mostRecentSession,
+              'MMM dd, yyyy, hh:mm a'
+            )}
           </Typography.Text>
         ),
       },
       {
-        title: 'Total Session',
+        title: 'Total Sessions',
         dataIndex: 'totalSessions',
         key: 'totalSessions',
         render: (_, record) => (
@@ -64,7 +67,7 @@ const TopActiveUsers = () => {
         ),
       },
       {
-        title: 'Average Session Duration',
+        title: 'Avg. Session Time',
         dataIndex: 'avgSessionDuration',
         key: 'avgSessionDuration',
         render: (_, record) => (

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Table, Typography } from 'antd';
+import { Card, Table, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { TOP_VIEW_ENTITIES } from '../../pages/DataInsightPage/DataInsight.mock';
@@ -50,7 +50,11 @@ const TopViewEntities = () => {
         dataIndex: 'tags',
         key: 'tags',
         render: (_, record) => (
-          <Typography.Text>{record.tags.join(', ')}</Typography.Text>
+          <Typography.Text>
+            {record.tags.map((tag, i) => (
+              <Tag key={i}>{tag}</Tag>
+            ))}
+          </Typography.Text>
         ),
       },
       {
