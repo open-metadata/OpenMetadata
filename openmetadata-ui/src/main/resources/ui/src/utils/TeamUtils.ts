@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { cloneDeep, isEmpty, isNil, omit } from 'lodash';
+import { cloneDeep, isEmpty, isNil, isUndefined, omit } from 'lodash';
+import { CreateTeam } from '../generated/api/teams/createTeam';
 import {
   EntityReference,
   Team,
   TeamType,
 } from '../generated/entity/teams/team';
-import { generateIdArray } from './CommonUtils';
+import { getEntityIdArray } from './CommonUtils';
 
 /**
  * To get filtered list of non-deleted(active) users
@@ -40,9 +41,18 @@ export const getDeleteMessagePostFix = (
   return `Any teams under "${teamName}" will be ${deleteType} deleted as well.`;
 };
 
-export const getRestoreTeamData = (team: Team, childTeams: Team[]) => {
-  const teamChildren = generateIdArray(childTeams as EntityReference[]);
+const getEntityValue = (value: EntityReference[] | undefined) => {
+  if (!isUndefined(value)) {
+    return getEntityIdArray(value);
+  }
 
+  return undefined;
+};
+
+export const getRestoreTeamData = (
+  team: Team,
+  childTeams: Team[]
+): CreateTeam => {
   const userDetails = omit(cloneDeep(team), [
     'id',
     'fullyQualifiedName',
@@ -56,15 +66,19 @@ export const getRestoreTeamData = (team: Team, childTeams: Team[]) => {
     'changeDescription',
     'deleted',
     'inheritedRoles',
-  ]);
+  ]) as Team;
+
+  const { parents, policies, users, defaultRoles } = userDetails;
 
   return {
     ...userDetails,
     teamType: userDetails.teamType as TeamType,
-    defaultRoles: generateIdArray(userDetails.defaultRoles),
-    children: isEmpty(teamChildren) ? undefined : teamChildren,
-    parents: generateIdArray(userDetails.parents),
-    policies: generateIdArray(userDetails.policies),
-    users: generateIdArray(userDetails.users),
+    defaultRoles: getEntityValue(defaultRoles),
+    children: isEmpty(childTeams)
+      ? undefined
+      : getEntityIdArray(childTeams as EntityReference[]),
+    parents: getEntityValue(parents),
+    policies: getEntityValue(policies),
+    users: getEntityValue(users),
   };
 };

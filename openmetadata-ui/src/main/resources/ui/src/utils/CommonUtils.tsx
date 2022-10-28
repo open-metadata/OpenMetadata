@@ -1074,6 +1074,6 @@ export const getLoadingStatus = (
   );
 };
 
-// return array of id's or empty array
-export const generateIdArray = (entities: EntityReference[] | undefined) =>
-  entities?.map((item) => item.id);
+// return array of id as  strings
+export const getEntityIdArray = (entities: EntityReference[]): string[] =>
+  entities.map((item) => item.id);
