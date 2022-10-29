@@ -185,7 +185,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         data-testid="roles-list-table"
         dataSource={roles}
         pagination={false}
-        rowKey="id"
+        rowKey="name"
         size="small"
       />
       {selectedRole && (
