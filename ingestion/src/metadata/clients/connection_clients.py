@@ -117,7 +117,7 @@ class MlflowClientWrapper:
 
 
 @dataclass
-class SageMakerClientWrapper:
+class SageMakerClient:
     def __init__(self, client) -> None:
         self.client = client
 

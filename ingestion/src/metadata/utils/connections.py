@@ -29,9 +29,6 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session
 from sqlalchemy.pool import QueuePool
 
-from ingestion.src.metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
-    SageMakerConnection,
-)
 from metadata.clients.connection_clients import (
     AirByteClient,
     DagsterClient,

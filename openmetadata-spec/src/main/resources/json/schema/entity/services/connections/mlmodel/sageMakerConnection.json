@@ -30,7 +30,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "awsConfig"
-  ]
+  "required": ["awsConfig"]
 }

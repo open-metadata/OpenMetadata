@@ -20,6 +20,7 @@ from metadata.clients.connection_clients import (
     DynamoClient,
     GlueDBClient,
     GluePipelineClient,
+    SageMakerClient,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import utils_logger
@@ -91,3 +92,6 @@ class AWSClient:
 
     def get_glue_pipeline_client(self) -> GluePipelineClient:
         return GluePipelineClient(self.get_client("glue"))
+
+    def get_sagemaker_client(self) -> SageMakerClient:
+        return SageMakerClient(self.get_client("sagemaker"))

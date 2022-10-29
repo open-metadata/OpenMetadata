@@ -13,10 +13,14 @@
 import traceback
 from typing import Iterable, List, Optional
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Extra, Field, ValidationError
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
-from metadata.generated.schema.entity.data.mlmodel import MlStore
+from metadata.generated.schema.entity.data.mlmodel import (
+    MlFeature,
+    MlHyperParameter,
+    MlStore,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -37,12 +41,19 @@ logger = ingestion_logger()
 
 
 class SageMakerModel(BaseModel):
-    name: str
-    arn: str
-    creation_timestamp: str
+    class Config:
+        extra = Extra.forbid
+
+    name: str = Field(..., description="Model name", title="Model Name")
+    arn: str = Field(..., description="Model ARN in AWS account", title="Model ARN")
+    creation_timestamp: str = Field(
+        ...,
+        description="Timestamp of model creation in ISO format",
+        title="Creation Timestamp",
+    )
 
 
-class SageMakerSource(MlModelServiceSource):
+class SagemakerSource(MlModelServiceSource):
     """
     Source implementation to ingest SageMaker data.
 
@@ -64,9 +75,9 @@ class SageMakerSource(MlModelServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_mlmodels(
+    def get_mlmodels(  # pylint: disable=arguments-differ
         self,
-    ) -> Iterable[SageMakerModel]:  # pylint: disable=arguments-differ
+    ) -> Iterable[SageMakerModel]:
         """
         List and filters models
         """
@@ -89,7 +100,9 @@ class SageMakerSource(MlModelServiceSource):
             )
 
     def _get_algorithm(self) -> str:  # pylint: disable=arguments-differ
-        logger.info("Setting algorithm with default value `mlmodel` for SageMaker")
+        logger.info(
+            "Setting algorithm to default value of `mlmodel` for SageMaker Model"
+        )
         return "mlmodel"
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
@@ -107,7 +120,6 @@ class SageMakerSource(MlModelServiceSource):
             service=EntityReference(
                 id=self.context.mlmodel_service.id, type="mlmodelService"
             ),
-            tags=self._get_tags(model.arn),
         )
 
     def _get_ml_store(  # pylint: disable=arguments-differ
@@ -118,7 +130,7 @@ class SageMakerSource(MlModelServiceSource):
         Get the Ml Store for the model
         """
         try:
-            model_info = self.sagemaker.describe_model(model_name)
+            model_info = self.sagemaker.describe_model(ModelName=model_name)
             return MlStore(imageRepository=model_info["PrimaryContainer"]["Image"])
         except ValidationError as err:
             logger.debug(traceback.format_exc())
@@ -156,3 +168,9 @@ class SageMakerSource(MlModelServiceSource):
                 f"Wild error adding TagLabel from model tags: {model_arn} - {err}"
             )
         return None
+
+    def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:
+        pass
+
+    def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:
+        pass

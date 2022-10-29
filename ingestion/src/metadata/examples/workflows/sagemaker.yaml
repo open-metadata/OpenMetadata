@@ -8,8 +8,6 @@ source:
         awsAccessKeyId: aws_access_key_id
         awsSecretAccessKey: aws_secret_access_key
         awsRegion: aws region
-        endPointURL: https://sagemaker.<region_name>.amazonaws.com
-      database: custom_database_name
   sourceConfig:
     config:
       type: MlModelMetadata
