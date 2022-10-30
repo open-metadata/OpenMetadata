@@ -56,7 +56,7 @@ def column_values_to_not_match_regex(
             if param.name == "forbiddenRegex"
         )
     )
-    not_like_count = add_props(expression=forbidden_regex)(Metrics.NOT_MATCH_REGEX_COUNT.value)
+    not_match_regex_count = add_props(expression=forbidden_regex)(Metrics.NOT_MATCH_REGEX_COUNT.value)
 
     try:
         column_name = get_decoded_column(test_case.entityLink.__root__)
@@ -69,12 +69,12 @@ def column_values_to_not_match_regex(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        not_like_count_dict = dict(
+        not_match_regex_count_dict = dict(
             runner.dispatch_query_select_first(
-                not_like_count(col).fn()  # pylint: disable=abstract-class-instantiated
+                not_match_regex_count(col).fn()  # pylint: disable=abstract-class-instantiated
             )
         )
-        not_like_count_res = not_like_count_dict.get(Metrics.NOT_LIKE_COUNT.name)
+        not_match_regex_count_res = not_match_regex_count_dict.get(Metrics.NOT_LIKE_COUNT.name)
 
     except Exception as exc:
         msg = (
@@ -86,14 +86,14 @@ def column_values_to_not_match_regex(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[TestResultValue(name="notLikeCount", value=None)],
+            testResultValue=[TestResultValue(name="notMatchRegexCount", value=None)],
         )
 
     status = (
-        TestCaseStatus.Success if not_like_count_res == 0 else TestCaseStatus.Failed
+        TestCaseStatus.Success if not_match_regex_count_res == 0 else TestCaseStatus.Failed
     )
     result = (
-        f"Found {not_like_count_res} matching the forbidden regex pattern. Expected 0."
+        f"Found {not_match_regex_count_res} matching the forbidden regex pattern. Expected 0."
     )
 
     return TestCaseResult(
@@ -101,6 +101,6 @@ def column_values_to_not_match_regex(
         testCaseStatus=status,
         result=result,
         testResultValue=[
-            TestResultValue(name="notLikeCount", value=str(not_like_count_res))
+            TestResultValue(name="notMatchRegexCount", value=str(not_match_regex_count_res))
         ],
     )

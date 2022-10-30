@@ -52,7 +52,7 @@ def column_values_to_match_regex(
     regex = next(
         (param.value for param in test_case.parameterValues if param.name == "regex")
     )
-    like_count = add_props(expression=regex)(Metrics.MATCH_REGEX_COUNT.value)
+    match_regex_count = add_props(expression=regex)(Metrics.MATCH_REGEX_COUNT.value)
 
     try:
         column_name = get_decoded_column(test_case.entityLink.__root__)
@@ -69,12 +69,12 @@ def column_values_to_match_regex(
             runner.dispatch_query_select_first(Metrics.COUNT.value(col).fn())
         )
         value_count_value_res = value_count_value_dict.get(Metrics.COUNT.name)
-        like_count_value_dict = dict(
+        match_regex_count_value_dict = dict(
             runner.dispatch_query_select_first(
-                like_count(col).fn()  # pylint: disable=abstract-class-instantiated
+                match_regex_count(col).fn()  # pylint: disable=abstract-class-instantiated
             )
         )
-        like_count_value_res = like_count_value_dict.get(Metrics.LIKE_COUNT.name)
+        match_regex_count_value_res = match_regex_count_value_dict.get(Metrics.MATCH_REGEX_COUNT.name)
 
     except Exception as exc:
         msg = (
@@ -86,16 +86,16 @@ def column_values_to_match_regex(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[TestResultValue(name="likeCount", value=None)],
+            testResultValue=[TestResultValue(name="matchRegexCount", value=None)],
         )
 
     status = (
         TestCaseStatus.Success
-        if value_count_value_res == like_count_value_res
+        if value_count_value_res == match_regex_count_value_res
         else TestCaseStatus.Failed
     )
     result = (
-        f"Found {like_count_value_res} value(s) matching regex pattern vs "
+        f"Found {match_regex_count_value_res} value(s) matching regex pattern vs "
         f"{value_count_value_res} value(s) in the column."
     )
 
@@ -104,6 +104,6 @@ def column_values_to_match_regex(
         testCaseStatus=status,
         result=result,
         testResultValue=[
-            TestResultValue(name="likeCount", value=str(like_count_value_res))
+            TestResultValue(name="matchRegexCount", value=str(match_regex_count_value_res))
         ],
     )
