@@ -71,10 +71,14 @@ def column_values_to_match_regex(
         value_count_value_res = value_count_value_dict.get(Metrics.COUNT.name)
         match_regex_count_value_dict = dict(
             runner.dispatch_query_select_first(
-                match_regex_count(col).fn()  # pylint: disable=abstract-class-instantiated
+                match_regex_count(
+                    col
+                ).fn()  # pylint: disable=abstract-class-instantiated
             )
         )
-        match_regex_count_value_res = match_regex_count_value_dict.get(Metrics.MATCH_REGEX_COUNT.name)
+        match_regex_count_value_res = match_regex_count_value_dict.get(
+            Metrics.MATCH_REGEX_COUNT.name
+        )
 
     except Exception as exc:
         msg = (
@@ -104,6 +108,8 @@ def column_values_to_match_regex(
         testCaseStatus=status,
         result=result,
         testResultValue=[
-            TestResultValue(name="matchRegexCount", value=str(match_regex_count_value_res))
+            TestResultValue(
+                name="matchRegexCount", value=str(match_regex_count_value_res)
+            )
         ],
     )

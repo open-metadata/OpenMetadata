@@ -6,8 +6,8 @@ NOT Match Regex Metric definition
 from sqlalchemy import case, column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.orm_profiler.orm.functions.sum import SumFn
 from metadata.orm_profiler.orm.functions.regex_match import MatchRegexFn
+from metadata.orm_profiler.orm.functions.sum import SumFn
 
 
 class NotMatchRegexCount(StaticMetric):
@@ -37,6 +37,4 @@ class NotMatchRegexCount(StaticMetric):
             raise AttributeError(
                 "Not Match Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_MATCH_REGEX_COUNT)"
             )
-        return SumFn(
-            case([(MatchRegexFn(self.col.name,self.expression), 0)], else_=1)
-        )
+        return SumFn(case([(MatchRegexFn(self.col.name, self.expression), 0)], else_=1))

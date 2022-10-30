@@ -56,7 +56,9 @@ def column_values_to_not_match_regex(
             if param.name == "forbiddenRegex"
         )
     )
-    not_match_regex_count = add_props(expression=forbidden_regex)(Metrics.NOT_MATCH_REGEX_COUNT.value)
+    not_match_regex_count = add_props(expression=forbidden_regex)(
+        Metrics.NOT_MATCH_REGEX_COUNT.value
+    )
 
     try:
         column_name = get_decoded_column(test_case.entityLink.__root__)
@@ -71,10 +73,14 @@ def column_values_to_not_match_regex(
 
         not_match_regex_count_dict = dict(
             runner.dispatch_query_select_first(
-                not_match_regex_count(col).fn()  # pylint: disable=abstract-class-instantiated
+                not_match_regex_count(
+                    col
+                ).fn()  # pylint: disable=abstract-class-instantiated
             )
         )
-        not_match_regex_count_res = not_match_regex_count_dict.get(Metrics.NOT_LIKE_COUNT.name)
+        not_match_regex_count_res = not_match_regex_count_dict.get(
+            Metrics.NOT_LIKE_COUNT.name
+        )
 
     except Exception as exc:
         msg = (
@@ -90,17 +96,19 @@ def column_values_to_not_match_regex(
         )
 
     status = (
-        TestCaseStatus.Success if not_match_regex_count_res == 0 else TestCaseStatus.Failed
+        TestCaseStatus.Success
+        if not_match_regex_count_res == 0
+        else TestCaseStatus.Failed
     )
-    result = (
-        f"Found {not_match_regex_count_res} matching the forbidden regex pattern. Expected 0."
-    )
+    result = f"Found {not_match_regex_count_res} matching the forbidden regex pattern. Expected 0."
 
     return TestCaseResult(
         timestamp=execution_date,
         testCaseStatus=status,
         result=result,
         testResultValue=[
-            TestResultValue(name="notMatchRegexCount", value=str(not_match_regex_count_res))
+            TestResultValue(
+                name="notMatchRegexCount", value=str(not_match_regex_count_res)
+            )
         ],
     )
