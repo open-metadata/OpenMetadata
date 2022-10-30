@@ -158,6 +158,8 @@ test = {
     "great-expectations~=0.15.0",
     # Airflow tests
     "apache-airflow==2.3.3",
+    # mock boto3 functions
+    "moto==4.0.8",
 }
 
 build_options = {"includes": ["_cffi_backend"]}

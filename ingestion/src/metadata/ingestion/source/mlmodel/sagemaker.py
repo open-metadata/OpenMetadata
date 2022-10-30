@@ -81,23 +81,40 @@ class SagemakerSource(MlModelServiceSource):
         """
         List and filters models
         """
-        for model in self.sagemaker.list_models()["Models"]:
-            if filter_by_mlmodel(
-                self.source_config.mlModelFilterPattern, mlmodel_name=model["ModelName"]
-            ):
-                self.status.filter(
-                    model["ModelName"],
-                    "MlModel name pattern not allowed",
+        try:
+            models = self.sagemaker.list_models()["Models"]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to fetch models list - {err}")
+            return
+            yield  # used to return empty iterator
+        for model in models:
+            try:
+                if filter_by_mlmodel(
+                    self.source_config.mlModelFilterPattern,
+                    mlmodel_name=model["ModelName"],
+                ):
+                    self.status.filter(
+                        model["ModelName"],
+                        "MlModel name pattern not allowed",
+                    )
+                    continue
+                yield SageMakerModel(
+                    name=model["ModelName"],
+                    arn=model["ModelArn"],
+                    creation_timestamp=model["CreationTime"].isoformat(),
                 )
-                continue
-
-            yield SageMakerModel(
-                **{
-                    "name": model["ModelName"],
-                    "arn": model["ModelArn"],
-                    "creation_timestamp": model["CreationTime"].isoformat(),
-                }
-            )
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Validation error while creating SageMakerModel from model details - {err}"
+                )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Wild error while creating SageMakerModel from model details - {err}"
+                )
+            continue
 
     def _get_algorithm(self) -> str:  # pylint: disable=arguments-differ
         logger.info(
