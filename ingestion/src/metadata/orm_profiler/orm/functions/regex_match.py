@@ -4,8 +4,6 @@ Given a value(usually a stirng or column neame) and a regex
 Return true if the value contains part that matches the regex
 """
 
-from shutil import copyfile
-
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -46,8 +44,7 @@ def _(element, compiler, **kw):
         regex
     )
 
-
-@copyfile(MatchRegexFn, Dialects.Snowflake)
+@compiles(MatchRegexFn, Dialects.Snowflake)
 def _(element, compiler, **kw):
     column, regex = validate_and_compile(element, compiler, **kw)
     return "%s REGEXP '%s'" % (
