@@ -32,6 +32,8 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class SettingsRepository {
+  private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings";
+  public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final CollectionDAO dao;
 
   public SettingsRepository(CollectionDAO dao) {
@@ -67,8 +69,8 @@ public class SettingsRepository {
     try {
       updateSetting(setting);
     } catch (Exception ex) {
-      LOG.error("Failed to Update Settings" + ex.getMessage());
-      return Response.status(500, "Internal Server Error. Reason :" + ex.getMessage()).build();
+      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
+      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
@@ -84,8 +86,8 @@ public class SettingsRepository {
       updateSetting(FilterUtil.updateEntityFilter(oldValue, entityType, filters));
       return (new RestUtil.PutResponse<>(Response.Status.OK, oldValue, RestUtil.ENTITY_UPDATED)).toResponse();
     } catch (Exception ex) {
-      LOG.error("Failed to Update Settings" + ex.getMessage());
-      return Response.status(500, "Internal Server Error. Reason :" + ex.getMessage()).build();
+      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
+      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
   }
 
@@ -93,8 +95,8 @@ public class SettingsRepository {
     try {
       updateSetting(setting);
     } catch (Exception ex) {
-      LOG.error("Failed to Update Settings" + ex.getMessage());
-      return Response.status(500, "Internal Server Error. Reason :" + ex.getMessage()).build();
+      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
+      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
   }
@@ -107,8 +109,8 @@ public class SettingsRepository {
     try {
       updateSetting(original);
     } catch (Exception ex) {
-      LOG.error("Failed to Update Settings" + ex.getMessage());
-      return Response.status(500, "Internal Server Error. Reason :" + ex.getMessage()).build();
+      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
+      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, RestUtil.ENTITY_UPDATED)).toResponse();
   }

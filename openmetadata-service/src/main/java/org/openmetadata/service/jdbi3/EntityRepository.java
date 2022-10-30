@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -431,7 +432,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   T setFieldsInternal(T entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
-    entity.setExtension(fields.contains("extension") ? getExtension(entity) : null);
+    entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
     setFields(entity, fields);
     return entity;
   }
@@ -1301,10 +1302,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
       if (!added.isEmpty()) {
-        fieldAdded(changeDescription, "extension", JsonUtils.pojoToJson(added));
+        fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(added));
       }
       if (!deleted.isEmpty()) {
-        fieldDeleted(changeDescription, "extension", JsonUtils.pojoToJson(deleted));
+        fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deleted));
       }
       removeExtension(original);
       storeExtension(updated);
