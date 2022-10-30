@@ -19,11 +19,10 @@ logger = profiler_logger()
 class MatchRegexFn(FunctionElement):
     inherit_cache = CACHE
 
-    def __init__(self, value, regex):
-        self.value = value
-        self.regex = regex
-
-
+def validate_and_compile(element,compiler,**kw):
+        if len(element.clauses) != 2:
+            raise ValueError("We need two elements to do regex")
+        return [compiler.process(elem,**kw) for elem in element.clauses]
 """
 return true if value matches regex
 return error if the regex is invalid
@@ -32,23 +31,26 @@ return error if the regex is invalid
 
 @compiles(MatchRegexFn, Dialects.BigQuery)
 def _(element, compiler, **kw):
+    column, regex = validate_and_compile(element, compiler, **kw)
     return "REGEXP_CONTAINS(%s, r'%s')" % (
-        compiler.process(element.value, **kw),
-        compiler.process(element.regex, **kw),
+        column,
+        regex
     )
 
 
 @compiles(MatchRegexFn, Dialects.Redshift)
 def _(element, compiler, **kw):
+    column, regex = validate_and_compile(element, compiler, **kw)
     return "%s SIMILAR TO %s )" % (
-        compiler.process(element.value, **kw),
-        compiler.process(element.regex, **kw),
+        column,
+        regex
     )
 
 
 @copyfile(MatchRegexFn, Dialects.Snowflake)
 def _(element, compiler, **kw):
+    column, regex = validate_and_compile(element, compiler, **kw)
     return "%s REGEXP '%s'" % (
-        compiler.process(element.value, **kw),
-        compiler.process(element.regex, **kw),
+        column,
+        regex
     )
