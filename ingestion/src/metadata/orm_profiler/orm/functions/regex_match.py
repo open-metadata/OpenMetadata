@@ -18,8 +18,7 @@ class MatchRegexFn(FunctionElement):
     def __init__(self, value, regex):
         self.value = value
         self.regex = regex
-        
-        
+
 """
 return true if value matches regex
 return error if the regex is invalid
