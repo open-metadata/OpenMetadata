@@ -44,7 +44,11 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection
-from metadata.utils.graphql_queries import DAGSTER_PIPELINE_DETAILS_GRAPHQL
+from metadata.utils.graphql_queries import (
+    DAGSTER_PIPELINE_DETAILS_GRAPHQL,
+    GRAPHQL_QUERY_FOR_JOBS,
+    GRAPHQL_RUNS_QUERY,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -111,18 +115,48 @@ class DagsterSource(PipelineServiceSource):
             )
         ]
 
+    def get_jobs(self, pipeline_name) -> Iterable[dict]:
+        try:
+            parameters = {
+                "selector": {
+                    "graphName": pipeline_name,
+                    "repositoryName": self.context.repository_name,
+                    "repositoryLocationName": self.context.repository_location,
+                }
+            }
+            jobs = self.client._execute(  # pylint: disable=protected-access
+                query=GRAPHQL_QUERY_FOR_JOBS, variables=parameters
+            )
+            return jobs["graphOrError"]
+        except Exception as err:
+            logger.error(f"Error while getting jobs {pipeline_name} - {err}")
+            logger.debug(traceback.format_exc())
+
+        return []
+
     def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
         """
         Convert a DAG into a Pipeline Entity
         :param serialized_dag: SerializedDAG from dagster metadata DB
         :return: Create Pipeline request with tasks
         """
+        jobs = self.get_jobs(pipeline_name=pipeline_details.get("name"))
         task_list: List[Task] = []
-        for job in pipeline_details["runs"]:
+        for job in jobs["solidHandles"]:
+            down_stream_task = []
+            for tasks in job.get("solid")["inputs"]:
+                # if task["dependsOn"][0]["solid"]["name"]:
+                for task in tasks["dependsOn"]:
+                    down_stream_task.append(task["solid"]["name"])
+
             task = Task(
-                name=job["id"],
+                name=job["handleID"],
+                displayName=job["handleID"],
+                downstreamTasks=down_stream_task,
             )
+
             task_list.append(task)
+
         yield CreatePipelineRequest(
             name=pipeline_details["id"],
             displayName=pipeline_details["name"],
@@ -148,32 +182,49 @@ class DagsterSource(PipelineServiceSource):
 
         yield tag_category
 
-    def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
-        for run in pipeline_details["runs"]:
-            # log_link = (
-            #     f"{self.service_connection.configSource.hostPort}/instance/runs/{run['runId']}"
-            # )
+    def get_task_runs(self, job_id, pipeline_name):
+        parameters = {
+            "handleID": job_id,
+            "selector": {
+                "pipelineName": pipeline_name,
+                "repositoryName": self.context.repository_name,
+                "repositoryLocationName": self.context.repository_location,
+            },
+        }
+        runs = self.client._execute(  # pylint: disable=protected-access
+            query=GRAPHQL_RUNS_QUERY, variables=parameters
+        )
 
-            task_status = TaskStatus(
-                name=run["id"],
-                executionStatus=STATUS_MAP.get(
-                    run["status"].lower(), StatusType.Pending.value
-                ),
-                startTime=round(run["stats"]["startTime"]),
-                endTime=round(run["stats"]["endTime"]),
-                # logLink=log_link,
+        return runs["pipelineOrError"]
+
+    def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
+        tasks = self.context.pipeline.tasks
+        for task in tasks:
+            runs = self.get_task_runs(
+                task.name, pipeline_name=pipeline_details.get("name")
             )
-            pipeline_status = PipelineStatus(
-                taskStatus=[task_status],
-                executionStatus=STATUS_MAP.get(
-                    run["status"].lower(), StatusType.Pending.value
-                ),
-                timestamp=round(run["stats"]["endTime"]),
-            )
-            yield OMetaPipelineStatus(
-                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                pipeline_status=pipeline_status,
-            )
+            for run in runs["solidHandle"]["stepStats"]["nodes"]:
+                task_status = TaskStatus(
+                    name=task.name,
+                    executionStatus=STATUS_MAP.get(
+                        run["status"].lower(), StatusType.Pending.value
+                    ),
+                    startTime=round(run["startTime"]),
+                    endTime=round(run["endTime"]),
+                )
+
+                pipeline_status = PipelineStatus(
+                    taskStatus=[task_status],
+                    executionStatus=STATUS_MAP.get(
+                        run["status"].lower(), StatusType.Pending.value
+                    ),
+                    timestamp=round(run["endTime"]),
+                )
+                pipeline_status_yield = OMetaPipelineStatus(
+                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                    pipeline_status=pipeline_status,
+                )
+                yield pipeline_status_yield
 
     def yield_pipeline_lineage_details(
         self, pipeline_details
@@ -185,6 +236,7 @@ class DagsterSource(PipelineServiceSource):
     def get_pipelines_list(self) -> Dict:
         results = self.get_run_list()
         for result in results:
+            self.context.repository_location = result.get("location")["name"]
             self.context.repository_name = result["name"]
             for job in result["pipelines"]:
                 yield job

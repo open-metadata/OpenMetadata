@@ -21,6 +21,10 @@ DAGSTER_PIPELINE_DETAILS_GRAPHQL = """
       nodes{
         id,
         name,
+        location {
+          id
+          name
+        }
         pipelines{
           id,
           name,
@@ -65,6 +69,37 @@ DAGSTER_PIPELINE_DETAILS_GRAPHQL = """
 }
 """
 
+GRAPHQL_RUNS_QUERY = """query SidebarOpGraphsQuery($selector: PipelineSelector!, $handleID: String!) {
+  pipelineOrError(params: $selector) {
+    __typename
+    ... on Pipeline {
+      id
+      name
+      solidHandle(handleID: $handleID) {
+        stepStats(limit: 100) {
+          __typename
+          ... on SolidStepStatsConnection {
+            nodes {
+              runId
+              startTime
+              endTime
+              status
+              __typename
+            }
+            __typename
+          }
+          ... on SolidStepStatusUnavailableError {
+            __typename
+          }
+        }
+        __typename
+      }
+      __typename
+    }
+  }
+}
+"""
+
 
 TEST_QUERY_GRAPHQL = """query Pipeline {
             pipelineRunsOrError {
@@ -80,3 +115,27 @@ TEST_QUERY_GRAPHQL = """query Pipeline {
                 }
             }
             }"""
+
+GRAPHQL_QUERY_FOR_JOBS = """query PipelineRuns($selector: GraphSelector!){
+                graphOrError(selector: $selector){
+                    ... on Graph{
+                    id,
+                    name,
+                    description,
+                        solidHandles{
+                            handleID,
+                            solid{
+                                name,
+                                inputs{
+                                    dependsOn {
+                                        solid {
+                                            name
+                                        }
+                                    }
+                                },
+                            }
+                        },
+
+                    }
+                }
+                }"""

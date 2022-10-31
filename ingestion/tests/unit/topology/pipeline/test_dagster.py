@@ -68,25 +68,25 @@ mock_dagster_config = {
 }
 
 
-EXPECTED_DAGSTER_DETAILS = mock_data["repositoriesOrError"]["nodes"]
+EXPECTED_DAGSTER_DETAILS = mock_data["data"]["graphOrError"]
 
 EXPECTED_CREATED_PIPELINES = [
     CreatePipelineRequest(
-        name="b77121d84d3bbe6afd665271fbb7836a42e0c530",
-        displayName="compute_cereal_properties",
-        description="",
+        name="graph:5164c131c3524a271e7ecce49766d50a479b5ff4",
+        displayName="story_recommender_job",
+        description=None,
         pipelineUrl=None,
         concurrency=None,
         pipelineLocation=None,
         startDate=None,
         tasks=[
             Task(
-                name="bb412b6c-8258-4e84-a0db-41178bdda6a0",
-                displayName=None,
+                name="s3__recommender__recommender_model",
+                displayName="s3__recommender__recommender_model",
                 fullyQualifiedName=None,
                 description=None,
                 taskUrl=None,
-                downstreamTasks=None,
+                downstreamTasks=["s3__recommender__user_story_matrix"],
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
@@ -94,12 +94,57 @@ EXPECTED_CREATED_PIPELINES = [
                 tags=None,
             ),
             Task(
-                name="e4ce4f4d-20c5-401a-800a-c9c06750621b",
-                displayName=None,
+                name="s3__recommender__user_story_matrix",
+                displayName="s3__recommender__user_story_matrix",
                 fullyQualifiedName=None,
                 description=None,
                 taskUrl=None,
-                downstreamTasks=None,
+                downstreamTasks=["snowflake__recommender__comment_stories"],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+            Task(
+                name="snowflake__recommender__comment_stories",
+                displayName="snowflake__recommender__comment_stories",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=[],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+            Task(
+                name="snowflake__recommender__component_top_stories",
+                displayName="snowflake__recommender__component_top_stories",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=[
+                    "s3__recommender__recommender_model",
+                    "s3__recommender__user_story_matrix",
+                ],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+            Task(
+                name="snowflake__recommender__user_top_recommended_stories",
+                displayName="snowflake__recommender__user_top_recommended_stories",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=[
+                    "s3__recommender__recommender_model",
+                    "s3__recommender__user_story_matrix",
+                ],
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
@@ -139,7 +184,7 @@ MOCK_LOG_URL = (
     "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
 )
 
-EXPTECTED_PIPELINE_NAME = ["compute_cereal_properties", "compute_cereal"]
+EXPTECTED_PIPELINE_NAME = ["story_recommender_job"]
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
@@ -226,19 +271,18 @@ class DagsterUnitTest(TestCase):
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
         self.dagster.context.__dict__["repository_name"] = "hacker_new_repository"
+        self.dagster.context.__dict__["repository_location"] = "project_fully_featured"
 
     def test_pipeline_name(self):
-        pipeline_details = EXPECTED_DAGSTER_DETAILS[0]
-        for pipleine_mock_detail in pipeline_details["pipelines"]:
-            assert (
-                self.dagster.get_pipeline_name(pipleine_mock_detail)
-                in EXPTECTED_PIPELINE_NAME
-            )
-
-    def test_yield_pipeline(self):
-        results = self.dagster.yield_pipeline(
-            EXPECTED_DAGSTER_DETAILS[0]["pipelines"][0]
+        assert (
+            self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
+            in EXPTECTED_PIPELINE_NAME
         )
+
+    @patch("metadata.ingestion.source.pipeline.dagster.DagsterSource.get_jobs")
+    def test_yield_pipeline(self, get_jobs):
+        results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
+        get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
         pipelines_list = []
         for result in results:
             pipelines_list.append(result)
