@@ -14,6 +14,7 @@ Module handles the ENUM for terminal output
 
 
 from enum import Enum
+from typing import Optional
 
 
 class ANSI(Enum):
@@ -25,3 +26,11 @@ class ANSI(Enum):
     ENDC = "\033[0m"
     BLUE = "\u001b[34;1m"
     MAGENTA = "\u001b[35;1m"
+
+
+def print_ansi_encoded_string(
+    color: Optional[ANSI] = None, bold: bool = False, message: str = ""
+):
+    print(
+        f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
+    )

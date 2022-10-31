@@ -37,7 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.ansi import ANSI
+from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -140,9 +140,11 @@ class TrinoSource(CommonDbSourceService):
                 dbapi,
             )
         except ModuleNotFoundError:
-            print(
-                f"{ANSI.BRIGHT_RED.value}Trino source dependencies are missing. Please run\n"
-                f"$ pip install --upgrade 'openmetadata-ingestion[trino]'{ANSI.ENDC.value}",
+            print_ansi_encoded_string(
+                color=ANSI.BRIGHT_RED,
+                bold=False,
+                message="Trino source dependencies are missing. Please run\n"
+                "$ pip install --upgrade 'openmetadata-ingestion[trino]'",
             )
             if logger.isEnabledFor(logging.DEBUG):
                 raise

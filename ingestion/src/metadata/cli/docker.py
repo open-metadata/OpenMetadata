@@ -33,7 +33,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.ansi import ANSI
+from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.client_version import get_client_version
 from metadata.utils.logger import cli_logger, ometa_logger
 
@@ -70,8 +70,8 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     """
 
     logger.info("Running docker compose for OpenMetadata..")
-    print(
-        f"{ANSI.YELLOW.value}It may take some time on the first run {ANSI.ENDC.value}"
+    print_ansi_encoded_string(
+        color=ANSI.YELLOW, bold=False, message="It may take some time on the first run "
     )
     if file_path:
         docker.compose.up(detach=True, build=True)
@@ -105,8 +105,10 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
         ometa_logger().disabled = False
 
     # Wait until docker is not only running, but the server is up
-    print(
-        f"{ANSI.YELLOW.value}Waiting for server to be up at http://localhost:8585 {ANSI.ENDC.value}"
+    print_ansi_encoded_string(
+        color=ANSI.YELLOW,
+        bold=False,
+        message="Waiting for server to be up at http://localhost:8585 ",
     )
     while True:
         try:
@@ -121,20 +123,26 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     logger.info(
         f"Time taken to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
     )
-    print(
-        f"{ANSI.GREEN.value}\n✅  OpenMetadata is up and running{ANSI.ENDC.value}",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        bold=False,
+        message="\n✅  OpenMetadata is up and running",
     )
-    print(
-        f"{ANSI.BLUE.value}\nOpen http://localhost:8585 in your browser to access OpenMetadata."
-        f"\nTo checkout Ingestion via Airflow, go to http://localhost:8080 "
-        f"\n(username: admin, password: admin){ANSI.ENDC.value}",
+    print_ansi_encoded_string(
+        color=ANSI.BLUE,
+        bold=False,
+        message="\nOpen http://localhost:8585 in your browser to access OpenMetadata."
+        "\nTo checkout Ingestion via Airflow, go to http://localhost:8080 "
+        "\n(username: admin, password: admin)",
     )
-    print(
-        f"{ANSI.MAGENTA.value}We are available on Slack, https://slack.open-metadata.org/."
-        f"Reach out to us if you have any questions."
-        f"\nIf you like what we are doing, please consider giving us a star on github at"
-        f" https://github.com/open-metadata/OpenMetadata. It helps OpenMetadata reach wider audience and helps"
-        f" our community.\n{ANSI.ENDC.value}",
+    print_ansi_encoded_string(
+        color=ANSI.MAGENTA,
+        bold=False,
+        message="We are available on Slack, https://slack.open-metadata.org/."
+        "Reach out to us if you have any questions."
+        "\nIf you like what we are doing, please consider giving us a star on github at"
+        " https://github.com/open-metadata/OpenMetadata. It helps OpenMetadata reach wider audience and helps"
+        " our community.\n",
     )
 
 
@@ -180,13 +188,8 @@ def file_path_check(file_path, database: str):
     return docker_compose_file_path
 
 
-# to clean linting after https://github.com/open-metadata/OpenMetadata/issues/8081
-def run_docker(  # pylint: disable=too-many-arguments,too-many-locals
-    start: bool,
-    stop: bool,
-    pause: bool,
-    resume: bool,
-    clean: bool,
+def run_docker(
+    *DockerActions,
     file_path: str,
     env_file_path: str,
     reset_db: bool,
@@ -219,7 +222,6 @@ def run_docker(  # pylint: disable=too-many-arguments,too-many-locals
             raise MemoryError
 
         # Check for -f <Path>
-        start_time = time.time()
         docker_compose_file_path = file_path_check(file_path, database)
         env_file = env_file_check(env_file_path)
         # Set up Docker Client Config with docker compose file path
@@ -229,7 +231,12 @@ def run_docker(  # pylint: disable=too-many-arguments,too-many-locals
             compose_env_file=env_file,
         )
         if start:
-            start_docker(docker, start_time, file_path, ingest_sample_data)
+            start_docker(
+                docker=docker,
+                start_time=time.time(),
+                file_path=file_path,
+                ingest_sample_data=ingest_sample_data,
+            )
         if pause:
             logger.info("Pausing docker compose for OpenMetadata...")
             docker.compose.pause()
@@ -257,13 +264,17 @@ def run_docker(  # pylint: disable=too-many-arguments,too-many-locals
 
     except MemoryError:
         logger.debug(traceback.format_exc())
-        print(
-            f"{ANSI.BRIGHT_RED.value}Please Allocate More memory to Docker.\nRecommended: 6GB+\nCurrent: "
-            f"{round(float(dict(docker_info).get('mem_total')) / CALC_GB)}{ANSI.ENDC.value}",
+        print_ansi_encoded_string(
+            color=ANSI.BRIGHT_RED,
+            bold=False,
+            message="Please Allocate More memory to Docker.\nRecommended: 6GB+\nCurrent: "
+            f"{round(float(dict(docker_info).get('mem_total')) / CALC_GB)}",
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print(f"{ANSI.BRIGHT_RED.value}{str(exc)}{ANSI.ENDC.value}")
+        print_ansi_encoded_string(
+            color=ANSI.BRIGHT_RED, bold=False, message=f"{str(exc)}"
+        )
 
 
 def reset_db_om(docker):
@@ -272,8 +283,10 @@ def reset_db_om(docker):
     """
 
     if docker.container.inspect("openmetadata_server").state.running:
-        print(
-            f"{ANSI.BRIGHT_RED.value}Resetting OpenMetadata.\nThis will clear out all the data{ANSI.ENDC.value}",
+        print_ansi_encoded_string(
+            color=ANSI.BRIGHT_RED,
+            bold=False,
+            message="Resetting OpenMetadata.\nThis will clear out all the data",
         )
         docker.container.execute(
             container="openmetadata_server",
@@ -285,8 +298,10 @@ def reset_db_om(docker):
             ],
         )
     else:
-        print(
-            f"{ANSI.YELLOW.value}OpenMetadata Instance is not up and running{ANSI.ENDC.value}"
+        print_ansi_encoded_string(
+            color=ANSI.YELLOW,
+            bold=False,
+            message="OpenMetadata Instance is not up and running",
         )
 
 

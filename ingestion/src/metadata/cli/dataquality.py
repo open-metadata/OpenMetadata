@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Ingest utility for the metadata CLI
+Data quality utility for the metadata CLI
 """
 import pathlib
 import sys
@@ -27,7 +27,7 @@ logger = cli_logger()
 def run_test(config_path: str) -> None:
     """
     Run the Data Quality Test Suites workflow from a config path
-    to a JSON file
+    to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 

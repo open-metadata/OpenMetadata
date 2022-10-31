@@ -20,7 +20,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
-from metadata.cli.docker import BACKEND_DATABASES, run_docker
+from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.cli.openmetadata_imports_migration import (
     run_openmetadata_imports_migration,
@@ -398,12 +398,15 @@ def metadata(args=None):
             schema=contains_args.get("schema"),
         )
     if metadata_workflow == MetadataCommands.DOCKER.value:
-        run_docker(
+        DockerActions(
             start=contains_args.get("start"),
             stop=contains_args.get("stop"),
             pause=contains_args.get("pause"),
             resume=contains_args.get("resume"),
             clean=contains_args.get("clean"),
+        )
+
+        run_docker(
             file_path=contains_args.get("file_path"),
             env_file_path=contains_args.get("env_file_path"),
             reset_db=contains_args.get("reset_db"),

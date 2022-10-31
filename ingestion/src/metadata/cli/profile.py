@@ -27,7 +27,7 @@ logger = cli_logger()
 def run_profiler(config_path: str) -> None:
     """
     Run the Profiler workflow from a config path
-    to a JSON file
+    to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 

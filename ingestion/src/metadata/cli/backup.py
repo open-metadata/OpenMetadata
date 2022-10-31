@@ -20,7 +20,7 @@ from typing import List, Optional, Tuple
 
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
-from metadata.utils.ansi import ANSI
+from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import cli_logger
 
@@ -82,8 +82,10 @@ def upload_backup_aws(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
     s3_key = Path(key) / file.name
-    print(
-        f"{ANSI.GREEN.value}Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}... {ANSI.ENDC.value}"
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        bold=False,
+        message=f"Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}...",
     )
 
     try:
@@ -183,8 +185,10 @@ def run_backup(  # pylint: disable=too-many-arguments, too-many-locals
     :param arguments: list of connection arguments
     :param schema: Run the process against Postgres with the given schema
     """
-    print(
-        f"{ANSI.GREEN.value}Creating OpenMetadata backup for {host}:{port}/{database}... {ANSI.ENDC.value}"
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        bold=False,
+        message=f"Creating OpenMetadata backup for {host}:{port}/{database}...",
     )
 
     out = get_output(output)
@@ -194,7 +198,9 @@ def run_backup(  # pylint: disable=too-many-arguments, too-many-locals
     )
     dump(engine=engine, output=out, schema=schema)
 
-    print(f"{ANSI.GREEN.value}Backup stored locally under {out} {ANSI.ENDC.value}")
+    print_ansi_encoded_string(
+        color=ANSI.GREEN, bold=False, message=f"Backup stored locally under {out}"
+    )
 
     if upload:
         if upload_destination_type == UploadDestinationType.AWS.value:

@@ -23,7 +23,7 @@ from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
-from metadata.utils.ansi import ANSI
+from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 
@@ -73,7 +73,7 @@ def print_error_msg(msg: str) -> None:
     """
     Print message with error style
     """
-    print(f"{ANSI.BRIGHT_RED.value}{msg}{ANSI.ENDC.value}")
+    print_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}")
 
 
 def print_sink_status(workflow) -> None:
@@ -81,10 +81,10 @@ def print_sink_status(workflow) -> None:
     Common prints for Sink status
     """
 
-    print(f"{ANSI.BOLD.value} Processor Status:{ANSI.ENDC.value}")
+    print_ansi_encoded_string(bold=True, message="Processor Status:")
     print(workflow.status.as_string())
     if hasattr(workflow, "sink"):
-        print(f"{ANSI.BOLD.value} Sink Status:{ANSI.ENDC.value}")
+        print_ansi_encoded_string(bold=True, message="Sink Status:")
         print(workflow.sink.get_status().as_string())
 
 
@@ -170,41 +170,48 @@ def print_status(workflow) -> None:
     """
     Print the workflow results
     """
-    print(f"{ANSI.BOLD.value} Source Status:{ANSI.ENDC.value}")
+    print_ansi_encoded_string(bold=True, message="Source Status:")
     print(workflow.source.get_status().as_string())
     if hasattr(workflow, "stage"):
-        print(f"{ANSI.BOLD.value} Stage Status:{ANSI.ENDC.value}")
+        print_ansi_encoded_string(bold=True, message="Stage Status:")
         print(workflow.stage.get_status().as_string())
     if hasattr(workflow, "sink"):
-        print(f"{ANSI.BOLD.value} Sink Status:{ANSI.ENDC.value}")
+        print_ansi_encoded_string(bold=True, message="Sink Status:")
         print(workflow.sink.get_status().as_string())
     if hasattr(workflow, "bulk_sink"):
-        print(f"{ANSI.BOLD.value} Bulk Sink Status:{ANSI.ENDC.value}")
+        print_ansi_encoded_string(bold=True, message="Bulk Sink Status:")
         print(workflow.bulk_sink.get_status().as_string())
 
     if workflow.source.get_status().source_start_time:
-        print(
-            f"{ANSI.BOLD.value}{ANSI.BRIGHT_CYAN.value}Workflow finished in time {pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)} {ANSI.ENDC.value}",  # pylint: disable=line-too-long
+        print_ansi_encoded_string(
+            color=ANSI.BRIGHT_CYAN,
+            bold=True,
+            message="Workflow finished in time"
+            f"{pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)}",
         )
 
-        print(
-            f"{ANSI.BOLD.value}{ANSI.BRIGHT_CYAN.value}Success % :"
-            f"{workflow.source.get_status().calculate_success()} {ANSI.ENDC.value}",
+        print_ansi_encoded_string(
+            color=ANSI.BRIGHT_CYAN,
+            bold=True,
+            message=f"Success % :"
+            f"{workflow.source.get_status().calculate_success()}",
         )
 
     if workflow.result_status() == 1:
-        print(
-            f"{ANSI.BOLD.value}{ANSI.BRIGHT_RED.value} Workflow finished with failures {ANSI.ENDC.value}"
+        print_ansi_encoded_string(
+            color=ANSI.BRIGHT_RED,
+            bold=True,
+            message="Workflow finished with failures",
         )
     elif workflow.source.get_status().warnings or (
         hasattr(workflow, "sink") and workflow.sink.get_status().warnings
     ):
-        print(
-            f"{ANSI.BOLD.value}{ANSI.YELLOW.value} Workflow finished with warnings{ANSI.ENDC.value}"
+        print_ansi_encoded_string(
+            color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings"
         )
     else:
-        print(
-            f"{ANSI.BOLD.value}{ANSI.GREEN.value} Workflow finished successfully{ANSI.ENDC.value}"
+        print_ansi_encoded_string(
+            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
         )
 
 
@@ -212,26 +219,22 @@ def print_profiler_status(workflow) -> None:
     """
     Print the profiler workflow results
     """
-    print(f"{ANSI.BOLD.value} Source Status:{ANSI.ENDC.value}")
+    print_ansi_encoded_string(bold=True, message="Source Status:")
     print(workflow.source_status.as_string())
     print_sink_status(workflow)
 
     if workflow.result_status() == 1:
         print(
-            f"{ANSI.BOLD.value}{ANSI.BRIGHT_RED.value} Workflow finished with failures {ANSI.ENDC.value}"
+            color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
         )
     elif (
         workflow.source_status.warnings
         or workflow.status.failures
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
-        print(
-            f"{ANSI.BOLD.value}{ANSI.YELLOW.value} Workflow finished with warnings{ANSI.ENDC.value}"
-        )
+        print(color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings")
     else:
-        print(
-            f"{ANSI.BOLD.value}{ANSI.GREEN.value} Workflow finished successfully{ANSI.ENDC.value}"
-        )
+        print(color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
 
 
 def print_test_suite_status(workflow) -> None:
@@ -242,12 +245,10 @@ def print_test_suite_status(workflow) -> None:
 
     if workflow.result_status() == 1:
         print(
-            f"{ANSI.BOLD.value}{ANSI.BRIGHT_RED.value} Workflow finished with failures {ANSI.ENDC.value}"
+            color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
         )
     else:
-        print(
-            f"{ANSI.BOLD.value}{ANSI.GREEN.value}Workflow finished successfully{ANSI.ENDC.value}"
-        )
+        print(color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
 
 
 def print_data_insight_status(workflow) -> None:
@@ -275,6 +276,4 @@ def print_data_insight_status(workflow) -> None:
         print("Workflow finished with warnings")
     else:
         print("Workflow finished successfully")
-        print(
-            f"{ANSI.BOLD.value}{ANSI.GREEN.value} Workflow finished successfully{ANSI.ENDC.value}"
-        )
+        print(color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
