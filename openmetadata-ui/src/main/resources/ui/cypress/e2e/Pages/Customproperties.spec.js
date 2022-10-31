@@ -22,7 +22,7 @@ describe('Custom Properties should work properly', () => {
     cy.saveLocalStorage('localstorage');
   });
     beforeEach(() => {
-    console.log(ENTITIES)
+    cy.log(`topic name: ${ENTITIES.entity_topic.entityObj.term}`);
     cy.log('Restoring local storage snapshot');
     cy.restoreLocalStorage('localstorage');
     cy.clickOnLogo();
