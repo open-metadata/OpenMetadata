@@ -13,8 +13,31 @@
 
 /// <reference types="cypress" />
 
-import { deleteCreatedService, descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, login, mySqlConnectionInput, scheduleIngestion, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
-import { DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM, LOGIN, MYDATA_SUMMARY_OPTIONS, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import {
+    deleteCreatedService,
+    descriptionBox,
+    goToAddNewServicePage,
+    handleIngestionRetry,
+    interceptURL,
+    login,
+    mySqlConnectionInput,
+    scheduleIngestion,
+    testServiceCreationAndIngestion,
+    uuid,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
+} from '../../common/common';
+import {
+    DATA_QUALITY_SAMPLE_DATA_TABLE,
+    DELETE_TERM,
+    LOGIN,
+    MYDATA_SUMMARY_OPTIONS,
+    NEW_COLUMN_TEST_CASE,
+    NEW_TABLE_TEST_CASE,
+    NEW_TEST_SUITE,
+    SERVICE_TYPE,
+    TEAM_ENTITY
+} from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -158,14 +181,12 @@ describe('Data Quality and Profiler should work properly', () => {
     // wait for ingestion to run
     cy.clock();
     cy.wait(10000);
-    interceptURL(
-      'GET',
-      '/api/v1/testCase?fields=testCaseResult,testDefinition,testSuite&testSuiteId=*&limit=10',
-      'testCase'
-    );
+    interceptURL('GET', '/api/v1/testCase?fields=*', 'testCase');
     cy.get('[data-testid="view-service-button"]')
       .should('be.visible')
       .click({ force: true });
+
+    verifyResponseStatusCode('@getEntityDetails', 200);
 
     verifyResponseStatusCode('@testCase', 200);
     cy.contains(`${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`).should(
