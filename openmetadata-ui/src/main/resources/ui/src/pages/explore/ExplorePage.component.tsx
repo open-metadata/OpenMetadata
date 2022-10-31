@@ -29,6 +29,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { SearchResponse } from '../../interface/search.interface';
 
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
+import useDeepCompareEffect from 'use-deep-compare-effect';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
@@ -170,7 +171,7 @@ const ExplorePage: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
@@ -238,7 +239,7 @@ const ExplorePage: FunctionComponent = () => {
   ]);
 
   // Return to first page on filter change
-  useEffect(
+  useDeepCompareEffect(
     () => handlePageChange(1),
     [
       searchIndex,

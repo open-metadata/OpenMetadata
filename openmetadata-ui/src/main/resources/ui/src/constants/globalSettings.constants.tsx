@@ -13,14 +13,6 @@
 
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 
-export const customAttributesPath = {
-  tables: 'table',
-  topics: 'topic',
-  dashboards: 'dashboard',
-  pipelines: 'pipeline',
-  mlModels: 'mlmodel',
-};
-
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   COLLABORATION = 'collaboration',

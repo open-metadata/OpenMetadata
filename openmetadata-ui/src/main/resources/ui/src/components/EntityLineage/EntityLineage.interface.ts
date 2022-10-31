@@ -41,6 +41,7 @@ export interface EntityLineageProp {
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
+  onFullScreenClick?: () => void;
 }
 
 export interface Edge {
@@ -94,6 +95,7 @@ export interface CustomControlElementsProps {
   isEditMode: boolean;
   hasEditAccess: boolean | undefined;
   onClick: () => void;
+  onExpandColumnClick: () => void;
   loading: boolean;
   status: LoadingState;
 }

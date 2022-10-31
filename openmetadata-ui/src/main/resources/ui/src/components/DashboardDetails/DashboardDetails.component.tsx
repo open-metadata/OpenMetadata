@@ -24,7 +24,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -53,6 +53,7 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
@@ -122,6 +123,7 @@ const DashboardDetails = ({
   entityFieldTaskCount,
   onExtensionUpdate,
 }: DashboardDetailsProps) => {
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -457,6 +459,10 @@ const DashboardDetails = ({
       });
   };
 
+  const handleFullScreenClick = () => {
+    history.push(getLineageViewPath(EntityType.DASHBOARD, dashboardFQN));
+  };
+
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -749,7 +755,7 @@ const DashboardDetails = ({
                 </div>
               )}
               {activeTab === 3 && (
-                <div className="tw-h-full tw-px-3">
+                <div className="h-full">
                   <EntityLineageComponent
                     addLineageHandler={addLineageHandler}
                     deleted={deleted}
@@ -765,6 +771,7 @@ const DashboardDetails = ({
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}
