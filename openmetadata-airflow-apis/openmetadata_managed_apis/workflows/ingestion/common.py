@@ -17,8 +17,6 @@ from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
-from openmetadata_managed_apis.api.utils import clean_dag_id
-
 from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -32,15 +30,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import set_loggers_level
+from openmetadata_managed_apis.api.utils import clean_dag_id
 
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
-
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -55,6 +50,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
 
 
 class InvalidServiceException(Exception):
@@ -159,7 +157,6 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = Workflow.create(config)
-
     try:
         workflow.execute()
         workflow.raise_from_status()
@@ -183,12 +180,15 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-
     workflow = ProfilerWorkflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
 
 
 def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -204,12 +204,16 @@ def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-
     workflow = TestSuiteWorkflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -227,9 +231,14 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = DataInsightWorkflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
 
 
 def date_to_datetime(

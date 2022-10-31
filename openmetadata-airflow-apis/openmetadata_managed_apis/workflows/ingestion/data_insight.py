@@ -13,12 +13,6 @@ testSuite DAG function builder
 """
 
 from airflow import DAG
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    data_insight_workflow,
-)
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -27,6 +21,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Processor,
     WorkflowConfig,
+)
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    data_insight_workflow,
 )
 
 
@@ -48,6 +47,7 @@ def build_data_insight_workflow_config(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
     )
 
     return workflow_config

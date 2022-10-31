@@ -17,11 +17,10 @@ Workflow definition for the ORM Profiler.
 - How to define metrics & tests
 """
 import traceback
+import uuid
 from copy import deepcopy
+from datetime import datetime
 from typing import Iterable, List, Optional, cast
-
-from pydantic import ValidationError
-from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
@@ -37,6 +36,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+    PipelineStatus,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
@@ -70,6 +73,8 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
+from pydantic import ValidationError
+from sqlalchemy import MetaData
 
 logger = profiler_logger()
 
@@ -100,6 +105,8 @@ class ProfilerWorkflow:
         self.metadata = OpenMetadata(self.metadata_config)
 
         self._retrieve_service_connection_if_needed()
+
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
@@ -516,6 +523,7 @@ class ProfilerWorkflow:
         """
         Close all connections
         """
+        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
 
     def _retrieve_service_connection_if_needed(self) -> None:
@@ -544,3 +552,33 @@ class ProfilerWorkflow:
     @staticmethod
     def _is_sample_source(service_type):
         return service_type in {"sample-data", "sample-usage"}
+
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+
+        if not self.config.ingestionPipelineFQN:
+            # if ingestion pipeline fqn is not set then setting pipeline status is avoided
+            return
+
+        pipeline_status: PipelineStatus = None
+
+        if state in (PipelineState.queued, PipelineState.running):
+            self.config.pipelineRunId = self.config.pipelineRunId or str(uuid.uuid4())
+            pipeline_status = PipelineStatus(
+                runId=self.config.pipelineRunId,
+                pipelineState=state,
+                startDate=datetime.now().timestamp(),
+                timestamp=datetime.now().timestamp(),
+            )
+        elif self.config.pipelineRunId:
+            pipeline_status = self.metadata.get_pipeline_status(
+                self.config.ingestionPipelineFQN, self.config.pipelineRunId
+            )
+            # if workflow is ended then update the end date in status
+            pipeline_status.endDate = datetime.now().timestamp()
+            pipeline_status.pipelineState = state
+        self.metadata.create_or_update_pipeline_status(
+            self.config.ingestionPipelineFQN, pipeline_status
+        )

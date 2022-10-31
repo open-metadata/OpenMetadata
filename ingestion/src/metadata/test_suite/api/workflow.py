@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import sys
 import traceback
+import uuid
 from copy import deepcopy
+from datetime import datetime
 from logging import Logger
 from typing import List, Optional, Set, Tuple
-
-from pydantic import ValidationError
-from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
@@ -35,6 +34,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+    PipelineStatus,
 )
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
@@ -56,6 +59,8 @@ from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.workflow_output_handler import print_test_suite_status
+from pydantic import ValidationError
+from sqlalchemy import MetaData
 
 logger: Logger = test_suite_logger()
 
@@ -87,6 +92,8 @@ class TestSuiteWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
         self.metadata = OpenMetadata(self.metadata_config)
+
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.status = ProcessorStatus()
 
@@ -485,4 +492,35 @@ class TestSuiteWorkflow:
         """
         Close all connections
         """
+        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
+
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+
+        if not self.config.ingestionPipelineFQN:
+            # if ingestion pipeline fqn is not set then setting pipeline status is avoided
+            return
+
+        pipeline_status: PipelineStatus = None
+
+        if state in (PipelineState.queued, PipelineState.running):
+            self.config.pipelineRunId = self.config.pipelineRunId or str(uuid.uuid4())
+            pipeline_status = PipelineStatus(
+                runId=self.config.pipelineRunId,
+                pipelineState=state,
+                startDate=datetime.now().timestamp(),
+                timestamp=datetime.now().timestamp(),
+            )
+        elif self.config.pipelineRunId:
+            pipeline_status = self.metadata.get_pipeline_status(
+                self.config.ingestionPipelineFQN, self.config.pipelineRunId
+            )
+            # if workflow is ended then update the end date in status
+            pipeline_status.endDate = datetime.now().timestamp()
+            pipeline_status.pipelineState = state
+        self.metadata.create_or_update_pipeline_status(
+            self.config.ingestionPipelineFQN, pipeline_status
+        )

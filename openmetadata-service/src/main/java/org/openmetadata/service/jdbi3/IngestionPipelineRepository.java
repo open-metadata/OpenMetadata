@@ -189,7 +189,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               "pipelineStatus",
               JsonUtils.pojoToJson(pipelineStatus));
     }
-    // setFieldsInternal(ingestionPipeline, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
         addPipelineStatusChangeDescription(ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     ChangeEvent changeEvent =

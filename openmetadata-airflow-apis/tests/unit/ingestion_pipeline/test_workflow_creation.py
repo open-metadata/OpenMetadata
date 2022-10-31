@@ -15,22 +15,7 @@ Validate metadata ingestion workflow generation
 import json
 import uuid
 from unittest import TestCase
-
-from openmetadata_managed_apis.workflows.ingestion.lineage import (
-    build_lineage_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.metadata import (
-    build_metadata_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.profiler import (
-    build_profiler_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.test_suite import (
-    build_test_suite_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.usage import (
-    build_usage_workflow_config,
-)
+from unittest.mock import patch
 
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -71,6 +56,25 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from openmetadata_managed_apis.workflows.ingestion.lineage import (
+    build_lineage_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.metadata import (
+    build_metadata_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.profiler import (
+    build_profiler_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.test_suite import (
+    build_test_suite_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.usage import (
+    build_usage_workflow_config,
+)
+
+
+def mock_set_ingestion_pipeline_status(self, state):
+    return True
 
 
 class OMetaServiceTest(TestCase):
@@ -181,6 +185,9 @@ class OMetaServiceTest(TestCase):
             hard_delete=True,
         )
 
+    @patch.object(
+        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+    )
     def test_ingestion_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
@@ -209,6 +216,9 @@ class OMetaServiceTest(TestCase):
 
         Workflow.create(config)
 
+    @patch.object(
+        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+    )
     def test_usage_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
@@ -239,6 +249,9 @@ class OMetaServiceTest(TestCase):
 
         Workflow.create(config)
 
+    @patch.object(
+        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+    )
     def test_lineage_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
@@ -269,6 +282,11 @@ class OMetaServiceTest(TestCase):
 
         Workflow.create(config)
 
+    @patch.object(
+        ProfilerWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
+    )
     def test_profiler_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
@@ -297,6 +315,11 @@ class OMetaServiceTest(TestCase):
 
         ProfilerWorkflow.create(config)
 
+    @patch.object(
+        TestSuiteWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
+    )
     def test_test_suite_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
