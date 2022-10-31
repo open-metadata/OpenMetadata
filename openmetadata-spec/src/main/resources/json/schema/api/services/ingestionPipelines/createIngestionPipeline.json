@@ -40,6 +40,11 @@
       "description": "Owner of this Pipeline.",
       "$ref": "../../../type/entityReference.json",
       "default": null
+    },
+    "sink": {
+      "description": "Sink configuration",
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sink",
+      "default": null
     }
   },
   "required": [

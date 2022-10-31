@@ -206,7 +206,8 @@
     },
     "sink": {
       "description": "Sink configuration",
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sink"
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sink",
+      "default": null
     }
   },
   "required": [
