@@ -16,7 +16,6 @@ import { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TOP_VIEW_ENTITIES } from '../../pages/DataInsightPage/DataInsight.mock';
-import './DataInsightTables.less';
 
 interface EntityView {
   entityName: string;
@@ -95,8 +94,7 @@ const TopViewEntities = () => {
         </Typography.Title>
       }>
       <Table
-        bordered={false}
-        className="mt-4 data-insight-table-wrapper"
+        className="data-insight-table-wrapper"
         columns={columns}
         dataSource={TOP_VIEW_ENTITIES}
         pagination={false}

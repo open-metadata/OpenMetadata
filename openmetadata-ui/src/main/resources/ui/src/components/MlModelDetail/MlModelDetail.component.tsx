@@ -406,6 +406,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             getEmptyPlaceholder()
           ) : (
             <Table
+              bordered
               columns={getMlHyperParametersColumn}
               data-testid="hyperparameters-table"
               dataSource={mlModelDetail.mlHyperParameters}

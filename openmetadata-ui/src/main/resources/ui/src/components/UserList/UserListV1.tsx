@@ -269,6 +269,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
       <Col span={24}>
         <Table
+          bordered
           className="user-list-table"
           columns={columns}
           dataSource={data}

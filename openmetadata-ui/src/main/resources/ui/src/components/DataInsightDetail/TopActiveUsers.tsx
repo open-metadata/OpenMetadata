@@ -17,7 +17,6 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TOP_ACTIVE_USER } from '../../pages/DataInsightPage/DataInsight.mock';
 import { getDateTimeFromMilliSeconds } from '../../utils/TimeUtils';
-import './DataInsightTables.less';
 
 interface ActiveUserView {
   userName: string;
@@ -87,8 +86,7 @@ const TopActiveUsers = () => {
         </Typography.Title>
       }>
       <Table
-        bordered={false}
-        className="mt-4 data-insight-table-wrapper"
+        className="data-insight-table-wrapper"
         columns={columns}
         dataSource={TOP_ACTIVE_USER}
         pagination={false}

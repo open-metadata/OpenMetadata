@@ -720,6 +720,7 @@ const DashboardDetails = ({
                     </div>
                   </div>
                   <Table
+                    bordered
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}

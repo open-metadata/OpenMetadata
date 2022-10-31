@@ -753,6 +753,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     {activeTab === 1 && (
                       <Fragment>
                         <Table
+                          bordered
                           columns={tableColumn}
                           data-testid="database-databaseSchemas"
                           dataSource={schemaData}
