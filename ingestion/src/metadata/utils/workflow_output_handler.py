@@ -63,7 +63,7 @@ def print_more_info(workflow_type: WorkflowType) -> None:
     """
     Print more information message
     """
-    print(
+    print_ansi_encoded_string(message=
         f"\nFor more information, please visit: {URLS[workflow_type]}"
         "\nOr join us in Slack: https://slack.open-metadata.org/"
     )
@@ -82,10 +82,10 @@ def print_sink_status(workflow) -> None:
     """
 
     print_ansi_encoded_string(bold=True, message="Processor Status:")
-    print(workflow.status.as_string())
+    print_ansi_encoded_string(message=workflow.status.as_string())
     if hasattr(workflow, "sink"):
         print_ansi_encoded_string(bold=True, message="Sink Status:")
-        print(workflow.sink.get_status().as_string())
+        print_ansi_encoded_string(message=workflow.sink.get_status().as_string())
 
 
 def calculate_ingestion_type(source_type_name: str) -> WorkflowType:
@@ -124,13 +124,13 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
         if not example_path.exists():
             example_file = DEFAULT_EXAMPLE_FILE[workflow_type]
             example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
-        print(
+        print_ansi_encoded_string(message=
             f"\nMake sure you are following the following format e.g. '{example_file}':"
         )
-        print("------------")
+        print_ansi_encoded_string(message="------------")
         with open(example_path, encoding=UTF_8) as file:
-            print(file.read())
-        print("------------")
+            print_ansi_encoded_string(message=file.read())
+        print_ansi_encoded_string(message="------------")
 
 
 def print_init_error(
@@ -171,16 +171,16 @@ def print_status(workflow) -> None:
     Print the workflow results
     """
     print_ansi_encoded_string(bold=True, message="Source Status:")
-    print(workflow.source.get_status().as_string())
+    print_ansi_encoded_string(message=workflow.source.get_status().as_string())
     if hasattr(workflow, "stage"):
         print_ansi_encoded_string(bold=True, message="Stage Status:")
-        print(workflow.stage.get_status().as_string())
+        print_ansi_encoded_string(message=workflow.stage.get_status().as_string())
     if hasattr(workflow, "sink"):
         print_ansi_encoded_string(bold=True, message="Sink Status:")
-        print(workflow.sink.get_status().as_string())
+        print_ansi_encoded_string(message=workflow.sink.get_status().as_string())
     if hasattr(workflow, "bulk_sink"):
         print_ansi_encoded_string(bold=True, message="Bulk Sink Status:")
-        print(workflow.bulk_sink.get_status().as_string())
+        print_ansi_encoded_string(message=workflow.bulk_sink.get_status().as_string())
 
     if workflow.source.get_status().source_start_time:
         print_ansi_encoded_string(
@@ -220,11 +220,11 @@ def print_profiler_status(workflow) -> None:
     Print the profiler workflow results
     """
     print_ansi_encoded_string(bold=True, message="Source Status:")
-    print(workflow.source_status.as_string())
+    print_ansi_encoded_string(message=workflow.source_status.as_string())
     print_sink_status(workflow)
 
     if workflow.result_status() == 1:
-        print(
+        print_ansi_encoded_string(message=
             color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
         )
     elif (
@@ -232,9 +232,9 @@ def print_profiler_status(workflow) -> None:
         or workflow.status.failures
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
-        print(color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings")
+        print_ansi_encoded_string(message=color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings")
     else:
-        print(color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
+        print_ansi_encoded_string(message=color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
 
 
 def print_test_suite_status(workflow) -> None:
@@ -244,11 +244,11 @@ def print_test_suite_status(workflow) -> None:
     print_sink_status(workflow)
 
     if workflow.result_status() == 1:
-        print(
+        print_ansi_encoded_string(message=
             color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
         )
     else:
-        print(color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
+        print_ansi_encoded_string(message=color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
 
 
 def print_data_insight_status(workflow) -> None:
@@ -257,23 +257,23 @@ def print_data_insight_status(workflow) -> None:
     Args:
         workflow (DataInsightWorkflow): workflow object
     """
-    print("Processor Status:")
-    print(workflow.data_processor.get_status().as_string())
+    print_ansi_encoded_string(message="Processor Status:")
+    print_ansi_encoded_string(message=workflow.data_processor.get_status().as_string())
     print_sink_status(workflow)
 
     if workflow.data_processor.get_status().source_start_time:
-        print(
+        print_ansi_encoded_string(message=
             f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.data_processor.get_status().source_start_time)} ",  # pylint: disable=line-too-long
         )
 
     if workflow.result_status() == 1:
-        print("Workflow finished with failures")
+        print_ansi_encoded_string(message="Workflow finished with failures")
     elif (
         workflow.data_processor.get_status().warnings
         or workflow.status.warnings
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
-        print("Workflow finished with warnings")
+        print_ansi_encoded_string(message="Workflow finished with warnings")
     else:
-        print("Workflow finished successfully")
-        print(color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
+        print_ansi_encoded_string(message="Workflow finished successfully")
+        print_ansi_encoded_string(message=color=ANSI.GREEN, bold=True, message="Workflow finished successfully")

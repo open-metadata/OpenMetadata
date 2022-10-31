@@ -16,6 +16,7 @@ from datetime import datetime
 import pytest
 import requests
 from ldap3 import ALL, Connection, Server
+from metadata.utils.ansi import print_ansi_encoded_string
 
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 
@@ -24,12 +25,12 @@ url = "http://localhost:8585/api/v1/users"
 
 
 def sleep(timeout_s):
-    print(f"sleeping for {timeout_s} seconds")
+    print_ansi_encoded_string(message=f"sleeping for {timeout_s} seconds")
     n = len(str(timeout_s))
     for i in range(timeout_s, 0, -1):
-        print(f"{i:>{n}}", end="\r", flush=True)
+        print_ansi_encoded_string(message=f"{i:>{n}}", end="\r", flush=True)
         time.sleep(1)
-    print(f"{'':>{n}}", end="\n", flush=True)
+    print_ansi_encoded_string(message=f"{'':>{n}}", end="\n", flush=True)
 
 
 def read_user_by_name(name: str):
@@ -51,7 +52,7 @@ def ldap_connection():
     c = Connection(s, user="cn=admin,dc=example,dc=com", password="ldappassword")
     c.open()
     if not c.bind():
-        print("LDAP Connection Unsuccessful")
+        print_ansi_encoded_string(message="LDAP Connection Unsuccessful")
         return False
     return [True, c]
 
@@ -66,7 +67,7 @@ def is_ldap_listening(openldap_service):
 def openldap_service(docker_ip, docker_services):
     """Ensure that Docker service is up and responsive."""
     port = docker_services.port_for("openldap", 389)
-    print(f"LDAP is running on port {port}")
+    print_ansi_encoded_string(message=f"LDAP is running on port {port}")
     timeout_s = 10
     sleep(timeout_s)
     conn = ldap_connection()[1]

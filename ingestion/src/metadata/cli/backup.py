@@ -133,9 +133,9 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         )
         raise err
 
-    print(
-        f"Uploading {file} to {account_url}/{container}...",
-        fg="bright_green",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        message=f"Uploading {file} to {account_url}/{container}...",
     )
 
     try:
