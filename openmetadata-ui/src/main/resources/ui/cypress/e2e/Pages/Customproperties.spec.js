@@ -21,7 +21,8 @@ describe('Custom Properties should work properly', () => {
     cy.goToHomePage();
     cy.saveLocalStorage('localstorage');
   });
-  beforeEach(() => {
+    beforeEach(() => {
+    console.log(ENTITIES)
     cy.log('Restoring local storage snapshot');
     cy.restoreLocalStorage('localstorage');
     cy.clickOnLogo();
