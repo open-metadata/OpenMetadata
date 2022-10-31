@@ -20,8 +20,8 @@ export const getMenuItems = (items: ItemType[], defaultKey: string) => (
   <Menu selectable defaultSelectedKeys={[defaultKey]} items={items} />
 );
 
-export const renderLegend = (props: LegendProps, total: string) => {
-  const { payload } = props;
+export const renderLegend = (legendData: LegendProps, total: string) => {
+  const { payload } = legendData;
 
   return (
     <>
