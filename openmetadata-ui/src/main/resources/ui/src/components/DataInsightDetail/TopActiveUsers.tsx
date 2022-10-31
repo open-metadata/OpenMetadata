@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TOP_ACTIVE_USER } from '../../pages/DataInsightPage/DataInsight.mock';
-import { getDateTimeByTimeStamp } from '../../utils/TimeUtils';
+import { getDateTimeFromMilliSeconds } from '../../utils/TimeUtils';
 import './DataInsightTables.less';
 
 interface ActiveUserView {
@@ -54,10 +54,7 @@ const TopActiveUsers = () => {
         key: 'mostRecentSession',
         render: (_, record) => (
           <Typography.Text>
-            {getDateTimeByTimeStamp(
-              record.mostRecentSession,
-              'MMM dd, yyyy, hh:mm a'
-            )}
+            {getDateTimeFromMilliSeconds(record.mostRecentSession)}
           </Typography.Text>
         ),
       },

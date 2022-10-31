@@ -301,3 +301,11 @@ export const getFormattedDateFromMilliSeconds = (
   timeStamp: number,
   format?: string
 ) => DateTime.fromMillis(timeStamp || 0).toFormat(format || 'dd/MMM');
+
+/**
+ * It takes a timestamp in milliseconds and returns a formatted date like 'Oct 14, 1983, 9:30 AM'.
+ * @param timeStamp The timeStamp in milliseconds.
+ * @returns formatted date like 'Oct 14, 1983, 9:30 AM'.
+ */
+export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
+  DateTime.fromMillis(timeStamp).toLocaleString(DateTime.DATETIME_MED);
