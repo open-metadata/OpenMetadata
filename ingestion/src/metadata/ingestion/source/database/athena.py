@@ -88,7 +88,9 @@ def _get_column_type(self, type_):
         if length:
             args = [int(length)]
     elif type_.startswith("array"):
-        parsed_type = ColumnTypeParser._parse_datatype_string(type_) # pylint: disable=protected-access
+        parsed_type = ColumnTypeParser._parse_datatype_string(
+            type_
+        )  # pylint: disable=protected-access
         col_type = col_map["array"]
         args = [col_map.get(parsed_type.get("arrayDataType", "string").lower())]
     elif col_map.get(name):
@@ -113,11 +115,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Method to handle table columns
     """
-    metadata = self._get_table(connection, table_name, schema=schema, **kw) # pylint: disable=protected-access
+    metadata = self._get_table(
+        connection, table_name, schema=schema, **kw
+    )  # pylint: disable=protected-access
     columns = [
         {
             "name": c.name,
-            "type": self._get_column_type(c.type), # pylint: disable=protected-access
+            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
             "nullable": True,
             "default": None,
             "autoincrement": False,
@@ -130,7 +134,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     columns += [
         {
             "name": c.name,
-            "type": self._get_column_type(c.type), # pylint: disable=protected-access
+            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
             "nullable": True,
             "default": None,
             "autoincrement": False,
