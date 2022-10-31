@@ -31,6 +31,15 @@ import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityIn
 import { getMenuItems } from '../../utils/DataInsightUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 
+const DropDownLabel = ({ label }: { label: string }) => {
+  return (
+    <Space>
+      {label}
+      <DropDownIcon />
+    </Space>
+  );
+};
+
 const DataInsightPage = () => {
   return (
     <PageLayoutV1>
@@ -40,34 +49,22 @@ const DataInsightPage = () => {
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(DAY_FILTER, '7')}>
-              <Space>
-                Last 7 Days
-                <DropDownIcon />
-              </Space>
+              <DropDownLabel label="Last 7 Days" />
             </Dropdown>
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(TEAM_FILTER, 'team1')}>
-              <Space>
-                Cloud Infra
-                <DropDownIcon />
-              </Space>
+              <DropDownLabel label="Cloud Infra" />
             </Dropdown>
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(ORG_FILTER, 'org1')}>
-              <Space>
-                Organization1
-                <DropDownIcon />
-              </Space>
+              <DropDownLabel label="Organization1" />
             </Dropdown>
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(TIER_FILTER, 'Tier.Tier1')}>
-              <Space>
-                Tier1
-                <DropDownIcon />
-              </Space>
+              <DropDownLabel label="Tier1" />
             </Dropdown>
           </Space>
         </Col>
