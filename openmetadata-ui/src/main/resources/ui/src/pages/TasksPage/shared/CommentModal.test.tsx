@@ -75,6 +75,12 @@ jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () =>
     .mockReturnValue(<div data-testid="richTextEditor">RichTextEditor</div>)
 );
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
 describe('Test Comment Modal component', () => {
   it('Should render the component', async () => {
     render(<CommentModal {...mockProps} />);

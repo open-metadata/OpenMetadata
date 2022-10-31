@@ -342,6 +342,12 @@ jest.mock('../../axiosAPIs/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
 describe('Test User Component', () => {
   it('Should render user component', async () => {
     const { container } = render(

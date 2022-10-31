@@ -427,12 +427,12 @@ const EntityTable = ({
       <>
         {dataTypeDisplay ? (
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            dataTypeDisplay.toLowerCase()
+            lowerCase(dataTypeDisplay)
           ) : (
             <PopOver
               html={
                 <div className="break-word">
-                  <span>{dataTypeDisplay.toLowerCase()}</span>
+                  <span>{lowerCase(dataTypeDisplay)}</span>
                 </div>
               }
               key="pop-over"

@@ -20,7 +20,6 @@ import { Column } from '../../generated/api/data/createTable';
 import { Table } from '../../generated/entity/data/table';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import EntityTableV1 from './EntityTable.component';
-import type { ColumnsType } from 'antd/es/table';
 
 const onEntityFieldSelect = jest.fn();
 const onThreadLinkSelect = jest.fn();
@@ -31,15 +30,6 @@ const mockTableConstraints = [
     columns: ['address_id', 'shop_id'],
   },
 ] as Table['tableConstraints'];
-
-type ColumnDataType = {
-  key: string;
-  name: string;
-  dataTypeDisplay: string;
-  columnTests: string;
-  description: string;
-  tags: string;
-};
 
 const mockEntityTableProp = {
   tableColumns: [
@@ -179,6 +169,12 @@ const mockGlossaryList = [
   },
 ];
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
@@ -258,32 +254,10 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Popover: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
-
-  Table: jest.fn().mockImplementation(({ columns, dataSource }) => (
-    <table data-testid="entity-table">
-      <thead>
-        <tr>
-          {(columns as ColumnsType<ColumnDataType>).map((col) => (
-            <th key={col.key}>{col.title}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody key="tbody">
-        {dataSource.map((row: Column, i: number) => (
-          <tr key={i}>
-            {(columns as ColumnsType<ColumnDataType>).map((col, index) => (
-              <td key={col.key}>
-                {col.render ? col.render(row, dataSource, index) : 'alt'}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )),
 }));
 
 describe('Test EntityTable Component', () => {

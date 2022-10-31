@@ -25,6 +25,12 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>link</a>),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
 jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   getRoleByName: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),

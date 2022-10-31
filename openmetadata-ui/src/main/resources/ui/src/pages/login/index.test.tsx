@@ -40,6 +40,12 @@ jest.mock('./LoginCarousel', () =>
   jest.fn().mockReturnValue(<p>LoginCarousel</p>)
 );
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
 describe('Test SigninPage Component', () => {
   afterEach(() => {
     jest.clearAllMocks();

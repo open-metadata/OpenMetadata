@@ -27,6 +27,12 @@ const mockProps = {
   onIngestionWorkflowsUpdate: mockUpdateWorkflows,
 };
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
 jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
   postkillIngestionPipelineById: jest
     .fn()
