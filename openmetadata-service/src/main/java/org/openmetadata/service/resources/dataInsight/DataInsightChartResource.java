@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dataInsight;
 
+import static javax.ws.rs.core.Response.Status.OK;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -11,8 +13,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -33,19 +37,32 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorFactory;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -56,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dataInsight")
 public class DataInsightChartResource extends EntityResource<DataInsightChart, DataInsightChartRepository> {
+  private RestHighLevelClient client;
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owner";
 
@@ -82,7 +100,23 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     }
   }
 
+  public static class DataInsightChartResultList extends ResultList<DataInsightChartResult> {
+    @SuppressWarnings("unused")
+    public DataInsightChartResultList() {
+      // Empty constructor needed for deserialization
+    }
+
+    public DataInsightChartResultList(
+        List<DataInsightChartResult> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    // instantiate an elasticsearch client
+    if (config.getElasticSearchConfiguration() != null) {
+      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+    }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts = dao.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
@@ -94,7 +128,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "listDataInsightChart",
       summary = "List data charts",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Get a list of data insight charts",
       responses = {
         @ApiResponse(
@@ -145,7 +179,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "listDataInsightChartVersion",
       summary = "List data insight chart versions",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Get a list of all the versions of a data insight chart identified by `id`",
       responses = {
         @ApiResponse(
@@ -166,7 +200,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "listDataInsightChartId",
       summary = "Get a Data Insight Chart",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Get a Data Insight Chart by `id`.",
       responses = {
         @ApiResponse(
@@ -200,7 +234,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "getDataInsightChartByName",
       summary = "Get a data insight chart by name",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Get a data insight chart by  name.",
       responses = {
         @ApiResponse(
@@ -234,7 +268,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "getSpecificDataInsightChartVersion",
       summary = "Get a version of the DataInsight",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Get a version of the data insight by given `id`",
       responses = {
         @ApiResponse(
@@ -263,7 +297,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "createDataInsightChart",
       summary = "Create a Data Insight Chart",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Create a Data Insight Chart.",
       responses = {
         @ApiResponse(
@@ -285,7 +319,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "patchDataInsightChart",
       summary = "Update a data insight chart",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Update an existing data insight chart using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -310,7 +344,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "createOrUpdateDataInsightChart",
       summary = "Update data insight chart",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Create a data insight chart, if it does not exist or update an existing data insight chart.",
       responses = {
         @ApiResponse(
@@ -331,7 +365,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "deleteDataInsightChart",
       summary = "Delete a data insight chart",
-      tags = "DataInsight",
+      tags = "dataInsight",
       description = "Delete a data insight chart by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -349,8 +383,75 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-  //  @GET
-  //  @Path()
+  @GET
+  @Path("/aggregate")
+  @Operation(
+      operationId = "getDataInsightChartResults",
+      summary = "Get aggregated data for a data insight chart",
+      tags = "dataInsight",
+      description = "Get aggregated data for a data insight chart.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Data Insight Chart Results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChartResource.DataInsightChartResultList.class)))
+      })
+  public Response listDataInsightChartResult(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Get aggregated data for a specific chart name",
+              schema = @Schema(implementation = DataInsightChartResult.DataInsightChartType.class))
+          @NonNull
+          @QueryParam("dataInsightChartName")
+          DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      @Parameter(
+              description = "Specify the elasticsearch index to fetch data from",
+              schema = @Schema(implementation = DataReportIndex.class))
+          @NonNull
+          @QueryParam("dataReportIndex")
+          String dataReportIndex,
+      @Parameter(
+              description = "Tier filter. The value will be used to filter results",
+              schema = @Schema(type = "string", example = "Tier.Tier1,Tier.Tier2,Tier.Tier3,Tier.Tier4,Tier.Tier5"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
+              description = "Team filter. The value will be used to filter results",
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team,
+      @Parameter(
+              description = "Organization filter. The value will be used to filter results",
+              schema = @Schema(type = "string"))
+          @QueryParam("organization")
+          String organization,
+      @Parameter(description = "Filter after the given start timestamp", schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter before the given end timestamp", schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("endTs")
+          Long endTs)
+      throws IOException, ParseException {
+    SearchSourceBuilder searchSourceBuilder = dao.buildQueryFilter(startTs, endTs, tier, team);
+    AbstractAggregationBuilder aggregationBuilder = dao.buildQueryAggregation(dataInsightChartName);
+    searchSourceBuilder.aggregation(aggregationBuilder);
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    SearchRequest searchRequest = new SearchRequest(dataReportIndex);
+    searchRequest.source(searchSourceBuilder);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+
+    DataInsightAggregatorInterface processor =
+        DataInsightAggregatorFactory.createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
+    DataInsightChartResult processedData = processor.process();
+    return Response.status(OK).entity(processedData).build();
+  }
+
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) throws IOException {
     return copy(new DataInsightChart(), create, user)
         .withName(create.getName())

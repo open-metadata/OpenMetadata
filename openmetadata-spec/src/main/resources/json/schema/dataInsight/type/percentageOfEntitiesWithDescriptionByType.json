@@ -19,6 +19,14 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1
+    },
+    "completedDescription": {
+      "description": "decimal fraction of entity with completed description",
+      "type": "number"
+    },
+    "entityCount": {
+      "description": "decimal fraction of entity with completed description",
+      "type": "number"
     }
   }
 }

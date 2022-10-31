@@ -16,7 +16,13 @@
     },
     "entityCount": {
       "description": "Total count of entity for the given entity type",
-      "type": "integer"
+      "type": "number"
+    },
+    "entityCountFraction": {
+      "description": "Total count of entity for the given entity type",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     }
   }
 }

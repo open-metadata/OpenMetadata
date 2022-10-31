@@ -1,5 +1,5 @@
 {
-  "name": "totalEntitiesByType",
+  "name": "TotalEntitiesByType",
   "displayName": "Percentage of Entities With Owner",
   "description": "Display the percentage of entities with owner by type.",
   "dataIndexType": "entity_report_data_index",
@@ -8,6 +8,7 @@
     {"name": "entityType", "displayName": "Entity Tier", "dataType": "STRING"}
   ],
   "metrics": [
-    {"name": "entityCountFraction", "displayName": "Total Count of Entity", "dataType": "INT"}
+    {"name": "entityCountFraction", "displayName": "Total Count of Entity", "dataType": "FLOAT"},
+    {"name": "entityCount", "displayName": "Total Entities", "dataType": "INT"}
   ]
 }

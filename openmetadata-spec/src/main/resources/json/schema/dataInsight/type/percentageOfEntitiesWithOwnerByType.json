@@ -19,6 +19,14 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1
+    },
+    "hasOwner": {
+      "description": "Decimal fraction of entity with an owner.",
+      "type": "number"
+    },
+    "entityCount": {
+      "description": "Decimal fraction of entity with an owner.",
+      "type": "number"
     }
   }
 }
