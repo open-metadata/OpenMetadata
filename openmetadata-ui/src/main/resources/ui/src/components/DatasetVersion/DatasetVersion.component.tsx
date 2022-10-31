@@ -40,7 +40,7 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
-import SchemaTab from '../SchemaTab/SchemaTab.component';
+import VersionTable from '../VersionTable/VersionTable.component';
 import { DatasetVersionProp } from './DatasetVersion.interface';
 
 const DatasetVersion: React.FC<DatasetVersionProp> = ({
@@ -406,8 +406,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                   </div>
 
                   <div className="tw-col-span-full">
-                    <SchemaTab
-                      isReadOnly
+                    <VersionTable
                       columnName={getPartialNameFromTableFQN(
                         datasetFQN,
                         [FqnPart.Column],
@@ -418,7 +417,6 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                         // TODO: Below we should have separate type for Dataset instead casting it to `Table`
                         (currentVersionData as Table).joins as ColumnJoins[]
                       }
-                      tableConstraints={[]}
                     />
                   </div>
                 </div>

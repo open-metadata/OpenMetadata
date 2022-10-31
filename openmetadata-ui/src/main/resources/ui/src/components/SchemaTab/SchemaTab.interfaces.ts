@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,34 +13,25 @@
 
 import { EntityFieldThreads } from 'Models';
 import { ThreadType } from '../../generated/api/feed/createThread';
-import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
+import {
+  ColumnJoins,
+  Table,
+  TableData,
+} from '../../generated/entity/data/table';
 
-export interface EntityTableProps {
-  tableColumns: Column[];
+export type Props = {
+  columns: Table['columns'];
   joins: Array<ColumnJoins>;
   columnName: string;
+  tableConstraints: Table['tableConstraints'];
+  sampleData?: TableData;
   hasDescriptionEditAccess?: boolean;
   hasTagEditAccess?: boolean;
-  tableConstraints: Table['tableConstraints'];
-  searchText?: string;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
-  onUpdate?: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
-}
-
-export interface DescriptionCellProps {
-  record: Column;
-  index: number;
-}
-
-export interface TagsCellProps {
-  record: Column;
-  index: number;
-}
-export interface DataTypeDisplayCellProps {
-  dataTypeDisplay: Column['dataTypeDisplay'];
-}
+  onUpdate?: (columns: Table['columns']) => Promise<void>;
+};

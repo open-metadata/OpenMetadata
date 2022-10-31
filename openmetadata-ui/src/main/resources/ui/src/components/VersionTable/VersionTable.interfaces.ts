@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,56 +11,10 @@
  *  limitations under the License.
  */
 
-// Position
-.relative {
-  position: relative;
-}
-.absolute {
-  position: absolute;
-}
+import { ColumnJoins, Table } from '../../generated/entity/data/table';
 
-// Align
-.align-start {
-  align-items: start;
-}
-
-.items-center {
-  align-items: center;
-}
-
-// Display
-.d-flex {
-  display: flex;
-}
-.d-inline-block {
-  display: inline-block;
-}
-.d-block {
-  display: block;
-}
-.flex-1 {
-  flex: 1;
-}
-
-//top
-.top-1 {
-  top: 4px;
-}
-
-//right
-.right-3 {
-  right: 12px;
-}
-
-//bottom
-.bottom-full {
-  bottom: 100%;
-}
-
-.flex-shrink {
-  flex-shrink: 0;
-}
-
-.align-middle {
-  vertical-align: middle;
+export interface VersionTableProps {
+  columnName: string;
+  columns: Table['columns'];
+  joins: Array<ColumnJoins>;
 }

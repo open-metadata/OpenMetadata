@@ -12,33 +12,10 @@
  */
 
 import { lowerCase } from 'lodash';
-import { EntityFieldThreads } from 'Models';
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import {
-  ColumnJoins,
-  Table,
-  TableData,
-} from '../../generated/entity/data/table';
-import { ThreadType } from '../../generated/entity/feed/thread';
 import Searchbar from '../common/searchbar/Searchbar';
 import EntityTableV1 from '../EntityTable/EntityTable.component';
-
-type Props = {
-  columns: Table['columns'];
-  joins: Array<ColumnJoins>;
-  columnName: string;
-  tableConstraints: Table['tableConstraints'];
-  sampleData?: TableData;
-  hasDescriptionEditAccess?: boolean;
-  hasTagEditAccess?: boolean;
-  isReadOnly?: boolean;
-  entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
-  entityFieldTasks?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-  onEntityFieldSelect?: (value: string) => void;
-  onUpdate?: (columns: Table['columns']) => Promise<void>;
-};
+import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
   columns,
