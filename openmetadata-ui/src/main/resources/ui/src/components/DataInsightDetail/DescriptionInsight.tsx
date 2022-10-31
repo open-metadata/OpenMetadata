@@ -32,6 +32,7 @@ import {
 } from '../../constants/DataInsight.constants';
 import { getEntityDescriptionData } from '../../pages/DataInsightPage/DataInsight.mock';
 import { renderLegend } from '../../utils/DataInsightUtils';
+import './DataInsightDetail.less';
 
 const DescriptionInsight = () => {
   const { data, entities } = getEntityDescriptionData();
@@ -39,7 +40,7 @@ const DescriptionInsight = () => {
 
   return (
     <Card
-      className="mt-4"
+      className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
         <Typography.Title level={5}>

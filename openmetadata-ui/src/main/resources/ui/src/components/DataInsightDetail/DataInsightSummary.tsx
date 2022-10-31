@@ -15,12 +15,14 @@ import { Card, Col, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { OVERVIEW } from '../../pages/DataInsightPage/DataInsight.mock';
+import './DataInsightDetail.less';
 
 const DataInsightSummary = () => {
   const { t } = useTranslation();
 
   return (
     <Card
+      className="data-insight-card"
       data-testid="summary-card"
       title={
         <Typography.Title level={5}>

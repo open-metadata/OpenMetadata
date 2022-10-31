@@ -17,7 +17,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TOP_ACTIVE_USER } from '../../pages/DataInsightPage/DataInsight.mock';
 import { getDateTimeFromMilliSeconds } from '../../utils/TimeUtils';
-
+import './DataInsightDetail.less';
 interface ActiveUserView {
   userName: string;
   Team: string;
@@ -79,6 +79,7 @@ const TopActiveUsers = () => {
 
   return (
     <Card
+      className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
         <Typography.Title level={5}>
