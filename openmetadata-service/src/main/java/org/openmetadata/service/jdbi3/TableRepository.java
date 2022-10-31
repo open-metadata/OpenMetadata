@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -379,6 +380,14 @@ public class TableRepository extends EntityRepository<Table> {
       for (SQLQuery q : storedQueries) {
         storedMapQueries.put(q.getChecksum(), q);
       }
+    }
+    SQLQuery oldQuery = storedMapQueries.get(query.getChecksum());
+    if (oldQuery != null) {
+      // Merge old and new users
+      List<EntityReference> userList = query.getUsers();
+      userList.addAll(oldQuery.getUsers());
+      HashSet<EntityReference> userSet = new HashSet<EntityReference>(userList);
+      query.setUsers(new ArrayList<EntityReference>(userSet));
     }
     storedMapQueries.put(query.getChecksum(), query);
     List<SQLQuery> updatedQueries = new ArrayList<>(storedMapQueries.values());
