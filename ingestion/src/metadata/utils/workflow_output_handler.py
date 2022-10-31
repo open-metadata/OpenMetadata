@@ -63,8 +63,8 @@ def print_more_info(workflow_type: WorkflowType) -> None:
     """
     Print more information message
     """
-    print_ansi_encoded_string(message=
-        f"\nFor more information, please visit: {URLS[workflow_type]}"
+    print_ansi_encoded_string(
+        message=f"\nFor more information, please visit: {URLS[workflow_type]}"
         "\nOr join us in Slack: https://slack.open-metadata.org/"
     )
 
@@ -124,8 +124,8 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
         if not example_path.exists():
             example_file = DEFAULT_EXAMPLE_FILE[workflow_type]
             example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
-        print_ansi_encoded_string(message=
-            f"\nMake sure you are following the following format e.g. '{example_file}':"
+        print_ansi_encoded_string(
+            message=f"\nMake sure you are following the following format e.g. '{example_file}':"
         )
         print_ansi_encoded_string(message="------------")
         with open(example_path, encoding=UTF_8) as file:
@@ -224,7 +224,7 @@ def print_profiler_status(workflow) -> None:
     print_sink_status(workflow)
 
     if workflow.result_status() == 1:
-        print_ansi_encoded_string(message=
+        print_ansi_encoded_string(
             color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
         )
     elif (
@@ -232,9 +232,13 @@ def print_profiler_status(workflow) -> None:
         or workflow.status.failures
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
-        print_ansi_encoded_string(message=color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings")
+        print_ansi_encoded_string(
+            color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings"
+        )
     else:
-        print_ansi_encoded_string(message=color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
+        print_ansi_encoded_string(
+            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
+        )
 
 
 def print_test_suite_status(workflow) -> None:
@@ -244,11 +248,13 @@ def print_test_suite_status(workflow) -> None:
     print_sink_status(workflow)
 
     if workflow.result_status() == 1:
-        print_ansi_encoded_string(message=
+        print_ansi_encoded_string(
             color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
         )
     else:
-        print_ansi_encoded_string(message=color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
+        print_ansi_encoded_string(
+            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
+        )
 
 
 def print_data_insight_status(workflow) -> None:
@@ -262,8 +268,8 @@ def print_data_insight_status(workflow) -> None:
     print_sink_status(workflow)
 
     if workflow.data_processor.get_status().source_start_time:
-        print_ansi_encoded_string(message=
-            f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.data_processor.get_status().source_start_time)} ",  # pylint: disable=line-too-long
+        print_ansi_encoded_string(
+            message=f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.data_processor.get_status().source_start_time)} ",  # pylint: disable=line-too-long
         )
 
     if workflow.result_status() == 1:
@@ -276,4 +282,6 @@ def print_data_insight_status(workflow) -> None:
         print_ansi_encoded_string(message="Workflow finished with warnings")
     else:
         print_ansi_encoded_string(message="Workflow finished successfully")
-        print_ansi_encoded_string(message=color=ANSI.GREEN, bold=True, message="Workflow finished successfully")
+        print_ansi_encoded_string(
+            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
+        )

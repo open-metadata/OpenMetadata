@@ -16,9 +16,9 @@ from datetime import datetime
 import pytest
 import requests
 from ldap3 import ALL, Connection, Server
-from metadata.utils.ansi import print_ansi_encoded_string
 
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.utils.ansi import print_ansi_encoded_string
 
 headers = {"Content-type": "application/json"}
 url = "http://localhost:8585/api/v1/users"
