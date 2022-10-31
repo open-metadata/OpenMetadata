@@ -32,7 +32,7 @@ const TopActiveUsers = () => {
   const columns: ColumnsType<ActiveUserView> = useMemo(
     () => [
       {
-        title: 'User',
+        title: t('label.user'),
         dataIndex: 'userName',
         key: 'userName',
         render: (userName: string) => (
@@ -40,7 +40,7 @@ const TopActiveUsers = () => {
         ),
       },
       {
-        title: 'Team',
+        title: t('label.team'),
         dataIndex: 'Team',
         key: 'Team',
         render: (Team: string) => (
@@ -48,7 +48,7 @@ const TopActiveUsers = () => {
         ),
       },
       {
-        title: 'Most Recent Session',
+        title: t('label.most-recent-session'),
         dataIndex: 'mostRecentSession',
         key: 'mostRecentSession',
         render: (mostRecentSession: number) => (
@@ -58,7 +58,7 @@ const TopActiveUsers = () => {
         ),
       },
       {
-        title: 'Total Sessions',
+        title: t('label.total-session'),
         dataIndex: 'totalSessions',
         key: 'totalSessions',
         render: (totalSessions: number) => (
@@ -66,7 +66,7 @@ const TopActiveUsers = () => {
         ),
       },
       {
-        title: 'Avg. Session Time',
+        title: t('label.average-session'),
         dataIndex: 'avgSessionDuration',
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (

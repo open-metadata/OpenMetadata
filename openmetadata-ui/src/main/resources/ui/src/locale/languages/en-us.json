@@ -178,7 +178,17 @@
     "data-insight-tier-summary": "Total Entities by Tier",
     "data-insight-active-user-summary": "Top Active Users",
     "data-insight-top-viewed-entity-summary": "Top Viewed Entities",
-    "data-insight-total-entity-summary": "Total Entities"
+    "data-insight-total-entity-summary": "Total Entities",
+    "user": "User",
+    "team": "Team",
+    "most-recent-session": "Most Recent Session",
+    "total-session": "Total Sessions",
+    "average-session": "Avg. Session Time",
+    "entity-name": "Entity Name",
+    "owner": "Owner",
+    "entity-type": "Entity Type",
+    "total-views": "Total Views",
+    "unique-views": "Unique Views"
   },
   "message": {
     "service-email-required": "Service account Email is required",

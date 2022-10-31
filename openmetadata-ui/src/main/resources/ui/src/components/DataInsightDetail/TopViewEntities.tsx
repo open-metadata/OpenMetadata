@@ -33,7 +33,7 @@ const TopViewEntities = () => {
   const columns: ColumnsType<EntityView> = useMemo(
     () => [
       {
-        title: 'Entity Name',
+        title: t('label.entity-name'),
         dataIndex: 'entityName',
         key: 'entityName',
         render: (entityName: string) => (
@@ -41,13 +41,13 @@ const TopViewEntities = () => {
         ),
       },
       {
-        title: 'Owner',
+        title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
         render: (owner: string) => <Typography.Text>{owner}</Typography.Text>,
       },
       {
-        title: 'Tags',
+        title: t('label.tags'),
         dataIndex: 'tags',
         key: 'tags',
         render: (tags: string[]) => (
@@ -59,7 +59,7 @@ const TopViewEntities = () => {
         ),
       },
       {
-        title: 'Entity Type',
+        title: t('label.entity-type'),
         dataIndex: 'entityType',
         key: 'entityType',
         render: (entityType: string) => (
@@ -67,7 +67,7 @@ const TopViewEntities = () => {
         ),
       },
       {
-        title: 'Total Views',
+        title: t('label.total-views'),
         dataIndex: 'totalViews',
         key: 'totalViews',
         render: (totalViews: number) => (
@@ -75,7 +75,7 @@ const TopViewEntities = () => {
         ),
       },
       {
-        title: 'Unique Views',
+        title: t('label.unique-views'),
         dataIndex: 'uniqueViews',
         key: 'uniqueViews',
         render: (uniqueViews: number) => (
