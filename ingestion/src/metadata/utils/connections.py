@@ -583,7 +583,7 @@ def _(
 
 
 @test_connection.register
-def _(connection: KinesisConnection) -> None:
+def _(connection: KinesisClient) -> None:
     """
     Test that we can connect to the Kinesis source using the given aws credentials
     :param engine: boto service resource to test

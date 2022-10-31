@@ -12,9 +12,11 @@
 Kafka source ingestion
 """
 import traceback
+from base64 import b64decode
 from typing import Any, Dict, Iterable, List
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
@@ -97,6 +99,10 @@ class KinesisSource(MessagingServiceSource):
                 ),
                 maximumMessageSize=self._get_max_message_size(),
             )
+            if self.generate_sample_data:
+                topic.sampleData = self._get_sample_data(
+                    topic_details.topic_name, topic_details.topic_metadata["partitions"]
+                )
             self.status.topic_scanned(topic.name.__root__)
             yield topic
 
@@ -113,6 +119,7 @@ class KinesisSource(MessagingServiceSource):
         return topic_details.topic_name
 
     def _get_max_message_size(self) -> int:
+        # max message size supported by Kinesis is 1MB and is not configurable
         return 1000000
 
     def _get_topic_details(self, topic_name: str) -> Dict[str, Any]:
@@ -142,3 +149,29 @@ class KinesisSource(MessagingServiceSource):
                 f"Error while fetching topic partitions for topic: {topic_name} - {err}"
             )
         return all_partitions
+
+    def _get_sample_data(self, topic_name, partitions) -> TopicSampleData:
+        data = []
+        try:
+            for shard in partitions:
+                shard_iterator = self.kinesis.get_shard_iterator(
+                    StreamName=topic_name,
+                    ShardId=shard,
+                    ShardIteratorType="TRIM_HORIZON",
+                )["ShardIterator"]
+
+                records = self.kinesis.get_records(ShardIterator=shard_iterator)[
+                    "Records"
+                ]
+
+                data.extend(
+                    [b64decode(record["Data"]).decode("utf-8") for record in records]
+                )
+                if data:
+                    break
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error while fetching sample data for topic: {topic_name} - {err}"
+            )
+        return TopicSampleData(messages=data)
