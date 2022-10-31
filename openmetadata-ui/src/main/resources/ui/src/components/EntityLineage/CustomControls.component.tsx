@@ -25,7 +25,7 @@ import React, {
 } from 'react';
 import { FitViewOptions, useReactFlow } from 'reactflow';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { LoadingStatus } from '../../utils/EntityLineageUtils';
+import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
@@ -191,7 +191,7 @@ const CustomControls: FC<ControlProps> = ({
           disabled={!hasEditAccess}
           title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
           onClick={onEditLinageClick}>
-          {LoadingStatus(editIcon, loading, status)}
+          {getLoadingStatusValue(editIcon, loading, status)}
         </ControlButton>
       )}
     </div>

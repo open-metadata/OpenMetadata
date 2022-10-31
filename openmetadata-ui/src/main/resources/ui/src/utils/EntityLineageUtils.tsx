@@ -42,9 +42,9 @@ import {
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  nodeHeight,
-  nodeWidth,
-  zoomValue,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+  ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
@@ -98,7 +98,7 @@ export const getHeaderLabel = (
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(zoomValue);
+  reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -432,8 +432,8 @@ export const getLayoutedElements = (
 
   node.forEach((el) => {
     dagreGraph.setNode(el.id, {
-      width: nodeWidth,
-      height: nodeHeight,
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
     });
   });
 
@@ -448,8 +448,8 @@ export const getLayoutedElements = (
     el.targetPosition = isHorizontal ? Position.Left : Position.Top;
     el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
     el.position = {
-      x: nodeWithPosition.x - nodeWidth / 2,
-      y: nodeWithPosition.y - nodeHeight / 2,
+      x: nodeWithPosition.x - NODE_WIDTH / 2,
+      y: nodeWithPosition.y - NODE_HEIGHT / 2,
     };
 
     return el;
@@ -794,7 +794,7 @@ export const createNewEdge = (
   return data;
 };
 
-export const LoadingStatus = (
+export const getLoadingStatusValue = (
   defaultState: string | JSX.Element,
   loading: boolean,
   status: LoadingState

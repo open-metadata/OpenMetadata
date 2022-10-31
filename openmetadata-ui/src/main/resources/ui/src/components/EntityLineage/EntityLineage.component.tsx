@@ -49,8 +49,8 @@ import ReactFlow, {
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import {
   ELEMENT_DELETE_STATE,
-  maxZoomValue,
-  minZoomValue,
+  MAX_ZOOM_VALUE,
+  MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -74,6 +74,7 @@ import {
   getEdgeType,
   getLayoutedElements,
   getLineageData,
+  getLoadingStatusValue,
   getModalBodyText,
   getNodeRemoveButton,
   getRemovedNodeData,
@@ -82,7 +83,6 @@ import {
   getUpdatedEdge,
   getUpdatedUpstreamDownStreamEdgeArr,
   getUpStreamDownStreamColumnLineageArr,
-  LoadingStatus,
   onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
@@ -1009,7 +1009,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             <CustomControlsComponent
               className="absolute top-1 right-3 bottom-full m-l-md m-t-md"
               deleted={deleted}
-              fitViewParams={{ minZoom: minZoomValue, maxZoom: maxZoomValue }}
+              fitViewParams={{
+                minZoom: MIN_ZOOM_VALUE,
+                maxZoom: MAX_ZOOM_VALUE,
+              }}
               handleFullScreenViewClick={onFullScreenClick}
               hasEditAccess={hasEditAccess}
               isColumnsExpanded={expandAllColumns}
@@ -1036,7 +1039,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
       {showDeleteModal && (
         <Modal
-          okText={LoadingStatus(
+          okText={getLoadingStatusValue(
             'Confirm',
             deletionState.loading,
             deletionState.status
