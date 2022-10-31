@@ -28,6 +28,47 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
+
+class BackupRestoreArgs:
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        host: str,
+        user: str,
+        password: str,
+        database: str,
+        port: str,
+        options: List[str],
+        arguments: List[str],
+        schema: Optional[str] = None,
+    ):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.port = port
+        self.options = options
+        self.arguments = arguments
+        self.schema = schema
+
+
+class DockerActions:
+    def __init__(
+        self,
+        start: bool,
+        stop: bool,
+        pause: bool,
+        resume: bool,
+        clean: bool,
+        reset_db: bool,
+    ):
+        self.start = start
+        self.stop = stop
+        self.pause = pause
+        self.resume = resume
+        self.clean = clean
+        self.reset_db = reset_db
+
+
 om_chart_type_dict = {
     "line": ChartType.Line,
     "big_number": ChartType.Line,
