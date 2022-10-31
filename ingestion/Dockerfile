@@ -42,7 +42,7 @@ RUN apt-get update \
     curl \
     libpcre2-8-0 \
     postgresql-common \
-    expat=2.2.10-2+deb11u4 \
+    expat \
     bind9=1:9.18.4-2~bpo11+1
 
 # Required for Starting Ingestion Container in Docker Compose
