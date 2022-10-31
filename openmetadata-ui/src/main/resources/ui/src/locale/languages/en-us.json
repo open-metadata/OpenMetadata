@@ -171,7 +171,15 @@
     "submit": "Submit",
     "sql-query": "SQL Query",
     "sql-query-tooltip": "Queries returning 1 or more rows will result in the test failing.",
-    "scopes-comma-separated": "Scopes value comma separated"
+    "scopes-comma-separated": "Scopes value comma separated",
+    "recent-runs": "Recent Runs",
+    "schedule": "Schedule",
+    "pause": "Pause",
+    "metadata-ingestion": "Metadata Ingestion",
+    "unpause": "UnPause",
+    "execution-date": "Execution Date",
+    "start-date": "Start Date",
+    "end-date": "End Date"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -187,7 +195,9 @@
     "auth-mechanism-required": "Auth Mechanism is required",
     "kill-successfully": "Successfully killed running workflows for",
     "kill-ingestion-warning": "Once you kill this Ingestion, all running and queued workflows will be stopped and marked as Failed.",
-    "bot-email-confirmation": "{{email}} for {{botName}} bot"
+    "bot-email-confirmation": "{{email}} for {{botName}} bot",
+    "no-ingestion-available": "No ingestion data available",
+    "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the"
   },
   "server": {},
   "url": {}
