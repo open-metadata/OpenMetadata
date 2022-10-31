@@ -45,7 +45,7 @@ from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
 from metadata.orm_profiler.metrics.window.median import Median
 from metadata.orm_profiler.metrics.static.match_regex_count import MatchRegexCount
-form metadata.orm_profiler.metrics.static.not_match_regex_count import NotMatchRegexCount
+from metadata.orm_profiler.metrics.static.not_match_regex_count import NotMatchRegexCount
 from metadata.orm_profiler.registry import MetricRegistry
 
 
