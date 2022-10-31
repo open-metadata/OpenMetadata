@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -59,6 +60,9 @@ import {
 import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+
+// css import
+import './lineagePage.style.less';
 
 const LineagePage = () => {
   const { entityType, entityFQN } =
@@ -300,9 +304,9 @@ const LineagePage = () => {
   return (
     <PageContainerV1>
       <PageLayoutV1 className="p-x-lg">
-        <div className="tw-flex tw-flex-col tw-gap-4 h-full">
+        <div className="lineage-page-container">
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-          <div className="p-y-sm p-x-lg h-full tw-flex-1 tw-bg-white">
+          <Card className="h-full">
             <EntityLineageComponent
               hasEditAccess
               addLineageHandler={addLineageHandler}
@@ -315,7 +319,7 @@ const LineagePage = () => {
               loadNodeHandler={loadNodeHandler}
               removeLineageHandler={removeLineageHandler}
             />
-          </div>
+          </Card>
         </div>
       </PageLayoutV1>
     </PageContainerV1>

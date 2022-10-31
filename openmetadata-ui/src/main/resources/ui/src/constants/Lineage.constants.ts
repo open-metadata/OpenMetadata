@@ -4,6 +4,8 @@ import { EntityType } from '../enums/entity.enum';
 
 export const foreignObjectSize = 40;
 export const zoomValue = 1;
+export const minZoomValue = 0.5;
+export const maxZoomValue = 2.5;
 
 export const entityData = [
   {

@@ -47,7 +47,11 @@ import ReactFlow, {
   useNodesState,
 } from 'reactflow';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
+import {
+  ELEMENT_DELETE_STATE,
+  maxZoomValue,
+  minZoomValue,
+} from '../../constants/Lineage.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   AddLineage,
@@ -1005,7 +1009,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             <CustomControlsComponent
               className="absolute top-1 right-3 bottom-full m-l-md m-t-md"
               deleted={deleted}
-              fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}
+              fitViewParams={{ minZoom: minZoomValue, maxZoom: maxZoomValue }}
               handleFullScreenViewClick={onFullScreenClick}
               hasEditAccess={hasEditAccess}
               isColumnsExpanded={expandAllColumns}

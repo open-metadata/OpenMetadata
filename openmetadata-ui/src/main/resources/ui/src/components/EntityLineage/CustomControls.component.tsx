@@ -20,6 +20,7 @@ import React, {
   HTMLAttributes,
   memo,
   useCallback,
+  useMemo,
   useState,
 } from 'react';
 import { FitViewOptions, useReactFlow } from 'reactflow';
@@ -99,8 +100,8 @@ const CustomControls: FC<ControlProps> = ({
     [zoomTo]
   );
 
-  const getLoadingStatus = useCallback(() => {
-    const editIcon = (
+  const editIcon = useMemo(() => {
+    return (
       <SVGIcons
         alt="icon-edit-lineag"
         className="m--t-xss"
@@ -108,9 +109,7 @@ const CustomControls: FC<ControlProps> = ({
         width="14"
       />
     );
-
-    return LoadingStatus(editIcon, loading, status);
-  }, [loading, status, isEditMode]);
+  }, [isEditMode]);
 
   return (
     <div
@@ -192,7 +191,7 @@ const CustomControls: FC<ControlProps> = ({
           disabled={!hasEditAccess}
           title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
           onClick={onEditLinageClick}>
-          {getLoadingStatus()}
+          {LoadingStatus(editIcon, loading, status)}
         </ControlButton>
       )}
     </div>
