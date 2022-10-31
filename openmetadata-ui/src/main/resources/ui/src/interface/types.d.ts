@@ -598,6 +598,13 @@ declare module 'Models' {
     state: string;
   }
 
+  export type EntityType =
+    | 'tables'
+    | 'topics'
+    | 'dashboards'
+    | 'pipelines'
+    | 'mlmodels';
+
   // ES interface end
 
   //   interface ESUserResponse {}
