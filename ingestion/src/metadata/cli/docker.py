@@ -35,6 +35,7 @@ from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.client_version import get_client_version
+from metadata.utils.helpers import DockerActions
 from metadata.utils.logger import cli_logger, ometa_logger
 
 logger = cli_logger()
@@ -189,10 +190,9 @@ def file_path_check(file_path, database: str):
 
 
 def run_docker(
-    *DockerActions,
+    docker_obj_instance: DockerActions,
     file_path: str,
     env_file_path: str,
-    reset_db: bool,
     ingest_sample_data: bool,
     database: str,
 ):
@@ -230,28 +230,28 @@ def run_docker(
             compose_files=[docker_compose_file_path],
             compose_env_file=env_file,
         )
-        if start:
+        if docker_obj_instance.start:
             start_docker(
                 docker=docker,
                 start_time=time.time(),
                 file_path=file_path,
                 ingest_sample_data=ingest_sample_data,
             )
-        if pause:
+        if docker_obj_instance.pause:
             logger.info("Pausing docker compose for OpenMetadata...")
             docker.compose.pause()
             logger.info("Pausing docker compose for OpenMetadata successful.")
-        if resume:
+        if docker_obj_instance.resume:
             logger.info("Resuming docker compose for OpenMetadata...")
             docker.compose.unpause()
             logger.info("Resuming docker compose for OpenMetadata Successful.")
-        if stop:
+        if docker_obj_instance.stop:
             logger.info("Stopping docker compose for OpenMetadata...")
             docker.compose.stop()
             logger.info("Docker compose for OpenMetadata stopped successfully.")
-        if reset_db:
+        if docker_obj_instance.reset_db:
             reset_db_om(docker)
-        if clean:
+        if docker_obj_instance.clean:
             logger.info(
                 "Stopping docker compose for OpenMetadata and removing images, networks, volumes..."
             )

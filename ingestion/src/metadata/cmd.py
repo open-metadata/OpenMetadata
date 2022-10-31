@@ -27,6 +27,7 @@ from metadata.cli.openmetadata_imports_migration import (
 )
 from metadata.cli.profile import run_profiler
 from metadata.cli.restore import run_restore
+from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger, set_loggers_level
 
 logger = cli_logger()
@@ -373,43 +374,47 @@ def metadata(args=None):
         run_test(config_path=config_file)
     if metadata_workflow == MetadataCommands.BACKUP.value:
         run_backup(
-            host=contains_args.get("host"),
-            user=contains_args.get("user"),
-            password=contains_args.get("password"),
-            database=contains_args.get("database"),
-            port=contains_args.get("port"),
+            common_backup_obj_instance=BackupRestoreArgs(
+                host=contains_args.get("host"),
+                user=contains_args.get("user"),
+                password=contains_args.get("password"),
+                database=contains_args.get("database"),
+                port=contains_args.get("port"),
+                options=contains_args.get("options"),
+                arguments=contains_args.get("arguments"),
+                schema=contains_args.get("schema"),
+            ),
             output=contains_args.get("output"),
             upload_destination_type=contains_args.get("upload_destination_type"),
             upload=contains_args.get("upload"),
-            options=contains_args.get("options"),
-            arguments=contains_args.get("arguments"),
-            schema=contains_args.get("schema"),
         )
     if metadata_workflow == MetadataCommands.RESTORE.value:
         run_restore(
-            host=contains_args.get("host"),
-            user=contains_args.get("user"),
-            password=contains_args.get("password"),
-            database=contains_args.get("database"),
-            port=contains_args.get("port"),
+            common_restore_obj_instance=BackupRestoreArgs(
+                host=contains_args.get("host"),
+                user=contains_args.get("user"),
+                password=contains_args.get("password"),
+                database=contains_args.get("database"),
+                port=contains_args.get("port"),
+                options=contains_args.get("options"),
+                arguments=contains_args.get("arguments"),
+                schema=contains_args.get("schema"),
+            ),
             sql_file=contains_args.get("input"),
-            options=contains_args.get("options"),
-            arguments=contains_args.get("arguments"),
-            schema=contains_args.get("schema"),
         )
     if metadata_workflow == MetadataCommands.DOCKER.value:
-        DockerActions(
-            start=contains_args.get("start"),
-            stop=contains_args.get("stop"),
-            pause=contains_args.get("pause"),
-            resume=contains_args.get("resume"),
-            clean=contains_args.get("clean"),
-        )
 
         run_docker(
+            docker_obj_instance=DockerActions(
+                start=contains_args.get("start"),
+                stop=contains_args.get("stop"),
+                pause=contains_args.get("pause"),
+                resume=contains_args.get("resume"),
+                clean=contains_args.get("clean"),
+                reset_db=contains_args.get("reset_db"),
+            ),
             file_path=contains_args.get("file_path"),
             env_file_path=contains_args.get("env_file_path"),
-            reset_db=contains_args.get("reset_db"),
             ingest_sample_data=contains_args.get("ingest_sample_data"),
             database=contains_args.get("database"),
         )
