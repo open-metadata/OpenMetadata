@@ -21,7 +21,13 @@ import {
 } from './DataInsight.mock';
 
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import DataInsightDetail from '../../components/DataInsightDetail/DataInsightDetail.component';
+import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
+import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
+import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
+import TierInsight from '../../components/DataInsightDetail/TierInsight';
+import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
+import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
+import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
 import { getMenuItems } from '../../utils/DataInsightUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 
@@ -66,7 +72,13 @@ const DataInsightPage = () => {
           </Space>
         </Col>
         <Col span={24}>
-          <DataInsightDetail />
+          <DataInsightSummary />
+          <TotalEntityInsight />
+          <DescriptionInsight />
+          <OwnerInsight />
+          <TierInsight />
+          <TopViewEntities />
+          <TopActiveUsers />
         </Col>
       </Row>
     </PageLayoutV1>
