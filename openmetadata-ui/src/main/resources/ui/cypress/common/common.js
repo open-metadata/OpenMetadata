@@ -413,14 +413,10 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=*&from=*&size=*&index=${SEARCH_INDEX[entity]}`,
+    `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
     'explorePageTabSearch'
   );
-  interceptURL(
-    'GET',
-    `/api/v1/search/suggest?q=*&index=*`,
-    'searchQuery'
-  );
+  interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
 
   // searching term in search box
@@ -447,8 +443,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       verifyResponseStatusCode('@explorePageSearch', 200);
 
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
-      cy.get(`[data-testid="${entity}-tab"]`)
-        .should('be.visible')
+      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
       cy.get(`[data-testid="${serviceName}-${term}"]`)

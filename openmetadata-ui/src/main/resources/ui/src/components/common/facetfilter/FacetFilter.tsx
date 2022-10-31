@@ -85,17 +85,17 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
       .sort(([key1], [key2]) => compareAggregationKey(key1, key2));
   }, [aggregations, filters]);
 
-  useEffect(
-    () =>
+  useEffect(() => {
+    if (!isEmpty(aggregations)) {
       setAggregationsPageSize(
         Object.fromEntries(
           Object.keys(aggregations).map((k) =>
             k in aggregationsPageSize ? [k, aggregationsPageSize[k]] : [k, 5]
           )
         )
-      ),
-    [aggregations]
-  );
+      );
+    }
+  }, [aggregations]);
 
   return (
     <>

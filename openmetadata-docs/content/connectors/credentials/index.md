@@ -36,14 +36,14 @@ awsConfig:
 
 for a YAML configuration.
 
-# AWS Credentials
+## AWS Credentials
 
 The AWS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/credentials/awsCredentials.json).
 Note that the only required field is the `awsRegion`. This configuration is rather flexible to allow installations under AWS
 that directly use instance roles for permissions to authenticate to whatever service we are pointing to without having to
 write the credentials down.
 
-## AWS Vault
+### AWS Vault
 
 If using [aws-vault](https://github.com/99designs/aws-vault), it gets a bit more involved to run the CLI ingestion as the credentials are not globally available in the terminal.
 In that case, you could use the following command after setting up the ingestion configuration file:
@@ -52,7 +52,7 @@ In that case, you could use the following command after setting up the ingestion
 aws-vault exec <role> -- $SHELL -c 'metadata ingest -c <path to connector>'
 ```
 
-# GCS Credentials
+## GCS Credentials
 
 The GCS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/credentials/gcsCredentials.json).
 These are the fields that you can export when preparing a Service Account.

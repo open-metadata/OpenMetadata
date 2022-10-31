@@ -232,6 +232,8 @@ site_menu:
     url: /connectors/database/azuresql/airflow
   - category: Connectors / Database / AzureSQL / CLI
     url: /connectors/database/azuresql/cli
+  - category: Connectors / Database / AzureSQL / Troubleshooting
+    url: /connectors/database/azuresql/troubleshooting
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Airflow

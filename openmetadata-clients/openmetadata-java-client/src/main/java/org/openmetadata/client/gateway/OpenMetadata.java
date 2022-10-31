@@ -39,7 +39,7 @@ public class OpenMetadata {
   }
 
   private ApiClient apiClient;
-  private static final String requestInterceptorKey = "custom";
+  private static final String REQUEST_INTERCEPTOR_KEY = "custom";
 
   public OpenMetadata(OpenMetadataServerConnection config) {
     initClient(config);
@@ -77,12 +77,12 @@ public class OpenMetadata {
   }
 
   public <K> void updateRequestType(Class<K> requestClass) {
-    if (apiClient.getApiAuthorizations().containsKey(requestInterceptorKey)) {
-      apiClient.getApiAuthorizations().remove(requestInterceptorKey);
+    if (apiClient.getApiAuthorizations().containsKey(REQUEST_INTERCEPTOR_KEY)) {
+      apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
     }
     CustomRequestInterceptor<K> newInterceptor =
         new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
-    apiClient.addAuthorization(requestInterceptorKey, newInterceptor);
+    apiClient.addAuthorization(REQUEST_INTERCEPTOR_KEY, newInterceptor);
   }
 
   public void addRequestInterceptor(String requestInterceptorKey, RequestInterceptor interceptor) {

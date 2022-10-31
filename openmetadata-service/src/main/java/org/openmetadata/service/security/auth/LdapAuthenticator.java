@@ -111,13 +111,17 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           throw new IllegalStateException("[LDAP] Issue in creating a LookUp Connection SSL", e);
         }
       } else {
-        LDAPConnection conn =
+        try (LDAPConnection conn =
             new LDAPConnection(
                 ldapConfiguration.getHost(),
                 ldapConfiguration.getPort(),
                 ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword());
-        return new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
+                ldapConfiguration.getDnAdminPassword())) {
+          return new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
+        } catch (LDAPException e) {
+          LOG.error("[LDAP] Issue in creating a LookUp Connection", e);
+          throw new IllegalStateException("[LDAP] Issue in creating a LookUp Connection", e);
+        }
       }
     } catch (LDAPException e) {
       LOG.warn("[LDAP] Issue in creating a LookUp Connection");

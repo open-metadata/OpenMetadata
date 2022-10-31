@@ -13,8 +13,6 @@ Volumes provide the ability to connect specific filesystem paths of the containe
 To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases). The latest version is at the top of the page
 </Note>
 
-# Docker Volumes
-
 ## Volumes for MYSQL container:
 Following are the changes we have to do while mounting the directory for mysql in OpenMetadata.
 - Create a directory to keep your MySQL data or files in the host machine.
@@ -57,6 +55,15 @@ Following are the changes we have to do while mounting the directory for ingesti
 - Create a directory to keep your ingestion data or files in the host machine.
 ```commandline
 mkdir -p /opt/openmetadata/dag_config /opt/openmetadata/dags /opt/openmetadata/secrets
+```
+- Remove the below section from the docker-compose.yml file.
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
+
+```commandline
+volumes:
+  ingestion-volume-dag-airflow:
+  ingestion-volume-dags:
+  ingestion-volume-tmp:
 ```
 - Update or add the volume in the docker-compose.yml file.
 Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
