@@ -306,7 +306,7 @@ const LineagePage = () => {
       <PageLayoutV1 className="p-x-lg">
         <div className="lineage-page-container">
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-          <Card className="h-full">
+          <Card className="h-full" size="default">
             <EntityLineageComponent
               hasEditAccess
               addLineageHandler={addLineageHandler}

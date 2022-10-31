@@ -547,7 +547,7 @@ const PipelineDetails = ({
                 </div>
               )}
               {activeTab === 3 && (
-                <div className="tw-h-full tw-px-3">
+                <div className="h-full">
                   <EntityLineageComponent
                     addLineageHandler={addLineageHandler}
                     deleted={deleted}

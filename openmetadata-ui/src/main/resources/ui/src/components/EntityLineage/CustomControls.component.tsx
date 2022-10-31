@@ -114,7 +114,7 @@ const CustomControls: FC<ControlProps> = ({
   return (
     <div
       className={classNames(
-        'controls-container tw-flex tw-gap-x-2 tw-z-10',
+        'controls-container tw-flex tw-gap-4 tw-z-10',
         className
       )}
       style={style}>
@@ -127,7 +127,7 @@ const CustomControls: FC<ControlProps> = ({
       </Button>
 
       {showZoom && (
-        <div className="flow-control tw-flex tw-gap-x-2 tw-bg-body-hover tw-border tw-border-tag tw-h-8 tw-shadow-md tw-rounded">
+        <div className="flow-control tw-flex tw-gap-x-2 tw-bg-body-hover tw-border border-gray tw-h-8 tw-shadow-md tw-rounded">
           <ControlButton
             className="tw-px-1 tw-cursor-pointer tw-w-8 tw-h-8"
             onClick={onZoomOutHandler}>
@@ -165,14 +165,14 @@ const CustomControls: FC<ControlProps> = ({
       )}
       {showFitView && (
         <ControlButton
-          className="tw-border tw-border-tag tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
+          className="tw-border border-gray tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
           onClick={onFitViewHandler}>
           <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
         </ControlButton>
       )}
       {handleFullScreenViewClick && (
         <ControlButton
-          className="tw-border tw-border-tag tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
+          className="tw-border border-gray tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
           onClick={handleFullScreenViewClick}>
           <SVGIcons
             alt="fullScreenViewicon"
@@ -183,7 +183,7 @@ const CustomControls: FC<ControlProps> = ({
       )}
       {!deleted && (
         <ControlButton
-          className={classNames('h-9 w-9 rounded-full p-x-xss tw-shadow-lg', {
+          className={classNames('h-8 w-8 rounded-full p-x-xss tw-shadow-lg', {
             'bg-primary': isEditMode,
             'bg-primary-hover-lite': !isEditMode,
           })}

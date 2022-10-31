@@ -972,9 +972,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   }
 
   return (
-    <div
-      className="relative h-full m--l-md m--r-7 m--t-md"
-      data-testid="lineage-container">
+    <div className="relative h-full" data-testid="lineage-container">
       <div className="w-full h-full" ref={reactFlowWrapper}>
         <ReactFlowProvider>
           <ReactFlow
@@ -1007,7 +1005,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onNodeMouseMove={onNodeMouseMove}
             onNodesChange={onNodesChange}>
             <CustomControlsComponent
-              className="absolute top-1 right-3 bottom-full m-l-md m-t-md"
+              className="absolute top-1 right-1 bottom-full"
               deleted={deleted}
               fitViewParams={{
                 minZoom: MIN_ZOOM_VALUE,

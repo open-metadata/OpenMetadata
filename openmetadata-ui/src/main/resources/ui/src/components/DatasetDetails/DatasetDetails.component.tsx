@@ -796,7 +796,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {activeTab === 7 && (
                 <div
                   className={classNames(
-                    'tw-px-2',
                     location.pathname.includes(ROUTES.TOUR)
                       ? 'tw-h-70vh'
                       : 'tw-h-full'
