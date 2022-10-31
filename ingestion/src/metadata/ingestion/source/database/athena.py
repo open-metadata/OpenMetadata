@@ -88,9 +88,11 @@ def _get_column_type(self, type_):
         if length:
             args = [int(length)]
     elif type_.startswith("array"):
-        parsed_type = ColumnTypeParser._parse_datatype_string(
-            type_
-        )  # pylint: disable=protected-access
+        parsed_type = (
+            ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                type_
+            )
+        )
         col_type = col_map["array"]
         args = [col_map.get(parsed_type.get("arrayDataType", "string").lower())]
     elif col_map.get(name):
@@ -115,9 +117,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Method to handle table columns
     """
-    metadata = self._get_table(
+    metadata = self._get_table(  # pylint: disable=protected-access
         connection, table_name, schema=schema, **kw
-    )  # pylint: disable=protected-access
+    )
     columns = [
         {
             "name": c.name,
