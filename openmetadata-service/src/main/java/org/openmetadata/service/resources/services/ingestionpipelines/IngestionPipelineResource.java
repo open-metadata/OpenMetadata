@@ -508,6 +508,23 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return Response.ok(hostIp, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
+  @GET
+  @Path("/status")
+  @Operation(
+      operationId = "checkRestAirflowStatus",
+      summary = "Check the Airflow REST status",
+      tags = "IngestionPipelines",
+      description = "Check that the Airflow REST endpoint is reachable and up and running",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Status message",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return pipelineServiceClient.getServiceStatus();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -580,7 +597,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
 
@@ -644,7 +662,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           String fqn,
       @Parameter(description = "Pipeline Status Run Id", schema = @Schema(type = "string")) @PathParam("id") UUID runId)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getPipelineStatus(fqn, runId);
   }
 
