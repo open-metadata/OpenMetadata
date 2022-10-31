@@ -88,11 +88,7 @@ import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { LIST_CAP } from './PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
-} from './RouterUtils';
+import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 import { TASK_ENTITIES } from './TasksUtils';
@@ -699,18 +695,6 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
       entity
     )} will remove its metadata from OpenMetadata permanently.`;
   }
-};
-
-export const getExploreLinkByFilter = (
-  filter: Ownership,
-  userDetails: User,
-  nonSecureUserDetails: User
-) => {
-  return getExplorePathWithInitFilters(
-    '',
-    undefined,
-    `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
-  );
 };
 
 export const replaceSpaceWith_ = (text: string) => {
