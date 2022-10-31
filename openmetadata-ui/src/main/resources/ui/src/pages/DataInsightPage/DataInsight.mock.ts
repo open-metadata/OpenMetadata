@@ -13,13 +13,6 @@
 
 import { getFormattedDateFromMilliSeconds } from '../../utils/TimeUtils';
 
-export const DATA_INSIGHT_GRAPH_COLORS = [
-  '#E7B85D',
-  '#416BB3',
-  '#66B5AD',
-  '#8D6AF1',
-];
-
 export const PIE_DATA = [
   { name: 'Tables', value: 40 },
   { name: 'Topics', value: 30 },

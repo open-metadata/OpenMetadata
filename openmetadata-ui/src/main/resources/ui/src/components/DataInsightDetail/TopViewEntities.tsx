@@ -14,6 +14,7 @@
 import { Card, Table, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TOP_VIEW_ENTITIES } from '../../pages/DataInsightPage/DataInsight.mock';
 import './DataInsightTables.less';
 
@@ -27,6 +28,8 @@ interface EntityView {
 }
 
 const TopViewEntities = () => {
+  const { t } = useTranslation();
+
   const columns: ColumnsType<EntityView> = useMemo(
     () => [
       {
@@ -88,7 +91,9 @@ const TopViewEntities = () => {
   return (
     <Card className="mt-4" data-testid="entity-summary-card-percentage">
       <div data-testid="entity-summary-card-percentage-heder">
-        <Typography.Title level={5}>Top Viewed Entities</Typography.Title>
+        <Typography.Title level={5}>
+          {t('label.data-insight-top-viewed-entity-summary')}
+        </Typography.Title>
       </div>
       <Table
         bordered={false}

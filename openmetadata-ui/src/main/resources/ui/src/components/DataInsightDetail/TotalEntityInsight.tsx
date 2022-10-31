@@ -14,6 +14,7 @@
 import { Card, Typography } from 'antd';
 import { random, uniqueId } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
@@ -25,20 +26,24 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
 import {
+  BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
-  getEntityCountData,
-} from '../../pages/DataInsightPage/DataInsight.mock';
+} from '../../constants/DataInsight.constants';
+import { getEntityCountData } from '../../pages/DataInsightPage/DataInsight.mock';
 import { renderLegend } from '../../utils/DataInsightUtils';
 
 const TotalEntityInsight = () => {
   const { data, entities } = getEntityCountData();
 
+  const { t } = useTranslation();
+
   return (
     <Card className="mt-4" data-testid="entity-summary-card">
       <div data-testid="entity-summary-card-heder">
-        <Typography.Title level={5}>Total Entities</Typography.Title>
+        <Typography.Title level={5}>
+          {t('label.data-insight-total-entity-summary')}
+        </Typography.Title>
       </div>
       <div className="mt-4" data-testid="entity-summary-card-content">
         <ResponsiveContainer minHeight={400}>

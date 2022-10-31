@@ -19,3 +19,18 @@ export const BAR_CHART_MARGIN: Margin = {
   left: 20,
   bottom: 5,
 };
+
+export const DATA_INSIGHT_GRAPH_COLORS = [
+  '#E7B85D',
+  '#416BB3',
+  '#66B5AD',
+  '#8D6AF1',
+  '#699994',
+  '#6A86EB',
+  '#7A57A6',
+  '#7DC177',
+  '#AD4F82',
+  '#C870C5',
+  '#D87F7F',
+  '#DA996A',
+];

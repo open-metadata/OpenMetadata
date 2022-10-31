@@ -171,7 +171,14 @@
     "submit": "Submit",
     "sql-query": "SQL Query",
     "sql-query-tooltip": "Queries returning 1 or more rows will result in the test failing.",
-    "scopes-comma-separated": "Scopes value comma separated"
+    "scopes-comma-separated": "Scopes value comma separated",
+    "data-insight-summary": "OpenMetadata health at a glance",
+    "data-insight-description-summary": "Percentage of Entities With Description",
+    "data-insight-owner-summary": "Percentage of Entities With Owners",
+    "data-insight-tier-summary": "Total Entities by Tier",
+    "data-insight-active-user-summary": "Top Active Users",
+    "data-insight-top-viewed-entity-summary": "Top Viewed Entities",
+    "data-insight-total-entity-summary": "Total Entities"
   },
   "message": {
     "service-email-required": "Service account Email is required",

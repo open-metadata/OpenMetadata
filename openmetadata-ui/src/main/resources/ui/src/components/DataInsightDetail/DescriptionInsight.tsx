@@ -14,6 +14,7 @@
 import { Card, Col, Row, Typography } from 'antd';
 import { random, uniqueId } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
@@ -25,21 +26,22 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { BAR_CHART_MARGIN } from '../../constants/DataInsight.constants';
 import {
+  BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
-  getEntityDescriptionData,
-} from '../../pages/DataInsightPage/DataInsight.mock';
+} from '../../constants/DataInsight.constants';
+import { getEntityDescriptionData } from '../../pages/DataInsightPage/DataInsight.mock';
 import { renderLegend } from '../../utils/DataInsightUtils';
 
 const DescriptionInsight = () => {
   const { data, entities } = getEntityDescriptionData();
+  const { t } = useTranslation();
 
   return (
     <Card className="mt-4" data-testid="entity-summary-card-percentage">
       <div data-testid="entity-summary-card-percentage-heder">
         <Typography.Title level={5}>
-          Percentage of Entities With Description
+          {t('label.data-insight-description-summary')}
         </Typography.Title>
       </div>
       <Row

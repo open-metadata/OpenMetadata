@@ -13,18 +13,18 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { OVERVIEW } from '../../pages/DataInsightPage/DataInsight.mock';
 
 const DataInsightSummary = () => {
+  const { t } = useTranslation();
+
   return (
     <Card data-testid="summary-card">
       <div data-testid="summary-card-heder">
         <Typography.Title level={5}>
-          OpenMetadata health at a glance
+          {t('label.data-insight-summary')}
         </Typography.Title>
-        <Typography.Text>
-          Some description over here could be helpful
-        </Typography.Text>
       </div>
       <Row
         className="mt-4"
