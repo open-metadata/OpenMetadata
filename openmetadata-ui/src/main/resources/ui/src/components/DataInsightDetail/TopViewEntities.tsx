@@ -36,25 +36,23 @@ const TopViewEntities = () => {
         title: 'Entity Name',
         dataIndex: 'entityName',
         key: 'entityName',
-        render: (_, record) => (
-          <Typography.Text>{record.entityName}</Typography.Text>
+        render: (entityName: string) => (
+          <Typography.Text>{entityName}</Typography.Text>
         ),
       },
       {
         title: 'Owner',
         dataIndex: 'owner',
         key: 'owner',
-        render: (_, record) => (
-          <Typography.Text>{record.owner}</Typography.Text>
-        ),
+        render: (owner: string) => <Typography.Text>{owner}</Typography.Text>,
       },
       {
         title: 'Tags',
         dataIndex: 'tags',
         key: 'tags',
-        render: (_, record) => (
+        render: (tags: string[]) => (
           <Typography.Text>
-            {record.tags.map((tag, i) => (
+            {tags.map((tag, i) => (
               <Tag key={i}>{tag}</Tag>
             ))}
           </Typography.Text>
@@ -64,24 +62,24 @@ const TopViewEntities = () => {
         title: 'Entity Type',
         dataIndex: 'entityType',
         key: 'entityType',
-        render: (_, record) => (
-          <Typography.Text>{record.entityType}</Typography.Text>
+        render: (entityType: string) => (
+          <Typography.Text>{entityType}</Typography.Text>
         ),
       },
       {
         title: 'Total Views',
         dataIndex: 'totalViews',
         key: 'totalViews',
-        render: (_, record) => (
-          <Typography.Text>{record.totalViews}</Typography.Text>
+        render: (totalViews: number) => (
+          <Typography.Text>{totalViews}</Typography.Text>
         ),
       },
       {
         title: 'Unique Views',
         dataIndex: 'uniqueViews',
         key: 'uniqueViews',
-        render: (_, record) => (
-          <Typography.Text>{record.uniqueViews}</Typography.Text>
+        render: (uniqueViews: number) => (
+          <Typography.Text>{uniqueViews}</Typography.Text>
         ),
       },
     ],

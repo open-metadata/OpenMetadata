@@ -36,25 +36,25 @@ const TopActiveUsers = () => {
         title: 'User',
         dataIndex: 'userName',
         key: 'userName',
-        render: (_, record) => (
-          <Typography.Text>{record.userName}</Typography.Text>
+        render: (userName: string) => (
+          <Typography.Text>{userName}</Typography.Text>
         ),
       },
       {
         title: 'Team',
         dataIndex: 'Team',
         key: 'Team',
-        render: (_, record) => (
-          <Typography.Text>{record.Team ?? '--'}</Typography.Text>
+        render: (Team: string) => (
+          <Typography.Text>{Team ?? '--'}</Typography.Text>
         ),
       },
       {
         title: 'Most Recent Session',
         dataIndex: 'mostRecentSession',
         key: 'mostRecentSession',
-        render: (_, record) => (
+        render: (mostRecentSession: number) => (
           <Typography.Text>
-            {getDateTimeFromMilliSeconds(record.mostRecentSession)}
+            {getDateTimeFromMilliSeconds(mostRecentSession)}
           </Typography.Text>
         ),
       },
@@ -62,16 +62,16 @@ const TopActiveUsers = () => {
         title: 'Total Sessions',
         dataIndex: 'totalSessions',
         key: 'totalSessions',
-        render: (_, record) => (
-          <Typography.Text>{record.totalSessions}</Typography.Text>
+        render: (totalSessions: number) => (
+          <Typography.Text>{totalSessions}</Typography.Text>
         ),
       },
       {
         title: 'Avg. Session Time',
         dataIndex: 'avgSessionDuration',
         key: 'avgSessionDuration',
-        render: (_, record) => (
-          <Typography.Text>{record.avgSessionDuration}</Typography.Text>
+        render: (avgSessionDuration: number) => (
+          <Typography.Text>{avgSessionDuration}</Typography.Text>
         ),
       },
     ],
