@@ -10,36 +10,36 @@
 #  limitations under the License.
 
 """
-Profiler utility for the metadata CLI
+Data quality utility for the metadata CLI
 """
 import pathlib
 import sys
 import traceback
 
 from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger
 from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
 
 
-def run_ingest(config_path: str) -> None:
+def run_test(config_path: str) -> None:
     """
-    Run the ingestion workflow from a config path
+    Run the Data Quality Test Suites workflow from a config path
     to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
     config_file = pathlib.Path(config_path)
-    config_dict = None
+    workflow_config_dict = None
     try:
-        config_dict = load_config_file(config_file)
-        workflow = Workflow.create(config_dict)
-        logger.debug(f"Using config: {workflow.config}")
+        workflow_config_dict = load_config_file(config_file)
+        logger.debug(f"Using config: {workflow_config_dict}")
+        workflow = TestSuiteWorkflow.create(workflow_config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, config_dict, WorkflowType.INGEST)
+        print_init_error(exc, workflow_config_dict, WorkflowType.TEST)
         sys.exit(1)
 
     workflow.execute()

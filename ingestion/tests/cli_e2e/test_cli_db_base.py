@@ -15,16 +15,17 @@ Test database connectors with CLI
 import os
 import re
 from abc import abstractmethod
+from contextlib import redirect_stdout
 from enum import Enum
+from io import StringIO
 from pathlib import Path
 from typing import List
 from unittest import TestCase
 
 import pytest
 import yaml
-from click.testing import CliRunner, Result
 
-from metadata.cmd import metadata
+from metadata.cmd import MetadataCommands, metadata
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.sink import SinkStatus
@@ -45,8 +46,7 @@ class E2EType(Enum):
 
 class CliDBBase(TestCase):
     class TestSuite(TestCase):
-
-        runner = CliRunner()
+        catcher = StringIO()
         openmetadata: OpenMetadata
         test_file_path: str
         config_file_path: str
@@ -57,7 +57,9 @@ class CliDBBase(TestCase):
             # build config file for ingest
             self.build_config_file(E2EType.INGEST)
             # run ingest with new tables
-            result = self.run_command()
+            self.run_command()
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_vanilla_ingestion(source_status, sink_status)
 
@@ -72,10 +74,14 @@ class CliDBBase(TestCase):
             self.build_config_file()
             # run ingest with new tables
             self.run_command()
+            self.catcher.truncate(0)
             # build config file for profiler
             self.build_config_file(E2EType.PROFILER)
             # run profiler with new tables
-            result = self.run_command("profile")
+            self.run_command("profile")
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
+
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_table_with_profiler(source_status, sink_status)
 
@@ -87,7 +93,10 @@ class CliDBBase(TestCase):
             # build config file for ingest
             self.build_config_file()
             # run ingest
-            result = self.run_command()
+            self.run_command()
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
+
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_delete_table_is_marked_as_deleted(
                 source_status, sink_status
@@ -101,7 +110,10 @@ class CliDBBase(TestCase):
                 E2EType.INGEST_FILTER_SCHEMA, {"includes": self.get_includes_schemas()}
             )
             # run ingest
-            result = self.run_command()
+            self.run_command()
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
+
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_schemas_includes(source_status, sink_status)
 
@@ -113,7 +125,9 @@ class CliDBBase(TestCase):
                 E2EType.INGEST_FILTER_SCHEMA, {"excludes": self.get_includes_schemas()}
             )
             # run ingest
-            result = self.run_command()
+            self.run_command()
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_schemas_excludes(source_status, sink_status)
 
@@ -125,7 +139,10 @@ class CliDBBase(TestCase):
                 E2EType.INGEST_FILTER_TABLE, {"includes": self.get_includes_tables()}
             )
             # run ingest
-            result = self.run_command()
+            self.run_command()
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
+
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_includes(source_status, sink_status)
 
@@ -137,7 +154,9 @@ class CliDBBase(TestCase):
                 E2EType.INGEST_FILTER_TABLE, {"excludes": self.get_includes_tables()}
             )
             # run ingest
-            result = self.run_command()
+            self.run_command()
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_excludes(source_status, sink_status)
 
@@ -156,7 +175,9 @@ class CliDBBase(TestCase):
                 },
             )
             # run ingest
-            result = self.run_command()
+            self.run_command()
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_mix(source_status, sink_status)
 
@@ -172,13 +193,15 @@ class CliDBBase(TestCase):
             # to be implemented
             pass
 
-        def run_command(self, command: str = "ingest") -> Result:
-            args = f"{command} -c {self.test_file_path}"
-            result = self.runner.invoke(
-                metadata, args=args.split(" "), catch_exceptions=False
-            )
-            self.assertEqual(0, result.exit_code)
-            return result
+        def run_command(self, command: str = "ingest"):
+            args = [
+                command,
+                "-c",
+                self.test_file_path,
+            ]
+            with redirect_stdout(self.catcher):
+                with self.assertRaises(SystemExit):
+                    metadata(args)
 
         def build_config_file(
             self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None
@@ -190,8 +213,8 @@ class CliDBBase(TestCase):
                     yaml.dump(config_yaml, w)
 
         def retrieve_statuses(self, result):
-            source_status: SourceStatus = self.extract_source_status(result.output)
-            sink_status: SinkStatus = self.extract_sink_status(result.output)
+            source_status: SourceStatus = self.extract_source_status(result)
+            sink_status: SinkStatus = self.extract_sink_status(result)
             return sink_status, source_status
 
         def retrieve_table(self, table_name_fqn: str) -> Table:
@@ -219,20 +242,24 @@ class CliDBBase(TestCase):
         def extract_source_status(output) -> SourceStatus:
             output_clean = output.replace("\n", " ")
             output_clean = re.sub(" +", " ", output_clean)
+            output_clean_ansi = re.compile(r"\x1b[^m]*m")
+            output_clean = output_clean_ansi.sub(" ", output_clean)
             if re.match(".* Processor Status: .*", output_clean):
                 output_clean = re.findall(
                     "Source Status: (.*?) Processor Status: .*", output_clean.strip()
-                )[0].strip()
+                )
             else:
                 output_clean = re.findall(
                     "Source Status: (.*?) Sink Status: .*", output_clean.strip()
-                )[0].strip()
-            return SourceStatus.parse_obj(eval(output_clean))
+                )
+            return SourceStatus.parse_obj(eval(output_clean[0].strip()))
 
         @staticmethod
         def extract_sink_status(output) -> SinkStatus:
             output_clean = output.replace("\n", " ")
             output_clean = re.sub(" +", " ", output_clean)
+            output_clean_ansi = re.compile(r"\x1b[^m]*m")
+            output_clean = output_clean_ansi.sub("", output_clean)
             output_clean = re.findall(
                 ".* Sink Status: (.*?) Workflow finished.*", output_clean.strip()
             )[0].strip()

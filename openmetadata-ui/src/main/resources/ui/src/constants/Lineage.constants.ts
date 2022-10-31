@@ -2,8 +2,10 @@ import { capitalize } from 'lodash';
 import { ElementLoadingState } from '../components/EntityLineage/EntityLineage.interface';
 import { EntityType } from '../enums/entity.enum';
 
-export const foreignObjectSize = 40;
-export const zoomValue = 1;
+export const FOREIGN_OBJECT_SIZE = 40;
+export const ZOOM_VALUE = 1;
+export const MIN_ZOOM_VALUE = 0.5;
+export const MAX_ZOOM_VALUE = 2.5;
 
 export const entityData = [
   {
@@ -16,11 +18,11 @@ export const entityData = [
   { type: EntityType.MLMODEL, label: capitalize(EntityType.MLMODEL) },
 ];
 
-export const positionX = 150;
-export const positionY = 60;
+export const POSITION_X = 150;
+export const POSITION_Y = 60;
 
-export const nodeWidth = 400;
-export const nodeHeight = 50;
+export const NODE_WIDTH = 400;
+export const NODE_HEIGHT = 50;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,
