@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { random, uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +41,11 @@ const DescriptionInsight = () => {
     <Card
       className="mt-4"
       data-testid="entity-summary-card-percentage"
-      title={t('label.data-insight-description-summary')}>
+      title={
+        <Typography.Title level={5}>
+          {t('label.data-insight-description-summary')}
+        </Typography.Title>
+      }>
       <Row
         className="mt-4"
         data-testid="entity-summary-card-percentage-content">

@@ -82,7 +82,11 @@ const TopActiveUsers = () => {
     <Card
       className="mt-4"
       data-testid="entity-summary-card-percentage"
-      title={t('label.data-insight-active-user-summary')}>
+      title={
+        <Typography.Title level={5}>
+          {t('label.data-insight-active-user-summary')}
+        </Typography.Title>
+      }>
       <Table
         bordered={false}
         className="mt-4 data-insight-table-wrapper"

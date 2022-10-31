@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Typography } from 'antd';
 import { random, uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,7 +42,11 @@ const TotalEntityInsight = () => {
     <Card
       className="mt-4"
       data-testid="entity-summary-card"
-      title={t('label.data-insight-total-entity-summary')}>
+      title={
+        <Typography.Title level={5}>
+          {t('label.data-insight-total-entity-summary')}
+        </Typography.Title>
+      }>
       <div className="mt-4" data-testid="entity-summary-card-content">
         <ResponsiveContainer minHeight={400}>
           <BarChart data={data} margin={BAR_CHART_MARGIN}>
