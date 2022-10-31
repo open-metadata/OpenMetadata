@@ -313,7 +313,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
     // just delete the existing token
-    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
     tokenRepository.insertToken(newRefreshToken);
@@ -323,7 +322,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse getNewAccessToken(String userName, TokenRefreshRequest request) throws IOException {
-    User storedUser = userRepository.getByName(null, userName, userRepository.getFields("*"));
+    User storedUser = userRepository.getByName(null, userName, userRepository.getFieldsWithUserAuth("*"));
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
       throw new IllegalArgumentException("User are only allowed to login");
     }
@@ -364,7 +363,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
     // TODO: currently allow single login from a place, later multiple login can be added
     // just delete the existing token
-    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
+    tokenRepository.deleteToken(requestRefreshToken);
     // we use rotating refresh token , generate new token
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
