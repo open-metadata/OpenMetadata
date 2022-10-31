@@ -89,6 +89,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
+  private static final String SENDING_REQUEST_TO_ELASTIC_SEARCH = "Sending request to ElasticSearch {}";
   private final RestHighLevelClient client;
   private final ElasticSearchIndexDefinition esIndexDefinition;
   private final CollectionDAO dao;
@@ -680,14 +681,14 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     if (updateRequest != null) {
-      LOG.debug("Sending request to ElasticSearch {}", updateRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch {}", deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
@@ -695,7 +696,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch {}", deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
       client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }

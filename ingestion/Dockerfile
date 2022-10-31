@@ -46,11 +46,11 @@ RUN apt-get update \
     bind9=1:9.18.4-2~bpo11+1
 
 # Required for Starting Ingestion Container in Docker Compose
-COPY --chown=airflow:airflow ingestion/ingestion_dependency.sh /opt/airflow
+COPY --chown=airflow:0 ingestion/ingestion_dependency.sh /opt/airflow
 # Required for Ingesting Sample Data
-COPY --chown=airflow:airflow ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
+COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
 # Required for Airflow DAGs of Sample Data
-COPY --chown=airflow:airflow ingestion/examples/airflow/dags /opt/airflow/dags
+COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 # Provide Execute Permissions to shell script
 RUN chmod +x /opt/airflow/ingestion_dependency.sh
 USER airflow
