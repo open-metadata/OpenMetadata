@@ -105,10 +105,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static class RoleList extends ResultList<Role> {
     @SuppressWarnings("unused") /* Required for tests */
     RoleList() {}
-
-    public RoleList(List<Role> roles, String beforeCursor, String afterCursor, int total) {
-      super(roles, beforeCursor, afterCursor, total);
-    }
   }
 
   public static final String FIELDS = "policies,teams,users";

@@ -31,6 +31,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getPolicyByName,
@@ -165,12 +166,14 @@ const List = ({
 };
 
 const PoliciesDetailPage = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
+  const [isloadingOnSave, setIsloadingOnSave] = useState(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
@@ -262,6 +265,8 @@ const PoliciesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsloadingOnSave(false);
     }
   };
 
@@ -290,10 +295,13 @@ const PoliciesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsloadingOnSave(false);
     }
   };
 
   const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    setIsloadingOnSave(true);
     if (attribute === 'roles') {
       handleRolesUpdate(data);
     } else if (attribute === 'teams') {
@@ -314,6 +322,8 @@ const PoliciesDetailPage = () => {
         setPolicy(data);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setIsloadingOnSave(false);
       }
     }
   };
@@ -354,8 +364,8 @@ const PoliciesDetailPage = () => {
                         );
                       }}>
                       <Space align="center">
-                        <SVGIcons alt="edit" icon={Icons.EDIT} />
-                        Edit
+                        <SVGIcons alt={t('label.edit')} icon={Icons.EDIT} />
+                        {t('label.edit')}
                       </Space>
                     </Button>
                   ),
@@ -373,11 +383,11 @@ const PoliciesDetailPage = () => {
                       }}>
                       <Space align="center">
                         <SVGIcons
-                          alt="delete"
+                          alt={t('label.delete')}
                           icon={Icons.DELETE}
                           width="16px"
                         />
-                        Delete
+                        {t('label.delete')}
                       </Space>
                     </Button>
                   ),
@@ -436,12 +446,12 @@ const PoliciesDetailPage = () => {
           {isEmpty(policy) ? (
             <ErrorPlaceHolder>
               <div className="text-center">
-                <p>No policy found for ${fqn}</p>
+                <p>{`${t('label.no-policy-found')} ${fqn}`}</p>
                 <Button
                   size="small"
                   type="primary"
                   onClick={() => history.push(policiesPath)}>
-                  Go Back
+                  {t('label.go-back')}
                 </Button>
               </div>
             </ErrorPlaceHolder>
@@ -466,7 +476,7 @@ const PoliciesDetailPage = () => {
                 <TabPane key="rules" tab="Rules">
                   {isEmpty(policy.rules) ? (
                     <ErrorPlaceHolder>
-                      <p>No rules found</p>
+                      <p>{t('label.no-rule-found')}</p>
                     </ErrorPlaceHolder>
                   ) : (
                     <Space
@@ -475,7 +485,7 @@ const PoliciesDetailPage = () => {
                       <Tooltip
                         title={
                           policyPermission.EditAll
-                            ? 'Add Rule'
+                            ? t('label.add-rule')
                             : NO_PERMISSION_FOR_ACTION
                         }>
                         <Button
@@ -485,7 +495,7 @@ const PoliciesDetailPage = () => {
                           onClick={() =>
                             history.push(getAddPolicyRulePath(fqn))
                           }>
-                          Add Rule
+                          {t('label.add-rule')}
                         </Button>
                       </Tooltip>
 
@@ -517,7 +527,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="description">
                                   <Col span={2}>
                                     <Typography.Text className="tw-text-grey-muted">
-                                      Description :
+                                      {t('label.description')} :
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
@@ -531,7 +541,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="resources">
                                 <Col span={2}>
                                   <Typography.Text className="tw-text-grey-muted tw-mb-0">
-                                    Resources :
+                                    {t('label.resources')} :
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -546,7 +556,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="operations">
                                 <Col span={2}>
                                   <Typography.Text className="tw-text-grey-muted">
-                                    Operations :
+                                    {t('label.operations')} :
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -558,7 +568,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="effect">
                                 <Col span={2}>
                                   <Typography.Text className="tw-text-grey-muted">
-                                    Effect :
+                                    {t('label.effect')} :
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -571,7 +581,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="condition">
                                   <Col span={2}>
                                     <Typography.Text className="tw-text-grey-muted">
-                                      Condition :
+                                      {t('label.condition')} :
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
@@ -617,21 +627,21 @@ const PoliciesDetailPage = () => {
         <Modal
           centered
           closable={false}
-          okText="Confirm"
-          title={`Remove ${getEntityName(
+          confirmLoading={isloadingOnSave}
+          okText={t('label.confirm')}
+          title={`${t('label.remove')} ${getEntityName(
             selectedEntity.record
-          )} from ${getEntityName(policy)}`}
+          )} ${t('label.from')} ${getEntityName(policy)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
-          onOk={() => {
-            handleDelete(selectedEntity.record, selectedEntity.attribute);
+          onOk={async () => {
+            await handleDelete(selectedEntity.record, selectedEntity.attribute);
             setEntity(undefined);
           }}>
           <Typography.Text>
-            Are you sure you want to remove the{' '}
-            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
-              policy
-            )}?`}
+            {` ${t('label.sure-to-remove')} ${getEntityName(
+              selectedEntity.record
+            )} ${t('label.from')} ${getEntityName(policy)}?`}
           </Typography.Text>
         </Modal>
       )}

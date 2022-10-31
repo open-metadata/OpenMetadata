@@ -18,10 +18,13 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card, Tabs } from 'antd';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
-import { isNil, isNumber, lowerCase, noop, omit } from 'lodash';
-import React, { Fragment, useEffect, useRef } from 'react';
+import { isNil, isNumber, lowerCase, noop, omit, toUpper } from 'lodash';
+import { EntityType } from 'Models';
+import React, { Fragment, useEffect, useMemo, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
+import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -29,7 +32,11 @@ import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
-import { ExploreProps, ExploreSearchIndex } from './explore.interface';
+import {
+  ExploreProps,
+  ExploreSearchIndex,
+  ExploreSearchIndexKey,
+} from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -53,6 +60,14 @@ const Explore: React.FC<ExploreProps> = ({
   loading,
 }) => {
   const isMounting = useRef(true);
+  const { tab } = useParams<{ tab: string }>();
+
+  // get entity active tab by URL params
+  const defaultActiveTab = useMemo(() => {
+    const entityName = toUpper(ENTITY_PATH[tab as EntityType] ?? 'table');
+
+    return SearchIndex[entityName as ExploreSearchIndexKey];
+  }, [tab]);
 
   const handleFacetFilterChange: FacetFilterProps['onSelectHandler'] = (
     checked,
@@ -110,7 +125,7 @@ const Explore: React.FC<ExploreProps> = ({
           </div>
         }>
         <Tabs
-          defaultActiveKey={lowerCase(tabsInfo[SearchIndex.TABLE].label)}
+          defaultActiveKey={defaultActiveTab}
           size="small"
           tabBarExtraContent={
             <div className="tw-flex">

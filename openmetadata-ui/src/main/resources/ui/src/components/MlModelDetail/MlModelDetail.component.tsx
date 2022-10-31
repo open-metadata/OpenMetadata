@@ -27,6 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -54,6 +55,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -98,6 +100,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   entityFieldThreadCount,
 }) => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
@@ -260,6 +263,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 5,
     },
   ];
+
+  const handleFullScreenClick = () => {
+    history.push(
+      getLineageViewPath(
+        EntityType.MLMODEL,
+        mlModelDetail.fullyQualifiedName || ''
+      )
+    );
+  };
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
@@ -625,9 +637,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </div>
               )}
               {activeTab === 4 && (
-                <div
-                  className="tw-px-2 tw-h-full"
-                  data-testid="lineage-details">
+                <div className="h-full" data-testid="lineage-details">
                   <EntityLineageComponent
                     addLineageHandler={lineageTabData.addLineageHandler}
                     deleted={mlModelDetail.deleted}
@@ -643,6 +653,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     lineageLeafNodes={lineageTabData.lineageLeafNodes}
                     loadNodeHandler={lineageTabData.loadNodeHandler}
                     removeLineageHandler={lineageTabData.removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}

@@ -12,10 +12,8 @@
  */
 
 import { isUndefined, startCase } from 'lodash';
-import { arrServiceTypes } from '../constants/services.const';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLogEntityPath } from './RouterUtils';
-import { getServiceCategoryFromType } from './ServiceUtils';
 
 /**
  * It takes in a service type, an ingestion name, and an ingestion details object, and returns an array
@@ -40,18 +38,7 @@ export const getLogBreadCrumbs = (
     return {
       name: index === 0 ? startCase(path) : path,
       url:
-        index !== urlPath.length - 1
-          ? getLogEntityPath(
-              path,
-              arrServiceTypes.map((serviceType) =>
-                serviceType.includes(ingestionDetails.service?.type || '')
-                  ? getServiceCategoryFromType(
-                      ingestionDetails.service?.type || ''
-                    )
-                  : ingestionDetails.service?.type
-              )[0]
-            )
-          : '',
+        index !== urlPath.length - 1 ? getLogEntityPath(path, serviceType) : '',
     };
   });
 };

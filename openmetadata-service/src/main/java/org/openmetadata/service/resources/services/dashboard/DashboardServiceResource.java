@@ -85,10 +85,6 @@ public class DashboardServiceResource
   public static class DashboardServiceList extends ResultList<DashboardService> {
     @SuppressWarnings("unused") /* Required for tests */
     public DashboardServiceList() {}
-
-    public DashboardServiceList(List<DashboardService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET

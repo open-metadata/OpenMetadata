@@ -25,6 +25,8 @@ import {
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
+  PLACEHOLDER_ROUTE_ENTITY_FQN,
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -44,6 +46,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
 import { arrServiceTypes } from '../constants/services.const';
+import { EntityType } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -421,11 +424,13 @@ export const getLogEntityPath = (
 ): string => {
   if (isUndefined(logEntityType)) return '';
 
-  if (path === 'TestSuite') {
+  const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
+
+  if (path === testSuitePath) {
     return ROUTES.TEST_SUITES;
   }
 
-  if (logEntityType === 'testSuite') {
+  if (logEntityType === testSuitePath) {
     return getTestSuitePath(path);
   }
 
@@ -440,4 +445,14 @@ export const getLogEntityPath = (
     GlobalSettingsMenuCategory.SERVICES,
     getServiceRouteFromServiceType(logEntityType as ServiceTypes)
   );
+};
+
+export const getLineageViewPath = (entity: EntityType, fqn: string) => {
+  let path = ROUTES.LINEAGE_FULL_SCREEN_VIEW;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
+
+  return path;
 };

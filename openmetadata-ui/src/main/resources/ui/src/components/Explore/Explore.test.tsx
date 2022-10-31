@@ -27,6 +27,9 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest
     .fn()
     .mockImplementation(() => ({ search: '', pathname: '/explore' })),
+  useParams: jest.fn().mockReturnValue({
+    tab: 'tab',
+  }),
 }));
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {

@@ -2,13 +2,14 @@
 Dynamically build docker images for
 all the connectors
 """
+import argparse
 import io
 import logging
 import sys
 import traceback
 from distutils.core import run_setup
+from enum import Enum
 
-import click
 import docker
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -20,6 +21,11 @@ TARGET = "openmetadata/ingestion-connector-{name}"
 DOCKERFILE = "FROM openmetadata/ingestion-connector-base\n"
 REQUIREMENTS = "RUN pip install {requirements}\n"
 ENTRYPOINT = 'ENTRYPOINT ["python", "main.py"]'
+
+
+class DockerCommands(Enum):
+    BUILD = "build"
+    PUSH = "push"
 
 
 def get_setup_data():
@@ -37,12 +43,6 @@ def get_setup_data():
     return setup, plugins
 
 
-@click.group()
-def cli():
-    pass
-
-
-@click.command()
 def build():
     """
     Build all docker images for the connectors
@@ -70,7 +70,6 @@ def build():
             logger.warning(f"Error trying to build {conn}: {exc}")
 
 
-@click.command()
 def push():
     """
     Push the previously built images for the connectors
@@ -95,9 +94,13 @@ def push():
             logger.warning(f"Error trying to push {conn}: {exc}")
 
 
-cli.add_command(build)
-cli.add_command(push)
-
-
 if __name__ == "__main__":
-    cli()
+    parser = argparse.ArgumentParser(description="Docker Framework for OpenMetadata")
+    sub_parser = parser.add_subparsers(dest="command")
+    sub_parser.add_parser(DockerCommands.BUILD.value)
+    sub_parser.add_parser(DockerCommands.PUSH.value)
+    has_args = vars(parser.parse_args())
+    if has_args == DockerCommands.BUILD.value:
+        build()
+    if has_args == DockerCommands.PUSH.value:
+        push()

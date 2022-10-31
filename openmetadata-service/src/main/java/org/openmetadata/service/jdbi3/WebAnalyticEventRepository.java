@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
@@ -74,10 +73,8 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Transaction
-  public Response addWebAnalyticEventData(UriInfo uriInfo, WebAnalyticEventData webAnalyticEventData)
-      throws IOException {
+  public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) throws IOException {
     webAnalyticEventData.setEventId(UUID.randomUUID());
-    WebAnalyticEvent webAnalyticEvent = dao.findEntityByName(webAnalyticEventData.getEventType().value());
     daoCollection
         .entityExtensionTimeSeriesDao()
         .insert(
