@@ -12,7 +12,7 @@
  */
 
 import { Col, Dropdown, Row, Space } from 'antd';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import {
   DAY_FILTER,
   ORG_FILTER,
@@ -31,10 +31,10 @@ import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityIn
 import { getMenuItems } from '../../utils/DataInsightUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 
-const DropDownLabel = ({ label }: { label: string }) => {
+const DropDownLabel = ({ children, ...rest }: { children: ReactNode }) => {
   return (
-    <Space>
-      {label}
+    <Space {...rest}>
+      {children}
       <DropDownIcon />
     </Space>
   );
@@ -49,22 +49,22 @@ const DataInsightPage = () => {
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(DAY_FILTER, '7')}>
-              <DropDownLabel label="Last 7 Days" />
+              <DropDownLabel>Last 7 Days</DropDownLabel>
             </Dropdown>
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(TEAM_FILTER, 'team1')}>
-              <DropDownLabel label="Cloud Infra" />
+              <DropDownLabel>Cloud Infra</DropDownLabel>
             </Dropdown>
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(ORG_FILTER, 'org1')}>
-              <DropDownLabel label="Organization1" />
+              <DropDownLabel>Organization1</DropDownLabel>
             </Dropdown>
             <Dropdown
               className="cursor-pointer"
               overlay={getMenuItems(TIER_FILTER, 'Tier.Tier1')}>
-              <DropDownLabel label="Tier1" />
+              <DropDownLabel>Tier1</DropDownLabel>
             </Dropdown>
           </Space>
         </Col>
