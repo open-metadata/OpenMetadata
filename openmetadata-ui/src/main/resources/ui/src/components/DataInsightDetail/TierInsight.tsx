@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { random, uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,47 +40,40 @@ const TierInsight = () => {
 
   return (
     <Card
-      className="mt-4"
       data-testid="entity-summary-card-percentage"
       title={
         <Typography.Title level={5}>
           {t('label.data-insight-tier-summary')}
         </Typography.Title>
       }>
-      <Row
-        className="mt-4"
-        data-testid="entity-summary-card-percentage-content">
-        <Col span={24}>
-          <ResponsiveContainer minHeight={400}>
-            <BarChart data={data} margin={BAR_CHART_MARGIN}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis />
-              <Tooltip />
-              <Legend
-                align="left"
-                content={(props) => renderLegend(props as LegendProps, `970`)}
-                layout="vertical"
-                verticalAlign="top"
-                wrapperStyle={{ left: '0px' }}
-              />
-              {tiers.map((tier) => (
-                <Bar
-                  barSize={20}
-                  dataKey={tier}
-                  fill={
-                    DATA_INSIGHT_GRAPH_COLORS[
-                      random(0, DATA_INSIGHT_GRAPH_COLORS.length)
-                    ]
-                  }
-                  key={uniqueId()}
-                  stackId="tier"
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </Col>
-      </Row>
+      <ResponsiveContainer minHeight={400}>
+        <BarChart data={data} margin={BAR_CHART_MARGIN}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="timestamp" />
+          <YAxis />
+          <Tooltip />
+          <Legend
+            align="left"
+            content={(props) => renderLegend(props as LegendProps, `970`)}
+            layout="vertical"
+            verticalAlign="top"
+            wrapperStyle={{ left: '0px' }}
+          />
+          {tiers.map((tier) => (
+            <Bar
+              barSize={20}
+              dataKey={tier}
+              fill={
+                DATA_INSIGHT_GRAPH_COLORS[
+                  random(0, DATA_INSIGHT_GRAPH_COLORS.length)
+                ]
+              }
+              key={uniqueId()}
+              stackId="tier"
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
     </Card>
   );
 };

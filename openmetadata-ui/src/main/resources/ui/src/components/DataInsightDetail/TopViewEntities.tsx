@@ -88,7 +88,6 @@ const TopViewEntities = () => {
 
   return (
     <Card
-      className="mt-4"
       data-testid="entity-summary-card-percentage"
       title={
         <Typography.Title level={5}>

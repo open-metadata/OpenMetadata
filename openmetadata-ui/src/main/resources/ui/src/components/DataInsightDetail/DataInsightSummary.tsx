@@ -27,10 +27,7 @@ const DataInsightSummary = () => {
           {t('label.data-insight-summary')}
         </Typography.Title>
       }>
-      <Row
-        className="mt-4"
-        data-testid="summary-card-content"
-        gutter={[16, 16]}>
+      <Row data-testid="summary-card-content" gutter={[16, 16]}>
         {OVERVIEW.map((summary, id) => (
           <Col data-testid="summary-item" key={id} span={4}>
             <Typography.Text>{summary.entityType}</Typography.Text>

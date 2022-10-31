@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { random, uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,41 +46,35 @@ const DescriptionInsight = () => {
           {t('label.data-insight-description-summary')}
         </Typography.Title>
       }>
-      <Row
-        className="mt-4"
-        data-testid="entity-summary-card-percentage-content">
-        <Col span={24}>
-          <ResponsiveContainer minHeight={400}>
-            <BarChart data={data} margin={BAR_CHART_MARGIN}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
+      <ResponsiveContainer minHeight={400}>
+        <BarChart data={data} margin={BAR_CHART_MARGIN}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="timestamp" />
 
-              <YAxis />
-              <Tooltip />
-              <Legend
-                align="left"
-                content={(props) => renderLegend(props as LegendProps, `65.8%`)}
-                layout="vertical"
-                verticalAlign="top"
-                wrapperStyle={{ left: '0px' }}
-              />
-              {entities.map((entity) => (
-                <Bar
-                  barSize={20}
-                  dataKey={entity}
-                  fill={
-                    DATA_INSIGHT_GRAPH_COLORS[
-                      random(0, DATA_INSIGHT_GRAPH_COLORS.length)
-                    ]
-                  }
-                  key={uniqueId()}
-                  stackId="description"
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </Col>
-      </Row>
+          <YAxis />
+          <Tooltip />
+          <Legend
+            align="left"
+            content={(props) => renderLegend(props as LegendProps, `65.8%`)}
+            layout="vertical"
+            verticalAlign="top"
+            wrapperStyle={{ left: '0px' }}
+          />
+          {entities.map((entity) => (
+            <Bar
+              barSize={20}
+              dataKey={entity}
+              fill={
+                DATA_INSIGHT_GRAPH_COLORS[
+                  random(0, DATA_INSIGHT_GRAPH_COLORS.length)
+                ]
+              }
+              key={uniqueId()}
+              stackId="description"
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
     </Card>
   );
 };

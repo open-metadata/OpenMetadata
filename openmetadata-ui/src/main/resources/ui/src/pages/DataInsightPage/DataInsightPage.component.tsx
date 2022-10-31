@@ -73,11 +73,23 @@ const DataInsightPage = () => {
         </Col>
         <Col span={24}>
           <DataInsightSummary />
+        </Col>
+        <Col span={24}>
           <TotalEntityInsight />
+        </Col>
+        <Col span={24}>
           <DescriptionInsight />
+        </Col>
+        <Col span={24}>
           <OwnerInsight />
+        </Col>
+        <Col span={24}>
           <TierInsight />
+        </Col>
+        <Col span={24}>
           <TopViewEntities />
+        </Col>
+        <Col span={24}>
           <TopActiveUsers />
         </Col>
       </Row>

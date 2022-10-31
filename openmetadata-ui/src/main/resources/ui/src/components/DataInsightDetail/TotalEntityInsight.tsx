@@ -40,43 +40,40 @@ const TotalEntityInsight = () => {
 
   return (
     <Card
-      className="mt-4"
       data-testid="entity-summary-card"
       title={
         <Typography.Title level={5}>
           {t('label.data-insight-total-entity-summary')}
         </Typography.Title>
       }>
-      <div className="mt-4" data-testid="entity-summary-card-content">
-        <ResponsiveContainer minHeight={400}>
-          <BarChart data={data} margin={BAR_CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="timestamp" />
-            <YAxis />
-            <Tooltip />
-            <Legend
-              align="left"
-              content={(props) => renderLegend(props as LegendProps, `897`)}
-              layout="vertical"
-              verticalAlign="top"
-              wrapperStyle={{ left: '0px' }}
+      <ResponsiveContainer minHeight={400}>
+        <BarChart data={data} margin={BAR_CHART_MARGIN}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="timestamp" />
+          <YAxis />
+          <Tooltip />
+          <Legend
+            align="left"
+            content={(props) => renderLegend(props as LegendProps, `897`)}
+            layout="vertical"
+            verticalAlign="top"
+            wrapperStyle={{ left: '0px' }}
+          />
+          {entities.map((entity) => (
+            <Bar
+              barSize={20}
+              dataKey={entity}
+              fill={
+                DATA_INSIGHT_GRAPH_COLORS[
+                  random(0, DATA_INSIGHT_GRAPH_COLORS.length)
+                ]
+              }
+              key={uniqueId()}
+              stackId="entityCount"
             />
-            {entities.map((entity) => (
-              <Bar
-                barSize={20}
-                dataKey={entity}
-                fill={
-                  DATA_INSIGHT_GRAPH_COLORS[
-                    random(0, DATA_INSIGHT_GRAPH_COLORS.length)
-                  ]
-                }
-                key={uniqueId()}
-                stackId="entityCount"
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
     </Card>
   );
 };
