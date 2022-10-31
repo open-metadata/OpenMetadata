@@ -14,6 +14,7 @@
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
@@ -55,12 +56,7 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-import {
-  DataTypeDisplayCellProps,
-  DescriptionCellProps,
-  EntityTableProps,
-  TagsCellProps,
-} from './EntityTable.interface';
+import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
 import './EntityTable.style.less';
 
 const EntityTable = ({
@@ -420,9 +416,9 @@ const EntityTable = ({
     );
   };
 
-  const DataTypeDisplayCell = ({
-    dataTypeDisplay,
-  }: DataTypeDisplayCellProps) => {
+  const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
+    dataTypeDisplay
+  ) => {
     return (
       <>
         {dataTypeDisplay ? (
@@ -451,7 +447,11 @@ const EntityTable = ({
     );
   };
 
-  const DescriptionCell = ({ record, index }: DescriptionCellProps) => {
+  const renderDescription: TableCellRendered<Column, 'description'> = (
+    _,
+    record,
+    index
+  ) => {
     return (
       <div className="hover-icon-group">
         <div className="d-inline-block">
@@ -525,7 +525,11 @@ const EntityTable = ({
     );
   };
 
-  const TagsCell = ({ record, index }: TagsCellProps) => {
+  const renderTags: TableCellRendered<Column, 'tags'> = (
+    _,
+    record: Column,
+    index: number
+  ) => {
     return (
       <div className="hover-icon-group">
         {isReadOnly ? (
@@ -601,7 +605,7 @@ const EntityTable = ({
     );
   };
 
-  const columns = useMemo(
+  const columns: ColumnsType<Column> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -624,18 +628,14 @@ const EntityTable = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
-        render: (dataTypeDisplay: Column['dataTypeDisplay']) => (
-          <DataTypeDisplayCell dataTypeDisplay={dataTypeDisplay} />
-        ),
+        render: renderDataTypeDisplay,
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        render: (_: Column['description'], record: Column, index: number) => (
-          <DescriptionCell index={index} record={record} />
-        ),
+        render: renderDescription,
       },
       {
         title: t('label.tags'),
@@ -643,9 +643,7 @@ const EntityTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (_: Column['tags'], record: Column, index: number) => (
-          <TagsCell index={index} record={record} />
-        ),
+        render: renderTags,
       },
     ],
     [editColumnTag, isTagLoading]

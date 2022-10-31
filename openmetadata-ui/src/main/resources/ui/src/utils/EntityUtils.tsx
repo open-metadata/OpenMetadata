@@ -425,10 +425,11 @@ export const searchInColumns = (
   searchText: string
 ): Column[] => {
   const searchedValue: Column[] = table.reduce((searchedCols, column) => {
+    const searchLowerCase = lowerCase(searchText);
     const isContainData =
-      lowerCase(column.name).includes(searchText) ||
-      lowerCase(column.description).includes(searchText) ||
-      lowerCase(getDataTypeString(column.dataType)).includes(searchText);
+      lowerCase(column.name).includes(searchLowerCase) ||
+      lowerCase(column.description).includes(searchLowerCase) ||
+      lowerCase(getDataTypeString(column.dataType)).includes(searchLowerCase);
 
     if (isContainData) {
       return [...searchedCols, column];
@@ -486,38 +487,41 @@ export const getFrequentlyJoinedColumns = (
   columnName: string,
   joins: Array<ColumnJoins>,
   columnLabel: string
-) =>
-  checkIfJoinsAvailable(columnName, joins) ? (
+) => {
+  const frequentlyJoinedWithColumns = getFrequentlyJoinedWithColumns(
+    columnName,
+    joins
+  );
+
+  return checkIfJoinsAvailable(columnName, joins) ? (
     <div className="m-t-sm" data-testid="frequently-joined-columns">
       <span className="tw-text-grey-muted m-r-xss">{columnLabel}:</span>
       <span>
-        {getFrequentlyJoinedWithColumns(columnName, joins)
-          .slice(0, 3)
-          .map((columnJoin, index) => (
-            <Fragment key={index}>
-              {index > 0 && <span className="m-r-xss">,</span>}
-              <Link
-                className="link-text"
-                to={getTableDetailsPath(
-                  getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
-                  getPartialNameFromTableFQN(columnJoin.fullyQualifiedName, [
-                    FqnPart.Column,
-                  ])
-                )}>
-                {getPartialNameFromTableFQN(
-                  columnJoin.fullyQualifiedName,
-                  [FqnPart.Database, FqnPart.Table, FqnPart.Column],
-                  FQN_SEPARATOR_CHAR
-                )}
-              </Link>
-            </Fragment>
-          ))}
+        {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
+          <Fragment key={index}>
+            {index > 0 && <span className="m-r-xss">,</span>}
+            <Link
+              className="link-text"
+              to={getTableDetailsPath(
+                getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
+                getPartialNameFromTableFQN(columnJoin.fullyQualifiedName, [
+                  FqnPart.Column,
+                ])
+              )}>
+              {getPartialNameFromTableFQN(
+                columnJoin.fullyQualifiedName,
+                [FqnPart.Database, FqnPart.Table, FqnPart.Column],
+                FQN_SEPARATOR_CHAR
+              )}
+            </Link>
+          </Fragment>
+        ))}
 
-        {getFrequentlyJoinedWithColumns(columnName, joins).length > 3 && (
+        {frequentlyJoinedWithColumns.length > 3 && (
           <PopOver
             html={
               <div className="text-left">
-                {getFrequentlyJoinedWithColumns(columnName, joins)
+                {frequentlyJoinedWithColumns
                   ?.slice(3)
                   .map((columnJoin, index) => (
                     <Fragment key={index}>
@@ -550,3 +554,4 @@ export const getFrequentlyJoinedColumns = (
       </span>
     </div>
   ) : null;
+};

@@ -12,6 +12,7 @@
  */
 
 import { EntityFieldThreads } from 'Models';
+import { ReactNode } from 'react';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
 
@@ -32,15 +33,12 @@ export interface EntityTableProps {
   onEntityFieldSelect?: (value: string) => void;
 }
 
-export interface DescriptionCellProps {
-  record: Column;
-  index: number;
-}
+export type TableCellRendered<T, K extends keyof T> = (
+  value: T[K],
+  record: T,
+  index: number
+) => ReactNode;
 
-export interface TagsCellProps {
-  record: Column;
-  index: number;
-}
 export interface DataTypeDisplayCellProps {
   dataTypeDisplay: Column['dataTypeDisplay'];
 }

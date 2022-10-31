@@ -138,7 +138,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
                   onClick={(e) =>
                     onExpand(
                       record,
-                      e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
+                      e as unknown as React.MouseEvent<HTMLElement>
                     )
                   }
                 />
