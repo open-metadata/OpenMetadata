@@ -388,23 +388,16 @@ describe('Test DatabaseDetails page', () => {
       container,
       'database-databaseSchemas'
     );
-    const tableHeader = await findByTestId(container, 'table-header');
-    const headerName = await findByTestId(container, 'header-name');
-    const headerDescription = await findByTestId(
-      container,
-      'header-description'
-    );
-    const headerOwner = await findByTestId(container, 'header-owner');
-    const headerUsage = await findByTestId(container, 'header-usage');
-    const tableColumn = await findByTestId(container, 'table-column');
+    const headerName = await findByText(container, 'Schema Name');
+    const headerDescription = await findByText(databaseTable, 'Description');
+    const headerOwner = await findByText(container, 'Owner');
+    const headerUsage = await findByText(container, 'Usage');
 
     expect(databaseTable).toBeInTheDocument();
-    expect(tableHeader).toBeInTheDocument();
     expect(headerName).toBeInTheDocument();
     expect(headerDescription).toBeInTheDocument();
     expect(headerOwner).toBeInTheDocument();
     expect(headerUsage).toBeInTheDocument();
-    expect(tableColumn).toBeInTheDocument();
   });
 
   it('Should render error placeholder if getDatabase Details Api fails', async () => {

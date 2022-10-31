@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -243,22 +244,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * org.openmetadata.service.resources.teams.RoleResource#initialize(OpenMetadataApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
-    List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", entityType));
+    List<T> entities = getEntitiesFromSeedData();
+    for (T entity : entities) {
+      initializeEntity(entity);
+    }
+  }
+
+  public List<T> getEntitiesFromSeedData() throws IOException {
+    return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
+  }
+
+  public List<T> getEntitiesFromSeedData(String path) throws IOException {
+    return getEntitiesFromSeedData(entityType, path, entityClass);
+  }
+
+  public static <U> List<U> getEntitiesFromSeedData(String entityType, String path, Class<U> clazz) throws IOException {
+    List<U> entities = new ArrayList<>();
+    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
-            initSeedData(JsonUtils.readValue(json, entityClass));
+            String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFile);
+            json = json.replace("<separator>", Entity.SEPARATOR);
+            entities.add(JsonUtils.readValue(json, clazz));
           } catch (Exception e) {
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
           }
         });
+    return entities;
   }
 
   /** Initialize a given entity if it does not exist. */
   @Transaction
-  public void initSeedData(T entity) throws IOException {
+  public void initializeEntity(T entity) throws IOException {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
       LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
@@ -288,6 +306,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
+  public final T findOrNull(UUID id, String fields, Include include) throws IOException {
+    String json = dao.findJsonById(id, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+  }
+
+  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
     return getByName(uriInfo, fqn, fields, NON_DELETED);
   }
@@ -295,6 +319,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
     return withHref(uriInfo, setFieldsInternal(dao.findEntityByName(fqn, include), fields));
+  }
+
+  @Transaction
+  public final T findByNameOrNull(String fqn, String fields, Include include) throws IOException {
+    String json = dao.findJsonByFqn(fqn, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
   }
 
   @Transaction
@@ -402,7 +432,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   T setFieldsInternal(T entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
-    entity.setExtension(fields.contains("extension") ? getExtension(entity) : null);
+    entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
     setFields(entity, fields);
     return entity;
   }
@@ -1019,19 +1049,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
   }
 
-  public EntityReference getOriginalOwner(T entity) throws IOException {
-    if (!supportsOwner) {
-      return null;
-    }
-    // Try to find the owner if entity exists
-    String json = dao.findJsonByFqn(entity.getFullyQualifiedName(), NON_DELETED);
-    if (json == null) {
-      return null; // Entity does not exist
-    }
-    entity = JsonUtils.readValue(json, entityClass);
-    return getOwner(entity);
-  }
-
   public void populateOwner(EntityReference owner) throws IOException {
     if (owner == null) {
       return;
@@ -1080,17 +1097,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected String getCustomPropertyFQN(String entityType, String propertyName) {
     return FullyQualifiedName.build(entityType, "customProperties", propertyName);
-  }
-
-  public static List<UUID> toIds(List<String> ids) {
-    if (ids == null) {
-      return Collections.emptyList();
-    }
-    List<UUID> uuids = new ArrayList<>();
-    for (String id : ids) {
-      uuids.add(UUID.fromString(id));
-    }
-    return uuids;
   }
 
   protected List<EntityReference> getIngestionPipelines(T service) throws IOException {
@@ -1296,10 +1302,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
       if (!added.isEmpty()) {
-        fieldAdded(changeDescription, "extension", JsonUtils.pojoToJson(added));
+        fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(added));
       }
       if (!deleted.isEmpty()) {
-        fieldDeleted(changeDescription, "extension", JsonUtils.pojoToJson(deleted));
+        fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deleted));
       }
       removeExtension(original);
       storeExtension(updated);

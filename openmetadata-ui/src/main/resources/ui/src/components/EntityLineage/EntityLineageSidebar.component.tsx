@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
-import { Node } from 'react-flow-renderer';
+import { Node } from 'reactflow';
 import { entityData } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 

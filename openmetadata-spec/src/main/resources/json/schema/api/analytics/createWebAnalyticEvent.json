@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tests/createWebAnalyticEvent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateWebAnalyticEvent",
+  "description": "Payload to create a web analytic event",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.CreateWebAnalyticEvent",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this report definition.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name the report definition.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the report definition.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "eventType": {
+      "description": "dimension(s) and metric(s) for a report",
+      "$ref": "../../analytics/basic.json#/definitions/webAnalyticEventType"
+    },
+    "owner": {
+      "description": "Owner of this report definition",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "eventType"],
+  "additionalProperties": false
+}

@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from "../../../src/utils/TimeUtils";
-import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import {
+    getCurrentLocaleDate,
+    getFutureLocaleDateFromCurrentDate
+} from '../../../src/utils/TimeUtils';
+import {
+    descriptionBox,
+    interceptURL,
+    login,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
+} from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -22,7 +31,7 @@ describe('Entity Details Page', () => {
   });
 
   const deleteEntity = (value) => {
-    const singuler = value.entity.slice(0, -1);
+    const singular = value.entity.slice(0, -1);
     // search for the term and redirect to the respective entity tab
 
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
@@ -42,7 +51,7 @@ describe('Entity Details Page', () => {
       .as('deleteBtn');
 
     cy.get('[data-testid="hard-delete-option"]')
-      .should('contain', `Permanently Delete ${singuler} “${value.term}”`)
+      .should('contain', `Permanently Delete ${singular} “${value.term}”`)
       .should('be.visible')
       .as('permanentDelete');
 
@@ -74,7 +83,7 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="message-container"]')
       .first()
       .scrollIntoView()
-      .contains(`Deleted ${singuler}`)
+      .contains(`Deleted ${singular}`)
       .should('be.visible');
 
     // data not found should be visible while redirecting to the deleted entity details page
@@ -83,7 +92,7 @@ describe('Entity Details Page', () => {
       const fqn = loc.split('/').pop();
       cy.get('.Toastify__toast-body > :nth-child(2)')
         .should('be.visible')
-        .should('contain', `${singuler} instance for ${fqn} not found`);
+        .should('contain', `${singular} instance for ${fqn} not found`);
 
       cy.get('.Toastify__close-button > svg')
         .first()
@@ -91,7 +100,7 @@ describe('Entity Details Page', () => {
         .click();
       cy.get('[data-testid="no-data-image"]').should('be.visible');
       cy.contains(
-        `${Cypress._.startCase(singuler)} instance for ${fqn} not found`
+        `${Cypress._.startCase(singular)} instance for ${fqn} not found`
       ).should('be.visible');
     });
     cy.clickOnLogo();
@@ -181,6 +190,55 @@ describe('Entity Details Page', () => {
     cy.clickOnLogo();
   };
 
+  const removeOwnerAndTier = (value) => {
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      'waitForTeams'
+    );
+
+    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@waitForTeams', 200);
+    //Clicking on users tab
+    cy.get('[data-testid="dropdown-tab"]')
+      .contains('Users')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    interceptURL('PATCH', `/api/v1/*/*`, 'removeOwner');
+    //Removing the user
+    cy.get('[data-testid="remove-owner"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@removeOwner', 200);
+
+    //Check if user exist
+    cy.get('[data-testid="entity-summary-details"]')
+      .first()
+      .scrollIntoView()
+      .should('exist')
+      .contains('No Owner');
+
+    cy.get('[data-testid="edit-Tier-icon"]')
+      .scrollIntoView()
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="remove-tier"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.clickOnLogo();
+  };
+
   const addAnnouncement = (value) => {
     const startDate = getCurrentLocaleDate();
     const endDate = getFutureLocaleDateFromCurrentDate(5);
@@ -221,20 +279,19 @@ describe('Entity Details Page', () => {
   };
 
   it('Add Owner and Tier for entity', () => {
-    Object.values(DELETE_ENTITY).forEach((value) => {
-      addOwnerAndTier(value);
-    });
+    
+    addOwnerAndTier(DELETE_ENTITY.table);
+  });
+
+  it('Remove Owner and Tier for entity', () => {
+    removeOwnerAndTier(DELETE_ENTITY.table);
   });
 
   it('Add and check active announcement for the entity', () => {
-    Object.values(DELETE_ENTITY).forEach((value) => {
-      addAnnouncement(value);
-    });
+    addAnnouncement(DELETE_ENTITY.table);
   });
 
   it('Delete entity flow should work properly', () => {
-    Object.values(DELETE_ENTITY).forEach((value) => {
-      deleteEntity(value);
-    });
+    deleteEntity(DELETE_ENTITY.table);
   });
 });

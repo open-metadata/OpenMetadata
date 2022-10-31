@@ -15,6 +15,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -41,6 +42,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -107,6 +109,7 @@ const PipelineDetails = ({
   entityFieldTaskCount,
   onExtensionUpdate,
 }: PipeLineDetailsProp) => {
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -274,6 +277,26 @@ const PipelineDetails = ({
     }
   };
 
+  const onOwnerRemove = () => {
+    if (pipelineDetails) {
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
+
+  const onTierRemove = () => {
+    if (pipelineDetails) {
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Pipeline['tags'] = newTier
@@ -334,6 +357,10 @@ const PipelineDetails = ({
     }
   };
 
+  const handleFullScreenClick = () => {
+    history.push(getLineageViewPath(EntityType.PIPELINE, pipelineFQN));
+  };
+
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -379,6 +406,7 @@ const PipelineDetails = ({
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
+          currentOwner={pipelineDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -399,6 +427,16 @@ const PipelineDetails = ({
           isFollowing={isFollowing}
           isTagEditable={
             pipelinePermissions.EditAll || pipelinePermissions.EditTags
+          }
+          removeOwner={
+            pipelinePermissions.EditAll || pipelinePermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            pipelinePermissions.EditAll || pipelinePermissions.EditTier
+              ? onTierRemove
+              : undefined
           }
           tags={pipelineTags}
           tagsHandler={onTagUpdate}
@@ -509,7 +547,7 @@ const PipelineDetails = ({
                 </div>
               )}
               {activeTab === 3 && (
-                <div className="tw-h-full tw-px-3">
+                <div className="h-full">
                   <EntityLineageComponent
                     addLineageHandler={addLineageHandler}
                     deleted={deleted}
@@ -525,6 +563,7 @@ const PipelineDetails = ({
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}

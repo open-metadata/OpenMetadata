@@ -132,8 +132,6 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
-  botPrincipals:
-    - "ingestion-bot"
   # Added only for test purposes and not for production setup
   testPrincipals:
     - "test"
@@ -177,7 +175,10 @@ airflowConfiguration:
 
 email:
   enableSmtpServer : false
+  emailingEntity: ""
+  supportUrl: ""
   openMetadataUrl: ""
+  senderMail: ""
   serverEndpoint: ""
   serverPort: ""
   username: ""

@@ -20,7 +20,7 @@ import {
   NodeProps,
   Position,
   useUpdateNodeInternals,
-} from 'react-flow-renderer';
+} from 'reactflow';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';

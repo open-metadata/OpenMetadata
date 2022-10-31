@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -490,7 +490,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const saveUpdatedTableData = (updatedData: Table) => {
-    const jsonPatch = compare(tableDetails, updatedData);
+    const jsonPatch = compare(omitBy(tableDetails, isUndefined), updatedData);
 
     return patchTableDetails(tableId, jsonPatch);
   };

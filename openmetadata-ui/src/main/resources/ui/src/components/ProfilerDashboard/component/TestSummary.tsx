@@ -14,7 +14,7 @@
 import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import {
   Legend,
   Line,
@@ -40,9 +40,9 @@ import {
 } from '../../../generated/tests/testCase';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
-  getDateToMilliSecondsOfCurrentDate,
+  getCurrentDateTimeStamp,
   getFormattedDateFromSeconds,
-  getPastDatesToMilliSecondsFromCurrentDate,
+  getPastDatesTimeStampFromCurrentDate,
 } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
@@ -104,7 +104,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     });
   };
 
-  const updatedDot: LineProps['dot'] = (props) => {
+  const updatedDot: LineProps['dot'] = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    props: any
+  ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
     const fill =
       payload.status === TestCaseStatus.Success
@@ -130,11 +133,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (isEmpty(data)) return;
 
     try {
-      const startTs = getPastDatesToMilliSecondsFromCurrentDate(
+      const startTs = getPastDatesTimeStampFromCurrentDate(
         PROFILER_FILTER_RANGE[selectedTimeRange].days
       );
 
-      const endTs = getDateToMilliSecondsOfCurrentDate();
+      const endTs = getCurrentDateTimeStamp();
 
       const { data: chartData } = await getListTestCaseResults(
         getEncodedFqn(data.fullyQualifiedName || ''),
@@ -217,7 +220,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             </Space>
 
             {results.length ? (
-              <ResponsiveContainer className="tw-bg-white" minHeight={300}>
+              <ResponsiveContainer
+                className="tw-bg-white"
+                id={`${data.name}_graph`}
+                minHeight={300}>
                 <LineChart
                   data={chartData.data}
                   margin={{

@@ -143,6 +143,18 @@ class SouceConnectionTest(TestCase):
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
+        # Passing @ in username and password
+        expected_result = "hive://username%40444:password%40333@localhost:10000"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username@444",
+            password="password@333",
+            hostPort="localhost:10000",
+            connectionArguments={"auth": "CUSTOM"},
+        )
+
+        assert expected_result == get_connection_url(hive_conn_obj)
+
     def test_hive_url_conn_options_with_db(self):
         expected_result = "hive://localhost:10000/test_db?Key=Value"
         hive_conn_obj = HiveConnection(
@@ -204,6 +216,18 @@ class SouceConnectionTest(TestCase):
             password="pass",
             catalog="catalog",
         )
+        assert expected_url == get_connection_url(trino_conn_obj)
+
+        # Passing @ in username and password
+        expected_url = "trino://username%40444:pass%40111@localhost:443/catalog"
+        trino_conn_obj = TrinoConnection(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username@444",
+            password="pass@111",
+            catalog="catalog",
+        )
+
         assert expected_url == get_connection_url(trino_conn_obj)
 
     def test_trino_conn_arguments(self):
@@ -290,6 +314,18 @@ class SouceConnectionTest(TestCase):
             == get_connection_args(trino_conn_obj).get("http_session").proxies
         )
 
+    def test_trino_without_catalog(self):
+        # Test trino url without catalog
+        expected_url = "trino://username:pass@localhost:443"
+        trino_conn_obj = TrinoConnection(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            password="pass",
+        )
+
+        assert expected_url == get_connection_url(trino_conn_obj)
+
     def test_vertica_url(self):
         expected_url = (
             "vertica+vertica_python://username:password@localhost:5443/database"
@@ -301,6 +337,18 @@ class SouceConnectionTest(TestCase):
             password="password",
             database="database",
         )
+        assert expected_url == get_connection_url(vertica_conn_obj)
+
+        # Passing @ in username and password
+        expected_url = "vertica+vertica_python://username%40444:password%40123@localhost:5443/database"
+        vertica_conn_obj = VerticaConnection(
+            scheme=VerticaScheme.vertica_vertica_python,
+            hostPort="localhost:5443",
+            username="username@444",
+            password="password@123",
+            database="database",
+        )
+
         assert expected_url == get_connection_url(vertica_conn_obj)
 
     def test_druid_url(self):
@@ -473,6 +521,19 @@ class SouceConnectionTest(TestCase):
             warehouse="COMPUTE_WH",
             account="ue18849.us-east-2.aws",
         )
+        assert expected_url == get_connection_url(snowflake_conn_obj)
+
+    def test_snowflake_url(self):
+        # Passing @ in username and password
+        expected_url = "snowflake://coding%40444:Abhi%40123@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
+        snowflake_conn_obj = SnowflakeConnection(
+            scheme=SnowflakeScheme.snowflake,
+            username="coding@444",
+            password="Abhi@123",
+            warehouse="COMPUTE_WH",
+            account="ue18849.us-east-2.aws",
+        )
+
         assert expected_url == get_connection_url(snowflake_conn_obj)
 
         # connection arguments with db
@@ -718,6 +779,19 @@ class SouceConnectionTest(TestCase):
 
         assert expected_url == get_connection_url(mssql_conn_obj)
 
+    def test_mssql_url(self):
+        # Passing @ in username and password
+        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433"
+        mssql_conn_obj = MssqlConnection(
+            username="sa@123",
+            password="password@444",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database=None,
+        )
+
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
         # connection arguments witho db
         expected_url = "mssql+pytds://sa:password@localhost:1433/catalog_test"
         mssql_conn_obj = MssqlConnection(
@@ -739,6 +813,31 @@ class SouceConnectionTest(TestCase):
             scheme=PrestoScheme.presto,
             catalog="test_catalog",
         )
+        assert expected_url == get_connection_url(presto_conn_obj)
+
+        # Passing @ in username and password
+        expected_url = "presto://admin%40333:pass%40111@localhost:8080/test_catalog"
+
+        presto_conn_obj = PrestoConnection(
+            username="admin@333",
+            password="pass@111",
+            hostPort="localhost:8080",
+            scheme=PrestoScheme.presto,
+            catalog="test_catalog",
+        )
+
+        assert expected_url == get_connection_url(presto_conn_obj)
+
+    def test_presto_without_catalog(self):
+        # Test presto url without catalog
+        expected_url = "presto://username:pass@localhost:8080"
+        presto_conn_obj = PrestoConnection(
+            scheme=PrestoScheme.presto,
+            hostPort="localhost:8080",
+            username="username",
+            password="pass",
+        )
+
         assert expected_url == get_connection_url(presto_conn_obj)
 
     def test_oracle_url(self):

@@ -75,6 +75,7 @@ const EditAnnouncementModal: FC<Props> = ({
     <Modal
       centered
       className="announcement-modal"
+      closable={false}
       data-testid="edit-announcement"
       okButtonProps={{
         form: 'announcement-form',

@@ -46,8 +46,8 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import {
-  getDateToMilliSecondsOfCurrentDate,
-  getPastDatesToMilliSecondsFromCurrentDate,
+  getCurrentDateTimeStamp,
+  getPastDatesTimeStampFromCurrentDate,
 } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -89,15 +89,15 @@ const ProfilerDashboardPage = () => {
 
   const fetchProfilerData = async (fqn: string, days = 3) => {
     try {
-      const startTs = getPastDatesToMilliSecondsFromCurrentDate(days);
+      const startTs = getPastDatesTimeStampFromCurrentDate(days);
 
-      const endTs = getDateToMilliSecondsOfCurrentDate();
+      const endTs = getCurrentDateTimeStamp();
 
       const { data } = await getColumnProfilerList(fqn, {
         startTs,
         endTs,
       });
-      setProfilerData(data || []);
+      setProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

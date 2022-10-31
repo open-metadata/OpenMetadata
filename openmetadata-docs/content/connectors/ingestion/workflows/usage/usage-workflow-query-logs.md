@@ -11,6 +11,7 @@ The following database connectors supports usage workflow in OpenMetadata:
 - [MSSQL](/connectors/database/mssql)
 - [Redshift](/connectors/database/redshift)
 - [Clickhouse](/connectors/database/clickhouse)
+- [Databricks](/connectors/database/databricks)
 
 If you are using any other database connector, direct execution of usage workflow is not possible. This is mainly because these database connectors does not maintain query execution logs which is required for usage workflow. This documentation will help you to learn, how to execute the usage workflow using a query log file for all the database connectors.
 

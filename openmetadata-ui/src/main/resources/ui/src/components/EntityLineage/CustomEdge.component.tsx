@@ -12,8 +12,8 @@
  */
 
 import React, { Fragment } from 'react';
-import { EdgeProps, getBezierPath, getEdgeCenter } from 'react-flow-renderer';
-import { foreignObjectSize } from '../../constants/Lineage.constants';
+import { EdgeProps, getBezierPath } from 'reactflow';
+import { FOREIGN_OBJECT_SIZE } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
 
@@ -33,7 +33,7 @@ export const CustomEdge = ({
   const { onEdgeClick, ...rest } = data;
   const offset = 4;
 
-  const edgePath = getBezierPath({
+  const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -41,7 +41,7 @@ export const CustomEdge = ({
     targetY,
     targetPosition,
   });
-  const invisibleEdgePath = getBezierPath({
+  const [invisibleEdgePath] = getBezierPath({
     sourceX: sourceX + offset,
     sourceY: sourceY + offset,
     sourcePosition,
@@ -49,20 +49,13 @@ export const CustomEdge = ({
     targetY: targetY + offset,
     targetPosition,
   });
-  const invisibleEdgePath1 = getBezierPath({
+  const [invisibleEdgePath1] = getBezierPath({
     sourceX: sourceX - offset,
     sourceY: sourceY - offset,
     sourcePosition,
     targetX: targetX - offset,
     targetY: targetY - offset,
     targetPosition,
-  });
-
-  const [edgeCenterX, edgeCenterY] = getEdgeCenter({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
   });
 
   const getInvisiblePath = (path: string) => {
@@ -94,11 +87,11 @@ export const CustomEdge = ({
       {selected ? (
         <foreignObject
           data-testid="delete-button"
-          height={foreignObjectSize}
+          height={FOREIGN_OBJECT_SIZE}
           requiredExtensions="http://www.w3.org/1999/xhtml"
-          width={foreignObjectSize}
-          x={edgeCenterX - foreignObjectSize / offset}
-          y={edgeCenterY - foreignObjectSize / offset}>
+          width={FOREIGN_OBJECT_SIZE}
+          x={edgeCenterX - FOREIGN_OBJECT_SIZE / offset}
+          y={edgeCenterY - FOREIGN_OBJECT_SIZE / offset}>
           <button
             className="tw-cursor-pointer tw-flex tw-z-9999"
             onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>

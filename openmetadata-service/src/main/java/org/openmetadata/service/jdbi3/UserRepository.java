@@ -65,18 +65,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
+    List<String> tempFields = getAllowedFieldsCopy();
     if (fields != null && fields.equals("*")) {
-      List<String> tempFields = getAllowedFieldsCopy();
       tempFields.add("authenticationMechanism");
-      return new Fields(allowedFields, String.join(",", tempFields));
+      return new Fields(tempFields, String.join(",", tempFields));
     }
-    return new Fields(allowedFields, fields);
-  }
-
-  @Override
-  public EntityReference getOriginalOwner(User entity) {
-    // For User entity, the entity and the owner are the same
-    return entity.getEntityReference();
+    return new Fields(tempFields, fields);
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
@@ -99,7 +93,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getInheritedRoles(User user) throws IOException {
     getTeams(user);
-    return SubjectCache.getInstance().getRolesForTeams(getTeams(user));
+    return SubjectCache.getInstance() != null ? SubjectCache.getInstance().getRolesForTeams(getTeams(user)) : null;
   }
 
   @Override

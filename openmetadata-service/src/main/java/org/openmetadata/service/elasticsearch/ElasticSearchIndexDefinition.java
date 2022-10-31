@@ -1,7 +1,7 @@
 package org.openmetadata.service.elasticsearch;
 
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
@@ -16,6 +16,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -34,6 +35,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
+  private static final String REASON_TRACE = "Reason: [%s] , Trace : [%s]";
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
@@ -115,12 +117,16 @@ public class ElasticSearchIndexDefinition {
     } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
-          EventPublisherJob.Status.ACTIVEWITHERROR,
-          String.format("Failed to create Elastic Search indexes due to: %s", e.getMessage()));
+          getContext("Creating Index", elasticSearchIndexType.indexName),
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to create Elastic Search indexes due to", e);
       return false;
     }
     return true;
+  }
+
+  private String getContext(String type, String info) {
+    return String.format("Failed While : %s \n Additional Info:  %s ", type, info);
   }
 
   private void updateIndex(ElasticSearchIndexType elasticSearchIndexType) {
@@ -144,8 +150,8 @@ public class ElasticSearchIndexDefinition {
     } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
-          EventPublisherJob.Status.ACTIVEWITHERROR,
-          String.format("Failed to update Elastic Search indexes due to: %s", e.getMessage()));
+          getContext("Updating Index", elasticSearchIndexType.indexName),
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to update Elastic Search indexes due to", e);
     }
   }
@@ -162,8 +168,8 @@ public class ElasticSearchIndexDefinition {
       }
     } catch (IOException e) {
       updateElasticSearchFailureStatus(
-          EventPublisherJob.Status.ACTIVEWITHERROR,
-          String.format("Failed to delete Elastic Search indexes due to: %s", e.getMessage()));
+          getContext("Deleting Index", elasticSearchIndexType.indexName),
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }
@@ -202,17 +208,20 @@ public class ElasticSearchIndexDefinition {
     throw new RuntimeException("Failed to find index doc for type " + type);
   }
 
-  private void updateElasticSearchFailureStatus(EventPublisherJob.Status status, String failureMessage) {
+  private void updateElasticSearchFailureStatus(String failedFor, String failureMessage) {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
           dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
-      lastRecord.setStatus(status);
+      lastRecord.setStatus(EventPublisherJob.Status.ACTIVEWITHERROR);
       lastRecord.setTimestamp(updateTime);
       lastRecord.setFailureDetails(
-          new FailureDetails().withLastFailedAt(updateTime).withLastFailedReason(failureMessage));
+          new FailureDetails()
+              .withContext(failedFor)
+              .withLastFailedAt(updateTime)
+              .withLastFailedReason(failureMessage));
 
       dao.entityExtensionTimeSeriesDao()
           .update(

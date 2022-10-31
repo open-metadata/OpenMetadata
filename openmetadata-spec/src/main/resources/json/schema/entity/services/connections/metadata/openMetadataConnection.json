@@ -176,6 +176,11 @@
       "type": "integer",
       "default": "1000"
     },
+    "forceEntityOverwriting": {
+      "description": "Force the overwriting of any entity during the ingestion.",
+      "type": "boolean",
+      "default": false
+    },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }

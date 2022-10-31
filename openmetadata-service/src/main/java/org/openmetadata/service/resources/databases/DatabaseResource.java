@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -83,10 +82,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public static class DatabaseList extends ResultList<Database> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
     DatabaseList() {}
-
-    public DatabaseList(List<Database> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = "owner,databaseSchemas,usageSummary,location";
@@ -275,7 +270,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, database, true);
+    return create(uriInfo, securityContext, database);
   }
 
   @PATCH
@@ -320,7 +315,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, database, true);
+    return createOrUpdate(uriInfo, securityContext, database);
   }
 
   @DELETE
@@ -364,7 +359,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           boolean hardDelete,
       @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private Database getDatabase(CreateDatabase create, String user) throws IOException {

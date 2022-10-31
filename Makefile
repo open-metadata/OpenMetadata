@@ -81,7 +81,7 @@ devgenerate:  ## Generate the pydantic models from the JSON Schemas to the inges
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
@@ -97,14 +97,15 @@ run_python_tests:  ## Run all Python tests with coverage
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
-	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
+	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml || true
+	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
 	docker run \
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
+		-e SONAR_SCANNER_OPTS="-Xmx1g" \
 		-e SONAR_LOGIN=$(token) \
 		-v ${PWD}/ingestion:/usr/src \
 		sonarsource/sonar-scanner-cli \
@@ -120,7 +121,7 @@ run_apis_tests:  ## Run the openmetadata airflow apis tests
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	$(MAKE) run_apis_tests
 	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
+	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
 ## Ingestion publish
 .PHONY: publish

@@ -145,14 +145,6 @@
         </exclusion>
         <exclusion>
           <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-misc</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-sandbox</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
           <artifactId>lucene-spatial</artifactId>
         </exclusion>
         <exclusion>
@@ -375,7 +367,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.46.v20220331</version>
+      <version>9.4.49.v20220914</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -407,6 +399,11 @@
       <groupId>net.jodah</groupId>
       <artifactId>expiringmap</artifactId>
       <version>${expiring.map.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.unboundid</groupId>
+      <artifactId>unboundid-ldapsdk</artifactId>
+      <version>${unboundsdk.version}</version>
     </dependency>
   </dependencies>
 
@@ -499,10 +496,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.10.3</version>
-        <configuration>
-          <additionalparam>-Xdoclint:none</additionalparam>
-        </configuration>
         <executions>
           <execution>
             <id>attach-javadocs</id>

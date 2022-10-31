@@ -95,7 +95,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     super(Policy.class, new PolicyRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method is used for reflection
+  @SuppressWarnings("unused") // Method is used by reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
@@ -106,10 +106,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     @SuppressWarnings("unused")
     PolicyList() {
       // Empty constructor needed for deserialization
-    }
-
-    public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -328,7 +324,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, policy, true);
+    return create(uriInfo, securityContext, policy);
   }
 
   @PATCH
@@ -377,7 +373,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, policy, true);
+    Response response = createOrUpdate(uriInfo, securityContext, policy);
     PolicyCache.getInstance().invalidatePolicy(policy.getId());
     return response;
   }
@@ -402,7 +398,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           boolean hardDelete,
       @Parameter(description = "Policy Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     PolicyCache.getInstance().invalidatePolicy(id);
     return response;
   }

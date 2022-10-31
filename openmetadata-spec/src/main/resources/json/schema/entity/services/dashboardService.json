@@ -22,7 +22,8 @@
         "Metabase",
         "PowerBI",
         "Mode",
-        "CustomDashboard"
+        "CustomDashboard",
+        "DomoDashboard"
       ],
       "javaEnums": [
         {
@@ -48,6 +49,9 @@
         },
         {
           "name": "CustomDashboard"
+        },
+        {
+          "name": "DomoDashboard"
         }
       ]
     },
@@ -85,6 +89,9 @@
             },
             {
               "$ref": "./connections/dashboard/customDashboardConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/domodashboardConnection.json"
             }
           ]
         }

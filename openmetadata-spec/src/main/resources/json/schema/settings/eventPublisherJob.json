@@ -72,6 +72,7 @@
       "description": "This schema publisher run job status.",
       "type": "string",
       "enum": [
+        "STARTING",
         "ACTIVE",
         "RETRY",
         "ACTIVEWITHERROR",
@@ -83,6 +84,10 @@
       "description": "Failure details are set only when `status` is not `success`.",
       "type": "object",
       "properties": {
+        "context" : {
+          "description": "Additional Context for Failure.",
+          "type": "string"
+        },
         "lastFailedAt": {
           "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
           "$ref": "../type/basic.json#/definitions/timestamp"

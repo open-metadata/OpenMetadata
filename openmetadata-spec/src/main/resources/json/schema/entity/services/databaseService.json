@@ -42,6 +42,7 @@
         "SampleData",
         "PinotDB",
         "Datalake",
+        "DomoDatabase",
         "CustomDatabase"
       ],
       "javaEnums": [
@@ -125,6 +126,9 @@
         },
         {
           "name": "Datalake"
+        },
+        {
+          "name": "DomoDatabase"
         },
         {
           "name": "CustomDatabase"
@@ -221,6 +225,9 @@
             },
             {
               "$ref": "./connections/database/datalakeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/domodatabaseConnection.json"
             },
             {
               "$ref": "./connections/database/customDatabaseConnection.json"

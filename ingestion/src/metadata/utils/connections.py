@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate
+#  Copyright 2021 Collate #pylint: disable=too-many-lines
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -34,6 +34,7 @@ from metadata.clients.connection_clients import (
     DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
+    DomoClient,
     DynamoClient,
     FivetranClient,
     GlueDBClient,
@@ -53,6 +54,9 @@ from metadata.clients.connection_clients import (
 from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
+    DomoDashboardConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -89,6 +93,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+    DomoDatabaseConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -121,6 +128,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.backendConne
 )
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.domopipelineConnection import (
+    DomoPipelineConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
@@ -968,3 +978,78 @@ def _(connection: DagsterClient) -> None:
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(connection: DomoDashboardConnection) -> None:
+    from pydomo import Domo
+
+    try:
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoClient) -> None:
+    try:
+        connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: DomoPipelineConnection) -> None:
+    from pydomo import Domo
+
+    try:
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoClient) -> None:
+    try:
+        connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: DomoDatabaseConnection) -> None:
+    from pydomo import Domo
+
+    try:
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoClient) -> None:
+    try:
+        connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)

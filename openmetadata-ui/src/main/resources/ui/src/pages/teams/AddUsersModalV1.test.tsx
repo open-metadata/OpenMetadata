@@ -123,10 +123,33 @@ jest.mock('../../axiosAPIs/userAPI', () => {
   };
 });
 
+jest.mock('antd', () => {
+  return {
+    List: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="list">{children}</div>
+      )),
+    Modal: jest
+      .fn()
+      .mockImplementation(({ children, title, onCancel, onOk }) => (
+        <div data-testid="modal-container">
+          <p data-testid="header">{title}</p>
+          {children}
+          <div data-testid="cta-container">
+            <button onClick={onCancel}>Cancel</button>
+            <button onClick={onOk}>Save</button>
+          </div>
+        </div>
+      )),
+  };
+});
+
 describe('Test AddUsersModal component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <AddUsersModal
+        isVisible
         header="Adding new users"
         list={mockUserList}
         onCancel={mockCancel}
@@ -147,6 +170,7 @@ describe('Test AddUsersModal component', () => {
   it('UserCard should be equal to length of list', async () => {
     const { container } = render(
       <AddUsersModal
+        isVisible
         header="Adding new users"
         list={mockUserList}
         onCancel={mockCancel}
@@ -161,6 +185,7 @@ describe('Test AddUsersModal component', () => {
   it('Onclick of Discard button, onCancel callback should called', async () => {
     const { container } = render(
       <AddUsersModal
+        isVisible
         header="Adding new users"
         list={mockUserList}
         onCancel={mockCancel}
@@ -176,6 +201,7 @@ describe('Test AddUsersModal component', () => {
   it('Onclick of Save button, onSave callback should called', async () => {
     const { container } = render(
       <AddUsersModal
+        isVisible
         header="Adding new users"
         list={mockUserList}
         onCancel={mockCancel}

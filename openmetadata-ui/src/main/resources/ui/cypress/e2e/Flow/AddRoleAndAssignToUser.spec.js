@@ -60,8 +60,6 @@ describe("Test Add role and assign it to the user", () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Clicking outside to close the dropdown
-    cy.get('.ant-card-body').click();
     //Save the role
     cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()

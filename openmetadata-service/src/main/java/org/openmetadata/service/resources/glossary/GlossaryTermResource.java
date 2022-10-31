@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -92,10 +91,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     @SuppressWarnings("unused")
     GlossaryTermList() {
       // Empty constructor needed for deserialization
-    }
-
-    public GlossaryTermList(List<GlossaryTerm> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -324,7 +319,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, term, true);
+    return create(uriInfo, securityContext, term);
   }
 
   @PATCH
@@ -370,7 +365,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, term, true);
+    return createOrUpdate(uriInfo, securityContext, term);
   }
 
   @DELETE
@@ -396,7 +391,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           boolean hardDelete,
       @Parameter(description = "Glossary Term Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {

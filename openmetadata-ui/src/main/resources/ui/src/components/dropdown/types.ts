@@ -60,6 +60,7 @@ export type DropDownListProp = {
   isLoading?: boolean;
   widthClass?: string;
   getTotalCountForGroup?: (groupName: string) => number;
+  removeOwner?: () => void;
 };
 
 export type DropDownProp = {

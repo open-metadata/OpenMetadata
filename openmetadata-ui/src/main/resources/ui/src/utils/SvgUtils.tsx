@@ -68,6 +68,7 @@ import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconForeignKey from '../assets/svg/foriegnKey.svg';
+import IconFullScreen from '../assets/svg/full-screen.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
@@ -306,6 +307,7 @@ export const Icons = {
   SAMPLE_DATA: 'sample-data',
   SAMPLE_DATA_COLOR: 'sample-data-color',
   FITVEW: 'icon-fitview',
+  FULL_SCREEN: 'icon-full-screen',
   CONTROLPLUS: 'icon-control-plus',
   CONTROLMINUS: 'icon-control-minus',
   EDITLINEAGECOLOR: 'icon-edit-lineage-color',
@@ -823,6 +825,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.FITVEW:
       IconComponent = IconFitView;
+
+      break;
+    case Icons.FULL_SCREEN:
+      IconComponent = IconFullScreen;
 
       break;
     case Icons.CONTROLPLUS:

@@ -22,6 +22,8 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+Note: To fetch metadata from oracle db we use python-oracledb and this support 12c, 18c, 19c and 21c versions! 
+
 ### Python Requirements
 
 To run the Oracle ingestion, you will need to install:
@@ -381,9 +383,9 @@ processor:
   config: {}  # Remove braces if adding properties
   # tableConfig:
   #   - fullyQualifiedName: <table fqn>
-  #     profileSample: <number between 0 and 99>
+  #     profileSample: <number between 0 and 99> # default will be 100 if omitted
+  #     profileQuery: <query to use for sampling data for the profiler>
   #     columnConfig:
-  #       profileQuery: <query to use for sampling data for the profiler>
   #       excludeColumns:
   #         - <column name>
   #       includeColumns:
@@ -426,12 +428,12 @@ processor:
     tableConfig:
       - fullyQualifiedName: <table fqn>
         profileSample: <number between 0 and 99>
+        partitionConfig:
+          partitionField: <field to use as a partition field>
+          partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
+          partitionValues: <values to uses as a predicate for the query>
+        profileQuery: <query to use for sampling data for the profiler>
         columnConfig:
-          partitionConfig:
-            partitionField: <field to use as a partition field>
-            partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
-            partitionValues: <values to uses as a predicate for the query>
-          profileQuery: <query to use for sampling data for the profiler>
           excludeColumns:
             - <column name>
           includeColumns:

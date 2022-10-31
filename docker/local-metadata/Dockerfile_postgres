@@ -1,4 +1,4 @@
-FROM postgres:latest
+FROM postgres:14
 WORKDIR /docker-entrypoint-initdb.d
 COPY docker/local-metadata/postgres-script.sql .
 RUN chmod -R 775 /docker-entrypoint-initdb.d

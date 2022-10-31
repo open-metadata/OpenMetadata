@@ -100,10 +100,6 @@ jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
 });
 
-jest.mock('../Modals/IngestionLogsModal/IngestionLogsModal', () => {
-  return jest.fn().mockImplementation(() => <div>IngestionLogsModal</div>);
-});
-
 jest.mock(
   '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',
   () => {
@@ -157,7 +153,7 @@ describe('Test Ingestion page', () => {
   });
 
   it('Table should render necessary fields', async () => {
-    const { container } = render(
+    const { findByTestId, findAllByRole } = render(
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
@@ -183,29 +179,16 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const ingestionTable = await findByTestId(container, 'ingestion-table');
-    const tableHeaderContainer = await findByTestId(container, 'table-header');
-    const runButton = await findByTestId(container, 'run');
-    const editButton = await findByTestId(container, 'edit');
-    const deleteButton = await findByTestId(container, 'delete');
-    const killButton = await findByTestId(container, 'kill');
-    const logsButton = await findByTestId(container, 'logs');
-    const tableHeaders: string[] = [];
-
-    tableHeaderContainer.childNodes.forEach(
-      (node) => node.textContent && tableHeaders.push(node.textContent)
-    );
+    const ingestionTable = await findByTestId('ingestion-table');
+    const tableHeaderContainer = await findAllByRole('columnheader');
+    const runButton = await findByTestId('run');
+    const editButton = await findByTestId('edit');
+    const deleteButton = await findByTestId('delete');
+    const killButton = await findByTestId('kill');
+    const logsButton = await findByTestId('logs');
 
     expect(ingestionTable).toBeInTheDocument();
-    expect(tableHeaderContainer).toBeInTheDocument();
-    expect(tableHeaders.length).toBe(5);
-    expect(tableHeaders).toStrictEqual([
-      'Name',
-      'Type',
-      'Schedule',
-      'Recent Runs',
-      'Actions',
-    ]);
+    expect(tableHeaderContainer.length).toBe(5);
     expect(runButton).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
@@ -455,47 +438,6 @@ describe('Test Ingestion page', () => {
     fireEvent.click(unpause);
 
     expect(handleEnableDisableIngestion).toBeCalled();
-  });
-
-  it('Should render logs modal on click of logs button', async () => {
-    const mockPagingAfter = {
-      after: 'afterKey',
-      before: 'beforeKey',
-      total: 0,
-    };
-
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        currrentPage={1}
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPagingAfter}
-        pagingHandler={mockPaginghandler}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceList={[]}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const logsButton = await findByTestId(container, 'logs');
-    fireEvent.click(logsButton);
-
-    expect(
-      await findByText(container, /IngestionLogsModal/i)
-    ).toBeInTheDocument();
   });
 
   it('Should render kill modal on click of kill button', async () => {

@@ -13,7 +13,7 @@ DBT source methods.
 """
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -50,9 +50,11 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
+from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -253,41 +255,58 @@ class DBTMixin:
 
         return columns
 
-    def process_dbt_lineage_and_descriptions(self) -> Iterable[AddLineageRequest]:
+    def process_dbt_lineage_and_descriptions(
+        self,
+    ) -> Iterable[AddLineageRequest]:
         """
         After everything has been processed, add the lineage info
         """
         logger.info("Processing DBT lineage and Descriptions")
         for data_model_name, data_model in self.data_models.items():
-
-            to_entity: Table = self.metadata.get_by_name(
-                entity=Table, fqn=data_model_name
+            to_es_result = self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=data_model_name,
+            )
+            to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+                entity_list=to_es_result, fetch_multiple_entities=False
             )
             if to_entity:
-                # Patch table descriptions from DBT
-                if data_model.description:
-                    self.metadata.patch_description(
-                        entity=Table,
-                        entity_id=to_entity.id,
-                        description=data_model.description.__root__,
-                        force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
-                    )
-
-                # Patch column descriptions from DBT
-                for column in data_model.columns:
-                    if column.description:
-                        self.metadata.patch_column_description(
+                try:
+                    # Patch table descriptions from DBT
+                    if data_model.description:
+                        self.metadata.patch_description(
+                            entity=Table,
                             entity_id=to_entity.id,
-                            column_name=column.name.__root__,
-                            description=column.description.__root__,
+                            description=data_model.description.__root__,
                             force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
                         )
 
-            # Create Lineage from DBT
+                    # Patch column descriptions from DBT
+                    for column in data_model.columns:
+                        if column.description:
+                            self.metadata.patch_column_description(
+                                entity_id=to_entity.id,
+                                column_name=column.name.__root__,
+                                description=column.description.__root__,
+                                force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                            )
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse the node {upstream_node} to update dbt desctiption: {exc}"
+                    )
+
+            # Create Lineage from DBT Files
             for upstream_node in data_model.upstream:
                 try:
-                    from_entity: Table = self.metadata.get_by_name(
-                        entity=Table, fqn=upstream_node
+                    from_es_result = self.metadata.es_search_from_fqn(
+                        entity_type=Table,
+                        fqn_search_string=upstream_node,
+                    )
+                    from_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=from_es_result, fetch_multiple_entities=False
                     )
                     if from_entity and to_entity:
                         yield AddLineageRequest(
@@ -308,6 +327,26 @@ class DBTMixin:
                     logger.warning(
                         f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                     )
+
+            # Create Lineage from DBT Queries
+            try:
+                service_database_schema_table = fqn.split(data_model_name)
+                target_table_fqn = ".".join(service_database_schema_table[1:])
+                query = f"create table {target_table_fqn} as {data_model.sql.__root__}"
+                lineages = get_lineage_by_query(
+                    self.metadata,
+                    query=query,
+                    service_name=service_database_schema_table[0],
+                    database_name=service_database_schema_table[1],
+                    schema_name=service_database_schema_table[2],
+                )
+                for lineage_request in lineages or []:
+                    yield lineage_request
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to parse the query {data_model.sql.__root__} to capture lineage: {exc}"
+                )
 
     def create_dbt_tests_suite_definition(self):
         """
@@ -455,8 +494,12 @@ class DBTMixin:
                                 self.metadata,
                                 entity_type=TestCase,
                                 service_name=self.config.serviceName,
-                                database_name=model.get("database"),
-                                schema_name=model.get("schema"),
+                                database_name=model["database"]
+                                if model["database"]
+                                else "default",
+                                schema_name=model["schema"]
+                                if model["schema"]
+                                else "default",
                                 table_name=model.get("name"),
                                 column_name=dbt_test_node.get("column_name"),
                                 test_case_name=self.dbt_tests.get(
@@ -502,8 +545,8 @@ class DBTMixin:
                 self.metadata,
                 entity_type=Table,
                 service_name=self.config.serviceName,
-                database_name=model.get("database"),
-                schema_name=model.get("schema"),
+                database_name=model["database"] if model["database"] else "default",
+                schema_name=model["schema"] if model["schema"] else "default",
                 table_name=model.get("name"),
             )
             column_name = dbt_test.get("column_name")

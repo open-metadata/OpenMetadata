@@ -54,6 +54,7 @@ COPY ingestion/operators/docker/main.py .
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
+RUN pip install --upgrade ".[airflow]"
 RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead

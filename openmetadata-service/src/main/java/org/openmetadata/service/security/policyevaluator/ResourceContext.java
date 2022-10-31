@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -28,6 +29,9 @@ public class ResourceContext implements ResourceContextInterface {
   private UUID id;
   private String name;
   private EntityInterface entity; // Will be lazily initialized
+
+  // Builder class added for getting around javadoc errors. This class will be filled in by lombok.
+  public static class ResourceContextBuilder {}
 
   @Override
   public EntityReference getOwner() throws IOException {
@@ -56,9 +60,9 @@ public class ResourceContext implements ResourceContextInterface {
         fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
       }
       if (id != null) {
-        entity = entityRepository.get(null, id, entityRepository.getFields(fields));
+        entity = entityRepository.findOrNull(id, fields, Include.NON_DELETED);
       } else if (name != null) {
-        entity = entityRepository.getByName(null, name, entityRepository.getFields(fields));
+        entity = entityRepository.findByNameOrNull(name, fields, Include.NON_DELETED);
       }
     }
     return entity;

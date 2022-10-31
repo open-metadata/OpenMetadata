@@ -34,6 +34,9 @@ from metadata.generated.schema.api.data.createTableProfile import (
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceRequest,
+)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -67,6 +70,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -88,14 +92,11 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestSuiteSample,
 )
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
 from metadata.utils import fqn
-from metadata.utils.helpers import (
-    get_chart_entities_from_id,
-    get_standard_chart_type,
-    get_storage_service_or_create,
-)
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -105,6 +106,25 @@ KEY_TYPE = "Key type"
 DATA_TYPE = "Data type"
 COL_DESCRIPTION = "Description"
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
+
+
+def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
+    """
+    Get an existing storage service or create a new one based on the config provided
+
+    To be refactored after cleaning Storage Services
+    """
+
+    metadata = OpenMetadata(metadata_config)
+    service: StorageService = metadata.get_by_name(
+        entity=StorageService, fqn=service_json["name"]
+    )
+    if service is not None:
+        return service
+    created_service = metadata.create_or_update(
+        CreateStorageServiceRequest(**service_json)
+    )
+    return created_service
 
 
 class InvalidSampleDataException(Exception):

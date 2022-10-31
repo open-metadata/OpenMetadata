@@ -42,6 +42,7 @@ export type MetricChartType = {
 
 export interface ProfilerDetailsCardProps {
   chartCollection: MetricChartType;
+  name: string;
   tickFormatter?: string;
 }
 

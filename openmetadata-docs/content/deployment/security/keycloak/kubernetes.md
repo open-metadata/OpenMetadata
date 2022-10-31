@@ -26,15 +26,12 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "admin-user"
-    botPrincipals:
-      - "ingestion-bot"
-      - "service-account-open-metadata"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"
     publicKeys:
-      - "http://localhost:8080/realms/data-sec/protocol/openid-connect/certs"
-    authority: "http://localhost:8080/realms/data-sec"
+      - "http://localhost:8081/realms/data-sec/protocol/openid-connect/certs"
+    authority: "http://localhost:8081/realms/data-sec"
     clientId: "{Client ID}"
     callbackUrl: "http://localhost:8585/callback"
   airflow:
@@ -45,7 +42,7 @@ global:
         secretKey:
           secretRef: custom-oidc-key-secret
           secretKey: custom-oidc-key-secret
-        tokenEndpoint: "http://localhost:8080/realms/data-sec/protocol/openid-connect/token"
+        tokenEndpoint: "http://localhost:8081/realms/data-sec/protocol/openid-connect/token"
 ```
 
 ### After 0.12.1
@@ -57,15 +54,12 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "admin-user"
-    botPrincipals:
-      - "ingestion-bot"
-      - "service-account-open-metadata"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"
     publicKeys:
-      - "http://localhost:8080/realms/data-sec/protocol/openid-connect/certs"
-    authority: "http://localhost:8080/realms/data-sec"
+      - "http://localhost:8081/realms/data-sec/protocol/openid-connect/certs"
+    authority: "http://localhost:8081/realms/data-sec"
     clientId: "{Client ID}"
     callbackUrl: "http://localhost:8585/callback"
 ```

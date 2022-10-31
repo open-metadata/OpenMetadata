@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import java.io.IOException;
 import java.util.List;
@@ -23,6 +25,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext.ResourceContextBuilder;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -96,7 +99,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ResourceContextInterface resourceContext)
       throws IOException {
     RestUtil.validateCursors(before, after);
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
@@ -123,7 +126,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -139,7 +142,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.getVersion(id, version);
   }
 
@@ -154,7 +157,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.listVersions(id);
   }
 
@@ -176,24 +179,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 
-  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity, boolean allowBots)
-      throws IOException {
-    authorizer.authorizeAdmin(securityContext, allowBots);
+  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     entity = addHref(uriInfo, dao.create(uriInfo, entity));
     LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
-  public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, boolean allowBots)
-      throws IOException {
-    OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+  public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
     dao.prepare(entity);
-    authorizer.authorize(
-        securityContext, createOperationContext, getResourceContextByName(entity.getFullyQualifiedName()), allowBots);
+
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
+    OperationContext operationContext = new OperationContext(entityType, createOrUpdateOperation(resourceContext));
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -202,37 +206,27 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response = dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
   public Response delete(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      UUID id,
-      boolean recursive,
-      boolean hardDelete,
-      boolean allowBots)
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), allowBots);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
   public Response deleteByName(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String name,
-      boolean recursive,
-      boolean hardDelete,
-      boolean allowBots)
+      UriInfo uriInfo, SecurityContext securityContext, String name, boolean recursive, boolean hardDelete)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name), allowBots);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     DeleteResponse<T> response =
         dao.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
@@ -253,15 +247,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected ResourceContext getResourceContext() {
-    return ResourceContext.builder().resource(entityType).entityRepository(dao).build();
+    return getResourceContext(entityType, dao).build();
   }
 
   protected ResourceContext getResourceContextById(UUID id) {
-    return ResourceContext.builder().resource(entityType).entityRepository(dao).id(id).build();
+    return getResourceContext(entityType, dao).id(id).build();
   }
 
   protected ResourceContext getResourceContextByName(String name) {
-    return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).build();
+    return getResourceContext(entityType, dao).name(name).build();
+  }
+
+  public static ResourceContextBuilder getResourceContext(
+      String entityType, EntityRepository<? extends EntityInterface> dao) {
+    return ResourceContext.builder().resource(entityType).entityRepository(dao);
   }
 
   public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};

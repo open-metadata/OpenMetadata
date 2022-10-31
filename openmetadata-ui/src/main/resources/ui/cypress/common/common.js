@@ -72,7 +72,7 @@ export const handleIngestionRetry = (
     testIngestionsTab();
     retryCount++;
     // the latest run should be success
-    cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+    cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
       ($ingestionStatus) => {
         if (
           ($ingestionStatus.text() === 'Running' ||
@@ -84,7 +84,7 @@ export const handleIngestionRetry = (
           cy.reload();
           checkSuccessState();
         } else {
-          cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
+          cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
             'have.text',
             'Success'
           );
@@ -119,7 +119,8 @@ export const testServiceCreationAndIngestion = (
   addIngestionInput,
   serviceName,
   type = 'database',
-  testIngestionButton = true
+  testIngestionButton = true,
+  configureDBT
 ) => {
   //Storing the created service name and the type of service
   // Select Service in step 1
@@ -185,8 +186,7 @@ export const testServiceCreationAndIngestion = (
   // Configure DBT Model
   if (isDatabaseService(type)) {
     cy.contains('Configure DBT Model').should('be.visible');
-    cy.get('[data-testid="dbt-source"]').should('be.visible').select('');
-
+    configureDBT && configureDBT();
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
   }
 
@@ -413,14 +413,10 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=*&from=*&size=*&index=${SEARCH_INDEX[entity]}`,
+    `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
     'explorePageTabSearch'
   );
-  interceptURL(
-    'GET',
-    `/api/v1/search/suggest?q=*&index=dashboard_search_index,table_search_index,topic_search_index,pipeline_search_index,mlmodel_search_index`,
-    'searchQuery'
-  );
+  interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
 
   // searching term in search box
@@ -447,9 +443,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       verifyResponseStatusCode('@explorePageSearch', 200);
 
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
-      cy.get(`[data-testid="${entity}-tab"]`)
-        .should('be.visible')
-        .should('have.class', 'active');
+      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
       cy.get(`[data-testid="${serviceName}-${term}"]`)
@@ -711,7 +705,7 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
 
   cy.wait('@customProperties');
-  cy.get('[data-testid="data-row"]').should('contain', propertyName);
+  cy.get('.ant-table-row').should('contain', propertyName);
 
   //Navigating to home page
   cy.clickOnLogo();
@@ -805,7 +799,7 @@ export const editCreatedProperty = (propertyName) => {
   cy.get('.tw-modal-container').should('not.exist');
 
   //Fetching for updated descriptions for the created custom property
-  cy.get('[data-testid="table-body"]')
+  cy.get('tbody')
     .children()
     .contains(propertyName)
     .nextUntil('div')

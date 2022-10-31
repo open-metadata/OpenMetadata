@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -80,10 +79,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public static class StorageServiceList extends ResultList<StorageService> {
     @SuppressWarnings("unused") /* Required for tests */
     public StorageServiceList() {}
-
-    public StorageServiceList(List<StorageService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
@@ -269,7 +264,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
       throws IOException {
     StorageService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, true);
+    return create(uriInfo, securityContext, service);
   }
 
   @PUT
@@ -290,7 +285,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException {
     StorageService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, true);
+    return createOrUpdate(uriInfo, securityContext, service);
   }
 
   @DELETE
@@ -317,7 +312,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           boolean hardDelete,
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private StorageService getService(CreateStorageService create, String user) throws IOException {

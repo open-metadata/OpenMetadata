@@ -39,6 +39,7 @@ pip3 install "openmetadata-ingestion[snowflake-usage]"
 
 <Note>
 
+- To ingest basic metadata snowflake user must have at least `USAGE` privileges on required schemas.
 - While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
   For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database).
 - If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.
@@ -494,9 +495,9 @@ processor:
   config: {}  # Remove braces if adding properties
   # tableConfig:
   #   - fullyQualifiedName: <table fqn>
-  #     profileSample: <number between 0 and 99>
+  #     profileSample: <number between 0 and 99> # default will be 100 if omitted
+  #     profileQuery: <query to use for sampling data for the profiler>
   #     columnConfig:
-  #       profileQuery: <query to use for sampling data for the profiler>
   #       excludeColumns:
   #         - <column name>
   #       includeColumns:
@@ -539,12 +540,12 @@ processor:
     tableConfig:
       - fullyQualifiedName: <table fqn>
         profileSample: <number between 0 and 99>
+        partitionConfig:
+          partitionField: <field to use as a partition field>
+          partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
+          partitionValues: <values to uses as a predicate for the query>
+        profileQuery: <query to use for sampling data for the profiler>
         columnConfig:
-          partitionConfig:
-            partitionField: <field to use as a partition field>
-            partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
-            partitionValues: <values to uses as a predicate for the query>
-          profileQuery: <query to use for sampling data for the profiler>
           excludeColumns:
             - <column name>
           includeColumns:

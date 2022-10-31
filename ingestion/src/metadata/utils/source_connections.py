@@ -100,7 +100,7 @@ def get_connection_url_common(connection):
     url = f"{connection.scheme.value}://"
 
     if connection.username:
-        url += f"{connection.username}"
+        url += f"{quote_plus(connection.username)}"
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
@@ -175,7 +175,7 @@ def _(connection: OracleConnection):
 
     url = f"{connection.scheme.value}://"
     if connection.username:
-        url += f"{connection.username}"
+        url += f"{quote_plus(connection.username)}"
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
@@ -230,7 +230,8 @@ def _(connection: TrinoConnection):
             url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
     url += f"{connection.hostPort}"
-    url += f"/{connection.catalog}"
+    if connection.catalog:
+        url += f"/{connection.catalog}"
     if connection.params is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"
@@ -256,7 +257,8 @@ def _(connection: PrestoConnection):
             url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
     url += f"{connection.hostPort}"
-    url += f"/{connection.catalog}"
+    if connection.catalog:
+        url += f"/{connection.catalog}"
     if connection.databaseSchema:
         url += f"?schema={quote_plus(connection.databaseSchema)}"
     return url
@@ -289,7 +291,7 @@ def _(connection: SnowflakeConnection):
     url = f"{connection.scheme.value}://"
 
     if connection.username:
-        url += f"{connection.username}"
+        url += f"{quote_plus(connection.username)}"
         if not connection.password:
             connection.password = SecretStr("")
         url += (
@@ -334,7 +336,7 @@ def _(connection: HiveConnection):
         and hasattr(connection.connectionArguments, "auth")
         and connection.connectionArguments.auth in ("LDAP", "CUSTOM")
     ):
-        url += f"{connection.username}"
+        url += f"{quote_plus(connection.username)}"
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
@@ -384,8 +386,12 @@ def _(connection: AzureSQLConnection):
     url = f"{connection.scheme.value}://"
 
     if connection.username:
-        url += f"{connection.username}"
-        url += f":{connection.password.get_secret_value()}" if connection else ""
+        url += f"{quote_plus(connection.username)}"
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
         url += "@"
 
     url += f"{connection.hostPort}"

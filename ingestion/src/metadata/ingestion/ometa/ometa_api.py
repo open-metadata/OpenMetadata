@@ -26,7 +26,6 @@ from pydantic import BaseModel
 from requests.utils import quote
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.bot import BotType
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -65,6 +64,7 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInisghtMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
@@ -146,6 +146,7 @@ class OpenMetadata(
     OMetaDashboardMixin,
     OMetaPatchMixin,
     OMetaTestsMixin,
+    DataInisghtMixin,
     Generic[T, C],
 ):
     """
@@ -158,6 +159,7 @@ class OpenMetadata(
 
     client: REST
     _auth_provider: AuthenticationProvider
+    config: OpenMetadataConnection
 
     class_root = ".".join(["metadata", "generated", "schema"])
     entity_path = "entity"
@@ -179,7 +181,7 @@ class OpenMetadata(
 
         # Load auth provider config from Secret Manager if necessary
         self.secrets_manager_client.add_auth_provider_security_config(
-            self.config, BotType.ingestion_bot.value
+            self.config, "ingestion-bot"
         )
 
         # Load the auth provider init from the registry

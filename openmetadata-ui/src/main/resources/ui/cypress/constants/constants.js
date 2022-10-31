@@ -14,6 +14,10 @@
 export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
 
+export const BASE_URL = location.origin;
+
+export const LOGIN_ERROR_MESSAGE = 'You have entered an invalid username or password.';
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -31,6 +35,13 @@ export const SEARCH_INDEX = {
   dashboards: 'dashboard_search_index',
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
+};
+
+export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
+  term: 'dim_address',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  serviceName: 'sample_data',
+  testCaseName: 'column_value_max_to_be_between',
 };
 
 export const SEARCH_ENTITY_TABLE = {
@@ -254,4 +265,24 @@ export const ENTITIES = {
 export const LOGIN = {
   username: 'admin@openmetadata.org',
   password: 'admin',
+};
+
+export const ANNOUNCEMENT_ENTITIES = [SEARCH_ENTITY_TABLE.table_1, SEARCH_ENTITY_TOPIC.topic_1, SEARCH_ENTITY_DASHBOARD.dashboard_1, SEARCH_ENTITY_PIPELINE.pipeline_1]
+
+export const HTTP_CONFIG_SOURCE = {
+  DBT_CATALOG_HTTP_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/catalog.json',
+  DBT_MANIFEST_HTTP_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/manifest.json',
+  DBT_RUN_RESTLTS_FILE_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/run_results.json',
+};
+
+export const DBT = {
+  tagCategory: 'DBTTags',
+  tagName: 'model_tag_one',
+  dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
+  dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
+  dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
+  dataQualityTest2: 'not_null_customers_customer_id',
 };

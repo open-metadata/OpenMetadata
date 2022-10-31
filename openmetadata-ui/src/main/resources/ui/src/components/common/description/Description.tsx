@@ -27,6 +27,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
+  TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -46,7 +47,6 @@ const Description: FC<DescriptionProps> = ({
   entityName,
   entityFieldThreads,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   entityType,
   entityFqn,
   entityFieldTasks,
@@ -87,10 +87,10 @@ const Description: FC<DescriptionProps> = ({
   const RequestDescriptionEl = () => {
     const hasDescription = Boolean(description.trim());
 
-    return onEntityFieldSelect ? (
+    return TASK_ENTITIES.includes(entityType as EntityType) ? (
       <button
         className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
-        data-testid="request-description"
+        data-testid="request-entity-description"
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
         }>

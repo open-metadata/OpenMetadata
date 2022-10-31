@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -48,6 +49,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -130,6 +132,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   updateThreadHandler,
   entityFieldTaskCount,
 }: DatasetDetailsProps) => {
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -372,7 +375,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           <span
             className={classNames({
               'tw--ml-6': rowData.length > 1,
-            })}>{`${tableProfile.rowCount || 0} rows`}</span>
+            })}>{`${tableProfile?.rowCount?.toLocaleString() || 0} rows`}</span>
         </div>
       );
     } else {
@@ -459,6 +462,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const onOwnerRemove = () => {
+    if (tableDetails) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedTableDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Table['tags'] = newTier
@@ -479,6 +492,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       return settingsUpdateHandler(updatedTableDetails);
     } else {
       return Promise.reject();
+    }
+  };
+
+  const onRemoveTier = () => {
+    if (tableDetails) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedTableDetails);
     }
   };
 
@@ -540,6 +563,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
+  const handleFullScreenClick = () => {
+    history.push(getLineageViewPath(EntityType.TABLE, datasetFQN));
+  };
+
   const getLoader = () => {
     return isentityThreadLoading ? <Loader /> : null;
   };
@@ -581,6 +608,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
+          currentOwner={tableDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -600,6 +628,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           followersList={followers}
           isFollowing={isFollowing}
           isTagEditable={tablePermissions.EditAll || tablePermissions.EditTags}
+          removeOwner={
+            tablePermissions.EditAll || tablePermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            tablePermissions.EditAll || tablePermissions.EditTier
+              ? onRemoveTier
+              : undefined
+          }
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
@@ -758,7 +796,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {activeTab === 7 && (
                 <div
                   className={classNames(
-                    'tw-px-2',
                     location.pathname.includes(ROUTES.TOUR)
                       ? 'tw-h-70vh'
                       : 'tw-h-full'
@@ -778,6 +815,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}

@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.ansi import print_ansi_encoded_string
 
 
 def is_responsive(url):
@@ -55,12 +56,12 @@ def is_port_open(url):
 
 
 def sleep(timeout_s):
-    print(f"sleeping for {timeout_s} seconds")
+    print_ansi_encoded_string(message=f"sleeping for {timeout_s} seconds")
     n = len(str(timeout_s))
     for i in range(timeout_s, 0, -1):
-        print(f"{i:>{n}}", end="\r", flush=True)
+        print_ansi_encoded_string(message=f"{i:>{n}}", end="\r", flush=True)
         time.sleep(1)
-    print(f"{'':>{n}}", end="\n", flush=True)
+    print_ansi_encoded_string(message=f"{'':>{n}}", end="\n", flush=True)
 
 
 def status(r):
@@ -102,7 +103,7 @@ def create_delete_database(client: OpenMetadata, databases: List[Database]):
     )
     created_database = client.create_or_update(create_database_request)
     resp = create_delete_table(client, databases)
-    print(resp)
+    print_ansi_encoded_string(message=resp)
     client.delete(entity=Database, entity_id=str(created_database.id.__root__))
     client.delete(entity=DatabaseService, entity_id=str(hive_service.id.__root__))
     return resp
@@ -112,7 +113,7 @@ def create_delete_database(client: OpenMetadata, databases: List[Database]):
 def hive_service(docker_ip, docker_services):
     """Ensure that Docker service is up and responsive."""
     port = docker_services.port_for("hive-server", 10000)
-    print(f"HIVE is running on port {port}")
+    print_ansi_encoded_string(message=f"HIVE is running on port {port}")
     timeout_s = 120
     sleep(timeout_s)
     url = "hive://localhost:10000/"

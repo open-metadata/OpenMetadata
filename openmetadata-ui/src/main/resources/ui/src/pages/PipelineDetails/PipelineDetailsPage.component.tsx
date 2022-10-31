@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -190,7 +190,10 @@ const PipelineDetailsPage = () => {
   };
 
   const saveUpdatedPipelineData = (updatedData: Pipeline) => {
-    const jsonPatch = compare(pipelineDetails, updatedData);
+    const jsonPatch = compare(
+      omitBy(pipelineDetails, isUndefined),
+      updatedData
+    );
 
     return patchPipelineDetails(pipelineId, jsonPatch);
   };
@@ -467,7 +470,7 @@ const PipelineDetailsPage = () => {
       saveUpdatedPipelineData(updatedPipeline)
         .then((res) => {
           if (res) {
-            setPipelineDetails(res);
+            setPipelineDetails({ ...res, tags: res.tags ?? [] });
             setCurrentVersion(res.version + '');
             setOwner(res.owner);
             setTier(getTierTags(res.tags ?? []));
