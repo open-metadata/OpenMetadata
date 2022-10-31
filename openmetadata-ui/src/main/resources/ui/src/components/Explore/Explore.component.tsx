@@ -18,7 +18,8 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card, Tabs } from 'antd';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
-import { isNil, isNumber, lowerCase, noop, omit } from 'lodash';
+import { isNil, isNumber, lowerCase, noop, omit, toUpper } from 'lodash';
+import { EntityType } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
@@ -63,9 +64,9 @@ const Explore: React.FC<ExploreProps> = ({
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
-    const entityName = ENTITY_PATH[tab as keyof typeof ENTITY_PATH] ?? 'table';
+    const entityName = toUpper(ENTITY_PATH[tab as EntityType] ?? 'table');
 
-    return SearchIndex[entityName.toUpperCase() as ExploreSearchIndexKey];
+    return SearchIndex[entityName as ExploreSearchIndexKey];
   }, [tab]);
 
   const handleFacetFilterChange: FacetFilterProps['onSelectHandler'] = (
