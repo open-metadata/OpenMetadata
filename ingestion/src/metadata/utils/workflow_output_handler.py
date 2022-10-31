@@ -27,6 +27,10 @@ from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 
+WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
+WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
+WORKFLOW_SUCCESS_MESSAGE = "Workflow finished successfully"
+
 
 class WorkflowType(Enum):
     """
@@ -201,17 +205,17 @@ def print_status(workflow) -> None:
         print_ansi_encoded_string(
             color=ANSI.BRIGHT_RED,
             bold=True,
-            message="Workflow finished with failures",
+            message=WORKFLOW_FAILURE_MESSAGE,
         )
     elif workflow.source.get_status().warnings or (
         hasattr(workflow, "sink") and workflow.sink.get_status().warnings
     ):
         print_ansi_encoded_string(
-            color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings"
+            color=ANSI.YELLOW, bold=True, message=WORKFLOW_WARNING_MESSAGE
         )
     else:
         print_ansi_encoded_string(
-            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
+            color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )
 
 
@@ -225,7 +229,7 @@ def print_profiler_status(workflow) -> None:
 
     if workflow.result_status() == 1:
         print_ansi_encoded_string(
-            color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
+            color=ANSI.BRIGHT_RED, bold=True, message=WORKFLOW_FAILURE_MESSAGE
         )
     elif (
         workflow.source_status.warnings
@@ -233,11 +237,11 @@ def print_profiler_status(workflow) -> None:
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
         print_ansi_encoded_string(
-            color=ANSI.YELLOW, bold=True, message="Workflow finished with warnings"
+            color=ANSI.YELLOW, bold=True, message=WORKFLOW_WARNING_MESSAGE
         )
     else:
         print_ansi_encoded_string(
-            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
+            color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )
 
 
@@ -249,11 +253,11 @@ def print_test_suite_status(workflow) -> None:
 
     if workflow.result_status() == 1:
         print_ansi_encoded_string(
-            color=ANSI.BRIGHT_RED, bold=True, message="Workflow finished with failures"
+            color=ANSI.BRIGHT_RED, bold=True, message=WORKFLOW_FAILURE_MESSAGE
         )
     else:
         print_ansi_encoded_string(
-            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
+            color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )
 
 
@@ -273,15 +277,15 @@ def print_data_insight_status(workflow) -> None:
         )
 
     if workflow.result_status() == 1:
-        print_ansi_encoded_string(message="Workflow finished with failures")
+        print_ansi_encoded_string(message=WORKFLOW_FAILURE_MESSAGE)
     elif (
         workflow.data_processor.get_status().warnings
         or workflow.status.warnings
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
-        print_ansi_encoded_string(message="Workflow finished with warnings")
+        print_ansi_encoded_string(message=WORKFLOW_WARNING_MESSAGE)
     else:
-        print_ansi_encoded_string(message="Workflow finished successfully")
+        print_ansi_encoded_string(message=WORKFLOW_SUCCESS_MESSAGE)
         print_ansi_encoded_string(
-            color=ANSI.GREEN, bold=True, message="Workflow finished successfully"
+            color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )
