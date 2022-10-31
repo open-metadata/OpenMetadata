@@ -300,31 +300,31 @@ const Ingestion: React.FC<IngestionProps> = ({
   );
 
   const getStatuses = (ingestion: IngestionPipeline) => {
-    const lastFiveIngestions = ingestion.pipelineStatuses
-      ?.sort((a, b) => {
-        // Turn your strings into millis, and then subtract them
-        // to get a value that is either negative, positive, or zero.
-        const date1 = new Date(a.startDate || '');
-        const date2 = new Date(b.startDate || '');
+    const lastFiveIngestions = ingestion.pipelineStatuses;
+    //   ?.sort((a, b) => {
+    //     // Turn your strings into millis, and then subtract them
+    //     // to get a value that is either negative, positive, or zero.
+    //     const date1 = new Date(a.startDate || '');
+    //     const date2 = new Date(b.startDate || '');
 
-        return date1.getTime() - date2.getTime();
-      })
-      .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
+    //     return date1.getTime() - date2.getTime();
+    //   })
+    //   .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
 
-    return lastFiveIngestions?.map((r, i) => {
-      const status =
-        i === lastFiveIngestions.length - 1 ? (
-          <p
-            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.pipelineState} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
-            key={i}>
-            {capitalize(r.pipelineState)}
-          </p>
-        ) : (
-          <p
-            className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.pipelineState} tw-mr-1`}
-            key={i}
-          />
-        );
+    return [lastFiveIngestions]?.map((r, i) => {
+      const status = (
+        <p
+          className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+          key={i}>
+          {capitalize(r?.pipelineState)}
+        </p>
+      );
+      //  : (
+      //   <p
+      //     className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+      //     key={i}
+      //   />
+      // );
 
       return r?.endDate || r?.startDate || r?.timestamp ? (
         <PopOver

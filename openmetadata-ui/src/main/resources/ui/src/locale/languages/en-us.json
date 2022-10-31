@@ -149,7 +149,6 @@
     "bot": "bot",
     "for": "for",
     "are-you-sure": "Are you sure?",
-    "email": "Email",
     "select-token-expiration": "Select Token Expiration",
     "token-expiration": "Token Expiration",
     "select-auth-mechanism": "Select Auth Mechanism",
@@ -171,7 +170,14 @@
     "submit": "Submit",
     "sql-query": "SQL Query",
     "sql-query-tooltip": "Queries returning 1 or more rows will result in the test failing.",
-    "scopes-comma-separated": "Scopes value comma separated"
+    "scopes-comma-separated": "Scopes value comma separated",
+    "recent-runs": "Recent Runs",
+    "schedule": "Schedule",
+    "execution-date": "Execution Date",
+    "start-date": "Start Date",
+    "pause": "Pause",
+    "view-dag": "View Dag",
+    "search-team": "Search Team"
   },
   "message": {
     "service-email-required": "Service account Email is required",
