@@ -87,12 +87,10 @@ const TopViewEntities = () => {
   );
 
   return (
-    <Card className="mt-4" data-testid="entity-summary-card-percentage">
-      <div data-testid="entity-summary-card-percentage-heder">
-        <Typography.Title level={5}>
-          {t('label.data-insight-top-viewed-entity-summary')}
-        </Typography.Title>
-      </div>
+    <Card
+      className="mt-4"
+      data-testid="entity-summary-card-percentage"
+      title={t('label.data-insight-top-viewed-entity-summary')}>
       <Table
         bordered={false}
         className="mt-4 data-insight-table-wrapper"

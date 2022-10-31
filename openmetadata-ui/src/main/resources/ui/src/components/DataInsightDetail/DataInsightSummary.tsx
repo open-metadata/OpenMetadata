@@ -20,12 +20,7 @@ const DataInsightSummary = () => {
   const { t } = useTranslation();
 
   return (
-    <Card data-testid="summary-card">
-      <div data-testid="summary-card-heder">
-        <Typography.Title level={5}>
-          {t('label.data-insight-summary')}
-        </Typography.Title>
-      </div>
+    <Card data-testid="summary-card" title={t('label.data-insight-summary')}>
       <Row
         className="mt-4"
         data-testid="summary-card-content"
