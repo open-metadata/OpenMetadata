@@ -94,7 +94,7 @@ def _get_column_type(self, type_):
             )
         )
         col_type = col_map["array"]
-        args = [col_map.get(parsed_type.get("arrayDataType", "string").lower())]
+        args = [col_map.get(parsed_type.get("arrayDataType").lower(), types.String)]
     elif col_map.get(name):
         col_type = col_map.get(name)
     else:
