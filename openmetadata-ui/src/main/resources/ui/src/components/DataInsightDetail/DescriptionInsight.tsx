@@ -41,13 +41,13 @@ const DescriptionInsight = () => {
   return (
     <Card
       className="data-insight-card"
-      data-testid="entity-summary-card-percentage"
+      data-testid="entity-description-percentage-card"
       title={
         <Typography.Title level={5}>
           {t('label.data-insight-description-summary')}
         </Typography.Title>
       }>
-      <ResponsiveContainer minHeight={400}>
+      <ResponsiveContainer id="description-summary-graph" minHeight={400}>
         <BarChart data={data} margin={BAR_CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />
