@@ -77,7 +77,6 @@ import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import {
   IngestionPipeline,
-  PipelineStatus,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Role } from '../generated/entity/teams/role';
@@ -824,7 +823,7 @@ export const getTeamsUser = (
 };
 
 export const getIngestionStatuses = (ingestion: IngestionPipeline) => {
-  const lastFiveIngestions = ingestion.pipelineStatuses as PipelineStatus;
+  const lastFiveIngestions = ingestion.pipelineStatuses;
   // ?.sort((a, b) => {
   //   // Turn your strings into millis, and then subtract them
   //   // to get a value that is either negative, positive, or zero.
@@ -838,9 +837,9 @@ export const getIngestionStatuses = (ingestion: IngestionPipeline) => {
   return [lastFiveIngestions]?.map((r, i) => {
     const status = (
       <p
-        className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.pipelineState} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+        className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
         key={i}>
-        {capitalize(r.pipelineState)}
+        {capitalize(r?.pipelineState)}
       </p>
     );
     //   : (
