@@ -24,6 +24,8 @@ import uuid
 from datetime import datetime
 from typing import Optional, Union, cast
 
+from pydantic import ValidationError
+
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.data_insight.processor.data_processor import DataProcessor
@@ -47,7 +49,6 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.workflow_output_handler import print_data_insight_status
-from pydantic import ValidationError
 
 logger = data_insight_logger()
 

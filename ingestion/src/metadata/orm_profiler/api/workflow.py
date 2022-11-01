@@ -22,6 +22,9 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Iterable, List, Optional, cast
 
+from pydantic import ValidationError
+from sqlalchemy import MetaData
+
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
@@ -73,8 +76,6 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
-from pydantic import ValidationError
-from sqlalchemy import MetaData
 
 logger = profiler_logger()
 

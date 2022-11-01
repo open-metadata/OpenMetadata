@@ -17,6 +17,22 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch
 
+from openmetadata_managed_apis.workflows.ingestion.lineage import (
+    build_lineage_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.metadata import (
+    build_metadata_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.profiler import (
+    build_profiler_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.test_suite import (
+    build_test_suite_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.usage import (
+    build_usage_workflow_config,
+)
+
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -56,21 +72,6 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
-from openmetadata_managed_apis.workflows.ingestion.lineage import (
-    build_lineage_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.metadata import (
-    build_metadata_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.profiler import (
-    build_profiler_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.test_suite import (
-    build_test_suite_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.usage import (
-    build_usage_workflow_config,
-)
 
 
 def mock_set_ingestion_pipeline_status(self, state):
