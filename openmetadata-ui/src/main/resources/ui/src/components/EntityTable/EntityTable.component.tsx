@@ -18,7 +18,13 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -525,85 +531,86 @@ const EntityTable = ({
     );
   };
 
-  const renderTags: TableCellRendered<Column, 'tags'> = (
-    _,
-    record: Column,
-    index: number
-  ) => {
-    return (
-      <div className="hover-icon-group">
-        {isReadOnly ? (
-          <div className="tw-flex tw-flex-wrap">
-            <TagsViewer sizeCap={-1} tags={record?.tags || []} />
-          </div>
-        ) : (
-          <div
-            className={classNames(
-              `tw-flex tw-justify-content`,
-              editColumnTag?.index === index || !isEmpty(record.tags)
-                ? 'tw-flex-col tw-items-start'
-                : 'tw-items-center'
-            )}
-            data-testid="tags-wrapper"
-            onClick={() => {
-              if (!editColumnTag) {
-                handleEditColumnTag(record, index);
-                // Fetch tags and terms only once
-                if (allTags.length === 0 || tagFetchFailed) {
-                  fetchTagsAndGlossaryTerms();
-                }
-              }
-            }}>
-            <TagsContainer
-              className="w-max-256"
-              editable={editColumnTag?.index === index}
-              isLoading={isTagLoading && editColumnTag?.index === index}
-              selectedTags={record?.tags || []}
-              showAddTagButton={hasTagEditAccess}
-              size="small"
-              tagList={allTags}
-              type="label"
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags, record?.name);
-              }}
-            />
-
-            <div className="tw-mt-1 tw-flex">
-              {getRequestTagsElement(record)}
-              {getFieldThreadElement(
-                getColumnName(record),
-                'tags',
-                entityFieldThreads as EntityFieldThreads[],
-                onThreadLinkSelect,
-                EntityType.TABLE,
-                entityFqn,
-                `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                  record
-                )}${ENTITY_LINK_SEPARATOR}tags`,
-                Boolean(record?.name?.length)
-              )}
-              {getFieldThreadElement(
-                getColumnName(record),
-                EntityField.TAGS,
-                entityFieldTasks as EntityFieldThreads[],
-                onThreadLinkSelect,
-                EntityType.TABLE,
-                entityFqn,
-                `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
-                  record
-                )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
-                Boolean(record?.name),
-                ThreadType.Task
-              )}
+  const renderTags: TableCellRendered<Column, 'tags'> = useCallback(
+    (_, record: Column, index: number) => {
+      return (
+        <div className="hover-icon-group">
+          {isReadOnly ? (
+            <div className="tw-flex tw-flex-wrap">
+              <TagsViewer sizeCap={-1} tags={record?.tags || []} />
             </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+          ) : (
+            <div
+              className={classNames(
+                `tw-flex tw-justify-content`,
+                editColumnTag?.index === index || !isEmpty(record.tags)
+                  ? 'tw-flex-col tw-items-start'
+                  : 'tw-items-center'
+              )}
+              data-testid="tags-wrapper"
+              onClick={() => {
+                if (!editColumnTag) {
+                  handleEditColumnTag(record, index);
+                  // Fetch tags and terms only once
+                  if (allTags.length === 0 || tagFetchFailed) {
+                    fetchTagsAndGlossaryTerms();
+                  }
+                }
+              }}>
+              <TagsContainer
+                className="w-max-256"
+                editable={editColumnTag?.index === index}
+                isLoading={isTagLoading && editColumnTag?.index === index}
+                selectedTags={record?.tags || []}
+                showAddTagButton={hasTagEditAccess}
+                size="small"
+                tagList={allTags}
+                type="label"
+                onCancel={() => {
+                  handleTagSelection();
+                }}
+                onSelectionChange={(tags) => {
+                  handleTagSelection(tags, record?.name);
+                }}
+              />
+
+              <div className="tw-mt-1 tw-flex">
+                {getRequestTagsElement(record)}
+                {getFieldThreadElement(
+                  getColumnName(record),
+                  'tags',
+                  entityFieldThreads as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                    record
+                  )}${ENTITY_LINK_SEPARATOR}tags`,
+                  Boolean(record?.name?.length)
+                )}
+                {getFieldThreadElement(
+                  getColumnName(record),
+                  EntityField.TAGS,
+                  entityFieldTasks as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  `${
+                    EntityField.COLUMNS
+                  }${ENTITY_LINK_SEPARATOR}${getColumnName(
+                    record
+                  )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
+                  Boolean(record?.name),
+                  ThreadType.Task
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    },
+    [isReadOnly, editColumnTag, hasTagEditAccess, isTagLoading]
+  );
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -646,7 +653,7 @@ const EntityTable = ({
         render: renderTags,
       },
     ],
-    [editColumnTag, isTagLoading]
+    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
   );
 
   useEffect(() => {
