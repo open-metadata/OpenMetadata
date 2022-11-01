@@ -182,6 +182,9 @@ class DagsterSource(PipelineServiceSource):
         yield tag_category
 
     def get_task_runs(self, job_id, pipeline_name):
+        """
+        To get all the runs details
+        """
         try:
             parameters = {
                 "handleID": job_id,
@@ -197,7 +200,9 @@ class DagsterSource(PipelineServiceSource):
 
             return runs["pipelineOrError"]
         except Exception as err:
-            logger.error(f"Error while getting runs for {job_id} - {pipeline_name} - {err}")
+            logger.error(
+                f"Error while getting runs for {job_id} - {pipeline_name} - {err}"
+            )
             logger.debug(traceback.format_exc())
 
         return []
