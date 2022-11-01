@@ -25,7 +25,6 @@ def get_long_description():
 base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
-    "click>=7.1.1",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
     "pydantic[email]==1.9.0",

@@ -72,7 +72,7 @@ export const handleIngestionRetry = (
     testIngestionsTab();
     retryCount++;
     // the latest run should be success
-    cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+    cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
       ($ingestionStatus) => {
         if (
           ($ingestionStatus.text() === 'Running' ||
@@ -84,7 +84,7 @@ export const handleIngestionRetry = (
           cy.reload();
           checkSuccessState();
         } else {
-          cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
+          cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
             'have.text',
             'Success'
           );
@@ -683,8 +683,7 @@ export const addCustomPropertiesForEntity = (
   entityType,
   customType,
   value,
-  entityObj,
-  entityName
+  entityObj
 ) => {
   const propertyName = `entity${entityType.name}test${uuid()}`;
 
@@ -713,7 +712,7 @@ export const addCustomPropertiesForEntity = (
   //Checking the added property in Entity
 
   visitEntityDetailsPage(
-    entityName || entityObj.term,
+    entityObj.term,
     entityObj.serviceName,
     entityObj.entity
   );

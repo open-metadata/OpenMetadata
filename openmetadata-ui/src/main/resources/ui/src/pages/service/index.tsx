@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
@@ -54,6 +54,7 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -986,7 +987,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceFQN, serviceCategory]);
 
   return (
-    <Row className="page-container" gutter={[16, 16]}>
+    <PageContainerV1 className="m-t-md">
       {isLoading ? (
         <Loader />
       ) : isError ? (
@@ -1230,7 +1231,7 @@ const ServicePage: FunctionComponent = () => {
           )}
         </>
       )}
-    </Row>
+    </PageContainerV1>
   );
 };
 

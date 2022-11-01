@@ -12,12 +12,11 @@
 """
 Restore utility for the metadata CLI
 """
-from typing import List, Optional
-
-import click
 from sqlalchemy.engine import Engine
 
 from metadata.cli.utils import get_engine
+from metadata.utils.ansi import ANSI, print_ansi_encoded_string
+from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger
 
 logger = cli_logger()
@@ -37,43 +36,30 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
                 conn.execute(clean_query)
 
 
-def run_restore(  # pylint: disable=too-many-arguments
-    host: str,
-    user: str,
-    password: str,
-    database: str,
-    port: str,
+def run_restore(
+    common_restore_obj_instance: BackupRestoreArgs,
     sql_file: str,
-    options: List[str],
-    arguments: List[str],
-    schema: Optional[str] = None,
 ) -> None:
     """
     Run and restore the
     buckup. Optionally, download it from S3.
 
-    :param host: service host
-    :param user: service user
-    :param password: service pwd
-    :param database: database to back up
-    :param port: database service port
+    :param common_restore_obj_instance: cls instance to fetch common args
     :param sql_file: local path of file to restore the backup
-    :param options: list of other connection options
-    :param arguments: list of connection arguments
-    :param schema: Run the process against Postgres with the given schema
     """
-    click.secho(
-        f"Restoring OpenMetadata backup for {host}:{port}/{database}...",
-        fg="bright_green",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        bold=False,
+        message="Restoring OpenMetadata backup for "
+        f"{common_restore_obj_instance.host}:{common_restore_obj_instance.port}/{common_restore_obj_instance.database}",
     )
 
-    engine = get_engine(
-        host, port, user, password, options, arguments, schema, database
-    )
+    engine = get_engine(common_args=common_restore_obj_instance)
 
     execute_sql_file(engine=engine, sql_file=sql_file)
 
-    click.secho(
-        f"Backup restored from {sql_file}",
-        fg="bright_green",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        bold=False,
+        message=f"Backup restored from {sql_file}",
     )

@@ -127,7 +127,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = MessagingServiceTopology()
     context = create_source_context(topology)
 
-    @abstractmethod
     def __init__(
         self,
         config: WorkflowSource,

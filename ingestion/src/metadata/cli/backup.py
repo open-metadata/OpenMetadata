@@ -16,13 +16,13 @@ import traceback
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Tuple
-
-import click
+from typing import Optional, Tuple
 
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
+from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.constants import UTF_8
+from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger
 
 
@@ -83,9 +83,10 @@ def upload_backup_aws(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
     s3_key = Path(key) / file.name
-    click.secho(
-        f"Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}...",
-        fg="bright_green",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        bold=False,
+        message=f"Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}...",
     )
 
     try:
@@ -132,9 +133,9 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         )
         raise err
 
-    click.secho(
-        f"Uploading {file} to {account_url}/{container}...",
-        fg="bright_green",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        message=f"Uploading {file} to {account_url}/{container}...",
     )
 
     try:
@@ -157,49 +158,36 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         raise err
 
 
-def run_backup(  # pylint: disable=too-many-arguments, too-many-locals
-    host: str,
-    user: str,
-    password: str,
-    database: str,
-    port: str,
+def run_backup(
+    common_backup_obj_instance: BackupRestoreArgs,
     output: Optional[str],
     upload_destination_type: Optional[UploadDestinationType],
     upload: Optional[Tuple[str, str, str]],
-    options: List[str],
-    arguments: List[str],
-    schema: Optional[str] = None,
 ) -> None:
     """
     Run `mysqldump` to MySQL database and store the
     output. Optionally, upload it to S3.
 
-    :param host: service host
-    :param user: service user
-    :param password: service pwd
-    :param database: database to back up
-    :param port: database service port
+    :param common_backup_obj_instance: cls instance to fetch common args
     :param output: local path to store the backup
+    :param upload_destination_type: Azure or AWS Destination Type
     :param upload: URI to upload result file
-    :param options: list of other connection options
-    :param arguments: list of connection arguments
-    :param schema: Run the process against Postgres with the given schema
+
     """
-    click.secho(
-        f"Creating OpenMetadata backup for {host}:{port}/{database}...",
-        fg="bright_green",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN,
+        bold=False,
+        message="Creating OpenMetadata backup for "
+        f"{common_backup_obj_instance.host}:{common_backup_obj_instance.port}/{common_backup_obj_instance.database}...",
     )
 
     out = get_output(output)
 
-    engine = get_engine(
-        host, port, user, password, options, arguments, schema, database
-    )
-    dump(engine=engine, output=out, schema=schema)
+    engine = get_engine(common_args=common_backup_obj_instance)
+    dump(engine=engine, output=out, schema=common_backup_obj_instance.schema)
 
-    click.secho(
-        f"Backup stored locally under {out}",
-        fg="bright_green",
+    print_ansi_encoded_string(
+        color=ANSI.GREEN, bold=False, message=f"Backup stored locally under {out}"
     )
 
     if upload:

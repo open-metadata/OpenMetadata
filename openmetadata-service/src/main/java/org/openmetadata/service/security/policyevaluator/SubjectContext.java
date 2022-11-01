@@ -141,11 +141,11 @@ public class SubjectContext {
     private int policyIndex = 0;
     private final List<EntityReference> policies;
 
-    PolicyIterator(String entityType, String entityName, String roleName, List<EntityReference> policy) {
+    PolicyIterator(String entityType, String entityName, String roleName, List<EntityReference> policies) {
       this.entityType = entityType;
       this.entityName = entityName;
       this.roleName = roleName;
-      this.policies = listOrEmpty(policy);
+      this.policies = listOrEmpty(policies);
     }
 
     @Override

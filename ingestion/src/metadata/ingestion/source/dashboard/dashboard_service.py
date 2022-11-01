@@ -246,7 +246,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DashboardServiceTopology()
     context = create_source_context(topology)
 
-    @abstractmethod
     def __init__(
         self,
         config: WorkflowSource,
