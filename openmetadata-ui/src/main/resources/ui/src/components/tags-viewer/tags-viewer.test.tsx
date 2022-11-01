@@ -13,7 +13,9 @@
 
 import {
   getAllByTestId,
+  getAllByText,
   getByText,
+  queryAllByText,
   queryByText,
   render,
 } from '@testing-library/react';
@@ -84,5 +86,29 @@ describe('Test TagsViewer Component', () => {
     const term = queryByText(container, '#');
 
     expect(term).not.toBeInTheDocument();
+  });
+
+  it('Should render tags with hash symbol only if tag source is "Tag"', () => {
+    const { container } = render(
+      <TagsViewer showStartWith sizeCap={-1} tags={tags} />
+    );
+
+    const tagWithHash = getAllByText(container, '#');
+
+    expect(tagWithHash).toHaveLength(2);
+  });
+
+  it('Should not render tags with hash symbol if tag source is "Glossary"', () => {
+    const { container } = render(
+      <TagsViewer
+        showStartWith
+        sizeCap={-1}
+        tags={[{ tagFQN: `test.tags.term`, source: 'Glossary' }]}
+      />
+    );
+
+    const tagWithHash = queryAllByText(container, '#');
+
+    expect(tagWithHash).toHaveLength(0);
   });
 });
