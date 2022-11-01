@@ -11,58 +11,26 @@
  *  limitations under the License.
  */
 
-// Position
-.relative {
-  position: relative;
-}
-.absolute {
-  position: absolute;
-}
+import { Margin } from 'recharts/types/util/types';
 
-// Align
-.align-start {
-  align-items: start;
-}
+export const BAR_CHART_MARGIN: Margin = {
+  top: 20,
+  right: 30,
+  left: 20,
+  bottom: 5,
+};
 
-.items-center {
-  align-items: center;
-}
-
-// Display
-.d-flex {
-  display: flex;
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-//top
-.top-1 {
-  top: 4px;
-}
-
-//right
-.right-1 {
-  right: 4px;
-}
-.right-3 {
-  right: 12px;
-}
-
-//bottom
-.bottom-full {
-  bottom: 100%;
-}
-
-.flex-shrink {
-  flex-shrink: 0;
-}
-
-.align-middle {
-  vertical-align: middle;
-}
-
-.flex-none {
-  flex: none;
-}
+export const DATA_INSIGHT_GRAPH_COLORS = [
+  '#E7B85D',
+  '#416BB3',
+  '#66B5AD',
+  '#8D6AF1',
+  '#699994',
+  '#6A86EB',
+  '#7A57A6',
+  '#7DC177',
+  '#AD4F82',
+  '#C870C5',
+  '#D87F7F',
+  '#DA996A',
+];

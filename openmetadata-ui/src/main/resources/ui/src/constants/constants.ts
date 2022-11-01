@@ -261,6 +261,8 @@ export const ROUTES = {
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
+
+  DATA_INSIGHT: `/data-insights`,
 };
 
 export const SOCKET_EVENTS = {

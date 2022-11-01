@@ -695,6 +695,7 @@ const TagsPage = () => {
               />
             </div>
             <Table
+              bordered
               columns={tableColumn}
               data-testid="table"
               dataSource={currentCategory?.children as TagClass[]}
