@@ -218,6 +218,10 @@ const LogsViewer = withSuspenseFallback(
   React.lazy(() => import('../pages/LogsViewer/LogsViewer.component'))
 );
 
+const DataInsightPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/DataInsightPage/DataInsightPage.component'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -517,6 +521,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.TEST_SUITES}
       />
+      <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>

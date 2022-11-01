@@ -40,7 +40,6 @@ import {
   PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
-import { initialFilterQS } from '../constants/explore.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -155,9 +154,7 @@ export const getExplorePathWithInitFilters = (
     .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
-  return filter
-    ? `${path}?${initialFilterQS}=${encodeURIComponent(filter)}`
-    : path;
+  return filter ? `${path}?${filter}` : path;
 };
 
 export const getGlossaryPath = (fqn?: string) => {

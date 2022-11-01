@@ -661,6 +661,7 @@ const EntityTable = ({
   return (
     <>
       <Table
+        bordered
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
