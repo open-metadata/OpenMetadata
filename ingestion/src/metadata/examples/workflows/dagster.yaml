@@ -6,7 +6,7 @@ source:
       type: Dagster
       configSource:
         # For Local Connection
-        hostPort: host:port
+        hostPort: http://locahost:3000/
         
         # For Cloud Connection
         # host: "https://yourorg.dagster.cloud/prod"
@@ -16,7 +16,7 @@ source:
       type: PipelineMetadata
 sink:
   type: metadata-rest
-  config: { }
+  config: {}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
