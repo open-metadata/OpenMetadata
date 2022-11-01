@@ -64,7 +64,7 @@ class AirflowRESTClientIntegrationTest {
 
     registerMockedEndpoints(200, 200);
 
-    assertEquals(expectedMap, airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE));
+    assertEquals(expectedMap, airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
   }
 
   @Test
@@ -73,7 +73,8 @@ class AirflowRESTClientIntegrationTest {
 
     Exception exception =
         assertThrows(
-            PipelineServiceClientException.class, () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE));
+            PipelineServiceClientException.class,
+            () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
 
     String expectedMessage = "Failed to get last ingestion logs.";
     String actualMessage = exception.getMessage();
@@ -87,7 +88,8 @@ class AirflowRESTClientIntegrationTest {
 
     Exception exception =
         assertThrows(
-            PipelineServiceClientException.class, () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE));
+            PipelineServiceClientException.class,
+            () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
 
     String expectedMessage = "Failed to get last ingestion logs.";
     String actualMessage = exception.getMessage();

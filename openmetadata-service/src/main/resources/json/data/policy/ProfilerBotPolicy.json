@@ -1,0 +1,17 @@
+{
+  "name": "ProfilerBotPolicy",
+  "displayName": "Profiler Bot Policy",
+  "fullyQualifiedName": "ProfilerBotPolicy",
+  "description": "Policy for Data Profiler Bot to perform operations on metadata entities.",
+  "enabled": true,
+  "allowDelete": false,
+  "rules": [
+    {
+      "name": "ProfilerBotBotRule-Allow",
+      "description" : "Allow updating sample data, profile data, and tests for all the resources.",
+      "resources" : ["All"],
+      "operations": ["EditAll", "ViewAll"],
+      "effect": "allow"
+    }
+  ]
+}

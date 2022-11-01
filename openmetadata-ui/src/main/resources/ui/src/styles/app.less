@@ -15,6 +15,9 @@
 
 @primary: #7147e8;
 @primary-light: rgb(244, 240, 253);
+@primary-hover-light: rgba(219, 209, 249);
+@white: #fff;
+@gray: #dde3ea;
 
 //font weight
 .font-medium {
@@ -43,6 +46,9 @@
 .error-text {
   color: #ff4c3b;
 }
+.text-white {
+  color: @white;
+}
 
 // text alignment
 
@@ -59,6 +65,9 @@
 // Width
 .w-8 {
   width: 32px;
+}
+.w-9 {
+  width: 36px;
 }
 .w-16 {
   width: 64px;
@@ -102,13 +111,25 @@
 .w-max-256 {
   max-width: 256px;
 }
+.w-auto {
+  width: auto;
+}
 
 //Height
 .h-7 {
   height: 28px;
 }
+.h-8 {
+  height: 32px;
+}
+.h-9 {
+  height: 36px;
+}
 .h-min-100 {
   min-height: 100vh;
+}
+.h-min-80 {
+  min-height: 80vh;
 }
 .h-min-50 {
   min-height: 50vh;
@@ -176,87 +197,28 @@
 .border-primary {
   border-color: @primary;
 }
+.border-gray {
+  border-color: @gray;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
 
 .bg-primary-lite {
   background: @primary-light;
+}
+.bg-primary {
+  background: @primary;
+}
+.bg-primary-hover-lite {
+  background-color: @primary-hover-light;
 }
 
 .activeCategory {
   border-left: 2px solid @primary;
   background: @primary-light;
   font-weight: 600;
-}
-
-// Margin
-
-.mt-0 {
-  margin-top: 0;
-}
-.mt-4 {
-  margin-top: 1rem;
-}
-.ml-4 {
-  margin-left: 1rem;
-}
-.ml-6 {
-  margin-left: 1.5rem;
-}
-.mt-8 {
-  margin-top: 2rem;
-}
-.ml-8 {
-  margin-left: 2rem;
-}
-.mr-8 {
-  margin-right: 2rem;
-}
-.mb-4 {
-  margin-bottom: 1rem;
-}
-.mb-8 {
-  margin-bottom: 2rem;
-}
-.m-8 {
-  margin: 2rem;
-}
-.m-16 {
-  margin: 4rem;
-}
-.mb-0 {
-  margin-bottom: 0;
-}
-
-.mt-12 {
-  margin-top: 3rem;
-}
-.mb-12 {
-  margin-bottom: 3rem;
-}
-.mt-20 {
-  margin-top: 5rem;
-}
-.mt-24 {
-  margin-top: 6rem;
-}
-.mt-48 {
-  margin-top: 12rem;
-}
-.mt-52 {
-  margin-top: 13rem;
-}
-.m-52 {
-  margin: 13rem;
-}
-.mr-2 {
-  margin-right: 8px;
-}
-
-// padding
-.p-16 {
-  padding: 4rem;
-}
-.pl-0 {
-  padding-left: 0px;
 }
 
 .shadow-custom {
@@ -288,4 +250,12 @@
   span {
     margin: 0;
   }
+}
+
+.underline {
+  text-decoration: underline;
+}
+
+.no-underline {
+  text-decoration: none;
 }

@@ -13,23 +13,15 @@
 
 package org.openmetadata.service.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.OK;
-import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
-import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMINCREATE;
+import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
-import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
-import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
-import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USERNAME_PASSWORD;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
 import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
@@ -44,15 +36,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
@@ -81,16 +68,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
-import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailRequest;
-import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
-import org.openmetadata.schema.auth.PasswordResetToken;
-import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -108,7 +91,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -121,7 +103,8 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -133,25 +116,21 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
 @Path("/v1/users")
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "users")
+@Collection(name = "users", order = 8) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private boolean isEmailServiceEnabled;
-  private LoginAttemptCache loginAttemptCache;
-
   private AuthenticationConfiguration authenticationConfiguration;
-
-  private AuthorizerConfiguration authorizerConfiguration;
+  private AuthenticatorHandler authHandler;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -163,28 +142,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer) {
+  public UserResource(CollectionDAO dao, Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
     super(User.class, new UserRepository(dao), authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
+    authHandler = authenticatorHandler;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    this.loginAttemptCache = new LoginAttemptCache(config);
   }
 
   public static class UserList extends ResultList<User> {
     @SuppressWarnings("unused") // Used for deserialization
     public UserList() {}
-
-    public UserList(List<User> users, String beforeCursor, String afterCursor, int total) {
-      super(users, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";
@@ -283,7 +257,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       description = "Generate a random pwd",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     return Response.status(OK).entity(PasswordUtil.generateRandomPassword()).build();
   }
 
@@ -482,7 +456,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
-      authorizer.authorizeAdmin(securityContext, true);
+      authorizer.authorizeAdmin(securityContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
@@ -500,7 +474,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       // this is also important since username is used for a lot of stuff
       user.setName(user.getEmail().split("@")[0]);
-      if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMINCREATE) {
+      if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
       // else the user will get a mail if configured smtp
@@ -509,7 +483,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     addHref(uriInfo, dao.create(uriInfo, user));
     if (isBasicAuth() && isEmailServiceEnabled) {
       try {
-        sendInviteMailToUser(
+        authHandler.sendInviteMailToUser(
             uriInfo,
             user,
             String.format("Welcome to %s", EmailUtil.getInstance().getEmailingEntity()),
@@ -543,17 +517,21 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
+
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
+
     dao.prepare(user);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext, true);
+      authorizer.authorizeAdmin(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user same as the user
-      // we are trying to update. One option is to set users.owner as user, however thats not supported User entity.
-      OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-      ResourceContext resourceContext = getResourceContextByName(user.getName());
-      authorizer.authorize(securityContext, createOperationContext, resourceContext, true);
+      // we are trying to update. One option is to set users.owner as user, however that is not supported for User.
+      OperationContext createOperationContext =
+          new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
+      authorizer.authorize(securityContext, createOperationContext, resourceContext);
     }
-    if (Boolean.TRUE.equals(create.getIsBot())) {
+    if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately
       return createOrUpdateBot(user, create, uriInfo, securityContext);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -584,7 +562,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     authorizeGenerateJWT(user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
@@ -616,13 +594,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     authorizeGenerateJWT(user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
+    // Invalidate Bot Token in Cache
+    BotTokenCache.getInstance().invalidateToken(user.getName());
     return response.toResponse();
   }
 
@@ -649,7 +629,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null
         && authenticationMechanism.getConfig() != null
@@ -684,7 +664,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext, false);
+    authorizer.authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
   }
 
@@ -716,7 +696,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
         if (path.equals("/isAdmin") || path.equals("/isBot")) {
-          authorizer.authorizeAdmin(securityContext, true);
+          authorizer.authorizeAdmin(securityContext);
         }
         // if path contains team, check if team is joinable by any user
         if (patchOpObject.containsKey("op")
@@ -733,7 +713,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             dao.validateTeamAddition(id, UUID.fromString(teamId));
             if (!dao.isTeamJoinable(teamId)) {
               // Only admin can join closed teams
-              authorizer.authorizeAdmin(securityContext, false);
+              authorizer.authorizeAdmin(securityContext);
             }
           }
         }
@@ -762,7 +742,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
   }
@@ -779,22 +759,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
-    if (Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup())) {
-      User registeredUser = registerUser(uriInfo, create);
-      if (isEmailServiceEnabled) {
-        try {
-          sendEmailVerification(uriInfo, registeredUser);
-        } catch (Exception e) {
-          LOG.error("Error in sending mail to the User : {}", e.getMessage());
-          return Response.status(424, EMAIL_SENDING_ISSUE).build();
-        }
-      }
-      return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
-          .entity(registeredUser)
-          .build();
-    } else {
-      return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Signup is not available").build();
-    }
+    User registeredUser = authHandler.registerUser(create);
+    authHandler.sendEmailVerification(uriInfo, registeredUser);
+    return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
+        .entity(registeredUser)
+        .build();
   }
 
   @GET
@@ -814,7 +783,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("token")
           String token)
       throws IOException {
-    confirmEmailRegistration(uriInfo, token);
+    authHandler.confirmEmailRegistration(uriInfo, token);
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
@@ -837,18 +806,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
     User registeredUser = dao.getByName(uriInfo, user, getFields("isEmailVerified"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
-      // no need to do anything
-      return Response.status(Response.Status.OK).entity("Email Already Verified For User.").build();
+      return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
     }
-    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
-    if (isEmailServiceEnabled) {
-      try {
-        sendEmailVerification(uriInfo, registeredUser);
-      } catch (Exception e) {
-        LOG.error("Error in sending Email Verification mail to the User : {}", e.getMessage());
-        return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
-      }
-    }
+    authHandler.resendRegistrationToken(uriInfo, registeredUser);
     return Response.status(Response.Status.OK)
         .entity("Email Verification Mail Sent. Please check your Mailbox.")
         .build();
@@ -865,7 +825,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
+  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
@@ -875,17 +835,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new BadRequestException("Email is not valid.");
     }
     // send a mail to the User with the Update
-    if (isEmailServiceEnabled) {
-      try {
-        sendPasswordResetLink(
-            uriInfo,
-            registeredUser,
-            EmailUtil.getInstance().getPasswordResetSubject(),
-            EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
-      } catch (Exception ex) {
-        LOG.error("Error in sending mail for reset password" + ex.getMessage());
-        return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
-      }
+    authHandler.sendPasswordResetLink(
+        uriInfo,
+        registeredUser,
+        EmailUtil.getInstance().getPasswordResetSubject(),
+        EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+    try {
+
+    } catch (Exception ex) {
+      LOG.error("Error in sending mail for reset password" + ex.getMessage());
+      return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
     }
     return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
   }
@@ -904,48 +863,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request) throws IOException {
-    String tokenID = request.getToken();
-    PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
-    if (passwordResetToken == null) {
-      throw new EntityNotFoundException("Invalid Password Request. Please issue a new request.");
-    }
-    List<String> fields = dao.getAllowedFieldsCopy();
-    fields.add(USER_PROTECTED_FIELDS);
-    User storedUser = dao.getByName(uriInfo, request.getUsername(), new Fields(fields, String.join(",", fields)));
-    // token validity
-    if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
-      throw new RuntimeException("Token does not belong to the user.");
-    }
-    verifyPasswordResetTokenExpiry(passwordResetToken);
-    // passwords validity
-    if (!request.getPassword().equals(request.getConfirmPassword())) {
-      throw new RuntimeException("Password and Confirm Password should match");
-    }
-    PasswordUtil.validatePassword(request.getPassword());
-
-    String newHashedPwd = BCrypt.withDefaults().hashToString(12, request.getPassword().toCharArray());
-    BasicAuthMechanism newAuthForUser = new BasicAuthMechanism().withPassword(newHashedPwd);
-
-    storedUser.setAuthenticationMechanism(new AuthenticationMechanism().withAuthType(BASIC).withConfig(newAuthForUser));
-
-    // Don't want to return the entity just a 201 or 200 should do
-    RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, storedUser);
-
-    // delete the user's all password reset token as well , since already updated
-    tokenRepository.deleteTokenByUserAndType(storedUser.getId().toString(), PASSWORD_RESET.toString());
-
-    // Update user about Password Change
-    if (isEmailServiceEnabled) {
-      try {
-        sendAccountStatus(storedUser, "Update Password", "Change Successful");
-      } catch (Exception ex) {
-        LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage());
-        return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
-      }
-    }
-    loginAttemptCache.recordSuccessfulLogin(request.getUsername());
-    return Response.status(response.getStatus()).entity("Password Changed Successfully").build();
+  public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request)
+      throws IOException, TemplateException {
+    authHandler.resetUserPasswordWithToken(uriInfo, request);
+    return Response.status(200).entity("Password Changed Successfully").build();
   }
 
   @PUT
@@ -965,58 +886,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response changeUserPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ChangePasswordRequest request)
       throws IOException {
-    // passwords validity
-    if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-      throw new RuntimeException("Password and Confirm Password should match");
-    }
-    PasswordUtil.validatePassword(request.getNewPassword());
-    List<String> fields = dao.getAllowedFieldsCopy();
-    fields.add(USER_PROTECTED_FIELDS);
     if (request.getRequestType() == SELF) {
-      User storedUser =
-          dao.getByName(
-              uriInfo, securityContext.getUserPrincipal().getName(), new Fields(fields, String.join(",", fields)));
-      BasicAuthMechanism storedBasicAuthMechanism =
-          JsonUtils.convertValue(storedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class);
-      String storedHashPassword = storedBasicAuthMechanism.getPassword();
-      if (BCrypt.verifyer().verify(request.getOldPassword().toCharArray(), storedHashPassword).verified) {
-        String newHashedPassword = BCrypt.withDefaults().hashToString(12, request.getNewPassword().toCharArray());
-        storedBasicAuthMechanism.setPassword(newHashedPassword);
-        storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-        dao.createOrUpdate(uriInfo, storedUser);
-        // it has to be 200 since we already fetched user , and we don't want to return any other data
-        // remove login/details from cache
-        loginAttemptCache.recordSuccessfulLogin(securityContext.getUserPrincipal().getName());
-        return Response.status(200).entity("Password Updated Successfully").build();
-      } else {
-        return Response.status(403).entity(new ErrorMessage(403, "Old Password is not correct")).build();
-      }
+      authHandler.changeUserPwdWithOldPwd(uriInfo, securityContext.getUserPrincipal().getName(), request);
     } else {
-      authorizer.authorizeAdmin(securityContext, false);
-      User storedUser = dao.getByName(uriInfo, request.getUsername(), new Fields(fields, String.join(",", fields)));
-      String newHashedPassword = BCrypt.withDefaults().hashToString(12, request.getNewPassword().toCharArray());
-      // Admin is allowed to set password for User directly
-      BasicAuthMechanism storedBasicAuthMechanism =
-          JsonUtils.convertValue(storedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class);
-      storedBasicAuthMechanism.setPassword(newHashedPassword);
-      storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-      RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, storedUser);
-      // remove login/details from cache
-      loginAttemptCache.recordSuccessfulLogin(request.getUsername());
-      if (isEmailServiceEnabled) {
-        try {
-          sendInviteMailToUser(
-              uriInfo,
-              response.getEntity(),
-              String.format("%s: Password Update", EmailUtil.getInstance().getEmailingEntity()),
-              ADMINCREATE,
-              request.getNewPassword());
-        } catch (Exception ex) {
-          LOG.error("Error in sending invite to User" + ex.getMessage());
-        }
-      }
-      return Response.status(response.getStatus()).entity("Password Updated Successfully").build();
+      authorizer.authorizeAdmin(securityContext);
+      authHandler.changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
     }
+    return Response.status(OK).entity("Password Updated Successfully").build();
   }
 
   @POST
@@ -1075,60 +951,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException, TemplateException {
-    String userName =
-        loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
-
-    if (!loginAttemptCache.isLoginBlocked(userName)) {
-      User storedUser;
-      try {
-        storedUser =
-            dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-      } catch (Exception ex) {
-        return Response.status(BAD_REQUEST)
-            .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), INVALID_USERNAME_PASSWORD))
-            .build();
-      }
-
-      if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {
-        return Response.status(BAD_REQUEST)
-            .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), INVALID_USERNAME_PASSWORD))
-            .build();
-      }
-
-      LinkedHashMap<String, String> storedData =
-          (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
-      String requestPassword = loginRequest.getPassword();
-      String storedHashPassword = storedData.get("password");
-      if (BCrypt.verifyer().verify(requestPassword.toCharArray(), storedHashPassword).verified) {
-        // successfully verified create a jwt token for frontend
-        RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
-        JWTAuthMechanism jwtAuthMechanism =
-            jwtTokenGenerator.generateJWTToken(
-                storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
-
-        JwtResponse response = new JwtResponse();
-        response.setTokenType("Bearer");
-        response.setAccessToken(jwtAuthMechanism.getJWTToken());
-        response.setRefreshToken(refreshToken.getToken().toString());
-        response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
-        return Response.status(OK).entity(response).build();
-      } else {
-        loginAttemptCache.recordFailedLogin(userName);
-        int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(userName);
-        if (failedLoginAttempt == 3) {
-          // send a mail to the user
-          sendAccountStatus(
-              storedUser, "Multiple Failed Login Attempts.", "Login Blocked for 10 mins. Please change your password.");
-        }
-        return Response.status(UNAUTHORIZED)
-            .entity(new ErrorMessage(UNAUTHORIZED.getStatusCode(), INVALID_USERNAME_PASSWORD))
-            .build();
-      }
-    } else {
-      return Response.status(BAD_REQUEST)
-          .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), MAX_FAILED_LOGIN_ATTEMPT))
-          .build();
-    }
+    return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
   }
 
   @POST
@@ -1149,19 +972,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response refreshToken(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest)
       throws IOException {
-    User storedUser = dao.getByName(uriInfo, securityContext.getUserPrincipal().getName(), getFields("*"));
-    if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
-      throw new IllegalArgumentException("User are only allowed to login");
-    }
-    RefreshToken refreshToken = validateAndReturnNewRefresh(storedUser.getId(), refreshRequest);
-    JWTAuthMechanism jwtAuthMechanism =
-        jwtTokenGenerator.generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
-    JwtResponse response = new JwtResponse();
-    response.setTokenType("Bearer");
-    response.setAccessToken(jwtAuthMechanism.getJWTToken());
-    response.setRefreshToken(refreshToken.getToken().toString());
-    response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
-    return Response.status(Response.Status.OK).entity(response).build();
+    return Response.status(Response.Status.OK)
+        .entity(authHandler.getNewAccessToken(securityContext.getUserPrincipal().getName(), refreshRequest))
+        .build();
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) {
@@ -1188,230 +1001,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  public User registerUser(UriInfo uriInfo, RegistrationRequest newRegistrationRequest) throws IOException {
-    String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
-    String[] tokens = newRegistrationRequest.getEmail().split("@");
-    String userName = tokens[0];
-    String emailDomain = tokens[1];
-    Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
-    if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
-      LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
-      throw new BadRequestException("Email with the given domain is not allowed. Contact Administrator");
-    }
-    validateEmailAlreadyExists(newRegistrationRequestEmail);
-    PasswordUtil.validatePassword(newRegistrationRequest.getPassword());
-    LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
-    User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
-    if (authorizerConfiguration.getAdminPrincipals().contains(userName)) {
-      newUser.setIsAdmin(true);
-    }
-    // remove auth mechanism from the user
-    User registeredUser = dao.create(uriInfo, newUser);
-    registeredUser.setAuthenticationMechanism(null);
-    return registeredUser;
-  }
-
-  public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
-    EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
-    if (emailVerificationToken == null) {
-      throw new EntityNotFoundException("Invalid Token. Please issue a new Request");
-    }
-    User registeredUser = dao.get(uriInfo, emailVerificationToken.getUserId(), dao.getFieldsWithUserAuth("*"));
-    if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
-      LOG.info("User [{}] already registered.", emailToken);
-      return;
-    }
-
-    // verify Token Expiry
-    if (emailVerificationToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new RuntimeException(
-          String.format(
-              "Email Verification Token %s is expired. Please issue a new request for email verification",
-              emailVerificationToken.getToken()));
-    }
-
-    // Update the user
-    registeredUser.setIsEmailVerified(true);
-    dao.createOrUpdate(uriInfo, registeredUser);
-
-    // deleting the entry for the token from the Database
-    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
-  }
-
-  private void sendEmailVerification(UriInfo uriInfo, User user) throws IOException, TemplateException {
-    UUID mailVerificationToken = UUID.randomUUID();
-    EmailVerificationToken emailVerificationToken =
-        TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
-
-    LOG.info("Generated Email verification token [" + mailVerificationToken + "]");
-
-    String emailVerificationLink =
-        String.format(
-            "%s://%s/users/registrationConfirmation?user=%s&token=%s",
-            uriInfo.getRequestUri().getScheme(),
-            uriInfo.getRequestUri().getHost(),
-            user.getFullyQualifiedName(),
-            mailVerificationToken);
-    Map<String, String> templatePopulator = new HashMap<>();
-
-    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
-    templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.EMAIL_VERIFICATION_LINKKEY, emailVerificationLink);
-    templatePopulator.put(EmailUtil.EXPIRATION_TIME_KEY, "24");
-    EmailUtil.getInstance()
-        .sendMail(
-            EmailUtil.getInstance().getEmailVerificationSubject(),
-            templatePopulator,
-            user.getEmail(),
-            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-            EmailUtil.EMAIL_VERIFICATION_TEMPLATE_PATH);
-
-    // insert the token
-    tokenRepository.insertToken(emailVerificationToken);
-  }
-
-  private void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
-    templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.ACTION_KEY, action);
-    templatePopulator.put(EmailUtil.ACTION_STATUS_KEY, status);
-    EmailUtil.getInstance()
-        .sendMail(
-            EmailUtil.getInstance().getAccountStatusChangeSubject(),
-            templatePopulator,
-            user.getEmail(),
-            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-            EmailUtil.ACCOUNT_STATUS_TEMPLATE_FILE);
-  }
-
-  private void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
-      throws IOException, TemplateException {
-    UUID mailVerificationToken = UUID.randomUUID();
-    PasswordResetToken resetToken = TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
-
-    LOG.info("Generated Password Reset verification token [" + mailVerificationToken + "]");
-
-    String passwordResetLink =
-        String.format(
-            "%s://%s/users/password/reset?user=%s&token=%s",
-            uriInfo.getRequestUri().getScheme(),
-            uriInfo.getRequestUri().getHost(),
-            user.getFullyQualifiedName(),
-            mailVerificationToken);
-    Map<String, String> templatePopulator = new HashMap<>();
-    templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-    templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
-    templatePopulator.put(EmailUtil.USERNAME, user.getName());
-    templatePopulator.put(EmailUtil.PASSWORD_RESET_LINKKEY, passwordResetLink);
-    templatePopulator.put(EmailUtil.EXPIRATION_TIME_KEY, EmailUtil.DEFAULT_EXPIRATION_TIME);
-
-    EmailUtil.getInstance()
-        .sendMail(subject, templatePopulator, user.getEmail(), EmailUtil.EMAIL_TEMPLATE_BASEPATH, templateFilePath);
-    // don't persist tokens delete existing
-    tokenRepository.deleteTokenByUserAndType(user.getId().toString(), PASSWORD_RESET.toString());
-    tokenRepository.insertToken(resetToken);
-  }
-
-  private void sendInviteMailToUser(
-      UriInfo uriInfo, User user, String subject, CreateUser.CreatePasswordType requestType, String pwd)
-      throws TemplateException, IOException {
-    switch (requestType) {
-      case ADMINCREATE:
-        Map<String, String> templatePopulator = new HashMap<>();
-        templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
-        templatePopulator.put(EmailUtil.USERNAME, user.getName());
-        templatePopulator.put(EmailUtil.PASSWORD, pwd);
-        templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
-        try {
-          EmailUtil.getInstance()
-              .sendMail(
-                  subject,
-                  templatePopulator,
-                  user.getEmail(),
-                  EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-                  EmailUtil.INVITE_RANDOM_PWD);
-        } catch (Exception ex) {
-          LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
-        }
-        break;
-      case USERCREATE:
-        sendPasswordResetLink(uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
-        break;
-      default:
-        LOG.error("Invalid Password Create Type");
-    }
-  }
-
-  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
-    // first delete the existing user mapping for the token
-    // TODO: Currently one user will be mapped to one refreshToken , so essentially each user is assigned one
-    // refreshToken
-    // TODO: Future : Each user will have multiple Devices to login with, where each will have refresh token, i.e per
-    // devie
-    // just delete the existing token
-    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
-    RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
-
-    return newRefreshToken;
-  }
-
-  public void verifyPasswordResetTokenExpiry(PasswordResetToken token) {
-    if (token.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new RuntimeException(
-          "Password Reset Token" + token.getToken() + "Expired token. Please issue a new request");
-    }
-    if (Boolean.FALSE.equals(token.getIsActive())) {
-      throw new RuntimeException("Password Reset Token" + token.getToken() + "Token was marked inactive");
-    }
-  }
-
-  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest)
-      throws JsonProcessingException {
-    String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
-    RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
-    if (storedRefreshToken == null) {
-      throw new RuntimeException("Invalid Refresh Token");
-    }
-    if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new RuntimeException("Expired token. Please login again : " + storedRefreshToken.getToken().toString());
-    }
-    // TODO: currently allow single login from a place, later multiple login can be added
-    // just delete the existing token
-    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
-    // we use rotating refresh token , generate new token
-    RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
-    return newRefreshToken;
-  }
-
-  private User getUserFromRegistrationRequest(RegistrationRequest create) {
-    String username = create.getEmail().split("@")[0];
-    String hashedPwd = BCrypt.withDefaults().hashToString(12, create.getPassword().toCharArray());
-
-    BasicAuthMechanism newAuthMechanism = new BasicAuthMechanism().withPassword(hashedPwd);
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(username)
-        .withFullyQualifiedName(username)
-        .withEmail(create.getEmail())
-        .withDisplayName(create.getFirstName() + create.getLastName())
-        .withIsBot(false)
-        .withUpdatedBy(username)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsEmailVerified(false)
-        .withAuthenticationMechanism(
-            new AuthenticationMechanism()
-                .withAuthType(AuthenticationMechanism.AuthType.BASIC)
-                .withConfig(newAuthMechanism));
-  }
-
   public void validateEmailAlreadyExists(String email) {
     if (dao.checkEmailAlreadyExists(email)) {
       throw new RuntimeException("User with Email Already Exists");
@@ -1435,6 +1024,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException(
           String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
     }
+    // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     decryptOrNullify(securityContext, response.getEntity());
@@ -1472,6 +1062,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return dao.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
+  // TODO remove this
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("Authentication mechanism change is only supported for bot users");
@@ -1561,11 +1152,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(user.getId()),
-            secretsManager.isLocal());
+        if (!secretsManager.isLocal()) {
+          authorizer.authorize(
+              securityContext,
+              new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+              getResourceContextById(user.getId()));
+        }
       } catch (AuthorizationException | IOException e) {
         user.getAuthenticationMechanism().setConfig(null);
         return user;

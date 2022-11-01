@@ -18,8 +18,8 @@ package org.openmetadata.service.elasticsearch;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -82,13 +82,14 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.Elast
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource;
+import org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
+  private static final String SENDING_REQUEST_TO_ELASTIC_SEARCH = "Sending request to ElasticSearch {}";
   private final RestHighLevelClient client;
   private final ElasticSearchIndexDefinition esIndexDefinition;
   private final CollectionDAO dao;
@@ -680,14 +681,14 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     if (updateRequest != null) {
-      LOG.debug("Sending request to ElasticSearch {}", updateRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch {}", deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
@@ -695,7 +696,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
-      LOG.debug("Sending request to ElasticSearch {}", deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
       client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }

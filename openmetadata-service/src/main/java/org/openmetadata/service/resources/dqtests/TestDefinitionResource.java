@@ -88,10 +88,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     public TestDefinitionList() {
       // Empty constructor needed for deserialization
     }
-
-    public TestDefinitionList(List<TestDefinition> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
@@ -301,7 +297,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestDefinition create)
       throws IOException {
     TestDefinition testDefinition = getTestDefinition(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, testDefinition, true);
+    return create(uriInfo, securityContext, testDefinition);
   }
 
   @PATCH
@@ -346,7 +342,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestDefinition create)
       throws IOException {
     TestDefinition testDefinition = getTestDefinition(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, testDefinition, true);
+    return createOrUpdate(uriInfo, securityContext, testDefinition);
   }
 
   @DELETE
@@ -369,7 +365,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           boolean hardDelete,
       @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   private TestDefinition getTestDefinition(CreateTestDefinition create, String user) throws IOException {

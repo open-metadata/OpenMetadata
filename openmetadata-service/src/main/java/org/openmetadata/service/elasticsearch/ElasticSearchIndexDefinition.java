@@ -1,7 +1,7 @@
 package org.openmetadata.service.elasticsearch;
 
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
@@ -35,6 +35,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
+  private static final String REASON_TRACE = "Reason: [%s] , Trace : [%s]";
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
@@ -117,7 +118,7 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
           getContext("Creating Index", elasticSearchIndexType.indexName),
-          String.format("Reason: [%s] , Trace : [%s]", e.getMessage(), ExceptionUtils.getStackTrace(e)));
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to create Elastic Search indexes due to", e);
       return false;
     }
@@ -150,7 +151,7 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
           getContext("Updating Index", elasticSearchIndexType.indexName),
-          String.format("Reason: [%s] , Trace : [%s]", e.getMessage(), ExceptionUtils.getStackTrace(e)));
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to update Elastic Search indexes due to", e);
     }
   }
@@ -168,7 +169,7 @@ public class ElasticSearchIndexDefinition {
     } catch (IOException e) {
       updateElasticSearchFailureStatus(
           getContext("Deleting Index", elasticSearchIndexType.indexName),
-          String.format("Reason: [%s] , Trace : [%s]", e.getMessage(), ExceptionUtils.getStackTrace(e)));
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }

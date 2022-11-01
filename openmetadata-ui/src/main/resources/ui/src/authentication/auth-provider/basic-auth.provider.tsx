@@ -20,6 +20,7 @@ import {
   basicAuthSignIn,
   checkEmailInUse,
   generatePasswordResetLink,
+  logoutUser,
   resetPassword,
 } from '../../axiosAPIs/auth-API';
 import {
@@ -192,8 +193,16 @@ const BasicAuthProvider = ({
   };
 
   const handleLogout = async () => {
-    localState.removeOidcToken();
-    history.push(ROUTES.SIGNIN);
+    const token = localState.getOidcToken();
+    if (token) {
+      try {
+        await logoutUser(token);
+        localState.removeOidcToken();
+        history.push(ROUTES.SIGNIN);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
   };
 
   const contextValue = {

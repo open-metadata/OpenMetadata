@@ -72,7 +72,7 @@ export const handleIngestionRetry = (
     testIngestionsTab();
     retryCount++;
     // the latest run should be success
-    cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+    cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
       ($ingestionStatus) => {
         if (
           ($ingestionStatus.text() === 'Running' ||
@@ -84,7 +84,7 @@ export const handleIngestionRetry = (
           cy.reload();
           checkSuccessState();
         } else {
-          cy.get(`.tableBody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
+          cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
             'have.text',
             'Success'
           );
@@ -413,14 +413,10 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=*&from=*&size=*&index=${SEARCH_INDEX[entity]}`,
+    `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
     'explorePageTabSearch'
   );
-  interceptURL(
-    'GET',
-    `/api/v1/search/suggest?q=*&index=dashboard_search_index,table_search_index,topic_search_index,pipeline_search_index,mlmodel_search_index`,
-    'searchQuery'
-  );
+  interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
 
   // searching term in search box
@@ -447,9 +443,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       verifyResponseStatusCode('@explorePageSearch', 200);
 
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
-      cy.get(`[data-testid="${entity}-tab"]`)
-        .should('be.visible')
-        .should('have.class', 'active');
+      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
       cy.get(`[data-testid="${serviceName}-${term}"]`)
@@ -689,8 +683,7 @@ export const addCustomPropertiesForEntity = (
   entityType,
   customType,
   value,
-  entityObj,
-  entityName
+  entityObj
 ) => {
   const propertyName = `entity${entityType.name}test${uuid()}`;
 
@@ -719,7 +712,7 @@ export const addCustomPropertiesForEntity = (
   //Checking the added property in Entity
 
   visitEntityDetailsPage(
-    entityName || entityObj.term,
+    entityObj.term,
     entityObj.serviceName,
     entityObj.entity
   );

@@ -69,6 +69,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -109,19 +110,11 @@ public class FeedResource {
   static class ThreadList extends ResultList<Thread> {
     @SuppressWarnings("unused") // Used for deserialization
     ThreadList() {}
-
-    ThreadList(List<Thread> data) {
-      super(data);
-    }
   }
 
   public static class PostList extends ResultList<Post> {
     @SuppressWarnings("unused") /* Required for tests */
     public PostList() {}
-
-    public PostList(List<Post> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
 
     public PostList(List<Post> listPosts) {
       super(listPosts);
@@ -357,7 +350,7 @@ public class FeedResource {
         // don't throw any exception
       } else {
         // Only admins or bots can close or resolve task other than the above-mentioned users
-        authorizer.authorizeAdmin(securityContext, true);
+        authorizer.authorizeAdmin(securityContext);
       }
     }
   }
@@ -534,7 +527,7 @@ public class FeedResource {
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = new ThreadResourceContext(dao.getOwnerReference(thread.getCreatedBy()));
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteThread(thread, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
@@ -566,7 +559,7 @@ public class FeedResource {
     // TODO fix this
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerReference(post.getFrom()));
-    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 

@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -254,16 +255,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public List<T> getEntitiesFromSeedData(String path) throws IOException {
-    return getEntitiesFromSeedData(path, entityClass);
+    return getEntitiesFromSeedData(entityType, path, entityClass);
   }
 
-  public <U> List<U> getEntitiesFromSeedData(String path, Class<U> clazz) throws IOException {
+  public static <U> List<U> getEntitiesFromSeedData(String entityType, String path, Class<U> clazz) throws IOException {
     List<U> entities = new ArrayList<>();
     List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
+            String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFile);
             json = json.replace("<separator>", Entity.SEPARATOR);
             entities.add(JsonUtils.readValue(json, clazz));
           } catch (Exception e) {
@@ -305,6 +306,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
+  public final T findOrNull(UUID id, String fields, Include include) throws IOException {
+    String json = dao.findJsonById(id, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+  }
+
+  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
     return getByName(uriInfo, fqn, fields, NON_DELETED);
   }
@@ -312,6 +319,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
     return withHref(uriInfo, setFieldsInternal(dao.findEntityByName(fqn, include), fields));
+  }
+
+  @Transaction
+  public final T findByNameOrNull(String fqn, String fields, Include include) throws IOException {
+    String json = dao.findJsonByFqn(fqn, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
   }
 
   @Transaction
@@ -419,7 +432,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   T setFieldsInternal(T entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
-    entity.setExtension(fields.contains("extension") ? getExtension(entity) : null);
+    entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
     setFields(entity, fields);
     return entity;
   }
@@ -1257,8 +1270,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (updatedByBot()) {
-        // Revert changes to extension field, if being updated by a bot
+      if (updatedByBot() && operation == Operation.PUT) {
+        // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting custom extension
         updated.setExtension(original.getExtension());
         return;
       }
@@ -1289,10 +1302,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
       if (!added.isEmpty()) {
-        fieldAdded(changeDescription, "extension", JsonUtils.pojoToJson(added));
+        fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(added));
       }
       if (!deleted.isEmpty()) {
-        fieldDeleted(changeDescription, "extension", JsonUtils.pojoToJson(deleted));
+        fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deleted));
       }
       removeExtension(original);
       storeExtension(updated);

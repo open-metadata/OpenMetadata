@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import 'react-awesome-query-builder/lib/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import 'tailwindcss/tailwind.css';

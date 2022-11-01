@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -83,10 +82,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     @SuppressWarnings("unused")
     DashboardList() {
       // Empty constructor needed for deserialization
-    }
-
-    public DashboardList(List<Dashboard> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -277,7 +272,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dashboard, true);
+    return create(uriInfo, securityContext, dashboard);
   }
 
   @PATCH
@@ -323,7 +318,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dashboard, true);
+    return createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
   @PUT
@@ -384,7 +379,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           boolean hardDelete,
       @Parameter(description = "Dashboard Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   private Dashboard getDashboard(CreateDashboard create, String user) throws IOException {

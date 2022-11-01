@@ -20,30 +20,25 @@ import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceTyp
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.GOOGLE;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.OKTA;
+import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
-import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
-import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -51,13 +46,10 @@ import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -78,88 +70,52 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
   private static final String COLON_DELIMITER = ":";
-  private static final String DEFAULT_ADMIN = ADMIN_USER_NAME;
-  private Set<String> adminUsers;
-  private Set<String> botPrincipalUsers;
-  private Set<String> testUsers;
-  private String principalDomain;
-  private String providerType;
   private boolean isSmtpEnabled;
 
   @Override
-  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi dbi) {
-    LOG.info(
-        "Initializing DefaultAuthorizer with config {}", openMetadataApplicationConfig.getAuthorizerConfiguration());
-    this.adminUsers = new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getAdminPrincipals());
-    this.botPrincipalUsers =
-        new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getBotPrincipals());
-    this.testUsers = new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getTestPrincipals());
-    this.principalDomain = openMetadataApplicationConfig.getAuthorizerConfiguration().getPrincipalDomain();
-    this.providerType = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
-    SmtpSettings smtpSettings = openMetadataApplicationConfig.getSmtpSettings();
+  public void init(OpenMetadataApplicationConfig config, Jdbi dbi) {
+    LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
+    SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isSmtpEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     SubjectCache.initialize();
     PolicyCache.initialize();
     RoleCache.initialize();
-    LOG.debug("Admin users: {}", adminUsers);
-    initializeUsers(openMetadataApplicationConfig);
+    initializeUsers(config);
   }
 
-  private void initializeUsers(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    LOG.debug("Checking user entries for admin users");
-    String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
-    if (!providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
-      for (String adminUser : adminUsers) {
-        User user = user(adminUser, domain, adminUser).withIsAdmin(true);
-        addOrUpdateUser(user);
-      }
+  private void initializeUsers(OpenMetadataApplicationConfig config) {
+    Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
+    LOG.debug("Checking user entries for admin users {}", adminUsers);
+    String domain = SecurityUtil.getDomain(config);
+    String providerType = config.getAuthenticationConfiguration().getProvider();
+    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+      handleBasicAuth(adminUsers, domain);
     } else {
-      try {
-        handleBasicAuth(adminUsers, domain);
-      } catch (IOException e) {
-        LOG.error("Failed in Basic Auth Setup. Reason : {}", e.getMessage());
-      }
-    }
-
-    LOG.debug("Checking user entries for bot users");
-    Set<String> botUsers = Arrays.stream(BotType.values()).map(BotType::value).collect(Collectors.toSet());
-    botUsers.remove(BotType.BOT.value());
-    botUsers.addAll(botPrincipalUsers);
-    for (String botUser : botUsers) {
-      User user = user(botUser, domain, botUser).withIsBot(true).withIsAdmin(false);
-      user = addOrUpdateBotUser(user, openMetadataApplicationConfig);
-      if (user != null) {
-        BotType botType;
-        try {
-          botType = BotType.fromValue(botUser);
-        } catch (IllegalArgumentException e) {
-          botType = BotType.BOT;
-        }
-        Bot bot = bot(user).withBotUser(user.getEntityReference()).withBotType(botType);
-        addOrUpdateBot(bot);
-      }
+      addUsers(adminUsers, domain, true);
     }
 
     LOG.debug("Checking user entries for test users");
-    for (String testUser : testUsers) {
-      User user = user(testUser, domain, testUser);
-      addOrUpdateUser(user);
-    }
+    Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
+    addUsers(testUsers, domain, null);
   }
 
-  private void handleBasicAuth(Set<String> adminUsers, String domain) throws IOException {
-    for (String adminUser : adminUsers) {
-      if (adminUser.contains(COLON_DELIMITER)) {
-        String[] tokens = adminUser.split(COLON_DELIMITER);
-        addUserForBasicAuth(tokens[0], tokens[1], domain);
-      } else {
-        boolean isDefaultAdmin = adminUser.equals(DEFAULT_ADMIN);
-        String token = PasswordUtil.generateRandomPassword();
-        if (isDefaultAdmin || !isSmtpEnabled) {
-          token = DEFAULT_ADMIN;
+  private void handleBasicAuth(Set<String> adminUsers, String domain) {
+    try {
+      for (String adminUser : adminUsers) {
+        if (adminUser.contains(COLON_DELIMITER)) {
+          String[] tokens = adminUser.split(COLON_DELIMITER);
+          addUserForBasicAuth(tokens[0], tokens[1], domain);
+        } else {
+          boolean isDefaultAdmin = adminUser.equals(ADMIN_USER_NAME);
+          String token = PasswordUtil.generateRandomPassword();
+          if (isDefaultAdmin || !isSmtpEnabled) {
+            token = ADMIN_USER_NAME;
+          }
+          addUserForBasicAuth(adminUser, token, domain);
         }
-        addUserForBasicAuth(adminUser, token, domain);
       }
+    } catch (IOException e) {
+      LOG.error("Failed in Basic Auth Setup. Reason : {}", e.getMessage());
     }
   }
 
@@ -213,7 +169,7 @@ public class DefaultAuthorizer implements Authorizer {
             .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
   }
 
-  private User user(String name, String domain, String updatedBy) {
+  public static User user(String name, String domain, String updatedBy) {
     return new User()
         .withId(UUID.randomUUID())
         .withName(name)
@@ -224,38 +180,22 @@ public class DefaultAuthorizer implements Authorizer {
         .withIsBot(false);
   }
 
-  private Bot bot(User user) {
-    return new Bot()
-        .withId(UUID.randomUUID())
-        .withName(user.getName())
-        .withFullyQualifiedName(user.getName())
-        .withUpdatedBy(user.getUpdatedBy())
-        .withUpdatedAt(System.currentTimeMillis())
-        .withDisplayName(user.getName());
-  }
-
   @Override
   public List<ResourcePermission> listPermissions(SecurityContext securityContext, String user) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
-    }
-    return PolicyEvaluator.listPermission(subjectContext);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermissions(ALLOW) // Admin has permissions to do all operations.
+        : PolicyEvaluator.listPermission(subjectContext);
   }
 
   @Override
   public ResourcePermission getPermission(SecurityContext securityContext, String user, String resourceType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermission(resourceType, Access.ALLOW);
-    }
-    return PolicyEvaluator.getPermission(subjectContext, resourceType);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermission(resourceType, ALLOW) // Admin has permissions to do all operations.
+        : PolicyEvaluator.getPermission(subjectContext, resourceType);
   }
 
   @Override
@@ -263,51 +203,53 @@ public class DefaultAuthorizer implements Authorizer {
       SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
-    }
-    return PolicyEvaluator.getPermission(subjectContext, resourceContext);
-  }
-
-  @Override
-  public boolean isOwner(SecurityContext securityContext, EntityReference owner) {
-    if (owner == null) {
-      return false;
-    }
-    try {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      return subjectContext.isOwner(owner);
-    } catch (EntityNotFoundException ex) {
-      return false;
-    }
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermission(resourceContext.getResource(), ALLOW) // Admin all permissions
+        : PolicyEvaluator.getPermission(subjectContext, resourceContext);
   }
 
   @Override
   public void authorize(
-      SecurityContext securityContext,
-      OperationContext operationContext,
-      ResourceContextInterface resourceContext,
-      boolean allowBots)
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
       throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+    if (subjectContext.isAdmin()) {
       return;
     }
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
 
   @Override
-  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {
+  public void authorizeAdmin(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+    if (subjectContext.isAdmin()) {
       return;
     }
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
   }
 
-  private User addOrUpdateUser(User user) {
+  @Override
+  public boolean decryptSecret(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin()) { // Always decrypt secrets for admin
+      return true;
+    }
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (subjectContext.isBot() && secretsManager.isLocal()) {
+      // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
+      return true;
+    }
+    return false;
+  }
+
+  private void addUsers(Set<String> users, String domain, Boolean isAdmin) {
+    for (String userName : users) {
+      User user = user(userName, domain, userName).withIsAdmin(isAdmin);
+      addOrUpdateUser(user);
+    }
+  }
+
+  private static User addOrUpdateUser(User user) {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
@@ -316,7 +258,7 @@ public class DefaultAuthorizer implements Authorizer {
       return addedUser.getEntity();
     } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
-      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Caught exception", exception);
       user.setAuthenticationMechanism(null);
       LOG.debug("User entry: {} already exists.", user.getName());
     }
@@ -341,7 +283,7 @@ public class DefaultAuthorizer implements Authorizer {
    *       </ul>
    * </ul>
    */
-  private User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+  public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     User originalUser = retrieveAuthMechanism(user);
     // the user did not have an auth mechanism
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
@@ -402,15 +344,16 @@ public class DefaultAuthorizer implements Authorizer {
     return addOrUpdateUser(user);
   }
 
-  private SSOAuthMechanism buildAuthMechanismConfig(SSOAuthMechanism.SsoServiceType ssoServiceType, Object config) {
+  private static SSOAuthMechanism buildAuthMechanismConfig(
+      SSOAuthMechanism.SsoServiceType ssoServiceType, Object config) {
     return new SSOAuthMechanism().withSsoServiceType(ssoServiceType).withAuthConfig(config);
   }
 
-  private AuthenticationMechanism buildAuthMechanism(AuthenticationMechanism.AuthType authType, Object config) {
+  private static AuthenticationMechanism buildAuthMechanism(AuthenticationMechanism.AuthType authType, Object config) {
     return new AuthenticationMechanism().withAuthType(authType).withConfig(config);
   }
 
-  private User retrieveAuthMechanism(User user) {
+  private static User retrieveAuthMechanism(User user) {
     EntityRepository<User> userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
     try {
       User originalUser =
@@ -429,32 +372,14 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
-  private void addOrUpdateBot(Bot bot) {
-    EntityRepository<Bot> botRepository = BotRepository.class.cast(Entity.getEntityRepository(Entity.BOT));
-    Bot originalBot;
-    try {
-      originalBot = botRepository.getByName(null, bot.getName(), EntityUtil.Fields.EMPTY_FIELDS);
-      bot.setBotUser(originalBot.getBotUser());
-    } catch (Exception e) {
-    }
-    try {
-      RestUtil.PutResponse<Bot> addedBot = botRepository.createOrUpdate(null, bot);
-      LOG.debug("Added bot entry: {}", addedBot.getEntity().getName());
-    } catch (Exception exception) {
-      // In HA set up the other server may have already added the bot.
-      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("Bot entry: {} already exists.", bot.getName());
-    }
-  }
-
-  private SubjectContext getSubjectContext(SecurityContext securityContext) {
+  public static SubjectContext getSubjectContext(SecurityContext securityContext) {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
     return getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
   }
 
-  private SubjectContext getSubjectContext(String userName) {
+  public static SubjectContext getSubjectContext(String userName) {
     return SubjectCache.getInstance().getSubjectContext(userName);
   }
 

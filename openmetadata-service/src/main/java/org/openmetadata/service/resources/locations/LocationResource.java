@@ -85,10 +85,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public static class LocationList extends ResultList<Location> {
     @SuppressWarnings("unused") /* Required for tests */
     public LocationList() {}
-
-    public LocationList(List<Location> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = "owner,followers,tags,path";
@@ -357,7 +353,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, location, true);
+    return create(uriInfo, securityContext, location);
   }
 
   @PUT
@@ -377,7 +373,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, location, true);
+    return createOrUpdate(uriInfo, securityContext, location);
   }
 
   @PATCH
@@ -426,7 +422,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           boolean hardDelete,
       @Parameter(description = "Location Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @PUT

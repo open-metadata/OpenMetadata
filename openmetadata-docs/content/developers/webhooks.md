@@ -7,9 +7,8 @@ slug: /developers/webhooks
 
 A webhook is a way for an app to provide other applications with real-time information.
 A webhook delivers data to other applications as it happens, meaning you get data immediately.
-OpenMetadata out of the box provide support for Webhooks.
-Webhooks can be used to get real-time information for the application when an event occurs.
-OpenMetadata also allows the user to customise the webhook with a wide range of filters to listen to only selected type of events
+OpenMetadata provides out-of-the-box support for webhooks.
+OpenMetadata also allows the user to customise the webhook with a wide range of filters to listen to only selected type of events.
 
 
 ## OpenMetadata supports 3 webhook types:
@@ -19,7 +18,7 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 
 ## How to Set up Generic Type Webhook:
 1. **Name**: Add the name of the webhook
-2. **Description**: Add description of the webhook/Describe the webhook.
+2. **Description**: Describe the webhook.
 3. **Endpoint URL**: Enter the Consumer/client URL to consume the event's data.
 4. **Activity Filter**: Can be used to activate or disable the webhook.
 5. **Event Filters**: Filters are provided for all the entities and for all the events.
@@ -32,8 +31,8 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 
 ## How to Set up Slack Type Webhook:
 1. **Name**: Add the name of the webhook
-2. **Description**: Add description of the webhook/Describe the webhook.
-3. **Endpoint URL**: Enter the Slack endpoint url.
+2. **Description**: Describe the webhook.
+3. **Endpoint URL**: Enter the Slack endpoint URL.
 4. **Activity Filter**: Can be used to activate or disable the webhook.
 5. **Event Filters**: Filters are provided for all the entities and for all the events.
    Event data for specific action can be achieved.
@@ -45,8 +44,8 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 
 ## How to Set up Microsoft Teams Type Webhook:
 1. **Name**: Add the name of the webhook
-2. **Description**: Add description of the webhook/Describe the webhook.
-3. **Endpoint URL**: Enter the MS Teams endpoint url.
+2. **Description**: Describe the webhook.
+3. **Endpoint URL**: Enter the MS Teams endpoint URL.  You can find this by going to the Teams channel where you want the posts to appear, clicking the three dots `...`, and clicking "Connectors".  Then add the "Incoming Webhook" connector.  Copy this connector's URL and supply it here to OpenMetadata.  It may be in the form of `https://your-domain.webhook.office.com/webhookb2/...@.../IncomingWebhook/.../...`.  For more on MS Teams webhooks, see [Create an Incoming Webhook](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
 4. **Activity Filter**: Can be used to activate or disable the webhook.
 5. **Event Filters**: Filters are provided for all the entities and for all the events.
    Event data for specific action can be achieved.

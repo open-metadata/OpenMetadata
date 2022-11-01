@@ -105,7 +105,9 @@ const CreateUser = ({
   const [ssoClientConfig, setSSOClientConfig] = useState<SsoClientConfig>();
 
   const isAuthProviderBasic = useMemo(
-    () => authConfig?.provider === AuthTypes.BASIC,
+    () =>
+      authConfig?.provider === AuthTypes.BASIC ||
+      authConfig?.provider === AuthTypes.LDAP,
     [authConfig]
   );
 
@@ -337,7 +339,7 @@ const CreateUser = ({
             confirmPassword: isPasswordGenerated
               ? generatedPassword
               : confirmPassword,
-            createPasswordType: CreatePasswordType.Admincreate,
+            createPasswordType: CreatePasswordType.AdminCreate,
           }),
     };
     onSave(userProfile);

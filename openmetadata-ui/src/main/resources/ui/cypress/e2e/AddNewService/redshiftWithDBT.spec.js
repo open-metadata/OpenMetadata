@@ -18,7 +18,8 @@ import {
     interceptURL,
     login,
     testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables, verifyResponseStatusCode,
+    updateDescriptionForIngestedTables,
+    verifyResponseStatusCode,
     visitEntityDetailsPage
 } from '../../common/common';
 import {
@@ -93,6 +94,7 @@ describe('RedShift Ingestion', () => {
   it('Validate DBT is ingested properly', () => {
     //Verify DBT tags
     interceptURL('GET', '/api/v1/tags?fields=usageCount', 'getTagList');
+    cy.get('[data-testid="governance"]').should("exist").should("be.visible").click({force:true})
     cy.get('[data-testid="appbar-item-tags"]')
       .should('exist')
       .should('be.visible')
@@ -123,9 +125,10 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="Lineage"]').should('be.visible').click();
 
-    cy.get('[data-testid="lineage-entity"]')
-      .should('contain', DBT.dbtLineageNode1)
-      .and('contain', DBT.dbtLineageNode2);
+    cy.get('[data-testid="lineage-entity"]').should(
+      'contain',
+      DBT.dbtLineageNode
+    );
 
     //Verify Data Quality
     cy.get('[data-testid="Profiler & Data Quality"]')

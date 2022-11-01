@@ -23,7 +23,7 @@ import static org.openmetadata.service.resources.services.DatabaseServiceResourc
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.AIRFLOW_CONNECTION;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.MYSQL_DATABASE_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -278,7 +278,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
       MysqlConnection actualMysqlConnection =
           JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
-    } else if (BOT_AUTH_HEADERS.equals(authHeaders)) {
+    } else if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
       assertNull(actualAirflowConnection.getConnection());

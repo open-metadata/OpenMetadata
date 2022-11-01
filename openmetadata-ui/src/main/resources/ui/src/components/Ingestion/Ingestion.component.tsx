@@ -13,11 +13,14 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Table, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
+import { useTranslation } from 'react-i18next';
+
+import { ColumnsType } from 'antd/lib/table';
 import { capitalize, isNil, lowerCase, startCase } from 'lodash';
-import React, { Fragment, useCallback, useState } from 'react';
+import React, { Fragment, useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
@@ -27,10 +30,11 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { isEven } from '../../utils/CommonUtils';
+import { getLoadingStatus } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
   getEditIngestionPath,
+  getLogsViewerPath,
 } from '../../utils/RouterUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -42,7 +46,6 @@ import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { IngestionProps } from './ingestion.interface';
 
@@ -64,13 +67,12 @@ const Ingestion: React.FC<IngestionProps> = ({
   permissions,
 }: IngestionProps) => {
   const history = useHistory();
-
+  const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
   const [deleteSelection, setDeleteSelection] = useState({
     id: '',
@@ -330,13 +332,20 @@ const Ingestion: React.FC<IngestionProps> = ({
           html={
             <div className="tw-text-left">
               {r.timestamp ? (
-                <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
+                <p>
+                  {t('label.execution-date')} :{' '}
+                  {new Date(r.timestamp).toUTCString()}
+                </p>
               ) : null}
               {r.startDate ? (
-                <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+                <p>
+                  {t('label.start-date')}: {new Date(r.startDate).toUTCString()}
+                </p>
               ) : null}
               {r.endDate ? (
-                <p>End Date: {new Date(r.endDate).toUTCString()}</p>
+                <p>
+                  {t('label.end-date')} : {new Date(r.endDate).toUTCString()}
+                </p>
               ) : null}
             </div>
           }
@@ -355,22 +364,25 @@ const Ingestion: React.FC<IngestionProps> = ({
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
-        <Button
-          data-testid="run"
-          type="link"
-          onClick={() =>
-            handleTriggerIngestion(ingestion.id as string, ingestion.name)
-          }>
-          {currTriggerId.id === ingestion.id ? (
-            currTriggerId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
-            ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Run'
-          )}
-        </Button>
+        <>
+          <Button
+            data-testid="run"
+            type="link"
+            onClick={() =>
+              handleTriggerIngestion(ingestion.id as string, ingestion.name)
+            }>
+            {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
+          </Button>
+          {separator}
+
+          <Button
+            data-testid="re-deploy-btn"
+            disabled={!isRequiredDetailsAvailable}
+            type="link"
+            onClick={() => handleDeployIngestion(ingestion.id as string)}>
+            {getLoadingStatus(currDeployId, ingestion.id, t('label.re-deploy'))}
+          </Button>
+        </>
       );
     } else {
       return (
@@ -378,19 +390,205 @@ const Ingestion: React.FC<IngestionProps> = ({
           data-testid="deploy"
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
-          {currDeployId.id === ingestion.id ? (
-            currDeployId.state === 'success' ? (
-              <FontAwesomeIcon icon="check" />
-            ) : (
-              <Loader size="small" type="default" />
-            )
-          ) : (
-            'Deploy'
-          )}
+          {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
         </Button>
       );
     }
   };
+
+  const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+        render: (text) =>
+          airflowEndpoint ? (
+            <Tooltip
+              title={
+                permissions.ViewAll || permissions.ViewBasic
+                  ? t('label.view-dag')
+                  : NO_PERMISSION_TO_VIEW
+              }>
+              <Button
+                className="tw-mr-2"
+                data-testid="airflow-tree-view"
+                disabled={!(permissions.ViewAll || permissions.ViewBasic)}
+                href={`${airflowEndpoint}/tree?dag_id=${text}`}
+                rel="noopener noreferrer"
+                target="_blank"
+                type="link">
+                {text}
+                <SVGIcons
+                  alt="external-link"
+                  className="tw-align-middle tw-ml-1"
+                  icon={Icons.EXTERNAL_LINK}
+                  width="16px"
+                />
+              </Button>
+            </Tooltip>
+          ) : (
+            text
+          ),
+      },
+      {
+        title: t('label.type'),
+        dataIndex: 'pipelineType',
+        key: 'pipelineType',
+      },
+      {
+        title: t('label.schedule'),
+        dataIndex: 'schedule',
+        key: 'schedule',
+        render: (_, record) =>
+          record.airflowConfig?.scheduleInterval ? (
+            <PopOver
+              html={
+                <div>
+                  {cronstrue.toString(
+                    record.airflowConfig.scheduleInterval || '',
+                    {
+                      use24HourTimeFormat: true,
+                      verbose: true,
+                    }
+                  )}
+                </div>
+              }
+              position="bottom"
+              theme="light"
+              trigger="mouseenter">
+              <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
+            </PopOver>
+          ) : (
+            <span>--</span>
+          ),
+      },
+      {
+        title: t('label.recent-runs'),
+        dataIndex: 'recentRuns',
+        key: 'recentRuns',
+        render: (_, record) => (
+          <div className="tw-flex">{getStatuses(record)}</div>
+        ),
+      },
+      {
+        title: t('label.actions'),
+        dataIndex: 'actions',
+        key: 'actions',
+        render: (_, record) => (
+          <div>
+            <div className="tw-flex">
+              {record.enabled ? (
+                <Fragment>
+                  {getTriggerDeployButton(record)}
+                  {separator}
+                  <Button
+                    data-testid="pause"
+                    disabled={!isRequiredDetailsAvailable}
+                    type="link"
+                    onClick={() =>
+                      handleEnableDisableIngestion(record.id || '')
+                    }>
+                    {t('label.pause')}
+                  </Button>
+                </Fragment>
+              ) : (
+                <Button
+                  data-testid="unpause"
+                  disabled={!isRequiredDetailsAvailable}
+                  type="link"
+                  onClick={() => handleEnableDisableIngestion(record.id || '')}>
+                  {t('label.unpause')}
+                </Button>
+              )}
+              {separator}
+              <Button
+                data-testid="edit"
+                disabled={!isRequiredDetailsAvailable}
+                type="link"
+                onClick={() => handleUpdate(record)}>
+                {t('label.edit')}
+              </Button>
+              {separator}
+              <Button
+                data-testid="delete"
+                type="link"
+                onClick={() => ConfirmDelete(record.id as string, record.name)}>
+                {deleteSelection.id === record.id ? (
+                  deleteSelection.state === 'success' ? (
+                    <FontAwesomeIcon icon="check" />
+                  ) : (
+                    <Loader size="small" type="default" />
+                  )
+                ) : (
+                  t('label.delete')
+                )}
+              </Button>
+              {separator}
+              <Button
+                data-testid="kill"
+                disabled={!isRequiredDetailsAvailable}
+                type="link"
+                onClick={() => {
+                  setIsKillModalOpen(true);
+                  setSelectedPipeline(record);
+                }}>
+                {t('label.kill')}
+              </Button>
+              {separator}
+              <Button
+                data-testid="logs"
+                disabled={!isRequiredDetailsAvailable}
+                href={getLogsViewerPath(
+                  serviceCategory,
+                  record.service?.name || '',
+                  record?.fullyQualifiedName || record?.name || ''
+                )}
+                type="link"
+                onClick={() => {
+                  setSelectedPipeline(record);
+                }}>
+                {t('label.logs')}
+              </Button>
+            </div>
+            {isKillModalOpen &&
+              selectedPipeline &&
+              record.id === selectedPipeline?.id && (
+                <KillIngestionModal
+                  isModalOpen={isKillModalOpen}
+                  pipelinName={selectedPipeline.name}
+                  pipelineId={selectedPipeline.id as string}
+                  onClose={() => {
+                    setIsKillModalOpen(false);
+                    setSelectedPipeline(undefined);
+                  }}
+                  onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+                />
+              )}
+          </div>
+        ),
+      },
+    ],
+    [
+      NO_PERMISSION_TO_VIEW,
+      permissions,
+      airflowEndpoint,
+      getStatuses,
+      getTriggerDeployButton,
+      isRequiredDetailsAvailable,
+      handleEnableDisableIngestion,
+      ConfirmDelete,
+      handleUpdate,
+      deleteSelection,
+      setIsKillModalOpen,
+      setSelectedPipeline,
+      getLogsViewerPath,
+      serviceCategory,
+      isKillModalOpen,
+      selectedPipeline,
+      onIngestionWorkflowsUpdate,
+    ]
+  );
 
   const getIngestionTab = () => {
     return (
@@ -423,200 +621,16 @@ const Ingestion: React.FC<IngestionProps> = ({
           </div>
         </div>
         {getSearchedIngestions().length ? (
-          <div className="tw-table-responsive tw-mb-6 tw-table-container">
-            <table
-              className="tw-bg-white tw-w-full tw-mb-4"
-              data-testid="ingestion-table">
-              <thead>
-                <tr className="tableHead-row" data-testid="table-header">
-                  <th className="tableHead-cell">Name</th>
-                  <th className="tableHead-cell">Type</th>
-                  <th className="tableHead-cell">Schedule</th>
-                  <th className="tableHead-cell">Recent Runs</th>
-                  <th className="tableHead-cell">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="tableBody">
-                {getSearchedIngestions().map((ingestion, index) => (
-                  <tr
-                    className={classNames(
-                      'tableBody-row',
-                      !isEven(index + 1) ? 'odd-row' : null
-                    )}
-                    key={index}>
-                    <td className="tableBody-cell">
-                      {airflowEndpoint ? (
-                        <Tooltip
-                          title={
-                            permissions.ViewAll || permissions.ViewBasic
-                              ? 'View Dag'
-                              : NO_PERMISSION_TO_VIEW
-                          }>
-                          <Button
-                            className="tw-mr-2"
-                            data-testid="airflow-tree-view"
-                            disabled={
-                              !(permissions.ViewAll || permissions.ViewBasic)
-                            }
-                            href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
-                            rel="noopener noreferrer"
-                            target="_blank"
-                            type="link">
-                            {ingestion.name}
-                            <SVGIcons
-                              alt="external-link"
-                              className="tw-align-middle tw-ml-1"
-                              icon={Icons.EXTERNAL_LINK}
-                              width="16px"
-                            />
-                          </Button>
-                        </Tooltip>
-                      ) : (
-                        ingestion.name
-                      )}
-                    </td>
-                    <td className="tableBody-cell">{ingestion.pipelineType}</td>
-                    <td className="tableBody-cell">
-                      {ingestion.airflowConfig?.scheduleInterval ? (
-                        <PopOver
-                          html={
-                            <div>
-                              {cronstrue.toString(
-                                ingestion.airflowConfig.scheduleInterval || '',
-                                {
-                                  use24HourTimeFormat: true,
-                                  verbose: true,
-                                }
-                              )}
-                            </div>
-                          }
-                          position="bottom"
-                          theme="light"
-                          trigger="mouseenter">
-                          <span>
-                            {ingestion.airflowConfig.scheduleInterval ?? '--'}
-                          </span>
-                        </PopOver>
-                      ) : (
-                        <span>--</span>
-                      )}
-                    </td>
-                    <td className="tableBody-cell">
-                      <div className="tw-flex">{getStatuses(ingestion)}</div>
-                    </td>
-                    <td className="tableBody-cell">
-                      <div className="tw-flex">
-                        {ingestion.enabled ? (
-                          <Fragment>
-                            {getTriggerDeployButton(ingestion)}
-                            {separator}
-                            <Button
-                              data-testid="pause"
-                              disabled={!isRequiredDetailsAvailable}
-                              type="link"
-                              onClick={() =>
-                                handleEnableDisableIngestion(ingestion.id || '')
-                              }>
-                              Pause
-                            </Button>
-                          </Fragment>
-                        ) : (
-                          <Button
-                            data-testid="unpause"
-                            disabled={!isRequiredDetailsAvailable}
-                            type="link"
-                            onClick={() =>
-                              handleEnableDisableIngestion(ingestion.id || '')
-                            }>
-                            Unpause
-                          </Button>
-                        )}
-                        {separator}
-                        <Button
-                          data-testid="edit"
-                          disabled={!isRequiredDetailsAvailable}
-                          type="link"
-                          onClick={() => handleUpdate(ingestion)}>
-                          Edit
-                        </Button>
-                        {separator}
-                        <Button
-                          data-testid="delete"
-                          type="link"
-                          onClick={() =>
-                            ConfirmDelete(
-                              ingestion.id as string,
-                              ingestion.name
-                            )
-                          }>
-                          {deleteSelection.id === ingestion.id ? (
-                            deleteSelection.state === 'success' ? (
-                              <FontAwesomeIcon icon="check" />
-                            ) : (
-                              <Loader size="small" type="default" />
-                            )
-                          ) : (
-                            'Delete'
-                          )}
-                        </Button>
-                        {separator}
-                        <Button
-                          data-testid="kill"
-                          disabled={!isRequiredDetailsAvailable}
-                          type="link"
-                          onClick={() => {
-                            setIsKillModalOpen(true);
-                            setSelectedPipeline(ingestion);
-                          }}>
-                          Kill
-                        </Button>
-                        {separator}
-                        <Button
-                          data-testid="logs"
-                          disabled={!isRequiredDetailsAvailable}
-                          type="link"
-                          onClick={() => {
-                            setIsLogsModalOpen(true);
-                            setSelectedPipeline(ingestion);
-                          }}>
-                          Logs
-                        </Button>
-                      </div>
-                      {isLogsModalOpen &&
-                        selectedPipeline &&
-                        ingestion.id === selectedPipeline?.id && (
-                          <IngestionLogsModal
-                            isModalOpen={isLogsModalOpen}
-                            pipelinName={selectedPipeline.name}
-                            pipelineId={selectedPipeline.id as string}
-                            pipelineType={selectedPipeline.pipelineType}
-                            onClose={() => {
-                              setIsLogsModalOpen(false);
-                              setSelectedPipeline(undefined);
-                            }}
-                          />
-                        )}
-                      {isKillModalOpen &&
-                        selectedPipeline &&
-                        ingestion.id === selectedPipeline?.id && (
-                          <KillIngestionModal
-                            isModalOpen={isKillModalOpen}
-                            pipelinName={selectedPipeline.name}
-                            pipelineId={selectedPipeline.id as string}
-                            onClose={() => {
-                              setIsKillModalOpen(false);
-                              setSelectedPipeline(undefined);
-                            }}
-                            onIngestionWorkflowsUpdate={
-                              onIngestionWorkflowsUpdate
-                            }
-                          />
-                        )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="tw-mb-6" data-testid="ingestion-table">
+            <Table
+              columns={tableColumn}
+              data-testid="schema-table"
+              dataSource={getSearchedIngestions()}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
+
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
               <NextPrevious
                 currentPage={currrentPage}
@@ -631,14 +645,14 @@ const Ingestion: React.FC<IngestionProps> = ({
           isRequiredDetailsAvailable &&
           ingestionList.length === 0 && (
             <ErrorPlaceHolder>
-              <Typography.Text>No ingestion data available</Typography.Text>
               <Typography.Text>
-                To view Ingestion Data, run the MetaData Ingestion. Please refer
-                to this doc to schedule the{' '}
+                {t('message.no-ingestion-available')}
+              </Typography.Text>
+              <Typography.Text>
+                {t('message.no-ingestion-description')}
               </Typography.Text>
               <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-                {' '}
-                Metadata Ingestion
+                {t('label.metadata-ingestion')}
               </Typography.Link>
             </ErrorPlaceHolder>
           )

@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -99,10 +98,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
     TeamList() {}
-
-    public TeamList(List<Team> teams, String beforeCursor, String afterCursor, int total) {
-      super(teams, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
@@ -338,7 +333,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, team, true);
+    return create(uriInfo, securityContext, team);
   }
 
   @PUT
@@ -357,7 +352,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, team, true);
+    return createOrUpdate(uriInfo, securityContext, team);
   }
 
   @PATCH
@@ -410,7 +405,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean hardDelete,
       @Parameter(description = "Team Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private Team getTeam(CreateTeam ct, String user) throws IOException {

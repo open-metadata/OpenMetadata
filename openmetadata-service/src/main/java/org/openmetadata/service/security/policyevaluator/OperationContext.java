@@ -39,19 +39,8 @@ public class OperationContext {
     return operations;
   }
 
-  public void allowAll() {
-    LOG.debug("allowAll operations");
-    operations.clear();
-  }
-
-  public void allowViewAll() {
-    LOG.debug("allowViewAll operations");
-    operations.removeIf(OperationContext::isViewOperation);
-  }
-
-  public void allowEditAll() {
-    LOG.debug("allowEditAll operations");
-    operations.removeIf(OperationContext::isEditOperation);
+  public boolean isCreateOperation() {
+    return operations.contains(MetadataOperation.CREATE);
   }
 
   public static boolean isEditOperation(MetadataOperation operation) {
