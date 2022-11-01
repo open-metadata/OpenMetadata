@@ -85,7 +85,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     super(Bot.class, new BotRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method is used by reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load system bots
     List<Bot> bots = dao.getEntitiesFromSeedData();

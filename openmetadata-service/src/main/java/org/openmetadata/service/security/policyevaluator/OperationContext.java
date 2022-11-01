@@ -39,8 +39,8 @@ public class OperationContext {
     return operations;
   }
 
-  public boolean isCreateOperation() {
-    return operations.contains(MetadataOperation.CREATE);
+  public static List<MetadataOperation> getAllOperations(MetadataOperation... exclude) {
+    return getOperations("", exclude);
   }
 
   public static boolean isEditOperation(MetadataOperation operation) {
@@ -49,5 +49,23 @@ public class OperationContext {
 
   public static boolean isViewOperation(MetadataOperation operation) {
     return operation.value().startsWith("View");
+  }
+
+  public static List<MetadataOperation> getViewOperations(MetadataOperation... exclude) {
+    return getOperations("View", exclude);
+  }
+
+  private static List<MetadataOperation> getOperations(String startsWith, MetadataOperation... exclude) {
+    List<MetadataOperation> list = new ArrayList<>();
+    List<MetadataOperation> excludeList = new ArrayList<>(List.of(exclude));
+    if (!excludeList.isEmpty()) {
+      excludeList.add(MetadataOperation.ALL); // If any operation is excluded then 'All' operation is excluded
+    }
+    for (MetadataOperation operation : MetadataOperation.values()) {
+      if (!excludeList.contains(operation) && operation.value().startsWith(startsWith)) {
+        list.add(operation);
+      }
+    }
+    return list;
   }
 }

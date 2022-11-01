@@ -274,6 +274,12 @@ public final class JsonUtils {
     return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
   }
 
+  public static JsonPatch getJsonPatch(Object v1, Object v2) throws JsonProcessingException {
+    JsonValue source = readJson(JsonUtils.pojoToJson(v1));
+    JsonValue dest = readJson(JsonUtils.pojoToJson(v2));
+    return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
+  }
+
   public static JsonValue readJson(String s) {
     try (JsonReader reader = Json.createReader(new StringReader(s))) {
       return reader.readValue();
