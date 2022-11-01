@@ -103,7 +103,7 @@ const CustomControls: FC<ControlProps> = ({
 
       return zoomInValue;
     });
-  }, [zoomTo]);
+  }, [onZoomHandler]);
 
   const onZoomOutHandler = useCallback(() => {
     setZoom((pre) => {
@@ -112,7 +112,7 @@ const CustomControls: FC<ControlProps> = ({
 
       return zoomOutValue;
     });
-  }, [zoomTo]);
+  }, [onZoomHandler]);
 
   const onFitViewHandler = useCallback(() => {
     fitView?.(fitViewParams);
