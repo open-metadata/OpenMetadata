@@ -1051,10 +1051,10 @@ def _(config: LocalDagtser):
 
     from dagster_graphql import DagsterGraphQLClient
 
-    hostPort = config.hostPort  # pylint: disable=invalid-name
-    hostPort = urlparse(hostPort)  # pylint: disable=invalid-name
+    host_port = config.hostPort
+    host_port = urlparse(host_port)
     local_dagster = DagsterGraphQLClient(
-        hostname=hostPort.hostname, port_number=hostPort.port
+        hostname=host_port.hostname, port_number=host_port.port
     )
     return local_dagster
 

@@ -145,7 +145,6 @@ class DagsterSource(PipelineServiceSource):
         for job in jobs["solidHandles"]:
             down_stream_task = []
             for tasks in job.get("solid")["inputs"]:
-                # if task["dependsOn"][0]["solid"]["name"]:
                 for task in tasks["dependsOn"]:
                     down_stream_task.append(task["solid"]["name"])
 
@@ -183,19 +182,25 @@ class DagsterSource(PipelineServiceSource):
         yield tag_category
 
     def get_task_runs(self, job_id, pipeline_name):
-        parameters = {
-            "handleID": job_id,
-            "selector": {
-                "pipelineName": pipeline_name,
-                "repositoryName": self.context.repository_name,
-                "repositoryLocationName": self.context.repository_location,
-            },
-        }
-        runs = self.client._execute(  # pylint: disable=protected-access
-            query=GRAPHQL_RUNS_QUERY, variables=parameters
-        )
+        try:
+            parameters = {
+                "handleID": job_id,
+                "selector": {
+                    "pipelineName": pipeline_name,
+                    "repositoryName": self.context.repository_name,
+                    "repositoryLocationName": self.context.repository_location,
+                },
+            }
+            runs = self.client._execute(  # pylint: disable=protected-access
+                query=GRAPHQL_RUNS_QUERY, variables=parameters
+            )
 
-        return runs["pipelineOrError"]
+            return runs["pipelineOrError"]
+        except Exception as err:
+            logger.error(f"Error while getting runs for {job_id} - {pipeline_name} - {err}")
+            logger.debug(traceback.format_exc())
+
+        return []
 
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
         tasks = self.context.pipeline.tasks
