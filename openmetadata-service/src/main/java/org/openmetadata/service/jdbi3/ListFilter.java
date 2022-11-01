@@ -143,6 +143,6 @@ public class ListFilter {
   }
 
   private String format(String name) {
-    return name.contains("_") ? name.replace("_", "\\\\_") : name.replace("-", "\\\\-");
+    return name.contains("-") ? name.replaceAll("-", "\\\\-") : name.replaceAll("_", "\\\\_");
   }
 }
