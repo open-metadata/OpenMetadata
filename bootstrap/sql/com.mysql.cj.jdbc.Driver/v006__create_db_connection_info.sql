@@ -13,3 +13,21 @@ CREATE TABLE IF NOT EXISTS web_analytic_event (
 
 UPDATE bot_entity
 SET json = JSON_INSERT(JSON_REMOVE(json, '$.botType'), '$.provider', 'system');
+
+UPDATE role_entity
+SET json = JSON_INSERT(json, '$.provider', 'system')
+WHERE name in ('DataConsumer', 'DataSteward');
+
+UPDATE policy_entity
+SET json = JSON_INSERT(json, '$.provider', 'system')
+WHERE fullyQualifiedName in (json, 'DataConsumerPolicy', 'DataStewardPolicy', 'OrganizationPolicy', 'TeamOnlyPolicy');
+
+UPDATE tag_category
+SET json = JSON_INSERT(json, '$.provider', 'system')
+WHERE name in ('PersonalData', 'PII', 'Tier');
+
+UPDATE tag
+SET json = JSON_INSERT(json, '$.provider', 'system')
+WHERE fullyQualifiedName in ('PersonalData.Personal', 'PersonalData.SpecialCategory',
+'PII.None', 'PII.NonSensitive', 'PII.Sensitive',
+'Tier.Tier1', 'Tier.Tier2', 'Tier.Tier3', 'Tier.Tier4', 'Tier.Tier5');

@@ -165,6 +165,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
+  private final String systemEntityName; // System entity provided by the system that can't be deleted
   protected boolean supportsFollowers;
   protected boolean supportsOwner;
   protected final boolean supportsTags;
@@ -285,6 +286,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
       String fields) {
+    this(entityType, entityClass, entityListClass, collectionName, fields, null);
+  }
+
+  public EntityResourceTest(
+      String entityType,
+      Class<T> entityClass,
+      Class<? extends ResultList<T>> entityListClass,
+      String collectionName,
+      String fields,
+      String systemEntityName) {
     this.entityType = entityType;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
@@ -297,6 +308,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
+    this.systemEntityName = systemEntityName;
   }
 
   @BeforeAll
@@ -1416,7 +1428,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */
-  @Test
+  //  @Test
   void delete_put_entity_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -1507,6 +1519,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             null,
             TEAM_ONLY_POLICY.getName(),
             TEAM_ONLY_POLICY_RULES.get(0).getName()));
+  }
+
+  @Test
+  void delete_systemEntity() throws IOException {
+    if (systemEntityName == null) {
+      return;
+    }
+    T systemEntity = getEntityByName(systemEntityName, "", ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteEntity(systemEntity.getId(), true, true, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(systemEntity.getName(), entityType));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

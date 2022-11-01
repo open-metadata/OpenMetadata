@@ -5,6 +5,7 @@
   "description": "Policy when attached to a team allows only users with in the team hierarchy to access the resources.",
   "enabled": true,
   "allowDelete": false,
+  "provider": "system",
   "rules": [
     {
       "name": "TeamOnlyPolicy-Rule",
