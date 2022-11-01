@@ -180,6 +180,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
   return (
     <>
       <Table
+        bordered
         className="roles-list-table"
         columns={columns}
         data-testid="roles-list-table"

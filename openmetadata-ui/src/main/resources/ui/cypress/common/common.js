@@ -683,8 +683,7 @@ export const addCustomPropertiesForEntity = (
   entityType,
   customType,
   value,
-  entityObj,
-  entityName
+  entityObj
 ) => {
   const propertyName = `entity${entityType.name}test${uuid()}`;
 
@@ -713,7 +712,7 @@ export const addCustomPropertiesForEntity = (
   //Checking the added property in Entity
 
   visitEntityDetailsPage(
-    entityName || entityObj.term,
+    entityObj.term,
     entityObj.serviceName,
     entityObj.entity
   );

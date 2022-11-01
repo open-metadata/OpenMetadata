@@ -284,6 +284,7 @@ const BotListV1 = ({
         <Row>
           <Col span={24}>
             <Table
+              bordered
               columns={columns}
               dataSource={searchedData}
               loading={{

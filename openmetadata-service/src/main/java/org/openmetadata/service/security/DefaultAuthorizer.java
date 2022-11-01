@@ -20,6 +20,7 @@ import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceTyp
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.GOOGLE;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.OKTA;
+import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
@@ -45,7 +46,6 @@ import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
-import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -184,24 +184,18 @@ public class DefaultAuthorizer implements Authorizer {
   public List<ResourcePermission> listPermissions(SecurityContext securityContext, String user) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
-    }
-    return PolicyEvaluator.listPermission(subjectContext);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermissions(ALLOW) // Admin has permissions to do all operations.
+        : PolicyEvaluator.listPermission(subjectContext);
   }
 
   @Override
   public ResourcePermission getPermission(SecurityContext securityContext, String user, String resourceType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermission(resourceType, Access.ALLOW);
-    }
-    return PolicyEvaluator.getPermission(subjectContext, resourceType);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermission(resourceType, ALLOW) // Admin has permissions to do all operations.
+        : PolicyEvaluator.getPermission(subjectContext, resourceType);
   }
 
   @Override
@@ -209,12 +203,9 @@ public class DefaultAuthorizer implements Authorizer {
       SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
-    }
-    return PolicyEvaluator.getPermission(subjectContext, resourceContext);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermission(resourceContext.getResource(), ALLOW) // Admin all permissions
+        : PolicyEvaluator.getPermission(subjectContext, resourceContext);
   }
 
   @Override

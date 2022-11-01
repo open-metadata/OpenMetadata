@@ -82,6 +82,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         <ErrorPlaceHolder heading="Custom Properties" />
       ) : (
         <Table
+          bordered
           columns={tableColumn}
           data-testid="custom-properties-table"
           dataSource={entityTypeDetail.customProperties || []}

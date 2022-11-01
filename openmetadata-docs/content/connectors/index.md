@@ -39,6 +39,8 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [MySQL](/connectors/database/mysql)
 - [Oracle](/connectors/database/oracle)
 - [Postgres](/connectors/database/postgres)
+  - Postgres Metadata
+  - Postgres Usage 
 - [Presto](/connectors/database/presto)
 - [Redshift](/connectors/database/redshift)
   - Redshift Metadata

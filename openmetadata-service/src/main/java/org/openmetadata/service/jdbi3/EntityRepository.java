@@ -1270,8 +1270,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (updatedByBot()) {
-        // Revert changes to extension field, if being updated by a bot
+      if (updatedByBot() && operation == Operation.PUT) {
+        // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting custom extension
         updated.setExtension(original.getExtension());
         return;
       }
