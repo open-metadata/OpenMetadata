@@ -388,6 +388,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build());
     pipelineServiceClient.deployPipeline(ingestionPipeline);
+    createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline);
     return addHref(uriInfo, ingestionPipeline);
   }
@@ -437,6 +438,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
     pipelineServiceClient.toggleIngestion(pipeline);
+    createOrUpdate(uriInfo, securityContext, pipeline);
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 

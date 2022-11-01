@@ -20,8 +20,6 @@ Workflow definition for the ORM Profiler.
 from __future__ import annotations
 
 import traceback
-import uuid
-from datetime import datetime
 from typing import Optional, Union, cast
 
 from pydantic import ValidationError
@@ -38,7 +36,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
-    PipelineStatus,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -48,6 +45,9 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger
+from metadata.utils.workflow_helper import (
+    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
+)
 from metadata.utils.workflow_output_handler import print_data_insight_status
 
 logger = data_insight_logger()
@@ -174,28 +174,10 @@ class DataInsightWorkflow:
         """
         Method to set the pipeline status of current ingestion pipeline
         """
-
-        if not self.config.ingestionPipelineFQN:
-            # if ingestion pipeline fqn is not set then setting pipeline status is avoided
-            return
-
-        pipeline_status: PipelineStatus = None
-
-        if state in (PipelineState.queued, PipelineState.running):
-            self.config.pipelineRunId = self.config.pipelineRunId or str(uuid.uuid4())
-            pipeline_status = PipelineStatus(
-                runId=self.config.pipelineRunId,
-                pipelineState=state,
-                startDate=datetime.now().timestamp(),
-                timestamp=datetime.now().timestamp(),
-            )
-        elif self.config.pipelineRunId:
-            pipeline_status = self.metadata.get_pipeline_status(
-                self.config.ingestionPipelineFQN, self.config.pipelineRunId
-            )
-            # if workflow is ended then update the end date in status
-            pipeline_status.endDate = datetime.now().timestamp()
-            pipeline_status.pipelineState = state
-        self.metadata.create_or_update_pipeline_status(
-            self.config.ingestionPipelineFQN, pipeline_status
+        pipeline_run_id = set_ingestion_pipeline_status_helper(
+            state=state,
+            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
+            pipeline_run_id=self.config.pipelineRunId,
+            metadata=self.metadata,
         )
+        self.config.pipelineRunId = pipeline_run_id

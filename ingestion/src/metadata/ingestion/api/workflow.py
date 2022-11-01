@@ -13,11 +13,9 @@ Workflow definition for metadata related ingestions: metadata, lineage and usage
 """
 import importlib
 import traceback
-import uuid
 
 # module building strings read better with .format instead of f-strings
 # pylint: disable=consider-using-f-string
-from datetime import datetime
 from typing import Optional, Type, TypeVar
 
 from metadata.config.common import WorkflowExecutionError
@@ -26,7 +24,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
-    PipelineStatus,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
@@ -48,6 +45,9 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.workflow_helper import (
+    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
+)
 from metadata.utils.workflow_output_handler import print_status
 
 logger = ingestion_logger()
@@ -244,6 +244,9 @@ class Workflow:
         return self.source.get_status().calculate_success()
 
     def raise_from_status(self, raise_warnings=False):
+        """
+        Method to raise error if failed execution
+        """
         if (
             self.source.get_status().failures
             and self._get_source_success() < SUCCESS_THRESHOLD_VALUE
@@ -289,31 +292,13 @@ class Workflow:
         """
         Method to set the pipeline status of current ingestion pipeline
         """
-
-        if not self.config.ingestionPipelineFQN:
-            # if ingestion pipeline fqn is not set then setting pipeline status is avoided
-            return
-
-        pipeline_status: PipelineStatus = None
-
-        if state in (PipelineState.queued, PipelineState.running):
-            self.config.pipelineRunId = self.config.pipelineRunId or str(uuid.uuid4())
-            pipeline_status = PipelineStatus(
-                runId=self.config.pipelineRunId,
-                pipelineState=state,
-                startDate=datetime.now().timestamp(),
-                timestamp=datetime.now().timestamp(),
-            )
-        elif self.config.pipelineRunId:
-            pipeline_status = self.metadata.get_pipeline_status(
-                self.config.ingestionPipelineFQN, self.config.pipelineRunId
-            )
-            # if workflow is ended then update the end date in status
-            pipeline_status.endDate = datetime.now().timestamp()
-            pipeline_status.pipelineState = state
-        self.metadata.create_or_update_pipeline_status(
-            self.config.ingestionPipelineFQN, pipeline_status
+        pipeline_run_id = set_ingestion_pipeline_status_helper(
+            state=state,
+            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
+            pipeline_run_id=self.config.pipelineRunId,
+            metadata=self.metadata,
         )
+        self.config.pipelineRunId = pipeline_run_id
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """
@@ -334,7 +319,7 @@ class Workflow:
                     service_name,
                 )
                 if service:
-                    self.config.source.serviceConnection = self.metadata.secrets_manager_client.retrieve_service_connection(
+                    self.config.source.serviceConnection = self.metadata.secrets_manager_client.retrieve_service_connection(  # pylint: disable=line-too-long
                         service, service_type.name.lower()
                     )
             except Exception as exc:

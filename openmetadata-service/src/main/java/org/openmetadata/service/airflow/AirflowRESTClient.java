@@ -62,6 +62,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
+        ingestionPipeline.setDeployed(true);
         return response.body();
       }
     } catch (Exception e) {
