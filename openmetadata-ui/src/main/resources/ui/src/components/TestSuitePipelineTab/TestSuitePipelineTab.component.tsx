@@ -35,10 +35,7 @@ import {
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
-import {
-  getIngestionStatuses,
-  getLoadingStatus,
-} from '../../utils/CommonUtils';
+import { getLoadingStatus } from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getLogsViewerPath,
@@ -48,6 +45,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import PopOver from '../common/popover/PopOver';
+import { IngestionRecentRuns } from '../Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
@@ -381,7 +379,9 @@ const TestSuitePipelineTab = () => {
         dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
         render: (_, record) => (
-          <Row align="middle">{getIngestionStatuses(record)}</Row>
+          <Row align="middle">
+            <IngestionRecentRuns ingestion={record} />
+          </Row>
         ),
       },
       {

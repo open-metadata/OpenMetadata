@@ -28,7 +28,7 @@ const mockProps = {
 };
 
 jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
-  postkillIngestionPipelineById: jest
+  postKillIngestionPipelineById: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),
 }));

@@ -19,7 +19,7 @@ import cronstrue from 'cronstrue';
 import { useTranslation } from 'react-i18next';
 
 import { ColumnsType } from 'antd/lib/table';
-import { capitalize, isNil, lowerCase, startCase } from 'lodash';
+import { isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
@@ -48,6 +48,7 @@ import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { IngestionProps } from './ingestion.interface';
+import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
@@ -300,67 +301,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
   );
 
-  const getStatuses = (ingestion: IngestionPipeline) => {
-    const lastFiveIngestions = ingestion.pipelineStatuses;
-    //   ?.sort((a, b) => {
-    //     // Turn your strings into millis, and then subtract them
-    //     // to get a value that is either negative, positive, or zero.
-    //     const date1 = new Date(a.startDate || '');
-    //     const date2 = new Date(b.startDate || '');
-
-    //     return date1.getTime() - date2.getTime();
-    //   })
-    //   .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
-
-    return [lastFiveIngestions]?.map((r, i) => {
-      const status = (
-        <p
-          className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
-          key={i}>
-          {capitalize(r?.pipelineState)}
-        </p>
-      );
-      //  : (
-      //   <p
-      //     className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-      //     key={i}
-      //   />
-      // );
-
-      return r?.endDate || r?.startDate || r?.timestamp ? (
-        <PopOver
-          html={
-            <div className="tw-text-left">
-              {r.timestamp ? (
-                <p>
-                  {t('label.execution-date')} :{' '}
-                  {new Date(r.timestamp).toUTCString()}
-                </p>
-              ) : null}
-              {r.startDate ? (
-                <p>
-                  {t('label.start-date')}: {new Date(r.startDate).toUTCString()}
-                </p>
-              ) : null}
-              {r.endDate ? (
-                <p>
-                  {t('label.end-date')} : {new Date(r.endDate).toUTCString()}
-                </p>
-              ) : null}
-            </div>
-          }
-          key={i}
-          position="bottom"
-          theme="light"
-          trigger="mouseenter">
-          {status}
-        </PopOver>
-      ) : (
-        status
-      );
-    });
-  };
-
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
@@ -468,7 +408,9 @@ const Ingestion: React.FC<IngestionProps> = ({
         dataIndex: 'recentRuns',
         key: 'recentRuns',
         render: (_, record) => (
-          <div className="tw-flex">{getStatuses(record)}</div>
+          <div className="tw-flex">
+            <IngestionRecentRuns ingestion={record} />
+          </div>
         ),
       },
       {
@@ -573,7 +515,6 @@ const Ingestion: React.FC<IngestionProps> = ({
       NO_PERMISSION_TO_VIEW,
       permissions,
       airflowEndpoint,
-      getStatuses,
       getTriggerDeployButton,
       isRequiredDetailsAvailable,
       handleEnableDisableIngestion,
@@ -592,9 +533,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const getIngestionTab = () => {
     return (
-      <div
-        className="tw-px-4 tw-mt-4"
-        data-testid="ingestion-details-container">
+      <div className="tw-mt-4" data-testid="ingestion-details-container">
         <div className="tw-flex">
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
