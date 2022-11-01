@@ -72,6 +72,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
 
   return (
     <Table
+      bordered
       className="teams-list-table"
       columns={columns}
       dataSource={data}

@@ -268,7 +268,7 @@ const NavBar = ({
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO_SMALL} />
             </NavLink>
-            <Space className="tw-ml-5" size={16}>
+            <Space className="tw-ml-5 flex-none" size={16}>
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item-explore"
@@ -295,6 +295,15 @@ const NavBar = ({
                   pathname: ROUTES.TEST_SUITES,
                 }}>
                 {t('label.data-quality')}
+              </NavLink>
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-data-insight"
+                style={navStyle(pathname.includes(ROUTES.DATA_INSIGHT))}
+                to={{
+                  pathname: ROUTES.DATA_INSIGHT,
+                }}>
+                {t('label.data-insight')}
               </NavLink>
             </Space>
           </div>
@@ -357,7 +366,7 @@ const NavBar = ({
                 />
               ))}
           </div>
-          <div className="tw-flex tw-ml-auto tw-pl-36">
+          <Space className="tw-ml-auto">
             <Space size={24}>
               <NavLink
                 className="focus:tw-no-underline"
@@ -394,7 +403,7 @@ const NavBar = ({
                     <SVGIcons
                       alt="Alert bell icon"
                       icon={Icons.ALERT_BELL}
-                      width="20"
+                      width="18"
                     />
                   </Badge>
                 </Dropdown>
@@ -407,7 +416,7 @@ const NavBar = ({
                       alt="Doc icon"
                       className="tw-align-middle tw-mt-0.5 tw-mr-1"
                       icon={Icons.HELP_CIRCLE}
-                      width="20"
+                      width="18"
                     />
                   }
                   isDropDownIconVisible={false}
@@ -446,7 +455,7 @@ const NavBar = ({
                 type="link"
               />
             </div>
-          </div>
+          </Space>
         </div>
         {isFeatureModalOpen && (
           <WhatsNewModal
