@@ -32,12 +32,6 @@ jest.mock('react-lazylog', () => ({
   LazyLog: jest.fn().mockImplementation(() => <div>LazyLog</div>),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()

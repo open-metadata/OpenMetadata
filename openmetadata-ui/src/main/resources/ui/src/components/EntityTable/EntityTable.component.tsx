@@ -454,7 +454,7 @@ const EntityTable = ({
   };
 
   const renderDescription: TableCellRendered<Column, 'description'> = (
-    _,
+    description,
     record,
     index
   ) => {
@@ -466,8 +466,8 @@ const EntityTable = ({
             data-testid="description"
             id={`column-description-${index}`}>
             <div>
-              {record.description ? (
-                <RichTextEditorPreviewer markdown={record.description} />
+              {description ? (
+                <RichTextEditorPreviewer markdown={description} />
               ) : (
                 <span className="tw-no-description">
                   {t('label.no-description')}
@@ -532,18 +532,18 @@ const EntityTable = ({
   };
 
   const renderTags: TableCellRendered<Column, 'tags'> = useCallback(
-    (_, record: Column, index: number) => {
+    (tags, record: Column, index: number) => {
       return (
         <div className="hover-icon-group">
           {isReadOnly ? (
             <div className="tw-flex tw-flex-wrap">
-              <TagsViewer sizeCap={-1} tags={record?.tags || []} />
+              <TagsViewer sizeCap={-1} tags={tags || []} />
             </div>
           ) : (
             <div
               className={classNames(
                 `tw-flex tw-justify-content`,
-                editColumnTag?.index === index || !isEmpty(record.tags)
+                editColumnTag?.index === index || !isEmpty(tags)
                   ? 'tw-flex-col tw-items-start'
                   : 'tw-items-center'
               )}
@@ -561,7 +561,7 @@ const EntityTable = ({
                 className="w-max-256"
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
-                selectedTags={record?.tags || []}
+                selectedTags={tags || []}
                 showAddTagButton={hasTagEditAccess}
                 size="small"
                 tagList={allTags}
@@ -569,8 +569,8 @@ const EntityTable = ({
                 onCancel={() => {
                   handleTagSelection();
                 }}
-                onSelectionChange={(tags) => {
-                  handleTagSelection(tags, record?.name);
+                onSelectionChange={(selectedTags) => {
+                  handleTagSelection(selectedTags, record?.name);
                 }}
               />
 

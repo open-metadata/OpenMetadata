@@ -21,12 +21,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   getPolicyByName: jest
     .fn()

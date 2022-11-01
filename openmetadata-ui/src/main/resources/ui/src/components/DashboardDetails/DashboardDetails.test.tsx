@@ -75,6 +75,7 @@ const DashboardDetailsProps = {
       chartUrl: 'http://localhost',
       chartType: 'Area',
       displayName: 'Test chart',
+      id: '1',
     },
   ] as ChartType[],
   serviceType: '',

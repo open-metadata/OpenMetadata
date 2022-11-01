@@ -107,12 +107,6 @@ jest.mock(
   }
 );
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 describe('Test Ingestion page', () => {
   it('Page Should render', async () => {
     const { container } = render(

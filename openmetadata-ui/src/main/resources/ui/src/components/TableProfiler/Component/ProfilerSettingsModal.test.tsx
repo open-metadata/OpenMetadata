@@ -33,12 +33,6 @@ jest.mock('../../../axiosAPIs/tableAPI', () => ({
   putTableProfileConfig: jest.fn(),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 const mockProps: ProfilerSettingsModalProps = {
   tableId: MOCK_TABLE.id,
   columns: MOCK_TABLE.columns || [],

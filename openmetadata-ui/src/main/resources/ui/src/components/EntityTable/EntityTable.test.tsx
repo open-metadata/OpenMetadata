@@ -169,12 +169,6 @@ const mockGlossaryList = [
   },
 ];
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
@@ -251,13 +245,6 @@ jest.mock('../../utils/TagsUtils', () => ({
 
     return tagList;
   }),
-}));
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Popover: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 describe('Test EntityTable Component', () => {

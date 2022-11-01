@@ -227,12 +227,6 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 describe('Test MlModel entity detail component', () => {
   it('Should render detail component', async () => {
     const { container } = render(<MlModelDetailComponent {...mockProp} />, {
