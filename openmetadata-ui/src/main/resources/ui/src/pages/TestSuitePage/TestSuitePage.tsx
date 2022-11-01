@@ -128,6 +128,7 @@ const TestSuitePage = () => {
       <Row className="w-full mt-4">
         <Col span={24}>
           <Table
+            bordered
             columns={columns}
             dataSource={testSuites}
             loading={{ spinning: isLoading, indicator: <Loader /> }}

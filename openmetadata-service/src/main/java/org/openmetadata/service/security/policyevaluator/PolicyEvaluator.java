@@ -24,6 +24,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
@@ -33,6 +34,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyIterator;
 
 /**
  * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link Policy}
@@ -149,6 +151,20 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        rule.setPermission(resourcePermissionMap, policyContext);
+      }
+    }
+    return new ArrayList<>(resourcePermissionMap.values());
+  }
+
+  /** Returns a list of operations that a user can perform on all the resources. */
+  public static List<ResourcePermission> listPermission(@NonNull List<EntityReference> policies) {
+    Map<String, ResourcePermission> resourcePermissionMap = initResourcePermissions();
+    PolicyIterator policyIterator = new PolicyIterator("", "", null, policies);
+    while (policyIterator.hasNext()) {
+      PolicyContext policyContext = policyIterator.next();
+      for (CompiledRule rule : policyContext.getRules()) {
+        LOG.debug("Evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
         rule.setPermission(resourcePermissionMap, policyContext);
       }
     }

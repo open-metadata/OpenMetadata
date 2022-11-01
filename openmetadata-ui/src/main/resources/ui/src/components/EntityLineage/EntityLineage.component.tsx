@@ -13,7 +13,6 @@
 
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import {
   isEmpty,
   isNil,
@@ -48,7 +47,12 @@ import ReactFlow, {
   useNodesState,
 } from 'reactflow';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
+import {
+  ELEMENT_DELETE_STATE,
+  MAX_ZOOM_VALUE,
+  MIN_ZOOM_VALUE,
+} from '../../constants/Lineage.constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   AddLineage,
   ColumnLineage,
@@ -70,6 +74,7 @@ import {
   getEdgeType,
   getLayoutedElements,
   getLineageData,
+  getLoadingStatusValue,
   getModalBodyText,
   getNodeRemoveButton,
   getRemovedNodeData,
@@ -78,7 +83,6 @@ import {
   getUpdatedEdge,
   getUpdatedUpstreamDownStreamEdgeArr,
   getUpStreamDownStreamColumnLineageArr,
-  LoadingStatus,
   onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
@@ -90,7 +94,7 @@ import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
-import CustomControlElements from './CustomControlElements.component';
+import CustomControlsComponent from './CustomControls.component';
 import { CustomEdge } from './CustomEdge.component';
 import CustomNode from './CustomNode.component';
 import {
@@ -117,6 +121,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  onFullScreenClick,
   hasEditAccess,
 }: EntityLineageProp) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -141,6 +146,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     {} as SelectedEdge
   );
   const [loading, setLoading] = useState<boolean>(false);
+  const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [status, setStatus] = useState<LoadingState>('initial');
   const [deletionState, setDeletionState] = useState<{
     loading: boolean;
@@ -190,37 +196,17 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    * @param node
    * @returns label for given node
    */
-  const getNodeLabel = (node: EntityReference, isExpanded = false) => {
+  const getNodeLabel = (node: EntityReference) => {
     return (
-      <Fragment>
-        {node.type === 'table' ? (
-          <button
-            className="tw-absolute tw--top-3.5 tw--left-2 tw-cursor-pointer tw-z-9999"
-            onClick={(e) => {
-              expandButton.current = expandButton.current
-                ? null
-                : e.currentTarget;
-              // eslint-disable-next-line @typescript-eslint/no-use-before-define
-              handleNodeExpand(!isExpanded, node);
-              setIsDrawerOpen(false);
-            }}>
-            <SVGIcons
-              alt="plus"
-              icon={isExpanded ? 'icon-minus' : 'icon-plus'}
-              width="16px"
-            />
-          </button>
-        ) : null}
-        <p className="tw-flex tw-m-0 tw-py-3">
-          <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(
-            node.displayName,
-            node.fullyQualifiedName,
-            false,
-            node.type
-          )}
-        </p>
-      </Fragment>
+      <p className="tw-flex tw-m-0 tw-py-3">
+        <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
+        {getDataLabel(
+          node.displayName,
+          node.fullyQualifiedName,
+          false,
+          node.type
+        )}
+      </p>
     );
   };
 
@@ -686,9 +672,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   //   ToDo: remove below code once design flow finalized for column expand and colaps
 
   const updateColumnsToNode = (columns: Column[], id: string) => {
-    setNodes((node) => {
-      const updatedNode = node.map((n) => {
-        if (n.id === id) {
+    setNodes((prevNodes) => {
+      const updatedNode = prevNodes.map((node) => {
+        if (node.id === id) {
           const cols: { [key: string]: ModifiedColumn } = {};
           columns.forEach((col) => {
             cols[col.fullyQualifiedName || col.name] = {
@@ -698,10 +684,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 : getColumnType(edges, col.fullyQualifiedName || col.name),
             };
           });
-          n.data.columns = cols;
+          node.data.columns = cols;
         }
 
-        return n;
+        return node;
       });
 
       return updatedNode;
@@ -712,71 +698,24 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    * take node and get the columns for that node
    * @param expandNode
    */
-  const getTableColumns = (expandNode?: EntityReference) => {
+  const getTableColumns = async (expandNode?: EntityReference) => {
     if (expandNode) {
-      getTableDetails(expandNode.id, ['columns'])
-        .then((res) => {
-          const tableId = expandNode.id;
-          const { columns } = res;
-          tableColumnsRef.current[tableId] = columns;
-          updateColumnsToNode(columns, tableId);
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            `Error while fetching ${getDataLabel(
-              expandNode.displayName,
-              expandNode.name,
-              true
-            )} columns`
-          );
-        });
-    }
-  };
-
-  const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
-    if (isExpanded) {
-      setNodes((prevState) => {
-        const newNodes = prevState.map((n) => {
-          if (n.id === node.id) {
-            const nodeId = node.id;
-            n.data.label = getNodeLabel(node, true);
-            n.data.isExpanded = true;
-            if (isUndefined(tableColumnsRef.current[nodeId])) {
-              getTableColumns(node);
-            } else {
-              const cols: { [key: string]: ModifiedColumn } = {};
-              tableColumnsRef.current[nodeId]?.forEach((col) => {
-                cols[col.fullyQualifiedName || col.name] = {
-                  ...col,
-                  type: isEditMode
-                    ? 'default'
-                    : getColumnType(edges, col.fullyQualifiedName || col.name),
-                };
-              });
-              n.data.columns = cols;
-            }
-          }
-
-          return n;
-        });
-
-        return newNodes;
-      });
-    } else {
-      setNodes((prevState) => {
-        const newNodes = prevState.map((n) => {
-          if (n.id === node.id) {
-            n.data.label = getNodeLabel(node);
-            n.data.isExpanded = false;
-            n.data.columns = undefined;
-          }
-
-          return n;
-        });
-
-        return newNodes;
-      });
+      try {
+        const res = await getTableDetails(expandNode.id, ['columns']);
+        const tableId = expandNode.id;
+        const { columns } = res;
+        tableColumnsRef.current[tableId] = columns;
+        updateColumnsToNode(columns, tableId);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          `Error while fetching ${getDataLabel(
+            expandNode.displayName,
+            expandNode.name,
+            true
+          )} columns`
+        );
+      }
     }
   };
 
@@ -917,10 +856,40 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }, 500);
   };
 
-  const handleCustomControlClick = () => {
+  const handleEditLineageClick = () => {
     setEditMode((pre) => !pre && !deleted);
     resetSelectedData();
     setIsDrawerOpen(false);
+  };
+
+  const toggleColumnView = (value: boolean) => {
+    setExpandAllColumns(value);
+    setNodes((prevNodes) => {
+      return prevNodes.map((node) => {
+        node.data.isExpanded = value;
+
+        return node;
+      });
+    });
+  };
+
+  const handleExpandColumnClick = () => {
+    if (expandAllColumns) {
+      toggleColumnView(false);
+    } else {
+      const allTableNodes = [
+        updatedLineageData.entity,
+        ...(updatedLineageData.nodes || []),
+      ].filter(
+        (node) =>
+          node.type === EntityType.TABLE &&
+          isUndefined(tableColumnsRef.current[node.id])
+      );
+
+      allTableNodes.length &&
+        allTableNodes.map(async (node) => await getTableColumns(node));
+      toggleColumnView(true);
+    }
   };
 
   /**
@@ -1003,10 +972,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   }
 
   return (
-    <div
-      className={classNames('tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4')}
-      data-testid="lineage-container">
-      <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
+    <div className="relative h-full" data-testid="lineage-container">
+      <div className="w-full h-full" ref={reactFlowWrapper}>
         <ReactFlowProvider>
           <ReactFlow
             data-testid="react-flow-component"
@@ -1025,7 +992,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onDrop={onDrop}
             onEdgesChange={onEdgesChange}
             onInit={(reactFlowInstance: ReactFlowInstance) => {
-              onLoad(reactFlowInstance, nodes.length);
+              onLoad(reactFlowInstance);
               setReactFlowInstance(reactFlowInstance);
             }}
             onNodeClick={(_e, node) => onNodeClick(node)}
@@ -1037,13 +1004,21 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeMouseMove={onNodeMouseMove}
             onNodesChange={onNodesChange}>
-            <CustomControlElements
+            <CustomControlsComponent
+              className="absolute top-1 right-1 bottom-full"
               deleted={deleted}
+              fitViewParams={{
+                minZoom: MIN_ZOOM_VALUE,
+                maxZoom: MAX_ZOOM_VALUE,
+              }}
+              handleFullScreenViewClick={onFullScreenClick}
               hasEditAccess={hasEditAccess}
+              isColumnsExpanded={expandAllColumns}
               isEditMode={isEditMode}
               loading={loading}
               status={status}
-              onClick={handleCustomControlClick}
+              onEditLinageClick={handleEditLineageClick}
+              onExpandColumnClick={handleExpandColumnClick}
             />
             {isEditMode && (
               <Background gap={12} size={1} variant={BackgroundVariant.Lines} />
@@ -1062,7 +1037,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
       {showDeleteModal && (
         <Modal
-          okText={LoadingStatus(
+          okText={getLoadingStatusValue(
             'Confirm',
             deletionState.loading,
             deletionState.status

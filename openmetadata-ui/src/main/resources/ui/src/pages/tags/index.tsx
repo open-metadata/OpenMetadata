@@ -424,11 +424,13 @@ const TagsPage = () => {
   };
 
   const getUsageCountLink = (tagFQN: string) => {
-    if (tagFQN.startsWith('Tier')) {
-      return getExplorePathWithInitFilters('', undefined, `tier=${tagFQN}`);
-    } else {
-      return getExplorePathWithInitFilters('', undefined, `tags=${tagFQN}`);
-    }
+    const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
+
+    return getExplorePathWithInitFilters(
+      '',
+      undefined,
+      `postFilter[${type}.tagFQN][0]=${tagFQN}`
+    );
   };
 
   const handleActionDeleteTag = (record: TagClass) => {
@@ -693,6 +695,7 @@ const TagsPage = () => {
               />
             </div>
             <Table
+              bordered
               columns={tableColumn}
               data-testid="table"
               dataSource={currentCategory?.children as TagClass[]}

@@ -153,7 +153,7 @@ describe('Test Ingestion page', () => {
   });
 
   it('Table should render necessary fields', async () => {
-    const { container } = render(
+    const { findByTestId, findAllByRole } = render(
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
@@ -179,22 +179,16 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const ingestionTable = await findByTestId(container, 'ingestion-table');
-    const tableHeaderContainer = await findByTestId(container, 'table-header');
-    const runButton = await findByTestId(container, 'run');
-    const editButton = await findByTestId(container, 'edit');
-    const deleteButton = await findByTestId(container, 'delete');
-    const killButton = await findByTestId(container, 'kill');
-    const logsButton = await findByTestId(container, 'logs');
-    const tableHeaders: string[] = [];
-
-    tableHeaderContainer.childNodes.forEach(
-      (node) => node.textContent && tableHeaders.push(node.textContent)
-    );
+    const ingestionTable = await findByTestId('ingestion-table');
+    const tableHeaderContainer = await findAllByRole('columnheader');
+    const runButton = await findByTestId('run');
+    const editButton = await findByTestId('edit');
+    const deleteButton = await findByTestId('delete');
+    const killButton = await findByTestId('kill');
+    const logsButton = await findByTestId('logs');
 
     expect(ingestionTable).toBeInTheDocument();
-    expect(tableHeaderContainer).toBeInTheDocument();
-    expect(tableHeaders.length).toBe(5);
+    expect(tableHeaderContainer.length).toBe(5);
     expect(runButton).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();

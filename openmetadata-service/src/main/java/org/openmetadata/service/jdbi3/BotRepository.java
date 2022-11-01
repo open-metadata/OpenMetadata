@@ -103,7 +103,7 @@ public class BotRepository extends EntityRepository<Bot> {
       if (original.getBotUser() == null
           || updated.getBotUser() == null
           || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {
-        recordChange("botUser", original.getBotUser(), updated.getBotUser());
+        recordChange(BOT_UPDATE_FIELDS, original.getBotUser(), updated.getBotUser());
       }
     }
   }
