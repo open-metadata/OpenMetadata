@@ -709,6 +709,7 @@ const TeamDetailsV1 = ({
               <div>
                 <Fragment>
                   <Table
+                    bordered
                     className="teams-list-table"
                     columns={columns}
                     dataSource={sortedUser}

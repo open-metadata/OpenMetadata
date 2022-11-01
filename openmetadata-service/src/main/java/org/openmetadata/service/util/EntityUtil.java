@@ -28,7 +28,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
 import lombok.NonNull;
@@ -222,14 +221,10 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferencesById(List<String> ids, @NonNull String entityType)
+  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType)
       throws IOException {
-    List<EntityReference> refs = new ArrayList<>(ids.size());
-    for (String id : ids) {
-      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
-    }
-    refs.sort(compareEntityReference);
-    return refs;
+    List<EntityReference> refs = toEntityReferences(list, entityType);
+    return populateEntityReferences(refs);
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink) {
@@ -285,6 +280,12 @@ public final class EntityUtil {
     return entityReferences;
   }
 
+  public static List<UUID> toIDs(List<String> list) {
+    List<UUID> ids = new ArrayList<>(list.size());
+    list.forEach(entry -> ids.add(UUID.fromString(entry)));
+    return ids;
+  }
+
   public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
     if (ids == null) {
       return null;
@@ -337,13 +338,6 @@ public final class EntityUtil {
     public boolean contains(String field) {
       return fieldList.contains(field);
     }
-  }
-
-  public static List<UUID> getIDList(List<EntityReference> refList) {
-    if (refList == null) {
-      return Collections.emptyList();
-    }
-    return refList.stream().sorted(compareEntityReference).map(EntityReference::getId).collect(Collectors.toList());
   }
 
   /** Entity version extension name formed by entityType.version.versionNumber. Example - `table.version.0.1` */

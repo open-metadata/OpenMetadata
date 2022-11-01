@@ -4,11 +4,6 @@ from unittest.mock import patch
 
 from sqlalchemy.types import VARCHAR
 
-from ingestion.src.metadata.ingestion.source.database.postgres import (
-    GEOMETRY,
-    POINT,
-    POLYGON,
-)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
@@ -21,7 +16,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres import PostgresSource
+from metadata.ingestion.source.database.postgres import (
+    GEOMETRY,
+    POINT,
+    POLYGON,
+    PostgresSource,
+)
 
 mock_postgres_config = {
     "source": {

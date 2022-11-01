@@ -290,6 +290,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                   </div>
                   <div className="m-y-md tw-col-span-full">
                     <Table
+                      bordered
                       columns={tableColumn}
                       data-testid="schema-table"
                       dataSource={(currentVersionData as Pipeline)?.tasks}
