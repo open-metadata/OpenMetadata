@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.security.Authorizer;
@@ -48,6 +49,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     allowedFields = Entity.getAllowedFields(entityClass);
     this.dao = repository;
     this.authorizer = authorizer;
+  }
+
+  /** Method used for initializing a resource, such as creating default policies, roles, etc. */
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    // Nothing to do in the default implementation
+  }
+
+  /**
+   * Method used for upgrading a resource such as adding new fields to entities, etc. that can't be done in bootstrap
+   * migrate
+   */
+  protected void upgrade() throws IOException {
+    // Nothing to do in the default implementation
   }
 
   public final Fields getFields(String fields) {

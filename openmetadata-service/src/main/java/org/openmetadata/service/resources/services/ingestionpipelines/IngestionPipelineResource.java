@@ -99,6 +99,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
   }
 
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
     this.pipelineServiceClient = new AirflowRESTClient(openMetadataApplicationConfig.getAirflowConfiguration());
