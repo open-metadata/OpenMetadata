@@ -36,6 +36,7 @@ import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
   getEntityLink,
@@ -73,7 +74,9 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     const tags: EntityTags[] =
       getTagsWithoutTier((entityData as Table).tags || []) || [];
 
-    return tags.map((tag) => `#${tag.tagFQN}`);
+    return tags.map((tag) =>
+      tag.source === TagSource.Glossary ? tag.tagFQN : `#${tag.tagFQN}`
+    );
   }, [(entityData as Table).tags]);
 
   const getData = () => {
