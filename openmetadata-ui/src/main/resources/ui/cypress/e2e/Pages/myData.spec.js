@@ -202,7 +202,7 @@ describe('MyData page should work', () => {
     followAndOwnTheEntity(SEARCH_ENTITY_TOPIC.topic_1);
   });
 
-  it('My data, following & feed section should work properly for dashboard entity', () => {
+  it.skip('My data, following & feed section should work properly for dashboard entity', () => {
     followAndOwnTheEntity(SEARCH_ENTITY_DASHBOARD.dashboard_1);
   });
 
