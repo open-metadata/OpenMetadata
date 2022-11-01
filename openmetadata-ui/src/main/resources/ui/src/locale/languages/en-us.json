@@ -26,7 +26,6 @@
     "new-to-the-platform": "New to the platform?",
     "create-account": "Create Account",
     "username-or-email": "Username or Email",
-    "email": "Email",
     "password": "Password",
     "success": "Success",
     "aborted": "Aborted",
@@ -213,6 +212,8 @@
     "kill-successfully": "Successfully killed running workflows for",
     "kill-ingestion-warning": "Once you kill this Ingestion, all running and queued workflows will be stopped and marked as Failed.",
     "bot-email-confirmation": "{{email}} for {{botName}} bot",
+    "entity-restored-success": "{{entity}} restored successfully",
+    "entity-restored-error": "Error while restoring {{entity}}",
     "no-ingestion-available": "No ingestion data available",
     "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the"
   },

@@ -34,6 +34,7 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
+import { reactivateTeam } from '../../axiosAPIs/teamsAPI';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -72,8 +73,9 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
+  getRestoreTeamData,
 } from '../../utils/TeamUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
@@ -510,6 +512,33 @@ const TeamDetailsV1 = ({
     setIsModalLoading(false);
   };
 
+  const handleReactiveTeam = async () => {
+    try {
+      const res = await reactivateTeam(
+        getRestoreTeamData(currentTeam, childTeams)
+      );
+      if (res) {
+        afterDeleteAction();
+        showSuccessToast(
+          t('message.entity-restored-success', {
+            entity: 'Team',
+          })
+        );
+      } else {
+        throw t('message.entity-restored-error', {
+          entity: 'Team',
+        });
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.entity-restored-error', {
+          entity: 'Team',
+        })
+      );
+    }
+  };
+
   const fetchPermissions = async () => {
     setLoading(true);
     try {
@@ -594,8 +623,41 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
+  const restoreIcon = useMemo(
+    () => <SVGIcons alt="Restore" icon={Icons.RESTORE} width="16px" />,
+    [currentTeam.isJoinable]
+  );
+
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
+      ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
+        ? [
+            {
+              label: (
+                <Space
+                  className="cursor-pointer manage-button"
+                  size={8}
+                  onClick={handleReactiveTeam}>
+                  {restoreIcon}
+                  <div
+                    className="text-left open-group"
+                    data-testid="restore-team">
+                    <p className="font-medium" data-testid="restore-team-label">
+                      Restore Team
+                    </p>
+
+                    <p className="tw-text-grey-muted tw-text-xs">
+                      Restoring the Team will add all the metadata back to
+                      OpenMetadata
+                    </p>
+                  </div>
+                </Space>
+              ),
+              key: 'restore-team-dropdown',
+            },
+          ]
+        : []),
+
       {
         label: (
           <Space
@@ -631,7 +693,7 @@ const TeamDetailsV1 = ({
         key: 'open-group-dropdown',
       },
     ],
-    [entityPermissions, currentTeam]
+    [entityPermissions, currentTeam, childTeams]
   );
 
   /**
