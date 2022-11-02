@@ -74,6 +74,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -576,6 +577,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private DeleteResponse<T> delete(String updatedBy, String json, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     T original = JsonUtils.readValue(json, entityClass);
+    checkSystemEntityDeletion(original);
     preDelete(original);
     setFieldsInternal(original, putFields);
 
@@ -1108,6 +1110,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
           daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return ingestionPipelines;
+  }
+
+  protected void checkSystemEntityDeletion(T entity) {
+    if (ProviderType.SYSTEM.equals(entity.getProvider())) { // System provided entity can't be deleted
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), entityType));
+    }
   }
 
   public EntityReference validateOwner(EntityReference owner) throws IOException {

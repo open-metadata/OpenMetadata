@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
@@ -56,6 +57,10 @@ public interface EntityInterface {
   }
 
   default List<TagLabel> getTags() {
+    return null;
+  }
+
+  default ProviderType getProvider() {
     return null;
   }
 

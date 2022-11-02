@@ -5,6 +5,7 @@
   "description": "Policy for Data Profiler Bot to perform operations on metadata entities.",
   "enabled": true,
   "allowDelete": false,
+  "provider": "system",
   "rules": [
     {
       "name": "ProfilerBotBotRule-Allow",
