@@ -25,17 +25,21 @@ export const renderLegend = (legendData: LegendProps, total: string) => {
 
   return (
     <>
-      <Typography.Text type="secondary">Total</Typography.Text>
+      <Typography.Text className="data-insight-label-text">
+        Total
+      </Typography.Text>
       <Typography.Title level={5} style={{ margin: '5px 0px' }}>
         {total}
       </Typography.Title>
       <ul className="mr-2">
         {(payload || []).map((entry, index) => (
-          <li className="recharts-legend-item d-flex" key={`item-${index}`}>
+          <li
+            className="recharts-legend-item d-flex items-center"
+            key={`item-${index}`}>
             <Surface className="mr-2" height={14} version="1.1" width={14}>
-              <path d="M0,4h32v24h-32z" fill={entry.color} stroke="none" />
+              <rect fill={entry.color} height="14" rx="2" width="14" />
             </Surface>
-            <span style={{ color: `${entry.color}` }}>{entry.value}</span>
+            <span>{entry.value}</span>
           </li>
         ))}
       </ul>

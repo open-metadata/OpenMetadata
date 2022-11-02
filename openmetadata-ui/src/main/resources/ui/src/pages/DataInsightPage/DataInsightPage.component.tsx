@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Dropdown, Row, Space } from 'antd';
-import React, { ReactNode } from 'react';
-import {
-  DAY_FILTER,
-  ORG_FILTER,
-  TEAM_FILTER,
-  TIER_FILTER,
-} from './DataInsight.mock';
+import { Col, Dropdown, Radio, Row, Space, Typography } from 'antd';
+import React, { ReactNode, useState } from 'react';
+import { DAY_FILTER, TEAM_FILTER, TIER_FILTER } from './DataInsight.mock';
 
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
@@ -30,6 +25,7 @@ import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities'
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
 import { getMenuItems } from '../../utils/DataInsightUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import './DataInsight.less';
 
 const DropDownLabel = ({ children, ...rest }: { children: ReactNode }) => {
   return (
@@ -41,54 +37,75 @@ const DropDownLabel = ({ children, ...rest }: { children: ReactNode }) => {
 };
 
 const DataInsightPage = () => {
+  const [activeTab, setActiveTab] = useState('Entities');
+
   return (
     <PageLayoutV1>
       <Row data-testid="data-insight-container" gutter={[16, 16]}>
         <Col span={24}>
-          <Space className="w-full justify-end" size={12}>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(DAY_FILTER, '7')}>
-              <DropDownLabel>Last 7 Days</DropDownLabel>
-            </Dropdown>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(TEAM_FILTER, 'team1')}>
-              <DropDownLabel>Cloud Infra</DropDownLabel>
-            </Dropdown>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(ORG_FILTER, 'org1')}>
-              <DropDownLabel>Organization1</DropDownLabel>
-            </Dropdown>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(TIER_FILTER, 'Tier.Tier1')}>
-              <DropDownLabel>Tier1</DropDownLabel>
-            </Dropdown>
+          <Space className="w-full justify-between">
+            <Typography.Title level={5} style={{ marginBottom: '0px' }}>
+              Data Insight
+            </Typography.Title>
+            <Space className="w-full justify-end" size={12}>
+              <Dropdown
+                className="cursor-pointer"
+                overlay={getMenuItems(DAY_FILTER, '7')}>
+                <DropDownLabel>Last 7 Days</DropDownLabel>
+              </Dropdown>
+              <Dropdown
+                className="cursor-pointer"
+                overlay={getMenuItems(TEAM_FILTER, 'team1')}>
+                <DropDownLabel>Cloud Infra</DropDownLabel>
+              </Dropdown>
+              <Dropdown
+                className="cursor-pointer"
+                overlay={getMenuItems(TIER_FILTER, 'Tier.Tier1')}>
+                <DropDownLabel>Tier1</DropDownLabel>
+              </Dropdown>
+            </Space>
           </Space>
         </Col>
         <Col span={24}>
           <DataInsightSummary />
         </Col>
         <Col span={24}>
-          <TotalEntityInsight />
+          <Radio.Group
+            buttonStyle="solid"
+            className="data-insight-switch"
+            data-testid="data-insight-switch"
+            optionType="button"
+            options={['Entities', 'WebAnalytics']}
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+          />
         </Col>
-        <Col span={24}>
-          <DescriptionInsight />
-        </Col>
-        <Col span={24}>
-          <OwnerInsight />
-        </Col>
-        <Col span={24}>
-          <TierInsight />
-        </Col>
-        <Col span={24}>
-          <TopViewEntities />
-        </Col>
-        <Col span={24}>
-          <TopActiveUsers />
-        </Col>
+        {activeTab === 'Entities' && (
+          <>
+            <Col span={24}>
+              <TotalEntityInsight />
+            </Col>
+            <Col span={24}>
+              <DescriptionInsight />
+            </Col>
+            <Col span={24}>
+              <OwnerInsight />
+            </Col>
+            <Col span={24}>
+              <TierInsight />
+            </Col>
+          </>
+        )}
+        {activeTab === 'WebAnalytics' && (
+          <>
+            <Col span={24}>
+              <TopViewEntities />
+            </Col>
+            <Col span={24}>
+              <TopActiveUsers />
+            </Col>
+          </>
+        )}
       </Row>
     </PageLayoutV1>
   );

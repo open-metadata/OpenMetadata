@@ -12,7 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
-import { random, uniqueId } from 'lodash';
+import { uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,7 +28,8 @@ import {
 } from 'recharts';
 import {
   BAR_CHART_MARGIN,
-  DATA_INSIGHT_GRAPH_COLORS,
+  BAR_SIZE,
+  ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
 import { getEntityOwnersData } from '../../pages/DataInsightPage/DataInsight.mock';
 import { renderLegend } from '../../utils/DataInsightUtils';
@@ -62,13 +63,9 @@ const OwnerInsight = () => {
           />
           {entities.map((entity) => (
             <Bar
-              barSize={20}
+              barSize={BAR_SIZE}
               dataKey={entity}
-              fill={
-                DATA_INSIGHT_GRAPH_COLORS[
-                  random(0, DATA_INSIGHT_GRAPH_COLORS.length)
-                ]
-              }
+              fill={ENTITIES_BAR_COLO_MAP[entity]}
               key={uniqueId()}
               stackId="owner"
             />

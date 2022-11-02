@@ -34,3 +34,27 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
   '#D87F7F',
   '#DA996A',
 ];
+
+export const BAR_SIZE = 15;
+
+export const ENTITIES_BAR_COLO_MAP: Record<string, string> = {
+  Chart: '#E7B85D',
+  Dashboard: '#416BB3',
+  Database: '#66B5AD',
+  DatabaseSchema: '#8D6AF1',
+  MlModel: '#699994',
+  Pipeline: '#6A86EB',
+  Table: '#7A57A6',
+  Topic: '#7DC177',
+  User: '#AD4F82',
+  TestSuite: '#C870C5',
+};
+
+export const TIER_BAR_COLOR_MAP: Record<string, string> = {
+  'Tier.Tier1': '#E7B85D',
+  'Tier.Tier2': '#416BB3',
+  'Tier.Tier3': '#66B5AD',
+  'Tier.Tier4': '#8D6AF1',
+  'Tier.Tier5': '#699994',
+  'No Tier': '#6A86EB',
+};

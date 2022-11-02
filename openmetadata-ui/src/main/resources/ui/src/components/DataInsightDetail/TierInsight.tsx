@@ -12,7 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
-import { random, uniqueId } from 'lodash';
+import { uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,7 +28,8 @@ import {
 } from 'recharts';
 import {
   BAR_CHART_MARGIN,
-  DATA_INSIGHT_GRAPH_COLORS,
+  BAR_SIZE,
+  TIER_BAR_COLOR_MAP,
 } from '../../constants/DataInsight.constants';
 import { getEntityTiersData } from '../../pages/DataInsightPage/DataInsight.mock';
 import { renderLegend } from '../../utils/DataInsightUtils';
@@ -63,13 +64,9 @@ const TierInsight = () => {
           />
           {tiers.map((tier) => (
             <Bar
-              barSize={20}
+              barSize={BAR_SIZE}
               dataKey={tier}
-              fill={
-                DATA_INSIGHT_GRAPH_COLORS[
-                  random(0, DATA_INSIGHT_GRAPH_COLORS.length)
-                ]
-              }
+              fill={TIER_BAR_COLOR_MAP[tier]}
               key={uniqueId()}
               stackId="tier"
             />
