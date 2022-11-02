@@ -44,9 +44,14 @@ const OwnerInsight = () => {
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
-        <Typography.Title level={5}>
-          {t('label.data-insight-owner-summary')}
-        </Typography.Title>
+        <>
+          <Typography.Title level={5}>
+            {t('label.data-insight-owner-summary')}
+          </Typography.Title>
+          <Typography.Text className="data-insight-label-text">
+            Display the percentage of entities with owner by type.
+          </Typography.Text>
+        </>
       }>
       <ResponsiveContainer minHeight={400}>
         <BarChart data={data} margin={BAR_CHART_MARGIN}>

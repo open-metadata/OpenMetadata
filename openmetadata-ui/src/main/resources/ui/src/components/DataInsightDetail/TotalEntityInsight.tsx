@@ -45,9 +45,14 @@ const TotalEntityInsight = () => {
       className="data-insight-card"
       data-testid="entity-summary-card"
       title={
-        <Typography.Title level={5}>
-          {t('label.data-insight-total-entity-summary')}
-        </Typography.Title>
+        <>
+          <Typography.Title level={5}>
+            {t('label.data-insight-total-entity-summary')}
+          </Typography.Title>
+          <Typography.Text className="data-insight-label-text">
+            Display the total of entities by type.
+          </Typography.Text>
+        </>
       }>
       <ResponsiveContainer debounce={1} minHeight={400}>
         <BarChart data={data} margin={BAR_CHART_MARGIN}>
