@@ -949,7 +949,7 @@ export const retryIngestionRun = () => {
         testIngestionsTab();
         retryCount++;
         // the latest run should be success
-        cy.get('[aria-describedby*="tippy-tooltip"] > .tw-h-5').then(
+        cy.get('[data-testid="pipeline-status"]').then(
             ($ingestionStatus) => {
                 if (
                     ($ingestionStatus.text() === 'Running' ||
@@ -961,7 +961,7 @@ export const retryIngestionRun = () => {
                     cy.reload();
                     checkSuccessState();
                 } else {
-                    cy.get('[aria-describedby*="tippy-tooltip"] > .tw-h-5').should(
+                    cy.get('[data-testid="pipeline-status"]').should(
                         'have.text',
                         'Success'
                     );

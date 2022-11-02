@@ -58,7 +58,11 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
 
       const runs = response.data.splice(0, 5).reverse() ?? [];
 
-      setRecentRunStatus(runs);
+      setRecentRunStatus(
+        runs.length === 0
+          ? [ingestion.pipelineStatuses as PipelineStatus]
+          : runs
+      );
     } finally {
       setLoading(false);
     }
@@ -124,7 +128,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
           ) : (
             status
           );
-        }) ?? '--'
+        }) ?? 'Queued'
       )}
     </Space>
   );
