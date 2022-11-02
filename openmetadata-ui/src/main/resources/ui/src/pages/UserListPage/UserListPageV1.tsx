@@ -174,6 +174,8 @@ const UserListPageV1 = () => {
   const handleSearch = (value: string) => {
     setSearchValue(value);
     setCurrentPage(INITIAL_PAGING_VALUE);
+    // This function is called onChange in the search input with debouncing
+    // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
       pathname: location.pathname,
       search: value,
@@ -188,6 +190,9 @@ const UserListPageV1 = () => {
   useEffect(() => {
     initialSetup();
     if (teamsAndUsers.includes(tab)) {
+      // Checking if the path has search query present in it
+      // if present fetch userlist with the query
+      // else get list of all users
       if (location.search) {
         const searchTerm = location.search.slice(1);
         setSearchValue(searchTerm);
