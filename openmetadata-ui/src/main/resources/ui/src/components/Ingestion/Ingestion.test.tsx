@@ -107,6 +107,12 @@ jest.mock(
   }
 );
 
+jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
+  IngestionRecentRuns: jest
+    .fn()
+    .mockImplementation(() => <p>IngestionRecentRuns</p>),
+}));
+
 describe('Test Ingestion page', () => {
   it('Page Should render', async () => {
     const { container } = render(

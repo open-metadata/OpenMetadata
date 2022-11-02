@@ -40,15 +40,6 @@ const queryParams = {
   endTs: getCurrentDateTimeStamp(),
 };
 
-const mock = {
-  pipelineStatuses: {
-    runId: '3307c8d3-96f5-4708-81f5-66266961b8e1',
-    pipelineState: 'running',
-    startDate: 1667366893921,
-    timestamp: 1667366893921,
-  },
-};
-
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
   ingestion,
   classNames,
@@ -65,12 +56,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
         queryParams
       );
 
-      const runs = [
-        // Latest run will be present with Ingestino data
-        mock.pipelineStatuses as PipelineStatus,
-        // Extract most 4 runs which we will show at most
-        ...(response.data.splice(0, 4) ?? []),
-      ];
+      const runs = response.data.splice(0, 5).reverse() ?? [];
 
       setRecentRunStatus(runs);
     } finally {
