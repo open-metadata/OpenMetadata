@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByTestId,
-  findByTestId,
-  findByText,
-  fireEvent,
-  render,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import AddUsersModal from './AddUsersModalV1';
 
@@ -112,7 +106,9 @@ jest.mock('../../components/common/searchbar/Searchbar', () => {
 });
 
 jest.mock('./UserCard', () => {
-  return jest.fn().mockReturnValue(<p data-testid="user-card">UserCard</p>);
+  return jest
+    .fn()
+    .mockImplementation(() => <p data-testid="user-card">UserCard</p>);
 });
 
 jest.mock('../../axiosAPIs/userAPI', () => {
@@ -123,92 +119,80 @@ jest.mock('../../axiosAPIs/userAPI', () => {
   };
 });
 
-jest.mock('antd', () => {
-  return {
-    List: jest
-      .fn()
-      .mockImplementation(({ children }) => (
-        <div data-testid="list">{children}</div>
-      )),
-    Modal: jest
-      .fn()
-      .mockImplementation(({ children, title, onCancel, onOk }) => (
-        <div data-testid="modal-container">
-          <p data-testid="header">{title}</p>
-          {children}
-          <div data-testid="cta-container">
-            <button onClick={onCancel}>Cancel</button>
-            <button onClick={onOk}>Save</button>
-          </div>
-        </div>
-      )),
-  };
-});
-
 describe('Test AddUsersModal component', () => {
-  it('Component should render', async () => {
-    const { container } = render(
-      <AddUsersModal
-        isVisible
-        header="Adding new users"
-        list={mockUserList}
-        onCancel={mockCancel}
-        onSave={mockSave}
-      />
-    );
-    const modalComponent = await findByTestId(container, 'modal-container');
-    const header = await findByTestId(container, 'header');
-    const searchbar = await findByTestId(container, 'searchbar');
-    const ctaContainer = await findByTestId(container, 'cta-container');
+  it('should render modal with required component', async () => {
+    await act(async () => {
+      render(
+        <AddUsersModal
+          isVisible
+          header="Adding new users"
+          list={mockUserList}
+          onCancel={mockCancel}
+          onSave={mockSave}
+        />
+      );
+    });
 
-    expect(ctaContainer.childElementCount).toBe(2);
-    expect(modalComponent).toBeInTheDocument();
+    const header = await screen.findByText('Adding new users');
+    const searchbar = await screen.findByTestId('searchbar');
+    const saveBtn = await screen.findByText(/Save/);
+    const cancelBtn = await screen.findByText(/Cancel/);
+
+    expect(saveBtn).toBeInTheDocument();
+    expect(cancelBtn).toBeInTheDocument();
+
     expect(header).toBeInTheDocument();
     expect(searchbar).toBeInTheDocument();
   });
 
   it('UserCard should be equal to length of list', async () => {
-    const { container } = render(
-      <AddUsersModal
-        isVisible
-        header="Adding new users"
-        list={mockUserList}
-        onCancel={mockCancel}
-        onSave={mockSave}
-      />
-    );
-    const userCard = await findAllByTestId(container, 'user-card');
+    await act(async () => {
+      render(
+        <AddUsersModal
+          isVisible
+          header="Adding new users"
+          list={mockUserList}
+          onCancel={mockCancel}
+          onSave={mockSave}
+        />
+      );
+    });
+    const userCard = await screen.findAllByTestId('user-card');
 
     expect(userCard.length).toBe(mockAllUsers.length);
   });
 
   it('Onclick of Discard button, onCancel callback should called', async () => {
-    const { container } = render(
-      <AddUsersModal
-        isVisible
-        header="Adding new users"
-        list={mockUserList}
-        onCancel={mockCancel}
-        onSave={mockSave}
-      />
-    );
-    const discard = await findByText(container, /Cancel/i);
+    await act(async () => {
+      render(
+        <AddUsersModal
+          isVisible
+          header="Adding new users"
+          list={mockUserList}
+          onCancel={mockCancel}
+          onSave={mockSave}
+        />
+      );
+    });
+    const discard = await screen.findByText(/Cancel/);
     fireEvent.click(discard);
 
     expect(mockCancel).toBeCalledTimes(1);
   });
 
   it('Onclick of Save button, onSave callback should called', async () => {
-    const { container } = render(
-      <AddUsersModal
-        isVisible
-        header="Adding new users"
-        list={mockUserList}
-        onCancel={mockCancel}
-        onSave={mockSave}
-      />
-    );
-    const save = await findByText(container, /Save/i);
+    await act(async () => {
+      render(
+        <AddUsersModal
+          isVisible
+          header="Adding new users"
+          list={mockUserList}
+          onCancel={mockCancel}
+          onSave={mockSave}
+        />
+      );
+    });
+    const save = await screen.findByText(/Save/);
     fireEvent.click(save);
 
     expect(mockSave).toBeCalledTimes(1);
