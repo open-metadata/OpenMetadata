@@ -93,6 +93,9 @@ public class ListFilter {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
+    if (fqnPrefix.contains("_") || fqnPrefix.contains("-")) {
+      fqnPrefix = format(fqnPrefix);
+    }
     return tableName == null
         ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
         : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
@@ -137,5 +140,9 @@ public class ListFilter {
 
   private String escape(String name) {
     return name.replace("'", "''");
+  }
+
+  private String format(String name) {
+    return name.contains("-") ? name.replaceAll("-", "\\\\-") : name.replaceAll("_", "\\\\_");
   }
 }

@@ -14,6 +14,7 @@
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import {
+  debounce,
   isEmpty,
   isNil,
   isUndefined,
@@ -51,6 +52,7 @@ import {
   ELEMENT_DELETE_STATE,
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
+  ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -152,6 +154,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     loading: boolean;
     status: ElementLoadingState;
   }>(ELEMENT_DELETE_STATE);
+  const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -917,6 +920,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     });
   };
 
+  const handleZoomLevel = debounce((value: number) => {
+    setZoomValue(value);
+  }, 150);
+
   useEffect(() => {
     if (!deleted && !isEmpty(updatedLineageData)) {
       setElementsHandle(updatedLineageData);
@@ -979,14 +986,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             data-testid="react-flow-component"
             edgeTypes={customEdges}
             edges={edges}
-            maxZoom={2}
-            minZoom={0.5}
+            maxZoom={MAX_ZOOM_VALUE}
+            minZoom={MIN_ZOOM_VALUE}
             nodeTypes={nodeTypes}
             nodes={nodes}
             nodesConnectable={isEditMode}
             selectNodesOnDrag={false}
-            zoomOnDoubleClick={false}
-            zoomOnScroll={false}
             onConnect={onConnect}
             onDragOver={onDragOver}
             onDrop={onDrop}
@@ -995,6 +1000,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               onLoad(reactFlowInstance);
               setReactFlowInstance(reactFlowInstance);
             }}
+            onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
             onNodeClick={(_e, node) => onNodeClick(node)}
             onNodeContextMenu={onNodeContextMenu}
             onNodeDrag={dragHandle}
@@ -1017,6 +1023,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               isEditMode={isEditMode}
               loading={loading}
               status={status}
+              zoomValue={zoomValue}
               onEditLinageClick={handleEditLineageClick}
               onExpandColumnClick={handleExpandColumnClick}
             />

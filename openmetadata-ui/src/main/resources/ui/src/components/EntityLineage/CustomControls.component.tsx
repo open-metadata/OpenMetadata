@@ -20,11 +20,19 @@ import React, {
   HTMLAttributes,
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
 import { FitViewOptions, useReactFlow } from 'reactflow';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import {
+  MAX_ZOOM_VALUE,
+  MIN_ZOOM_VALUE,
+  ZOOM_BUTTON_STEP,
+  ZOOM_SLIDER_STEP,
+  ZOOM_TRANSITION_DURATION,
+} from '../../constants/Lineage.constants';
 import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
@@ -44,6 +52,7 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   onExpandColumnClick: () => void;
   loading: boolean;
   status: LoadingState;
+  zoomValue: number;
 }
 
 export const ControlButton: FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
@@ -75,30 +84,45 @@ const CustomControls: FC<ControlProps> = ({
   handleFullScreenViewClick,
   loading,
   status,
+  zoomValue,
 }: ControlProps) => {
-  const { fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
-  const [zoom, setZoom] = useState<number>(1.5);
+  const { fitView, zoomTo } = useReactFlow();
+  const [zoom, setZoom] = useState<number>(zoomValue);
+
+  const onZoomHandler = useCallback(
+    (zoomLevel: number) => {
+      zoomTo?.(zoomLevel, { duration: ZOOM_TRANSITION_DURATION });
+    },
+    [zoomTo]
+  );
 
   const onZoomInHandler = useCallback(() => {
-    setZoom((pre) => (pre < 2.5 ? pre + 0.25 : pre));
-    zoomIn?.();
-  }, [zoomIn]);
+    setZoom((pre) => {
+      const zoomInValue = pre < MAX_ZOOM_VALUE ? pre + ZOOM_BUTTON_STEP : pre;
+      onZoomHandler(zoomInValue);
+
+      return zoomInValue;
+    });
+  }, [onZoomHandler]);
 
   const onZoomOutHandler = useCallback(() => {
-    setZoom((pre) => (pre > 0.5 ? pre - 0.25 : pre));
-    zoomOut?.();
-  }, [zoomOut]);
+    setZoom((pre) => {
+      const zoomOutValue = pre > MIN_ZOOM_VALUE ? pre - ZOOM_BUTTON_STEP : pre;
+      onZoomHandler(zoomOutValue);
+
+      return zoomOutValue;
+    });
+  }, [onZoomHandler]);
 
   const onFitViewHandler = useCallback(() => {
     fitView?.(fitViewParams);
   }, [fitView, fitViewParams]);
 
-  const onZoomHandler = useCallback(
-    (zoomLevel: number) => {
-      zoomTo?.(zoomLevel);
-    },
-    [zoomTo]
-  );
+  useEffect(() => {
+    if (zoomValue !== zoom) {
+      setZoom(zoomValue);
+    }
+  }, [zoomValue]);
 
   const editIcon = useMemo(() => {
     return (
@@ -138,11 +162,12 @@ const CustomControls: FC<ControlProps> = ({
               width="12"
             />
           </ControlButton>
+
           <input
-            className="tw-mt-0.5 tw-bg-body-hover"
-            max={2.5}
-            min={0.5}
-            step={0.1}
+            className="tw-bg-body-hover"
+            max={MAX_ZOOM_VALUE}
+            min={MIN_ZOOM_VALUE}
+            step={ZOOM_SLIDER_STEP}
             type="range"
             value={zoom}
             onChange={(e) => {

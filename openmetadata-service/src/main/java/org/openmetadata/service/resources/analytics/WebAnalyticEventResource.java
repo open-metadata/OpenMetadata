@@ -91,7 +91,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
     }
   }
 
-  @SuppressWarnings("unused") // Method used for reflection of webAnalyticEventTypes
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find the existing webAnalyticEventTypes and add them from json files
     List<WebAnalyticEvent> webAnalyticEvents =

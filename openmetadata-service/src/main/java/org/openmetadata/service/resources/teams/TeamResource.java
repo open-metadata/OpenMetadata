@@ -90,7 +90,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     super(Team.class, new TeamRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     dao.initOrganization();
   }

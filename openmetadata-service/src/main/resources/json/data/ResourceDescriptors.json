@@ -368,18 +368,6 @@
     ]
   },
   {
-    "name" : "type",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
     "name" : "user",
     "operations" : [
       "Create",
@@ -442,7 +430,7 @@
     ]
   },
   {
-    "name" : "webAnalyticEvent",
+    "name" : "type",
     "operations" : [
       "Create",
       "Delete",
@@ -453,7 +441,7 @@
     ]
   },
   {
-    "name" : "type",
+    "name" : "webAnalyticEvent",
     "operations" : [
       "Create",
       "Delete",
