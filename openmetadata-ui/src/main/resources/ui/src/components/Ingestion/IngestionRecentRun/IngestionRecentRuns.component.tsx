@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Space } from 'antd';
+import { Popover, Skeleton, Space } from 'antd';
 import { capitalize } from 'lodash';
 import React, {
   FunctionComponent,
@@ -30,7 +30,6 @@ import {
   getDateTimeFromMilliSeconds,
   getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
-import Loader from '../../Loader/Loader';
 
 interface Props {
   ingestion: IngestionPipeline;
@@ -71,60 +70,62 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     }
   }, [ingestion.fullyQualifiedName]);
 
-  return loading ? (
-    <Loader />
-  ) : (
+  return (
     <Space className={classNames} size={2}>
-      {recentRunStatus?.map((r, i) => {
-        const status =
-          i === recentRunStatus.length - 1 ? (
-            <p
-              className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-px-1 tw-text-white tw-text-center`}
-              data-testid="pipeline-status"
-              key={i}>
-              {capitalize(r?.pipelineState)}
-            </p>
-          ) : (
-            <p
-              className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r?.pipelineState} `}
-              data-testid="pipeline-status"
+      {loading ? (
+        <Skeleton.Input size="small" />
+      ) : (
+        recentRunStatus?.map((r, i) => {
+          const status =
+            i === recentRunStatus.length - 1 ? (
+              <p
+                className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-px-1 tw-text-white tw-text-center`}
+                data-testid="pipeline-status"
+                key={i}>
+                {capitalize(r?.pipelineState)}
+              </p>
+            ) : (
+              <p
+                className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r?.pipelineState} `}
+                data-testid="pipeline-status"
+                key={i}
+              />
+            );
+
+          const showTooltip = r?.endDate || r?.startDate || r?.timestamp;
+
+          return showTooltip ? (
+            <Popover
               key={i}
-            />
+              title={
+                <div className="tw-text-left">
+                  {r.timestamp && (
+                    <p>
+                      {t('label.execution-date')} :{' '}
+                      {getDateTimeFromMilliSeconds(r.timestamp)}
+                    </p>
+                  )}
+                  {r.startDate && (
+                    <p>
+                      {t('label.start-date')}:{' '}
+                      {getDateTimeFromMilliSeconds(r.startDate)}
+                    </p>
+                  )}
+                  {r.endDate && (
+                    <p>
+                      {t('label.end-date')} :{' '}
+                      {getDateTimeFromMilliSeconds(r.endDate)}
+                    </p>
+                  )}
+                </div>
+              }>
+              {status}
+            </Popover>
+          ) : (
+            status
           );
-
-        const showTooltip = r?.endDate || r?.startDate || r?.timestamp;
-
-        return showTooltip ? (
-          <Popover
-            key={i}
-            title={
-              <div className="tw-text-left">
-                {r.timestamp && (
-                  <p>
-                    {t('label.execution-date')} :{' '}
-                    {getDateTimeFromMilliSeconds(r.timestamp)}
-                  </p>
-                )}
-                {r.startDate && (
-                  <p>
-                    {t('label.start-date')}:{' '}
-                    {getDateTimeFromMilliSeconds(r.startDate)}
-                  </p>
-                )}
-                {r.endDate && (
-                  <p>
-                    {t('label.end-date')} :{' '}
-                    {getDateTimeFromMilliSeconds(r.endDate)}
-                  </p>
-                )}
-              </div>
-            }>
-            {status}
-          </Popover>
-        ) : (
-          status
-        );
-      }) ?? '--'}
+        }) ?? '--'
+      )}
     </Space>
   );
 };

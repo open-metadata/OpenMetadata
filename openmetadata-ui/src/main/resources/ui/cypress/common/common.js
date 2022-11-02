@@ -51,6 +51,12 @@ export const handleIngestionRetry = (
   ingestionType = 'metadata'
 ) => {
   const rowIndex = ingestionType === 'metadata' ? 1 : 2;
+
+  // Wait for pipeline status to be loaded
+  interceptURL( 'GET', 'api/v1/services/ingestionPipelines/*/pipelineStatus', 'pipelineStatuses')
+
+  verifyResponseStatusCode('@pipelineStatuses', 200)
+
   // ingestions page
 
   let retryCount = count;
