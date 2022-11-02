@@ -90,6 +90,7 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser==0.0.2",
     },
     "kafka": {"confluent_kafka==1.8.2", "fastavro>=1.2.0", "avro-python3"},
+    "kinesis": {"boto3~=1.19.12"},
     "redpanda": {"confluent_kafka==1.8.2", "fastavro>=1.2.0", "avro-python3"},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.4.0"},
@@ -155,6 +156,8 @@ test = {
     "great-expectations~=0.15.0",
     # Airflow tests
     "apache-airflow==2.3.3",
+    # mock boto3 functions
+    "moto==4.0.8",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
