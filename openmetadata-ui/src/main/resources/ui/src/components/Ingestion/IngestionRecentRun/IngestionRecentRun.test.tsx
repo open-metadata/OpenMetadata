@@ -58,14 +58,6 @@ jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
 const mockIngestion = { fullyQualifiedName: 'test' } as IngestionPipeline;
 
 describe('Test IngestionRecentRun component', () => {
-  it('should render loading while making API call', async () => {
-    act(() => {
-      render(<IngestionRecentRuns ingestion={mockIngestion} />);
-    });
-
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
-  });
-
   it('should call getRunHistoryForPipeline to fetch all the status', async () => {
     act(() => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
