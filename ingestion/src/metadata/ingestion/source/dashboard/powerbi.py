@@ -11,7 +11,6 @@
 """PowerBI source module"""
 
 import traceback
-from time import sleep
 from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -71,7 +70,7 @@ class PowerbiSource(DashboardServiceSource):
             workspace_scan_id = workspace_scan.get("id")
 
             # Keep polling the scan status endpoint to check if scan is succeeded
-            workspace_scan_status = self.wait_for_scan_complete(
+            workspace_scan_status = self.client.wait_for_scan_complete(
                 scan_id=workspace_scan_id
             )
             if workspace_scan_status:
@@ -84,33 +83,6 @@ class PowerbiSource(DashboardServiceSource):
         else:
             logger.error("Unable to fetch any Powerbi workspaces")
         return super().prepare()
-
-    def wait_for_scan_complete(self, scan_id, timeout=100) -> bool:
-        """
-        Method to poll the scan status endpoint until the timeout
-        """
-        min_sleep_time = 3
-        if min_sleep_time > timeout:
-            logger.info(f"Timeout is set to minimum sleep time: {timeout}")
-            timeout = min_sleep_time
-
-        max_poll = timeout // min_sleep_time
-        poll = 1
-        while True:
-            logger.info(f"Starting poll - {poll}/{max_poll}")
-            response = self.client.fetch_workspace_scan_status(scan_id=scan_id)
-            status = response.get("status")
-            if status:
-                if status.lower() == "succeeded":
-                    return True
-
-            if poll == max_poll:
-                break
-            logger.info(f"Sleeping for {min_sleep_time} seconds")
-            sleep(min_sleep_time)
-            poll += 1
-
-        return False
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -205,34 +177,35 @@ class PowerbiSource(DashboardServiceSource):
                 dataset_id = chart.get("datasetId")
                 if dataset_id:
                     dataset = self.fetch_dataset_from_workspace(dataset_id)
-                    for table in dataset.get("tables"):
-                        table_name = table.get("name")
+                    if dataset:
+                        for table in dataset.get("tables"):
+                            table_name = table.get("name")
 
-                        from_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Table,
-                            service_name=db_service_name,
-                            database_name=None,
-                            schema_name=None,
-                            table_name=table_name,
-                        )
-                        from_entity = self.metadata.get_by_name(
-                            entity=Table,
-                            fqn=from_fqn,
-                        )
-                        to_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Dashboard,
-                            service_name=self.config.serviceName,
-                            dashboard_name=dashboard_details["id"],
-                        )
-                        to_entity = self.metadata.get_by_name(
-                            entity=Dashboard,
-                            fqn=to_fqn,
-                        )
-                        yield self._get_add_lineage_request(
-                            to_entity=to_entity, from_entity=from_entity
-                        )
+                            from_fqn = fqn.build(
+                                self.metadata,
+                                entity_type=Table,
+                                service_name=db_service_name,
+                                database_name=None,
+                                schema_name=None,
+                                table_name=table_name,
+                            )
+                            from_entity = self.metadata.get_by_name(
+                                entity=Table,
+                                fqn=from_fqn,
+                            )
+                            to_fqn = fqn.build(
+                                self.metadata,
+                                entity_type=Dashboard,
+                                service_name=self.config.serviceName,
+                                dashboard_name=dashboard_details["id"],
+                            )
+                            to_entity = self.metadata.get_by_name(
+                                entity=Dashboard,
+                                fqn=to_fqn,
+                            )
+                            yield self._get_add_lineage_request(
+                                to_entity=to_entity, from_entity=from_entity
+                            )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
@@ -293,7 +266,7 @@ class PowerbiSource(DashboardServiceSource):
         dataset_data = next(
             (
                 dataset
-                for dataset in self.context.workspace.get("datasets")
+                for dataset in self.context.workspace.get("datasets") or []
                 if dataset["id"] == dataset_id
             ),
             None,
