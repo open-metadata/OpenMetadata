@@ -30,7 +30,10 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.interfaces.profiler_protocol import ProfilerProtocol
+from metadata.interfaces.profiler_protocol import (
+    ProfilerInterfaceArgs,
+    ProfilerProtocol,
+)
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.sqa_metrics_computation_registry import (
@@ -54,23 +57,14 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
     sqlalchemy.
     """
 
-    # pylint: disable=too-many-arguments
-    def __init__(
-        self,
-        service_connection_config,
-        ometa_client: OpenMetadata,
-        sqa_metadata_obj: Optional[MetaData] = None,
-        thread_count: Optional[float] = 5,
-        table_entity: Optional[Table] = None,
-        table_sample_precentage: Optional[float] = None,
-        table_sample_query: Optional[str] = None,
-        table_partition_config: Optional[PartitionProfilerConfig] = None,
-    ):
+    def __init__(self, profiler_interface_args: ProfilerInterfaceArgs):
         """Instantiate SQA Interface object"""
-        self._thread_count = thread_count
-        self.table_entity = table_entity
-        self.ometa_client = ometa_client
-        self.service_connection_config = service_connection_config
+        self._thread_count = profiler_interface_args.thread_count
+        self.table_entity = profiler_interface_args.table_entity
+        self.ometa_client = profiler_interface_args.ometa_client
+        self.service_connection_config = (
+            profiler_interface_args.service_connection_config
+        )
 
         self.processor_status = ProfilerProcessorStatus()
         self.processor_status.entity = (
@@ -79,16 +73,20 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             else None
         )
 
-        self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
+        self._table = self._convert_table_to_orm_object(
+            profiler_interface_args.metadata_obj
+        )
 
-        self.session_factory = self._session_factory(service_connection_config)
+        self.session_factory = self._session_factory(
+            profiler_interface_args.service_connection_config
+        )
         self.session = self.session_factory()
         self.set_session_tag(self.session)
 
-        self.profile_sample = table_sample_precentage
-        self.profile_query = table_sample_query
+        self.profile_sample = profiler_interface_args.table_sample_precentage
+        self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = (
-            self.get_partition_details(table_partition_config)
+            self.get_partition_details(profiler_interface_args.table_partition_config)
             if not self.profile_query
             else None
         )
@@ -227,7 +225,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-        return sampler.fetch_sample_data()
+        return sampler.fetch_sqa_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict

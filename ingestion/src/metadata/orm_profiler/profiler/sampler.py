@@ -89,9 +89,9 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sqa_sample_data(self) -> TableData:
         """
-        Use the sampler to retrieve 100 sample data rows
+        Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
         """
         if self._profile_sample_query:
@@ -112,6 +112,8 @@ class Sampler:
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
         )
+    def fetch_dl_sample_data(self) -> TableData:
+
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""

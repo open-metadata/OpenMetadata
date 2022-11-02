@@ -245,7 +245,7 @@ class SampleTest(TestCase):
         We should be able to pick up sample data from the sampler
         """
         sampler = Sampler(session=self.session, table=User)
-        sample_data = sampler.fetch_sample_data()
+        sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 6
         assert len(sample_data.rows) == 30
@@ -287,7 +287,7 @@ class SampleTest(TestCase):
             self.session.commit()
 
         sampler = Sampler(session=self.session, table=UserBinary)
-        sample_data = sampler.fetch_sample_data()
+        sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 7
         assert len(sample_data.rows) == 10
@@ -313,7 +313,7 @@ class SampleTest(TestCase):
         """
         stmt = "SELECT id, name FROM users"
         sampler = Sampler(session=self.session, table=User, profile_sample_query=stmt)
-        sample_data = sampler.fetch_sample_data()
+        sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 2
         names = [col.__root__ for col in sample_data.columns]

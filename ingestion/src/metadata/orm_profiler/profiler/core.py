@@ -390,7 +390,7 @@ class Profiler(Generic[TMetric]):
                 logger.info(
                     f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
-                sample_data = self.profiler_interface.fetch_sample_data(self.table)
+                sample_data = self.profiler_interface.fetch_sqa_sample_data(self.table)
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error fetching sample data: {err}")

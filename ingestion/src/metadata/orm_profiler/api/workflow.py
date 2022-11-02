@@ -16,9 +16,14 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
+from functools import singledispatch
 import traceback
 from copy import deepcopy
-from typing import Iterable, List, Optional, cast
+from typing import Any, Iterable, List, Optional, Union, cast
+from metadata.interfaces.datalake.datalake_profiler_interface import (
+    DataLakeProfilerInterface,
+)
+from pydantic import BaseModel
 
 from pydantic import ValidationError
 from sqlalchemy import MetaData
@@ -30,6 +35,10 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
     Table,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+    DatalakeType,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -55,7 +64,11 @@ from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.interfaces.profiler_protocol import ProfilerProtocol
+from metadata.interfaces.profiler_protocol import (
+    DataLakeProfilerType,
+    ProfilerInterfaceArgs,
+    ProfilerProtocol,
+)
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.api.models import (
     ProfilerProcessorConfig,
@@ -131,6 +144,18 @@ class ProfilerWorkflow:
                 "Make sure you have run the ingestion for the service specified in the profiler workflow. "
                 "If so, make sure the profiler service name matches the service name specified during ingestion."
             )
+        self._table_entity = None
+        self._service_connection_config = None
+        self.create_profiler_interface_dispatch = singledispatch(
+            self.create_profiler_interface_dispatch
+        )
+        self.create_profiler_interface_dispatch.register(
+            DataLakeProfilerType,
+            self.create_dl_profiler_interface_dispatch,
+        )
+        self.create_profiler_interface_dispatch.register(
+            MetaData, self.create_sqa_profiler_interface_dispatch
+        )
 
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
@@ -234,30 +259,48 @@ class ProfilerWorkflow:
 
         return get_partition_details(entity)
 
+    def create_profiler_interface_dispatch(self, metadata_obj):
+        raise NotImplementedError(f"{type(metadata_obj)} not implemented for Profiler")
+
+    def create_sqa_profiler_interface_dispatch(
+        self, metadata_obj: MetaData
+    ) -> SQAProfilerInterface:
+        return SQAProfilerInterface(self._profiler_interface_args)
+
+    def create_dl_profiler_interface_dispatch(
+        self, metadata_obj: DataLakeProfilerType
+    ) -> DataLakeProfilerInterface:
+        return DataLakeProfilerInterface(self._profiler_interface_args)
+
     def create_profiler_interface(
         self,
         service_connection_config,
         table_entity: Table,
-        sqa_metadata_obj: Optional[MetaData] = None,
+        metadata_obj,
     ):
         """Creates a profiler interface object"""
         try:
-            return SQAProfilerInterface(
-                service_connection_config,
-                sqa_metadata_obj=sqa_metadata_obj,
+
+            self._table_entity = table_entity
+            self._service_connection_config = service_connection_config
+            self._profiler_interface_args = ProfilerInterfaceArgs(
+                service_connection_config=self._service_connection_config,
+                metadata_obj=metadata_obj,
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,
-                table_entity=table_entity,
-                table_sample_precentage=self.get_profile_sample(table_entity)
-                if not self.get_profile_query(table_entity)
+                table_entity=self._table_entity,
+                table_sample_precentage=self.get_profile_sample(self._table_entity)
+                if not self.get_profile_query(self._table_entity)
                 else None,
-                table_sample_query=self.get_profile_query(table_entity)
-                if not self.get_profile_sample(table_entity)
+                table_sample_query=self.get_profile_query(self._table_entity)
+                if not self.get_profile_sample(self._table_entity)
                 else None,
-                table_partition_config=self.get_partition_details(table_entity)
-                if not self.get_profile_query(table_entity)
+                table_partition_config=self.get_partition_details(self._table_entity)
+                if not self.get_profile_query(self._table_entity)
                 else None,
             )
+            return self.create_profiler_interface_dispatch(metadata_obj)
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error("We could not create a profiler interface")
@@ -418,12 +461,16 @@ class ProfilerWorkflow:
 
         for database in databases:
             copied_service_config = self.copy_service_config(database)
-            sqa_metadata_obj = MetaData()
             try:
+                metadata_obj = MetaData()
+                if isinstance(copied_service_config, DatalakeConnection):
+                    metadata_obj = DataLakeProfilerType()
                 for entity in self.get_table_entities(database=database):
                     try:
                         profiler_interface = self.create_profiler_interface(
-                            copied_service_config, entity, sqa_metadata_obj
+                            metadata_obj=metadata_obj,
+                            service_connection_config=copied_service_config,
+                            table_entity=entity,
                         )
                         self.create_profiler_obj(entity, profiler_interface)
                         profile: ProfilerResponse = self.profiler_obj.process(
