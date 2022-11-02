@@ -26,8 +26,9 @@ import {
   PipelineStatus,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
+  getCurrentDateTimeMillis,
+  getDateTimeFromMilliSeconds,
+  getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
 import Loader from '../../Loader/Loader';
 
@@ -36,8 +37,8 @@ interface Props {
   classNames?: string;
 }
 const queryParams = {
-  startTs: getPastDatesTimeStampFromCurrentDate(1),
-  endTs: getCurrentDateTimeStamp(),
+  startTs: getPastDaysDateTimeMillis(1),
+  endTs: getCurrentDateTimeMillis(),
 };
 
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
@@ -46,7 +47,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
 }: Props) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchPipelineStatus = useCallback(async () => {
     setLoading(true);
@@ -101,18 +102,19 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                 {r.timestamp && (
                   <p>
                     {t('label.execution-date')} :{' '}
-                    {new Date(r.timestamp).toUTCString()}
+                    {getDateTimeFromMilliSeconds(r.timestamp)}
                   </p>
                 )}
                 {r.startDate && (
                   <p>
                     {t('label.start-date')}:{' '}
-                    {new Date(r.startDate).toUTCString()}
+                    {getDateTimeFromMilliSeconds(r.startDate)}
                   </p>
                 )}
                 {r.endDate && (
                   <p>
-                    {t('label.end-date')} : {new Date(r.endDate).toUTCString()}
+                    {t('label.end-date')} :{' '}
+                    {getDateTimeFromMilliSeconds(r.endDate)}
                   </p>
                 )}
               </div>
