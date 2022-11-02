@@ -15,10 +15,8 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import {
-  IngestionPipeline,
-  PipelineStatus,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineStatus } from '../generated/entity/data/pipeline';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
 import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
 import { getURLWithQueryFields } from '../utils/APIUtils';

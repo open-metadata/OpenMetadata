@@ -13,14 +13,14 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { IngestionData } from '../components/Ingestion/ingestion.interface';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const operationsBaseUrl = '/api/operations/v1';
 
 export const addIngestionWorkflow = (
-  data: IngestionData
+  data: IngestionPipeline
 ): Promise<AxiosResponse> => {
   const url = '/ingestion';
 
@@ -61,7 +61,7 @@ export const deleteIngestionWorkflowsById = (
   return APIClient({ method: 'delete', url, baseURL: operationsBaseUrl });
 };
 export const updateIngestionWorkflow = (
-  data: IngestionData
+  data: IngestionPipeline
 ): Promise<AxiosResponse> => {
   const url = `/ingestion/`;
 

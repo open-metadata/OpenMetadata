@@ -407,10 +407,9 @@ const Ingestion: React.FC<IngestionProps> = ({
         title: t('label.recent-runs'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
+        width: 180,
         render: (_, record) => (
-          <div className="tw-flex">
-            <IngestionRecentRuns ingestion={record} />
-          </div>
+          <IngestionRecentRuns classNames="align-middle" ingestion={record} />
         ),
       },
       {
@@ -533,8 +532,8 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const getIngestionTab = () => {
     return (
-      <div className="tw-mt-4" data-testid="ingestion-details-container">
-        <div className="tw-flex">
+      <div className="mt-4" data-testid="ingestion-details-container">
+        <div className="d-flex">
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
               <FontAwesomeIcon icon={faExclamationCircle} />

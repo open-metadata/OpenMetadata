@@ -19,12 +19,6 @@ import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAP
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest
-    .fn()
-    .mockImplementation(() => ({ t: (key: string) => key })),
-}));
-
 const mockPipelineStatus = [
   {
     runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
@@ -56,13 +50,11 @@ const mockPipelineStatus = [
   },
 ];
 
+const mockIngestion = { fullyQualifiedName: 'test' } as IngestionPipeline;
+
 describe('Test IngestionRecentRun component', () => {
   it('should render loading while making API call', () => {
-    render(
-      <IngestionRecentRuns
-        ingestion={{ fullyQualifiedName: 'test' } as IngestionPipeline}
-      />
-    );
+    render(<IngestionRecentRuns ingestion={mockIngestion} />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
@@ -70,11 +62,7 @@ describe('Test IngestionRecentRun component', () => {
   it('should call getRunHistoryForPipeline to fetch all the status', () => {
     jest.spyOn(APIs, 'getRunHistoryForPipeline');
 
-    render(
-      <IngestionRecentRuns
-        ingestion={{ fullyQualifiedName: 'test' } as IngestionPipeline}
-      />
-    );
+    render(<IngestionRecentRuns ingestion={mockIngestion} />);
 
     expect(getRunHistoryForPipeline).toBeCalledWith('test', expect.anything());
   });
@@ -90,11 +78,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     await act(() => {
-      render(
-        <IngestionRecentRuns
-          ingestion={{ fullyQualifiedName: 'test' } as IngestionPipeline}
-        />
-      );
+      render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Popover, Space } from 'antd';
 import { capitalize } from 'lodash';
 import React, {
   FunctionComponent,
@@ -28,19 +29,29 @@ import {
   getCurrentDateTimeStamp,
   getPastDatesTimeStampFromCurrentDate,
 } from '../../../utils/TimeUtils';
-import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
 
 interface Props {
   ingestion: IngestionPipeline;
+  classNames?: string;
 }
 const queryParams = {
   startTs: getPastDatesTimeStampFromCurrentDate(1),
   endTs: getCurrentDateTimeStamp(),
 };
 
+const mock = {
+  pipelineStatuses: {
+    runId: '3307c8d3-96f5-4708-81f5-66266961b8e1',
+    pipelineState: 'running',
+    startDate: 1667366893921,
+    timestamp: 1667366893921,
+  },
+};
+
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
   ingestion,
+  classNames,
 }: Props) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>();
@@ -55,14 +66,13 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
       );
 
       const runs = [
-        ingestion.pipelineStatuses as PipelineStatus,
+        // Latest run will be present with Ingestino data
+        mock.pipelineStatuses as PipelineStatus,
+        // Extract most 4 runs which we will show at most
         ...(response.data.splice(0, 4) ?? []),
       ];
 
       setRecentRunStatus(runs);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -77,27 +87,30 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   return loading ? (
     <Loader />
   ) : (
-    <>
+    <Space className={classNames} size={2}>
       {recentRunStatus?.map((r, i) => {
         const status =
           i === recentRunStatus.length - 1 ? (
             <p
-              className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+              className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-px-1 tw-text-white tw-text-center`}
               data-testid="pipeline-status"
               key={i}>
               {capitalize(r?.pipelineState)}
             </p>
           ) : (
             <p
-              className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-mr-1`}
+              className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r?.pipelineState} `}
               data-testid="pipeline-status"
               key={i}
             />
           );
 
-        return r?.endDate || r?.startDate || r?.timestamp ? (
-          <PopOver
-            html={
+        const showTooltip = r?.endDate || r?.startDate || r?.timestamp;
+
+        return showTooltip ? (
+          <Popover
+            key={i}
+            title={
               <div className="tw-text-left">
                 {r.timestamp && (
                   <p>
@@ -117,17 +130,13 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   </p>
                 )}
               </div>
-            }
-            key={i}
-            position="left"
-            theme="light"
-            trigger="mouseenter">
+            }>
             {status}
-          </PopOver>
+          </Popover>
         ) : (
           status
         );
-      })}
-    </>
+      }) ?? '--'}
+    </Space>
   );
 };
