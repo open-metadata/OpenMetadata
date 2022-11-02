@@ -132,13 +132,12 @@ plugins: Dict[str, Set[str]] = {
     "domo": {"pydomo~=0.3.0.5"},
 }
 dev = {
-    "datamodel-code-generator==0.13.0",
+    "datamodel-code-generator==0.13.4",
     "black==22.3.0",
     "pycln==1.3.2",
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
-    "pydantic[email]==1.9.0",
 }
 test = {
     "isort==5.10.1",
