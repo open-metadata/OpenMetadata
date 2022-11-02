@@ -16,13 +16,12 @@ Common Broker for fetching metadata
 import concurrent.futures
 import traceback
 from abc import ABC
-from typing import Any, Iterable, Optional
+from typing import Iterable, Optional
 
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.schema_registry_client import Schema
-from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import SchemaType, TopicSampleData
@@ -33,19 +32,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.messaging.messaging_service import MessagingServiceSource
+from metadata.ingestion.source.messaging.messaging_service import (
+    BrokerTopicDetails,
+    MessagingServiceSource,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-class BrokerTopicDetails(BaseModel):
-    """
-    Wrapper Class to combine the topic_name with topic_metadata
-    """
-
-    topic_name: str
-    topic_metadata: Any
 
 
 class CommonBrokerSource(MessagingServiceSource, ABC):

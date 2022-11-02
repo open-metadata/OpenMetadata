@@ -20,17 +20,16 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { CreateUser } from '../../generated/api/teams/createUser';
-import { Operation } from '../../generated/entity/policies/policy';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   commonUserDetailColumns,
   getEntityName,
 } from '../../utils/CommonUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -38,8 +37,6 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import './usersList.less';
 
 interface UserListV1Props {
@@ -67,24 +64,14 @@ const UserListV1: FC<UserListV1Props> = ({
   onPagingChange,
   afterDeleteAction,
 }) => {
+  const { isAdminUser } = useAuth();
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
   const history = useHistory();
   const [selectedUser, setSelectedUser] = useState<User>();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const showRestore = showDeletedUser && !isDataLoading;
   const [isLoading, setIsLoading] = useState(false);
-
-  const createPermission = useMemo(
-    () => checkPermission(Operation.Create, ResourceEntity.USER, permissions),
-    [permissions]
-  );
-
-  const deletePermission = useMemo(
-    () => checkPermission(Operation.Delete, ResourceEntity.USER, permissions),
-    [permissions]
-  );
 
   const handleAddNewUser = () => {
     history.push(ROUTES.CREATE_USER);
@@ -164,11 +151,9 @@ const UserListV1: FC<UserListV1Props> = ({
             )}
             <Tooltip
               placement="bottom"
-              title={
-                deletePermission ? t('label.delete') : NO_PERMISSION_FOR_ACTION
-              }>
+              title={isAdminUser ? t('label.delete') : ADMIN_ONLY_ACTION}>
               <Button
-                disabled={!deletePermission}
+                disabled={!isAdminUser}
                 icon={
                   <SVGIcons
                     alt="Delete"
@@ -212,7 +197,7 @@ const UserListV1: FC<UserListV1Props> = ({
                 <Button
                   ghost
                   data-testid="add-user"
-                  disabled={!createPermission}
+                  disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddNewUser}>
                   {t('label.add-user')}
@@ -253,12 +238,10 @@ const UserListV1: FC<UserListV1Props> = ({
             <span className="tw-ml-2">{t('label.deleted-users')}</span>
           </span>
           <Tooltip
-            title={
-              createPermission ? t('label.add-user') : NO_PERMISSION_FOR_ACTION
-            }>
+            title={isAdminUser ? t('label.add-user') : ADMIN_ONLY_ACTION}>
             <Button
               data-testid="add-user"
-              disabled={!createPermission}
+              disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
               {t('label.add-user')}

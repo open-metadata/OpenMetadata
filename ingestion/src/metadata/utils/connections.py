@@ -40,6 +40,7 @@ from metadata.clients.connection_clients import (
     GlueDBClient,
     GluePipelineClient,
     KafkaClient,
+    KinesisClient,
     LookerClient,
     MetabaseClient,
     MlflowClientWrapper,
@@ -110,6 +111,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 )
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
+)
+from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
+    KinesisConnection,
 )
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
@@ -562,6 +566,36 @@ def _(connection: KafkaClient) -> None:
 def _(connection: DeltaLakeClient) -> None:
     try:
         connection.client.catalog.listDatabases()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(
+    connection: KinesisConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> KinesisClient:
+    from metadata.clients.aws_client import AWSClient
+
+    kinesis_connection = AWSClient(connection.awsConfig).get_kinesis_client()
+    return kinesis_connection
+
+
+@test_connection.register
+def _(connection: KinesisClient) -> None:
+    """
+    Test that we can connect to the Kinesis source using the given aws credentials
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_streams()
+    except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
