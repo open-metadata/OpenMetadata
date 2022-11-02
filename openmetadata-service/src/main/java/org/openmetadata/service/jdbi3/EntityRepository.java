@@ -142,10 +142,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsFollower;
 
   /** Fields that can be updated during PATCH operation */
-  private final Fields patchFields;
+  @Getter private final Fields patchFields;
 
   /** Fields that can be updated during PUT operation */
-  protected final Fields putFields;
+  @Getter protected final Fields putFields;
 
   EntityRepository(
       String collectionPath,

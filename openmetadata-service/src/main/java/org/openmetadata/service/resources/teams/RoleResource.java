@@ -89,7 +89,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     super(Role.class, new RoleRepository(collectionDAO), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     List<Role> roles = dao.getEntitiesFromSeedData();
     for (Role role : roles) {

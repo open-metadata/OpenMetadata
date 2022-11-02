@@ -43,7 +43,7 @@ const DropDownLabel = ({ children, ...rest }: { children: ReactNode }) => {
 const DataInsightPage = () => {
   return (
     <PageLayoutV1>
-      <Row data-testid="dataInsight-container" gutter={[16, 16]}>
+      <Row data-testid="data-insight-container" gutter={[16, 16]}>
         <Col span={24}>
           <Space className="w-full justify-end" size={12}>
             <Dropdown

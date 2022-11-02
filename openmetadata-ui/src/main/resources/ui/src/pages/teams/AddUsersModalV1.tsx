@@ -197,7 +197,7 @@ const AddUsersModalV1 = ({
           className="user-list"
           data={uniqueUser}
           height={ADD_USER_CONTAINER_HEIGHT}
-          itemKey="user"
+          itemKey="id"
           onScroll={onScroll}>
           {(User) => (
             <UserCard

@@ -31,7 +31,10 @@ const DataInsightSummary = () => {
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
         {OVERVIEW.map((summary, id) => (
-          <Col data-testid="summary-item" key={id} span={4}>
+          <Col
+            data-testid={`summary-item-${summary.entityType}`}
+            key={id}
+            span={4}>
             <Typography.Text>{summary.entityType}</Typography.Text>
             <Typography className="tw-font-semibold">
               {summary.count}

@@ -999,3 +999,7 @@ export const getLoadingStatus = (
     displayText
   );
 };
+
+// return array of id as  strings
+export const getEntityIdArray = (entities: EntityReference[]): string[] =>
+  entities.map((item) => item.id);
