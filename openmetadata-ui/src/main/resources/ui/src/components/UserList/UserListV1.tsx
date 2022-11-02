@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
@@ -151,9 +151,7 @@ const UserListV1: FC<UserListV1Props> = ({
             )}
             <Tooltip
               placement="bottom"
-              title={
-                isAdminUser ? t('label.delete') : NO_PERMISSION_FOR_ACTION
-              }>
+              title={isAdminUser ? t('label.delete') : ADMIN_ONLY_ACTION}>
               <Button
                 disabled={!isAdminUser}
                 icon={
@@ -240,9 +238,7 @@ const UserListV1: FC<UserListV1Props> = ({
             <span className="tw-ml-2">{t('label.deleted-users')}</span>
           </span>
           <Tooltip
-            title={
-              isAdminUser ? t('label.add-user') : NO_PERMISSION_FOR_ACTION
-            }>
+            title={isAdminUser ? t('label.add-user') : ADMIN_ONLY_ACTION}>
             <Button
               data-testid="add-user"
               disabled={!isAdminUser}

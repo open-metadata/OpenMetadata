@@ -26,8 +26,8 @@ import {
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import {
+  ADMIN_ONLY_ACTION,
   INGESTION_BOT_CANT_BE_DELETED,
-  NO_PERMISSION_FOR_ACTION,
 } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
@@ -130,7 +130,7 @@ const BotListV1 = ({
             ? INGESTION_BOT_CANT_BE_DELETED
             : isAdminUser
             ? t('label.delete')
-            : NO_PERMISSION_FOR_ACTION;
+            : ADMIN_ONLY_ACTION;
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
@@ -214,9 +214,7 @@ const BotListV1 = ({
             <div className="tw-text-lg tw-text-center">
               <Tooltip
                 placement="left"
-                title={
-                  isAdminUser ? t('label.add-bot') : NO_PERMISSION_FOR_ACTION
-                }>
+                title={isAdminUser ? t('label.add-bot') : ADMIN_ONLY_ACTION}>
                 <Button
                   ghost
                   data-testid="add-bot"
@@ -255,8 +253,7 @@ const BotListV1 = ({
             <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
           </Space>
 
-          <Tooltip
-            title={isAdminUser ? t('label.add-bot') : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip title={isAdminUser ? t('label.add-bot') : ADMIN_ONLY_ACTION}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}
