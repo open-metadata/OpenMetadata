@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { Menu, Typography } from 'antd';
+import { Card, Menu, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React from 'react';
-import { LegendProps, Surface } from 'recharts';
+import { LegendProps, Surface, TooltipProps } from 'recharts';
 
 export const getMenuItems = (items: ItemType[], defaultKey: string) => (
   <Menu selectable defaultSelectedKeys={[defaultKey]} items={items} />
 );
 
 export const renderLegend = (legendData: LegendProps, total: string) => {
-  const { payload } = legendData;
+  const { payload = [] } = legendData;
 
   return (
     <>
@@ -32,7 +32,7 @@ export const renderLegend = (legendData: LegendProps, total: string) => {
         {total}
       </Typography.Title>
       <ul className="mr-2">
-        {(payload || []).map((entry, index) => (
+        {payload.map((entry, index) => (
           <li
             className="recharts-legend-item d-flex items-center"
             key={`item-${index}`}>
@@ -45,4 +45,34 @@ export const renderLegend = (legendData: LegendProps, total: string) => {
       </ul>
     </>
   );
+};
+
+/**
+ * we don't have type for Tooltip value and Tooltip
+ * that's why we have to use the type "any"
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const CustomTooltip = (props: TooltipProps<any, any>) => {
+  const { active, payload = [], label } = props;
+
+  if (active && payload && payload.length) {
+    return (
+      <Card>
+        {/* this is a graph tooltip so using the explicit title here */}
+        <Typography.Title level={5}>{label}</Typography.Title>
+        {payload.map((entry, index) => (
+          <li className="d-flex items-center" key={`item-${index}`}>
+            <Surface className="mr-2" height={14} version="1.1" width={14}>
+              <rect fill={entry.color} height="14" rx="2" width="14" />
+            </Surface>
+            <span>
+              {entry.dataKey} - {entry.value}
+            </span>
+          </li>
+        ))}
+      </Card>
+    );
+  }
+
+  return null;
 };

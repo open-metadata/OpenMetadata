@@ -32,7 +32,7 @@ import {
   TIER_BAR_COLOR_MAP,
 } from '../../constants/DataInsight.constants';
 import { getEntityTiersData } from '../../pages/DataInsightPage/DataInsight.mock';
-import { renderLegend } from '../../utils/DataInsightUtils';
+import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
 import './DataInsightDetail.less';
 
 const TierInsight = () => {
@@ -54,7 +54,7 @@ const TierInsight = () => {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />
           <YAxis />
-          <Tooltip />
+          <Tooltip content={<CustomTooltip />} />
           <Legend
             align="left"
             content={(props) => renderLegend(props as LegendProps, `970`)}

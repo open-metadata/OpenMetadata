@@ -32,7 +32,7 @@ import {
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
 import { getEntityOwnersData } from '../../pages/DataInsightPage/DataInsight.mock';
-import { renderLegend } from '../../utils/DataInsightUtils';
+import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
 import './DataInsightDetail.less';
 
 const OwnerInsight = () => {
@@ -53,7 +53,7 @@ const OwnerInsight = () => {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />
           <YAxis />
-          <Tooltip />
+          <Tooltip content={<CustomTooltip />} />
           <Legend
             align="left"
             content={(props) => renderLegend(props as LegendProps, `70%`)}

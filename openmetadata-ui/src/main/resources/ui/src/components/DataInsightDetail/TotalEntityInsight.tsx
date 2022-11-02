@@ -32,7 +32,7 @@ import {
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
 import { getEntityCountData } from '../../pages/DataInsightPage/DataInsight.mock';
-import { renderLegend } from '../../utils/DataInsightUtils';
+import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
 import './DataInsightDetail.less';
 
 const TotalEntityInsight = () => {
@@ -49,12 +49,12 @@ const TotalEntityInsight = () => {
           {t('label.data-insight-total-entity-summary')}
         </Typography.Title>
       }>
-      <ResponsiveContainer minHeight={400}>
+      <ResponsiveContainer debounce={1} minHeight={400}>
         <BarChart data={data} margin={BAR_CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />
           <YAxis />
-          <Tooltip />
+          <Tooltip content={<CustomTooltip />} />
           <Legend
             align="left"
             content={(props) => renderLegend(props as LegendProps, `897`)}
