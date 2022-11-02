@@ -8,7 +8,7 @@
     {"name": "entityTier", "displayName": "Entity Tier", "dataType": "STRING"}
   ],
   "metrics": [
-    {"name": "entityCountFraction", "displayName": "Total Count of Entity", "dataType": "FLOAT"},
-    {"name": "entityCount", "displayName": "Total Entities", "dataType": "INT"}
+    {"name": "entityCountFraction", "displayName": "Total Count of Entity", "dataType": "PERCENTAGE"},
+    {"name": "entityCount", "displayName": "Total Entities", "dataType": "NUMBER"}
   ]
 }
