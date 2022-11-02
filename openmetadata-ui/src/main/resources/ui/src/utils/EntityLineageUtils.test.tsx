@@ -147,6 +147,7 @@ describe('Test EntityLineageUtils utility', () => {
       'table',
       'table',
       true,
+      jest.fn,
       jest.fn
     );
     const normalLineageEdge = createNewEdge(
@@ -155,6 +156,7 @@ describe('Test EntityLineageUtils utility', () => {
       'table',
       'table',
       false,
+      jest.fn,
       jest.fn
     );
 
@@ -163,6 +165,7 @@ describe('Test EntityLineageUtils utility', () => {
 
     const updatedNormalLineageEdge = MOCK_NORMAL_LINEAGE_EDGE as Edge;
     updatedNormalLineageEdge.data.onEdgeClick = jest.fn;
+    updatedNormalLineageEdge.data.addPipelineClick = jest.fn;
 
     expect(columnLineageEdge).toMatchObject(updatedColLineageEdge);
     expect(normalLineageEdge).toMatchObject(updatedNormalLineageEdge);
