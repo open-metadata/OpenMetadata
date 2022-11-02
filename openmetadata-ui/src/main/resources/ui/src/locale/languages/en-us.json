@@ -195,7 +195,10 @@
     "unpause": "UnPause",
     "execution-date": "Execution Date",
     "start-date": "Start Date",
-    "end-date": "End Date"
+    "end-date": "End Date",
+    "show-deleted": "Show deleted",
+    "add-bot": "Add Bot",
+    "search-for-bots": "Search for bots..."
   },
   "message": {
     "service-email-required": "Service account Email is required",
