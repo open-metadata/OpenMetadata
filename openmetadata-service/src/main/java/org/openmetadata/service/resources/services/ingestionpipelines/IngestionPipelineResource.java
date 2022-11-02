@@ -52,13 +52,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.api.services.ingestionPipelines.ComponentConfig;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.schema.api.services.ingestionPipelines.Sink;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -397,13 +393,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
-    Sink sink = null;
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build());
-    if (ingestionPipeline.getPipelineType().equals(PipelineType.DATA_INSIGHT)) {
-      sink = buildElasticSearchSink();
-    }
-    ingestionPipeline.setSink(sink);
     pipelineServiceClient.deployPipeline(ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline);
     return addHref(uriInfo, ingestionPipeline);
@@ -592,22 +583,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
-    Sink sink = null;
     OpenMetadataServerConnection openMetadataServerConnection =
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build();
-
-    if (create.getPipelineType().equals(PipelineType.DATA_INSIGHT)) {
-      sink = buildElasticSearchSink();
-    }
-
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
-        .withService(create.getService())
-        .withSink(sink);
+        .withService(create.getService());
   }
 
   public void addStatus(List<IngestionPipeline> ingestionPipelines) {
@@ -638,23 +622,5 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     }
     secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
     return ingestionPipeline;
-  }
-
-  private Sink buildElasticSearchSink() {
-    Sink sink = new Sink();
-    ComponentConfig componentConfig = new ComponentConfig();
-    ElasticSearchConfiguration elasticSearchConfiguration =
-        openMetadataApplicationConfig.getElasticSearchConfiguration();
-    sink.withType("elasticsearch")
-        .withConfig(
-            componentConfig
-                .withAdditionalProperty("es_host", elasticSearchConfiguration.getHost())
-                .withAdditionalProperty("es_port", elasticSearchConfiguration.getPort().toString())
-                .withAdditionalProperty("es_username", elasticSearchConfiguration.getUsername())
-                .withAdditionalProperty("es_password", elasticSearchConfiguration.getPassword())
-                .withAdditionalProperty("scheme", elasticSearchConfiguration.getScheme())
-                .withAdditionalProperty("timeout", elasticSearchConfiguration.getConnectionTimeoutSecs().toString()));
-
-    return sink;
   }
 }

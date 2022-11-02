@@ -464,15 +464,6 @@
     ]
   },
   {
-    "name" : "metadata",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditDescription"
-    ]
-  },
-  {
     "name" : "dataInsightChart",
     "operations" : [
       "Create",

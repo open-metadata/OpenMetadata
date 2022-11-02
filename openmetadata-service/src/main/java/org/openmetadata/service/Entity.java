@@ -100,7 +100,6 @@ public final class Entity {
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
-  public static final String METADATA = "metadata";
 
   //
   // Policy entity
