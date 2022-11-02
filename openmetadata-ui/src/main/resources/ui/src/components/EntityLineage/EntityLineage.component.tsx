@@ -47,7 +47,9 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import { searchData } from '../../axiosAPIs/miscAPI';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
   MAX_ZOOM_VALUE,
@@ -55,6 +57,7 @@ import {
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import {
   AddLineage,
   ColumnLineage,
@@ -66,6 +69,9 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
+import jsonData from '../../jsons/en';
+import { formatDataResponse } from '../../utils/APIUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
   dragHandle,
@@ -78,11 +84,13 @@ import {
   getLineageData,
   getLoadingStatusValue,
   getModalBodyText,
+  getNewLineageConnectionDetails,
   getNodeRemoveButton,
   getRemovedNodeData,
   getSelectedEdgeArr,
   getUniqueFlowElements,
   getUpdatedEdge,
+  getUpdatedEdgeWithPipeline,
   getUpdatedUpstreamDownStreamEdgeArr,
   getUpStreamDownStreamColumnLineageArr,
   onLoad,
@@ -96,6 +104,7 @@ import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
+import AddPipeLineModal from './AddPipeLineModal';
 import CustomControlsComponent from './CustomControls.component';
 import { CustomEdge } from './CustomEdge.component';
 import CustomNode from './CustomNode.component';
@@ -155,6 +164,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     status: ElementLoadingState;
   }>(ELEMENT_DELETE_STATE);
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
+  const [showAddPipelineModal, setShowAddPipelineModal] =
+    useState<boolean>(false);
+  const [pipelineSearchValue, setPipelineSearchValue] = useState<string>('');
+  const [pipelineOptions, setPipelineOptions] = useState<EntityReference[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<
+    string | undefined
+  >();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -353,6 +369,32 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     });
   };
 
+  const addPipelineClick = (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
+  ) => {
+    setShowAddPipelineModal(true);
+    evt.stopPropagation();
+    if (!isUndefined(data.pipeline)) {
+      setSelectedPipelineId(data.pipeline.id);
+      setPipelineOptions([data.pipeline]);
+    }
+
+    setSelectedEdge({
+      id: data.id,
+      source: {} as EntityReference,
+      target: {} as EntityReference,
+      data,
+    });
+  };
+
+  const handleRemoveEdgeClick = (evt: React.MouseEvent<HTMLButtonElement>) => {
+    setShowAddPipelineModal(false);
+    if (selectedEdge.data) {
+      onEdgeClick(evt, selectedEdge.data);
+    }
+  };
+
   const removeNodeHandler = useCallback(
     (node: Node) => {
       // Get edges connected to selected node
@@ -399,7 +441,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         onEdgeClick,
         removeNodeHandler,
         tableColumnsRef.current,
-        currentData
+        currentData,
+        addPipelineClick
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -544,6 +587,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               });
             }
             newEdge.edge.lineageDetails = {
+              ...currentEdge,
               sqlQuery: currentEdge.sqlQuery || '',
               columnsLineage: updatedColumnsLineage,
             };
@@ -556,7 +600,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               sourceNode?.type || '',
               targetNode?.type || '',
               true,
-              onEdgeClick
+              onEdgeClick,
+              addPipelineClick
             );
 
             return getUniqueFlowElements(
@@ -572,7 +617,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             sourceNode?.type || '',
             targetNode?.type || '',
             false,
-            onEdgeClick
+            onEdgeClick,
+            addPipelineClick
           );
 
           return getUniqueFlowElements(
@@ -645,6 +691,106 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     },
     [selectedNode, updatedLineageData, selectedEntity]
   );
+
+  const handlePipelineSelection = (value: string) => {
+    setSelectedPipelineId(value);
+  };
+
+  const handleModalCancel = () => {
+    setSelectedPipelineId(undefined);
+    setShowAddPipelineModal(false);
+    setSelectedEdge({} as SelectedEdge);
+    setPipelineOptions([]);
+  };
+
+  const onPipelineSelectionClear = () => {
+    setSelectedPipelineId(undefined);
+    setPipelineSearchValue('');
+  };
+
+  const handleModalSave = () => {
+    if (selectedEdge.data) {
+      setStatus('waiting');
+      setLoading(true);
+      const { source, target } = selectedEdge.data;
+      const allEdge = [
+        ...(updatedLineageData.upstreamEdges || []),
+        ...(updatedLineageData.downstreamEdges || []),
+      ];
+
+      const selectedEdgeValue = allEdge.find(
+        (ed) => ed.fromEntity === source && ed.toEntity === target
+      );
+
+      const pipelineDetail = pipelineOptions.find(
+        (d) => d.id === selectedPipelineId
+      );
+
+      const { newEdge, updatedLineageDetails } = getNewLineageConnectionDetails(
+        selectedEdgeValue,
+        selectedPipelineId,
+        selectedEdge.data
+      );
+
+      addLineageHandler(newEdge)
+        .then(() => {
+          setStatus('success');
+          setLoading(false);
+          setUpdatedLineageData((pre) => {
+            if (selectedEdge.data) {
+              const newData = {
+                ...pre,
+                downstreamEdges: getUpdatedEdgeWithPipeline(
+                  pre.downstreamEdges,
+                  updatedLineageDetails,
+                  selectedEdge.data,
+                  pipelineDetail
+                ),
+                upstreamEdges: getUpdatedEdgeWithPipeline(
+                  pre.upstreamEdges,
+                  updatedLineageDetails,
+                  selectedEdge.data,
+                  pipelineDetail
+                ),
+              };
+
+              return newData;
+            }
+
+            return pre;
+          });
+          setEdges((pre) => {
+            return pre.map((edge) => {
+              if (edge.id === selectedEdge.id) {
+                return {
+                  ...edge,
+                  animated: true,
+                  data: {
+                    ...edge.data,
+                    label: getEntityName(pipelineDetail),
+                    pipeline: updatedLineageDetails.pipeline,
+                  },
+                };
+              }
+
+              return edge;
+            });
+          });
+          setTimeout(() => {
+            setStatus('initial');
+          }, 100);
+          setNewAddedNode({} as Node);
+          setSelectedEntity({} as EntityReference);
+        })
+        .catch(() => {
+          setStatus('initial');
+          setLoading(false);
+        })
+        .finally(() => {
+          handleModalCancel();
+        });
+    }
+  };
 
   /**
    * take element and perform onClick logic
@@ -895,6 +1041,26 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const getSearchResults = async (value = '*') => {
+    try {
+      const data = await searchData(
+        value,
+        1,
+        PAGE_SIZE,
+        '',
+        '',
+        '',
+        SearchIndex.PIPELINE
+      );
+      setPipelineOptions(formatDataResponse(data.data.hits.hits));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-suggestions-error']
+      );
+    }
+  };
+
   /**
    * Handle updated linegae nodes
    * Change newly added node label based on entity:EntityReference
@@ -969,6 +1135,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       setElementsHandle(entityLineage);
     }
   }, [entityLineage]);
+
+  useEffect(() => {
+    if (pipelineSearchValue) {
+      getSearchResults(pipelineSearchValue);
+    }
+  }, [pipelineSearchValue]);
 
   if (isLoading || (nodes.length === 0 && !deleted)) {
     return <Loader />;
@@ -1058,6 +1230,19 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           {getModalBodyText(selectedEdge)}
         </Modal>
       )}
+
+      <AddPipeLineModal
+        pipelineOptions={pipelineOptions}
+        pipelineSearchValue={pipelineSearchValue}
+        selectedPipelineId={selectedPipelineId}
+        showAddPipelineModal={showAddPipelineModal}
+        onClear={onPipelineSelectionClear}
+        onModalCancel={handleModalCancel}
+        onRemoveEdgeClick={handleRemoveEdgeClick}
+        onSave={handleModalSave}
+        onSearch={(value) => setPipelineSearchValue(value)}
+        onSelect={handlePipelineSelection}
+      />
     </div>
   );
 };
