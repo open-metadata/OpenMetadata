@@ -34,6 +34,9 @@ from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
@@ -42,6 +45,9 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger
+from metadata.utils.workflow_helper import (
+    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
+)
 from metadata.utils.workflow_output_handler import print_data_insight_status
 
 logger = data_insight_logger()
@@ -60,6 +66,7 @@ class DataInsightWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
         self.metadata = OpenMetadata(self.metadata_config)
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.status = ProcessorStatus()
         self.data_processor: Optional[
@@ -155,3 +162,22 @@ class DataInsightWorkflow:
         ):
             return 1
         return 0
+
+    def stop(self):
+        """
+        Close all connections
+        """
+        self.set_ingestion_pipeline_status(PipelineState.success)
+        self.metadata.close()
+
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+        pipeline_run_id = set_ingestion_pipeline_status_helper(
+            state=state,
+            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
+            pipeline_run_id=self.config.pipelineRunId,
+            metadata=self.metadata,
+        )
+        self.config.pipelineRunId = pipeline_run_id
