@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Menu, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Card, Typography } from 'antd';
 import React from 'react';
 import { LegendProps, Surface, TooltipProps } from 'recharts';
-
-export const getMenuItems = (items: ItemType[], defaultKey: string) => (
-  <Menu selectable defaultSelectedKeys={[defaultKey]} items={items} />
-);
 
 export const renderLegend = (legendData: LegendProps, total: string) => {
   const { payload = [] } = legendData;

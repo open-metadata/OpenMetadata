@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Dropdown, Radio, Row, Space, Typography } from 'antd';
-import React, { ReactNode, useState } from 'react';
+import { Card, Col, Radio, Row, Select, Space, Typography } from 'antd';
+import React, { useState } from 'react';
 import { DAY_FILTER, TEAM_FILTER, TIER_FILTER } from './DataInsight.mock';
 
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
@@ -23,18 +23,7 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
-import { getMenuItems } from '../../utils/DataInsightUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import './DataInsight.less';
-
-const DropDownLabel = ({ children, ...rest }: { children: ReactNode }) => {
-  return (
-    <Space {...rest}>
-      {children}
-      <DropDownIcon />
-    </Space>
-  );
-};
 
 const DataInsightPage = () => {
   const [activeTab, setActiveTab] = useState('Datasets');
@@ -43,28 +32,23 @@ const DataInsightPage = () => {
     <PageLayoutV1>
       <Row data-testid="data-insight-container" gutter={[16, 16]}>
         <Col span={24}>
-          <Space className="w-full justify-between">
-            <Typography.Title level={5} style={{ marginBottom: '0px' }}>
-              Data Insight
-            </Typography.Title>
-            <Space className="w-full justify-end" size={12}>
-              <Dropdown
-                className="cursor-pointer"
-                overlay={getMenuItems(DAY_FILTER, '7')}>
-                <DropDownLabel>Last 7 Days</DropDownLabel>
-              </Dropdown>
-              <Dropdown
-                className="cursor-pointer"
-                overlay={getMenuItems(TEAM_FILTER, 'team1')}>
-                <DropDownLabel>Cloud Infra</DropDownLabel>
-              </Dropdown>
-              <Dropdown
-                className="cursor-pointer"
-                overlay={getMenuItems(TIER_FILTER, 'Tier.Tier1')}>
-                <DropDownLabel>Tier1</DropDownLabel>
-              </Dropdown>
+          <Typography.Title level={5} style={{ marginBottom: '0px' }}>
+            Data Insight
+          </Typography.Title>
+          <Typography.Text className="data-insight-label-text">
+            Keep track of OKRs with charts built around OpenMetadata health.
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          <Card>
+            <Space className="w-full justify-between">
+              <Space className="w-full">
+                <Select options={TEAM_FILTER} placeholder="Select teams" />
+                <Select options={TIER_FILTER} placeholder="Select tier" />
+              </Space>
+              <Select options={DAY_FILTER} value="7" />
             </Space>
-          </Space>
+          </Card>
         </Col>
         <Col span={24}>
           <DataInsightSummary />
