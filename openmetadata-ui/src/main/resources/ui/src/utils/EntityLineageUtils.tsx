@@ -24,6 +24,8 @@ import { Link } from 'react-router-dom';
 import {
   Connection,
   Edge,
+  getIncomers,
+  getOutgoers,
   MarkerType,
   Node,
   Position,
@@ -42,6 +44,7 @@ import {
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_VALUE,
@@ -392,7 +395,7 @@ export const getDataLabel = (
   } else {
     return (
       <span
-        className="tw-break-words tw-self-center tw-w-60"
+        className="tw-break-words tw-self-center w-72"
         data-testid="lineage-entity">
         {type === 'table'
           ? databaseName && schemaName
@@ -443,9 +446,10 @@ export const getLayoutedElements = (
   dagreGraph.setGraph({ rankdir: direction });
 
   node.forEach((el) => {
+    const isExpanded = el.data.isExpanded;
     dagreGraph.setNode(el.id, {
       width: NODE_WIDTH,
-      height: NODE_HEIGHT,
+      height: isExpanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT,
     });
   });
 
@@ -456,12 +460,14 @@ export const getLayoutedElements = (
   dagre.layout(dagreGraph);
 
   const uNode = node.map((el) => {
+    const isExpanded = el.data.isExpanded;
+    const nodeHight = isExpanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT;
     const nodeWithPosition = dagreGraph.node(el.id);
     el.targetPosition = isHorizontal ? Position.Left : Position.Top;
     el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
     el.position = {
       x: nodeWithPosition.x - NODE_WIDTH / 2,
-      y: nodeWithPosition.y - NODE_HEIGHT / 2,
+      y: nodeWithPosition.y - nodeHight / 2,
     };
 
     return el;
@@ -896,4 +902,34 @@ export const getLoadingStatusValue = (
   } else {
     return defaultState;
   }
+};
+
+export const getAllIncomers = (
+  currentNode: Node,
+  nodes: Node[],
+  edges: Edge[]
+): Node[] => {
+  return getIncomers(currentNode, nodes, edges).reduce<Node[]>(
+    (memo, incomer) => [
+      ...memo,
+      incomer,
+      ...getAllIncomers(incomer, nodes, edges),
+    ],
+    []
+  );
+};
+
+export const getAllOutgoers = (
+  currentNode: Node,
+  nodes: Node[],
+  edges: Edge[]
+): Node[] => {
+  return getOutgoers(currentNode, nodes, edges).reduce<Node[]>(
+    (memo, outgoer) => [
+      ...memo,
+      outgoer,
+      ...getAllOutgoers(outgoer, nodes, edges),
+    ],
+    []
+  );
 };

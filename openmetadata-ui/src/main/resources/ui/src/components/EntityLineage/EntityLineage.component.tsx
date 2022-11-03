@@ -49,7 +49,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { PAGE_SIZE } from '../../constants/constants';
+import { PAGE_SIZE, SECONDARY_COLOR } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
   MAX_ZOOM_VALUE,
@@ -76,6 +76,8 @@ import {
   createNewEdge,
   dragHandle,
   findUpstreamDownStreamEdge,
+  getAllIncomers,
+  getAllOutgoers,
   getColumnType,
   getDataLabel,
   getDeletedLineagePlaceholder,
@@ -121,6 +123,8 @@ import {
 } from './EntityLineage.interface';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
+
+import './entityLineage.style.less';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -171,6 +175,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const [selectedPipelineId, setSelectedPipelineId] = useState<
     string | undefined
   >();
+  const [isTracingActive, setIsTracingActive] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -792,12 +797,55 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const handleLineageTracing = (selectedNode: Node) => {
+    const incomingNode = getAllIncomers(selectedNode, nodes, edges);
+    const outgoingNode = getAllOutgoers(selectedNode, nodes, edges);
+    const incomerIds = incomingNode.map((incomer) => incomer.id);
+    const outgoerIds = outgoingNode.map((outGoer) => outGoer.id);
+    setIsTracingActive(true);
+
+    setEdges((prevEdges) => {
+      return prevEdges.map((edge) => {
+        const incomerEdges =
+          incomerIds.includes(edge.source) &&
+          (incomerIds.includes(edge.target) || selectedNode.id === edge.target);
+        const outgoersEdges =
+          outgoerIds.includes(edge.target) &&
+          (outgoerIds.includes(edge.source) || selectedNode.id === edge.source);
+
+        edge.style = {
+          ...edge.style,
+          stroke: incomerEdges || outgoersEdges ? SECONDARY_COLOR : undefined,
+        };
+
+        return edge;
+      });
+    });
+
+    setNodes((prevNodes) => {
+      return prevNodes.map((prevNode) => {
+        const highlight =
+          prevNode.id === selectedNode.id ||
+          incomerIds.includes(prevNode.id) ||
+          outgoerIds.includes(prevNode.id);
+
+        prevNode.data = {
+          ...prevNode.data,
+          isTraced: highlight,
+        };
+
+        return prevNode;
+      });
+    });
+  };
+
   /**
    * take element and perform onClick logic
    * @param el
    */
   const onNodeClick = (el: Node) => {
     if (isNode(el)) {
+      handleLineageTracing(el);
       const node = [
         ...(updatedLineageData.nodes as Array<EntityReference>),
         updatedLineageData.entity,
@@ -818,7 +866,32 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
-  //   ToDo: remove below code once design flow finalized for column expand and colaps
+  const onPaneClick = () => {
+    if (isTracingActive) {
+      setEdges((prevEdges) => {
+        return prevEdges.map((edge) => {
+          edge.style = {
+            ...edge.style,
+            stroke: undefined,
+          };
+
+          return edge;
+        });
+      });
+
+      setNodes((prevNodes) => {
+        return prevNodes.map((prevNode) => {
+          prevNode.data = {
+            ...prevNode.data,
+            isTraced: false,
+          };
+
+          return prevNode;
+        });
+      });
+      setIsTracingActive(false);
+    }
+  };
 
   const updateColumnsToNode = (columns: Column[], id: string) => {
     setNodes((prevNodes) => {
@@ -1014,11 +1087,18 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const toggleColumnView = (value: boolean) => {
     setExpandAllColumns(value);
     setNodes((prevNodes) => {
-      return prevNodes.map((node) => {
+      const updatedNode = prevNodes.map((node) => {
         node.data.isExpanded = value;
 
         return node;
       });
+      const { edge, node } = getLayoutedElements({
+        node: updatedNode,
+        edge: edges,
+      });
+      setEdges(edge);
+
+      return node;
     });
   };
 
@@ -1155,6 +1235,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       <div className="w-full h-full" ref={reactFlowWrapper}>
         <ReactFlowProvider>
           <ReactFlow
+            className="custom-react-flow"
             data-testid="react-flow-component"
             edgeTypes={customEdges}
             edges={edges}
@@ -1181,7 +1262,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onNodeMouseEnter={onNodeMouseEnter}
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeMouseMove={onNodeMouseMove}
-            onNodesChange={onNodesChange}>
+            onNodesChange={onNodesChange}
+            onPaneClick={onPaneClick}>
             <CustomControlsComponent
               className="absolute top-1 right-1 bottom-full"
               deleted={deleted}
@@ -1205,7 +1287,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           </ReactFlow>
         </ReactFlowProvider>
       </div>
-      {(!isEmpty(selectedNode) || !isEditMode) && (
+      {!isEmpty(selectedNode) && !isEditMode && (
         <EntityInfoDrawer
           isMainNode={selectedNode.name === updatedLineageData.entity?.name}
           selectedNode={selectedNode}
