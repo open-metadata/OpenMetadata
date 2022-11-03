@@ -110,7 +110,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   };
 
   const removeOwnerButton = (item: DropDownListItem) => {
-    return !isNil(value) && item.value === value ? (
+    return !isNil(value) && item.value === value && removeOwner ? (
       <Tooltip title="Remove owner">
         <button
           className="cursor-pointer"

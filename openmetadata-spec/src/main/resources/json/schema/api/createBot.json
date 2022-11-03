@@ -23,6 +23,9 @@
     "description": {
       "description": "Description of the bot.",
       "type": "string"
+    },
+    "provider" : {
+      "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
   "required": ["name", "botUser"],

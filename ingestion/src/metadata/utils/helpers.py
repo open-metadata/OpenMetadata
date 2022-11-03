@@ -13,17 +13,61 @@
 Helpers module for ingestion related methods
 """
 
+from __future__ import annotations
+
 import re
 from datetime import datetime, timedelta
 from functools import wraps
 from time import perf_counter
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+class BackupRestoreArgs:
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        host: str,
+        user: str,
+        password: str,
+        database: str,
+        port: str,
+        options: List[str],
+        arguments: List[str],
+        schema: Optional[str] = None,
+    ):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.port = port
+        self.options = options
+        self.arguments = arguments
+        self.schema = schema
+
+
+class DockerActions:
+    def __init__(
+        self,
+        start: bool,
+        stop: bool,
+        pause: bool,
+        resume: bool,
+        clean: bool,
+        reset_db: bool,
+    ):
+        self.start = start
+        self.stop = stop
+        self.pause = pause
+        self.resume = resume
+        self.clean = clean
+        self.reset_db = reset_db
+
 
 om_chart_type_dict = {
     "line": ChartType.Line,
@@ -78,7 +122,7 @@ def calculate_execution_time_generator(func):
     return calculate_debug_time
 
 
-def pretty_print_time_duration(duration: int) -> str:
+def pretty_print_time_duration(duration: Union[int, float]) -> str:
     """
     Method to format and display the time
     """
@@ -233,3 +277,51 @@ def clean_up_starting_ending_double_quotes_in_string(string: str) -> str:
         raise TypeError(f"{string}, must be of type str, instead got `{type(string)}`")
 
     return string.strip('"')
+
+
+def insensitive_replace(raw_str: str, to_replace: str, replace_by: str) -> str:
+    """Replace `to_replace` by `replace_by` in `raw_str` ignoring the raw_str case.
+
+    Args:
+        raw_str:str: Define the string that will be searched
+        to_replace:str: Specify the string to be replaced
+        replace_by:str: Replace the to_replace:str parameter in the raw_str:str string
+
+    Returns:
+        A string where the given to_replace is replaced by replace_by in raw_str, ignoring case
+    """
+
+    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE)
+
+
+def insensitive_match(raw_str: str, to_match: str) -> bool:
+    """Match `to_match` in `raw_str` ignoring the raw_str case.
+
+    Args:
+        raw_str:str: Define the string that will be searched
+        to_match:str: Specify the string to be matched
+
+    Returns:
+        True if `to_match` matches in `raw_str`, ignoring case. Otherwise, false.
+    """
+
+    return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None
+
+
+def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
+    """_summary_
+
+    Args:
+        tags (list[TagLabel]): list of tags
+
+    Returns:
+        Optional[str]
+    """
+    return next(
+        (
+            tag.tagFQN.__root__
+            for tag in tags
+            if tag.tagFQN.__root__.lower().startswith("tier")
+        ),
+        None,
+    )

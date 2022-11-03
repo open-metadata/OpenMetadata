@@ -83,10 +83,6 @@ public class PipelineServiceResource
   public static class PipelineServiceList extends ResultList<PipelineService> {
     @SuppressWarnings("unused") /* Required for tests */
     public PipelineServiceList() {}
-
-    public PipelineServiceList(List<PipelineService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
@@ -292,7 +288,7 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
       throws IOException {
     PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
@@ -315,7 +311,7 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException {
     PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
@@ -346,7 +342,7 @@ public class PipelineServiceResource
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
           UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private PipelineService getService(CreatePipelineService create, String user) throws IOException {

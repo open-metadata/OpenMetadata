@@ -48,7 +48,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
@@ -312,7 +312,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // The updates are ignored for a BOT user and the table version does not change
     //
     create.getColumns().set(0, getColumn("column1", INT, null, "x", "y"));
-    Table table = updateAndCheckEntity(create, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
+    Table table = updateAndCheckEntity(create, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
     create.getColumns().set(0, column1); // Revert to previous value
 
     //

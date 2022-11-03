@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import {
+    deleteCreatedService,
+    editOwnerforCreatedService,
+    goToAddNewServicePage,
+    login,
+    testServiceCreationAndIngestion,
+    updateDescriptionForIngestedTables,
+    uuid
+} from '../../common/common';
 import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Superset';
@@ -55,7 +63,7 @@ describe('Superset Ingestion', () => {
     );
   });
 
-  it('Update table description and verify', () => {
+  it('Update table description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
       tableName,
@@ -66,7 +74,11 @@ describe('Superset Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Dashboard, serviceName);
+    editOwnerforCreatedService(
+      SERVICE_TYPE.Dashboard,
+      serviceName,
+      'dashboardServices'
+    );
   });
 
   it('delete created service', () => {

@@ -86,10 +86,6 @@ public class DatabaseServiceResource
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
     @SuppressWarnings("unused") /* Required for tests */
     public DatabaseServiceList() {}
-
-    public DatabaseServiceList(List<DatabaseService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
@@ -297,7 +293,7 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
     DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -320,7 +316,7 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -351,7 +347,7 @@ public class DatabaseServiceResource
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private DatabaseService getService(CreateDatabaseService create, String user) throws IOException {

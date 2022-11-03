@@ -15,6 +15,7 @@ import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
+import { EntityType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
@@ -29,8 +30,10 @@ import {
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
-import { getAddCustomPropertyPath } from '../../constants/constants';
-import { customAttributesPath } from '../../constants/globalSettings.constants';
+import {
+  ENTITY_PATH,
+  getAddCustomPropertyPath,
+} from '../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -51,8 +54,7 @@ const CustomEntityDetailV1 = () => {
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
 
-  const tabAttributePath =
-    customAttributesPath[tab as keyof typeof customAttributesPath];
+  const tabAttributePath = ENTITY_PATH[tab.toLowerCase() as EntityType];
 
   const { getEntityPermission } = usePermissionProvider();
 

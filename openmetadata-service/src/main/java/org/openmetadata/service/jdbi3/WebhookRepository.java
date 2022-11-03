@@ -98,7 +98,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
     publisher.setProcessor(processor);
     webhookPublisherMap.put(webhook.getId(), publisher);
-    LOG.info("Webhook subscription started for {}", webhook.getName());
+    LOG.info("Webhook publisher subscription started for {}", webhook.getName());
   }
 
   @SneakyThrows
@@ -128,14 +128,13 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   public void deleteWebhookPublisher(UUID id) throws InterruptedException {
-    WebhookPublisher publisher = webhookPublisherMap.get(id);
+    WebhookPublisher publisher = webhookPublisherMap.remove(id);
     if (publisher != null) {
       publisher.getProcessor().halt();
       publisher.awaitShutdown();
       EventPubSub.removeProcessor(publisher.getProcessor());
       LOG.info("Webhook publisher deleted for {}", publisher.getWebhook().getName());
     }
-    webhookPublisherMap.remove(id);
   }
 
   public class WebhookUpdater extends EntityUpdater {

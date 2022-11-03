@@ -578,9 +578,12 @@
           "description": "How long did the query took to run in seconds.",
           "type": "number"
         },
-        "user": {
-          "description": "User who ran this query.",
-          "$ref": "../../type/entityReference.json",
+        "users": {
+          "description": "List of users who ran this query.",
+          "type":"array",
+          "items": {
+            "$ref": "../../type/entityReference.json"
+          },
           "default": null
         },
         "vote": {

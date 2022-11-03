@@ -85,10 +85,6 @@ public class MessagingServiceResource
   public static class MessagingServiceList extends ResultList<MessagingService> {
     @SuppressWarnings("unused") /* Required for tests */
     public MessagingServiceList() {}
-
-    public MessagingServiceList(List<MessagingService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
@@ -294,7 +290,7 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }
@@ -317,7 +313,7 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }
@@ -346,7 +342,7 @@ public class MessagingServiceResource
           boolean hardDelete,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private MessagingService getService(CreateMessagingService create, String user) throws IOException {

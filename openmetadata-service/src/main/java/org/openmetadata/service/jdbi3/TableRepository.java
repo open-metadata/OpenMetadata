@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -335,9 +336,9 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     String extension;
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      extension = "table.tableProfile";
+      extension = TABLE_PROFILE_EXTENSION;
     } else if (entityType.equalsIgnoreCase("column")) {
-      extension = "table.columnProfile";
+      extension = TABLE_COLUMN_PROFILE_EXTENSION;
     } else {
       throw new IllegalArgumentException("entityType must be table or column");
     }
@@ -379,6 +380,14 @@ public class TableRepository extends EntityRepository<Table> {
       for (SQLQuery q : storedQueries) {
         storedMapQueries.put(q.getChecksum(), q);
       }
+    }
+    SQLQuery oldQuery = storedMapQueries.get(query.getChecksum());
+    if (oldQuery != null && query.getUsers() != null) {
+      // Merge old and new users
+      List<EntityReference> userList = query.getUsers();
+      userList.addAll(oldQuery.getUsers());
+      HashSet<EntityReference> userSet = new HashSet<>(userList);
+      query.setUsers(new ArrayList<>(userSet));
     }
     storedMapQueries.put(query.getChecksum(), query);
     List<SQLQuery> updatedQueries = new ArrayList<>(storedMapQueries.values());
@@ -755,7 +764,7 @@ public class TableRepository extends EntityRepository<Table> {
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, "table.tableProfile", startTs, endTs),
+                .listBetweenTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs),
             TableProfile.class);
     return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
@@ -766,7 +775,7 @@ public class TableRepository extends EntityRepository<Table> {
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, "table.columnProfile", startTs, endTs),
+                .listBetweenTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
             ColumnProfile.class);
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
@@ -779,7 +788,7 @@ public class TableRepository extends EntityRepository<Table> {
    */
   private List<DailyCount> aggregateAndFilterDailyCounts(
       List<DailyCount> currentDailyCounts, DailyCount newDailyCount) {
-    var joinCountByDay =
+    Map<String, List<DailyCount>> joinCountByDay =
         Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount)).collect(groupingBy(DailyCount::getDate));
 
     return joinCountByDay.entrySet().stream()
@@ -966,12 +975,10 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if ((addedColumn.getDescription() == null || addedColumn.getDescription().isEmpty())
-              && (deleted.getDescription() == null || !deleted.getDescription().isEmpty())) {
+          if (nullOrEmpty(addedColumn.getDescription()) && nullOrEmpty(deleted.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if ((addedColumn.getTags() == null || addedColumn.getTags().isEmpty())
-              && (deleted.getTags() == null || !deleted.getTags().isEmpty())) {
+          if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
             addedColumn.setTags(deleted.getTags());
           }
         }

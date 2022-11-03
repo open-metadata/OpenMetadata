@@ -92,6 +92,13 @@
           "items": {
             "$ref": "#/definitions/tag"
           }
+        },
+        "provider" : {
+          "$ref": "../../type/basic.json#/definitions/providerType"
+        },
+        "disabled" : {
+          "description": "System tags can't be deleted. Use this flag to disable them.",
+          "type": "boolean"
         }
       },
       "required": ["name", "description"],
@@ -156,6 +163,13 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "disabled" : {
+      "description": "System tag categories can't be deleted. Use this flag to disable them.",
+      "type": "boolean"
     }
   },
   "required": ["name", "description", "categoryType"],

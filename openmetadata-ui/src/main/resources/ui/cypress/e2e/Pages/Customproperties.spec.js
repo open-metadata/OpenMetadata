@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { addCustomPropertiesForEntity, deleteCreatedProperty, editCreatedProperty, interceptURL, login, verifyResponseStatusCode } from '../../common/common';
+import {
+    addCustomPropertiesForEntity,
+    deleteCreatedProperty,
+    editCreatedProperty,
+    interceptURL,
+    login,
+    verifyResponseStatusCode
+} from '../../common/common';
 import { ENTITIES, LOGIN } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
@@ -33,8 +40,6 @@ describe('Custom Properties should work properly', () => {
 
   Object.values(ENTITIES).forEach((entity) => {
     it(`Add Integer custom property for ${entity.name}  Entities`, () => {
-     cy.getSearchQueryName(entity.name).then((entityName) => {
-        
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/${entity.name}*`,
@@ -54,8 +59,7 @@ describe('Custom Properties should work properly', () => {
         entity,
         'integer',
         entity.integerValue,
-        entity.entityObj,
-        entityName
+        entity.entityObj
       );
       //Navigating back to custom properties page
       cy.get('[data-testid="appbar-item-settings"]')
@@ -72,10 +76,8 @@ describe('Custom Properties should work properly', () => {
 
       deleteCreatedProperty(propertyName);
     });
-
-})
   });
-  
+
   Object.values(ENTITIES).forEach((entity) => {
     it(`Add String custom property for ${entity.name} Entities`, () => {
       interceptURL(

@@ -115,9 +115,10 @@ public class IngestionPipelineResourceUnitTest {
         mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
       ingestionPipelineResource.initialize(openMetadataApplicationConfig);
       assertEquals(
-          expectedMap, ingestionPipelineResource.getLastIngestionLogs(null, securityContext, DAG_ID).getEntity());
+          expectedMap,
+          ingestionPipelineResource.getLastIngestionLogs(null, securityContext, DAG_ID, "after").getEntity());
       PipelineServiceClient client = mocked.constructed().get(0);
-      verify(client).getLastIngestionLogs(ingestionPipeline);
+      verify(client).getLastIngestionLogs(ingestionPipeline, "after");
     }
   }
 
@@ -210,7 +211,7 @@ public class IngestionPipelineResourceUnitTest {
   }
 
   private void preparePipelineServiceClient(AirflowRESTClient mockPipelineServiceClient, Context context) {
-    when(mockPipelineServiceClient.getLastIngestionLogs(any())).thenReturn(Map.of("task", "log"));
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(), any())).thenReturn(Map.of("task", "log"));
   }
 
   private IngestionPipeline buildIngestionPipeline(Object config, PipelineType pipelineType, UUID id) {

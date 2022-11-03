@@ -36,7 +36,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
@@ -46,8 +45,8 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -71,6 +70,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -87,8 +87,10 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -163,6 +165,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
+  private final String systemEntityName; // System entity provided by the system that can't be deleted
   protected boolean supportsFollowers;
   protected boolean supportsOwner;
   protected final boolean supportsTags;
@@ -283,6 +286,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
       String fields) {
+    this(entityType, entityClass, entityListClass, collectionName, fields, null);
+  }
+
+  public EntityResourceTest(
+      String entityType,
+      Class<T> entityClass,
+      Class<? extends ResultList<T>> entityListClass,
+      String collectionName,
+      String fields,
+      String systemEntityName) {
     this.entityType = entityType;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
@@ -295,6 +308,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
+    this.systemEntityName = systemEntityName;
   }
 
   @BeforeAll
@@ -765,7 +779,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void post_entityWithOwner_200(TestInfo test) throws IOException {
+  void post_delete_entity_as_admin_200(TestInfo test) throws IOException {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void post_delete_entityWithOwner_200(TestInfo test) throws IOException {
     if (!supportsOwner) {
       return;
     }
@@ -774,23 +795,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     CreateTeam createTeam = teamResourceTest.createRequest(test);
     Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
 
-    // Entity with user as owner is created successfully
-    createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+    // Entity with user as owner is created successfully. Owner should be able to delete the dentity
+    T entity1 = createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+    deleteEntity(entity1.getId(), true, true, authHeaders(USER1.getName()));
+    assertEntityDeleted(entity1.getId(), true);
 
     // Entity with team as owner is created successfully
-    T entity =
+    T entity2 =
         createAndCheckEntity(
             createRequest(getEntityName(test, 2), "", "", team.getEntityReference()), ADMIN_AUTH_HEADERS);
 
-    // Delete team and ensure the entity still exists but with owner as deleted
+    // As ADMIN delete the team and ensure the entity still exists but with owner as deleted
     teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
-    entity = getEntity(entity.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
-    assertTrue(entity.getOwner().getDeleted());
+    entity2 = getEntity(entity2.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    assertTrue(entity2.getOwner().getDeleted());
+  }
+
+  @Test
+  protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
+    // Ingestion bot can create and delete all the entities except websocket and bot
+    if (List.of(Entity.WEBHOOK, Entity.BOT).contains(entityType)) {
+      return;
+    }
+    T entity = createEntity(createRequest(test), INGESTION_BOT_AUTH_HEADERS);
+    assertNotNull(entity);
+    deleteAndCheckEntity(entity, INGESTION_BOT_AUTH_HEADERS);
   }
 
   @Test
   protected void post_entity_as_non_admin_401(TestInfo test) {
-    assertResponse(() -> createEntity(createRequest(test), TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+    assertResponse(
+        () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
   }
 
   @Test
@@ -983,7 +1020,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_ALL)));
   }
 
   @Test
@@ -1028,7 +1065,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       fieldAdded(change, "description", "description");
     }
     fieldAdded(change, "displayName", "displayName");
-    entity = updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, MINOR_UPDATE, change);
+    entity = updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is allowed for users other than bots
     request = createRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
@@ -1039,7 +1076,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Updating non-empty description and non-empty displayName is ignored for bot users
     request = createRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
-    updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
+    updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -1333,7 +1370,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
     create = createRequest(test).withExtension(jsonNode);
-    entity = updateEntity(create, Status.OK, BOT_AUTH_HEADERS);
+    entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
 
@@ -1380,26 +1417,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void delete_entity_as_admin_200(TestInfo test) throws IOException {
-    K request = createRequest(getEntityName(test), "", "", null);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  protected void delete_entity_as_owner_401(TestInfo test) throws IOException {
-    if (!supportsOwner) {
-      return;
-    }
-    K request = createRequest(getEntityName(test), "", "", USER1_REF);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-
-    // Deleting as the owner user should succeed
-    deleteEntity(entity.getId(), true, true, authHeaders(USER1.getName()));
-    assertEntityDeleted(entity, true);
-  }
-
-  @Test
   protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
     // Deleting as non-owner and non-admin should fail
     K request = createRequest(getEntityName(test), "", "", null);
@@ -1411,7 +1428,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */
-  @Test
+  //  @Test
   void delete_put_entity_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -1502,6 +1519,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             null,
             TEAM_ONLY_POLICY.getName(),
             TEAM_ONLY_POLICY_RULES.get(0).getName()));
+  }
+
+  @Test
+  void delete_systemEntity() throws IOException {
+    if (systemEntityName == null) {
+      return;
+    }
+    T systemEntity = getEntityByName(systemEntityName, "", ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteEntity(systemEntity.getId(), true, true, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(systemEntity.getName(), entityType));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1830,6 +1859,30 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateChangeEvents(entityInterface, timestamp, expectedEventType, expectedChangeDescription, authHeaders, false);
   }
 
+  public static class EventHolder {
+    @Getter ChangeEvent expectedEvent;
+
+    public boolean hasExpectedEvent(ResultList<ChangeEvent> changeEvents, long timestamp) {
+      for (ChangeEvent event : listOrEmpty(changeEvents.getData())) {
+        if (event.getTimestamp() == timestamp) {
+          expectedEvent = event;
+          break;
+        }
+      }
+      return expectedEvent != null;
+    }
+
+    public boolean hasDeletedEvent(ResultList<ChangeEvent> changeEvents, UUID id) {
+      for (ChangeEvent event : changeEvents.getData()) {
+        if (event.getEntityId().equals(id)) {
+          expectedEvent = event;
+          break;
+        }
+      }
+      return expectedEvent != null;
+    }
+  }
+
   private void validateChangeEvents(
       T entity,
       long timestamp,
@@ -1838,39 +1891,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Map<String, String> authHeaders,
       boolean withEventFilter)
       throws IOException {
-    ResultList<ChangeEvent> changeEvents;
-    ChangeEvent changeEvent = null;
+    // Get change event with an event filter for specific entity type if withEventFilter is True. Else get all entities.
+    String createdFilter = withEventFilter ? entityType : "*";
+    String updatedFilter = withEventFilter ? entityType : "*";
+    EventHolder eventHolder = new EventHolder();
 
-    int iteration = 0;
-    while (changeEvent == null && iteration < 25) {
-      iteration++;
-      // Sometimes change event is not returned on quickly querying with a millisecond
-      // Try multiple times before giving up
-      if (withEventFilter) {
-        // Get change event with an event filter for specific entity type
-        changeEvents = getChangeEvents(entityType, entityType, null, timestamp, authHeaders);
-      } else {
-        // Get change event with no event filter for entity types
-        changeEvents = getChangeEvents("*", "*", null, timestamp, authHeaders);
-      }
-
-      if (changeEvents == null || changeEvents.getData().size() == 0) {
-        try {
-          Thread.sleep(iteration * 10L); // Sleep with backoff
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        continue;
-      }
-
-      for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getTimestamp() == timestamp) {
-          changeEvent = event;
-          break;
-        }
-      }
-    }
-
+    Awaitility.await("Wait for expected change event at timestamp " + timestamp)
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .until(
+            () ->
+                eventHolder.hasExpectedEvent(
+                    getChangeEvents(createdFilter, updatedFilter, null, timestamp, authHeaders), timestamp));
+    ChangeEvent changeEvent = eventHolder.getExpectedEvent();
     assertNotNull(
         changeEvent,
         "Expected change event "
@@ -1904,32 +1937,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   private void validateDeletedEvent(
-      UUID id, long timestamp, EventType expectedEventType, Double expectedVersion, Map<String, String> authHeaders)
-      throws IOException {
+      UUID id, long timestamp, EventType expectedEventType, Double expectedVersion, Map<String, String> authHeaders) {
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
-    ResultList<ChangeEvent> changeEvents;
-    ChangeEvent changeEvent = null;
+    EventHolder eventHolder = new EventHolder();
 
-    int iteration = 0;
-    while (changeEvent == null && iteration < 25) {
-      iteration++;
-      changeEvents = getChangeEvents(null, null, entityType, timestamp, authHeaders);
-
-      if (changeEvents == null || changeEvents.getData().size() == 0) {
-        try {
-          Thread.sleep(iteration * 10L); // Sleep with backoff
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        continue;
-      }
-      for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getEntityId().equals(id)) {
-          changeEvent = event;
-          break;
-        }
-      }
-    }
+    Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .until(() -> eventHolder.hasDeletedEvent(getChangeEvents(null, null, entityType, timestamp, authHeaders), id));
+    ChangeEvent changeEvent = eventHolder.getExpectedEvent();
 
     assertNotNull(changeEvent, "Deleted event after " + timestamp + " was not found for entity " + id);
     assertEquals(expectedEventType, changeEvent.getEventType());

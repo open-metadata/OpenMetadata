@@ -280,10 +280,6 @@ jest.mock('../EntityList/EntityList', () => ({
   EntityListWithAntd: jest.fn().mockReturnValue(<p>EntityList.component</p>),
 }));
 
-jest.mock('../RecentSearchedTerms/RecentSearchedTerms', () => {
-  return jest.fn().mockReturnValue(<p>RecentSearchedTerms</p>);
-});
-
 jest.mock(
   '../containers/PageLayoutV1',
   () =>

@@ -23,7 +23,7 @@ import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 interface TeamHierarchyProps {
   data: Team[];
   onTeamExpand: (
-    isPageLoading?: boolean,
+    loading?: boolean,
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;
@@ -72,6 +72,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
 
   return (
     <Table
+      bordered
       className="teams-list-table"
       columns={columns}
       dataSource={data}
