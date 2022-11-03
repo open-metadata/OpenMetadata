@@ -37,7 +37,7 @@ const DropDownLabel = ({ children, ...rest }: { children: ReactNode }) => {
 };
 
 const DataInsightPage = () => {
-  const [activeTab, setActiveTab] = useState('Entities');
+  const [activeTab, setActiveTab] = useState('Datasets');
 
   return (
     <PageLayoutV1>
@@ -75,12 +75,12 @@ const DataInsightPage = () => {
             className="data-insight-switch"
             data-testid="data-insight-switch"
             optionType="button"
-            options={['Entities', 'Web Analytics']}
+            options={['Datasets', 'Web Analytics']}
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
           />
         </Col>
-        {activeTab === 'Entities' && (
+        {activeTab === 'Datasets' && (
           <>
             <Col span={24}>
               <TotalEntityInsight />

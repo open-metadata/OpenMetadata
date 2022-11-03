@@ -50,7 +50,7 @@ const TotalEntityInsight = () => {
             {t('label.data-insight-total-entity-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the total of entities by type.
+            Display the total of datasets by type.
           </Typography.Text>
         </>
       }>

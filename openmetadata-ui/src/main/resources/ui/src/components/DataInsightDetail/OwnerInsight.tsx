@@ -49,7 +49,7 @@ const OwnerInsight = () => {
             {t('label.data-insight-owner-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the percentage of entities with owner by type.
+            Display the percentage of datasets with owner by type.
           </Typography.Text>
         </>
       }>

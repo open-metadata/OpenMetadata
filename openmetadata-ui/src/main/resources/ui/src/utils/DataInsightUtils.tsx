@@ -28,9 +28,11 @@ export const renderLegend = (legendData: LegendProps, total: string) => {
       <Typography.Text className="data-insight-label-text">
         Total
       </Typography.Text>
-      <Typography.Title level={5} style={{ margin: '5px 0px' }}>
+      <Typography
+        className="font-semibold text-2xl"
+        style={{ margin: '5px 0px' }}>
         {total}
-      </Typography.Title>
+      </Typography>
       <ul className="mr-2">
         {payload.map((entry, index) => (
           <li

@@ -49,7 +49,7 @@ const DescriptionInsight = () => {
             {t('label.data-insight-description-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the percentage of entities with description by type.
+            Display the percentage of datasets with description by type.
           </Typography.Text>
         </>
       }>

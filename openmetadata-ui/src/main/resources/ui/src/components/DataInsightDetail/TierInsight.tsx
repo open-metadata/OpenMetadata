@@ -50,7 +50,7 @@ const TierInsight = () => {
             {t('label.data-insight-tier-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the percentage of entities with tier by type.
+            Display the percentage of datasets with tier by type.
           </Typography.Text>
         </>
       }>
