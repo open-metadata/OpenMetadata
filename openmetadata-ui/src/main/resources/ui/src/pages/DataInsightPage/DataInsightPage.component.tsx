@@ -75,7 +75,7 @@ const DataInsightPage = () => {
             className="data-insight-switch"
             data-testid="data-insight-switch"
             optionType="button"
-            options={['Entities', 'WebAnalytics']}
+            options={['Entities', 'Web Analytics']}
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
           />
@@ -96,7 +96,7 @@ const DataInsightPage = () => {
             </Col>
           </>
         )}
-        {activeTab === 'WebAnalytics' && (
+        {activeTab === 'Web Analytics' && (
           <>
             <Col span={24}>
               <TopViewEntities />
