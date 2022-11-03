@@ -59,6 +59,8 @@ jobs:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d mysql
         timeout-minutes: 30
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@latest
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v4
@@ -69,7 +71,7 @@ jobs:
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           group: Tests with database mysql
-          browser: "${{ env.BROWSER }}"
+          browser: chrome
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.CYPRESS_SNOWFLAKE_USERNAME }}
