@@ -148,7 +148,7 @@ describe('RedShift Ingestion', () => {
       .should('contain', DBT.dataQualityTest2);
   });
 
-  it('Update table description and verify', () => {
+  it('Update table description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       REDSHIFT.serviceName,
       REDSHIFT.tableName,
@@ -159,7 +159,11 @@ describe('RedShift Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Database, REDSHIFT.serviceName);
+    editOwnerforCreatedService(
+      SERVICE_TYPE.Database,
+      REDSHIFT.serviceName,
+      'databaseServices'
+    );
   });
 
   it('delete created service', () => {

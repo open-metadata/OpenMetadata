@@ -129,6 +129,7 @@ public class TagRepository extends EntityRepository<Tag> {
   @Transaction
   public Tag delete(UriInfo uriInfo, UUID id) throws IOException {
     Tag tag = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(tag);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(tag.getFullyQualifiedName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());

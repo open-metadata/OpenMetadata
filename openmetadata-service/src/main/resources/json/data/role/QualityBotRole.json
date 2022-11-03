@@ -3,6 +3,7 @@
   "displayName": "Quality bot role",
   "description": "Role corresponding to a Quality bot.",
   "allowDelete": false,
+  "provider": "system",
   "policies" : [
     {
       "type" : "policy",

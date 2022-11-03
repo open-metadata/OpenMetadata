@@ -14,8 +14,7 @@
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUSES;
+import static org.openmetadata.service.Entity.*;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -28,33 +27,24 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.http.HttpResponse;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -167,11 +157,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
-      addStatus(ingestionPipelines.getData());
+
+    for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
+      if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
+        ingestionPipeline.setPipelineStatuses(dao.getLatestPipelineStatus(ingestionPipeline));
+      }
+      decryptOrNullify(securityContext, ingestionPipeline);
     }
-    listOrEmpty(ingestionPipelines.getData())
-        .forEach(ingestionPipeline -> decryptOrNullify(securityContext, ingestionPipeline));
     return ingestionPipelines;
   }
 
@@ -228,8 +220,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           Include include)
       throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
-      ingestionPipeline = addStatus(ingestionPipeline);
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
+      ingestionPipeline.setPipelineStatuses(dao.getLatestPipelineStatus(ingestionPipeline));
     }
     return decryptOrNullify(securityContext, ingestionPipeline);
   }
@@ -296,8 +288,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           Include include)
       throws IOException {
     IngestionPipeline ingestionPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
-      ingestionPipeline = addStatus(ingestionPipeline);
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
+      ingestionPipeline.setPipelineStatuses(dao.getLatestPipelineStatus(ingestionPipeline));
     }
     return decryptOrNullify(securityContext, ingestionPipeline);
   }
@@ -397,6 +389,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build());
     pipelineServiceClient.deployPipeline(ingestionPipeline);
+    createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline);
     return addHref(uriInfo, ingestionPipeline);
   }
@@ -446,6 +439,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
     pipelineServiceClient.toggleIngestion(pipeline);
+    createOrUpdate(uriInfo, securityContext, pipeline);
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
@@ -500,23 +494,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   @GET
-  @Path("/status")
-  @Operation(
-      operationId = "checkRestAirflowStatus",
-      summary = "Check the Airflow REST status",
-      tags = "IngestionPipelines",
-      description = "Check that the Airflow REST endpoint is reachable and up and running",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Status message",
-            content = @Content(mediaType = "application/json"))
-      })
-  public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return pipelineServiceClient.getServiceStatus();
-  }
-
-  @GET
   @Path("/ip")
   @Operation(
       operationId = "checkAirflowHostIp",
@@ -532,6 +509,23 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     Map<String, String> hostIp = pipelineServiceClient.getHostIp();
     return Response.ok(hostIp, MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
+  @GET
+  @Path("/status")
+  @Operation(
+      operationId = "checkRestAirflowStatus",
+      summary = "Check the Airflow REST status",
+      tags = "IngestionPipelines",
+      description = "Check that the Airflow REST endpoint is reachable and up and running",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Status message",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return pipelineServiceClient.getServiceStatus();
   }
 
   @DELETE
@@ -583,6 +577,99 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
+  @PUT
+  @Path("/{fqn}/pipelineStatus")
+  @Operation(
+      operationId = "addPipelineStatus",
+      summary = "Add pipeline status",
+      tags = "IngestionPipelines",
+      description = "Add pipeline status of ingestion pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the PipelineStatus. ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+      })
+  public Response addPipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Encoded
+          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid PipelineStatus pipelineStatus)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return dao.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
+  }
+
+  @GET
+  @Path("/{fqn}/pipelineStatus")
+  @Operation(
+      operationId = "listPipelineStatuses",
+      summary = "List of pipeline status",
+      tags = "IngestionPipelines",
+      description =
+          "Get a list of all the pipeline status for the given ingestion pipeline id, optionally filtered by  `startTs` and `endTs` of the profile. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline status",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+      })
+  public ResultList<PipelineStatus> listPipelineStatuses(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Filter pipeline status after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter pipeline status before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("endTs")
+          Long endTs)
+      throws IOException {
+    return dao.listPipelineStatus(fqn, startTs, endTs);
+  }
+
+  @GET
+  @Path("/{fqn}/pipelineStatus/{id}")
+  @Operation(
+      operationId = "getPipelineStatus",
+      summary = "get pipeline status",
+      tags = "IngestionPipelines",
+      description = "Get pipeline status of ingestion pipeline",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated state of the PipelineStatus.",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+      })
+  public PipelineStatus getPipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Encoded
+          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Pipeline Status Run Id", schema = @Schema(type = "string")) @PathParam("id") UUID runId)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return dao.getPipelineStatus(fqn, runId);
+  }
+
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build();
@@ -593,19 +680,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
         .withService(create.getService());
-  }
-
-  public void addStatus(List<IngestionPipeline> ingestionPipelines) {
-    listOrEmpty(ingestionPipelines).forEach(this::addStatus);
-  }
-
-  private IngestionPipeline addStatus(IngestionPipeline ingestionPipeline) {
-    try {
-      ingestionPipeline = pipelineServiceClient.getPipelineStatus(ingestionPipeline);
-    } catch (Exception e) {
-      LOG.error("Failed to fetch status for {} due to {}", ingestionPipeline.getName(), e);
-    }
-    return ingestionPipeline;
   }
 
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {

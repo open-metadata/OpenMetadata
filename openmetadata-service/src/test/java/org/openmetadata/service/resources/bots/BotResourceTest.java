@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.bots;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -21,7 +22,6 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
@@ -33,7 +33,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static EntityReference botUserRef;
 
   public BotResourceTest() {
-    super(Entity.BOT, Bot.class, BotList.class, "bots", ""); // TODO fix this
+    super(Entity.BOT, Bot.class, BotList.class, "bots", "", INGESTION_BOT);
     supportsFieldsQueryParam = false;
   }
 
@@ -105,17 +105,6 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
         () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "User [bot-test-user] is not a bot user");
-  }
-
-  @Test
-  void delete_failIfUserIsIngestionBot() throws IOException {
-    // get ingestion bot
-    Bot ingestionBot = getEntityByName(Entity.INGESTION_BOT_NAME, "", ADMIN_AUTH_HEADERS);
-    // fail because it is a system bot
-    assertResponse(
-        () -> deleteEntity(ingestionBot.getId(), true, true, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.systemEntityDeleteNotAllowed(ingestionBot.getName(), Entity.BOT));
   }
 
   @Override

@@ -181,6 +181,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   hasPermission: jest.fn().mockReturnValue(false),
 }));
 
+jest.mock('../EntityInfoDrawer/EntityInfoDrawer.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityInfoDrawerComponent</p>);
+});
+
 describe('Test EntityLineage Component', () => {
   it('Check if EntityLineage is rendering all the nodes', async () => {
     const { container } = render(<EntityLineage {...mockEntityLineageProp} />, {
@@ -196,7 +200,7 @@ describe('Test EntityLineage Component', () => {
   });
 
   it('Check if EntityLineage has deleted as true', async () => {
-    await act(() => {
+    act(() => {
       render(<EntityLineage {...mockEntityLineageProp} deleted />, {
         wrapper: MemoryRouter,
       });

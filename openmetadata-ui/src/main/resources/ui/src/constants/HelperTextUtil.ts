@@ -57,3 +57,5 @@ export const INGESTION_BOT_CANT_BE_DELETED =
 
 export const BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION =
   'Changing account email will update or create a new bot user';
+
+export const ADMIN_ONLY_ACTION = 'Only admin can perform this action.';

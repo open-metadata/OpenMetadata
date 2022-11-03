@@ -3,6 +3,7 @@
   "displayName": "Profiler bot role",
   "description": "Role corresponding to a Profiler bot.",
   "allowDelete": false,
+  "provider": "system",
   "policies" : [
     {
       "type" : "policy",

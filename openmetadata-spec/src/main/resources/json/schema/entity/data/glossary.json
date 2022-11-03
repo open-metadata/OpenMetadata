@@ -81,6 +81,13 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "disabled" : {
+      "description": "System glossary can't be deleted. Use this flag to disable them.",
+      "type": "boolean"
     }
   },
   "required": ["id", "name", "description"],

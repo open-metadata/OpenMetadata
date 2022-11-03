@@ -41,6 +41,15 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockIngestionPipeline)),
 }));
 
+jest.mock(
+  '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
+  () => ({
+    IngestionRecentRuns: jest
+      .fn()
+      .mockImplementation(() => <p>IngestionRecentRuns</p>),
+  })
+);
+
 describe('LogsViewer.component', () => {
   it('On initial, component should render', async () => {
     await act(async () => {

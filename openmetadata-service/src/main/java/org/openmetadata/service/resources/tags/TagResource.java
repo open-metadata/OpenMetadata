@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagCategoryRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
@@ -97,7 +98,7 @@ public class TagResource {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
     List<TagCategory> tagCategories =
-        dao.getEntitiesFromSeedData(TAG_CATEGORY, ".*json/data/tags/.*\\.json$", TagCategory.class);
+        EntityRepository.getEntitiesFromSeedData(TAG_CATEGORY, ".*json/data/tags/.*\\.json$", TagCategory.class);
     for (TagCategory tagCategory : tagCategories) {
       long now = System.currentTimeMillis();
       tagCategory.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
@@ -513,7 +514,8 @@ public class TagResource {
   public Response deleteTags(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String category,
       @Parameter(description = "Tag id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     OperationContext operationContext = new OperationContext(TAG, MetadataOperation.DELETE);

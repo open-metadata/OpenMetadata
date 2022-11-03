@@ -56,7 +56,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "webAnalyticEvent collection", tags = "webAnalyticEvent collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "WebAnalyticEvent")
+@Collection(name = "webAnalyticEvent")
 public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
@@ -105,7 +105,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "listWebAnalyticEventTypes",
       summary = "List web analytic event types",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description =
           "Get a list of web analytics event types."
               + "Use field parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -158,7 +158,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "createWebAnalyticEventType",
       summary = "Create a web analytic event type",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Create a web analytic event type",
       responses = {
         @ApiResponse(
@@ -179,7 +179,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "createOrUpdateWebAnalyticEventType",
       summary = "Update a web analytic event type",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Update web analytic event type.",
       responses = {
         @ApiResponse(
@@ -200,7 +200,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "getWebAnalyticEventTypeById",
       summary = "Get a web analytic event type by id",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Get a web analytic event type by `ID`.",
       responses = {
         @ApiResponse(
@@ -234,7 +234,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "patchWebAnalyticEventTypeById",
       summary = "Update a web analytic event type",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Update a web analytic event type.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -260,7 +260,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "deleteWebAnalyticEventTypeById",
       summary = "delete a web analytic event type",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Delete a web analytic event type by id.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -283,7 +283,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "getWebAnalyticEventTypeByName",
       summary = "Get a web analytic event type by Name",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Get a web analytic event type by Name.",
       responses = {
         @ApiResponse(
@@ -317,7 +317,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "listAllWebAnalyticEventTypeVersion",
       summary = "List web analytic event type versions",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Get a list of all the version of a web analytic event type by `id`.",
       responses = {
         @ApiResponse(
@@ -339,7 +339,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "getSpecificWebAnalyticEventTypeVersion",
       summary = "Get a version of the report definition",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Get a version of the web analytic event type by `id`",
       responses = {
         @ApiResponse(
@@ -370,7 +370,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "addWebAnalyticEventData",
       summary = "Add web analytic event data",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Add web analytic event data",
       responses = {
         @ApiResponse(
@@ -392,7 +392,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "getWebAnalyticEventData",
       summary = "Retrieve web analytic data",
-      tags = "WebAnalyticEvent",
+      tags = "webAnalyticEvent",
       description = "Retrieve web analytic data.",
       responses = {
         @ApiResponse(

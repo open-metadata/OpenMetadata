@@ -306,7 +306,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     // TODO encrypt decrypt could be done twice
     bot = (Bot) response.getEntity();
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (!ProviderType.USER.equals(bot.getProvider())) { // User bots credentials are not stored. Only system bots.
+    if (ProviderType.SYSTEM.equals(bot.getProvider())) { // User bots credentials are not stored. Only system bots.
       secretsManager.encryptOrDecryptBotCredentials(bot.getName(), bot.getBotUser().getName(), true);
     }
     return response;

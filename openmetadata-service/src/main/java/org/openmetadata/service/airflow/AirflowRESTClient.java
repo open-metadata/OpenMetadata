@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,6 @@ import org.json.JSONObject;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.exception.PipelineServiceClientException;
@@ -64,6 +62,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
+        ingestionPipeline.setDeployed(true);
         return response.body();
       }
     } catch (Exception e) {
@@ -159,8 +158,6 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response =
           getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
-        List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
-        ingestionPipeline.setPipelineStatuses(statuses);
         ingestionPipeline.setDeployed(true);
         return ingestionPipeline;
       } else if (response.statusCode() == 404) {
