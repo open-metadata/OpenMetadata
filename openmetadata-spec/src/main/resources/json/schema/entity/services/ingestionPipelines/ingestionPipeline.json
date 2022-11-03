@@ -201,10 +201,6 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
-    },
-    "sink": {
-      "description": "Sink configuration",
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sink"
     }
   },
   "required": [

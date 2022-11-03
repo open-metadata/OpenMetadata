@@ -49,6 +49,7 @@ import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Chart;
@@ -225,6 +226,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   WebAnalyticEventDAO webAnalyticEventDAO();
+
+  @CreateSqlObject
+  DataInsightChartDAO dataInsightChartDAO();
 
   @CreateSqlObject
   UtilDAO utilDAO();
@@ -2951,6 +2955,23 @@ public interface CollectionDAO {
     @Override
     default Class<WebAnalyticEvent> getEntityClass() {
       return WebAnalyticEvent.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+  }
+
+  interface DataInsightChartDAO extends EntityDAO<DataInsightChart> {
+    @Override
+    default String getTableName() {
+      return "data_insight_chart";
+    }
+
+    @Override
+    default Class<DataInsightChart> getEntityClass() {
+      return DataInsightChart.class;
     }
 
     @Override

@@ -450,5 +450,14 @@
       "EditDescription",
       "EditDisplayName"
     ]
+  },
+  {
+    "name" : "dataInsightChart",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
   }
 ]
