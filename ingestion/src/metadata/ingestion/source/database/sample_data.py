@@ -80,7 +80,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValu
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
@@ -725,8 +725,16 @@ class SampleDataSource(
         for edge in self.lineage:
             from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
             to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
+            edge_entity_ref = get_lineage_entity_ref(
+                edge["edge_meta"], self.metadata_config
+            )
+            lineage_details = LineageDetails(pipeline=edge_entity_ref)
             lineage = AddLineageRequest(
-                edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
+                edge=EntitiesEdge(
+                    fromEntity=from_entity_ref,
+                    toEntity=to_entity_ref,
+                    lineageDetails=lineage_details,
+                )
             )
             yield lineage
 

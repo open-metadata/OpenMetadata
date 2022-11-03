@@ -150,7 +150,7 @@ class MetadataRestSink(Sink[Entity]):
                 self.status.records_written(
                     f"{type(created).__name__}: {created.fullyQualifiedName.__root__}"
                 )
-                logger.info(f"Successfully ingested {log}")
+                logger.debug(f"Successfully ingested {log}")
             else:
                 self.status.failure(log)
                 logger.error(f"Failed to ingest {log}")
@@ -215,7 +215,7 @@ class MetadataRestSink(Sink[Entity]):
                 dashboard=dashboard_usage.dashboard,
                 dashboard_usage_request=dashboard_usage.usage,
             )
-            logger.info(
+            logger.debug(
                 f"Successfully ingested usage for {dashboard_usage.dashboard.fullyQualifiedName.__root__}"
             )
         except Exception as exc:
@@ -318,7 +318,7 @@ class MetadataRestSink(Sink[Entity]):
                     table_queries=db_schema_and_table.table.tableQueries,
                 )
 
-            logger.info(
+            logger.debug(
                 "Successfully ingested table"
                 f" {db_schema_and_table.database.name.__root__}.{created_table.name.__root__}"
             )
@@ -382,7 +382,7 @@ class MetadataRestSink(Sink[Entity]):
             created_lineage = self.metadata.add_lineage(add_lineage)
             created_lineage_info = created_lineage["entity"]["fullyQualifiedName"]
 
-            logger.info(f"Successfully added Lineage from {created_lineage_info}")
+            logger.debug(f"Successfully added Lineage from {created_lineage_info}")
             self.status.records_written(f"Lineage from: {created_lineage_info}")
         except (APIError, ValidationError) as err:
             logger.debug(traceback.format_exc())
@@ -473,7 +473,7 @@ class MetadataRestSink(Sink[Entity]):
         try:
             user = self.metadata.create_or_update(metadata_user)
             self.status.records_written(user.displayName)
-            logger.info(f"User: {user.displayName}")
+            logger.debug(f"User: {user.displayName}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unexpected error writing user [{metadata_user}]: {exc}")
@@ -481,7 +481,7 @@ class MetadataRestSink(Sink[Entity]):
     def delete_table(self, record: DeleteTable):
         try:
             self.metadata.delete(entity=Table, entity_id=record.table.id)
-            logger.info(
+            logger.debug(
                 f"{record.table.name} doesn't exist in source state, marking it as deleted"
             )
         except Exception as exc:
@@ -514,7 +514,7 @@ class MetadataRestSink(Sink[Entity]):
                 table=record.table, profile_request=record.profile
             )
 
-            logger.info(
+            logger.debug(
                 f"Successfully ingested profile for table {record.table.name.__root__}"
             )
             self.status.records_written(f"Profile: {record.table.name.__root__}")
@@ -530,7 +530,7 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             self.metadata.create_or_update(record.test_suite)
-            logger.info(
+            logger.debug(
                 f"Successfully created test Suite {record.test_suite.name.__root__}"
             )
             self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
@@ -546,7 +546,7 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             self.metadata.create_or_update(record.test_case)
-            logger.info(
+            logger.debug(
                 f"Successfully created test case {record.test_case.name.__root__}"
             )
             self.status.records_written(f"testCase: {record.test_case.name.__root__}")
@@ -563,7 +563,7 @@ class MetadataRestSink(Sink[Entity]):
                 record.test_case_results,
                 record.test_case_name,
             )
-            logger.info(
+            logger.debug(
                 f"Successfully ingested test case results for test case {record.test_case_name}"
             )
             self.status.records_written(

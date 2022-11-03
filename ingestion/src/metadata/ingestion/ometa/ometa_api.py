@@ -563,7 +563,7 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
+            logger.debug(
                 "GET %s for %s. Error %s - %s",
                 entity.__name__,
                 path,
@@ -591,7 +591,7 @@ class OpenMetadata(
                 description=instance.description,
                 href=instance.href,
             )
-        logger.warning("Cannot find the Entity %s", fqn)
+        logger.debug("Cannot find the Entity %s", fqn)
         return None
 
     def list_entities(
