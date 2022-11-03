@@ -199,7 +199,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             required: true,
             max: 128,
             min: 1,
-            message: t('label.field-required', { field: 'Name' }),
+            message: t('label.field-required', { field: t('label.rule-name') }),
           },
         ]}>
         <Input
@@ -229,7 +229,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         rules={[
           {
             required: true,
-            message: t('label.field-required-plural', { field: 'Resources' }),
+            message: t('label.field-required-plural', {
+              field: t('label.resources'),
+            }),
           },
         ]}>
         <TreeSelect
@@ -253,7 +255,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         rules={[
           {
             required: true,
-            message: t('label.field-required-plural', { field: 'Operations' }),
+            message: t('label.field-required-plural', {
+              field: t('label.operations'),
+            }),
           },
         ]}>
         <TreeSelect
@@ -277,7 +281,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         rules={[
           {
             required: true,
-            message: t('label.field-required', { field: 'Effect' }),
+            message: t('label.field-required', { field: t('label.effect') }),
           },
         ]}>
         <Select
