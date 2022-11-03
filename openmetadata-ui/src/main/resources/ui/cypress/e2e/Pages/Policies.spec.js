@@ -59,7 +59,7 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
     .scrollIntoView()
     .type(ruleDescription);
   //Select resource dropdown
-  cy.get('[data-testid="resource"]')
+  cy.get('[data-testid="resources"]')
     .scrollIntoView()
     .should('be.visible')
     .click();
