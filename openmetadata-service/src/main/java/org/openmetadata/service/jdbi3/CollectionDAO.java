@@ -65,7 +65,6 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.entity.metadata.Metadata;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -230,9 +229,6 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataInsightChartDAO dataInsightChartDAO();
-
-  @CreateSqlObject
-  MetadataDAO metadataDAO();
 
   @CreateSqlObject
   UtilDAO utilDAO();
@@ -2984,23 +2980,6 @@ public interface CollectionDAO {
     }
   }
 
-  interface MetadataDAO extends EntityDAO<Metadata> {
-    @Override
-    default String getTableName() {
-      return "metadata_entity";
-    }
-
-    @Override
-    default Class<Metadata> getEntityClass() {
-      return Metadata.class;
-    }
-
-    @Override
-    default String getNameColumn() {
-      return "fullyQualifiedName";
-    }
-  }
-
   interface EntityExtensionTimeSeriesDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -3068,6 +3047,23 @@ public interface CollectionDAO {
         "DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
     void deleteAtTimestamp(
         @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
+
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN and jsonSchema = :jsonSchema")
+    List<String> listByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND jsonSchema = :jsonSchema "
+            + "ORDER BY timestamp DESC LIMIT 1")
+    String getLatestExtensionByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and jsonSchema = :jsonSchema "
+            + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
+    List<String> listBetweenTimestampsByFQN(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") long endTs);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and extension = :extension "

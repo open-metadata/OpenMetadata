@@ -38,7 +38,8 @@
             "MAP",
             "SET",
             "STRING",
-            "BOOLEAN"
+            "BOOLEAN",
+            "PERCENTAGE"
           ]
         }
       }

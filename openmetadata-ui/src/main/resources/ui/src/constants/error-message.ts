@@ -12,4 +12,5 @@
  */
 
 export const passwordErrorMessage =
-  'Password must be a minimum of 8 and a maximum of 16 characters long and contain at least one uppercase and one lowercase letter (A, z), and one special character (such as !, %, @, or #)';
+  'Password must be a minimum of 8 and a maximum of 16 characters long and contain at least one uppercase character ' +
+  '(A-Z), one lowercase character (a-z), one number, and one special character (such as !, %, @, or #)';

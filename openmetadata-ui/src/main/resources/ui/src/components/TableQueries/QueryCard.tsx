@@ -12,10 +12,10 @@
  */
 
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+// import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getUserPath } from '../../constants/constants';
+// import { Link } from 'react-router-dom';
+// import { getUserPath } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { SQLQuery } from '../../generated/entity/data/table';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -34,7 +34,7 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
         className
       )}
       onClick={() => setExpanded((pre) => !pre)}>
-      {!isUndefined(query.user) && !isUndefined(query.duration) ? (
+      {/* {!isUndefined(query.user) && !isUndefined(query.duration) ? (
         <div data-testid="query-header">
           <p>
             Last run by{' '}
@@ -49,7 +49,7 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
             <span className="tw-font-medium">{query.duration} seconds</span>
           </p>
         </div>
-      ) : null}
+      ) : null} */}
       <div className="tw-border tw-border-main tw-rounded-md tw-p-px">
         <div
           className={classNames('tw-overflow-hidden tw-relative', {

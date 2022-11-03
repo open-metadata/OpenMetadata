@@ -368,18 +368,6 @@
     ]
   },
   {
-    "name" : "type",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
     "name" : "user",
     "operations" : [
       "Create",
@@ -442,17 +430,6 @@
     ]
   },
   {
-    "name" : "webAnalyticEvent",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName"
-    ]
-  },
-  {
     "name" : "type",
     "operations" : [
       "Create",
@@ -464,12 +441,14 @@
     ]
   },
   {
-    "name" : "metadata",
+    "name" : "webAnalyticEvent",
     "operations" : [
       "Create",
       "Delete",
       "ViewAll",
-      "EditDescription"
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName"
     ]
   },
   {

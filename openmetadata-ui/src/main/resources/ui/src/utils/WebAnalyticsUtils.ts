@@ -14,11 +14,11 @@
 import Analytics, { AnalyticsInstance } from 'analytics';
 import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
 import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
-import { PageViewEvent } from '../generated/analytics/pageViewEvent';
 import {
   WebAnalyticEventData,
   WebAnalyticEventType,
 } from '../generated/analytics/webAnalyticEventData';
+import { PageViewEvent } from '../generated/analytics/webAnalyticEventType/pageViewEvent';
 
 /**
  * Check if url is valid or not and return the pathname

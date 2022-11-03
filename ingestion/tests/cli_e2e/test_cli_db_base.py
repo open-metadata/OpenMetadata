@@ -25,7 +25,7 @@ from unittest import TestCase
 import pytest
 import yaml
 
-from metadata.cmd import MetadataCommands, metadata
+from metadata.cmd import metadata
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.sink import SinkStatus

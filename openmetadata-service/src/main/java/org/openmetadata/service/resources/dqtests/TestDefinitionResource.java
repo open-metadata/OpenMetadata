@@ -74,7 +74,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
     List<TestDefinition> testDefinitions = dao.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");

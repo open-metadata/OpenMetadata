@@ -240,6 +240,8 @@ site_menu:
     url: /connectors/database/databricks/airflow
   - category: Connectors / Database / Databricks / CLI
     url: /connectors/database/databricks/cli
+  - category: Connectors / Database / Databricks / Troubleshooting
+    url: /connectors/database/databricks/troubleshooting
   - category: Connectors / Database / Datalake
     url: /connectors/database/datalake
   - category: Connectors / Database / Datalake / Airflow

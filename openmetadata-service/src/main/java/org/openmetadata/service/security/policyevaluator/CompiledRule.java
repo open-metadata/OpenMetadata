@@ -219,7 +219,7 @@ public class CompiledRule extends Rule {
     return Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
   }
 
-  static boolean overrideAccess(Access newAccess, Access currentAccess) {
+  public static boolean overrideAccess(Access newAccess, Access currentAccess) {
     // Lower the ordinal number of access overrides higher ordinal number
     return currentAccess.ordinal() > newAccess.ordinal();
   }

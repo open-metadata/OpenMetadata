@@ -280,6 +280,16 @@ public final class CollectionRegistry {
     } catch (Exception ex) {
       LOG.warn("Encountered exception ", ex);
     }
+
+    // Call upgrade method, if it exists
+    try {
+      Method upgradeMethod = resource.getClass().getMethod("upgrade");
+      upgradeMethod.invoke(resource);
+    } catch (NoSuchMethodException ignored) {
+      // Method does not exist and initialize is not called
+    } catch (Exception ex) {
+      LOG.warn("Encountered exception ", ex);
+    }
     return resource;
   }
 

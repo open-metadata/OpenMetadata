@@ -8,8 +8,8 @@
     {"name": "entityType", "displayName": "Entity Type", "dataType": "STRING"}
   ],
   "metrics": [
-    {"name": "completedDescriptionFraction", "displayName": "Percentage of Completed Description", "dataType": "FLOAT"},
-    {"name": "completedDescription", "displayName": "Entities with Completed Description", "dataType": "INT"},
+    {"name": "completedDescriptionFraction", "displayName": "Percentage of Completed Description", "dataType": "PERCENTAGE"},
+    {"name": "completedDescription", "displayName": "Entities with Completed Description", "dataType": "NUMBER"},
     {"name": "entityCount", "displayName": "Total Entities", "dataType": "INT"}
   ]
 }

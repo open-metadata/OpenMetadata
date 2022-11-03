@@ -418,3 +418,22 @@ export const MOCK_NORMAL_LINEAGE_EDGE = {
     isColumnLineage: false,
   },
 };
+
+export const MOCK_PIPELINE = {
+  id: '0667877f-b8f1-4fe1-b125-85879be68e43',
+  name: 'snowflake_etl',
+  displayName: 'Snowflake ETL',
+  description: 'Snowflake ETL pipeline',
+  fullyQualifiedName: 'sample_airflow.snowflake_etl',
+  type: 'pipeline',
+  deleted: false,
+};
+
+export const UPDATED_NORMAL_LINEAGE = {
+  sqlQuery: '',
+  columnsLineage: [],
+  pipeline: {
+    id: '0667877f-b8f1-4fe1-b125-85879be68e43',
+    type: 'pipeline',
+  },
+};

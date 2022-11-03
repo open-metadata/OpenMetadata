@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { postkillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { postKillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
 
 const mockHandleClose = jest.fn();
@@ -28,7 +28,7 @@ const mockProps = {
 };
 
 jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
-  postkillIngestionPipelineById: jest
+  postKillIngestionPipelineById: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),
 }));
@@ -74,7 +74,7 @@ describe('Test Kill Ingestion Modal component', () => {
 
       fireEvent.click(confirmButton);
 
-      expect(postkillIngestionPipelineById).toHaveBeenCalledWith(
+      expect(postKillIngestionPipelineById).toHaveBeenCalledWith(
         mockProps.pipelineId
       );
     });

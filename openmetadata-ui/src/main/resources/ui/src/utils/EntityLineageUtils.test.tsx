@@ -13,10 +13,12 @@
 
 import { Edge } from 'reactflow';
 import {
+  CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
 } from '../components/EntityLineage/EntityLineage.interface';
 import { LineageDetails } from '../generated/api/lineage/addLineage';
+import { EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
   COLUMN_LINEAGE_DETAILS,
@@ -26,11 +28,13 @@ import {
   MOCK_NORMAL_LINEAGE_EDGE,
   MOCK_PARAMS_FOR_DOWN_STREAM,
   MOCK_PARAMS_FOR_UP_STREAM,
+  MOCK_PIPELINE,
   MOCK_REMOVED_NODE,
   SELECTED_EDGE,
   UPDATED_COLUMN_LINEAGE,
   UPDATED_EDGE_PARAM,
   UPDATED_LINEAGE_EDGE,
+  UPDATED_NORMAL_LINEAGE,
   UP_STREAM_EDGE,
 } from '../mocks/Lineage.mock';
 import {
@@ -39,6 +43,7 @@ import {
   getEdgeType,
   getRemovedNodeData,
   getUpdatedEdge,
+  getUpdatedEdgeWithPipeline,
   getUpdatedUpstreamDownStreamEdgeArr,
   getUpStreamDownStreamColumnLineageArr,
 } from './EntityLineageUtils';
@@ -147,6 +152,7 @@ describe('Test EntityLineageUtils utility', () => {
       'table',
       'table',
       true,
+      jest.fn,
       jest.fn
     );
     const normalLineageEdge = createNewEdge(
@@ -155,6 +161,7 @@ describe('Test EntityLineageUtils utility', () => {
       'table',
       'table',
       false,
+      jest.fn,
       jest.fn
     );
 
@@ -163,8 +170,40 @@ describe('Test EntityLineageUtils utility', () => {
 
     const updatedNormalLineageEdge = MOCK_NORMAL_LINEAGE_EDGE as Edge;
     updatedNormalLineageEdge.data.onEdgeClick = jest.fn;
+    updatedNormalLineageEdge.data.addPipelineClick = jest.fn;
 
     expect(columnLineageEdge).toMatchObject(updatedColLineageEdge);
     expect(normalLineageEdge).toMatchObject(updatedNormalLineageEdge);
+  });
+
+  it('getUpdatedEdgeWithPipeline function should work properly', () => {
+    const lineageEdge = getUpdatedEdgeWithPipeline(
+      MOCK_LINEAGE_DATA.upstreamEdges,
+      UPDATED_NORMAL_LINEAGE,
+      MOCK_NORMAL_LINEAGE_EDGE.data as CustomEdgeData,
+      MOCK_PIPELINE
+    );
+
+    const noData = getUpdatedEdgeWithPipeline(
+      undefined,
+      UPDATED_NORMAL_LINEAGE,
+      MOCK_NORMAL_LINEAGE_EDGE.data as CustomEdgeData,
+      MOCK_PIPELINE
+    );
+
+    const updatedData: EntityLineage['upstreamEdges'] = [
+      ...MOCK_LINEAGE_DATA.upstreamEdges,
+    ];
+    updatedData[1].lineageDetails = {
+      ...UPDATED_NORMAL_LINEAGE,
+      pipeline: {
+        ...UPDATED_NORMAL_LINEAGE.pipeline,
+        name: MOCK_PIPELINE.name,
+        displayName: MOCK_PIPELINE.displayName,
+      },
+    };
+
+    expect(lineageEdge).toMatchObject(updatedData);
+    expect(noData).toMatchObject([]);
   });
 });

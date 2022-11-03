@@ -207,10 +207,10 @@ class SQLSourceStatus(SourceStatus):
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
-        logger.info(f"Scanned [{record}]")
+        logger.debug(f"Scanned [{record}]")
 
     def filter(self, key: str, reason: str) -> None:
-        logger.warning(f"Filtered [{key}] due to {reason}")
+        logger.debug(f"Filtered [{key}] due to {reason}")
         self.filtered.append({key: reason})
 
 

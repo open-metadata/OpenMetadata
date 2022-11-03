@@ -150,6 +150,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     authHandler = authenticatorHandler;
   }
 
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();

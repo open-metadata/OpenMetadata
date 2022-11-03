@@ -27,12 +27,6 @@ const mockFilterPatternProps: FilterPatternProps = {
   getIncludeValue: jest.fn(),
 };
 
-jest.mock('../react-select-component/ReactSelectMultiInput', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>ReactSelectMultiInput.component</div>);
-});
-
 describe('Test FilterPattern component', () => {
   it('FilterPattern component should render', async () => {
     const { container } = render(<FilterPattern {...mockFilterPatternProps} />);

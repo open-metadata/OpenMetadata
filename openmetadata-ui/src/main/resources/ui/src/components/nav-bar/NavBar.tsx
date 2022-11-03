@@ -282,7 +282,7 @@ const NavBar = ({
                 className="cursor-pointer"
                 overlay={governanceMenu}
                 trigger={['click']}>
-                <Space data-testid="governance">
+                <Space data-testid="governance" size={2}>
                   {t('label.governance')}
                   <DropDownIcon style={{ marginLeft: 0 }} />
                 </Space>

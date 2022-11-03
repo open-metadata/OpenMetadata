@@ -32,8 +32,7 @@
       "$ref" : "../type/entityReference.json"
     },
     "provider" : {
-      "$ref": "../type/basic.json#/definitions/providerType",
-      "default": "user"
+      "$ref": "../type/basic.json#/definitions/providerType"
     },
     "version": {
       "description": "Metadata version of the entity.",
