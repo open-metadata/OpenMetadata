@@ -232,7 +232,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         <TreeSelect
           treeCheckable
           className="tw-w-full"
-          data-testid="resource"
+          data-testid="resources"
           placeholder={t('label.select-resource')}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
