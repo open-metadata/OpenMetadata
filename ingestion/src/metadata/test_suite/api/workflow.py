@@ -36,6 +36,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -55,6 +58,9 @@ from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcesso
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.workflow_helper import (
+    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
+)
 from metadata.utils.workflow_output_handler import print_test_suite_status
 
 logger: Logger = test_suite_logger()
@@ -87,6 +93,8 @@ class TestSuiteWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
         self.metadata = OpenMetadata(self.metadata_config)
+
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.status = ProcessorStatus()
 
@@ -485,4 +493,17 @@ class TestSuiteWorkflow:
         """
         Close all connections
         """
+        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
+
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+        pipeline_run_id = set_ingestion_pipeline_status_helper(
+            state=state,
+            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
+            pipeline_run_id=self.config.pipelineRunId,
+            metadata=self.metadata,
+        )
+        self.config.pipelineRunId = pipeline_run_id

@@ -47,7 +47,6 @@ import {
   getHourCron,
 } from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PopOver from '../components/common/popover/PopOver';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -75,10 +74,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
-import {
-  IngestionPipeline,
-  PipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -820,60 +816,6 @@ export const getTeamsUser = (
   }
 
   return;
-};
-
-export const getIngestionStatuses = (ingestion: IngestionPipeline) => {
-  const lastFiveIngestions = ingestion.pipelineStatuses
-    ?.sort((a, b) => {
-      // Turn your strings into millis, and then subtract them
-      // to get a value that is either negative, positive, or zero.
-      const date1 = new Date(a.startDate || '');
-      const date2 = new Date(b.startDate || '');
-
-      return date1.getTime() - date2.getTime();
-    })
-    .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
-
-  return lastFiveIngestions?.map((r, i) => {
-    const status =
-      i === lastFiveIngestions.length - 1 ? (
-        <p
-          className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
-          key={i}>
-          {capitalize(r.state)}
-        </p>
-      ) : (
-        <p
-          className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-          key={i}
-        />
-      );
-
-    return r?.endDate || r?.startDate || r?.timestamp ? (
-      <PopOver
-        html={
-          <div className="tw-text-left">
-            {r.timestamp ? (
-              <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
-            ) : null}
-            {r.startDate ? (
-              <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
-            ) : null}
-            {r.endDate ? (
-              <p>End Date: {new Date(r.endDate).toUTCString()}</p>
-            ) : null}
-          </div>
-        }
-        key={i}
-        position="bottom"
-        theme="light"
-        trigger="mouseenter">
-        {status}
-      </PopOver>
-    ) : (
-      status
-    );
-  });
 };
 
 export const getDiffArray = (

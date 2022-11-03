@@ -74,7 +74,7 @@ class ResponseFormat:
         Build the pipeline status
         """
         return PipelineStatus(
-            state=dag_run.get_state(),
+            pipelineState=dag_run.get_state(),
             runId=dag_run.run_id,
             startDate=datetime_to_ts(dag_run.start_date),
             endDate=datetime_to_ts(dag_run.end_date),

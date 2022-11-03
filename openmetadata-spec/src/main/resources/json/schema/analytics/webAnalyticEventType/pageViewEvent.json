@@ -28,11 +28,11 @@
         },
         "userId": {
           "description": "OpenMetadata logged in user Id",
-          "$ref": "../type/basic.json#/definitions/uuid"
+          "$ref": "../../type/basic.json#/definitions/uuid"
         },
         "sessionId": {
           "description": "Unique ID identifying a session",
-          "$ref": "../type/basic.json#/definitions/uuid"
+          "$ref": "../../type/basic.json#/definitions/uuid"
         },
         "pageLoadTime": {
           "description": "time for the page to load in seconds",
