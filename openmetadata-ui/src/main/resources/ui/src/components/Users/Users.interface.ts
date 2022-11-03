@@ -16,6 +16,7 @@ import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
+import { EntitiesType } from '../../interface/teamsAndUsers.interface';
 
 export interface Option {
   label: string;
@@ -34,6 +35,8 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
+  followingEntities: EntitiesType;
+  ownedEntities: EntitiesType;
   username: string;
   tab: string;
   feedData: Thread[];
@@ -58,5 +61,7 @@ export interface Props {
   feedFilter: FeedFilter;
   setFeedFilter: (value: FeedFilter) => void;
   threadType: ThreadType.Task | ThreadType.Conversation;
+  onFollowingEntityPaginate: (page: string | number) => void;
+  onOwnedEntityPaginate: (page: string | number) => void;
   onSwitchChange: (checked: boolean) => void;
 }

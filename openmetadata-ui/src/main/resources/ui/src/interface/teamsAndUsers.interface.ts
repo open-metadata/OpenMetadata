@@ -12,7 +12,7 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { FormErrorData } from 'Models';
+import { FormattedTableData, FormErrorData } from 'Models';
 import { UserType } from '../enums/user.enum';
 import { Team } from '../generated/entity/teams/team';
 import {
@@ -120,4 +120,10 @@ export interface TeamDetailsProp {
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;
+}
+
+export interface EntitiesType {
+  data: FormattedTableData[];
+  total: number;
+  currPage: number;
 }
