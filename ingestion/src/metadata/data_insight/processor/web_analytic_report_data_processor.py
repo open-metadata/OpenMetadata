@@ -13,6 +13,8 @@
 Processor class used to compute refined report data
 """
 
+from __future__ import annotations
+
 from collections import namedtuple
 from datetime import datetime, timedelta
 from typing import Generator, Iterable, Optional
