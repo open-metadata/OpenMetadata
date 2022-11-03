@@ -23,6 +23,7 @@ import SlackChat from '../components/SlackChat/SlackChat';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
 import AccountActivationConfirmation from '../pages/signup/account-activation-confirmation.component';
+import { isProtectedRoute } from '../utils/AuthProvider.util';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AuthenticatedAppRouter = withSuspenseFallback(
@@ -55,7 +56,6 @@ const AppRouter = () => {
 
   const {
     authConfig,
-    isAuthDisabled,
     isAuthenticated,
     loading,
     isSigningIn,
@@ -71,6 +71,11 @@ const AppRouter = () => {
   ];
   const isOidcProvider =
     authConfig?.provider && oidcProviders.includes(authConfig.provider);
+
+  const isBasicAuthProvider =
+    authConfig &&
+    (authConfig.provider === AuthTypes.BASIC ||
+      authConfig.provider === AuthTypes.LDAP);
 
   const fetchSlackChatConfig = () => {
     fetchSlackConfig()
@@ -114,95 +119,60 @@ const AppRouter = () => {
     }
   }, [location.pathname]);
 
-  return loading ? (
-    <Loader />
-  ) : (
-    <>
-      {isOidcProvider || isAuthenticated ? (
-        <>
-          <AuthenticatedAppRouter />
-          {slackChat}
-        </>
-      ) : (
-        <>
-          {slackChat}
-          <Switch>
-            <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
+  if (loading) {
+    return <Loader />;
+  }
 
-            {callbackComponent ? (
-              <Route component={callbackComponent} path={ROUTES.CALLBACK} />
-            ) : null}
-            <Route exact path={ROUTES.HOME}>
-              {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
-                <>
-                  <Redirect to={ROUTES.SIGNIN} />
-                  <Route
-                    exact
-                    component={ForgotPassword}
-                    path={ROUTES.FORGOT_PASSWORD}
-                  />
-                  <Route
-                    exact
-                    component={ResetPassword}
-                    path={ROUTES.RESET_PASSWORD}
-                  />
-                  <Route
-                    exact
-                    component={AccountActivationConfirmation}
-                    path={ROUTES.ACCOUNT_ACTIVATION}
-                  />
-                </>
-              ) : (
-                <Redirect to={ROUTES.MY_DATA} />
-              )}
-            </Route>
-            {!isSigningIn ? (
-              <>
-                <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-                <Route
-                  exact
-                  component={ForgotPassword}
-                  path={ROUTES.FORGOT_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={ResetPassword}
-                  path={ROUTES.RESET_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={AccountActivationConfirmation}
-                  path={ROUTES.ACCOUNT_ACTIVATION}
-                />
-              </>
-            ) : null}
-            {isAuthDisabled || isAuthenticated ? (
-              <AuthenticatedAppRouter />
-            ) : (
-              <>
-                <Redirect to={ROUTES.SIGNIN} />
-                <Route
-                  exact
-                  component={ForgotPassword}
-                  path={ROUTES.FORGOT_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={ResetPassword}
-                  path={ROUTES.RESET_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={AccountActivationConfirmation}
-                  path={ROUTES.ACCOUNT_ACTIVATION}
-                />
-              </>
-            )}
-            <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-          </Switch>
+  if (!isAuthenticated && isProtectedRoute(location.pathname)) {
+    return <Redirect to={ROUTES.SIGNIN} />;
+  }
+
+  if (isOidcProvider || isAuthenticated) {
+    return (
+      <>
+        <AuthenticatedAppRouter />
+        {slackChat}
+      </>
+    );
+  }
+
+  return (
+    <Switch>
+      {slackChat}
+      <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+      {callbackComponent ? (
+        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+      ) : null}
+
+      <Route exact path={ROUTES.HOME}>
+        {!isAuthenticated && !isSigningIn ? (
+          <>
+            <Redirect to={ROUTES.SIGNIN} />
+          </>
+        ) : (
+          <Redirect to={ROUTES.MY_DATA} />
+        )}
+      </Route>
+
+      {isBasicAuthProvider && (
+        <>
+          <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
+          <Route
+            exact
+            component={ForgotPassword}
+            path={ROUTES.FORGOT_PASSWORD}
+          />
+          <Route exact component={ResetPassword} path={ROUTES.RESET_PASSWORD} />
+          <Route
+            exact
+            component={AccountActivationConfirmation}
+            path={ROUTES.ACCOUNT_ACTIVATION}
+          />
         </>
       )}
-    </>
+      {isAuthenticated && <AuthenticatedAppRouter />}
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+    </Switch>
   );
 };
 
