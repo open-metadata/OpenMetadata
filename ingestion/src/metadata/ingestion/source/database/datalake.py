@@ -21,6 +21,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
@@ -28,8 +29,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableType,
 )
-
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
     GCSConfig,
@@ -54,7 +53,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_table, filter_by_schema
+from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.gcs_utils import (
     read_csv_from_gcs,
     read_json_from_gcs,
