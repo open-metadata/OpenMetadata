@@ -112,5 +112,5 @@ class DatabricksClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(exc)
-        print("query_details.....", len(query_details))
+
         return query_details
