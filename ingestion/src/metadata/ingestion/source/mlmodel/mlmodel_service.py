@@ -98,7 +98,7 @@ class MlModelSourceStatus(SourceStatus):
         Log successful ML Model scans
         """
         self.success.append(record)
-        logger.info("ML Model scanned: %s", record)
+        logger.debug("ML Model scanned: %s", record)
 
     def failed(self, model_name: str, reason: str) -> None:
         """
