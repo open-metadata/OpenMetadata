@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getBots } from '../../axiosAPIs/botsAPI';
 import {
@@ -25,16 +26,15 @@ import {
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import {
+  ADMIN_ONLY_ACTION,
   INGESTION_BOT_CANT_BE_DELETED,
-  NO_PERMISSION_FOR_ACTION,
 } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
 import { getEntityName } from '../../utils/CommonUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -43,8 +43,6 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { BotListV1Props } from './BotListV1.interfaces';
 
 const BotListV1 = ({
@@ -52,7 +50,8 @@ const BotListV1 = ({
   handleAddBotClick,
   handleShowDeleted,
 }: BotListV1Props) => {
-  const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
+  const { t } = useTranslation();
   const [botUsers, setBotUsers] = useState<Bot[]>([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [selectedUser, setSelectedUser] = useState<Bot>();
@@ -61,22 +60,6 @@ const BotListV1 = ({
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
-
-  /**
-   * Bot creation is two step process so here we should check for
-   * Create User and Create Bot both permissions
-   */
-  const createPermission = useMemo(
-    () =>
-      checkPermission(Operation.Create, ResourceEntity.BOT, permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.USER, permissions),
-    [permissions]
-  );
-
-  const deletePermission = useMemo(
-    () => checkPermission(Operation.Delete, ResourceEntity.BOT, permissions),
-    [permissions]
-  );
 
   /**
    *
@@ -111,7 +94,7 @@ const BotListV1 = ({
   const columns: ColumnsType<Bot> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
         render: (_, record) => (
@@ -124,18 +107,20 @@ const BotListV1 = ({
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (_, record) =>
           record?.description ? (
             <RichTextEditorPreviewer markdown={record?.description || ''} />
           ) : (
-            <span data-testid="no-description">No Description</span>
+            <span data-testid="no-description">
+              {t('label.no-description')}
+            </span>
           ),
       },
       {
-        title: 'Actions',
+        title: t('label.actions'),
         dataIndex: 'id',
         key: 'id',
         width: 90,
@@ -143,10 +128,10 @@ const BotListV1 = ({
           const isSystemBot = record.provider === ProviderType.System;
           const title = isSystemBot
             ? INGESTION_BOT_CANT_BE_DELETED
-            : deletePermission
-            ? 'Delete'
-            : NO_PERMISSION_FOR_ACTION;
-          const isDisabled = !deletePermission || isSystemBot;
+            : isAdminUser
+            ? t('label.delete')
+            : ADMIN_ONLY_ACTION;
+          const isDisabled = !isAdminUser || isSystemBot;
 
           return (
             <Space align="center" size={8}>
@@ -220,7 +205,7 @@ const BotListV1 = ({
             size="small"
             onClick={handleShowDeleted}
           />
-          <label htmlFor="switch-deleted">Show deleted</label>
+          <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
         </Space>
       </Col>
       <Col className="w-full">
@@ -229,14 +214,14 @@ const BotListV1 = ({
             <div className="tw-text-lg tw-text-center">
               <Tooltip
                 placement="left"
-                title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
+                title={isAdminUser ? t('label.add-bot') : ADMIN_ONLY_ACTION}>
                 <Button
                   ghost
                   data-testid="add-bot"
-                  disabled={!createPermission}
+                  disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddBotClick}>
-                  Add Bot
+                  {t('label.add-bot')}
                 </Button>
               </Tooltip>
             </div>
@@ -252,7 +237,7 @@ const BotListV1 = ({
       <Col span={8}>
         <Searchbar
           removeMargin
-          placeholder="Search for bots..."
+          placeholder={t('label.search-for-bots')}
           typingInterval={500}
           onSearch={handleSearch}
         />
@@ -265,17 +250,16 @@ const BotListV1 = ({
               id="switch-deleted"
               onClick={handleShowDeleted}
             />
-            <label htmlFor="switch-deleted">Show deleted</label>
+            <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
           </Space>
 
-          <Tooltip
-            title={createPermission ? 'Add Bot' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip title={isAdminUser ? t('label.add-bot') : ADMIN_ONLY_ACTION}>
             <Button
               data-testid="add-bot"
-              disabled={!createPermission}
+              disabled={!isAdminUser}
               type="primary"
               onClick={handleAddBotClick}>
-              Add Bot
+              {t('label.add-bot')}
             </Button>
           </Tooltip>
         </Space>

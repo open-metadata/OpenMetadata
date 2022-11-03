@@ -24,6 +24,7 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.schema.type.Permission.Access.CONDITIONAL_ALLOW;
 import static org.openmetadata.schema.type.Permission.Access.NOT_ALLOW;
+import static org.openmetadata.service.Entity.ORGANIZATION_POLICY_NAME;
 import static org.openmetadata.service.security.policyevaluator.OperationContext.getAllOperations;
 import static org.openmetadata.service.security.policyevaluator.OperationContext.getViewOperations;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -71,7 +72,6 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PermissionsResourceTest extends OpenMetadataApplicationTest {
-  private static final String ORG_POLICY_NAME = "OrganizationPolicy";
   private static Rule ORG_IS_OWNER_RULE;
   private static Rule ORG_NO_OWNER_RULE;
   private static final List<MetadataOperation> ORG_IS_OWNER_RULE_OPERATIONS = getAllOperations(CREATE);
@@ -110,7 +110,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
 
     Policy orgPolicy =
-        policyResourceTest.getEntityByName(ORG_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+        policyResourceTest.getEntityByName(ORGANIZATION_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
     List<Rule> orgRules = orgPolicy.getRules();
     // Rules are alphabetically ordered
     ORG_NO_OWNER_RULE = orgRules.get(0);
@@ -159,9 +159,9 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         DATA_CONSUMER_ALLOWED, ALLOW, DATA_CONSUMER_ROLE_NAME, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
     // Set permissions based on alphabetical order of roles
     permissionsBuilder.setPermission(
-        ORG_NO_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORG_POLICY_NAME, ORG_NO_OWNER_RULE);
+        ORG_NO_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_NO_OWNER_RULE);
     permissionsBuilder.setPermission(
-        ORG_IS_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORG_POLICY_NAME, ORG_IS_OWNER_RULE);
+        ORG_IS_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
     assertResourcePermissions(permissionsBuilder.getResourcePermissions(), actualPermissions);
 
     // Validate permissions for all resources for data consumer as admin
@@ -211,7 +211,8 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     Table table1 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Data consumer must have all operations except create allowed based on Organization policy as an owner
-    permissionsBuilder.setPermission(ORG_IS_OWNER_RULE_OPERATIONS, ALLOW, null, ORG_POLICY_NAME, ORG_IS_OWNER_RULE);
+    permissionsBuilder.setPermission(
+        ORG_IS_OWNER_RULE_OPERATIONS, ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
     actualPermission = getPermission(Entity.TABLE, table1.getId(), null, authHeaders);
     assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
@@ -234,9 +235,9 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         DATA_STEWARD_ALLOWED, ALLOW, DATA_STEWARD_ROLE_NAME, DATA_STEWARD_POLICY_NAME, DATA_STEWARD_RULES.get(0));
     // Set permissions based on alphabetical order of roles
     permissionsBuilder.setPermission(
-        ORG_NO_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORG_POLICY_NAME, ORG_NO_OWNER_RULE);
+        ORG_NO_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_NO_OWNER_RULE);
     permissionsBuilder.setPermission(
-        ORG_IS_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORG_POLICY_NAME, ORG_IS_OWNER_RULE);
+        ORG_IS_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
 
     assertResourcePermissions(permissionsBuilder.getResourcePermissions(), actualPermissions);
   }

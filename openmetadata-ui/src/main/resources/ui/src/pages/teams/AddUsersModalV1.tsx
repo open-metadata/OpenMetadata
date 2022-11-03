@@ -199,13 +199,13 @@ const AddUsersModalV1 = ({
           height={ADD_USER_CONTAINER_HEIGHT}
           itemKey="id"
           onScroll={onScroll}>
-          {(User) => (
+          {(user) => (
             <UserCard
               isActionVisible
               isCheckBoxes
               isIconVisible
-              item={User}
-              key={User.id}
+              item={user}
+              key={user.id}
               onSelect={selectionHandler}
             />
           )}

@@ -56,6 +56,12 @@ class KafkaClient:
 
 
 @dataclass
+class KinesisClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class MetabaseClient:
     def __init__(self, client) -> None:
         self.client = client

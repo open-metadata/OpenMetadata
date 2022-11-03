@@ -18,7 +18,6 @@ SET json = JSONB_SET(json::jsonb, '{provider}', '"system"', true);
 UPDATE bot_entity
 SET json = json::jsonb #- '{botType}';
 
-
 CREATE TABLE IF NOT EXISTS data_insight_chart (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
@@ -32,3 +31,21 @@ CREATE TABLE IF NOT EXISTS data_insight_chart (
 );
 
 CREATE INDEX IF NOT EXISTS name_index ON web_analytic_event(name);
+
+UPDATE role_entity
+SET json = JSONB_SET(json::jsonb, '{provider}', '"system"', true)
+WHERE name in ('DataConsumer', 'DataSteward');
+
+UPDATE policy_entity
+SET json = JSONB_SET(json::jsonb, '{provider}', '"system"', true)
+WHERE fullyQualifiedName in ('DataConsumerPolicy', 'DataStewardPolicy', 'OrganizationPolicy', 'TeamOnlyPolicy');
+
+UPDATE tag_category
+SET json = JSONB_SET(json::jsonb, '{provider}', '"system"', true)
+WHERE name in ('PersonalData', 'PII', 'Tier');
+
+UPDATE tag
+SET json = JSONB_SET(json::jsonb, '{provider}', '"system"', true)
+WHERE fullyQualifiedName in ('PersonalData.Personal', 'PersonalData.SpecialCategory',
+'PII.None', 'PII.NonSensitive', 'PII.Sensitive',
+'Tier.Tier1', 'Tier.Tier2', 'Tier.Tier3', 'Tier.Tier4', 'Tier.Tier5');

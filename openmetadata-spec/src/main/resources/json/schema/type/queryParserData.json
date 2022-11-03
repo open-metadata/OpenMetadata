@@ -38,6 +38,10 @@
           "description": "Name that identifies this database service.",
           "type": "string"
         },
+        "userName": {
+          "description": "Name of the user that executed the SQL query",
+          "type": "string"
+        },
         "date": {
           "description": "Date of execution of SQL query",
           "type": "string"

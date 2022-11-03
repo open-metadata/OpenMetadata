@@ -25,8 +25,7 @@
       "type": "string"
     },
     "provider" : {
-      "$ref": "../type/basic.json#/definitions/providerType",
-      "default": "user"
+      "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
   "required": ["name", "botUser"],

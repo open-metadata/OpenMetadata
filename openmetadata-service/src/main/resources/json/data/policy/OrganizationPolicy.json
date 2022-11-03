@@ -5,6 +5,7 @@
   "description": "Policy for all the users of an organization.",
   "enabled": true,
   "allowDelete": false,
+  "provider": "system",
   "rules": [
     {
       "name": "OrganizationPolicy-Owner-Rule",
