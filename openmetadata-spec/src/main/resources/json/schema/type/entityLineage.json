@@ -45,8 +45,7 @@
           "description": "Pipeline where the sqlQuery is periodically run.",
           "$ref" : "../type/entityReference.json"
         }
-      },
-      "required": ["sqlQuery", "columnsLineage"]
+      }
     },
     "edge": {
       "description": "Edge in the lineage graph from one entity to another by entity IDs.",
