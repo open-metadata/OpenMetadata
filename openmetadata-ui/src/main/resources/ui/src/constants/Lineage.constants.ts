@@ -17,7 +17,6 @@ export const entityData = [
     type: EntityType.TABLE,
     label: capitalize(EntityType.TABLE),
   },
-  { type: EntityType.PIPELINE, label: capitalize(EntityType.PIPELINE) },
   { type: EntityType.DASHBOARD, label: capitalize(EntityType.DASHBOARD) },
   { type: EntityType.TOPIC, label: capitalize(EntityType.TOPIC) },
   { type: EntityType.MLMODEL, label: capitalize(EntityType.MLMODEL) },
