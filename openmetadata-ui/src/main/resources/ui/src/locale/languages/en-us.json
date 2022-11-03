@@ -201,7 +201,16 @@
     "end-date": "End Date",
     "show-deleted": "Show deleted",
     "add-bot": "Add Bot",
-    "search-for-bots": "Search for bots..."
+    "search-for-bots": "Search for bots...",
+    "condition-is-invalid": "Condition is invalid",
+    "rule-name": "Rule Name",
+    "write-your-description": "Write your description",
+    "select-resource": "Select Resources",
+    "name-is-required": "Name is required",
+    "resources-is-required": "Resources are required",
+    "operations-are-required": "Operations are required",
+    "effect-is-required": "Effect is required",
+    "select-rule-effect": "Select Rule Effect"
   },
   "message": {
     "service-email-required": "Service account Email is required",

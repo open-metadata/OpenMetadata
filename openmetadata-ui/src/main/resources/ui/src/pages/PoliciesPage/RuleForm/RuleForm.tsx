@@ -16,6 +16,7 @@ import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getPolicyFunctions,
   getPolicyResources,
@@ -40,6 +41,7 @@ export interface RuleFormProps {
 }
 
 const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
+  const { t } = useTranslation();
   const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
     []
   );
@@ -51,8 +53,8 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   );
 
   const [validationError, setValidationError] = useState<string>('');
-  const [isValidatingCondition, setIsvalidating] = useState<boolean>(false);
-  const [isValidCondition, setIsvalidCondition] = useState<boolean>(false);
+  const [isValidatingCondition, setIsValidating] = useState<boolean>(false);
+  const [isValidCondition, setIsValidCondition] = useState<boolean>(false);
 
   /**
    * Derive the resources from policy resources
@@ -108,8 +110,8 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
     return option;
   }, [ruleData.resources, policyResources]);
 
-  const getConditionOptions = (funtions: Function[]) => {
-    return funtions.reduce((prev: BaseOptionType[], curr: Function) => {
+  const getConditionOptions = (functions: Function[]) => {
+    return functions.reduce((prev: BaseOptionType[], curr: Function) => {
       const currentValues = (curr.examples || []).map((example: string) => ({
         label: example,
         value: example,
@@ -138,7 +140,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
     }
   };
 
-  const fetchPolicyFuntions = async () => {
+  const fetchPolicyFunctions = async () => {
     try {
       const data = await getPolicyFunctions();
       setPolicyFunctions(data.data || []);
@@ -148,9 +150,10 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   };
 
   const handleConditionValidation = async (condition: string) => {
-    const defaultErrorText = 'Condition is invalid';
+    const defaultErrorText = t('label.condition-is-invalid');
+
     if (condition) {
-      setIsvalidating(true);
+      setIsValidating(true);
       try {
         const response = await validateRuleCondition(condition);
 
@@ -161,22 +164,22 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         const check = [200, 204].includes(response.status);
         if (check) {
           setValidationError('');
-          setIsvalidCondition(true);
+          setIsValidCondition(true);
         } else {
           setValidationError(defaultErrorText);
         }
       } catch (error) {
         setValidationError(getErrorText(error as AxiosError, defaultErrorText));
-        setIsvalidCondition(false);
+        setIsValidCondition(false);
       } finally {
-        setIsvalidating(false);
+        setIsValidating(false);
       }
     }
   };
 
   useEffect(() => {
     fetchPolicyResources();
-    fetchPolicyFuntions();
+    fetchPolicyFunctions();
   }, []);
 
   useEffect(() => {
@@ -186,18 +189,19 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   return (
     <>
       <Form.Item
-        label="Rule Name:"
+        label={`${t('label.rule-name')}:`}
         name="ruleName"
         rules={[
           {
             required: true,
             max: 128,
             min: 1,
+            message: t('label.name-is-required'),
           },
         ]}>
         <Input
           data-testid="rule-name"
-          placeholder="Rule Name"
+          placeholder={t('label.rule-name')}
           type="text"
           value={ruleData.name}
           onChange={(e) =>
@@ -205,11 +209,11 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           }
         />
       </Form.Item>
-      <Form.Item label="Description:" name="ruleDescription">
+      <Form.Item label={t('label.description')} name="ruleDescription">
         <RichTextEditor
           height="200px"
           initialValue={ruleData.description || ''}
-          placeHolder="Write your description"
+          placeHolder={t('label.write-your-description')}
           style={{ margin: 0 }}
           onTextChange={(value) =>
             setRuleData((prev: Rule) => ({ ...prev, description: value }))
@@ -217,18 +221,19 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         />
       </Form.Item>
       <Form.Item
-        label="Resources:"
+        label={`${t('label.resources')}:`}
         name="resources"
         rules={[
           {
             required: true,
+            message: t('label.resources-is-required'),
           },
         ]}>
         <TreeSelect
           treeCheckable
           className="tw-w-full"
-          data-testid="resuorces"
-          placeholder="Select Resources"
+          data-testid="resource"
+          placeholder={t('label.select-resource')}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
           onChange={(values) => {
@@ -240,11 +245,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         />
       </Form.Item>
       <Form.Item
-        label="Operations:"
+        label={`${t('label.operations')}:`}
         name="operations"
         rules={[
           {
             required: true,
+            message: t('label.operations-are-required'),
           },
         ]}>
         <TreeSelect
@@ -263,16 +269,17 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         />
       </Form.Item>
       <Form.Item
-        label="Effect:"
+        label={`${t('label.effect')}:`}
         name="ruleEffect"
         rules={[
           {
             required: true,
+            message: t('label.effect-is-required'),
           },
         ]}>
         <Select
           data-testid="effect"
-          placeholder="Select Rule Effect"
+          placeholder={t('label.select-rule-effect')}
           value={ruleData.effect}
           onChange={(value) =>
             setRuleData((prev: Rule) => ({ ...prev, effect: value }))
@@ -281,7 +288,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           <Option key={Effect.Deny}>{capitalize(Effect.Deny)}</Option>
         </Select>
       </Form.Item>
-      <Form.Item label="Condition:" name="condition">
+      <Form.Item label={`${t('label.condition')}:`} name="condition">
         <>
           <AutoComplete
             data-testid="condition"
