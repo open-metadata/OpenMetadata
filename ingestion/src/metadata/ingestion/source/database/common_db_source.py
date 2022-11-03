@@ -254,7 +254,7 @@ class CommonDbSourceService(
                         continue
                     yield view_name, TableType.View
         except Exception as err:
-            logger.error(
+            logger.warning(
                 f"Fetching tables names failed for schema {schema_name} due to - {err}"
             )
             logger.debug(traceback.format_exc())
@@ -295,7 +295,7 @@ class CommonDbSourceService(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
         """
