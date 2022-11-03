@@ -156,6 +156,8 @@ test = {
     "great-expectations~=0.15.0",
     # Airflow tests
     "apache-airflow==2.3.3",
+    # Domo test
+    "pydomo~=0.3.0.5",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
