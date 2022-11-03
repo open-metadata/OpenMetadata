@@ -48,6 +48,7 @@ from metadata.clients.connection_clients import (
     NifiClientWrapper,
     PowerBiClient,
     RedashClient,
+    SageMakerClient,
     SalesforceClient,
     SupersetClient,
     TableauClient,
@@ -120,6 +121,9 @@ from metadata.generated.schema.entity.services.connections.messaging.redpandaCon
 )
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
+    SageMakerConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
@@ -285,8 +289,8 @@ def _(
 ) -> DynamoClient:
     from metadata.clients.aws_client import AWSClient
 
-    dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
-    return dynomo_connection
+    dynamo_connection = AWSClient(connection.awsConfig).get_dynamo_client()
+    return dynamo_connection
 
 
 @get_connection.register
@@ -496,7 +500,7 @@ def _(connection: DynamoClient) -> None:
 def _(connection: GlueDBClient) -> None:
     """
     Test that we can connect to the source using the given aws resource
-    :param engine: boto cliet to test
+    :param engine: boto client to test
     :return: None or raise an exception if we cannot connect
     """
     from botocore.client import ClientError
@@ -942,6 +946,36 @@ def _(
 def _(connection: MlflowClientWrapper) -> None:
     try:
         connection.client.list_registered_models()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(
+    connection: SageMakerConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> SageMakerClient:
+    from metadata.clients.aws_client import AWSClient
+
+    sagemaker_connection = AWSClient(connection.awsConfig).get_sagemaker_client()
+    return sagemaker_connection
+
+
+@test_connection.register
+def _(connection: SageMakerClient) -> None:
+    """
+    Test that we can connect to the SageMaker source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_models()
+    except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc

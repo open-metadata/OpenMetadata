@@ -123,6 +123,12 @@ class MlflowClientWrapper:
 
 
 @dataclass
+class SageMakerClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class FivetranClient:
     def __init__(self, client) -> None:
         self.client = client
