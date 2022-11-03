@@ -84,7 +84,7 @@
       "description": "Description of a database service instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "connection": {
+    "metadatServiceconnection": {
       "$ref": "#/definitions/metadataConnection"
     },
     "pipelines": {

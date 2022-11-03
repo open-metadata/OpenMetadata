@@ -51,6 +51,81 @@
         }
       },
       "additionalProperties": false
+    },
+    "dataType": {
+      "javaType": "org.openmetadata.schema.type.topic.SchemaFieldDataType",
+      "description": "This enum defines the type of data defined in schema.",
+      "type": "string",
+      "enum": [
+        "RECORD",
+        "NULL",
+        "BOOLEAN",
+        "INT",
+        "LONG",
+        "BYTES",
+        "FLOAT",
+        "DOUBLE",
+        "TIMESTAMP",
+        "TIMESTAMPZ",
+        "TIME",
+        "DATE",
+        "STRING",
+        "ARRAY",
+        "MAP",
+        "ENUM",
+        "UNION",
+        "FIXED",
+        "ERROR"
+      ]
+    },
+    "fieldName": {
+      "description": "Local name (not fully qualified name) of the field. ",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "field": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.topic.Schema",
+      "description": "This schema defines the nested object to capture protobuf/avro/jsonschema of topic's schema.",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/fieldName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this field name.",
+          "type": "string"
+        },
+        "dataType": {
+          "description": "Data type of the field (int, date etc.).",
+          "$ref": "#/definitions/dataType"
+        },
+        "description": {
+          "description": "Description of the column.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "fullyQualifiedName": {
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "tags": {
+          "description": "Tags associated with the column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        },
+        "children": {
+          "description": "Child fields if dataType or arrayDataType is `map`, `record`, `message`",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/field"
+          },
+          "default": null
+        }
+      },
+      "required": ["name", "dataType"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -97,6 +172,14 @@
     "schemaText": {
       "description": "Schema used for message serialization. Optional as some topics may not have associated schemas.",
       "type": "string"
+    },
+    "schemaFields": {
+      "description": "Columns in this table.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/field"
+      },
+      "default": null
     },
     "schemaType": {
       "description": "Schema used for message serialization.",
