@@ -129,12 +129,12 @@ describe('Test CronEditor component', () => {
     render(<CronEditor {...mockProps} />);
 
     const cronType = await screen.findByTestId('cron-type');
-    act(async () => {
-      await userEvent.selectOptions(cronType, '');
-
-      expect(
-        await screen.findByTestId('manual-segment-container')
-      ).toBeInTheDocument();
+    await act(async () => {
+      userEvent.selectOptions(cronType, '');
     });
+
+    expect(
+      await screen.findByTestId('manual-segment-container')
+    ).toBeInTheDocument();
   });
 });

@@ -81,13 +81,17 @@ class SagemakerSource(MlModelServiceSource):
         """
         List and filters models
         """
+        args, has_more_models, models = {"MaxResults": 100}, True, []
         try:
-            models = self.sagemaker.list_models()["Models"]
+            while has_more_models:
+                response = self.sagemaker.list_models(**args)
+                models.append(response["Models"])
+                has_more_models = response.get("NextToken")
+                args["NextToken"] = response.get("NextToken")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch models list - {err}")
-            return
-            yield  # used to return empty iterator
+
         for model in models:
             try:
                 if filter_by_mlmodel(

@@ -97,7 +97,7 @@ class DBTMixin:
                 else:
                     logger.warning(
                         "Unable to ingest owner from DBT since no user or"
-                        f"team was found with name {dbt_owner}"
+                        f" team was found with name {dbt_owner}"
                     )
         return owner
 
@@ -121,10 +121,12 @@ class DBTMixin:
             }
             for key, mnode in self.manifest_entities.items():
                 try:
-                    name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    model_name = (
+                        mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    )
                     cnode = self.catalog_entities.get(key)
                     columns = (
-                        self._parse_data_model_columns(name, mnode, cnode)
+                        self._parse_data_model_columns(model_name, mnode, cnode)
                         if cnode
                         else []
                     )
@@ -133,9 +135,6 @@ class DBTMixin:
                         self.dbt_tests[key] = mnode
                         continue
                     upstream_nodes = self._parse_data_model_upstream(mnode)
-                    model_name = (
-                        mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-                    )
                     database = mnode["database"] if mnode["database"] else "default"
                     schema = mnode["schema"] if mnode["schema"] else "default"
                     dbt_table_tags_list = None
@@ -155,14 +154,17 @@ class DBTMixin:
                             for tag in mnode.get("tags")
                         ] or None
 
+                    dbt_compiled_query = self.get_dbt_compiled_query(mnode)
+                    dbt_raw_query = self.get_dbt_raw_query(mnode)
+
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=mnode.get("description")
                         if mnode.get("description")
                         else None,
                         path=f"{mnode['root_path']}/{mnode['original_file_path']}",
-                        rawSql=mnode.get("raw_sql", ""),
-                        sql=mnode.get("compiled_sql", mnode.get("raw_sql", "")),
+                        rawSql=dbt_raw_query if dbt_raw_query else "",
+                        sql=dbt_compiled_query if dbt_compiled_query else "",
                         columns=columns,
                         upstream=upstream_nodes,
                         owner=self.get_dbt_owner(mnode=mnode, cnode=cnode),
@@ -558,3 +560,25 @@ class DBTMixin:
                 entity_link = f"<#E::table::" f"{table_fqn}>"
             entity_link_list.append(entity_link)
         return entity_link_list
+
+    def get_dbt_compiled_query(self, mnode) -> Optional[str]:
+        dbt_query_key_names = ["compiled_sql", "compiled_code"]
+        for key_name in dbt_query_key_names:
+            query = mnode.get(key_name)
+            if query:
+                return query
+        logger.debug(
+            f"Unable to get DBT compiled query for node - {mnode.get('name','unknown')}"
+        )
+        return None
+
+    def get_dbt_raw_query(self, mnode) -> Optional[str]:
+        dbt_query_key_names = ["raw_sql", "raw_code"]
+        for key_name in dbt_query_key_names:
+            query = mnode.get(key_name)
+            if query:
+                return query
+        logger.debug(
+            f"Unable to get DBT raw query for node - {mnode.get('name','unknown')}"
+        )
+        return None

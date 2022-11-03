@@ -29,6 +29,7 @@ from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
 
@@ -61,6 +62,10 @@ def column_value_stddev_to_be_between(
             runner.dispatch_query_select_first(Metrics.STDDEV.value(col).fn())
         )
         stddev_value_res = stddev_value_dict.get(Metrics.STDDEV.name)
+        if stddev_value_res is None:
+            raise ValueError(
+                f"Query on column {column_name} for test case {test_case.name} returned None"
+            )
 
     except Exception as exc:
         msg = (
@@ -75,19 +80,18 @@ def column_value_stddev_to_be_between(
             testResultValue=[TestResultValue(name="stddev", value=None)],
         )
 
-    min_bound = next(
-        (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "minValueForStdDevInCol"
-        )
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minValueForStdDevInCol",
+        float,
+        default=float("-inf"),
     )
-    max_bound = next(
-        (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "maxValueForStdDevInCol"
-        )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxValueForStdDevInCol",
+        float,
+        default=float("inf"),
     )
 
     status = (

@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.CategoryList;
 import org.openmetadata.service.util.EntityUtil;
@@ -226,6 +227,21 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
         () -> getTag(secondaryTag1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(Entity.TAG, secondaryTag1.getFullyQualifiedName()));
+  }
+
+  @Test
+  void delete_systemTags() throws HttpResponseException {
+    TagCategory tagCategory = getCategory("Tier", ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteCategory(tagCategory, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(tagCategory.getName(), Entity.TAG_CATEGORY));
+
+    Tag tag = getTag("Tier.Tier1", ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteTag(tagCategory.getName(), tag, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(tag.getName(), Entity.TAG));
   }
 
   public final TagCategory deleteCategory(TagCategory category, Map<String, String> authHeaders)

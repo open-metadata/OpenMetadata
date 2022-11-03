@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.GET;
@@ -31,13 +32,19 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/permissions")
@@ -171,6 +178,37 @@ public class PermissionsResource {
     ResourceContext resourceContext =
         ResourceContext.builder().resource(resource).name(name).entityRepository(entityRepository).build();
     return authorizer.getPermission(securityContext, user, resourceContext);
+  }
+
+  @GET
+  @Path("/policies")
+  @Operation(
+      operationId = "getPermissionsForPolicies",
+      summary = "Get permissions for a set of policies",
+      tags = "permission",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Permissions for a set of policies",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResourcePermissionList.class)))
+      })
+  public ResultList<ResourcePermission> getPermissionForPolicies(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID")) @QueryParam("ids")
+          List<UUID> ids)
+      throws IOException {
+    // User must have read access to policies
+    OperationContext operationContext = new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
+    EntityRepository<EntityInterface> dao = Entity.getEntityRepository(Entity.POLICY);
+    for (UUID id : ids) {
+      ResourceContext resourceContext = EntityResource.getResourceContext(Entity.POLICY, dao).id(id).build();
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+    }
+    List<EntityReference> policies = EntityUtil.populateEntityReferencesById(ids, Entity.POLICY);
+    return new ResourcePermissionList(PolicyEvaluator.listPermission(policies));
   }
 
   static class ResourcePermissionList extends ResultList<ResourcePermission> {

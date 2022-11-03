@@ -150,7 +150,7 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
       <p>Lineage data is not available for deleted entities.</p>
     ),
   getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
-  LoadingStatus: jest.fn().mockReturnValue(<p>Confirm</p>),
+  getLoadingStatusValue: jest.fn().mockReturnValue(<p>Confirm</p>),
   getLayoutedElements: jest.fn().mockImplementation(() => mockFlowData),
   getLineageData: jest.fn().mockImplementation(() => mockFlowData),
   getModalBodyText: jest.fn(),
@@ -181,6 +181,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   hasPermission: jest.fn().mockReturnValue(false),
 }));
 
+jest.mock('../EntityInfoDrawer/EntityInfoDrawer.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityInfoDrawerComponent</p>);
+});
+
 describe('Test EntityLineage Component', () => {
   it('Check if EntityLineage is rendering all the nodes', async () => {
     const { container } = render(<EntityLineage {...mockEntityLineageProp} />, {
@@ -196,7 +200,7 @@ describe('Test EntityLineage Component', () => {
   });
 
   it('Check if EntityLineage has deleted as true', async () => {
-    await act(() => {
+    act(() => {
       render(<EntityLineage {...mockEntityLineageProp} deleted />, {
         wrapper: MemoryRouter,
       });

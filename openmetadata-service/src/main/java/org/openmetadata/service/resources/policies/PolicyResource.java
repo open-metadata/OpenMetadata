@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
@@ -95,11 +96,26 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     super(Policy.class, new PolicyRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method is used by reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
-    ResourceRegistry.add(listOrEmpty(PolicyResource.getResourceDescriptors()));
+    ResourceRegistry.initialize(listOrEmpty(PolicyResource.getResourceDescriptors()));
+  }
+
+  @Override
+  public void upgrade() throws IOException {
+    // OrganizationPolicy rule change
+    Policy originalOrgPolicy = dao.getByName(null, Entity.ORGANIZATION_POLICY_NAME, dao.getPatchFields());
+    Policy updatedOrgPolicy = JsonUtils.readValue(JsonUtils.pojoToJson(originalOrgPolicy), Policy.class);
+
+    // Rules are in alphabetical order - change second rule "OrganizationPolicy-Owner-Rule"
+    // from ALL operation to remove CREATE operation and allow all the other operations for the owner
+    updatedOrgPolicy
+        .getRules()
+        .get(1)
+        .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.VIEW_ALL, MetadataOperation.DELETE));
+    dao.patch(null, originalOrgPolicy.getId(), "admin", JsonUtils.getJsonPatch(originalOrgPolicy, updatedOrgPolicy));
   }
 
   public static class PolicyList extends ResultList<Policy> {

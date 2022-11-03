@@ -67,6 +67,9 @@ from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInisghtMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
+from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
+    OMetaIngestionPipelineMixin,
+)
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
@@ -147,6 +150,7 @@ class OpenMetadata(
     OMetaPatchMixin,
     OMetaTestsMixin,
     DataInisghtMixin,
+    OMetaIngestionPipelineMixin,
     Generic[T, C],
 ):
     """
@@ -559,7 +563,7 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
+            logger.debug(
                 "GET %s for %s. Error %s - %s",
                 entity.__name__,
                 path,
@@ -587,7 +591,7 @@ class OpenMetadata(
                 description=instance.description,
                 href=instance.href,
             )
-        logger.warning("Cannot find the Entity %s", fqn)
+        logger.debug("Cannot find the Entity %s", fqn)
         return None
 
     def list_entities(

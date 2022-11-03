@@ -579,7 +579,7 @@ const DatabaseDetails: FunctionComponent = () => {
         getExplorePathWithInitFilters(
           appState.inPageSearchText,
           undefined,
-          `database=${databaseName}&service_type=${serviceType}`
+          `postFilter[serviceType][0]=${serviceType}&postFilter[database.name.keyword][0]=${databaseName}`
         )
       );
     }
@@ -753,6 +753,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     {activeTab === 1 && (
                       <Fragment>
                         <Table
+                          bordered
                           columns={tableColumn}
                           data-testid="database-databaseSchemas"
                           dataSource={schemaData}

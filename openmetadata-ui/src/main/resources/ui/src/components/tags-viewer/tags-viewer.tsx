@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { sortBy } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { Fragment, FunctionComponent } from 'react';
+import React, { FunctionComponent, useCallback, useMemo } from 'react';
 import { LIST_SIZE } from '../../constants/constants';
 import { TagSource } from '../../generated/type/tagLabel';
-import PopOver from '../common/popover/PopOver';
 import Tags from '../tags/tags';
 import { TagsViewerProps } from './tags-viewer.interface';
 
@@ -27,53 +27,58 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   type = 'label',
   showStartWith = true,
 }: TagsViewerProps) => {
-  const getTagsElement = (tag: EntityTags, index?: number) => {
-    const otherProps: Record<string, string | number> = {};
-    if (!isNil(index)) {
-      otherProps.key = index;
-    }
+  const getTagsElement = useCallback(
+    (tag: EntityTags, index: number) => {
+      // only show hasTag is tagSource is type of "Tag" and showStartWith is true
+      const showHasTag = tag.source === TagSource.Tag && showStartWith;
 
-    return (
-      <Tags
-        className={classNames(
-          { 'diff-added tw-mx-1': tag?.added },
-          { 'diff-removed': tag?.removed }
-        )}
-        showOnlyName={tag.source === TagSource.Glossary}
-        startWith={showStartWith ? '#' : undefined}
-        tag={tag}
-        type={type}
-        {...otherProps}
-      />
-    );
-  };
+      return (
+        <Tags
+          className={classNames(
+            { 'diff-added tw-mx-1': tag?.added },
+            { 'diff-removed': tag?.removed }
+          )}
+          key={index}
+          showOnlyName={tag.source === TagSource.Glossary}
+          startWith={showHasTag ? '#' : undefined}
+          tag={tag}
+          type={type}
+        />
+      );
+    },
+    [showStartWith, type]
+  );
+
+  // sort tags by source so that "Glossary" tags always comes first
+  const sortedTagsBySource = useMemo(() => sortBy(tags, 'source'), [tags]);
 
   return sizeCap > -1 ? (
-    <Fragment>
-      {tags.slice(0, sizeCap).map((tag, index) => getTagsElement(tag, index))}
+    <>
+      {sortedTagsBySource
+        .slice(0, sizeCap)
+        .map((tag, index) => getTagsElement(tag, index))}
 
-      {tags.slice(sizeCap).length > 0 && (
-        <PopOver
-          html={
+      {sortedTagsBySource.slice(sizeCap).length > 0 && (
+        <Popover
+          content={
             <>
-              {tags.slice(sizeCap).map((tag, index) => (
-                <p className="tw-text-left" key={index}>
-                  {getTagsElement(tag)}
+              {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
+                <p className="text-left" key={index}>
+                  {getTagsElement(tag, index)}
                 </p>
               ))}
             </>
           }
-          position="bottom"
-          theme="light"
+          placement="bottom"
           trigger="click">
-          <span className="tw-cursor-pointer tw-text-xs link-text v-align-sub tw--ml-1">
+          <span className="cursor-pointer text-xs link-text v-align-sub">
             •••
           </span>
-        </PopOver>
+        </Popover>
       )}
-    </Fragment>
+    </>
   ) : (
-    <Fragment>{tags.map((tag, index) => getTagsElement(tag, index))}</Fragment>
+    <>{sortedTagsBySource.map((tag, index) => getTagsElement(tag, index))}</>
   );
 };
 

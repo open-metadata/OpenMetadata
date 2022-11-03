@@ -42,9 +42,9 @@ import {
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  nodeHeight,
-  nodeWidth,
-  zoomValue,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+  ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
@@ -52,6 +52,7 @@ import {
   EntityType,
   FqnPart,
 } from '../enums/entity.enum';
+import { AddLineage } from '../generated/api/lineage/addLineage';
 import { Column } from '../generated/entity/data/table';
 import {
   ColumnLineage,
@@ -61,6 +62,7 @@ import {
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
+  getEntityName,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   prepareLabel,
@@ -96,15 +98,9 @@ export const getHeaderLabel = (
   );
 };
 
-export const onLoad = (
-  reactFlowInstance: ReactFlowInstance,
-  length?: number,
-  forceZoomReset = false
-) => {
+export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  if (forceZoomReset || (length && length <= 2)) {
-    reactFlowInstance.zoomTo(zoomValue);
-  }
+  reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -168,10 +164,7 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLabel: (
-    node: EntityReference,
-    isExpanded?: boolean
-  ) => React.ReactNode,
+  getNodeLabel: (node: EntityReference) => React.ReactNode,
   isEditMode: boolean,
   edgeType: string,
   onEdgeClick: (
@@ -180,7 +173,11 @@ export const getLineageData = (
   ) => void,
   removeNodeHandler: (node: Node) => void,
   columns: { [key: string]: Column[] },
-  currentData: { nodes: Node[]; edges: Edge[] }
+  currentData: { nodes: Node[]; edges: Edge[] },
+  addPipelineClick?: (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
+  ) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -207,7 +204,7 @@ export const getLineageData = (
               target: edge.toEntity,
               targetHandle: toColumn,
               sourceHandle: fromColumn,
-              type: isEditMode ? edgeType : 'custom',
+              type: edgeType,
               markerEnd: {
                 type: MarkerType.ArrowClosed,
               },
@@ -217,6 +214,7 @@ export const getLineageData = (
                 target: edge.toEntity,
                 targetHandle: toColumn,
                 sourceHandle: fromColumn,
+                isEditMode,
                 onEdgeClick,
                 isColumnLineage: true,
               },
@@ -230,18 +228,23 @@ export const getLineageData = (
       id: `edge-${edge.fromEntity}-${edge.toEntity}`,
       source: `${edge.fromEntity}`,
       target: `${edge.toEntity}`,
-      type: isEditMode ? edgeType : 'custom',
+      type: edgeType,
+      animated: !isUndefined(edge.lineageDetails?.pipeline),
       style: { strokeWidth: '2px' },
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
       data: {
         id: `edge-${edge.fromEntity}-${edge.toEntity}`,
+        label: getEntityName(edge.lineageDetails?.pipeline),
+        pipeline: edge.lineageDetails?.pipeline,
         source: `${edge.fromEntity}`,
         target: `${edge.toEntity}`,
         sourceType: sourceType?.type,
         targetType: targetType?.type,
+        isEditMode,
         onEdgeClick,
+        addPipelineClick,
         isColumnLineage: false,
       },
     });
@@ -293,9 +296,7 @@ export const getLineageData = (
               </div>
             )}
 
-            <div>
-              {getNodeLabel(node, currentNode?.data?.isExpanded || false)}
-            </div>
+            <div>{getNodeLabel(node)}</div>
 
             {type === EntityLineageNodeType.OUTPUT && (
               <div
@@ -355,7 +356,7 @@ export const getLineageData = (
       type: getNodeType(entityLineage, mainNode.id),
       className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
-        label: getNodeLabel(mainNode, currentNode || false),
+        label: getNodeLabel(mainNode),
         isEditMode,
         removeNodeHandler,
         columns: mainCols,
@@ -443,8 +444,8 @@ export const getLayoutedElements = (
 
   node.forEach((el) => {
     dagreGraph.setNode(el.id, {
-      width: nodeWidth,
-      height: nodeHeight,
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
     });
   });
 
@@ -459,8 +460,8 @@ export const getLayoutedElements = (
     el.targetPosition = isHorizontal ? Position.Left : Position.Top;
     el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
     el.position = {
-      x: nodeWithPosition.x - nodeWidth / 2,
-      y: nodeWithPosition.y - nodeHeight / 2,
+      x: nodeWithPosition.x - NODE_WIDTH / 2,
+      y: nodeWithPosition.y - NODE_HEIGHT / 2,
     };
 
     return el;
@@ -571,7 +572,7 @@ export const getUpStreamDownStreamColumnLineageArr = (
   lineageDetails: LineageDetails,
   data: SelectedEdge
 ) => {
-  const columnsLineage = lineageDetails.columnsLineage.reduce((col, curr) => {
+  const columnsLineage = lineageDetails.columnsLineage?.reduce((col, curr) => {
     if (curr.toColumn === data.data?.targetHandle) {
       const newCol = {
         ...curr,
@@ -763,6 +764,10 @@ export const createNewEdge = (
   onEdgeClick: (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
+  ) => void,
+  addPipelineClick: (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
   ) => void
 ) => {
   const { target, source, sourceHandle, targetHandle } = params;
@@ -783,6 +788,8 @@ export const createNewEdge = (
       targetType: targetNodeType,
       isColumnLineage: isColumnLineage,
       onEdgeClick,
+      isEditMode,
+      addPipelineClick,
     },
   };
 
@@ -798,6 +805,7 @@ export const createNewEdge = (
         id: `column-${sourceHandle}-${targetHandle}-edge-${source}-${target}`,
         sourceHandle: sourceHandle,
         targetHandle: targetHandle,
+        addPipelineClick: undefined,
       },
     };
   }
@@ -805,7 +813,78 @@ export const createNewEdge = (
   return data;
 };
 
-export const LoadingStatus = (
+export const getUpdatedEdgeWithPipeline = (
+  edges: EntityLineage['downstreamEdges'],
+  updatedLineageDetails: LineageDetails,
+  selectedEdge: CustomEdgeData,
+  pipelineDetail: EntityReference | undefined
+) => {
+  if (isUndefined(edges)) {
+    return [];
+  }
+
+  const { source, target } = selectedEdge;
+
+  return edges.map((edge) => {
+    if (edge.fromEntity === source && edge.toEntity === target) {
+      return {
+        ...edge,
+        lineageDetails: {
+          ...updatedLineageDetails,
+          pipeline: !isUndefined(updatedLineageDetails.pipeline)
+            ? {
+                displayName: pipelineDetail?.displayName,
+                name: pipelineDetail?.name,
+                ...updatedLineageDetails.pipeline,
+              }
+            : undefined,
+        },
+      };
+    }
+
+    return edge;
+  });
+};
+
+export const getNewLineageConnectionDetails = (
+  selectedEdgeValue: EntityLineageEdge | undefined,
+  selectedPipelineId: string | undefined,
+  customEdgeData: CustomEdgeData
+) => {
+  const { source, sourceType, target, targetType } = customEdgeData;
+  const updatedLineageDetails: LineageDetails = {
+    ...selectedEdgeValue?.lineageDetails,
+    sqlQuery: selectedEdgeValue?.lineageDetails?.sqlQuery || '',
+    columnsLineage: selectedEdgeValue?.lineageDetails?.columnsLineage || [],
+    pipeline: isUndefined(selectedPipelineId)
+      ? undefined
+      : {
+          id: selectedPipelineId,
+          type: EntityType.PIPELINE,
+        },
+  };
+
+  const newEdge: AddLineage = {
+    edge: {
+      fromEntity: {
+        id: source,
+        type: sourceType,
+      },
+      toEntity: {
+        id: target,
+        type: targetType,
+      },
+      lineageDetails: updatedLineageDetails,
+    },
+  };
+
+  return {
+    updatedLineageDetails,
+    newEdge,
+  };
+};
+
+export const getLoadingStatusValue = (
   defaultState: string | JSX.Element,
   loading: boolean,
   status: LoadingState

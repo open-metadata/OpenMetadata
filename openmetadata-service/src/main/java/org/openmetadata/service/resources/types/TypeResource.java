@@ -91,7 +91,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     super(Type.class, new TypeRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();

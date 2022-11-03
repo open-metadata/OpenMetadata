@@ -83,7 +83,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   private static Location location;
 
   public PolicyResourceTest() {
-    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS);
+    super(
+        Entity.POLICY,
+        Policy.class,
+        PolicyList.class,
+        "policies",
+        PolicyResource.FIELDS,
+        Entity.ORGANIZATION_POLICY_NAME);
     supportsAuthorizedMetadataOperations = false; // TODO why
   }
 

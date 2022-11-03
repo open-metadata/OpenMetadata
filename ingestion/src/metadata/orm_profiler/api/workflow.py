@@ -38,6 +38,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -69,6 +72,9 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
+from metadata.utils.workflow_helper import (
+    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
+)
 from metadata.utils.workflow_output_handler import print_profiler_status
 
 logger = profiler_logger()
@@ -100,6 +106,8 @@ class ProfilerWorkflow:
         self.metadata = OpenMetadata(self.metadata_config)
 
         self._retrieve_service_connection_if_needed()
+
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
@@ -516,6 +524,7 @@ class ProfilerWorkflow:
         """
         Close all connections
         """
+        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
 
     def _retrieve_service_connection_if_needed(self) -> None:
@@ -544,3 +553,15 @@ class ProfilerWorkflow:
     @staticmethod
     def _is_sample_source(service_type):
         return service_type in {"sample-data", "sample-usage"}
+
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+        pipeline_run_id = set_ingestion_pipeline_status_helper(
+            state=state,
+            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
+            pipeline_run_id=self.config.pipelineRunId,
+            metadata=self.metadata,
+        )
+        self.config.pipelineRunId = pipeline_run_id

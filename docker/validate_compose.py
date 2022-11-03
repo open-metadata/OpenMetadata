@@ -4,7 +4,7 @@ from pprint import pprint
 import requests
 from requests.auth import HTTPBasicAuth
 import time
-
+from metadata.utils.ansi import print_ansi_encoded_string
 HEADER_JSON = {"Content-Type": "application/json"}
 BASIC_AUTH = HTTPBasicAuth("admin", "admin")
 
@@ -15,7 +15,7 @@ def get_last_run_info() -> Tuple[str, str]:
     """
     dag_runs = None
     while not dag_runs:
-        print("Waiting for DAG Run data...")
+        print_ansi_encoded_string(message="Waiting for DAG Run data...")
         time.sleep(5)
         runs = requests.get("http://localhost:8080/api/v1/dags/sample_data/dagRuns", auth=BASIC_AUTH).json()
         dag_runs = runs.get("dag_runs")
@@ -39,10 +39,10 @@ def main():
     state = None
     while state != "success":
 
-        print("Waiting for sample data ingestion to be a success. We'll show some logs along the way.")
+        print_ansi_encoded_string(message="Waiting for sample data ingestion to be a success. We'll show some logs along the way.")
 
         dag_run_id, state = get_last_run_info()
-        print(f"DAG run: [{dag_run_id}, {state}]")
+        print_ansi_encoded_string(message=f"DAG run: [{dag_run_id}, {state}]")
 
         print_last_run_logs()
         time.sleep(10)

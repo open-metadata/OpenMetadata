@@ -232,12 +232,16 @@ site_menu:
     url: /connectors/database/azuresql/airflow
   - category: Connectors / Database / AzureSQL / CLI
     url: /connectors/database/azuresql/cli
+  - category: Connectors / Database / AzureSQL / Troubleshooting
+    url: /connectors/database/azuresql/troubleshooting
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Airflow
     url: /connectors/database/databricks/airflow
   - category: Connectors / Database / Databricks / CLI
     url: /connectors/database/databricks/cli
+  - category: Connectors / Database / Databricks / Troubleshooting
+    url: /connectors/database/databricks/troubleshooting
   - category: Connectors / Database / Datalake
     url: /connectors/database/datalake
   - category: Connectors / Database / Datalake / Airflow

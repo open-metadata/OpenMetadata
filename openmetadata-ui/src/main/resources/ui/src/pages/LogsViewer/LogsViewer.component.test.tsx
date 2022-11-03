@@ -32,12 +32,6 @@ jest.mock('react-lazylog', () => ({
   LazyLog: jest.fn().mockImplementation(() => <div>LazyLog</div>),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()
@@ -46,6 +40,15 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockIngestionPipeline)),
 }));
+
+jest.mock(
+  '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
+  () => ({
+    IngestionRecentRuns: jest
+      .fn()
+      .mockImplementation(() => <p>IngestionRecentRuns</p>),
+  })
+);
 
 describe('LogsViewer.component', () => {
   it('On initial, component should render', async () => {

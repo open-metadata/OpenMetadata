@@ -53,7 +53,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", null);
+    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, DATA_CONSUMER_ROLE_NAME);
     this.supportsAuthorizedMetadataOperations = false;
   }
 

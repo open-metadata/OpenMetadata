@@ -368,18 +368,6 @@
     ]
   },
   {
-    "name" : "type",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
     "name" : "user",
     "operations" : [
       "Create",
@@ -442,6 +430,17 @@
     ]
   },
   {
+    "name" : "type",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName"
+    ]
+  },
+  {
     "name" : "webAnalyticEvent",
     "operations" : [
       "Create",
@@ -453,25 +452,12 @@
     ]
   },
   {
-    "name" : "type",
+    "name" : "dataInsightChart",
     "operations" : [
       "Create",
       "Delete",
       "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName"
-    ]
-  },
-  {
-    "name" : "type",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName"
+      "EditDescription"
     ]
   }
 ]

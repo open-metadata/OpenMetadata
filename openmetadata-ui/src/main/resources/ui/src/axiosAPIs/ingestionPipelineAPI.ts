@@ -13,7 +13,9 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { PipelineStatus } from '../generated/entity/data/pipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
 import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
@@ -160,8 +162,22 @@ export const getIngestionPipelineLogById = (id: string, after?: string) => {
   );
 };
 
-export const postkillIngestionPipelineById = (
+export const postKillIngestionPipelineById = (
   id: string
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/services/ingestionPipelines/kill/${id}`);
+};
+
+export const getRunHistoryForPipeline = async (
+  id: string,
+  params: { startTs: number; endTs: number }
+) => {
+  const response = await APIClient.get<PagingResponse<PipelineStatus[]>>(
+    `/services/ingestionPipelines/${id}/pipelineStatus`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
 };
