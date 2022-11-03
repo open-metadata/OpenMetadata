@@ -13,8 +13,8 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { cloneDeep, isUndefined } from 'lodash';
-import { SearchResponse } from 'Models';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { FormattedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -38,10 +38,12 @@ import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
 import Teams from '../../components/TeamDetails/Teams';
 import {
   INITIAL_PAGING_VALUE,
+  LIST_SIZE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -49,8 +51,9 @@ import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
+import { EntitiesType } from '../../interface/teamsAndUsers.interface';
 import jsonData from '../../jsons/en';
-import { formatUsersResponse } from '../../utils/APIUtils';
+import { formatDataResponse, formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
@@ -79,6 +82,11 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [assets, setSssets] = useState<EntitiesType>({
+    data: [],
+    total: 0,
+    currPage: 1,
+  });
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -474,6 +482,58 @@ const TeamsPage = () => {
     setShowDeletedTeam(checked);
   };
 
+  const fetchAssets = () => {
+    searchData(
+      `owner.id:${selectedTeam.id}`,
+      assets.currPage,
+      LIST_SIZE,
+      ``,
+      '',
+      '',
+      myDataSearchIndex
+    )
+      .then((res: SearchResponse) => {
+        const hits = res?.data?.hits?.hits;
+        if (hits?.length > 0) {
+          const data = formatDataResponse(hits);
+          const total = res.data.hits.total.value;
+          setSssets({
+            data,
+            total,
+            currPage: assets.currPage,
+          });
+        } else {
+          const data = [] as FormattedTableData[];
+          const total = 0;
+          setSssets({
+            data,
+            total,
+            currPage: assets.currPage,
+          });
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['elastic-search-error']
+        );
+      });
+  };
+
+  const handleAssetsPaginate = (page: string | number) => {
+    setSssets((pre) => ({ ...pre, currPage: page as number }));
+  };
+
+  useEffect(() => {
+    if (!isEmpty(selectedTeam) && !isUndefined(selectedTeam)) {
+      fetchAssets();
+    }
+  }, [selectedTeam]);
+
+  useEffect(() => {
+    fetchAssets();
+  }, [assets.currPage]);
+
   useEffect(() => {
     if (
       (entityPermissions.ViewAll || entityPermissions.ViewBasic) &&
@@ -510,6 +570,7 @@ const TeamsPage = () => {
           ) : (
             <TeamDetailsV1
               afterDeleteAction={afterDeleteAction}
+              assets={assets}
               childTeams={allTeam}
               currentTeam={selectedTeam}
               currentTeamUserPage={currentUserPage}
@@ -530,6 +591,7 @@ const TeamsPage = () => {
               teamUserPaginHandler={userPagingHandler}
               teamUsersSearchText={userSearchValue}
               updateTeamHandler={updateTeamHandler}
+              onAssetsPaginate={handleAssetsPaginate}
               onDescriptionUpdate={onDescriptionUpdate}
               onShowDeletedTeamChange={handleShowDeletedTeam}
               onTeamExpand={fetchAllTeams}

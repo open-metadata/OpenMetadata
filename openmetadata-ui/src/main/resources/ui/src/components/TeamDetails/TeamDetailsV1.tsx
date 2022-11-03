@@ -35,9 +35,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { reactivateTeam } from '../../axiosAPIs/teamsAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
+  LIST_SIZE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { TEAMS_DOCS } from '../../constants/docs.constants';
@@ -54,10 +56,10 @@ import {
   User,
 } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import jsonData from '../../jsons/en';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import UserCard from '../../pages/teams/UserCard';
 import {
   commonUserDetailColumns,
   getEntityName,
@@ -70,6 +72,7 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTierFromSearchTableTags } from '../../utils/TableUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -83,6 +86,7 @@ import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDe
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
+import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -115,6 +119,7 @@ interface PlaceholderProps {
 }
 
 const TeamDetailsV1 = ({
+  assets,
   hasAccess,
   currentTeam,
   currentTeamUsers,
@@ -139,6 +144,7 @@ const TeamDetailsV1 = ({
   handleAddUser,
   removeUserFromTeam,
   afterDeleteAction,
+  onAssetsPaginate,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const isOrganization = currentTeam.name === TeamType.Organization;
@@ -823,26 +829,45 @@ const TeamDetailsV1 = ({
     }
 
     return (
-      <>
-        <div
-          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-          data-testid="dataset-card">
-          {' '}
-          {ownData.map((dataset, index) => {
-            const Dataset = {
-              displayName: dataset.displayName || dataset.name || '',
-              type: dataset.type,
-              fqn: dataset.fullyQualifiedName || '',
-              id: dataset.id,
-              name: dataset.name,
-            };
-
-            return (
-              <UserCard isDataset isIconVisible item={Dataset} key={index} />
-            );
-          })}
-        </div>
-      </>
+      <div data-testid="table-container">
+        {assets.data.map((entity, index) => (
+          <div className="m-b-sm" key={`${entity.name}${index}`}>
+            <TableDataCard
+              database={entity.database}
+              databaseSchema={entity.databaseSchema}
+              deleted={entity.deleted}
+              description={entity.description}
+              fullyQualifiedName={entity.fullyQualifiedName}
+              id={`tabledatacard${index}`}
+              indexType={entity.index}
+              name={entity.name}
+              owner={entity.owner}
+              service={entity.service}
+              serviceType={entity.serviceType || '--'}
+              tags={entity.tags}
+              tier={
+                (
+                  entity.tier?.tagFQN ||
+                  getTierFromSearchTableTags(
+                    (entity.tags || []).map((tag) => tag.tagFQN)
+                  )
+                )?.split(FQN_SEPARATOR_CHAR)[1]
+              }
+              usage={entity.weeklyPercentileRank}
+            />
+          </div>
+        ))}
+        {assets.total > LIST_SIZE && assets.data.length > 0 && (
+          <NextPrevious
+            isNumberBased
+            currentPage={assets.currPage}
+            pageSize={LIST_SIZE}
+            paging={{} as Paging}
+            pagingHandler={onAssetsPaginate}
+            totalCount={assets.total}
+          />
+        )}
+      </div>
     );
   };
 

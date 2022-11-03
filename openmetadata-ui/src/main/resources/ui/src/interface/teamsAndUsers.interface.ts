@@ -12,7 +12,7 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { FormErrorData } from 'Models';
+import { FormattedTableData, FormErrorData } from 'Models';
 import { UserType } from '../enums/user.enum';
 import { Team } from '../generated/entity/teams/team';
 import {
@@ -90,6 +90,7 @@ export interface TeamsAndUsersProps {
 export interface TeamDetailsProp {
   currentTeam: Team;
   teams?: Team[];
+  assets: EntitiesType;
   currentTeamUsers: User[];
   teamUserPagin: Paging;
   currentTeamUserPage: number;
@@ -114,10 +115,17 @@ export interface TeamDetailsProp {
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   childTeams: Team[];
   showDeletedTeam: boolean;
+  onAssetsPaginate: (page: string | number) => void;
   onShowDeletedTeamChange: (checked: boolean) => void;
   onTeamExpand: (
     loading?: boolean,
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;
+}
+
+export interface EntitiesType {
+  data: FormattedTableData[];
+  total: number;
+  currPage: number;
 }
