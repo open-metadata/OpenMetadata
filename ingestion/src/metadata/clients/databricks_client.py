@@ -37,8 +37,7 @@ class DatabricksClient:
         base_url, _ = self.config.hostPort.split(":")
         api_version = "/api/2.0"
         auth_token = self.config.token.get_secret_value()
-        self.base_url = "https://" + base_url + api_version + "/sql/history/queries"
-
+        self.base_url = f"https://{base_url}{api_version}/sql/history/queries"
         self.headers = {
             "Authorization": f"Bearer {auth_token}",
             "Content-Type": "application/json",
