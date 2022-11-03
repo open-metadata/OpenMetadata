@@ -1,7 +1,7 @@
 {
   "name": "TotalEntitiesByTier",
-  "displayName": "Percentage of Entities With Owner",
-  "description": "Display the percentage of entities with owner by type.",
+  "displayName": "Percentage of Entities With Tier",
+  "description": "Display the percentage of entities with tier by type.",
   "dataIndexType": "entity_report_data_index",
   "dimensions": [
     {"name": "timestamp","dataType":"INT"},
