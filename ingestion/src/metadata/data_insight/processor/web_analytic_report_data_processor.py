@@ -200,7 +200,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
         yield from self.refine()
 
     def get_status(self) -> SourceStatus:
-        ...
+        return self.processor_status
 
 
 class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
@@ -334,4 +334,4 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
         yield from self.refine()
 
     def get_status(self) -> SourceStatus:
-        ...
+        return self.processor_status
