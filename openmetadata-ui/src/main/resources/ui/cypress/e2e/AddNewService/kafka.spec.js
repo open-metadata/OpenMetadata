@@ -57,7 +57,7 @@ describe('Kafka Ingestion', () => {
     );
   });
 
-  it('Update table description and verify', () => {
+  it('Update table description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
       topicName,
@@ -68,7 +68,11 @@ describe('Kafka Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Messaging, serviceName);
+    editOwnerforCreatedService(
+      SERVICE_TYPE.Messaging,
+      serviceName,
+      'messagingServices'
+    );
   });
 
   it('delete created service', () => {

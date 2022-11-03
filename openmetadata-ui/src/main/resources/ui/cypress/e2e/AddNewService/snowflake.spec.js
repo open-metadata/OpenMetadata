@@ -50,7 +50,7 @@ describe('Snowflake Ingestion', () => {
     );
   });
 
-  it('Update table description and verify', () => {
+  it('Update table description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
       tableName,
@@ -61,7 +61,11 @@ describe('Snowflake Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Database, serviceName);
+    editOwnerforCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      'databaseServices'
+    );
   });
 
   it('delete created service', () => {
