@@ -286,9 +286,13 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };
 
-export const editOwnerforCreatedService = (service_type, service_Name) => {
-    //Click on settings page
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+export const editOwnerforCreatedService = (
+  service_type,
+  service_Name,
+  api_services
+) => {
+  //Click on settings page
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
     // Services page
     cy.get('.ant-menu-title-content')
@@ -296,19 +300,26 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
         .should('be.visible')
         .click();
 
-    interceptURL(
-        'GET',
-        `/api/v1/services/*/name/${service_Name}*`,
-        'getSelectedService'
-    );
+  interceptURL(
+    'GET',
+    `/api/v1/services/${api_services}/name/${service_Name}?fields=owner`,
+    'getSelectedService'
+  );
 
-    //click on created service
-    cy.get(`[data-testid="service-name-${service_Name}"]`)
-        .should('exist')
-        .should('be.visible')
-        .click();
+  interceptURL(
+    'GET',
+    `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${service_Name}`,
+    'waitForIngestion'
+  );
 
-    verifyResponseStatusCode('@getSelectedService', 200);
+  //click on created service
+  cy.get(`[data-testid="service-name-${service_Name}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  verifyResponseStatusCode('@getSelectedService', 200);
+  verifyResponseStatusCode('@waitForIngestion', 200);
 
     interceptURL(
         'GET',
@@ -316,11 +327,12 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
         'waitForTeams'
     );
 
-    //Click on edit owner button
-    cy.get('[data-testid="edit-Owner-icon"]')
-        .should('exist')
-        .should('be.visible')
-        .click();
+  //Click on edit owner button
+  cy.get('[data-testid="edit-Owner-icon"]')
+    .should('exist')
+    .should('be.visible')
+    .trigger('mouseover')
+    .click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
 

@@ -2,18 +2,22 @@
   "name": "PII",
   "categoryType": "Classification",
   "description": "Personally Identifiable Information information that, when used alone or with other relevant data, can identify an individual.<br/><br/>_Note to Legal - This tag category is provided as a starting point. Please review and update the tags based on your company policy. Also, add a reference to your PII policy document in this description._",
+  "provider": "system",
   "children": [
     {
       "name": "None",
-      "description": "Non PII"
+      "description": "Non PII",
+      "provider": "system"
     },
     {
       "name": "NonSensitive",
-      "description": "PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth."
+      "description": "PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.",
+      "provider": "system"
     },
     {
       "name": "Sensitive",
-      "description": "PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual."
+      "description": "PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.",
+      "provider": "system"
     }
   ]
 }
