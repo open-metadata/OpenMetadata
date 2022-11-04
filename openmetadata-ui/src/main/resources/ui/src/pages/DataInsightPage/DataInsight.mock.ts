@@ -22,21 +22,6 @@ export const PIE_DATA = [
 
 export const COLORS = ['#8884d8', '#82ca9d', '#9cc5e9', '#e99c9c'];
 
-export const DAY_FILTER = [
-  {
-    value: '7',
-    label: 'Last 7 Days',
-  },
-  {
-    value: '24',
-    label: 'Last 24 Days',
-  },
-  {
-    value: '30',
-    label: 'Last 30 Days',
-  },
-];
-
 export const TEAM_FILTER = [
   {
     value: 'team1',
@@ -49,44 +34,6 @@ export const TEAM_FILTER = [
   {
     value: 'team3',
     label: 'OM Team',
-  },
-];
-
-export const ORG_FILTER = [
-  {
-    value: 'org1',
-    label: 'Organization1',
-  },
-  {
-    value: 'org2',
-    label: 'Organization2',
-  },
-  {
-    value: 'org3',
-    label: 'Organization3',
-  },
-];
-
-export const TIER_FILTER = [
-  {
-    value: 'Tier.Tier1',
-    label: 'Tier1',
-  },
-  {
-    value: 'Tier.Tier2',
-    label: 'Tier2',
-  },
-  {
-    value: 'Tier.Tier3',
-    label: 'Tier3',
-  },
-  {
-    value: 'Tier.Tier4',
-    label: 'Tier4',
-  },
-  {
-    value: 'Tier.Tier5',
-    label: 'Tier5',
   },
 ];
 

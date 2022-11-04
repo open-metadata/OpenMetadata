@@ -12,6 +12,11 @@
  */
 
 import { Margin } from 'recharts/types/util/types';
+import { ChartFilter } from '../interface/data-insight.interface';
+import {
+  getCurrentDateTimeMillis,
+  getPastDaysDateTimeMillis,
+} from '../utils/TimeUtils';
 
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
@@ -62,4 +67,51 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
 export const DATA_INSIGHT_TAB = {
   Datasets: 'Datasets',
   'Web Analytics': 'Web Analytics',
+};
+
+export const DAY_FILTER = [
+  {
+    value: 7,
+    label: 'Last 7 Days',
+  },
+  {
+    value: 14,
+    label: 'Last 14 Days',
+  },
+  {
+    value: 30,
+    label: 'Last 30 Days',
+  },
+  {
+    value: 60,
+    label: 'Last 60 Days',
+  },
+];
+
+export const TIER_FILTER = [
+  {
+    value: 'Tier.Tier1',
+    label: 'Tier1',
+  },
+  {
+    value: 'Tier.Tier2',
+    label: 'Tier2',
+  },
+  {
+    value: 'Tier.Tier3',
+    label: 'Tier3',
+  },
+  {
+    value: 'Tier.Tier4',
+    label: 'Tier4',
+  },
+  {
+    value: 'Tier.Tier5',
+    label: 'Tier5',
+  },
+];
+
+export const INITIAL_CHART_FILTER: ChartFilter = {
+  startTs: getPastDaysDateTimeMillis(30),
+  endTs: getCurrentDateTimeMillis(),
 };

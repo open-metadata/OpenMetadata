@@ -14,6 +14,8 @@
 import { Card, Typography } from 'antd';
 import React from 'react';
 import { LegendProps, Surface, TooltipProps } from 'recharts';
+import { TotalEntitiesByType } from '../generated/dataInsight/type/totalEntitiesByType';
+import { getFormattedDateFromMilliSeconds } from './TimeUtils';
 
 export const renderLegend = (legendData: LegendProps, total: string) => {
   const { payload = [] } = legendData;
@@ -72,4 +74,45 @@ export const CustomTooltip = (props: TooltipProps<any, any>) => {
   }
 
   return null;
+};
+
+export const getEntityCountGraphDataByType = (
+  rawData: TotalEntitiesByType[]
+) => {
+  const entities: string[] = [];
+  const timestamps: string[] = [];
+
+  const filteredData = rawData
+    .map((data) => {
+      if (data.timestamp && data.entityType && data.entityCount) {
+        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+        if (!entities.includes(data.entityType ?? '')) {
+          entities.push(data.entityType ?? '');
+        }
+
+        if (!timestamps.includes(timestamp)) {
+          timestamps.push(timestamp);
+        }
+
+        return {
+          timestamp: timestamp,
+          [data.entityType]: data.entityCount,
+        };
+      }
+
+      return;
+    })
+    .filter(Boolean);
+
+  const graphData = timestamps.map((timestamp) => {
+    return filteredData.reduce((previous, current) => {
+      if (current?.timestamp === timestamp) {
+        return { ...previous, ...current };
+      }
+
+      return previous;
+    }, {});
+  });
+
+  return { data: graphData, entities };
 };
