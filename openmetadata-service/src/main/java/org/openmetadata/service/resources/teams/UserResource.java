@@ -130,7 +130,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final TokenRepository tokenRepository;
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
-  private AuthenticatorHandler authHandler;
+  private final AuthenticatorHandler authHandler;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -151,7 +151,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
@@ -864,8 +864,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request)
-      throws IOException, TemplateException {
+  public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request) throws IOException {
     authHandler.resetUserPasswordWithToken(uriInfo, request);
     return Response.status(200).entity("Password Changed Successfully").build();
   }

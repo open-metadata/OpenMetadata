@@ -15,8 +15,8 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -138,15 +138,13 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
   @Override
   public void validateCreatedEntity(
-      IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getAirflowConfig().getConcurrency(), ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSourceConfig(), ingestion);
   }
 
   @Override
-  public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders) {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSourceConfig(), updated.getSourceConfig());

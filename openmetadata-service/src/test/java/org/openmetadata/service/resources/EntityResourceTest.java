@@ -72,7 +72,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -96,6 +95,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
@@ -1315,7 +1315,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     String json = JsonUtils.pojoToJson(entityType);
     ChangeDescription change = getChangeDescription(entityType.getVersion());
-    fieldAdded(change, "customProperties", Arrays.asList(fieldB));
+    fieldAdded(change, "customProperties", CommonUtil.listOf(fieldB));
     entityType.getCustomProperties().add(fieldB);
     entityType = typeResourceTest.patchEntityAndCheck(entityType, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
