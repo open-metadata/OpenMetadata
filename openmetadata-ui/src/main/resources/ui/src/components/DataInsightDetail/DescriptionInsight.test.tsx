@@ -17,8 +17,11 @@ import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
 
 import DescriptionInsight from './DescriptionInsight';
 
-jest.mock('../../pages/DataInsightPage/DataInsight.mock', () => ({
-  getEntityDescriptionData: jest.fn().mockReturnValue({
+jest.mock('../../utils/DataInsightUtils', () => ({
+  renderLegend: jest
+    .fn()
+    .mockReturnValue(<ul data-testid="graph-legend">Graph Legend</ul>),
+  getGraphDataByEntityType: jest.fn().mockImplementation(() => ({
     data: [
       {
         timestamp: '27/Oct',
@@ -46,13 +49,7 @@ jest.mock('../../pages/DataInsightPage/DataInsight.mock', () => ({
       },
     ],
     entities: ['Table', 'Topic', 'Database', 'Pipeline', 'Messaging'],
-  }),
-}));
-
-jest.mock('../../utils/DataInsightUtils', () => ({
-  renderLegend: jest
-    .fn()
-    .mockReturnValue(<ul data-testid="graph-legend">Graph Legend</ul>),
+  })),
 }));
 
 jest.mock('react-i18next', () => ({
