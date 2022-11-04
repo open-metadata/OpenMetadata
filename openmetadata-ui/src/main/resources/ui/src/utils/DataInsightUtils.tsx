@@ -76,36 +76,24 @@ export const CustomTooltip = (props: TooltipProps<any, any>) => {
   return null;
 };
 
-export const getEntityCountGraphDataByType = (
-  rawData: TotalEntitiesByType[]
-) => {
-  const entities: string[] = [];
-  const timestamps: string[] = [];
-
-  const filteredData = rawData
-    .map((data) => {
-      if (data.timestamp && data.entityType && data.entityCount) {
-        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
-        if (!entities.includes(data.entityType ?? '')) {
-          entities.push(data.entityType ?? '');
-        }
-
-        if (!timestamps.includes(timestamp)) {
-          timestamps.push(timestamp);
-        }
-
-        return {
-          timestamp: timestamp,
-          [data.entityType]: data.entityCount,
-        };
+/**
+ * takes timestamps and raw data as inputs and return the graph data by mapping timestamp
+ * @param timestamps timestamps array
+ * @param rawData graph rwa data
+ * @returns graph data
+ */
+const prepareGraphData = (
+  timestamps: string[],
+  rawData: (
+    | {
+        [x: string]: string | number;
+        timestamp: string;
       }
-
-      return;
-    })
-    .filter(Boolean);
-
-  const graphData = timestamps.map((timestamp) => {
-    return filteredData.reduce((previous, current) => {
+    | undefined
+  )[]
+) => {
+  return timestamps.map((timestamp) => {
+    return rawData.reduce((previous, current) => {
       if (current?.timestamp === timestamp) {
         return { ...previous, ...current };
       }
@@ -113,6 +101,33 @@ export const getEntityCountGraphDataByType = (
       return previous;
     }, {});
   });
+};
 
-  return { data: graphData, entities };
+export const getEntityCountGraphDataByType = (
+  rawData: TotalEntitiesByType[]
+) => {
+  const entities: string[] = [];
+  const timestamps: string[] = [];
+
+  const filteredData = rawData.map((data) => {
+    if (data.timestamp && data.entityType && data.entityCount) {
+      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+      if (!entities.includes(data.entityType ?? '')) {
+        entities.push(data.entityType ?? '');
+      }
+
+      if (!timestamps.includes(timestamp)) {
+        timestamps.push(timestamp);
+      }
+
+      return {
+        timestamp: timestamp,
+        [data.entityType]: data.entityCount,
+      };
+    }
+
+    return;
+  });
+
+  return { data: prepareGraphData(timestamps, filteredData), entities };
 };
