@@ -824,10 +824,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           outgoerIds.includes(edge.target) &&
           (outgoerIds.includes(edge.source) || selectedNode.id === edge.source);
 
-        edge.style = {
-          ...edge.style,
-          stroke: incomerEdges || outgoersEdges ? SECONDARY_COLOR : undefined,
-        };
+        if (isUndefined(edge.sourceHandle) && isUndefined(edge.targetHandle)) {
+          edge.style = {
+            ...edge.style,
+            stroke: incomerEdges || outgoersEdges ? SECONDARY_COLOR : undefined,
+          };
+        }
 
         return edge;
       });
