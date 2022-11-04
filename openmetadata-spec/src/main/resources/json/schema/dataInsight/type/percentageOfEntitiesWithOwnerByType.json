@@ -28,5 +28,6 @@
       "description": "Decimal fraction of entity with an owner.",
       "type": "number"
     }
-  }
+  },
+  "additionalProperties": false
 }
