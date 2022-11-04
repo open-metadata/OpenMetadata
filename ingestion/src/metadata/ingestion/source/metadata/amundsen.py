@@ -13,7 +13,9 @@
 Amundsen source to extract metadata
 """
 
+import json
 import traceback
+from pathlib import Path
 from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
@@ -28,6 +30,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
@@ -259,21 +264,24 @@ class AmundsenSource(Source[Entity]):
     def _yield_create_database(self, table):
         try:
             service_entity = self.get_database_service(table["database"])
+            table_name = ""
+            if hasattr(service_entity.connection.config, "supportsDatabase"):
+                table_name = table["cluster"]
+            else:
+                table_name = "default"
 
             database_request = CreateDatabaseRequest(
-                name=table["cluster"]
+                name=table_name
                 if hasattr(service_entity.connection.config, "supportsDatabase")
                 else "default",
                 service=EntityReference(id=service_entity.id, type="databaseService"),
             )
-
             yield database_request
-
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
                 service_name=table["database"],
-                database_name=table["cluster"],
+                database_name=table_name,
             )
 
             self.database_object = self.metadata.get_by_name(
@@ -285,17 +293,17 @@ class AmundsenSource(Source[Entity]):
 
     def _yield_create_database_schema(self, table):
         try:
+
             database_schema_request = CreateDatabaseSchemaRequest(
                 name=table["schema"],
                 database=EntityReference(id=self.database_object.id, type="database"),
             )
             yield database_schema_request
-
             database_schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
                 service_name=table["database"],
-                database_name=table["cluster"],
+                database_name=self.database_object.name.__root__,
                 schema_name=database_schema_request.name.__root__,
             )
 
@@ -495,7 +503,31 @@ class AmundsenSource(Source[Entity]):
         return data_type
 
     def get_database_service(self, service_name: str) -> DatabaseService:
-        service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+        """
+        Method to get and create Database Service
+        """
+        try:
+            file_path = (
+                Path(__file__).cwd() / "examples/amundsen_data/service_type.json"
+            )
+            with open(file_path, encoding="UTF-8") as file:
+                service_type: dict = json.load(file)
+
+        except FileNotFoundError:
+            raise Exception()
+
+        service = self.metadata.create_or_update(
+            CreateDatabaseServiceRequest(
+                name=service_name,
+                displayName=service_name,
+                description="this is code maede",
+                connection=service_type.get(service_name, "None")["connection"],
+                serviceType=service_type.get(service_name, DatabaseServiceType.Mysql)[
+                    "service_name"
+                ],
+            ),
+        )
+
         if service is not None:
             return service
         logger.error(f"Please create a service with name {service_name}")

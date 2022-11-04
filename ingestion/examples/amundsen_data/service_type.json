@@ -1,0 +1,32 @@
+{
+    "hive": {
+        "service_name": "Hive",
+        "connection": {
+            "config": {
+                "hostPort": "http://nohost:6000",
+                "type": "Hive"
+            }
+        }
+    },
+    "delta": {
+        "service_name": "DeltaLake",
+        "connection": {
+            "config": {
+                "metastoreConnection": {
+                    "metastoreHostPort": "http://localhost:9083"
+                }
+            }
+        }
+    },
+    "dynamo": {
+        "service_name": "DynamoDB",
+        "connection": {
+            "config": {
+                "awsConfig": {
+                    "awsRegion": "aws_region"
+                },
+                "type": "DynamoDB"
+            }
+        }
+    }
+}
