@@ -76,8 +76,7 @@ import {
   createNewEdge,
   dragHandle,
   findUpstreamDownStreamEdge,
-  getAllIncomers,
-  getAllOutgoers,
+  getAllTracedNodes,
   getColumnType,
   getDataLabel,
   getDeletedLineagePlaceholder,
@@ -798,8 +797,20 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   const handleLineageTracing = (selectedNode: Node) => {
-    const incomingNode = getAllIncomers(selectedNode, nodes, edges);
-    const outgoingNode = getAllOutgoers(selectedNode, nodes, edges);
+    const incomingNode = getAllTracedNodes(
+      selectedNode,
+      nodes,
+      edges,
+      [],
+      true
+    );
+    const outgoingNode = getAllTracedNodes(
+      selectedNode,
+      nodes,
+      edges,
+      [],
+      false
+    );
     const incomerIds = incomingNode.map((incomer) => incomer.id);
     const outgoerIds = outgoingNode.map((outGoer) => outGoer.id);
     setIsTracingActive(true);

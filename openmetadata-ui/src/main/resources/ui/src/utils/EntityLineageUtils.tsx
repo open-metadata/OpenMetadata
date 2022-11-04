@@ -24,8 +24,7 @@ import { Link } from 'react-router-dom';
 import {
   Connection,
   Edge,
-  getIncomers,
-  getOutgoers,
+  isNode,
   MarkerType,
   Node,
   Position,
@@ -904,32 +903,68 @@ export const getLoadingStatusValue = (
   }
 };
 
-export const getAllIncomers = (
-  currentNode: Node,
+const getTracedNode = (
+  node: Node,
   nodes: Node[],
-  edges: Edge[]
-): Node[] => {
-  return getIncomers(currentNode, nodes, edges).reduce<Node[]>(
-    (memo, incomer) => [
-      ...memo,
-      incomer,
-      ...getAllIncomers(incomer, nodes, edges),
-    ],
-    []
+  edges: Edge[],
+  isIncomer: boolean
+) => {
+  if (!isNode(node)) {
+    return [];
+  }
+
+  const tracedEdgeIds = edges
+    .filter((e) => {
+      const id = isIncomer ? e.target : e.source;
+
+      return id === node.id;
+    })
+    .map((e) => (isIncomer ? e.source : e.target));
+
+  return nodes.filter((n) =>
+    tracedEdgeIds
+      .map((id) => {
+        const matches = /([\w-^]+)__([\w-]+)/.exec(id);
+        if (matches === null) {
+          return id;
+        }
+
+        return matches[1];
+      })
+      .includes(n.id)
   );
 };
 
-export const getAllOutgoers = (
-  currentNode: Node,
+export const getAllTracedNodes = (
+  node: Node,
   nodes: Node[],
-  edges: Edge[]
-): Node[] => {
-  return getOutgoers(currentNode, nodes, edges).reduce<Node[]>(
-    (memo, outgoer) => [
-      ...memo,
-      outgoer,
-      ...getAllOutgoers(outgoer, nodes, edges),
-    ],
-    []
-  );
+  edges: Edge[],
+  prevTraced = [] as Node[],
+  isIncomer: boolean
+) => {
+  const tracedNodes = getTracedNode(node, nodes, edges, isIncomer);
+
+  return tracedNodes.reduce((memo, tracedNode) => {
+    memo.push(tracedNode);
+
+    if (prevTraced.findIndex((n) => n.id == tracedNode.id) == -1) {
+      prevTraced.push(tracedNode);
+
+      getAllTracedNodes(
+        tracedNode,
+        nodes,
+        edges,
+        prevTraced,
+        isIncomer
+      ).forEach((foundNode) => {
+        memo.push(foundNode);
+
+        if (prevTraced.findIndex((n) => n.id == foundNode.id) == -1) {
+          prevTraced.push(foundNode);
+        }
+      });
+    }
+
+    return memo;
+  }, [] as Node[]);
 };
