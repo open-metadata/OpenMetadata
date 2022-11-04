@@ -12,8 +12,9 @@
  */
 
 import { Card, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
-import React from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -26,24 +27,69 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import {
   BAR_CHART_MARGIN,
   BAR_SIZE,
   TIER_BAR_COLOR_MAP,
 } from '../../constants/DataInsight.constants';
-import { getEntityTiersData } from '../../pages/DataInsightPage/DataInsight.mock';
-import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
+import { DataReportIndex } from '../../generated/api/dataInsight/createDataInsightChart';
+import {
+  DataInsightChartResult,
+  DataInsightChartType,
+} from '../../generated/dataInsight/dataInsightChartResult';
+import { ChartFilter } from '../../interface/data-insight.interface';
+import {
+  CustomTooltip,
+  getGraphDataByTierType,
+  renderLegend,
+} from '../../utils/DataInsightUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 
-const TierInsight = () => {
-  const { data, tiers } = getEntityTiersData();
+interface Props {
+  chartFilter: ChartFilter;
+}
+
+const TierInsight: FC<Props> = ({ chartFilter }) => {
+  const [totalEntitiesByTier, setTotalEntitiesByTier] =
+    useState<DataInsightChartResult>();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const { data, tiers } = useMemo(() => {
+    return getGraphDataByTierType(totalEntitiesByTier?.data ?? []);
+  }, [totalEntitiesByTier]);
 
   const { t } = useTranslation();
+
+  const fetchTotalEntitiesByTier = async () => {
+    setIsLoading(true);
+    try {
+      const params = {
+        ...chartFilter,
+        dataInsightChartName: DataInsightChartType.TotalEntitiesByTier,
+        dataReportIndex: DataReportIndex.EntityReportDataIndex,
+      };
+      const response = await getAggregateChartData(params);
+
+      setTotalEntitiesByTier(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTotalEntitiesByTier();
+  }, [chartFilter]);
 
   return (
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      loading={isLoading}
       title={
         <>
           <Typography.Title level={5}>
