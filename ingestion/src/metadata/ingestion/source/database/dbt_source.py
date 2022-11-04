@@ -359,6 +359,7 @@ class DBTMixin:
                 self.source_config.dbtConfigSource
                 and self.dbt_manifest
                 and self.dbt_catalog
+                and self.dbt_run_results
             ):
                 logger.info("Processing DBT Tests Suites and Test Definitions")
                 for _, dbt_test in self.dbt_tests.items():
@@ -408,6 +409,7 @@ class DBTMixin:
             self.source_config.dbtConfigSource
             and self.dbt_manifest
             and self.dbt_catalog
+            and self.dbt_run_results
         ):
             logger.info("Processing DBT Tests Cases")
             for key, dbt_test in self.dbt_tests.items():
