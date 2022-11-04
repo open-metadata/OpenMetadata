@@ -47,8 +47,8 @@ WHERE fullyQualifiedName in ('PersonalData.Personal', 'PersonalData.SpecialCateg
 
 UPDATE pipeline_service_entity 
 SET json = JSON_INSERT(json ,'$.connection.config.configSource.hostPort', '$.connection.config.hostPort'),
-WHERE serviceType = 'Dagster'
+WHERE serviceType = 'Dagster';
 
 UPDATE pipeline_service_entity 
 SET json = JSON_REMOVE(json ,'$.connection.config.hostPort', '$.connection.config.numberOfStatus')
-WHERE serviceType = 'Dagster'
+WHERE serviceType = 'Dagster';
