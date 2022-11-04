@@ -18,6 +18,7 @@ import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
+import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
 
 export const renderLegend = (legendData: LegendProps, latest: string) => {
@@ -153,4 +154,32 @@ export const getGraphDataByEntityType = (
   });
 
   return { data: prepareGraphData(timestamps, filteredData), entities };
+};
+
+export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
+  const tiers: string[] = [];
+  const timestamps: string[] = [];
+
+  const filteredData = rawData.map((data) => {
+    if (data.timestamp && data.entityTier) {
+      const tiering = data.entityTier;
+      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+      if (!tiers.includes(tiering)) {
+        tiers.push(tiering);
+      }
+
+      if (!timestamps.includes(timestamp)) {
+        timestamps.push(timestamp);
+      }
+
+      return {
+        timestamp: timestamp,
+        [tiering]: data.entityCount,
+      };
+    }
+
+    return;
+  });
+
+  return { data: prepareGraphData(timestamps, filteredData), tiers };
 };
