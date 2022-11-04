@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Radio, Row, Select, Space, Typography } from 'antd';
+import { Button, Card, Col, Radio, Row, Select, Space, Typography } from 'antd';
 import React, { useState } from 'react';
 import { DAY_FILTER, TEAM_FILTER, TIER_FILTER } from './DataInsight.mock';
 
@@ -32,12 +32,17 @@ const DataInsightPage = () => {
     <PageLayoutV1>
       <Row data-testid="data-insight-container" gutter={[16, 16]}>
         <Col span={24}>
-          <Typography.Title level={5} style={{ marginBottom: '0px' }}>
-            Data Insight
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            Keep track of OKRs with charts built around OpenMetadata health.
-          </Typography.Text>
+          <Space className="w-full justify-between">
+            <div data-testid="data-insight-header">
+              <Typography.Title level={5} style={{ marginBottom: '0px' }}>
+                Data Insight
+              </Typography.Title>
+              <Typography.Text className="data-insight-label-text">
+                Keep track of OKRs with charts built around OpenMetadata health.
+              </Typography.Text>
+            </div>
+            <Button type="primary">Add KPIs</Button>
+          </Space>
         </Col>
         <Col span={24}>
           <Card>
