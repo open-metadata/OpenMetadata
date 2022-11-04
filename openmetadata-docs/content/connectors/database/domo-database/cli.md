@@ -258,6 +258,7 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
+
 ### 1. Define the YAML Config
 
 This is a sample config for the profiler:
@@ -269,10 +270,12 @@ source:
   serviceConnection:
     config:
       type: DomoDatabase
-      awsConfig:
-        awsAccessKeyId: KEY
-        awsSecretAccessKey: SECRET
-        awsRegion: us-east-2
+      type: DomoDashboard
+      clientId: client-id
+      secretToken: secret-token
+      accessToken: access-token
+      apiHost: api.domo.com
+      sandboxDomain: https://<api_domo>.domo.com
         # endPointURL: https://athena.us-east-2.amazonaws.com/
         # awsSessionToken: TOKEN
       s3StagingDir: s3 directory for datasource
