@@ -14,7 +14,7 @@
       "description": "Type of MlModel service",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Mlflow", "Sklearn", "CustomMlModel"],
+      "enum": ["Mlflow", "Sklearn", "CustomMlModel", "SageMaker"],
       "javaEnums": [
         {
           "name": "Mlflow"
@@ -24,6 +24,9 @@
         },
         {
           "name": "CustomMlModel"
+        },
+        {
+          "name": "SageMaker"
         }
       ]
     },
@@ -46,6 +49,9 @@
             },
             {
               "$ref": "./connections/mlmodel/customMlModelConnection.json"
+            },
+            {
+              "$ref": "./connections/mlmodel/sageMakerConnection.json"
             }
           ]
         }
