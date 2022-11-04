@@ -57,7 +57,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { data, entities } = useMemo(() => {
+  const { data, entities, total } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesOwnerByType?.data ?? [],
       DataInsightChartType.PercentageOfEntitiesWithOwnerByType
@@ -112,7 +112,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter }) => {
           <Tooltip content={<CustomTooltip />} />
           <Legend
             align="left"
-            content={(props) => renderLegend(props as LegendProps, `70%`)}
+            content={(props) => renderLegend(props as LegendProps, `${total}%`)}
             layout="vertical"
             verticalAlign="top"
             wrapperStyle={{ left: '0px' }}

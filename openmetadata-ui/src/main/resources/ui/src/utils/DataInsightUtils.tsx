@@ -12,7 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
-import { isInteger } from 'lodash';
+import { isInteger, toNumber } from 'lodash';
 import React from 'react';
 import { LegendProps, Surface, TooltipProps } from 'recharts';
 import {
@@ -109,6 +109,19 @@ const prepareGraphData = (
   });
 };
 
+const getLatestCount = (latestData = {}) => {
+  let total = 0;
+  const latestEntries = Object.entries(latestData ?? {});
+
+  for (const entry of latestEntries) {
+    if (entry[0] !== 'timestamp') {
+      total += toNumber(entry[1]);
+    }
+  }
+
+  return isInteger(total) ? total : total.toFixed(2);
+};
+
 export const getGraphDataByEntityType = (
   rawData: DataInsightChartResult['data'] = [],
   dataInsightChartType: DataInsightChartType
@@ -155,7 +168,13 @@ export const getGraphDataByEntityType = (
     return;
   });
 
-  return { data: prepareGraphData(timestamps, filteredData), entities };
+  const graphData = prepareGraphData(timestamps, filteredData);
+
+  return {
+    data: graphData,
+    entities,
+    total: getLatestCount(graphData.at(-1)),
+  };
 };
 
 export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
@@ -183,5 +202,11 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
     return;
   });
 
-  return { data: prepareGraphData(timestamps, filteredData), tiers };
+  const graphData = prepareGraphData(timestamps, filteredData);
+
+  return {
+    data: graphData,
+    tiers,
+    total: getLatestCount(graphData.at(-1)),
+  };
 };

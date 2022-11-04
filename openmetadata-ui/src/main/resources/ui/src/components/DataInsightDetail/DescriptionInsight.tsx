@@ -57,7 +57,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { data, entities } = useMemo(() => {
+  const { data, entities, total } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesDescriptionByType?.data ?? [],
       DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
@@ -113,7 +113,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
           <Tooltip content={<CustomTooltip />} />
           <Legend
             align="left"
-            content={(props) => renderLegend(props as LegendProps, `65.8%`)}
+            content={(props) => renderLegend(props as LegendProps, `${total}%`)}
             layout="vertical"
             verticalAlign="top"
             wrapperStyle={{ left: '0px' }}

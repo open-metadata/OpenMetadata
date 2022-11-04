@@ -57,7 +57,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { data, tiers } = useMemo(() => {
+  const { data, tiers, total } = useMemo(() => {
     return getGraphDataByTierType(totalEntitiesByTier?.data ?? []);
   }, [totalEntitiesByTier]);
 
@@ -108,7 +108,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
           <Tooltip content={<CustomTooltip />} />
           <Legend
             align="left"
-            content={(props) => renderLegend(props as LegendProps, `970`)}
+            content={(props) => renderLegend(props as LegendProps, `${total}`)}
             layout="vertical"
             verticalAlign="top"
             wrapperStyle={{ left: '0px' }}
