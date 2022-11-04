@@ -16,7 +16,7 @@ docker --version
 ```
 
 If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
-### Docker Compose (version v2.1.1 or greater)
+### Docker Compose (version v2.2.3 or greater)
 The Docker compose package enables you to define and run multi-container Docker applications. The compose command integrates compose functions into the Docker platform, making them available from the Docker command-line interface ( CLI). The Python packages you will install in the procedure below use compose to deploy OpenMetadata.
 
 - **MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.
@@ -32,12 +32,12 @@ docker compose version
 Upon running this command you should see output similar to the following.
 
 ```commandline
-Docker Compose version v2.1.1
+Docker Compose version v2.2.3
 ```
 
-### Install Docker Compose Version 2.0.0 on Linux
+### Install Docker Compose Version 2 on Linux
 
-Follow the instructions [here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2.0.0
+Follow the instructions [here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2
 
 1. Run the following command to download the current stable release of Docker Compose
     ```
@@ -101,22 +101,43 @@ CONTAINER ID   IMAGE                                                  COMMAND   
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
 ## Port Mapping / Port Forwarding 
 
+### For OpenMetadata-Server 
 We are shipping the OpenMetadata server and UI at `8585`, and the ingestion container (Airflow) at `8080`. You can
 change the port number's according to your requirement. As an example, You could
 update the ports to serve OpenMetadata Server and UI  at port `80`
 
 To achieve this 
-- You just have to update the ports mapping of the openmetadata-server in the `docker-compose.yml` file
+- You just have to update the ports mapping of the openmetadata-server in the `docker-compose.yml` file under `openmetadata-server` docker service section.
+
+```yaml
+ports:
+  - "80:8585"
+```
+- Once the port is updated if there are any containers running remove them first using `docker compose down` command and then  recreate the containers once again by below command 
+```commandline
+docker compose up --build -d 
+```
+### For Ingestion-Server
+We are shipping the OpenMetadata server and UI at `8585`, and the ingestion container (Airflow) at `8080`. You can
+change the port number's according to your requirement. As an example, You could
+update the ports to serve Ingestion  Server and UI  at port `80`
+
+To achieve this 
+- You just have to update the ports mapping of the openmetadata-server in the `docker-compose.yml` file under `ingestion-server` docker service section.
 
 ```yaml
 ports:
   - "80:8080"
 ```
-- Once the port is updated if there are any containers running remove them first using `docker-compose down` command and then  recreate the containers once again by below command 
+- Also update the Airflow environment variable in openmetadata-server section 
+ ```commandline
+ AIRFLOW_HOST: '<AIRFLOW_HOST:-<AIRFLOW_HOST:80>'
+ ```
+
+- Once the port is updated if there are any containers running remove them first using `docker compose down` command and then  recreate the containers once again by below command 
 ```commandline
 docker compose up --build -d 
 ```
-
 ## PROD Deployment of OpenMetadata Using Docker
 If you are planning on going to PROD, we recommend to validate below points:
 - MySQL and OpenSearch (ElasticSearch) are available.
@@ -128,12 +149,12 @@ If you are planning on going to PROD, we recommend to validate below points:
 - Update the environment variables below for OpenMetadata-Ingestion Docker Compose backed systems to connect with Database. 
 ```
 # MySQL Environment Variables for ingestion service
-DB_HOST: '<YOUR_RDS_HOST_NAME>'
-DB_PORT: '<YOUR_RDS_PORT>'
-AIRFLOW_DB: '<YOUR_RDS_AIRFLOW_DB>'
-AIRFLOW_DB_SCHEME: '<YOUR_RDS_AIRFLOW_DB_SCHEME>'
-DB_USER: '<YOUR_RDS_AIRFLOW_DB_USER>'
-DB_PASSWORD: '<YOUR_RDS_AIRFLOW_DB_PASSWORD>'
+DB_HOST: '<DB_HOST_NAME>'
+DB_PORT: '<DB_PORT>'
+AIRFLOW_DB: '<AIRFLOW_DATABASE>'
+AIRFLOW_DB_SCHEME: '<AIRFLOW_DB_SCHEME>'
+DB_USER: '<AIRFLOW_DB_USER>'
+DB_PASSWORD: '<AIRFLOW_DB_PASSWORD>'
 ```
 Once the environment variables values with the RDS are updated then provide this environment variable file as part of docker compose command.
 
@@ -148,24 +169,24 @@ docker compose --env-file ./config/.env.prod up -d openmetadata_ingestion
 DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
 DB_SCHEME='mysql'
 DB_USE_SSL='true'
-MYSQL_USER_PASSWORD='<YOUR_RDS_USER_PASSWORD>'
+DB_USER_PASSWORD='<OPENMETADATA_DB_USER_PASSWORD>'
 DB_SCHEME='mysql'
-MYSQL_HOST='<YOUR_RDS_HOST_NAME>'
-MYSQL_USER='<YOUR_RDS_USER_NAME>'
-MYSQL_DATABASE='<YOUR_RDS_DATABASE_NAME>'
-MYSQL_PORT='<YOUR_RDS_PORT>'
+DB_HOST='<DB_HOST>'
+DB_USER='<OPENMETADATA__USER_NAME>'
+DB_DATABASE='<OPENMETADATA_DATABASE_NAME>'
+DB_PORT='<DB_PORT>'
 # ElasticSearch Environment Variables
 ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
-ELASTICSEARCH_USER='<YOUR_ES_USERNAME>'
+ELASTICSEARCH_USER='<ELASTICSEARCH_USERNAME>'
 ELASTICSEARCH_CONNECTION_TIMEOUT_SECS='5'
 ELASTICSEARCH_PORT='443'
 ELASTICSEARCH_SCHEME='https'
 ELASTICSEARCH_BATCH_SIZE='10'
-ELASTICSEARCH_HOST='vpc-<random_characters>.<aws_region>.es.amazonaws.com'
-ELASTICSEARCH_PASSWORD='<YOUR_ES_PASSWORD>'
+ELASTICSEARCH_HOST='<ELASTICSEARCH_HOST_URL>'
+ELASTICSEARCH_PASSWORD='<ELASTICSEARCH_PASSWORD>'
 # Ingestion or Airflow Environment Variables
 AIRFLOW_HOST: '<YOUR_AIRFLOW_HOST>'
-SERVER_HOST_API_URL: '<YOUR_SERVER_HOST_API_URL>'
+SERVER_HOST_API_URL: '<OPENMETADATA_HOST_URL_WITH_SCHEME/api>'
 ```
 Once the environment variables values with the RDS are updated then provide this environment variable file as part of docker compose command.
 
@@ -191,21 +212,21 @@ Once you have the RDS and OpenSearch Services Setup, you can update the environm
 DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
 DB_SCHEME='mysql'
 DB_USE_SSL='true'
-MYSQL_USER_PASSWORD='<YOUR_RDS_USER_PASSWORD>'
+DB_USER_PASSWORD='<DATABASE_USER_PASSWORD>'
 DB_SCHEME='mysql'
-MYSQL_HOST='<YOUR_RDS_HOST_NAME>'
-MYSQL_USER='<YOUR_RDS_USER_NAME>'
-MYSQL_DATABASE='<YOUR_RDS_DATABASE_NAME>'
-MYSQL_PORT='<YOUR_RDS_PORT>'
+DB_HOST='<DATABASE_HOST_NAME>'
+DB_USER='<DATABASE_USER_NAME>'
+DB_DATABASE='<DATABASE_NAME>'
+DB_PORT='<DATABASE_PORT>'
 # ElasticSearch Environment Variables
 ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
-ELASTICSEARCH_USER='<ES_USERNAME>'
+ELASTICSEARCH_USER='<ELASTICSEARCH_USERNAME>'
 ELASTICSEARCH_CONNECTION_TIMEOUT_SECS='5'
 ELASTICSEARCH_PORT='443'
 ELASTICSEARCH_SCHEME='https'
 ELASTICSEARCH_BATCH_SIZE='10'
-ELASTICSEARCH_HOST='vpc-<random_characters>.<aws_region>.es.amazonaws.com'
-ELASTICSEARCH_PASSWORD='<ES_PASSWORD>'
+ELASTICSEARCH_HOST='<ELASTICSEARCH_HOST_URL>'
+ELASTICSEARCH_PASSWORD='<ELASTICSEARCH_PASSWORD>'
 ```
 
 Replace the environment variables values with the RDS and OpenSearch Service ones and then provide this environment variable file as part of docker compose command.
