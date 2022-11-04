@@ -513,15 +513,14 @@ class AmundsenSource(Source[Entity]):
             with open(file_path, encoding="UTF-8") as file:
                 service_type: dict = json.load(file)
 
-        except FileNotFoundError:
-            raise Exception()
+        except FileNotFoundError as err:
+            raise FileNotFoundError(f"Could not get service mapping file from {file_path}")
 
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name=service_name,
                 displayName=service_name,
-                description="this is code maede",
-                connection=service_type.get(service_name, "None")["connection"],
+                connection=service_type.get(service_name, "mysql")["connection"],
                 serviceType=service_type.get(service_name, DatabaseServiceType.Mysql)[
                     "service_name"
                 ],

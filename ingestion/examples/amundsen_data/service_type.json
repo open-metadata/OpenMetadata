@@ -28,5 +28,90 @@
                 "type": "DynamoDB"
             }
         }
+    },
+    "mysql": {
+        "service_name": "Mysql",
+        "connection": {
+            "config" : {
+                "hostPort": "http://nohost:6000",
+                "username": "randomName"
+            }
+        }
+    },
+    "athena": {
+        "service_name": "Athena",
+        "connection": {
+            "config": {
+                "s3StagingDir": "s3 staging dir",
+                "awsConfig": "aws_config",
+                "workgroup": "work_group"
+            }
+        }
+    },
+    "bigquery": {
+        "service_name": "BigQuery",
+        "connection": {
+            "config":{
+                "credentials": "credentials"
+            }
+        }
+    },
+    "db2": {
+        "service_name": "Db2",
+        "connection": {
+            "config": {
+                "hostPort": "http://nohost:6000",
+                "username": "username"
+            }
+        }
+    },
+    "druid": {
+        "service_name": "Druid",
+        "connection": {
+            "config": {
+                "hostPort": "http://nohost:6000"
+            }
+        }
+    },
+    "salesforce": {
+        "service_name": "Salesforce",
+        "connection": {
+            "config": {
+                "username": "randomName"
+            }
+        } 
+    },
+    "oracle": {
+        "service_name": "Oracle",
+        "connection": {
+            "config": {
+                "hostPort": "http://nohost:6000",
+                "username":"randomName",
+                "oracleConnectionType": {
+                    "oracleServiceName": {
+                        "title": "orcale_ser_name"
+                    }
+                }
+            }
+        }
+    },
+    "glue": {
+        "service_name": "Glue",
+        "connection": {
+            "config": {
+                "awsConfig": "aws_config",
+                "storageServiceName": "glue_stroage_name"
+            }
+        }
+    },
+    "snowflake": {
+        "service_nmae": "Snowflake",
+        "connection": {
+            "config": {
+                "username": "randomName",
+                "account": "snow_fl_acco",
+                "warehouse": "compute"
+            }
+        }
     }
 }
