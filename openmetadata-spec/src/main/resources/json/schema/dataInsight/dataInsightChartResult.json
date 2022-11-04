@@ -24,13 +24,15 @@
     },
     "data": {
       "description": "Array of consumable data.",
-      "type": "object",
-      "oneOf": [
-        { "$ref": "./type/percentageOfEntitiesWithDescriptionByType.json" },
-        { "$ref": "./type/percentageOfEntitiesWithOwnerByType.json" },
-        { "$ref": "./type/totalEntitiesByTier.json" },
-        { "$ref": "./type/totalEntitiesByType.json" }
-      ]
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {"$ref": "./type/percentageOfEntitiesWithDescriptionByType.json"},
+          {"$ref": "./type/percentageOfEntitiesWithOwnerByType.json"},
+          {"$ref": "./type/totalEntitiesByTier.json"},
+          {"$ref": "./type/totalEntitiesByType.json"}
+        ]
+      }
     }
   },
   "required": ["chartType"],
