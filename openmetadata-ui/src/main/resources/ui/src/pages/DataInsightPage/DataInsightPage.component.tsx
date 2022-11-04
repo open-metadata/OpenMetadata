@@ -12,8 +12,8 @@
  */
 
 import { Button, Card, Col, Radio, Row, Select, Space, Typography } from 'antd';
-import React, { useState } from 'react';
-import { DAY_FILTER, TEAM_FILTER, TIER_FILTER } from './DataInsight.mock';
+import React, { useEffect, useState } from 'react';
+import { TEAM_FILTER } from './DataInsight.mock';
 
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
@@ -23,11 +23,23 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
-import { DATA_INSIGHT_TAB } from '../../constants/DataInsight.constants';
+import {
+  DATA_INSIGHT_TAB,
+  DAY_FILTER,
+  INITIAL_CHART_FILTER,
+  TIER_FILTER,
+} from '../../constants/DataInsight.constants';
+import { ChartFilter } from '../../interface/data-insight.interface';
 import './DataInsight.less';
 
 const DataInsightPage = () => {
   const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.Datasets);
+  const [chartFilter, setChartFilter] =
+    useState<ChartFilter>(INITIAL_CHART_FILTER);
+
+  useEffect(() => {
+    setChartFilter(INITIAL_CHART_FILTER);
+  }, []);
 
   return (
     <PageLayoutV1>
@@ -40,7 +52,7 @@ const DataInsightPage = () => {
                 Keep track of OKRs with charts built around OpenMetadata health.
               </Typography.Text>
             </div>
-            <Button type="primary">Add KPIs</Button>
+            <Button type="primary">Add KPI</Button>
           </Space>
         </Col>
         <Col span={24}>
@@ -50,7 +62,7 @@ const DataInsightPage = () => {
                 <Select options={TEAM_FILTER} placeholder="Select teams" />
                 <Select options={TIER_FILTER} placeholder="Select tier" />
               </Space>
-              <Select options={DAY_FILTER} value="7" />
+              <Select options={DAY_FILTER} value={7} />
             </Space>
           </Card>
         </Col>
@@ -71,7 +83,7 @@ const DataInsightPage = () => {
         {activeTab === DATA_INSIGHT_TAB.Datasets && (
           <>
             <Col span={24}>
-              <TotalEntityInsight />
+              <TotalEntityInsight chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
               <DescriptionInsight />
