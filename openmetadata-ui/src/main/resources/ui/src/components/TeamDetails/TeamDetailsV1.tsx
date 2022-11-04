@@ -35,7 +35,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { reactivateTeam } from '../../axiosAPIs/teamsAPI';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -58,11 +57,11 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
-import jsonData from '../../jsons/en';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import {
   commonUserDetailColumns,
   getEntityName,
+  getTierFromEntityInfo,
   hasEditAccess,
 } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
@@ -72,7 +71,6 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTierFromSearchTableTags } from '../../utils/TableUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -556,7 +554,9 @@ const TeamDetailsV1 = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-user-permission-error']
+        t('message.entity-fetch-error', {
+          entity: 'User Permissions',
+        })
       );
     } finally {
       setLoading(false);
@@ -807,7 +807,7 @@ const TeamDetailsV1 = ({
    * Check for current team datasets and return the dataset cards
    * @returns - dataset cards
    */
-  const getDatasetCards = () => {
+  const getAssetDetailCards = () => {
     const ownData = filterEntityAssets(currentTeam?.owns || []);
 
     if (ownData.length <= 0) {
@@ -845,14 +845,7 @@ const TeamDetailsV1 = ({
               service={entity.service}
               serviceType={entity.serviceType || '--'}
               tags={entity.tags}
-              tier={
-                (
-                  entity.tier?.tagFQN ||
-                  getTierFromSearchTableTags(
-                    (entity.tags || []).map((tag) => tag.tagFQN)
-                  )
-                )?.split(FQN_SEPARATOR_CHAR)[1]
-              }
+              tier={getTierFromEntityInfo(entity)}
               usage={entity.weeklyPercentileRank}
             />
           </div>
@@ -1141,7 +1134,7 @@ const TeamDetailsV1 = ({
 
               {currentTab === 2 && getUserCards()}
 
-              {currentTab === 3 && getDatasetCards()}
+              {currentTab === 3 && getAssetDetailCards()}
 
               {currentTab === 4 &&
                 (isEmpty(currentTeam.defaultRoles || []) ? (

@@ -14,8 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { FormattedTableData, SearchResponse } from 'Models';
+import { AssetsDataType, FormattedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -51,8 +52,6 @@ import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { EntitiesType } from '../../interface/teamsAndUsers.interface';
-import jsonData from '../../jsons/en';
 import { formatDataResponse, formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -63,6 +62,7 @@ import AddUsersModalV1 from './AddUsersModalV1';
 
 const TeamsPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -82,7 +82,7 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [assets, setSssets] = useState<EntitiesType>({
+  const [assets, setAssets] = useState<AssetsDataType>({
     data: [],
     total: 0,
     currPage: 1,
@@ -164,10 +164,7 @@ const TeamsPage = () => {
         setAllTeam(modifiedTeams);
       }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
     loading && setIsDataLoading((isDataLoading) => --isDataLoading);
   };
@@ -215,13 +212,10 @@ const TeamsPage = () => {
         getCurrentTeamUsers(data.name);
         setSelectedTeam(data);
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        throw t('server.unexpected-response');
       }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
     setIsPageLoading(false);
   };
@@ -250,7 +244,9 @@ const TeamsPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['create-team-error']
+        t('message.entity-creation-error', {
+          entity: 'Team',
+        })
       );
     } finally {
       setIsLoading(false);
@@ -295,13 +291,15 @@ const TeamsPage = () => {
             }
             resolve();
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-team-error']
+            t('message.entity-updation-error', {
+              entity: 'Team',
+            })
           );
           reject();
         });
@@ -330,16 +328,13 @@ const TeamsPage = () => {
         if (res) {
           AppState.updateUserDetails(res);
           fetchTeamByFqn(selectedTeam.name);
-          showSuccessToast(
-            jsonData['api-success-messages']['join-team-success'],
-            2000
-          );
+          showSuccessToast(t('message.join-team-success'), 2000);
         } else {
-          throw jsonData['api-error-messages']['join-team-error'];
+          throw t('message.join-team-error');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['join-team-error']);
+        showErrorToast(err, t('message.join-team-error'));
         // setIsRightPanelLoading(false);
       });
   };
@@ -353,20 +348,14 @@ const TeamsPage = () => {
           if (res) {
             AppState.updateUserDetails(res);
             fetchTeamByFqn(selectedTeam.name);
-            showSuccessToast(
-              jsonData['api-success-messages']['leave-team-success'],
-              2000
-            );
+            showSuccessToast(t('message.leave-team-success'), 2000);
             resolve();
           } else {
-            throw jsonData['api-error-messages']['leave-team-error'];
+            throw t('message.leave-team-error');
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['leave-team-error']
-          );
+          showErrorToast(err, t('message.leave-team-error'));
           // setIsRightPanelLoading(false);
         });
     });
@@ -388,13 +377,15 @@ const TeamsPage = () => {
           if (res) {
             fetchTeamByFqn(res.name);
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-team-error']
+            t('message.entity-updation-error', {
+              entity: 'Team',
+            })
           );
         })
         .finally(() => {
@@ -424,13 +415,15 @@ const TeamsPage = () => {
           if (res) {
             fetchTeamByFqn(res.name);
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-team-error']
+            t('message.entity-updation-error', {
+              entity: 'Team',
+            })
           );
         })
         .finally(() => {
@@ -462,7 +455,7 @@ const TeamsPage = () => {
         if (response) {
           fetchTeamByFqn(response.name);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -497,7 +490,7 @@ const TeamsPage = () => {
         if (hits?.length > 0) {
           const data = formatDataResponse(hits);
           const total = res.data.hits.total.value;
-          setSssets({
+          setAssets({
             data,
             total,
             currPage: assets.currPage,
@@ -505,7 +498,7 @@ const TeamsPage = () => {
         } else {
           const data = [] as FormattedTableData[];
           const total = 0;
-          setSssets({
+          setAssets({
             data,
             total,
             currPage: assets.currPage,
@@ -515,13 +508,15 @@ const TeamsPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['elastic-search-error']
+          t('message.entity-fetch-error', {
+            entity: 'Team Assets',
+          })
         );
       });
   };
 
   const handleAssetsPaginate = (page: string | number) => {
-    setSssets((pre) => ({ ...pre, currPage: page as number }));
+    setAssets((pre) => ({ ...pre, currPage: page as number }));
   };
 
   useEffect(() => {
