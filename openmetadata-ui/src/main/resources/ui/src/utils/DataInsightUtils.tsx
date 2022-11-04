@@ -106,7 +106,7 @@ const prepareGraphData = (
   });
 };
 
-export const getChartGraphData = (
+export const getGraphDataByEntityType = (
   rawData: DataInsightChartResult['data'] = [],
   dataInsightChartType: DataInsightChartType
 ) => {

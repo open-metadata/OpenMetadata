@@ -41,7 +41,7 @@ import {
 import { ChartFilter } from '../../interface/data-insight.interface';
 import {
   CustomTooltip,
-  getChartGraphData,
+  getGraphDataByEntityType,
   renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -58,7 +58,7 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { data, entities } = useMemo(() => {
-    return getChartGraphData(
+    return getGraphDataByEntityType(
       totalEntitiesByType?.data ?? [],
       DataInsightChartType.TotalEntitiesByType
     );
