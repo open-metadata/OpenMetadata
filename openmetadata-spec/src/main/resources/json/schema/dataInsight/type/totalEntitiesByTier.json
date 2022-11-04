@@ -24,5 +24,6 @@
       "description": "Total count of entity for the given entity type",
       "type": "number"
     }
-  }
+  },
+  "additionalProperties": false
 }

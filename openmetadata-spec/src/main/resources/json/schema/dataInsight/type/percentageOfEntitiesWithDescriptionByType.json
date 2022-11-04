@@ -28,5 +28,6 @@
       "description": "decimal fraction of entity with completed description",
       "type": "number"
     }
-  }
+  },
+  "additionalProperties": false
 }
