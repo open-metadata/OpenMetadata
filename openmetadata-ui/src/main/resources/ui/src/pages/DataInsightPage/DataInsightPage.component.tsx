@@ -23,10 +23,11 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
+import { DATA_INSIGHT_TAB } from '../../constants/DataInsight.constants';
 import './DataInsight.less';
 
 const DataInsightPage = () => {
-  const [activeTab, setActiveTab] = useState('Datasets');
+  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.Datasets);
 
   return (
     <PageLayoutV1>
@@ -34,9 +35,7 @@ const DataInsightPage = () => {
         <Col span={24}>
           <Space className="w-full justify-between">
             <div data-testid="data-insight-header">
-              <Typography.Title level={5} style={{ marginBottom: '0px' }}>
-                Data Insight
-              </Typography.Title>
+              <Typography.Title level={5}>Data Insight</Typography.Title>
               <Typography.Text className="data-insight-label-text">
                 Keep track of OKRs with charts built around OpenMetadata health.
               </Typography.Text>
@@ -64,12 +63,12 @@ const DataInsightPage = () => {
             className="data-insight-switch"
             data-testid="data-insight-switch"
             optionType="button"
-            options={['Datasets', 'Web Analytics']}
+            options={Object.values(DATA_INSIGHT_TAB)}
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
           />
         </Col>
-        {activeTab === 'Datasets' && (
+        {activeTab === DATA_INSIGHT_TAB.Datasets && (
           <>
             <Col span={24}>
               <TotalEntityInsight />
@@ -85,7 +84,7 @@ const DataInsightPage = () => {
             </Col>
           </>
         )}
-        {activeTab === 'Web Analytics' && (
+        {activeTab === DATA_INSIGHT_TAB['Web Analytics'] && (
           <>
             <Col span={24}>
               <TopViewEntities />

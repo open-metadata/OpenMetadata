@@ -58,3 +58,8 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
   'Tier.Tier5': '#699994',
   'No Tier': '#6A86EB',
 };
+
+export const DATA_INSIGHT_TAB = {
+  Datasets: 'Datasets',
+  'Web Analytics': 'Web Analytics',
+};
