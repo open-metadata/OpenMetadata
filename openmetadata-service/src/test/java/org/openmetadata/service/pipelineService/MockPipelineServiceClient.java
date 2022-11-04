@@ -1,10 +1,12 @@
 package org.openmetadata.service.pipelineService;
 
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.service.util.PipelineServiceClient;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
@@ -40,7 +42,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
     return null;
   }
 

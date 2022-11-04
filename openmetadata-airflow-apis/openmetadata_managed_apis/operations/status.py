@@ -15,11 +15,12 @@ import json
 
 from airflow import settings
 from airflow.models import DagModel, DagRun
+from airflow.utils.state import DagRunState
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse, ResponseFormat
 
 
-def status(dag_id: str) -> Response:
+def status(dag_id: str, only_queued: str = None) -> Response:
     """
     Validate that the DAG is registered by Airflow.
     If exists, check the DagRun
@@ -34,15 +35,18 @@ def status(dag_id: str) -> Response:
         if not dag_model:
             return ApiResponse.not_found(f"DAG {dag_id} not found.")
 
-        runs = (
+        query = (
             session.query(DagRun)
             .filter(
                 DagRun.dag_id == dag_id,
             )
             .order_by(DagRun.start_date.desc())
-            .limit(10)
-            .all()
         )
+
+        if only_queued:
+            query = query.filter(DagRun.state == DagRunState.QUEUED)
+
+        runs = query.limit(10).all()
 
         formatted = [
             json.loads(ResponseFormat.format_dag_run_state(dag_run).json())
