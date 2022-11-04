@@ -17,18 +17,18 @@ import { LegendProps, Surface, TooltipProps } from 'recharts';
 import { TotalEntitiesByType } from '../generated/dataInsight/type/totalEntitiesByType';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
 
-export const renderLegend = (legendData: LegendProps, total: string) => {
+export const renderLegend = (legendData: LegendProps, latest: string) => {
   const { payload = [] } = legendData;
 
   return (
     <>
       <Typography.Text className="data-insight-label-text">
-        Total
+        Latest
       </Typography.Text>
       <Typography
         className="font-semibold text-2xl"
         style={{ margin: '5px 0px' }}>
-        {total}
+        {latest}
       </Typography>
       <ul className="mr-2">
         {payload.map((entry, index) => (
