@@ -48,6 +48,7 @@ from metadata.clients.connection_clients import (
     NifiClientWrapper,
     PowerBiClient,
     RedashClient,
+    SageMakerClient,
     SalesforceClient,
     SupersetClient,
     TableauClient,
@@ -121,6 +122,9 @@ from metadata.generated.schema.entity.services.connections.messaging.redpandaCon
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
+from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
+    SageMakerConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
@@ -131,7 +135,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.backendConne
     BackendConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
+    CloudDagster,
     DagsterConnection,
+    LocalDagtser,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.domopipelineConnection import (
     DomoPipelineConnection,
@@ -285,8 +291,8 @@ def _(
 ) -> DynamoClient:
     from metadata.clients.aws_client import AWSClient
 
-    dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
-    return dynomo_connection
+    dynamo_connection = AWSClient(connection.awsConfig).get_dynamo_client()
+    return dynamo_connection
 
 
 @get_connection.register
@@ -496,7 +502,7 @@ def _(connection: DynamoClient) -> None:
 def _(connection: GlueDBClient) -> None:
     """
     Test that we can connect to the source using the given aws resource
-    :param engine: boto cliet to test
+    :param engine: boto client to test
     :return: None or raise an exception if we cannot connect
     """
     from botocore.client import ClientError
@@ -949,6 +955,36 @@ def _(connection: MlflowClientWrapper) -> None:
 
 @get_connection.register
 def _(
+    connection: SageMakerConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> SageMakerClient:
+    from metadata.clients.aws_client import AWSClient
+
+    sagemaker_connection = AWSClient(connection.awsConfig).get_sagemaker_client()
+    return sagemaker_connection
+
+
+@test_connection.register
+def _(connection: SageMakerClient) -> None:
+    """
+    Test that we can connect to the SageMaker source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_models()
+    except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(
     connection: NifiConnection, verbose: bool = False
 ):  # pylint: disable=unused-argument
 
@@ -983,35 +1019,94 @@ def _(_: BackendConnection, verbose: bool = False):  # pylint: disable=unused-ar
         return session.get_bind()
 
 
-@get_connection.register
-def _(connection: DagsterConnection) -> None:
-    from urllib.parse import urlparse
-
-    from dagster_graphql import DagsterGraphQLClient
-
-    try:
-        host_port = connection.hostPort
-        host_port = urlparse(host_port)
-        connection = DagsterGraphQLClient(
-            hostname=host_port.hostname, port_number=host_port.port
-        )
-        return DagsterClient(connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
 @test_connection.register
 def _(connection: DagsterClient) -> None:
     from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
 
     try:
-        connection.client._execute(  # pylint: disable=protected-access
-            TEST_QUERY_GRAPHQL
-        )
+        config = connection.config.configSource
+        if isinstance(config, LocalDagtser):
+            from urllib.parse import urlparse
+
+            from dagster_graphql import DagsterGraphQLClient
+
+            hostPort = config.hostPort  # pylint: disable=invalid-name
+            hostPort = urlparse(hostPort)  # pylint: disable=invalid-name
+            local_dagster = DagsterGraphQLClient(
+                hostname=hostPort.hostname, port_number=hostPort.port
+            )
+
+            local_dagster._execute(  # pylint: disable=protected-access
+                TEST_QUERY_GRAPHQL
+            )
+        if isinstance(config, CloudDagster):
+            from dagster_graphql import DagsterGraphQLClient
+            from gql.transport.requests import RequestsHTTPTransport
+
+            url = config.host
+            cloud_dagster = DagsterGraphQLClient(
+                url,
+                transport=RequestsHTTPTransport(
+                    url=url + "/graphql",
+                    headers={
+                        "Dagster-Cloud-Api-Token": config.token.get_secret_value()
+                    },
+                ),
+            )
+
+            cloud_dagster._execute(  # pylint: disable=protected-access
+                TEST_QUERY_GRAPHQL
+            )
+
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+
+@singledispatch
+def get_dagster_client(config):
+    """
+    Method to retrieve dagster client from the config
+    """
+    if config:
+        msg = f"Config not implemented for type {type(config)}: {config}"
+        raise NotImplementedError(msg)
+
+
+@get_connection.register
+def _(connection: DagsterConnection) -> DagsterClient:
+    dagster_connection = get_dagster_client(connection.configSource)
+    return DagsterClient(client=dagster_connection, config=connection)
+
+
+@get_dagster_client.register
+def _(config: LocalDagtser):
+    from urllib.parse import urlparse
+
+    from dagster_graphql import DagsterGraphQLClient
+
+    host_port = config.hostPort
+    host_port = urlparse(host_port)
+    local_dagster = DagsterGraphQLClient(
+        hostname=host_port.hostname, port_number=host_port.port
+    )
+    return local_dagster
+
+
+@get_dagster_client.register
+def _(config: CloudDagster):
+    from dagster_graphql import DagsterGraphQLClient
+    from gql.transport.requests import RequestsHTTPTransport
+
+    url = config.host
+    cloud_dagster = DagsterGraphQLClient(
+        url,
+        transport=RequestsHTTPTransport(
+            url=f"{url}/graphql",
+            headers={"Dagster-Cloud-Api-Token": config.token.get_secret_value()},
+        ),
+    )
+    return cloud_dagster
 
 
 @get_connection.register

@@ -49,3 +49,11 @@ SET json = JSONB_SET(json::jsonb, '{provider}', '"system"', true)
 WHERE fullyQualifiedName in ('PersonalData.Personal', 'PersonalData.SpecialCategory',
 'PII.None', 'PII.NonSensitive', 'PII.Sensitive',
 'Tier.Tier1', 'Tier.Tier2', 'Tier.Tier3', 'Tier.Tier4', 'Tier.Tier5');
+
+UPDATE pipeline_service_entity 
+SET json = jsonb_set(json::jsonb,'{connection,config}',json::jsonb #>'{connection,config}' || jsonb_build_object('configSource',jsonb_build_object('hostPort',json #>'{connection,config,hostPort}')), true)
+where servicetype = 'Dagster';
+
+UPDATE pipeline_service_entity 
+SET json = json::jsonb #- '{connection,config,hostPort}' #- '{connection,config,numberOfStatus}'
+where servicetype = 'Dagster';

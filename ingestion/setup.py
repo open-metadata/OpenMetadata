@@ -82,6 +82,7 @@ plugins: Dict[str, Set[str]] = {
     "elasticsearch": {"elasticsearch==7.13.1", "requests-aws4auth==1.1.2"},
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
+    "sagemaker": {"boto3~=1.19.12"},
     "hive": {
         "pyhive~=0.6.5",
         "thrift~=0.13.0",
