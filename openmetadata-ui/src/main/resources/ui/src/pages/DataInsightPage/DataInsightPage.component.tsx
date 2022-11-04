@@ -86,7 +86,7 @@ const DataInsightPage = () => {
               <TotalEntityInsight chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <DescriptionInsight />
+              <DescriptionInsight chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
               <OwnerInsight />

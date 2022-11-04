@@ -12,6 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
+import { isInteger } from 'lodash';
 import React from 'react';
 import { LegendProps, Surface, TooltipProps } from 'recharts';
 import {
@@ -69,7 +70,8 @@ export const CustomTooltip = (props: TooltipProps<any, any>) => {
               <rect fill={entry.color} height="14" rx="2" width="14" />
             </Surface>
             <span>
-              {entry.dataKey} - {entry.value}
+              {entry.dataKey} -{' '}
+              {isInteger(entry.value) ? entry.value : entry.value?.toFixed(2)}
             </span>
           </li>
         ))}

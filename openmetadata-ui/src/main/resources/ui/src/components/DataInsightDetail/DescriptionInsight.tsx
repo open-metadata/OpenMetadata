@@ -12,8 +12,9 @@
  */
 
 import { Card, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
-import React from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -26,23 +27,73 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import {
   BAR_CHART_MARGIN,
   BAR_SIZE,
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
-import { getEntityDescriptionData } from '../../pages/DataInsightPage/DataInsight.mock';
-import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
+import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
+import {
+  DataInsightChartResult,
+  DataInsightChartType,
+} from '../../generated/dataInsight/dataInsightChartResult';
+import { ChartFilter } from '../../interface/data-insight.interface';
+import {
+  CustomTooltip,
+  getGraphDataByEntityType,
+  renderLegend,
+} from '../../utils/DataInsightUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 
-const DescriptionInsight = () => {
-  const { data, entities } = getEntityDescriptionData();
+interface Props {
+  chartFilter: ChartFilter;
+}
+
+const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
+  const [totalEntitiesDescriptionByType, setTotalEntitiesDescriptionByType] =
+    useState<DataInsightChartResult>();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const { data, entities } = useMemo(() => {
+    return getGraphDataByEntityType(
+      totalEntitiesDescriptionByType?.data ?? [],
+      DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
+    );
+  }, [totalEntitiesDescriptionByType]);
+
   const { t } = useTranslation();
+
+  const fetchTotalEntitiesDescriptionByType = async () => {
+    setIsLoading(true);
+    try {
+      const params = {
+        ...chartFilter,
+        dataInsightChartName:
+          DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+        dataReportIndex: DataReportIndex.EntityReportDataIndex,
+      };
+      const response = await getAggregateChartData(params);
+
+      setTotalEntitiesDescriptionByType(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTotalEntitiesDescriptionByType();
+  }, [chartFilter]);
 
   return (
     <Card
       className="data-insight-card"
       data-testid="entity-description-percentage-card"
+      loading={isLoading}
       title={
         <>
           <Typography.Title level={5}>
