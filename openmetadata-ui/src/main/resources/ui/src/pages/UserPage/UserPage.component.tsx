@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormattedTableData, SearchResponse } from 'Models';
 import React, {
@@ -352,7 +352,7 @@ const UserPage = () => {
   }, [tab]);
 
   useEffect(() => {
-    if (!isEmpty(userData) && !isUndefined(userData)) {
+    if (!isEmpty(userData)) {
       fetchEntities(true, setOwnedEntities);
       fetchEntities(false, setFollowingEntities);
     }
