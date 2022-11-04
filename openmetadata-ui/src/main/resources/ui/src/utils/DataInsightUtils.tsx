@@ -14,7 +14,10 @@
 import { Card, Typography } from 'antd';
 import React from 'react';
 import { LegendProps, Surface, TooltipProps } from 'recharts';
-import { TotalEntitiesByType } from '../generated/dataInsight/type/totalEntitiesByType';
+import {
+  DataInsightChartResult,
+  DataInsightChartType,
+} from '../generated/dataInsight/dataInsightChartResult';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
 
 export const renderLegend = (legendData: LegendProps, latest: string) => {
@@ -86,7 +89,7 @@ const prepareGraphData = (
   timestamps: string[],
   rawData: (
     | {
-        [x: string]: string | number;
+        [x: string]: string | number | undefined;
         timestamp: string;
       }
     | undefined
@@ -103,14 +106,16 @@ const prepareGraphData = (
   });
 };
 
-export const getEntityCountGraphDataByType = (
-  rawData: TotalEntitiesByType[]
+export const getChartGraphData = (
+  rawData: DataInsightChartResult['data'] = [],
+  dataInsightChartType: DataInsightChartType
 ) => {
   const entities: string[] = [];
   const timestamps: string[] = [];
 
   const filteredData = rawData.map((data) => {
-    if (data.timestamp && data.entityType && data.entityCount) {
+    if (data.timestamp && data.entityType) {
+      let value;
       const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
       if (!entities.includes(data.entityType ?? '')) {
         entities.push(data.entityType ?? '');
@@ -120,9 +125,27 @@ export const getEntityCountGraphDataByType = (
         timestamps.push(timestamp);
       }
 
+      switch (dataInsightChartType) {
+        case DataInsightChartType.TotalEntitiesByType:
+          value = data.entityCount;
+
+          break;
+        case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+          value = data.completedDescriptionFraction;
+
+          break;
+        case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+          value = data.hasOwnerFraction;
+
+          break;
+
+        default:
+          break;
+      }
+
       return {
         timestamp: timestamp,
-        [data.entityType]: data.entityCount,
+        [data.entityType]: value,
       };
     }
 
