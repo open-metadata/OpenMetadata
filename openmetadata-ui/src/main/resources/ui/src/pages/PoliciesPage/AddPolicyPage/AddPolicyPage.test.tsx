@@ -78,7 +78,7 @@ describe('Test Add Policy Page', () => {
 
     const ruleName = await screen.findByTestId('rule-name');
 
-    const resources = await screen.findByTestId('resuorces');
+    const resources = await screen.findByTestId('resources');
     const operations = await screen.findByTestId('operations');
 
     const effect = await screen.findByTestId('effect');

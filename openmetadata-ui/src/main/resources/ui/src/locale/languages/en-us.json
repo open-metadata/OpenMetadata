@@ -201,7 +201,14 @@
     "end-date": "End Date",
     "show-deleted": "Show deleted",
     "add-bot": "Add Bot",
-    "search-for-bots": "Search for bots..."
+    "search-for-bots": "Search for bots...",
+    "condition-is-invalid": "Condition is invalid",
+    "rule-name": "Rule Name",
+    "write-your-description": "Write your description",
+    "select-resource": "Select Resources",
+    "select-rule-effect": "Select Rule Effect",
+    "field-required": "{{field}} is required",
+    "field-required-plural": "{{field}} are required"
   },
   "message": {
     "service-email-required": "Service account Email is required",
