@@ -10,6 +10,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -17,6 +18,7 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.PipelineServiceVersionException;
@@ -146,7 +148,7 @@ public abstract class PipelineServiceClient {
   public abstract String deletePipeline(String pipelineName);
 
   /* Get the status of a deployed pipeline */
-  public abstract IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline);
+  public abstract List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline);
 
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
   public abstract IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline);

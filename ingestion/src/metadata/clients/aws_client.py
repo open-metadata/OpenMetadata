@@ -21,6 +21,7 @@ from metadata.clients.connection_clients import (
     GlueDBClient,
     GluePipelineClient,
     KinesisClient,
+    SageMakerClient,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import utils_logger
@@ -84,7 +85,7 @@ class AWSClient:
             )
         return session.resource(service_name=service_name)
 
-    def get_dynomo_client(self) -> DynamoClient:
+    def get_dynamo_client(self) -> DynamoClient:
         return DynamoClient(self.get_resource("dynamodb"))
 
     def get_glue_db_client(self) -> GlueDBClient:
@@ -92,6 +93,9 @@ class AWSClient:
 
     def get_glue_pipeline_client(self) -> GluePipelineClient:
         return GluePipelineClient(self.get_client("glue"))
+
+    def get_sagemaker_client(self) -> SageMakerClient:
+        return SageMakerClient(self.get_client("sagemaker"))
 
     def get_kinesis_client(self) -> KinesisClient:
         return KinesisClient(self.get_client("kinesis"))

@@ -372,6 +372,8 @@ By updating the YAML configuration, you will be able to extract metadata from di
 To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same.
 However, the `sourceConfig` is now modeled after this JSON Schema.
 
+Note: To get Query Usage and Lineage details, need a Azure Databricks Premium account.
+
 ### 1. Define the YAML Config
 
 This is a sample config for Databricks Usage:
