@@ -514,7 +514,9 @@ class AmundsenSource(Source[Entity]):
                 service_type: dict = json.load(file)
 
         except FileNotFoundError as err:
-            raise FileNotFoundError(f"Could not get service mapping file from {file_path}")
+            raise FileNotFoundError(
+                f"Could not get service mapping file from {file_path} - {err}"
+            )
 
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
