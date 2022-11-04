@@ -13,6 +13,7 @@
 
 import { act, queryByAttribute, render, screen } from '@testing-library/react';
 import React from 'react';
+import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
 
 import DescriptionInsight from './DescriptionInsight';
 
@@ -63,7 +64,9 @@ jest.mock('react-i18next', () => ({
 describe('Test DescriptionInsight Component', () => {
   it('Should render the graph', async () => {
     await act(async () => {
-      const { container } = render(<DescriptionInsight />);
+      const { container } = render(
+        <DescriptionInsight chartFilter={INITIAL_CHART_FILTER} />
+      );
       const card = screen.getByTestId('entity-description-percentage-card');
 
       const graph = queryByAttribute(
