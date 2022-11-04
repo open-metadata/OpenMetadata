@@ -261,8 +261,8 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             timestamp = event.timestamp.__root__  # type: ignore
 
             if not user_details.get(user_id):
-                user_details = self._get_user_details(user_id)
-                user_details[user_id] = user_details
+                user_details_data = self._get_user_details(user_id)
+                user_details[user_id] = user_details_data
 
             if not refined_data.get(user_id):
                 refined_data[user_id] = {

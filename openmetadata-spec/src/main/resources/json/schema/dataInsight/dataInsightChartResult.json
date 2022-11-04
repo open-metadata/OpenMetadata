@@ -13,7 +13,11 @@
         "TotalEntitiesByType",
         "TotalEntitiesByTier",
         "PercentageOfEntitiesWithDescriptionByType",
-        "PercentageOfEntitiesWithOwnerByType"
+        "PercentageOfEntitiesWithOwnerByType",
+        "DailyActiveUsers",
+        "MostActiveUsers",
+        "MostViewedEntities",
+        "PageViewsByEntities"
       ]
     }
   },
@@ -30,7 +34,11 @@
           {"$ref": "./type/percentageOfEntitiesWithDescriptionByType.json"},
           {"$ref": "./type/percentageOfEntitiesWithOwnerByType.json"},
           {"$ref": "./type/totalEntitiesByTier.json"},
-          {"$ref": "./type/totalEntitiesByType.json"}
+          {"$ref": "./type/totalEntitiesByType.json"},
+          {"$ref": "./type/dailyActiveUsers.json"},
+          {"$ref": "./type/mostActiveUsers.json"},
+          {"$ref": "./type/mostViewedEntities.json"},
+          {"$ref": "./type/pageViewsByEntities.json"}
         ]
       }
     }

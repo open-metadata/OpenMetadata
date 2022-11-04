@@ -19,6 +19,8 @@ public class DataInsightAggregatorFactory {
         return new TotalEntitiesAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TIER:
         return new TotalEntitiesByTierAggregator(aggregations, dataInsightChartType);
+      case DAILY_ACTIVE_USERS:
+        return new DailyActiveUsersAggregator(aggregations, dataInsightChartType);
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));

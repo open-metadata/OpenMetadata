@@ -115,7 +115,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
 
     switch (dataInsightChartName) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE);
+        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE).size(1000);
         sumAggregationBuilder =
             AggregationBuilders.sum(COMPLETED_DESCRIPTION_FRACTION).field(DATA_COMPLETED_DESCRIPTIONS);
         return dateHistogramAggregationBuilder.subAggregation(
@@ -123,20 +123,22 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE);
+        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE).size(1000);
         sumAggregationBuilder = AggregationBuilders.sum(HAS_OWNER_FRACTION).field(DATA_HAS_OWNER);
         return dateHistogramAggregationBuilder.subAggregation(
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
       case TOTAL_ENTITIES_BY_TIER:
-        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TIER).field(DATA_ENTITY_TIER);
+        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TIER).field(DATA_ENTITY_TIER).size(1000);
         return dateHistogramAggregationBuilder.subAggregation(
             termsAggregationBuilder.subAggregation(sumEntityCountAggregationBuilder));
       case TOTAL_ENTITIES_BY_TYPE:
-        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE);
+        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE).size(1000);
         return dateHistogramAggregationBuilder.subAggregation(
             termsAggregationBuilder.subAggregation(sumEntityCountAggregationBuilder));
+      case DAILY_ACTIVE_USERS:
+        return dateHistogramAggregationBuilder;
       default:
         throw new IllegalArgumentException(String.format("Invalid dataInsightChartType name %s", dataInsightChartName));
     }
