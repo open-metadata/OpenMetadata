@@ -207,8 +207,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                 .listBetweenTimestampsByFQN(
                     ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
             PipelineStatus.class);
+    List<PipelineStatus> allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    allPipelineStatusList.addAll(pipelineStatusList);
     return new ResultList<>(
-        pipelineStatusList, String.valueOf(startTs), String.valueOf(endTs), pipelineStatusList.size());
+        allPipelineStatusList, String.valueOf(startTs), String.valueOf(endTs), allPipelineStatusList.size());
   }
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {

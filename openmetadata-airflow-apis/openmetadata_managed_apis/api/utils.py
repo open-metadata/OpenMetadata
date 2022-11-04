@@ -78,6 +78,13 @@ def get_arg_dag_id() -> Optional[str]:
     return clean_dag_id(raw_dag_id)
 
 
+def get_arg_only_queued() -> Optional[str]:
+    """
+    Try to fetch the only_queued from the args
+    """
+    return get_request_arg(request, "only_queued", raise_missing=False)
+
+
 def get_request_dag_id() -> Optional[str]:
     """
     Try to fetch the dag_id from the JSON request

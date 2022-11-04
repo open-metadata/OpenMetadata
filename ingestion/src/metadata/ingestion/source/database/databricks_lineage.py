@@ -57,14 +57,17 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
             try:
-                data = self.client.list_query_history()
+                data = self.client.list_query_history(
+                    start_date=self.start,
+                    end_date=self.end,
+                )
                 for row in data:
                     try:
                         yield TableQuery(
-                            query=row["query_text"],
-                            userName=row["user_name"],
-                            startTime=row["query_start_time_ms"],
-                            endTime=row["execution_end_time_ms"],
+                            query=row.get("query_text"),
+                            userName=row.get("user_name"),
+                            startTime=row.get("query_start_time_ms"),
+                            endTime=row.get("execution_end_time_ms"),
                             analysisDate=datetime.now(),
                             databaseName="default",  # In databricks databaseName is always default
                             serviceName=self.config.serviceName,

@@ -201,7 +201,14 @@
     "end-date": "End Date",
     "show-deleted": "Show deleted",
     "add-bot": "Add Bot",
-    "search-for-bots": "Search for bots..."
+    "search-for-bots": "Search for bots...",
+    "condition-is-invalid": "Condition is invalid",
+    "rule-name": "Rule Name",
+    "write-your-description": "Write your description",
+    "select-resource": "Select Resources",
+    "select-rule-effect": "Select Rule Effect",
+    "field-required": "{{field}} is required",
+    "field-required-plural": "{{field}} are required"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -221,8 +228,15 @@
     "entity-restored-success": "{{entity}} restored successfully",
     "entity-restored-error": "Error while restoring {{entity}}",
     "no-ingestion-available": "No ingestion data available",
-    "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the"
+    "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the",
+    "no-followed-entities": "You have not followed anything yet.",
+    "no-owned-entities": "You have not owned anything yet.",
+    "entity-fetch-error": "Error while fetching {{entity}}",
+    "feed-post-error": "Error while posting the message!",
+    "unexpected-error": "An unexpected error occurred."
   },
-  "server": {},
+  "server": {
+    "unexpected-response": "Unexpected response from server!"
+  },
   "url": {}
 }

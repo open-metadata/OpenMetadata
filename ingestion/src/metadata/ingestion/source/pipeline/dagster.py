@@ -16,6 +16,10 @@ from typing import Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     StatusType,
@@ -28,15 +32,23 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.graphql_queries import DAGSTER_PIPELINE_DETAILS_GRAPHQL
+from metadata.utils import fqn
+from metadata.utils.connections import get_connection
+from metadata.utils.graphql_queries import (
+    DAGSTER_PIPELINE_DETAILS_GRAPHQL,
+    GRAPHQL_QUERY_FOR_JOBS,
+    GRAPHQL_RUNS_QUERY,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -62,7 +74,8 @@ class DagsterSource(PipelineServiceSource):
         metadata_config: OpenMetadataConnection,
     ):
         self.service_connection = config.serviceConnection.__root__.config
-        self.client = get_connection(self.service_connection)
+        self.connection = get_connection(self.service_connection)
+        self.client = self.connection.client
         super().__init__(config, metadata_config)
         # Create the connection to the database
 
@@ -79,12 +92,47 @@ class DagsterSource(PipelineServiceSource):
     def get_run_list(self):
         try:
             # pylint: disable=protected-access
-            result = self.client.client._execute(DAGSTER_PIPELINE_DETAILS_GRAPHQL)
+            result = self.client._execute(DAGSTER_PIPELINE_DETAILS_GRAPHQL)
         except ConnectionError as conerr:
             logger.error(f"Cannot connect to dagster client {conerr}")
             logger.debug(f"Failed due to : {traceback.format_exc()}")
 
-        return result["assetNodes"]
+        return result["repositoriesOrError"]["nodes"]
+
+    def get_tag_labels(self, tags: OMetaTagAndCategory) -> Optional[List[TagLabel]]:
+
+        return [
+            TagLabel(
+                tagFQN=fqn.build(
+                    self.metadata,
+                    Tag,
+                    tag_category_name="DagsterTags",
+                    tag_name=tags,
+                ),
+                labelType="Automated",
+                state="Suggested",
+                source="Tag",
+            )
+        ]
+
+    def get_jobs(self, pipeline_name) -> Iterable[dict]:
+        try:
+            parameters = {
+                "selector": {
+                    "graphName": pipeline_name,
+                    "repositoryName": self.context.repository_name,
+                    "repositoryLocationName": self.context.repository_location,
+                }
+            }
+            jobs = self.client._execute(  # pylint: disable=protected-access
+                query=GRAPHQL_QUERY_FOR_JOBS, variables=parameters
+            )
+            return jobs["graphOrError"]
+        except Exception as err:
+            logger.error(f"Error while getting jobs {pipeline_name} - {err}")
+            logger.debug(traceback.format_exc())
+
+        return []
 
     def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
         """
@@ -92,50 +140,101 @@ class DagsterSource(PipelineServiceSource):
         :param serialized_dag: SerializedDAG from dagster metadata DB
         :return: Create Pipeline request with tasks
         """
+        jobs = self.get_jobs(pipeline_name=pipeline_details.get("name"))
         task_list: List[Task] = []
+        for job in jobs["solidHandles"]:
+            down_stream_task = []
+            for tasks in job.get("solid")["inputs"]:
+                for task in tasks["dependsOn"]:
+                    down_stream_task.append(task["solid"]["name"])
 
-        for job in pipeline_details["jobs"]:
             task = Task(
-                name=job["name"],
+                name=job["handleID"],
+                displayName=job["handleID"],
+                downstreamTasks=down_stream_task,
             )
+
             task_list.append(task)
 
         yield CreatePipelineRequest(
-            name=pipeline_details["opName"],
-            description=pipeline_details["opName"],
+            name=pipeline_details["id"],
+            displayName=pipeline_details["name"],
+            description=pipeline_details.get("description", ""),
             tasks=task_list,
             service=EntityReference(
                 id=self.context.pipeline_service.id.__root__, type="pipelineService"
             ),
+            tags=self.get_tag_labels(self.context.repository_name),
         )
 
-    def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
-        for job in pipeline_details["jobs"]:
-            for run in job["runs"]:
-                log_link = (
-                    f"{self.service_connection.hostPort}/instance/runs/{run['runId']}"
-                )
+    def yield_tag(self, _) -> OMetaTagAndCategory:  # pylint: disable=arguments-differ
+        tag_category = OMetaTagAndCategory(
+            category_name=CreateTagCategoryRequest(
+                name="DagsterTags",
+                description="Tags associated with dagster",
+                categoryType="Descriptive",
+            ),
+            category_details=CreateTagRequest(
+                name=self.context.repository_name, description="Dagster Tag"
+            ),
+        )
 
+        yield tag_category
+
+    def get_task_runs(self, job_id, pipeline_name):
+        """
+        To get all the runs details
+        """
+        try:
+            parameters = {
+                "handleID": job_id,
+                "selector": {
+                    "pipelineName": pipeline_name,
+                    "repositoryName": self.context.repository_name,
+                    "repositoryLocationName": self.context.repository_location,
+                },
+            }
+            runs = self.client._execute(  # pylint: disable=protected-access
+                query=GRAPHQL_RUNS_QUERY, variables=parameters
+            )
+
+            return runs["pipelineOrError"]
+        except Exception as err:
+            logger.error(
+                f"Error while getting runs for {job_id} - {pipeline_name} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+
+        return []
+
+    def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
+        tasks = self.context.pipeline.tasks
+        for task in tasks:
+            runs = self.get_task_runs(
+                task.name, pipeline_name=pipeline_details.get("name")
+            )
+            for run in runs["solidHandle"]["stepStats"]["nodes"]:
                 task_status = TaskStatus(
-                    name=job["name"],
+                    name=task.name,
                     executionStatus=STATUS_MAP.get(
                         run["status"].lower(), StatusType.Pending.value
                     ),
-                    startTime=round(run["stats"]["startTime"]),
-                    endTime=round(run["stats"]["endTime"]),
-                    logLink=log_link,
+                    startTime=round(run["startTime"]),
+                    endTime=round(run["endTime"]),
                 )
+
                 pipeline_status = PipelineStatus(
                     taskStatus=[task_status],
                     executionStatus=STATUS_MAP.get(
                         run["status"].lower(), StatusType.Pending.value
                     ),
-                    timestamp=round(run["stats"]["endTime"]),
+                    timestamp=round(run["endTime"]),
                 )
-                yield OMetaPipelineStatus(
+                pipeline_status_yield = OMetaPipelineStatus(
                     pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
                     pipeline_status=pipeline_status,
                 )
+                yield pipeline_status_yield
 
     def yield_pipeline_lineage_details(
         self, pipeline_details
@@ -144,17 +243,19 @@ class DagsterSource(PipelineServiceSource):
         Not implemented, as this connector does not create any lineage
         """
 
-    def test_connection(self) -> None:
-        test_connection(self.client)
-
     def get_pipelines_list(self) -> Dict:
-
         results = self.get_run_list()
         for result in results:
-            yield result
+            self.context.repository_location = result.get("location")["name"]
+            self.context.repository_name = result["name"]
+            for job in result["pipelines"]:
+                yield job
 
     def get_pipeline_name(self, pipeline_details) -> str:
         """
         Get Pipeline Name
         """
-        return pipeline_details["opName"]
+        return pipeline_details["name"]
+
+    def test_connection(self) -> None:
+        pass
