@@ -31,7 +31,6 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { changePassword } from '../../axiosAPIs/auth-API';
 import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getUserPath,
   LIST_SIZE,
@@ -57,14 +56,17 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
+import {
+  getEntityName,
+  getNonDeletedTeams,
+  getTierFromEntityInfo,
+} from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTierFromSearchTableTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
@@ -915,14 +917,7 @@ const Users = ({
                     service={entity.service}
                     serviceType={entity.serviceType || '--'}
                     tags={entity.tags}
-                    tier={
-                      (
-                        entity.tier?.tagFQN ||
-                        getTierFromSearchTableTags(
-                          (entity.tags || []).map((tag) => tag.tagFQN)
-                        )
-                      )?.split(FQN_SEPARATOR_CHAR)[1]
-                    }
+                    tier={getTierFromEntityInfo(entity)}
                     usage={entity.weeklyPercentileRank}
                   />
                 </div>

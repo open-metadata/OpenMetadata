@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormattedTableData, SearchResponse } from 'Models';
+import { AssetsDataType, FormattedTableData, SearchResponse } from 'Models';
 import React, {
   Dispatch,
   SetStateAction,
@@ -24,6 +24,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -47,13 +48,12 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { EntitiesType } from '../../interface/teamsAndUsers.interface';
-import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
+  const { t } = useTranslation();
   const { username, tab } = useParams<{ [key: string]: string }>();
   const { search } = useLocation();
   const { isAdminUser } = useAuth();
@@ -72,12 +72,12 @@ const UserPage = () => {
   const [taskStatus, setTaskStatus] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
-  const [followingEntities, setFollowingEntities] = useState<EntitiesType>({
+  const [followingEntities, setFollowingEntities] = useState<AssetsDataType>({
     data: [],
     total: 0,
     currPage: 1,
   });
-  const [ownedEntities, setOwnedEntities] = useState<EntitiesType>({
+  const [ownedEntities, setOwnedEntities] = useState<AssetsDataType>({
     data: [],
     total: 0,
     currPage: 1,
@@ -98,13 +98,15 @@ const UserPage = () => {
         if (res) {
           setUserData(res);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-user-details-error']
+          t('message.entity-fetch-error', {
+            entity: 'User Details',
+          })
         );
         setIsError(true);
       })
@@ -113,7 +115,7 @@ const UserPage = () => {
 
   const fetchEntities = (
     fetchOwnedEntities = false,
-    handleEntity: Dispatch<SetStateAction<EntitiesType>>
+    handleEntity: Dispatch<SetStateAction<AssetsDataType>>
   ) => {
     const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
     searchData(
@@ -150,7 +152,9 @@ const UserPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['elastic-search-error']
+          t('message.entity-fetch-error', {
+            entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
+          })
         );
       });
   };
@@ -203,7 +207,9 @@ const UserPage = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-activity-feed-error']
+            t('message.entity-fetch-error', {
+              entity: 'Activity Feeds',
+            })
           );
         })
         .finally(() => {
@@ -244,7 +250,7 @@ const UserPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['feed-post-error']);
+        showErrorToast(err, t('message.feed-post-error'));
       });
   };
 
@@ -274,7 +280,7 @@ const UserPage = () => {
       if (response) {
         setUserData((prevData) => ({ ...prevData, ...response }));
       } else {
-        throw jsonData['api-error-messages']['unexpected-error'];
+        throw t('message.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

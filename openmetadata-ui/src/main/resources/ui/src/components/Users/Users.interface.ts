@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { AssetsDataType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
-import { EntitiesType } from '../../interface/teamsAndUsers.interface';
 
 export interface Option {
   label: string;
@@ -35,8 +35,8 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
-  followingEntities: EntitiesType;
-  ownedEntities: EntitiesType;
+  followingEntities: AssetsDataType;
+  ownedEntities: AssetsDataType;
   username: string;
   tab: string;
   feedData: Thread[];

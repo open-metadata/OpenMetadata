@@ -1,4 +1,4 @@
-import { EntitiesType } from '../../../interface/teamsAndUsers.interface';
+import { AssetsDataType } from 'Models';
 
 export const mockUserData = {
   id: 'd6764107-e8b4-4748-b256-c86fecc66064',
@@ -209,7 +209,7 @@ export const mockUserRole = {
   },
 };
 
-export const mockEntityData: EntitiesType = {
+export const mockEntityData: AssetsDataType = {
   data: [
     {
       index: 'table_search_index',
