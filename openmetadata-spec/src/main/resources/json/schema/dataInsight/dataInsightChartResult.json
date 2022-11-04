@@ -26,10 +26,10 @@
       "description": "Array of consumable data.",
       "type": "array",
       "oneOf": [
-        {"$ref": "./type/percentageOfEntitiesWithDescriptionByType.json"},
-        {"$ref": "./type/percentageOfEntitiesWithOwnerByType.json"},
-        {"$ref": "./type/totalEntitiesByTier.json"},
-        {"$ref": "./type/totalEntitiesByType.json"}
+        { "$ref": "./type/percentageOfEntitiesWithDescriptionByType.json" },
+        { "$ref": "./type/percentageOfEntitiesWithOwnerByType.json" },
+        { "$ref": "./type/totalEntitiesByTier.json" },
+        { "$ref": "./type/totalEntitiesByType.json" }
       ]
     }
   },
