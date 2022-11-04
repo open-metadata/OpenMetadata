@@ -185,7 +185,7 @@ ELASTICSEARCH_BATCH_SIZE='10'
 ELASTICSEARCH_HOST='<ELASTICSEARCH_HOST_URL>'
 ELASTICSEARCH_PASSWORD='<ELASTICSEARCH_PASSWORD>'
 # Ingestion or Airflow Environment Variables
-AIRFLOW_HOST: '<YOUR_AIRFLOW_HOST>'
+AIRFLOW_HOST: '<AIRFLOW_HOST_URL>'
 SERVER_HOST_API_URL: '<OPENMETADATA_HOST_URL_WITH_SCHEME/api>'
 ```
 Once the environment variables values with the RDS are updated then provide this environment variable file as part of docker compose command.
