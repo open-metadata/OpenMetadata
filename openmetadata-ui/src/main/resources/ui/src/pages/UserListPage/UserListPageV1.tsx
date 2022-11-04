@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { FormattedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
@@ -38,6 +38,8 @@ const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
 
 const UserListPageV1 = () => {
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
+  const history = useHistory();
+  const location = useLocation();
   const [isAdminPage, setIsAdminPage] = useState<boolean | undefined>(
     tab === GlobalSettingOptions.ADMINS || undefined
   );
@@ -172,6 +174,13 @@ const UserListPageV1 = () => {
   const handleSearch = (value: string) => {
     setSearchValue(value);
     setCurrentPage(INITIAL_PAGING_VALUE);
+    const params = new URLSearchParams({ search: value });
+    // This function is called onChange in the search input with debouncing
+    // Hence using history.replace instead of history.push to avoid adding multiple routes in history
+    history.replace({
+      pathname: location.pathname,
+      search: value && params.toString(),
+    });
     if (value) {
       getSearchedUsers(value, INITIAL_PAGING_VALUE);
     } else {
@@ -182,7 +191,20 @@ const UserListPageV1 = () => {
   useEffect(() => {
     initialSetup();
     if (teamsAndUsers.includes(tab)) {
-      fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);
+      // Checking if the path has search query present in it
+      // if present fetch userlist with the query
+      // else get list of all users
+      if (location.search) {
+        // Converting string to URLSearchParameter
+        const searchParameter = new URLSearchParams(location.search);
+        // Getting the searched name
+        const searchTerm = searchParameter.get('search') || '';
+        setSearchValue(searchTerm);
+        getSearchedUsers(searchTerm, 1);
+        setIsPageLoading(false);
+      } else {
+        fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);
+      }
     } else {
       setIsPageLoading(false);
       setIsDataLoading(false);
