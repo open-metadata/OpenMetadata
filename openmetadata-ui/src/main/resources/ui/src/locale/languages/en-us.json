@@ -195,7 +195,6 @@
     "pause": "Pause",
     "metadata-ingestion": "Metadata Ingestion",
     "unpause": "UnPause",
-    "end-date": "End Date",
     "execution-date": "Execution Date",
     "start-date": "Start Date",
     "view-dag": "View Dag",
@@ -204,8 +203,6 @@
     "show-deleted": "Show deleted",
     "add-bot": "Add Bot",
     "search-for-bots": "Search for bots...",
-    "enter-column-description": "Enter Column Description",
-    "summary": "Summary",
     "list": "List",
     "tree": "Tree"
   },

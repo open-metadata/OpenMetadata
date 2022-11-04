@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Typography } from 'antd';
-import { uniqueId } from 'lodash';
+import { Card, Col, Empty, Row, Space, Typography } from 'antd';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { useMemo } from 'react';
 import { Tooltip } from 'react-tippy';
 import {
@@ -21,7 +21,7 @@ import {
 import { getTreeViewData } from '../../../utils/executionUtils';
 import { getStatusBadgeIcon } from '../../../utils/PipelineDetailsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getDateByTimeStamp } from '../../../utils/TimeUtils';
+import { formatDateTimeFromSeconds } from '../../../utils/TimeUtils';
 import './tree-view-tab.less';
 
 interface TreeViewProps {
@@ -51,7 +51,8 @@ const TreeViewTab = ({
           icon={Icons.ARROW_RIGHT}
         />
         <Typography.Title className="p-b-0" level={5}>
-          {getDateByTimeStamp(startTime)} to {getDateByTimeStamp(endTime)}
+          {formatDateTimeFromSeconds(startTime)} to{' '}
+          {formatDateTimeFromSeconds(endTime)}
         </Typography.Title>
 
         <SVGIcons
@@ -61,40 +62,42 @@ const TreeViewTab = ({
         />
       </Row>
 
+      {isEmpty(viewData) && (
+        <Empty className="my-4" description="Couldn't find any pipeline runs" />
+      )}
+
       {Object.entries(viewData).map(([key, value]) => {
         return (
           <Row gutter={16} key={uniqueId()}>
             <Col span={5}>
               <Space>
                 <div className="tree-view-dot" />
-                {/* <Badge
-                  color="#cccccc"
-                  style={{ width: '12px', height: '12px' }}
-                /> */}
                 <Typography.Text type="secondary">{key}</Typography.Text>
               </Space>
             </Col>
 
             <Col span={19}>
-              {value.map((status) => (
-                <Tooltip
-                  html={
-                    <Space direction="vertical">
-                      <div>{status.timestamp}</div>
-                      <div>{status.executionStatus}</div>
-                    </Space>
-                  }
-                  key={uniqueId()}
-                  position="bottom">
-                  <SVGIcons
-                    alt="result"
-                    className="tw-w-6"
-                    icon={getStatusBadgeIcon(
-                      status.executionStatus as StatusType
-                    )}
-                  />
-                </Tooltip>
-              ))}
+              <Space>
+                {value.map((status) => (
+                  <Tooltip
+                    html={
+                      <Space direction="vertical">
+                        <div>{status.timestamp}</div>
+                        <div>{status.executionStatus}</div>
+                      </Space>
+                    }
+                    key={uniqueId()}
+                    position="bottom">
+                    <SVGIcons
+                      alt="result"
+                      className="tw-w-6"
+                      icon={getStatusBadgeIcon(
+                        status.executionStatus as StatusType
+                      )}
+                    />
+                  </Tooltip>
+                ))}
+              </Space>
             </Col>
           </Row>
         );

@@ -380,3 +380,17 @@ export const formatDateTime = (date: number) => {
 
   return dateTime.toLocaleString(DateTime.DATETIME_MED);
 };
+
+/**
+ * @param date EPOCH seconds
+ * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
+ */
+export const formatDateTimeFromSeconds = (date: number) => {
+  if (isNil(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromSeconds(date);
+
+  return dateTime.toLocaleString(DateTime.DATETIME_MED);
+};

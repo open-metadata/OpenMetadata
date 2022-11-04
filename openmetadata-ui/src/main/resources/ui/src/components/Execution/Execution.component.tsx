@@ -23,7 +23,6 @@ import {
   RadioChangeEvent,
   Row,
   Space,
-  Typography,
 } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
@@ -77,23 +76,13 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchPipelineStatus = async (
-    startRange?: number,
-    endRange?: number
-  ) => {
+  const fetchPipelineStatus = async (startRange: number, endRange: number) => {
     try {
       setIsLoading(true);
-      const startTs =
-        startRange ||
-        getPastDatesTimeStampFromCurrentDate(
-          PROFILER_FILTER_RANGE.last365days.days
-        );
-
-      const endTs = endRange || getCurrentDateTimeStamp();
 
       const response = await getPipelineStatus(pipelineFQN, {
-        startTs,
-        endTs,
+        startTs: startRange,
+        endTs: endRange,
       });
       setExecutions(response.data);
     } catch (error) {
@@ -149,25 +138,6 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
       ]}
       onClick={handleMenuClick}
     />
-  );
-
-  const SummaryCardContent = ({
-    heading,
-    name,
-    ...otherProps
-  }: SummaryCardContentProps) => (
-    <Space direction="vertical" {...otherProps}>
-      <p className="sub-heading">{heading}</p>
-      <Row gutter={16}>
-        <Col>
-          <p className="content-text">{name}</p>
-        </Col>
-        <Col>
-          {' '}
-          <Typography.Text>{name}</Typography.Text>
-        </Col>
-      </Row>
-    </Space>
   );
 
   const onDateChange: RangePickerProps['onChange'] = (_, dateStrings) => {
@@ -247,9 +217,9 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
                       }}>
                       <Space>
                         <Calendar />
-                        <label>
-                          {!datesSelected ? t('label.date-filter') : ''}
-                        </label>
+                        {!datesSelected && (
+                          <label>{t('label.date-filter')}</label>
+                        )}
                         <DatePicker.RangePicker
                           allowClear
                           showNow
@@ -289,20 +259,6 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
           </Col>
         </Row>
       </Col>
-      {/* <Col flex="0 1 400px">
-        <Card className="h-full">
-          <Space direction="vertical">
-            <Typography.Title level={5}>{t('label.summary')}</Typography.Title>
-            <Row gutter={[2, 16]}>
-              <SummaryCardContent
-                heading="Basic Configuration"
-                name="Workflow Name"
-              />
-              <SummaryCardContent heading="Run Schedule" name="Workflow Name" />
-            </Row>
-          </Space>
-        </Card>
-      </Col> */}
     </Row>
   );
 };

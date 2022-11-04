@@ -60,25 +60,15 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
   ];
 
   return (
-    <div>
-      <Table
-        columns={columns}
-        dataSource={tableData}
-        // expandable={{
-        //   expandedRowRender: (record) => (
-        //     <Table
-        //       columns={columns}
-        //       dataSource={record.taskStatus}
-        //       rowKey="startTime"
-        //     />
-        //   ),
-        //   rowExpandable: true,
-        // }}
-        loading={{ spinning: loading, indicator: <Loader /> }}
-        pagination={false}
-        rowKey="name"
-      />
-    </div>
+    <Table
+      bordered
+      className="h-full"
+      columns={columns}
+      dataSource={tableData}
+      loading={{ spinning: loading, indicator: <Loader /> }}
+      pagination={false}
+      rowKey="name"
+    />
   );
 };
 

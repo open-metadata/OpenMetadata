@@ -17,7 +17,7 @@ import { MenuOptions } from '../constants/execution.constants';
 import { PipelineStatus, StatusType } from '../generated/entity/data/pipeline';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
 import SVGIcons from './SvgUtils';
-import { formatDateTime } from './TimeUtils';
+import { formatDateTimeFromSeconds } from './TimeUtils';
 
 interface StatusIndicatorInterface {
   status: StatusType;
@@ -66,7 +66,7 @@ export const getTableViewData = (
       viewData.push({
         name: execute.name,
         status: execute.executionStatus,
-        timestamp: formatDateTime(execution.timestamp as number),
+        timestamp: formatDateTimeFromSeconds(execution.timestamp as number),
         executionStatus: execute.executionStatus,
         type: '--',
       });
