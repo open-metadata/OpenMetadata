@@ -439,7 +439,7 @@ public final class TestUtils {
     for (UUID id : listOrEmpty(expected)) {
       actual = listOrEmpty(actual);
       assertEquals(expected.size(), actual.size());
-      assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().get());
+      assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().orElse(null));
     }
     validateEntityReferences(actual);
   }

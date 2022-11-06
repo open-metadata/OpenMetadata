@@ -69,16 +69,16 @@ public class EmailUtil {
   }
 
   private Mailer createMailer(SmtpSettings smtpServerSettings) {
-    TransportStrategy strategy = SMTP;
+    TransportStrategy strategy;
     switch (smtpServerSettings.getTransportationStrategy()) {
-      case SMTP:
-        strategy = SMTP;
-        break;
       case SMPTS:
         strategy = SMTPS;
         break;
       case SMTP_TLS:
         strategy = SMTP_TLS;
+        break;
+      default:
+        strategy = SMTP;
         break;
     }
     return MailerBuilder.withSMTPServer(
@@ -240,18 +240,13 @@ public class EmailUtil {
     mailer.testConnection();
   }
 
-  public void sendMailWithSmtp(Email email, SmtpSettings settings) {
-    createMailer(settings).sendMail(email);
-  }
-
   public static class EmailUtilBuilder {
     private EmailUtilBuilder() {}
 
-    public static EmailUtil build(SmtpSettings smtpServerSettings) {
+    public static void build(SmtpSettings smtpServerSettings) {
       if (INSTANCE == null) {
         INSTANCE = new EmailUtil(smtpServerSettings);
       }
-      return INSTANCE;
     }
   }
 

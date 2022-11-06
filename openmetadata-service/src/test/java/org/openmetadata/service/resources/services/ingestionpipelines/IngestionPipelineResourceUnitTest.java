@@ -129,6 +129,7 @@ public class IngestionPipelineResourceUnitTest {
         mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
       ingestionPipelineResource.initialize(openMetadataApplicationConfig);
       PipelineServiceClient client = mocked.constructed().get(0);
+      @SuppressWarnings("unchecked")
       HttpResponse<String> httpResponse = mock(HttpResponse.class);
       when(client.testConnection(any())).thenReturn(httpResponse);
       ingestionPipelineResource.testIngestion(null, null, testServiceConnection);

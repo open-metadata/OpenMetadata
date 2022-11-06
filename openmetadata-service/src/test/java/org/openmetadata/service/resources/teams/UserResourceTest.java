@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
@@ -579,7 +580,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String origJson = JsonUtils.pojoToJson(user);
 
     String timezone = "America/Los_Angeles";
-    user.withRoles(Arrays.asList(role1))
+    user.withRoles(listOf(role1))
         .withTeams(teams)
         .withTimezone(timezone)
         .withDisplayName("displayName")
@@ -587,8 +588,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsBot(false)
         .withIsAdmin(false);
     ChangeDescription change = getChangeDescription(user.getVersion());
-    fieldAdded(change, "roles", Arrays.asList(role1));
-    fieldDeleted(change, "teams", Arrays.asList(ORG_TEAM.getEntityReference()));
+    fieldAdded(change, "roles", listOf(role1));
+    fieldDeleted(change, "teams", listOf(ORG_TEAM.getEntityReference()));
     fieldAdded(change, "teams", teams);
     fieldAdded(change, "timezone", timezone);
     fieldAdded(change, "displayName", "displayName");
@@ -607,7 +608,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getEntityReference();
 
     origJson = JsonUtils.pojoToJson(user);
-    user.withRoles(Arrays.asList(role2))
+    user.withRoles(listOf(role2))
         .withTeams(teams1)
         .withTimezone(timezone1)
         .withDisplayName("displayName1")
@@ -616,10 +617,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsAdmin(false);
 
     change = getChangeDescription(user.getVersion());
-    fieldDeleted(change, "roles", Arrays.asList(role1));
-    fieldAdded(change, "roles", Arrays.asList(role2));
-    fieldDeleted(change, "teams", of(team2));
-    fieldAdded(change, "teams", of(team3));
+    fieldDeleted(change, "roles", listOf(role1));
+    fieldAdded(change, "roles", listOf(role2));
+    fieldDeleted(change, "teams", listOf(team2));
+    fieldAdded(change, "teams", listOf(team3));
     fieldUpdated(change, "timezone", timezone, timezone1);
     fieldUpdated(change, "displayName", "displayName", "displayName1");
     fieldUpdated(change, "profile", profile, profile1);
@@ -640,9 +641,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Note non-empty display field is not deleted. When teams are deleted, Organization is added back as default team.
     change = getChangeDescription(user.getVersion());
-    fieldDeleted(change, "roles", Arrays.asList(role2));
+    fieldDeleted(change, "roles", listOf(role2));
     fieldDeleted(change, "teams", teams1);
-    fieldAdded(change, "teams", Arrays.asList(ORG_TEAM.getEntityReference()));
+    fieldAdded(change, "teams", listOf(ORG_TEAM.getEntityReference()));
     fieldDeleted(change, "timezone", timezone1);
     fieldDeleted(change, "displayName", "displayName1");
     fieldDeleted(change, "profile", profile1);
