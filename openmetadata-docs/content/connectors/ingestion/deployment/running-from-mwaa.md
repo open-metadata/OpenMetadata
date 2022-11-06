@@ -1,6 +1,6 @@
 ---
 title: Run Connectors from MWAA
-slug: /connectors/ingestion/run-connectors-from-MWAA
+slug: /connectors/ingestion/run-connectors-from-mwaa
 ---
 
 # Run Connectors from MWAA

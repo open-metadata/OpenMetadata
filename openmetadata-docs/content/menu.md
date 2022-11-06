@@ -487,7 +487,7 @@ site_menu:
   - category: Connectors / Ingestion / Run Connectors in your Airflow
     url: /connectors/ingestion/run-connectors-in-airflow
   - category: Connectors / Ingestion / Run Connectors from MWAA
-    url: /connectors/ingestion/run-connectors-from-MWAA
+    url: /connectors/ingestion/run-connectors-from-mwaa
 
   - category: How to guides
     url: /how-to-guides
