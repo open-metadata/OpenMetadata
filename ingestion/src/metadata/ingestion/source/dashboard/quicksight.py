@@ -136,7 +136,7 @@ class QuickSightSource(DashboardServiceSource):
         # Each dashboard is guaranteed to have at least one sheet, which represents
         # a chart in the context of QuickSight
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/quicksight.html#QuickSight.Client.describe_dashboard
-        charts = dashboard_details["Sheets"]
+        charts = dashboard_details["Version"]["Sheets"]
         for chart in charts:
             try:
                 if filter_by_chart(
