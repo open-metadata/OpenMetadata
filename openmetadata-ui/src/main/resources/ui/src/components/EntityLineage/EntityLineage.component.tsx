@@ -49,7 +49,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { PAGE_SIZE, SECONDARY_COLOR } from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
   MAX_ZOOM_VALUE,
@@ -76,10 +76,13 @@ import {
   createNewEdge,
   dragHandle,
   findUpstreamDownStreamEdge,
+  getAllTracedColumnEdge,
   getAllTracedNodes,
+  getClassifiedEdge,
   getColumnType,
   getDataLabel,
   getDeletedLineagePlaceholder,
+  getEdgeStyle,
   getEdgeType,
   getLayoutedElements,
   getLineageData,
@@ -94,6 +97,8 @@ import {
   getUpdatedEdgeWithPipeline,
   getUpdatedUpstreamDownStreamEdgeArr,
   getUpStreamDownStreamColumnLineageArr,
+  isColumnLineageTraced,
+  isTracedEdge,
   onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
@@ -233,6 +238,26 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     );
   };
 
+  const handleNodeSelection = (node: Node) => {
+    const selectedNode = [
+      ...(updatedLineageData.nodes || []),
+      updatedLineageData.entity,
+    ].find((n) => node.id.includes(n.id));
+
+    if (!expandButton.current) {
+      selectNodeHandler(true, {
+        name: selectedNode?.name as string,
+        fqn: selectedNode?.fullyQualifiedName as string,
+        id: node.id,
+        displayName: selectedNode?.displayName,
+        type: selectedNode?.type as string,
+        entityId: selectedNode?.id as string,
+      });
+    } else {
+      expandButton.current = null;
+    }
+  };
+
   /**
    *
    * @param data selected edge
@@ -247,10 +272,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         toId: data.target.id,
       };
       removeLineageHandler(edgeData);
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      setEdges((es) => {
-        return es.filter(
-          (e) => e.source !== data.source.id && e.target !== data.target.id
+      setEdges((prevEdges) => {
+        return prevEdges.filter(
+          (edge) =>
+            edge.source !== data.source.id && edge.target !== data.target.id
         );
       });
       const newDownStreamEdges = getSelectedEdgeArr(
@@ -342,6 +367,47 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       resetSelectedData();
       setConfirmDelete(false);
     }
+  };
+
+  const handleColumnClick = (column: string) => {
+    const { columnEdge } = getClassifiedEdge(edges);
+    const { incomingColumnEdges, outGoingColumnEdges, connectedColumnEdges } =
+      getAllTracedColumnEdge(column, columnEdge);
+
+    setNodes((prevNodes) => {
+      return prevNodes.map((prevNode) => {
+        const nodeTraced = prevNode.data.columns[column];
+        prevNode.data = {
+          ...prevNode.data,
+          selected: !isUndefined(nodeTraced),
+          isTraced: !isUndefined(nodeTraced),
+          selectedColumns: connectedColumnEdges,
+        };
+        if (!isUndefined(nodeTraced)) {
+          handleNodeSelection(prevNode);
+        }
+
+        return prevNode;
+      });
+    });
+    setIsTracingActive(true);
+
+    setEdges((prevEdges) => {
+      return prevEdges.map((edge) => {
+        const isTraced = isColumnLineageTraced(
+          column,
+          edge,
+          incomingColumnEdges,
+          outGoingColumnEdges
+        );
+        edge.style = {
+          ...edge.style,
+          ...getEdgeStyle(isTraced),
+        };
+
+        return edge;
+      });
+    });
   };
 
   /**
@@ -446,7 +512,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         removeNodeHandler,
         tableColumnsRef.current,
         currentData,
-        addPipelineClick
+        addPipelineClick,
+        handleColumnClick
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -797,17 +864,18 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   const handleLineageTracing = (selectedNode: Node) => {
+    const { normalEdge } = getClassifiedEdge(edges);
     const incomingNode = getAllTracedNodes(
       selectedNode,
       nodes,
-      edges,
+      normalEdge,
       [],
       true
     );
     const outgoingNode = getAllTracedNodes(
       selectedNode,
       nodes,
-      edges,
+      normalEdge,
       [],
       false
     );
@@ -817,19 +885,16 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
     setEdges((prevEdges) => {
       return prevEdges.map((edge) => {
-        const incomerEdges =
-          incomerIds.includes(edge.source) &&
-          (incomerIds.includes(edge.target) || selectedNode.id === edge.target);
-        const outgoersEdges =
-          outgoerIds.includes(edge.target) &&
-          (outgoerIds.includes(edge.source) || selectedNode.id === edge.source);
-
-        if (isUndefined(edge.sourceHandle) && isUndefined(edge.targetHandle)) {
-          edge.style = {
-            ...edge.style,
-            stroke: incomerEdges || outgoersEdges ? SECONDARY_COLOR : undefined,
-          };
-        }
+        const isStrokeNeeded = isTracedEdge(
+          selectedNode,
+          edge,
+          incomerIds,
+          outgoerIds
+        );
+        edge.style = {
+          ...edge.style,
+          ...getEdgeStyle(isStrokeNeeded),
+        };
 
         return edge;
       });
@@ -845,6 +910,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         prevNode.data = {
           ...prevNode.data,
           isTraced: highlight,
+          selected: false,
+          selectedColumns: [],
         };
 
         return prevNode;
@@ -854,38 +921,23 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   /**
    * take element and perform onClick logic
-   * @param el
+   * @param node
    */
-  const onNodeClick = (el: Node) => {
-    if (isNode(el)) {
-      handleLineageTracing(el);
-      const node = [
-        ...(updatedLineageData.nodes as Array<EntityReference>),
-        updatedLineageData.entity,
-      ].find((n) => el.id.includes(n.id));
-
-      if (!expandButton.current) {
-        selectNodeHandler(true, {
-          name: node?.name as string,
-          fqn: node?.fullyQualifiedName as string,
-          id: el.id,
-          displayName: node?.displayName,
-          type: node?.type as string,
-          entityId: node?.id as string,
-        });
-      } else {
-        expandButton.current = null;
-      }
+  const onNodeClick = (node: Node) => {
+    if (isNode(node)) {
+      handleLineageTracing(node);
+      handleNodeSelection(node);
     }
   };
-
   const onPaneClick = () => {
     if (isTracingActive) {
       setEdges((prevEdges) => {
         return prevEdges.map((edge) => {
           edge.style = {
             ...edge.style,
+            opacity: undefined,
             stroke: undefined,
+            strokeWidth: undefined,
           };
 
           return edge;
@@ -897,12 +949,15 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           prevNode.data = {
             ...prevNode.data,
             isTraced: false,
+            selectedColumns: [],
+            selected: false,
           };
 
           return prevNode;
         });
       });
       setIsTracingActive(false);
+      setIsDrawerOpen(false);
     }
   };
 

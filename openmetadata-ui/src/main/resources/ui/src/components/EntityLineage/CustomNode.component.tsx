@@ -105,9 +105,11 @@ const CustomNode = (props: NodeProps) => {
     columns,
     isNewNode,
     removeNodeHandler,
+    handleColumnClick,
     isEditMode,
     isExpanded,
     isTraced,
+    selectedColumns = [],
   } = data;
 
   useEffect(() => {
@@ -120,7 +122,9 @@ const CustomNode = (props: NodeProps) => {
       <div
         className={classNames(
           'custom-node-header',
-          selected ? 'custom-node-header-active' : 'custom-node-header-normal',
+          selected || data.selected
+            ? 'custom-node-header-active'
+            : 'custom-node-header-normal',
           { 'custom-node-header-tracing': isTraced }
         )}
         data-testid="node-label">
@@ -141,27 +145,42 @@ const CustomNode = (props: NodeProps) => {
               ? 'custom-node-column-lineage-active'
               : 'custom-node-column-lineage-normal',
             {
-              'tw-py-3': !isEmpty(columns),
+              'p-y-sm': !isEmpty(columns),
             }
           )}>
-          <section className={classNames('tw-px-3')} id="table-columns">
-            <div className="tw-flex tw-flex-col tw-gap-y-2.5 tw-relative">
+          <section className="p-x-sm" id="table-columns">
+            <div className="custom-node-column-lineage-body">
               {(Object.values(columns || {}) as ModifiedColumn[])?.map(
-                (column, index) => (
-                  <div
-                    className="tw-p-1 tw-rounded tw-border tw-text-grey-body tw-relative tw-bg-white border-gray"
-                    data-testid="column"
-                    key={index}>
-                    {getHandle(
-                      column.type,
-                      isConnectable,
-                      isNewNode,
-                      column.fullyQualifiedName
-                    )}
-                    {getConstraintIcon(column.constraint, 'tw-')}
-                    <p className="tw-m-0">{column.name}</p>
-                  </div>
-                )
+                (column, index) => {
+                  const isColumnTraced = selectedColumns.includes(
+                    column.fullyQualifiedName
+                  );
+
+                  return (
+                    <div
+                      className={classNames(
+                        'custom-node-column-container',
+                        isColumnTraced
+                          ? 'custom-node-header-tracing'
+                          : 'custom-node-column-lineage-normal tw-bg-white'
+                      )}
+                      data-testid="column"
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleColumnClick(column.fullyQualifiedName);
+                      }}>
+                      {getHandle(
+                        column.type,
+                        isConnectable,
+                        isNewNode,
+                        column.fullyQualifiedName
+                      )}
+                      {getConstraintIcon(column.constraint, 'tw-')}
+                      <p className="m-0">{column.name}</p>
+                    </div>
+                  );
+                }
               )}
             </div>
           </section>

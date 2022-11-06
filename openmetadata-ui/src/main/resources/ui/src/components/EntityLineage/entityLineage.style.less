@@ -52,10 +52,23 @@
   border: 1px solid;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.16);
   border-radius: 4px;
+
+  .custom-node-column-lineage-body {
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    position: relative;
+
+    .custom-node-column-container {
+      padding: 4px;
+      border-radius: 4px;
+      position: relative;
+    }
+  }
 }
 .custom-node-column-lineage-normal {
-  border-color: @gray;
+  border: 1px solid @gray;
 }
 .custom-node-column-lineage-active {
-  border-color: rgba(176, 42, 172, 0.6);
+  border: 1px solid rgba(176, 42, 172, 0.6);
 }

@@ -42,6 +42,7 @@ import {
 } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { SECONDARY_COLOR } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
@@ -179,7 +180,8 @@ export const getLineageData = (
   addPipelineClick?: (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
-  ) => void
+  ) => void,
+  handleColumnClick?: (value: string) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -330,6 +332,8 @@ export const getLineageData = (
         isEditMode,
         isExpanded: currentNode?.data?.isExpanded || false,
         columns: cols,
+        handleColumnClick,
+        node,
       },
       position: {
         x: x,
@@ -356,13 +360,15 @@ export const getLineageData = (
       sourcePosition: 'right',
       targetPosition: 'left',
       type: getNodeType(entityLineage, mainNode.id),
-      className: `leaf-node ${!isEditMode ? 'core' : ''}`,
+      className: `leaf-node core`,
       data: {
         label: getNodeLabel(mainNode),
         isEditMode,
         removeNodeHandler,
+        handleColumnClick,
         columns: mainCols,
         isExpanded: currentNode || false,
+        node: mainNode,
       },
       position: { x: x, y: y },
     },
@@ -947,7 +953,7 @@ export const getAllTracedNodes = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n.id == tracedNode.id) == -1) {
+    if (prevTraced.findIndex((n) => n.id == tracedNode.id) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedNodes(
@@ -959,7 +965,7 @@ export const getAllTracedNodes = (
       ).forEach((foundNode) => {
         memo.push(foundNode);
 
-        if (prevTraced.findIndex((n) => n.id == foundNode.id) == -1) {
+        if (prevTraced.findIndex((n) => n.id == foundNode.id) === -1) {
           prevTraced.push(foundNode);
         }
       });
@@ -967,4 +973,132 @@ export const getAllTracedNodes = (
 
     return memo;
   }, [] as Node[]);
+};
+
+export const getClassifiedEdge = (edges: Edge[]) => {
+  return edges.reduce(
+    (acc, edge) => {
+      if (isUndefined(edge.sourceHandle) && isUndefined(edge.targetHandle)) {
+        acc.normalEdge.push(edge);
+      } else {
+        acc.columnEdge.push(edge);
+      }
+
+      return acc;
+    },
+    {
+      normalEdge: [] as Edge[],
+      columnEdge: [] as Edge[],
+    }
+  );
+};
+
+export const isTracedEdge = (
+  selectedNode: Node,
+  edge: Edge,
+  incomerIds: string[],
+  outgoerIds: string[]
+) => {
+  const incomerEdges =
+    incomerIds.includes(edge.source) &&
+    (incomerIds.includes(edge.target) || selectedNode.id === edge.target);
+  const outgoersEdges =
+    outgoerIds.includes(edge.target) &&
+    (outgoerIds.includes(edge.source) || selectedNode.id === edge.source);
+
+  return (
+    (incomerEdges || outgoersEdges) &&
+    isUndefined(edge.sourceHandle) &&
+    isUndefined(edge.targetHandle)
+  );
+};
+
+const getTracedEdge = (
+  selectedColumn: string,
+  edges: Edge[],
+  isIncomer: boolean
+) => {
+  if (isEmpty(selectedColumn)) {
+    return [];
+  }
+
+  const tracedEdgeIds = edges
+    .filter((e) => {
+      const id = isIncomer ? e.targetHandle : e.sourceHandle;
+
+      return id === selectedColumn;
+    })
+    .map((e) => (isIncomer ? `${e.sourceHandle}` : `${e.targetHandle}`));
+
+  return tracedEdgeIds;
+};
+
+export const getAllTracedEdges = (
+  selectedColumn: string,
+  edges: Edge[],
+  prevTraced = [] as string[],
+  isIncomer: boolean
+) => {
+  const tracedNodes = getTracedEdge(selectedColumn, edges, isIncomer);
+
+  return tracedNodes.reduce((memo, tracedNode) => {
+    memo.push(tracedNode);
+
+    if (prevTraced.findIndex((n) => n == tracedNode) === -1) {
+      prevTraced.push(tracedNode);
+
+      getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
+        (foundNode) => {
+          memo.push(foundNode);
+
+          if (prevTraced.findIndex((n) => n == foundNode) === -1) {
+            prevTraced.push(foundNode);
+          }
+        }
+      );
+    }
+
+    return memo;
+  }, [] as string[]);
+};
+
+export const getAllTracedColumnEdge = (column: string, columnEdge: Edge[]) => {
+  const incomingColumnEdges = getAllTracedEdges(column, columnEdge, [], true);
+  const outGoingColumnEdges = getAllTracedEdges(column, columnEdge, [], false);
+
+  return {
+    incomingColumnEdges,
+    outGoingColumnEdges,
+    connectedColumnEdges: [
+      column,
+      ...incomingColumnEdges,
+      ...outGoingColumnEdges,
+    ],
+  };
+};
+
+export const isColumnLineageTraced = (
+  column: string,
+  edge: Edge,
+  incomingColumnEdges: string[],
+  outGoingColumnEdges: string[]
+) => {
+  const incomerEdges =
+    incomingColumnEdges.includes(`${edge.sourceHandle}`) &&
+    (incomingColumnEdges.includes(`${edge.targetHandle}`) ||
+      column === edge.targetHandle);
+  const outgoersEdges =
+    outGoingColumnEdges.includes(`${edge.targetHandle}`) &&
+    (outGoingColumnEdges.includes(`${edge.sourceHandle}`) ||
+      column === edge.sourceHandle);
+
+  return incomerEdges || outgoersEdges;
+};
+
+export const getEdgeStyle = (value: boolean) => {
+  return {
+    opacity: value ? 1 : 0.25,
+    strokeWidth: value ? 2 : 1,
+    stroke: value ? SECONDARY_COLOR : undefined,
+  };
 };
