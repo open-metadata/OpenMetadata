@@ -40,6 +40,7 @@ import {
   SelectedEdge,
   SelectedNode,
 } from '../components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from '../components/EntityLineage/LineageNodeLabel';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
@@ -167,7 +168,6 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLabel: (node: EntityReference) => React.ReactNode,
   isEditMode: boolean,
   edgeType: string,
   onEdgeClick: (
@@ -221,6 +221,9 @@ export const getLineageData = (
                 isEditMode,
                 onEdgeClick,
                 isColumnLineage: true,
+                isExpanded: false,
+                columnFunctionValue: e.function,
+                edge,
               },
             });
           });
@@ -250,6 +253,8 @@ export const getLineageData = (
         onEdgeClick,
         addPipelineClick,
         isColumnLineage: false,
+        isExpanded: false,
+        edge,
       },
     });
   });
@@ -300,7 +305,7 @@ export const getLineageData = (
               </div>
             )}
 
-            <div>{getNodeLabel(node)}</div>
+            <LineageNodeLabel node={node} />
 
             {type === EntityLineageNodeType.OUTPUT && (
               <div
@@ -362,7 +367,7 @@ export const getLineageData = (
       type: getNodeType(entityLineage, mainNode.id),
       className: `leaf-node core`,
       data: {
-        label: getNodeLabel(mainNode),
+        label: <LineageNodeLabel node={mainNode} />,
         isEditMode,
         removeNodeHandler,
         handleColumnClick,
