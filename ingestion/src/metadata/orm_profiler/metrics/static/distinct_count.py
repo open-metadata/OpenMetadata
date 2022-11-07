@@ -37,3 +37,7 @@ class DistinctCount(StaticMetric):
     @_label
     def fn(self):
         return func.count(distinct(column(self.col.name)))
+
+    @_label
+    def dl_fn(self):
+        return func.count(distinct(column(self.col.name)))

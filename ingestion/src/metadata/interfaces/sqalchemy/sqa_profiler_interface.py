@@ -19,7 +19,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict
 
 from sqlalchemy import Column, MetaData
 

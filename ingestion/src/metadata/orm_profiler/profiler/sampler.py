@@ -35,7 +35,7 @@ class Sampler:
 
     def __init__(
         self,
-        session: Session,
+        session: Optional[Session],
         table: DeclarativeMeta,
         profile_sample: Optional[float] = None,
         partition_details: Optional[Dict] = None,
@@ -112,8 +112,11 @@ class Sampler:
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
         )
-    def fetch_dl_sample_data(self) -> TableData:
 
+    def fetch_dl_sample_data(self) -> TableData:
+        print(self.table)
+        pass
+            
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""

@@ -61,3 +61,20 @@ class CountInSet(StaticMetric):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None
+
+
+    @_label
+    def dl_fn(self):
+        if not hasattr(self, "values"):
+            raise AttributeError(
+                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
+            )
+
+        try:
+            set_values = set(self.values)
+            return SumFn(case([(column(self.col.name).in_(set_values), 1)], else_=0))
+
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
+            return None

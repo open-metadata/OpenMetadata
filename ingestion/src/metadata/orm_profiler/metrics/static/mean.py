@@ -72,3 +72,17 @@ class Mean(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
         return None
+
+    
+    @_label
+    def dl_fn(self):
+        if is_quantifiable(self.col.type):
+            return func.avg(column(self.col.name))
+
+        if is_concatenable(self.col.type):
+            return func.avg(LenFn(column(self.col.name)))
+
+        logger.debug(
+            f"Don't know how to process type {self.col.type} when computing MEAN"
+        )
+        return None

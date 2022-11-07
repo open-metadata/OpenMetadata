@@ -51,3 +51,14 @@ class MaxLength(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )
         return None
+
+    @_label
+    def dl_fn(self):
+
+        if is_concatenable(self.col.type):
+            return func.max(LenFn(column(self.col.name)))
+
+        logger.debug(
+            f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
+        )
+        return None

@@ -16,16 +16,12 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
-from functools import singledispatch
 import traceback
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Union, cast
-from metadata.interfaces.datalake.datalake_profiler_interface import (
-    DataLakeProfilerInterface,
-)
-from pydantic import BaseModel
+from functools import singledispatch
+from typing import Iterable, List, Optional, cast
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
@@ -64,6 +60,9 @@ from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.interfaces.datalake.datalake_profiler_interface import (
+    DataLakeProfilerInterface,
+)
 from metadata.interfaces.profiler_protocol import (
     DataLakeProfilerType,
     ProfilerInterfaceArgs,

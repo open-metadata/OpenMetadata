@@ -58,3 +58,12 @@ class ColumnNames(StaticMetric):
 
         col_names = ",".join(inspect(self.table).c.keys())
         return literal(col_names, type_=sqlalchemy.types.String)
+    @_label
+    def dl_fn(self):
+        if not hasattr(self, "table"):
+            raise AttributeError(
+                "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
+            )
+
+        col_names = ",".join(inspect(self.table).c.keys())
+        return literal(col_names, type_=sqlalchemy.types.String)

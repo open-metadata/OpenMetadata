@@ -37,3 +37,8 @@ class Count(StaticMetric):
     @_label
     def fn(self):
         return func.count(column(self.col.name))
+
+
+    @_label
+    def dl_fn(self):
+        return func.count(column(self.col.name))

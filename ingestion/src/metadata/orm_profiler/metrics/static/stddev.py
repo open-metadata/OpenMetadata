@@ -85,3 +85,15 @@ class StdDev(StaticMetric):
             + " We won't compute STDDEV for it."
         )
         return None
+
+
+    @_label
+    def dl_fn(self):
+        if is_quantifiable(self.col.type):
+            return StdDevFn(column(self.col.name))
+
+        logger.debug(
+            f"{self.col} has type {self.col.type}, which is not listed as quantifiable."
+            + " We won't compute STDDEV for it."
+        )
+        return None

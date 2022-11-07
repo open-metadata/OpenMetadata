@@ -36,3 +36,9 @@ class Min(StaticMetric):
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
         return func.min(column(self.col.name))
+    
+    @_label
+    def dl_fn(self):
+        if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
+            return None
+        return func.min(column(self.col.name))

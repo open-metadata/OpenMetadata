@@ -46,3 +46,7 @@ class NullCount(StaticMetric):
     @_label
     def fn(self):
         return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))
+
+    @_label
+    def dl_fn(self):
+        return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))

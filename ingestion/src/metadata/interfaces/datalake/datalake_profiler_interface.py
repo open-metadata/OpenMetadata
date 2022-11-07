@@ -19,14 +19,14 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, Optional
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeType,
-)
+from typing import Dict
 
 from sqlalchemy import Column, MetaData
 
 from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeType,
+)
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.profiler_protocol import (
@@ -51,7 +51,7 @@ logger = sqa_interface_registry_logger()
 thread_local = threading.local()
 
 
-class DataLakeProfilerInterface( ProfilerProtocol):
+class DataLakeProfilerInterface(ProfilerProtocol):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -65,15 +65,13 @@ class DataLakeProfilerInterface( ProfilerProtocol):
         self.service_connection_config = (
             profiler_interface_args.service_connection_config
         )
-
+        self.client = get_connection(self.service_connection_config).client
         self.processor_status = ProfilerProcessorStatus()
         self.processor_status.entity = (
             self.table_entity.fullyQualifiedName.__root__
             if self.table_entity.fullyQualifiedName
             else None
         )
-
-        
 
     def fetch_sample_data(self, table) -> TableData:
         """Fetch sample data from database
@@ -85,13 +83,13 @@ class DataLakeProfilerInterface( ProfilerProtocol):
             TableData: sample table data
         """
         sampler = Sampler(
-            session=self.session,
+            session=self.client,
             table=table,
             profile_sample=self.profile_sample,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-        return sampler.fetch_sample_data()
+        return sampler.fetch_dl_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -103,7 +101,7 @@ class DataLakeProfilerInterface( ProfilerProtocol):
             column: the column to compute the metrics against
             metrics: list of metrics to compute
         Returns:
-            dictionnary of results
+            dictionary of results
         """
         try:
             return metric(column).fn(column_results)
@@ -146,3 +144,10 @@ class DataLakeProfilerInterface( ProfilerProtocol):
                     }
                 )
         return profile_results
+
+    def table(self):
+        """OM Table entity"""
+        raise NotImplementedError
+
+    def get_columns(self):
+        pass
