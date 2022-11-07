@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom';
 import {
   Connection,
   Edge,
+  isNode,
   MarkerType,
   Node,
   Position,
@@ -41,7 +42,9 @@ import {
 } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { SECONDARY_COLOR } from '../constants/constants';
 import {
+  EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_VALUE,
@@ -177,7 +180,8 @@ export const getLineageData = (
   addPipelineClick?: (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
-  ) => void
+  ) => void,
+  handleColumnClick?: (value: string) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -328,6 +332,8 @@ export const getLineageData = (
         isEditMode,
         isExpanded: currentNode?.data?.isExpanded || false,
         columns: cols,
+        handleColumnClick,
+        node,
       },
       position: {
         x: x,
@@ -354,13 +360,15 @@ export const getLineageData = (
       sourcePosition: 'right',
       targetPosition: 'left',
       type: getNodeType(entityLineage, mainNode.id),
-      className: `leaf-node ${!isEditMode ? 'core' : ''}`,
+      className: `leaf-node core`,
       data: {
         label: getNodeLabel(mainNode),
         isEditMode,
         removeNodeHandler,
+        handleColumnClick,
         columns: mainCols,
         isExpanded: currentNode || false,
+        node: mainNode,
       },
       position: { x: x, y: y },
     },
@@ -392,7 +400,7 @@ export const getDataLabel = (
   } else {
     return (
       <span
-        className="tw-break-words tw-self-center tw-w-60"
+        className="tw-break-words tw-self-center w-72"
         data-testid="lineage-entity">
         {type === 'table'
           ? databaseName && schemaName
@@ -443,9 +451,10 @@ export const getLayoutedElements = (
   dagreGraph.setGraph({ rankdir: direction });
 
   node.forEach((el) => {
+    const isExpanded = el.data.isExpanded;
     dagreGraph.setNode(el.id, {
       width: NODE_WIDTH,
-      height: NODE_HEIGHT,
+      height: isExpanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT,
     });
   });
 
@@ -456,12 +465,14 @@ export const getLayoutedElements = (
   dagre.layout(dagreGraph);
 
   const uNode = node.map((el) => {
+    const isExpanded = el.data.isExpanded;
+    const nodeHight = isExpanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT;
     const nodeWithPosition = dagreGraph.node(el.id);
     el.targetPosition = isHorizontal ? Position.Left : Position.Top;
     el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
     el.position = {
       x: nodeWithPosition.x - NODE_WIDTH / 2,
-      y: nodeWithPosition.y - NODE_HEIGHT / 2,
+      y: nodeWithPosition.y - nodeHight / 2,
     };
 
     return el;
@@ -896,4 +907,198 @@ export const getLoadingStatusValue = (
   } else {
     return defaultState;
   }
+};
+
+const getTracedNode = (
+  node: Node,
+  nodes: Node[],
+  edges: Edge[],
+  isIncomer: boolean
+) => {
+  if (!isNode(node)) {
+    return [];
+  }
+
+  const tracedEdgeIds = edges
+    .filter((e) => {
+      const id = isIncomer ? e.target : e.source;
+
+      return id === node.id;
+    })
+    .map((e) => (isIncomer ? e.source : e.target));
+
+  return nodes.filter((n) =>
+    tracedEdgeIds
+      .map((id) => {
+        const matches = /([\w-^]+)__([\w-]+)/.exec(id);
+        if (matches === null) {
+          return id;
+        }
+
+        return matches[1];
+      })
+      .includes(n.id)
+  );
+};
+
+export const getAllTracedNodes = (
+  node: Node,
+  nodes: Node[],
+  edges: Edge[],
+  prevTraced = [] as Node[],
+  isIncomer: boolean
+) => {
+  const tracedNodes = getTracedNode(node, nodes, edges, isIncomer);
+
+  return tracedNodes.reduce((memo, tracedNode) => {
+    memo.push(tracedNode);
+
+    if (prevTraced.findIndex((n) => n.id == tracedNode.id) === -1) {
+      prevTraced.push(tracedNode);
+
+      getAllTracedNodes(
+        tracedNode,
+        nodes,
+        edges,
+        prevTraced,
+        isIncomer
+      ).forEach((foundNode) => {
+        memo.push(foundNode);
+
+        if (prevTraced.findIndex((n) => n.id == foundNode.id) === -1) {
+          prevTraced.push(foundNode);
+        }
+      });
+    }
+
+    return memo;
+  }, [] as Node[]);
+};
+
+export const getClassifiedEdge = (edges: Edge[]) => {
+  return edges.reduce(
+    (acc, edge) => {
+      if (isUndefined(edge.sourceHandle) && isUndefined(edge.targetHandle)) {
+        acc.normalEdge.push(edge);
+      } else {
+        acc.columnEdge.push(edge);
+      }
+
+      return acc;
+    },
+    {
+      normalEdge: [] as Edge[],
+      columnEdge: [] as Edge[],
+    }
+  );
+};
+
+export const isTracedEdge = (
+  selectedNode: Node,
+  edge: Edge,
+  incomerIds: string[],
+  outgoerIds: string[]
+) => {
+  const incomerEdges =
+    incomerIds.includes(edge.source) &&
+    (incomerIds.includes(edge.target) || selectedNode.id === edge.target);
+  const outgoersEdges =
+    outgoerIds.includes(edge.target) &&
+    (outgoerIds.includes(edge.source) || selectedNode.id === edge.source);
+
+  return (
+    (incomerEdges || outgoersEdges) &&
+    isUndefined(edge.sourceHandle) &&
+    isUndefined(edge.targetHandle)
+  );
+};
+
+const getTracedEdge = (
+  selectedColumn: string,
+  edges: Edge[],
+  isIncomer: boolean
+) => {
+  if (isEmpty(selectedColumn)) {
+    return [];
+  }
+
+  const tracedEdgeIds = edges
+    .filter((e) => {
+      const id = isIncomer ? e.targetHandle : e.sourceHandle;
+
+      return id === selectedColumn;
+    })
+    .map((e) => (isIncomer ? `${e.sourceHandle}` : `${e.targetHandle}`));
+
+  return tracedEdgeIds;
+};
+
+export const getAllTracedEdges = (
+  selectedColumn: string,
+  edges: Edge[],
+  prevTraced = [] as string[],
+  isIncomer: boolean
+) => {
+  const tracedNodes = getTracedEdge(selectedColumn, edges, isIncomer);
+
+  return tracedNodes.reduce((memo, tracedNode) => {
+    memo.push(tracedNode);
+
+    if (prevTraced.findIndex((n) => n == tracedNode) === -1) {
+      prevTraced.push(tracedNode);
+
+      getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
+        (foundNode) => {
+          memo.push(foundNode);
+
+          if (prevTraced.findIndex((n) => n == foundNode) === -1) {
+            prevTraced.push(foundNode);
+          }
+        }
+      );
+    }
+
+    return memo;
+  }, [] as string[]);
+};
+
+export const getAllTracedColumnEdge = (column: string, columnEdge: Edge[]) => {
+  const incomingColumnEdges = getAllTracedEdges(column, columnEdge, [], true);
+  const outGoingColumnEdges = getAllTracedEdges(column, columnEdge, [], false);
+
+  return {
+    incomingColumnEdges,
+    outGoingColumnEdges,
+    connectedColumnEdges: [
+      column,
+      ...incomingColumnEdges,
+      ...outGoingColumnEdges,
+    ],
+  };
+};
+
+export const isColumnLineageTraced = (
+  column: string,
+  edge: Edge,
+  incomingColumnEdges: string[],
+  outGoingColumnEdges: string[]
+) => {
+  const incomerEdges =
+    incomingColumnEdges.includes(`${edge.sourceHandle}`) &&
+    (incomingColumnEdges.includes(`${edge.targetHandle}`) ||
+      column === edge.targetHandle);
+  const outgoersEdges =
+    outGoingColumnEdges.includes(`${edge.targetHandle}`) &&
+    (outGoingColumnEdges.includes(`${edge.sourceHandle}`) ||
+      column === edge.sourceHandle);
+
+  return incomerEdges || outgoersEdges;
+};
+
+export const getEdgeStyle = (value: boolean) => {
+  return {
+    opacity: value ? 1 : 0.25,
+    strokeWidth: value ? 2 : 1,
+    stroke: value ? SECONDARY_COLOR : undefined,
+  };
 };

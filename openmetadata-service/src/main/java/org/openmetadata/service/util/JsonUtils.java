@@ -105,7 +105,9 @@ public final class JsonUtils {
   }
 
   public static Map<String, Object> getMap(Object o) {
-    return OBJECT_MAPPER.convertValue(o, Map.class);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = OBJECT_MAPPER.convertValue(o, Map.class);
+    return map;
   }
 
   public static <T> T readValue(String json, Class<T> clz) throws IOException {

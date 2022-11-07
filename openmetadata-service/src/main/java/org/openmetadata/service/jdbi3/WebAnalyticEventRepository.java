@@ -42,7 +42,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public void prepare(WebAnalyticEvent entity) throws IOException {
+  public void prepare(WebAnalyticEvent entity) {
     entity.setFullyQualifiedName(entity.getName());
   }
 
@@ -57,7 +57,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public void storeRelationships(WebAnalyticEvent entity) throws IOException {
+  public void storeRelationships(WebAnalyticEvent entity) {
     storeOwner(entity, entity.getOwner());
   }
 
