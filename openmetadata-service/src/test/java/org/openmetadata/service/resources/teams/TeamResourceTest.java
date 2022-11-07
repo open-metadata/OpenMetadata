@@ -65,6 +65,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -598,7 +599,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     EntityReference deletedUser = team.getUsers().get(removeUserIndex);
     team.getUsers().remove(removeUserIndex);
     ChangeDescription change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "users", Arrays.asList(deletedUser));
+    fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Remove a default role from the team using patch request
@@ -607,7 +608,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
     team.getDefaultRoles().remove(removeDefaultRoleIndex);
     change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "defaultRoles", Arrays.asList(deletedRole));
+    fieldDeleted(change, "defaultRoles", CommonUtil.listOf(deletedRole));
     patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 

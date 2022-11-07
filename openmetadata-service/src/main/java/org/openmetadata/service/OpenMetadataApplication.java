@@ -32,7 +32,6 @@ import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerJdbiTimingCollector;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
 import java.io.IOException;
@@ -177,8 +176,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
-    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
-
     SqlLogger sqlLogger =
         new SqlLogger() {
           @Override

@@ -186,4 +186,10 @@ public final class CommonUtil {
   public static String getResourceAsStream(ClassLoader loader, String file) throws IOException {
     return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
   }
+
+  /** Return list of entiries that are modifiable for performing sort and other operations */
+  @SafeVarargs
+  public static <T> List<T> listOf(T... entries) {
+    return new ArrayList<>(List.of(entries));
+  }
 }
