@@ -1,9 +1,12 @@
 package org.openmetadata.service.pipelineServiceClient.argo;
 
+import java.net.URL;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+
+import io.argoproj.workflow.ApiClient;
 import org.openmetadata.schema.api.configuration.argo.ArgoConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -11,11 +14,23 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.service.pipelineServiceClient.PipelineServiceClient;
 import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
 
-public class ArgoClient extends PipelineServiceClient {
+public class ArgoServiceClient extends PipelineServiceClient {
 
-  public ArgoClient(
-      PipelineServiceClientConfiguration pipelineServiceClientConfiguration, ArgoConfiguration argoConfig) {
+  protected final URL serviceURL;
+  protected final String token;
+  protected final String namespace;
+  protected final WorkflowClient workflowClient;
+
+  public ArgoServiceClient(
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration, ArgoConfiguration argoConfig, String clusterName) {
     super(pipelineServiceClientConfiguration);
+
+    this.serviceURL = validateServiceURL(argoConfig.getApiEndpoint());
+    this.token = argoConfig.getToken();
+    // k8s namespace will be the same as the cluster name to ensure uni
+    this.namespace = clusterName;
+
+    this.workflowClient = new WorkflowClient(this.serviceURL.toString(), this.token, this.namespace);
   }
 
   @Override

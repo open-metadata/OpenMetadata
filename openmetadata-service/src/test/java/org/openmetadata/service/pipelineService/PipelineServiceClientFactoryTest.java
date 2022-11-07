@@ -13,7 +13,7 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientFactory;
 import org.openmetadata.service.pipelineServiceClient.airflow.AirflowRESTClient;
-import org.openmetadata.service.pipelineServiceClient.argo.ArgoClient;
+import org.openmetadata.service.pipelineServiceClient.argo.ArgoServiceClient;
 
 import javax.validation.Validator;
 import java.io.IOException;
@@ -51,7 +51,7 @@ public class PipelineServiceClientFactoryTest {
     @Test
     void testIsCreatedIfArgoProvider() {
         config.getPipelineServiceClientConfiguration().setPipelineServiceClient(PipelineServiceClientProvider.ARGO);
-        assertTrue(PipelineServiceClientFactory.createPipelineServiceClient(config) instanceof ArgoClient);
+        assertTrue(PipelineServiceClientFactory.createPipelineServiceClient(config) instanceof ArgoServiceClient);
     }
 
 }

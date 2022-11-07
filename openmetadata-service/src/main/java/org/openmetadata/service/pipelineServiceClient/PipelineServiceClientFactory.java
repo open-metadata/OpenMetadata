@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientProvider;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.pipelineServiceClient.airflow.AirflowRESTClient;
-import org.openmetadata.service.pipelineServiceClient.argo.ArgoClient;
+import org.openmetadata.service.pipelineServiceClient.argo.ArgoServiceClient;
 
 public class PipelineServiceClientFactory {
 
@@ -29,7 +29,7 @@ public class PipelineServiceClientFactory {
             new AirflowRESTClient(pipelineServiceClientConfiguration, config.getAirflowConfiguration());
         break;
       case ARGO:
-        pipelineServiceClient = new ArgoClient(pipelineServiceClientConfiguration, config.getArgoConfiguration());
+        pipelineServiceClient = new ArgoServiceClient(pipelineServiceClientConfiguration, config.getArgoConfiguration(), config.getClusterName());
         break;
       default:
         throw new IllegalArgumentException("Not implemented pipeline service client: " + pipelineServiceClientProvider);

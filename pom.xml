@@ -513,6 +513,34 @@
         <artifactId>snakeyaml</artifactId>
         <version>1.31</version>
       </dependency>
+
+      <!-- Argo Workflows -->
+      <dependency>
+        <groupId>io.argoproj.workflow</groupId>
+        <artifactId>argo-client-java</artifactId>
+        <version>v3.4.2</version>
+      </dependency>
+      <dependency>
+        <groupId>io.gsonfire</groupId>
+        <artifactId>gson-fire</artifactId>
+        <version>1.8.5</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>4.10.0</version>
+      </dependency>
+      <dependency>
+        <groupId>io.kubernetes</groupId>
+        <artifactId>client-java</artifactId>
+        <version>15.0.1</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
