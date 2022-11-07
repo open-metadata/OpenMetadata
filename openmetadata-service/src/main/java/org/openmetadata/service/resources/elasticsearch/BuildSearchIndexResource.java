@@ -92,7 +92,7 @@ public class BuildSearchIndexResource {
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
       this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
@@ -308,7 +308,7 @@ public class BuildSearchIndexResource {
   }
 
   private synchronized void updateEntityStream(
-      UriInfo uriInfo, UUID startedBy, String entityType, CreateEventPublisherJob createRequest) throws IOException {
+      UriInfo uriInfo, UUID startedBy, String entityType, CreateEventPublisherJob createRequest) {
 
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);

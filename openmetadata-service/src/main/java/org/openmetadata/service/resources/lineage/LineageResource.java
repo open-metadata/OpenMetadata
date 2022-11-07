@@ -225,7 +225,7 @@ public class LineageResource {
     return lineage;
   }
 
-  class LineageResourceContext implements ResourceContextInterface {
+  static class LineageResourceContext implements ResourceContextInterface {
 
     @Override
     public String getResource() {
