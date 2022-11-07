@@ -23,7 +23,7 @@
       "type": "string"
     },
     "metadataApiEndpoint": {
-      "description": "Metadata api endpoint",
+      "description": "Metadata api endpoint. To be deprecated.",
       "type": "string"
     },
     "authProvider": {

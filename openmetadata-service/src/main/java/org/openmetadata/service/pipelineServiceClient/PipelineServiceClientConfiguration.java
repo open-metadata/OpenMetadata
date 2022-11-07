@@ -12,4 +12,8 @@ public class PipelineServiceClientConfiguration {
       PipelineServiceClientProvider.AIRFLOW;
 
   private PipelineServiceClientProvider pipelineServiceClient;
+
+  public String metadataApiEndpoint;
+
+  public String hostIp;
 }

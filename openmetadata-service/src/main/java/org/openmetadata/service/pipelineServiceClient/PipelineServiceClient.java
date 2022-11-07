@@ -3,12 +3,8 @@ package org.openmetadata.service.pipelineServiceClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -36,11 +32,8 @@ import org.openmetadata.service.exception.PipelineServiceVersionException;
  * </ul>
  */
 public abstract class PipelineServiceClient {
-  protected final URL serviceURL;
-  protected final String username;
-  protected final String password;
   protected final String hostIp;
-  protected final HttpClient client;
+
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
@@ -57,41 +50,21 @@ public abstract class PipelineServiceClient {
     SERVER_VERSION = rawServerVersion;
   }
 
-  public PipelineServiceClient(String userName, String password, String apiEndpoint, String hostIp, int apiTimeout) {
-    try {
-      this.serviceURL = new URL(apiEndpoint);
-    } catch (MalformedURLException e) {
-      throw new PipelineServiceClientException(apiEndpoint + " Malformed.");
-    }
-    this.username = userName;
-    this.password = password;
-    this.hostIp = hostIp;
-    this.client =
-        HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(apiTimeout))
-            .build();
+  public PipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+    this.hostIp = pipelineServiceClientConfiguration.getHostIp();
   }
 
-  public final HttpResponse<String> post(String endpoint, String payload) throws IOException, InterruptedException {
-    return post(endpoint, payload, true);
+  public final URL validateServiceURL(String serviceURL) {
+    try {
+      return new URL(serviceURL);
+    } catch (MalformedURLException e) {
+      throw new PipelineServiceClientException(serviceURL + " Malformed.");
+    }
   }
 
   public final String getBasicAuthenticationHeader(String username, String password) {
     String valueToEncode = username + ":" + password;
     return "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes());
-  }
-
-  public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
-      throws IOException, InterruptedException {
-    HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder(URI.create(endpoint))
-            .header(CONTENT_HEADER, CONTENT_TYPE)
-            .POST(HttpRequest.BodyPublishers.ofString(payload));
-    if (authenticate) {
-      requestBuilder.header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
-    }
-    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
   }
 
   public static String getServerVersion() throws IOException {

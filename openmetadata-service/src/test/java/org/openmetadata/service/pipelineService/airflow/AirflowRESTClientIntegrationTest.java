@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.exception.PipelineServiceClientException;
+import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.service.pipelineServiceClient.airflow.AirflowRESTClient;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,8 +54,13 @@ class AirflowRESTClientIntegrationTest {
 
   @BeforeEach
   void setUp() {
+
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
+    pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
+    pipelineServiceClientConfiguration.setMetadataApiEndpoint("http://openmetadata-server:8585/api");
+
     AirflowConfiguration airflowConfiguration = createDefaultAirflowConfiguration();
-    airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
+    airflowRESTClient = new AirflowRESTClient(pipelineServiceClientConfiguration, airflowConfiguration);
     httpServerExtension.unregisterHandler();
   }
 

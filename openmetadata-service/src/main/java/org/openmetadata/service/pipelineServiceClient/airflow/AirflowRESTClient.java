@@ -16,8 +16,11 @@ package org.openmetadata.service.pipelineServiceClient.airflow;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
@@ -31,10 +34,16 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.pipelineServiceClient.PipelineServiceClient;
+import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
+
+  protected final String username;
+  protected final String password;
+  protected final HttpClient client;
+  protected final URL serviceURL;
   private static final String API_ENDPOINT = "api/v1/openmetadata";
   private static final String DAG_ID = "dag_id";
 
@@ -46,13 +55,35 @@ public class AirflowRESTClient extends PipelineServiceClient {
           PipelineType.USAGE.toString(), "usage_task",
           PipelineType.TEST_SUITE.toString(), "test_suite_task");
 
-  public AirflowRESTClient(AirflowConfiguration airflowConfig) {
-    super(
-        airflowConfig.getUsername(),
-        airflowConfig.getPassword(),
-        airflowConfig.getApiEndpoint(),
-        airflowConfig.getHostIp(),
-        airflowConfig.getTimeout());
+  public AirflowRESTClient(
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration, AirflowConfiguration airflowConfig) {
+
+    super(pipelineServiceClientConfiguration);
+
+    this.username = airflowConfig.getUsername();
+    this.password = airflowConfig.getPassword();
+    this.serviceURL = validateServiceURL(airflowConfig.getApiEndpoint());
+    this.client =
+        HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(airflowConfig.getTimeout()))
+            .build();
+  }
+
+  public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
+      throws IOException, InterruptedException {
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder(URI.create(endpoint))
+            .header(CONTENT_HEADER, CONTENT_TYPE)
+            .POST(HttpRequest.BodyPublishers.ofString(payload));
+    if (authenticate) {
+      requestBuilder.header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
+    }
+    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+  }
+
+  public final HttpResponse<String> post(String endpoint, String payload) throws IOException, InterruptedException {
+    return post(endpoint, payload, true);
   }
 
   @Override

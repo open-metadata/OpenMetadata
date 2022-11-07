@@ -3,13 +3,23 @@ package org.openmetadata.service.pipelineService;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.exception.PipelineServiceVersionException;
+import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
 
 public class PipelineServiceClientTest {
 
-  final MockPipelineServiceClient mockPipelineServiceClient =
-      new MockPipelineServiceClient("user", "password", "https://endpoint.com", "111.11.11.1", 10);
+  static MockPipelineServiceClient mockPipelineServiceClient;
+
+  @BeforeAll
+  static void setUp() {
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
+    pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
+    pipelineServiceClientConfiguration.setMetadataApiEndpoint("http://localhost:8585/api");
+
+    mockPipelineServiceClient = new MockPipelineServiceClient(pipelineServiceClientConfiguration);
+  }
 
   @Test
   public void testGetVersionFromString() {

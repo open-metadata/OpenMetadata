@@ -18,6 +18,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -55,8 +56,11 @@ public class OpenMetadataServerConnectionBuilder {
       authProvider = extractAuthProvider(botUser);
     }
 
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
+    openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
+
     AirflowConfiguration airflowConfiguration = openMetadataApplicationConfig.getAirflowConfiguration();
-    openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerProvider = secretsManager.getSecretsManagerProvider();
     verifySSL = OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
