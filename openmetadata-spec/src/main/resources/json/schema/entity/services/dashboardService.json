@@ -11,7 +11,7 @@
   ],
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode",
+      "description": "Type of Dashboard service - Preset, Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
@@ -22,6 +22,7 @@
         "Metabase",
         "PowerBI",
         "Mode",
+        "Preset",
         "CustomDashboard",
         "DomoDashboard"
       ],
@@ -52,6 +53,9 @@
         },
         {
           "name": "DomoDashboard"
+        },
+        {
+          "name": "Preset"
         }
       ]
     },
@@ -80,6 +84,9 @@
             },
             {
               "$ref": "./connections/dashboard/supersetConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/presetConnection.json"
             },
             {
               "$ref": "./connections/dashboard/tableauConnection.json"

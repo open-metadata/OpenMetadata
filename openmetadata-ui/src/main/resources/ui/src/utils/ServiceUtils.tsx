@@ -65,6 +65,7 @@ import {
   PIPELINE_DEFAULT,
   POSTGRES,
   POWERBI,
+  PRESET,
   PRESTO,
   PULSAR,
   REDASH,
@@ -198,6 +199,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.Superset:
       return SUPERSET;
+
+    case DashboardServiceType.Preset:
+      return PRESET;
 
     case DashboardServiceType.Looker:
       return LOOKER;

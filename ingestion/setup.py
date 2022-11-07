@@ -115,6 +115,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake-usage": {"snowflake-sqlalchemy~=1.4.3"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
+    "preset": {},
     "tableau": {"tableau-api-lib==0.1.29"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "webhook-server": {},

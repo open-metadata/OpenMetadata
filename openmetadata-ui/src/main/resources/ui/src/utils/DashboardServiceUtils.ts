@@ -23,6 +23,7 @@ import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/l
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
 import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
 import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
+import presetConnection from '../jsons/connectionSchemas/connections/dashboard/presetConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
@@ -64,6 +65,11 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
     }
     case DashboardServiceType.Superset: {
       schema = supersetConnection;
+
+      break;
+    }
+    case DashboardServiceType.Preset: {
+      schema = presetConnection;
 
       break;
     }

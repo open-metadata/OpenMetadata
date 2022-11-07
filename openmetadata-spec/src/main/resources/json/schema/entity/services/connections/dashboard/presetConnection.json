@@ -1,0 +1,62 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/PresetConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PresetConnection",
+  "description": "Preset Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.PresetConnection",
+  "definitions": {
+    "PresetType": {
+      "description": "Preset service type",
+      "type": "string",
+      "enum": ["Preset"],
+      "default": "Preset"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/PresetType",
+      "default": "Preset"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Preset Host",
+      "description": "URL for the Preset instance.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://manage.app.preset.io"
+    },
+    "authHost": {
+      "expose": false,
+      "title": "Preset Auth Host",
+      "description": "URL for the Preset Auth.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://manage.app.preset.io"
+    },
+    "apiToken": {
+      "title": "Api Token",
+      "description": "API token for Preset.",
+      "type": "string"
+    },
+    "apiSecret": {
+      "title": "API Secret",
+      "description": "api secret for Preset.",
+      "type": "string",
+      "format": "password"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "apiToken", "apiSecret"]
+}

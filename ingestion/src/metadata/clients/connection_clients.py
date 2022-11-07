@@ -78,6 +78,11 @@ class SupersetClient:
     def __init__(self, client) -> None:
         self.client = client
 
+@dataclass
+class PresetClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
 
 @dataclass
 class TableauClient:

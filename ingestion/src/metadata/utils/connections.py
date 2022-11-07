@@ -47,6 +47,7 @@ from metadata.clients.connection_clients import (
     ModeClient,
     NifiClientWrapper,
     PowerBiClient,
+    PresetClient,
     RedashClient,
     SageMakerClient,
     SalesforceClient,
@@ -71,6 +72,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.modeConnect
 )
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.presetConnection import (
+    PresetConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
@@ -745,6 +749,27 @@ def _(connection: SupersetClient) -> None:
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+@get_connection.register
+def _(
+    connection: PresetConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
+    from metadata.ingestion.ometa.preset_rest import PresetAPIClient
+
+    preset_connection = PresetAPIClient(connection)
+    preset_client = PresetClient(preset_connection)
+    return preset_client
+
+
+@test_connection.register
+def _(connection: PresetClient) -> None:
+    try:
+        connection.client.fetch_menu()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
 
 
 @get_connection.register
