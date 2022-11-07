@@ -135,19 +135,21 @@ export const CustomEdge = ({
             </LineageEdgeIcon>
           )
         )
-      ) : selected && data.isEditMode ? (
-        <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
-          <button
-            className="tw-cursor-pointer tw-flex tw-z-9999"
-            data-testid="delete-button"
-            onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
-            <SVGIcons
-              alt="times-circle"
-              icon="icon-times-circle"
-              width="16px"
-            />
-          </button>
-        </LineageEdgeIcon>
+      ) : data.isEditMode ? (
+        selected && (
+          <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
+            <button
+              className="tw-cursor-pointer tw-flex tw-z-9999"
+              data-testid="delete-button"
+              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
+              <SVGIcons
+                alt="times-circle"
+                icon="icon-times-circle"
+                width="16px"
+              />
+            </button>
+          </LineageEdgeIcon>
+        )
       ) : (
         data.columnFunctionValue &&
         data.isExpanded && (

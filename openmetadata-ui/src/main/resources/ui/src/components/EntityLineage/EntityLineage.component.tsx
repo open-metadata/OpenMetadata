@@ -476,10 +476,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const setElementsHandle = (data: EntityLineage) => {
     if (!isEmpty(data)) {
-      const currentData = {
-        nodes: [...(nodes || [])],
-        edges: [...(edges || [])],
-      };
       const graphElements = getLineageData(
         data,
         selectNodeHandler,
@@ -491,9 +487,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         onEdgeClick,
         removeNodeHandler,
         tableColumnsRef.current,
-        currentData,
         addPipelineClick,
-        handleColumnClick
+        handleColumnClick,
+        expandAllColumns
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
