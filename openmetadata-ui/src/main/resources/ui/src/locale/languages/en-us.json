@@ -228,8 +228,15 @@
     "entity-restored-success": "{{entity}} restored successfully",
     "entity-restored-error": "Error while restoring {{entity}}",
     "no-ingestion-available": "No ingestion data available",
-    "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the"
+    "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the",
+    "no-followed-entities": "You have not followed anything yet.",
+    "no-owned-entities": "You have not owned anything yet.",
+    "entity-fetch-error": "Error while fetching {{entity}}",
+    "feed-post-error": "Error while posting the message!",
+    "unexpected-error": "An unexpected error occurred."
   },
-  "server": {},
+  "server": {
+    "unexpected-response": "Unexpected response from server!"
+  },
   "url": {}
 }

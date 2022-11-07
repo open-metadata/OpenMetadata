@@ -33,6 +33,7 @@ import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import {
   getUserPath,
+  LIST_SIZE,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../constants/constants';
@@ -55,9 +56,11 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import UserCard from '../../pages/teams/UserCard';
-import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
-import { filterEntityAssets } from '../../utils/EntityUtils';
+import {
+  getEntityName,
+  getNonDeletedTeams,
+  getTierFromEntityInfo,
+} from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -69,8 +72,11 @@ import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList'
 import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
+import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
@@ -82,6 +88,8 @@ import { userPageFilterList } from './Users.util';
 
 const Users = ({
   userData,
+  followingEntities,
+  ownedEntities,
   feedData,
   isFeedLoading,
   postFeedHandler,
@@ -98,6 +106,8 @@ const Users = ({
   feedFilter,
   setFeedFilter,
   threadType,
+  onFollowingEntityPaginate,
+  onOwnedEntityPaginate,
   onSwitchChange,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
@@ -885,37 +895,59 @@ const Users = ({
   }, [image]);
 
   const getEntityData = useCallback(
-    (entityData: EntityReference[], tabNumber: number) => {
-      const updatedEntityData = filterEntityAssets(entityData || []);
+    (tabNumber: number) => {
+      const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
 
       return (
-        <div
-          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-          data-testid="dataset-card">
-          {isEmpty(updatedEntityData) ? (
-            tabNumber === 3 ? (
-              <div className="tw-mx-2"> {t('label.not-owned-yet')}.</div>
-            ) : (
-              <div className="tw-mx-2"> {t('label.not-followed-yet')}.</div>
-            )
-          ) : null}
-          {updatedEntityData.map((dataset, index) => {
-            const Dataset = {
-              displayName: dataset.displayName || dataset.name || '',
-              type: dataset.type,
-              fqn: dataset.fullyQualifiedName || '',
-              id: dataset.id,
-              name: dataset.name,
-            };
-
-            return (
-              <UserCard isDataset isIconVisible item={Dataset} key={index} />
-            );
-          })}
+        <div data-testid="table-container">
+          {entityData.data.length ? (
+            <>
+              {entityData.data.map((entity, index) => (
+                <div className="m-b-sm" key={`${entity.name}${index}`}>
+                  <TableDataCard
+                    database={entity.database}
+                    databaseSchema={entity.databaseSchema}
+                    deleted={entity.deleted}
+                    description={entity.description}
+                    fullyQualifiedName={entity.fullyQualifiedName}
+                    id={`tabledatacard${index}`}
+                    indexType={entity.index}
+                    name={entity.name}
+                    owner={entity.owner}
+                    service={entity.service}
+                    serviceType={entity.serviceType || '--'}
+                    tags={entity.tags}
+                    tier={getTierFromEntityInfo(entity)}
+                    usage={entity.weeklyPercentileRank}
+                  />
+                </div>
+              ))}
+              {entityData.total > LIST_SIZE && entityData.data.length > 0 && (
+                <NextPrevious
+                  isNumberBased
+                  currentPage={entityData.currPage}
+                  pageSize={LIST_SIZE}
+                  paging={{} as Paging}
+                  pagingHandler={
+                    tabNumber === 3
+                      ? onOwnedEntityPaginate
+                      : onFollowingEntityPaginate
+                  }
+                  totalCount={entityData.total}
+                />
+              )}
+            </>
+          ) : (
+            <ErrorPlaceHolder>
+              {tabNumber === 3
+                ? t('message.no-owned-entities')
+                : t('message.no-followed-entities')}
+            </ErrorPlaceHolder>
+          )}
         </div>
       );
     },
-    []
+    [followingEntities, ownedEntities]
   );
 
   return (
@@ -929,8 +961,8 @@ const Users = ({
         />
       </div>
       <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
-      <div>{activeTab === 3 && getEntityData(userData.owns || [], 3)}</div>
-      <div>{activeTab === 4 && getEntityData(userData.follows || [], 4)}</div>
+      <div>{activeTab === 3 && getEntityData(3)}</div>
+      <div>{activeTab === 4 && getEntityData(4)}</div>
     </PageLayoutV1>
   );
 };
