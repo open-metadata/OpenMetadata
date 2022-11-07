@@ -17,7 +17,6 @@ We will now discuss pros and cons of each aspect and how to configure them.
 
 - It is the simplest approach
 - We don’t need to spin up any further infrastructure
-- Allows us to extract MWAA metadata
 
 ### CONs
 
@@ -123,7 +122,6 @@ Using the connection type `Backend` will pick up the Airflow database session di
 ### PROs
 - Completely isolated environment
 - Easy to update each version
-- MWAA metadata extraction TBD
 
 ### CONs
 - We need to set up an ECS cluster and the required policies in MWAA to connect to ECS and handle Log Groups.
@@ -274,3 +272,196 @@ the official OpenMetadata docs, and the value of the `pipelineType` configuratio
 - `TestSuite`
 
 Which are based on the `PipelineType` [JSON Schema definitions](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json#L14)
+
+### Extracting MWAA Metadata
+
+To extract MWAA information we will need to take a couple of points in consideration:
+1. How to get the underlying database connection info, and
+2. How to make sure we can reach such database.
+
+#### Getting the DB connection
+
+The happy path would be going to the `Airflow UI > Admin > Configurations` and finding the `sql_alchemy_conn` parameter.
+
+However, MWAA is not providing this information. Instead, we need to create a DAG to get the connection details
+once. The DAG can be deleted afterwards. We want to use a Python Operator that will retrieve the Airflow's Session data:
+
+```python
+import logging
+import os
+from datetime import timedelta
+
+import yaml
+from airflow import DAG
+
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+from airflow.utils.dates import days_ago
+
+from airflow.configuration import conf
+
+default_args = {
+    "owner": "user_name",
+    "email": ["username@org.com"],
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "execution_timeout": timedelta(minutes=60),
+}
+
+def get_data():
+    from airflow.settings import Session
+
+    logging.info("SQL ALCHEMY CONN")
+    sqlalchemy_conn = conf.get("core", "sql_alchemy_conn", fallback=None)
+    logging.info(sqlalchemy_conn)
+
+
+with DAG(
+    "airflow_database_connection",
+    default_args=default_args,
+    description="An example DAG which pushes Airflow data to OM",
+    start_date=days_ago(1),
+    is_paused_upon_creation=True,
+    schedule_interval="@once",
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="db_connection",
+        python_callable=get_data,
+    )
+```
+
+After running the DAG, we can store the connection details and remove the dag file from S3.
+
+#### Preparing the metadata extraction
+
+We will use ECS here as well to get the metadata out of MWAA. The only important detail is to ensure that we are
+using the right networking.
+
+When creating the ECS cluster, add the VPC, subnets and security groups used when setting up MWAA. We need to
+be in the same network environment as MWAA to reach the underlying database. In the task information, we'll configure the
+same task we did for the previous metadata extraction.
+
+Now, we are ready to prepare the DAG to extract MWAA metadata:
+
+```python
+from datetime import datetime
+
+import yaml
+from airflow import DAG
+
+from http import client
+from airflow import DAG
+from airflow.providers.amazon.aws.operators.ecs import ECSOperator
+from airflow.utils.dates import days_ago
+import boto3
+
+
+CLUSTER_NAME="openmetadata-ingestion-vpc" #Replace value for CLUSTER_NAME with your information.
+CONTAINER_NAME="openmetadata-ingestion" #Replace value for CONTAINER_NAME with your information.
+LAUNCH_TYPE="FARGATE"
+
+config = """
+source:
+  type: airflow
+  serviceName: airflow_mwaa
+  serviceConnection:
+    config:
+      type: Airflow
+      hostPort: http://localhost:8080
+      numberOfStatus: 10
+      connection:
+        type: Postgres  # Typically MWAA uses Postgres
+        username: <user>
+        password: <password>
+        hostPort: <host>:<port>
+        database: <db>
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+"""
+
+
+with DAG(
+    dag_id="ecs_fargate_dag_vpc",
+    schedule_interval=None,
+    catchup=False,
+    start_date=days_ago(1),
+    is_paused_upon_creation=True,
+) as dag:
+    client=boto3.client('ecs')
+    services=client.list_services(cluster=CLUSTER_NAME,launchType=LAUNCH_TYPE)
+    service=client.describe_services(cluster=CLUSTER_NAME,services=services['serviceArns'])
+    ecs_operator_task = ECSOperator(
+        task_id = "ecs_ingestion_task",
+        dag=dag,
+        cluster=CLUSTER_NAME,
+        task_definition=service['services'][0]['taskDefinition'],
+        launch_type=LAUNCH_TYPE,
+        overrides={
+            "containerOverrides":[
+                {
+                    "name":CONTAINER_NAME,
+                    "command":["python", "main.py"],
+                    "environment": [
+                      {
+                        "name": "config",
+                        "value": config
+                      },
+                      {
+                        "name": "pipelineType",
+                        "value": "metadata"
+                      },
+                    ],
+                },
+            ],
+        },
+
+        network_configuration=service['services'][0]['networkConfiguration'],
+        awslogs_group="/ecs/ingest",
+        awslogs_stream_prefix=f"ecs/{CONTAINER_NAME}",
+    )
+```
+
+A YAML connection example could be:
+
+```yaml
+source:
+  type: airflow
+  serviceName: airflow_mwaa_ecs_op
+  serviceConnection:
+    config:
+      type: Airflow
+      hostPort: http://localhost:8080
+      numberOfStatus: 10
+      connection:
+        type: Postgres
+        username: adminuser
+        password: ...
+        hostPort: vpce-075b93a08ef7a8ffc-c88g16we.vpce-svc-0dfc8a341f816c134.us-east-2.vpce.amazonaws.com:5432
+        database: AirflowMetadata
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    enableVersionValidation: false
+    hostPort: https://sandbox.open-metadata.org/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ...
+```
