@@ -14,13 +14,16 @@
       "description": "Type of database service such as Openmetadata, Amundsen, Atlas...",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": ["OpenMetadataServer", "ElasticSearch"],
+      "enum": ["OpenMetadataServer", "ElasticSearch", "Amundsen"],
       "javaEnums": [
         {
           "name": "OpenMetadataServer"
         },
         {
           "name": "ElasticSearch"
+        },
+        {
+          "name": "Amundsen"
         }
       ]
     },
@@ -35,6 +38,9 @@
         "config": {
           "mask": true,
           "oneOf": [
+            {
+              "$ref": "connections/metadata/amundsenConnection.json"
+            },
             {
               "$ref": "connections/metadata/openMetadataConnection.json"
             },
