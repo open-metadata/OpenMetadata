@@ -37,6 +37,7 @@
     "column-count": "Column Count",
     "table-sample": "Table Sample",
     "column-summary": "Column summary",
+    "no-description": "No description",
     "data-type": "Data type",
     "table-metrics-summary": "Table Metrics Summary",
     "table-tests-summary": "Table Tests Summary",
@@ -211,7 +212,8 @@
     "select-resource": "Select Resources",
     "select-rule-effect": "Select Rule Effect",
     "field-required": "{{field}} is required",
-    "field-required-plural": "{{field}} are required"
+    "field-required-plural": "{{field}} are required",
+    "no-execution-runs-found": "No execution runs found for the pipeline."
   },
   "message": {
     "service-email-required": "Service account Email is required",

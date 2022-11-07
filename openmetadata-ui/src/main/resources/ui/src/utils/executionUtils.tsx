@@ -98,13 +98,9 @@ export const getTreeViewData = (
 export const getStatusLabel = (status: string) => {
   switch (status) {
     case StatusType.Successful:
-      return MenuOptions[StatusType.Successful];
-
     case StatusType.Pending:
-      return MenuOptions[StatusType.Pending];
-
     case StatusType.Failed:
-      return MenuOptions[StatusType.Failed];
+      return MenuOptions[status];
 
     default:
       return;

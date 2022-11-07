@@ -27,19 +27,17 @@ import {
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isNaN, toNumber } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { isNaN, map } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
 import { getPipelineStatus } from '../../axiosAPIs/pipelineAPI';
-import { MenuOptions } from '../../constants/execution.constants';
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import {
-  PipelineStatus,
-  StatusType,
-} from '../../generated/entity/data/pipeline';
-import { getStatusLabel } from '../../utils/executionUtils';
+  EXECUTION_FILTER_RANGE,
+  MenuOptions,
+} from '../../constants/execution.constants';
+import { PipelineStatus } from '../../generated/entity/data/pipeline';
 import {
   getCurrentDateTimeStamp,
   getPastDatesTimeStampFromCurrentDate,
@@ -54,11 +52,6 @@ interface ExecutionProps {
   pipelineFQN: string;
 }
 
-interface SummaryCardContentProps {
-  heading: string;
-  name: string;
-}
-
 const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
   const { t } = useTranslation();
 
@@ -69,7 +62,9 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
-    getPastDatesTimeStampFromCurrentDate(PROFILER_FILTER_RANGE.last365days.days)
+    getPastDatesTimeStampFromCurrentDate(
+      EXECUTION_FILTER_RANGE.last365days.days
+    )
   );
   const [endTime, setEndTime] = useState(getCurrentDateTimeStamp());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
@@ -101,43 +96,21 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
 
   const handleMenuClick: MenuProps['onClick'] = (event) => {
     if (event?.key) {
-      const key = toNumber(event.key);
-      if (key === 1) {
-        return setStatus(StatusType.Successful);
-      }
-      if (key === 2) {
-        return setStatus(StatusType.Failed);
-      }
-      if (key === 3) {
-        return setStatus(StatusType.Pending);
-      }
+      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]);
     }
-
-    return setStatus(MenuOptions.all);
   };
 
-  const menu = (
-    <Menu
-      items={[
-        {
-          key: 0,
-          label: MenuOptions.all,
-        },
-        {
-          key: 1,
-          label: MenuOptions[StatusType.Successful],
-        },
-        {
-          key: 2,
-          label: MenuOptions[StatusType.Failed],
-        },
-        {
-          key: 3,
-          label: MenuOptions[StatusType.Pending],
-        },
-      ]}
-      onClick={handleMenuClick}
-    />
+  const menu = useMemo(
+    () => (
+      <Menu
+        items={map(MenuOptions, (value, key) => ({
+          key: key,
+          label: value,
+        }))}
+        onClick={handleMenuClick}
+      />
+    ),
+    [handleMenuClick]
   );
 
   const onDateChange: RangePickerProps['onChange'] = (_, dateStrings) => {
@@ -154,15 +127,15 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
         setIsClickedCalendar(false);
         setStartTime(
           getPastDatesTimeStampFromCurrentDate(
-            PROFILER_FILTER_RANGE.last365days.days
+            EXECUTION_FILTER_RANGE.last365days.days
           )
         );
         setEndTime(getCurrentDateTimeStamp());
 
-        return setDatesSelected(false);
+        setDatesSelected(false);
       }
 
-      return setDatesSelected(true);
+      setDatesSelected(true);
     }
   };
 
@@ -176,11 +149,7 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <Space className="justify-between w-full">
-              <Radio.Group
-                // buttonStyle="outline"
-                // style={{ marginBottom: 8 }}
-                value={view}
-                onChange={handleModeChange}>
+              <Radio.Group value={view} onChange={handleModeChange}>
                 <Radio.Button value={listViewLabel}>
                   {listViewLabel}
                 </Radio.Button>
@@ -193,11 +162,7 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
                   <Button ghost type="primary">
                     <Space>
                       <FilterIcon />
-                      <p>
-                        {status === MenuOptions.all
-                          ? t('label.status')
-                          : getStatusLabel(status)}
-                      </p>
+                      {status === MenuOptions.all ? t('label.status') : status}
                     </Space>
                   </Button>
                 </Dropdown>
@@ -205,12 +170,10 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
                   <>
                     <Button
                       ghost
-                      className={classNames(
-                        'range-picker-button delay-100',
-                        !datesSelected && !isClickedCalendar
-                          ? 'range-picker-button-width delay-100'
-                          : ''
-                      )}
+                      className={classNames('range-picker-button delay-100', {
+                        'range-picker-button-width delay-100':
+                          !datesSelected && !isClickedCalendar,
+                      })}
                       type="primary"
                       onClick={() => {
                         setIsClickedCalendar(true);
@@ -224,7 +187,7 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
                           allowClear
                           showNow
                           bordered={false}
-                          className={classNames('range-picker')}
+                          className="executions-date-picker"
                           clearIcon={<CloseCircleOutlined />}
                           open={isClickedCalendar}
                           placeholder={['', '']}

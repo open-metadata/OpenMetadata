@@ -20,7 +20,7 @@ import { Card, Tabs } from 'antd';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import { isNil, isNumber, lowerCase, noop, omit, toUpper } from 'lodash';
 import { EntityType } from 'Models';
-import React, { Fragment, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
@@ -30,13 +30,15 @@ import { SearchIndex } from '../../enums/search.enum';
 import { getCountBadge } from '../../utils/CommonUtils';
 import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import {
   ExploreProps,
   ExploreSearchIndex,
   ExploreSearchIndexKey,
 } from './explore.interface';
+import { QuickFilters } from './QuickFilters/QuickFilters.component';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -106,111 +108,110 @@ const Explore: React.FC<ExploreProps> = ({
   }, []);
 
   return (
-    <Fragment>
-      <PageLayout
-        leftPanel={
-          <div className="tw-h-full">
-            <Card
-              data-testid="data-summary-container"
-              style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
-              <FacetFilter
-                aggregations={searchResults?.aggregations}
-                filters={postFilter}
-                showDeleted={showDeleted}
-                onChangeShowDeleted={onChangeShowDeleted}
-                onClearFilter={handleFacetFilterClearFilter}
-                onSelectHandler={handleFacetFilterChange}
-              />
-            </Card>
-          </div>
-        }>
-        <Tabs
-          defaultActiveKey={defaultActiveTab}
-          size="small"
-          tabBarExtraContent={
-            <div className="tw-flex">
-              <SortingDropDown
-                fieldList={tabsInfo[searchIndex].sortingFields}
-                handleFieldDropDown={onChangeSortValue}
-                sortField={sortValue}
-              />
-
-              <div className="tw-flex">
-                {sortOrder === 'asc' ? (
-                  <button
-                    className="tw-mt-2"
-                    onClick={() => onChangeSortOder('desc')}>
-                    <FontAwesomeIcon
-                      className="tw-text-base tw-text-primary"
-                      data-testid="last-updated"
-                      icon={faSortAmountUpAlt}
-                    />
-                  </button>
-                ) : (
-                  <button
-                    className="tw-mt-2"
-                    onClick={() => onChangeSortOder('asc')}>
-                    <FontAwesomeIcon
-                      className="tw-text-base tw-text-primary"
-                      data-testid="last-updated"
-                      icon={faSortAmountDownAlt}
-                    />
-                  </button>
-                )}
-              </div>
-            </div>
-          }
-          onChange={(tab) => {
-            tab && onChangeSearchIndex(tab as ExploreSearchIndex);
-          }}>
-          {Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => (
-            <Tabs.TabPane
-              key={tabSearchIndex}
-              tab={
-                <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-                  {tabDetail.label}
-                  <span className="p-l-xs ">
-                    {!isNil(tabCounts)
-                      ? getCountBadge(
-                          tabCounts[tabSearchIndex as ExploreSearchIndex],
-                          '',
-                          tabSearchIndex === searchIndex
-                        )
-                      : getCountBadge()}
-                  </span>
-                </div>
-              }
+    <PageLayoutV1
+      leftPanel={
+        <div className="tw-h-full">
+          <Card
+            data-testid="data-summary-container"
+            style={{ ...leftPanelAntCardStyle }}>
+            <FacetFilter
+              aggregations={searchResults?.aggregations}
+              filters={postFilter}
+              showDeleted={showDeleted}
+              onChangeShowDeleted={onChangeShowDeleted}
+              onClearFilter={handleFacetFilterClearFilter}
+              onSelectHandler={handleFacetFilterChange}
             />
-          ))}
-        </Tabs>
-        <AdvancedSearch
-          jsonTree={advancedSearchJsonTree}
-          searchIndex={searchIndex}
-          onChangeJsonTree={(nTree) => onChangeAdvancedSearchJsonTree(nTree)}
-          onChangeQueryFilter={(nQueryFilter) =>
-            onChangeAdvancedSearchQueryFilter(nQueryFilter)
-          }
-        />
-        {!loading ? (
-          <SearchedData
-            isFilterSelected
-            showResultCount
-            currentPage={page}
-            data={searchResults?.hits.hits ?? []}
-            paginate={(value) => {
-              if (isNumber(value)) {
-                onChangePage(value);
-              } else if (!isNaN(Number.parseInt(value))) {
-                onChangePage(Number.parseInt(value));
-              }
-            }}
-            totalValue={searchResults?.hits.total.value ?? 0}
+          </Card>
+        </div>
+      }>
+      <Tabs
+        defaultActiveKey={defaultActiveTab}
+        size="small"
+        tabBarExtraContent={
+          <div className="tw-flex">
+            <SortingDropDown
+              fieldList={tabsInfo[searchIndex].sortingFields}
+              handleFieldDropDown={onChangeSortValue}
+              sortField={sortValue}
+            />
+
+            <div className="tw-flex">
+              {sortOrder === 'asc' ? (
+                <button
+                  className="tw-mt-2"
+                  onClick={() => onChangeSortOder('desc')}>
+                  <FontAwesomeIcon
+                    className="tw-text-base tw-text-primary"
+                    data-testid="last-updated"
+                    icon={faSortAmountUpAlt}
+                  />
+                </button>
+              ) : (
+                <button
+                  className="tw-mt-2"
+                  onClick={() => onChangeSortOder('asc')}>
+                  <FontAwesomeIcon
+                    className="tw-text-base tw-text-primary"
+                    data-testid="last-updated"
+                    icon={faSortAmountDownAlt}
+                  />
+                </button>
+              )}
+            </div>
+          </div>
+        }
+        onChange={(tab) => {
+          tab && onChangeSearchIndex(tab as ExploreSearchIndex);
+        }}>
+        {Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => (
+          <Tabs.TabPane
+            key={tabSearchIndex}
+            tab={
+              <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+                {tabDetail.label}
+                <span className="p-l-xs ">
+                  {!isNil(tabCounts)
+                    ? getCountBadge(
+                        tabCounts[tabSearchIndex as ExploreSearchIndex],
+                        '',
+                        tabSearchIndex === searchIndex
+                      )
+                    : getCountBadge()}
+                </span>
+              </div>
+            }
           />
-        ) : (
-          <Loader />
-        )}
-      </PageLayout>
-    </Fragment>
+        ))}
+      </Tabs>
+      <QuickFilters />
+      <AdvancedSearch
+        jsonTree={advancedSearchJsonTree}
+        searchIndex={searchIndex}
+        onChangeJsonTree={(nTree) => onChangeAdvancedSearchJsonTree(nTree)}
+        onChangeQueryFilter={(nQueryFilter) =>
+          onChangeAdvancedSearchQueryFilter(nQueryFilter)
+        }
+      />
+      {!loading ? (
+        <SearchedData
+          isFilterSelected
+          showResultCount
+          currentPage={page}
+          data={searchResults?.hits.hits ?? []}
+          paginate={(value) => {
+            if (isNumber(value)) {
+              onChangePage(value);
+            } else if (!isNaN(Number.parseInt(value))) {
+              onChangePage(Number.parseInt(value));
+            }
+          }}
+          totalValue={searchResults?.hits.total.value ?? 0}
+        />
+      ) : (
+        <Loader />
+      )}
+    </PageLayoutV1>
   );
 };
 

@@ -119,7 +119,7 @@ export const STATUS_OPTIONS = [
   { value: StatusType.Pending, label: StatusType.Pending },
 ];
 
-export const getStatusBadgeIcon = (status: StatusType) => {
+export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
       return Icons.SUCCESS_BADGE;

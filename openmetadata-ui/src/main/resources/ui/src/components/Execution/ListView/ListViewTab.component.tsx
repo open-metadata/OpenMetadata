@@ -20,7 +20,6 @@ import {
 import {
   getTableViewData,
   StatusIndicator,
-  ViewDataInterface,
 } from '../../../utils/executionUtils';
 import Loader from '../../Loader/Loader';
 
@@ -38,26 +37,27 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
     [executions, status]
   );
 
-  const columns = [
-    {
-      title: t('label.name'),
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: t('label.status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (_: unknown, data: ViewDataInterface) => (
-        <StatusIndicator status={data.status as StatusType} />
-      ),
-    },
-    {
-      title: t('label.date-and-time'),
-      dataIndex: 'timestamp',
-      key: 'timestamp',
-    },
-  ];
+  const columns = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+      },
+      {
+        title: t('label.status'),
+        dataIndex: 'status',
+        key: 'status',
+        render: (status: StatusType) => <StatusIndicator status={status} />,
+      },
+      {
+        title: t('label.date-and-time'),
+        dataIndex: 'timestamp',
+        key: 'timestamp',
+      },
+    ],
+    []
+  );
 
   return (
     <Table

@@ -13,11 +13,9 @@
 import { Card, Col, Empty, Row, Space, Typography } from 'antd';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tooltip } from 'react-tippy';
-import {
-  PipelineStatus,
-  StatusType,
-} from '../../../generated/entity/data/pipeline';
+import { PipelineStatus } from '../../../generated/entity/data/pipeline';
 import { getTreeViewData } from '../../../utils/executionUtils';
 import { getStatusBadgeIcon } from '../../../utils/PipelineDetailsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -42,6 +40,8 @@ const TreeViewTab = ({
     [executions, status]
   );
 
+  const { t } = useTranslation();
+
   return (
     <Card>
       <Row align="middle" className="m-b-lg m-t-md" justify="center">
@@ -63,7 +63,10 @@ const TreeViewTab = ({
       </Row>
 
       {isEmpty(viewData) && (
-        <Empty className="my-4" description="Couldn't find any pipeline runs" />
+        <Empty
+          className="my-4"
+          description={t('label.no-execution-runs-found')}
+        />
       )}
 
       {Object.entries(viewData).map(([key, value]) => {
@@ -91,9 +94,7 @@ const TreeViewTab = ({
                     <SVGIcons
                       alt="result"
                       className="tw-w-6"
-                      icon={getStatusBadgeIcon(
-                        status.executionStatus as StatusType
-                      )}
+                      icon={getStatusBadgeIcon(status.executionStatus)}
                     />
                   </Tooltip>
                 ))}

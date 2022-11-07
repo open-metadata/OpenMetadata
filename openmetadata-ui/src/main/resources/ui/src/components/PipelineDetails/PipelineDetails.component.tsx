@@ -123,13 +123,9 @@ const PipelineDetails = ({
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-  const [selectedExecution] = useState<PipelineStatus>(() => {
-    if (pipelineStatus) {
-      return pipelineStatus;
-    } else {
-      return {} as PipelineStatus;
-    }
-  });
+  const [selectedExecution] = useState<PipelineStatus | undefined>(
+    pipelineStatus
+  );
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
