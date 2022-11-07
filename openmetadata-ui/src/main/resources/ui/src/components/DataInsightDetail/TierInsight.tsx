@@ -33,7 +33,6 @@ import {
   BAR_SIZE,
   TIER_BAR_COLOR_MAP,
 } from '../../constants/DataInsight.constants';
-import { DataReportIndex } from '../../generated/api/dataInsight/createDataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
@@ -69,7 +68,6 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
       const params = {
         ...chartFilter,
         dataInsightChartName: DataInsightChartType.TotalEntitiesByTier,
-        dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
 

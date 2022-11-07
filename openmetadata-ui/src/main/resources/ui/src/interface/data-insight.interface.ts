@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 
 export interface ChartAggregateParam {
   dataInsightChartName: DataInsightChartType;
-  dataReportIndex: DataReportIndex;
   startTs: number;
   endTs: number;
   tier?: string;
