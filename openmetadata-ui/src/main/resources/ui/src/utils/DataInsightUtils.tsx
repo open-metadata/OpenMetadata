@@ -12,7 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
-import { isInteger, toNumber } from 'lodash';
+import { isInteger, last, toNumber } from 'lodash';
 import React from 'react';
 import { LegendProps, Surface, TooltipProps } from 'recharts';
 import {
@@ -98,15 +98,17 @@ const prepareGraphData = (
     | undefined
   )[]
 ) => {
-  return timestamps.map((timestamp) => {
-    return rawData.reduce((previous, current) => {
-      if (current?.timestamp === timestamp) {
-        return { ...previous, ...current };
-      }
+  return (
+    timestamps.map((timestamp) => {
+      return rawData.reduce((previous, current) => {
+        if (current?.timestamp === timestamp) {
+          return { ...previous, ...current };
+        }
 
-      return previous;
-    }, {});
-  });
+        return previous;
+      }, {});
+    }) || []
+  );
 };
 
 const getLatestCount = (latestData = {}) => {
@@ -169,11 +171,12 @@ export const getGraphDataByEntityType = (
   });
 
   const graphData = prepareGraphData(timestamps, filteredData);
+  const latestData = last(graphData);
 
   return {
     data: graphData,
     entities,
-    total: getLatestCount(graphData.at(-1)),
+    total: getLatestCount(latestData),
   };
 };
 
@@ -203,10 +206,11 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   });
 
   const graphData = prepareGraphData(timestamps, filteredData);
+  const latestData = last(graphData);
 
   return {
     data: graphData,
     tiers,
-    total: getLatestCount(graphData.at(-1)),
+    total: getLatestCount(latestData),
   };
 };
