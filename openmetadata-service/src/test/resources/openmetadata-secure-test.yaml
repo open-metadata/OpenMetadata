@@ -166,11 +166,19 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
 
+pipelineServiceClientConfiguration:
+  pipelineServiceClient: airflow # Possible values are "airflow", "argo"
+  metadataApiEndpoint: http://localhost:8585/api
+  hostIp: ""
+
+argoConfiguration:
+  apiEndpoint: ${ARGO_HOST:-https://host.docker.internal:2746}
+  token: ${ARGO_TOKEN:-""}  # Service Account token to auth to the argo server
+
 airflowConfiguration:
   apiEndpoint: "http://localhost:8080"
   username: "admin"
   password: "admin"
-  metadataApiEndpoint: "http://localhost:8585/api"
   authProvider: "openmetadata"
 
 email:
