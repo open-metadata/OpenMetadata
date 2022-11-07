@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.airflow;
+package org.openmetadata.service.pipelineServiceClient.airflow;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
@@ -30,8 +30,8 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.exception.PipelineServiceClientException;
+import org.openmetadata.service.pipelineServiceClient.PipelineServiceClient;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.PipelineServiceClient;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {

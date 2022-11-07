@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.airflow;
+package org.openmetadata.service.pipelineServiceClient.airflow;
 
 import javax.validation.constraints.NotEmpty;
 import lombok.Getter;

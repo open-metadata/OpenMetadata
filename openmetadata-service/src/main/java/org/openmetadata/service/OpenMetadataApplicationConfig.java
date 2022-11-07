@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.service.secrets.SecretsManagerConfiguration;
 
 @Getter
@@ -60,6 +61,11 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
+
+  @NotNull
+  @Valid
+  @JsonProperty("pipelineServiceClientConfiguration")
+  private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
 
   @NotNull
   @Valid

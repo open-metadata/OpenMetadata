@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/pipelineServiceClientProvider.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Service Client Provider",
+  "description": "OpenMetadata Pipeline Service Client Provider. You will need to configure the specified service and connect it to the UI.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientProvider",
+  "enum": ["airflow", "argo"],
+  "additionalProperties": false
+}

@@ -54,14 +54,14 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.airflow.AirflowRESTClient;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.pipelineServiceClient.PipelineServiceClient;
+import org.openmetadata.service.pipelineServiceClient.airflow.AirflowRESTClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.PipelineServiceClient;
 
 @ExtendWith(MockitoExtension.class)
 public class IngestionPipelineResourceUnitTest {

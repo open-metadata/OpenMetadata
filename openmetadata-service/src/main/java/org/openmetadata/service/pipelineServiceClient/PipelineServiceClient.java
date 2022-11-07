@@ -1,4 +1,4 @@
-package org.openmetadata.service.util;
+package org.openmetadata.service.pipelineServiceClient;
 
 import java.io.IOException;
 import java.io.InputStream;

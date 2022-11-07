@@ -175,6 +175,9 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
 
+pipelineServiceClientConfiguration:
+  pipelineServiceClient: ${PIPELINE_SERVICE_CLIENT:-airflow} # Possible values are "airflow", "argo"
+
 airflowConfiguration:
   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
   hostIp: ${AIRFLOW_HOST_IP:-""}
