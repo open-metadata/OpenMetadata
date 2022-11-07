@@ -15,6 +15,7 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import base64
 import re
 from datetime import datetime, timedelta
 from functools import wraps
@@ -325,3 +326,12 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
         ),
         None,
     )
+
+
+def generate_http_basic_token(username, password):
+    """
+    Generates a HTTP basic token from username and password
+    Returns a token string (not a byte)
+    """
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
+    return token
