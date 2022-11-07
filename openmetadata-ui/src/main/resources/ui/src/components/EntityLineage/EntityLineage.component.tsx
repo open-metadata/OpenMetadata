@@ -226,7 +226,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    */
   const getNodeLabel = (node: EntityReference) => {
     return (
-      <p className="tw-flex tw-m-0 tw-py-3">
+      <p className="tw-flex tw-items-center tw-m-0 tw-py-3">
         <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
         {getDataLabel(
           node.displayName,
