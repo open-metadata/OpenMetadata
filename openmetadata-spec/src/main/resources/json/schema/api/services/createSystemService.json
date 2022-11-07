@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/createSystemService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateSystemServiceRequest",
+  "description": "Create System service entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.services.CreateSystemService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this System service.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of System entity.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "serviceType": {
+      "$ref": "../../entity/services/systemService.json#/definitions/systemServiceType"
+    },
+    "connection": {
+      "$ref": "../../entity/services/systemService.json#/definitions/systemsConnection"
+    },
+    "owner": {
+      "description": "Owner of this System service.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "serviceType", "connection"],
+  "additionalProperties": false
+}

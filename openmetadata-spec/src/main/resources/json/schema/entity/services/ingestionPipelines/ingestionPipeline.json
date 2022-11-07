@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight", "elasticSearchReindexing"]
     },
     "pipelineStatus": {
       "type": "object",
@@ -149,6 +149,11 @@
     },
     "sourceConfig": {
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/sourceConfig"
+    },
+    "sink": {
+      "description": "Sink configuration",
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sink",
+      "default": null
     },
     "openMetadataServerConnection": {
       "$ref": "../connections/metadata/openMetadataConnection.json"

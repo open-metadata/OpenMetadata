@@ -459,5 +459,17 @@
       "ViewAll",
       "EditDescription"
     ]
+  },
+  {
+    "name" : "systemService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
+    ]
   }
 ]

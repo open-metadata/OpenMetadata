@@ -24,5 +24,5 @@ public @interface Collection {
   String name();
 
   /** Order of initialization of resource starting from 0. Only order from 0 to 9 (inclusive) are allowed */
-  int order() default 9;
+  int order() default 0;
 }

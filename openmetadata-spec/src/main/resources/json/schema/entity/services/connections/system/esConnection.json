@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/esConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearchConnection",
+  "description": "ElasticSearch Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.ElasticSearchConnection",
+  "definitions": {
+    "esType": {
+      "description": "Metadata to Elastic Search type",
+      "type": "string",
+      "enum": ["ElasticSearch"],
+      "default": "ElasticSearch"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/esType",
+      "default": "ElasticSearch"
+    },
+    "host": {
+      "description": "Elastic Search Host",
+      "type": "string"
+    },
+    "port": {
+      "description": "Elastic Search port",
+      "type": "integer"
+    },
+    "scheme": {
+      "description": "Http/Https connection scheme",
+      "type": "string"
+    },
+    "username": {
+      "description": "Elastic Search Username for Login",
+      "type": "string"
+    },
+    "password": {
+      "description": "Elastic Search Password for Login",
+      "type": "string"
+    },
+    "useSSL": {
+      "description": "Indicates whether to use SSL",
+      "type": "boolean",
+      "default": false
+    },
+    "verifyCerts": {
+      "description": "Indicates whether to verify certificates",
+      "type": "boolean",
+      "default": false
+    },
+    "timeout": {
+      "description": "Connection Timeout",
+      "type": "integer",
+      "default": 30
+    },
+    "caCerts": {
+      "description": "Certificate path to be added in configuration",
+      "type": "string"
+    },
+    "useAwsCredentials": {
+      "description": "Indicates whether to use aws credentials",
+      "type": "boolean",
+      "default": false
+    },
+    "regionName": {
+      "description": "Region name in case of useAwsCredentials",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -80,7 +80,7 @@ public class NoopSecretsManager extends SecretsManager {
       Method getPasswordMethod = clazz.getMethod("get" + field);
       Method setPasswordMethod = clazz.getMethod("set" + field, String.class);
       String password = (String) getPasswordMethod.invoke(connConfig);
-      if (password != null) {
+      if (password != null && !password.equals("")) {
         if (!Fernet.isTokenized(password) && encrypt) {
           password = fernet.encrypt(password);
         } else if (Fernet.isTokenized(password) && !encrypt) {

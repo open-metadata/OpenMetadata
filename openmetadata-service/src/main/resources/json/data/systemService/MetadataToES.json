@@ -1,0 +1,7 @@
+{
+  "name": "MetadataToESSystemService",
+  "fullyQualifiedName": "MetadataToESSystemService",
+  "displayName": "Metadata To Elastic Search",
+  "description": "This service is used for pipelines with source as OM and Sink as Elastic Search",
+  "serviceType": "ElasticSearch"
+}
