@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/argoConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArgoConfiguration",
+  "description": "This schema defines the Argo Configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.argo.ArgoConfiguration",
+  "properties": {
+    "apiEndpoint": {
+      "description": "API host endpoint for the Argo Server",
+      "type": "string"
+    },
+    "token": {
+      "description": "Argo service account token.",
+      "type": "string",
+      "format": "password"
+    },
+    "metadataApiEndpoint": {
+      "description": "Metadata api endpoint",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiEndpoint",
+    "token",
+    "metadataApiEndpoint"
+  ],
+  "additionalProperties": false
+}

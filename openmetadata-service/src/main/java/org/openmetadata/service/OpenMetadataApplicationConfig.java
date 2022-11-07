@@ -24,6 +24,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.argo.ArgoConfiguration;
 import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
@@ -62,15 +63,14 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @NotNull
-  @Valid
   @JsonProperty("pipelineServiceClientConfiguration")
   private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
 
-  @NotNull
-  @Valid
   @JsonProperty("airflowConfiguration")
   private AirflowConfiguration airflowConfiguration;
+
+  @JsonProperty("argoConfiguration")
+  private ArgoConfiguration argoConfiguration;
 
   @JsonProperty("migrationConfiguration")
   @NotNull
