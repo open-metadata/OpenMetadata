@@ -144,6 +144,7 @@ public class FilterUtil {
 
   public static Settings updateEntityFilter(Settings oldValue, String entityType, List<Filters> filters) {
     // all existing filters
+    @SuppressWarnings("unchecked")
     List<EventFilter> existingEntityFilter = (List<EventFilter>) oldValue.getConfigValue();
     EventFilter entititySpecificFilter = null;
     int position = 0;

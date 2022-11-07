@@ -431,6 +431,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   public void validatePassword(User storedUser, String reqPassword) throws TemplateException, IOException {
+    @SuppressWarnings("unchecked")
     LinkedHashMap<String, String> storedData =
         (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
     String storedHashPassword = storedData.get("password");
