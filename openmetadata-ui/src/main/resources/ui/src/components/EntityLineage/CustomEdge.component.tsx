@@ -103,31 +103,30 @@ export const CustomEdge = ({
             width={PIPELINE_EDGE_WIDTH}
             x={edgeCenterX - PIPELINE_EDGE_WIDTH / 2}
             y={edgeCenterY - FOREIGN_OBJECT_SIZE / 2}>
-            <body
+            <div
+              className="tw-flex-center tw-bg-body-main tw-gap-2 tw-border tw-rounded tw-p-2"
               onClick={(event) =>
                 data.isEditMode &&
                 addPipelineClick?.(event, rest as CustomEdgeData)
               }>
-              <div className="tw-flex-center tw-bg-body-main tw-gap-2 tw-border tw-rounded tw-p-2">
-                <div className="tw-flex tw-items-center tw-gap-2">
+              <div className="tw-flex tw-items-center tw-gap-2">
+                <SVGIcons
+                  alt="times-circle"
+                  icon={Icons.PIPELINE_GREY}
+                  width="14px"
+                />
+                <span data-testid="pipeline-name">{data.label}</span>
+              </div>
+              {data.isEditMode && (
+                <button className="tw-cursor-pointer tw-flex tw-z-9999">
                   <SVGIcons
                     alt="times-circle"
-                    icon={Icons.PIPELINE_GREY}
-                    width="14px"
+                    icon={Icons.EDIT_OUTLINE_PRIMARY}
+                    width="16px"
                   />
-                  <span data-testid="pipeline-name">{data.label}</span>
-                </div>
-                {data.isEditMode && (
-                  <button className="tw-cursor-pointer tw-flex tw-z-9999">
-                    <SVGIcons
-                      alt="times-circle"
-                      icon={Icons.EDIT_OUTLINE_PRIMARY}
-                      width="16px"
-                    />
-                  </button>
-                )}
-              </div>
-            </body>
+                </button>
+              )}
+            </div>
           </foreignObject>
         ) : (
           selected &&

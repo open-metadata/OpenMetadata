@@ -69,6 +69,21 @@ support Metadata Versioning, maintaining the history of changes of all your asse
   </InlineCallout>
 </InlineCalloutContainer>
 
+## Best Practices
+
+You want to know some of the best practices around metadata ingestion? This is the right place!
+
+<InlineCalloutContainer>
+  <InlineCallout
+    color="violet-70"
+    bold="Best Practices"
+    icon="360"
+    href="/connectors/ingestion/best-practices"
+  >
+    Learn the best practices to ingest metadata, both from the UI and using any custom orchestrator.
+  </InlineCallout>
+</InlineCalloutContainer>
+
 ## Deep Dive
 
 Understand how OpenMetadata deploys the workflows that are created from the UI.

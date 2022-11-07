@@ -235,11 +235,8 @@ public class DefaultAuthorizer implements Authorizer {
       return true;
     }
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (subjectContext.isBot() && secretsManager.isLocal()) {
-      // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
-      return true;
-    }
-    return false;
+    // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
+    return subjectContext.isBot() && secretsManager.isLocal();
   }
 
   private void addUsers(Set<String> users, String domain, Boolean isAdmin) {

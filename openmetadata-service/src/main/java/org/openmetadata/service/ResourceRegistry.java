@@ -14,7 +14,6 @@ public class ResourceRegistry {
 
   public static void initialize(List<ResourceDescriptor> resourceDescriptors) {
     RESOURCE_DESCRIPTORS.clear();
-    ;
     RESOURCE_DESCRIPTORS.addAll(resourceDescriptors);
     RESOURCE_DESCRIPTORS.sort(Comparator.comparing(ResourceDescriptor::getName));
   }

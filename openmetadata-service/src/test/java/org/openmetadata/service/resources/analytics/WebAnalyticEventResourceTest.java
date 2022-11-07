@@ -49,7 +49,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   }
 
   @Test
-  void post_web_analytic_event_4x(TestInfo test) throws IOException {
+  void post_web_analytic_event_4x(TestInfo test) {
     assertResponseContains(
         () -> createEntity(createRequest(test).withEventType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -62,7 +62,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   }
 
   @Test
-  void put_web_analytic_event_data_200(TestInfo test) throws IOException, ParseException {
+  void put_web_analytic_event_data_200() throws IOException, ParseException {
     WebAnalyticEventData webAnalyticEventData =
         new WebAnalyticEventData()
             .withTimestamp(TestUtils.dateToTimestamp("2022-10-11"))
@@ -95,30 +95,25 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
 
   @Override
   public void validateCreatedEntity(
-      WebAnalyticEvent createdEntity, CreateWebAnalyticEvent request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      WebAnalyticEvent createdEntity, CreateWebAnalyticEvent request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
-  public void compareEntities(WebAnalyticEvent expected, WebAnalyticEvent updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(WebAnalyticEvent expected, WebAnalyticEvent updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
     assertEquals(expected.getDescription(), updated.getDescription());
   }
 
   @Override
-  public WebAnalyticEvent validateGetWithDifferentFields(WebAnalyticEvent entity, boolean byName)
-      throws HttpResponseException {
+  public WebAnalyticEvent validateGetWithDifferentFields(WebAnalyticEvent entity, boolean byName) {
     return null;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    return;
-  }
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   public static void putWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
       throws HttpResponseException {
