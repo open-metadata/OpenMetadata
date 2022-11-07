@@ -625,6 +625,7 @@ const DashboardDetails = ({
       editChartTags,
       tagList,
       deleted,
+      isTagLoading,
     ]
   );
 
