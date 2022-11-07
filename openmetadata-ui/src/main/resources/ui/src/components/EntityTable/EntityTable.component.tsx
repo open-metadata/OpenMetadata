@@ -609,7 +609,16 @@ const EntityTable = ({
         </div>
       );
     },
-    [isReadOnly, editColumnTag, hasTagEditAccess, isTagLoading]
+    [
+      isReadOnly,
+      editColumnTag,
+      hasTagEditAccess,
+      isTagLoading,
+      handleTagSelection,
+      handleEditColumnTag,
+      fetchTagsAndGlossaryTerms,
+      getRequestTagsElement,
+    ]
   );
 
   const columns: ColumnsType<Column> = useMemo(

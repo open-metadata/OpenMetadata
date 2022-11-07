@@ -70,16 +70,17 @@ class MetadataRestSink(Sink[Entity]):
         try:
             self.metadata.add_data_insight_report_data(record)
             logger.info(
-                f"Successfully ingested data insight for {record.data.entityType if record.data else 'Unknown'}"
+                f"Successfully ingested data insight for {record.data.__class__.__name__ if record.data else 'Unknown'}"
             )
             self.status.records_written(
-                f"Data Insight: {record.data.entityType if record.data else 'Unknown'}"
+                f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
             )
         except APIError as err:
             logger.error(
-                f"Failed to sink data insight data for {record.data.entityType if record.data else 'Unknown'} - {err}"
+                "Failed to sink data insight data for "
+                f"{record.data.__class__.__name__ if record.data else 'Unknown'} - {err}"
             )
             logger.debug(traceback.format_exc())
             self.status.failure(
-                f"Data Insight: {record.data.entityType if record.data else 'Unknown'}"
+                f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
             )
