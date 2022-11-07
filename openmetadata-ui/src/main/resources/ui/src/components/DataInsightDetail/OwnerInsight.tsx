@@ -102,7 +102,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
-      <ResponsiveContainer minHeight={400}>
+      <ResponsiveContainer debounce={1} minHeight={400}>
         <BarChart data={data} margin={BAR_CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />

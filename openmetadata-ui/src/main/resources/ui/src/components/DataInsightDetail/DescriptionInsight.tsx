@@ -102,7 +102,10 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
-      <ResponsiveContainer id="description-summary-graph" minHeight={400}>
+      <ResponsiveContainer
+        debounce={1}
+        id="description-summary-graph"
+        minHeight={400}>
         <BarChart data={data} margin={BAR_CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />
