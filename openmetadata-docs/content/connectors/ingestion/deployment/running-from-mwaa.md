@@ -17,6 +17,7 @@ We will now discuss pros and cons of each aspect and how to configure them.
 
 - It is the simplest approach
 - We don’t need to spin up any further infrastructure
+- Allows us to extract MWAA metadata
 
 ### CONs
 
@@ -86,11 +87,43 @@ with DAG(
 Where you can update the YAML configuration and workflow classes accordingly. accordingly. Further examples on how to 
 run the ingestion can be found on the documentation (e.g., [Snowflake](https://docs.open-metadata.org/connectors/database/snowflake)).
 
+### Extracting MWAA Metadata
+
+As the ingestion process will be happening locally in MWAA, we can prepare a DAG with the following YAML
+configuration:
+
+```yaml
+source:
+  type: airflow
+  serviceName: airflow_mwaa
+  serviceConnection:
+    config:
+      type: Airflow
+      hostPort: http://localhost:8080
+      numberOfStatus: 10
+      connection:
+        type: Backend
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+Using the connection type `Backend` will pick up the Airflow database session directly at runtime.
+
 ## Ingestion Workflows as an ECS Operator
 
 ### PROs
 - Completely isolated environment
 - Easy to update each version
+- MWAA metadata extraction TBD
 
 ### CONs
 - We need to set up an ECS cluster and the required policies in MWAA to connect to ECS and handle Log Groups.
