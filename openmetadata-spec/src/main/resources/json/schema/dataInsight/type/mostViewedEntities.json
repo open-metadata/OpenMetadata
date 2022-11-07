@@ -16,7 +16,7 @@
     },
     "pageViews": {
       "description": "Type of entity. Derived from the page URL.",
-      "type": "string"
+      "type": "number"
     }
   },
   "additionalProperties": false

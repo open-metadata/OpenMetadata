@@ -27,7 +27,7 @@ WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX_MAPPING = textwrap.dedent(
                 "data": {
                     "properties": {
                         "userName": {
-                            "type": "text"
+                            "type": "keyword"
                         },
                         "userId": {
                             "type": "text"

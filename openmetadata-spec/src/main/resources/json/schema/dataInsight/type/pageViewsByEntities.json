@@ -12,7 +12,7 @@
     },
     "pageViews": {
       "description": "Number of page views",
-      "type": "integer"
+      "type": "number"
     },
     "entityType": {
       "description": "Type of entity. Derived from the page URL.",

@@ -20,15 +20,19 @@
     },
     "sessions": {
       "description": "Total number of sessions",
-      "type": "integer"
+      "type": "number"
     },
     "sessionDuration": {
       "description": "Total duration of all sessions in seconds",
-      "type": "integer"
+      "type": "number"
+    },
+    "avgSessionDuration": {
+      "description": "avg. duration of a sessions in seconds",
+      "type": "number"
     },
     "pageViews": {
       "description": "Total number of pages viewed by the user",
-      "type": "integer"
+      "type": "number"
     }
   },
   "additionalProperties": false
