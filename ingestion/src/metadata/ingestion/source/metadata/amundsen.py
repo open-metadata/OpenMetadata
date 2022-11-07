@@ -508,7 +508,7 @@ class AmundsenSource(Source[Entity]):
         """
         try:
             file_path = (
-                Path(__file__).cwd() / "examples/amundsen_data/service_type.json"
+                Path(__file__).parent.parent.parent.parent / "examples/resources/amundsen_data/service_type.json"
             )
             with open(file_path, encoding="UTF-8") as file:
                 service_type: dict = json.load(file)
@@ -523,7 +523,7 @@ class AmundsenSource(Source[Entity]):
                 name=service_name,
                 displayName=service_name,
                 connection=service_type.get(service_name, "mysql")["connection"],
-                serviceType=service_type.get(service_name, DatabaseServiceType.Mysql)[
+                serviceType=service_type.get(service_name, "mysql")[
                     "service_name"
                 ],
             ),
