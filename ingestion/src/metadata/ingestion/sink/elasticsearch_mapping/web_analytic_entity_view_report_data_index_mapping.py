@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Defines the Elasticsearch mapping for Dashboards
+Defines the Elasticsearch mapping for web analytic entity views
 """
 import textwrap
 

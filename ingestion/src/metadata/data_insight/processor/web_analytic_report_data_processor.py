@@ -16,7 +16,7 @@ Processor class used to compute refined report data
 from __future__ import annotations
 
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Generator, Iterable, Optional
 
 from metadata.data_insight.processor.data_processor import DataProcessor
@@ -66,17 +66,13 @@ ENTITIES = {
 CACHED_EVENTS = []
 START_TS = str(
     int(
-        (datetime.utcnow() - timedelta(days=0))
-        .replace(hour=0, minute=0, second=0, microsecond=0)
-        .timestamp()
+        datetime.combine(datetime.utcnow() - timedelta(days=0), time.min).timestamp()
         * 1000
     )
 )
 END_TS = str(
     int(
-        (datetime.utcnow() - timedelta(days=0))
-        .replace(hour=23, minute=59, second=59, microsecond=999999)
-        .timestamp()
+        datetime.combine(datetime.utcnow() - timedelta(days=0), time.max).timestamp()
         * 1000
     )
 )
@@ -137,11 +133,17 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                         else None
                     )
                     entity_tier = get_entity_tier_from_tags(entity.tags)
-                    owner = entity.owner.name if entity.owner else None
-                    owner_id = str(entity.owner.id.__root__) if entity.owner else None
                 except AttributeError as exc:
                     entity_tier = None
                     tags = None
+                    logger.warning(
+                        f"Attribute not supported for entity type {entity.__class__.__name__} -- {exc}"
+                    )
+
+                try:
+                    owner = entity.owner.name if entity.owner else None
+                    owner_id = str(entity.owner.id.__root__) if entity.owner else None
+                except AttributeError as exc:
                     owner = None
                     owner_id = None
                     logger.warning(
@@ -170,11 +172,11 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
         {
             "user_id": {
-                "session_id": [
+                "<session_id>": [
                     {<event_data>},
                     {<event_data>},
                 ],
-                "session_id": [
+                "<session_id>": [
                     {<event_data>},
                     {<event_data>},
                 ]
@@ -210,7 +212,8 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
     _data_processor_type = "WebAnalyticUserActivityReportData"
 
-    def _compute_session_metrics(self, sessions: dict[str, list]):
+    @staticmethod
+    def _compute_session_metrics(sessions: dict[str, list]):
         """Compute the total session duration in seconds"""
         total_sessions = len(sessions)
         total_session_duration_seconds = 0
@@ -261,8 +264,8 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             timestamp = event.timestamp.__root__  # type: ignore
 
             if not user_details.get(user_id):
-                user_details = self._get_user_details(user_id)
-                user_details[user_id] = user_details
+                user_details_data = self._get_user_details(user_id)
+                user_details[user_id] = user_details_data
 
             if not refined_data.get(user_id):
                 refined_data[user_id] = {
