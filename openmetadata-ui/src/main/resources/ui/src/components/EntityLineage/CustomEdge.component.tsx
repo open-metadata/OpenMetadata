@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import React, { Fragment } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../assets/svg/ic-function.svg';
@@ -21,7 +22,7 @@ import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
 
 interface LineageEdgeIconProps {
-  children: JSX.Element;
+  children: React.ReactNode;
   x: number;
   y: number;
   offset: number;
@@ -103,66 +104,74 @@ export const CustomEdge = ({
       {!data.isColumnLineage && isTableToTableEdge() ? (
         data.label ? (
           <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-            <button
+            <Button
               className="custom-edge-pipeline-button"
               data-testid="pipeline-label"
+              icon={<PipelineIcon />}
+              type="primary"
               onClick={(event) =>
                 data.isEditMode &&
                 addPipelineClick?.(event, rest as CustomEdgeData)
-              }>
-              <PipelineIcon />
-            </button>
+              }
+            />
           </LineageEdgeIcon>
         ) : (
           selected &&
           data.isEditMode && (
             <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
-              <button
+              <Button
                 className="tw-cursor-pointer tw-flex tw-z-9999"
                 data-testid="add-pipeline"
+                icon={
+                  <SVGIcons
+                    alt="times-circle"
+                    icon="icon-times-circle"
+                    width="16px"
+                  />
+                }
                 style={{
                   transform: 'rotate(45deg)',
                 }}
+                type="link"
                 onClick={(event) =>
                   addPipelineClick?.(event, rest as CustomEdgeData)
-                }>
-                <SVGIcons
-                  alt="times-circle"
-                  icon="icon-times-circle"
-                  width="16px"
-                />
-              </button>
+                }
+              />
             </LineageEdgeIcon>
           )
         )
       ) : data.isEditMode ? (
         selected && (
           <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
-            <button
+            <Button
               className="tw-cursor-pointer tw-flex tw-z-9999"
               data-testid="delete-button"
-              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
-              <SVGIcons
-                alt="times-circle"
-                icon="icon-times-circle"
-                width="16px"
-              />
-            </button>
+              icon={
+                <SVGIcons
+                  alt="times-circle"
+                  icon="icon-times-circle"
+                  width="16px"
+                />
+              }
+              type="link"
+              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}
+            />
           </LineageEdgeIcon>
         )
       ) : (
         data.columnFunctionValue &&
         data.isExpanded && (
           <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-            <button
+            <Button
               className="custom-edge-pipeline-button"
               data-tesid="function-icon"
+              icon={<FunctionIcon />}
+              type="primary"
               onClick={(event) =>
                 data.isEditMode &&
                 addPipelineClick?.(event, rest as CustomEdgeData)
-              }>
-              <FunctionIcon />
-            </button>
+              }
+            />
           </LineageEdgeIcon>
         )
       )}
