@@ -16,11 +16,11 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Tabs } from 'antd';
+import { Button, Card, Tabs } from 'antd';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import { isNil, isNumber, lowerCase, noop, omit, toUpper } from 'lodash';
 import { EntityType } from 'Models';
-import React, { Fragment, useEffect, useMemo, useRef } from 'react';
+import React, { Fragment, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
@@ -28,15 +28,17 @@ import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { getCountBadge } from '../../utils/CommonUtils';
-import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
+import { AdvancedSearchModal } from './AdvanceSearchModal.component';
 import {
   ExploreProps,
+  ExploreQuickFilterField,
   ExploreSearchIndex,
   ExploreSearchIndexKey,
 } from './explore.interface';
+import AdvancedFields from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -59,8 +61,12 @@ const Explore: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
 }) => {
-  const isMounting = useRef(true);
   const { tab } = useParams<{ tab: string }>();
+  const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
+
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
+    ExploreQuickFilterField[]
+  >([] as ExploreQuickFilterField[]);
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
@@ -100,10 +106,35 @@ const Explore: React.FC<ExploreProps> = ({
     key
   ) => onChangePostFilter(omit(postFilter, key));
 
-  // alwyas Keep this useEffect at the end...
-  useEffect(() => {
-    isMounting.current = false;
-  }, []);
+  const handleAdvanceFieldClear = () => {
+    setSelectedQuickFilters([]);
+  };
+
+  const handleAdvanceFieldRemove = (value: string) => {
+    setSelectedQuickFilters((prev) => prev.filter((p) => p.key !== value));
+  };
+
+  const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
+    setSelectedQuickFilters((pre) => {
+      return pre.map((preField) => {
+        if (preField.key === field.key) {
+          return field;
+        } else {
+          return preField;
+        }
+      });
+    });
+  };
+
+  const handleAdvancedFieldSelect = (value: string) => {
+    const flag = selectedQuickFilters.some((field) => field.key === value);
+    if (!flag) {
+      setSelectedQuickFilters((pre) => [
+        ...pre,
+        { key: value, value: undefined },
+      ]);
+    }
+  };
 
   return (
     <Fragment>
@@ -158,6 +189,12 @@ const Explore: React.FC<ExploreProps> = ({
                   </button>
                 )}
               </div>
+              <Button
+                ghost
+                type="primary"
+                onClick={() => setShowAdvanceSearchModal(true)}>
+                Advance Search
+              </Button>
             </div>
           }
           onChange={(tab) => {
@@ -183,14 +220,24 @@ const Explore: React.FC<ExploreProps> = ({
             />
           ))}
         </Tabs>
-        <AdvancedSearch
+
+        <AdvancedFields
+          fields={selectedQuickFilters}
+          index={searchIndex}
+          onClear={handleAdvanceFieldClear}
+          onFieldRemove={handleAdvanceFieldRemove}
+          onFieldSelect={handleAdvancedFieldSelect}
+          onFieldValueSelect={handleAdvanceFieldValueSelect}
+        />
+        <AdvancedSearchModal
           jsonTree={advancedSearchJsonTree}
           searchIndex={searchIndex}
-          onChangeJsonTree={(nTree) => onChangeAdvancedSearchJsonTree(nTree)}
-          onChangeQueryFilter={(nQueryFilter) =>
-            onChangeAdvancedSearchQueryFilter(nQueryFilter)
-          }
+          visible={showAdvanceSearchModal}
+          onCancel={() => setShowAdvanceSearchModal(false)}
+          onChangeJsonTree={onChangeAdvancedSearchJsonTree}
+          onSubmit={onChangeAdvancedSearchQueryFilter}
         />
+
         {!loading ? (
           <SearchedData
             isFilterSelected

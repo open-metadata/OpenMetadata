@@ -68,3 +68,8 @@ export interface ExploreProps {
 
   loading?: boolean;
 }
+
+export interface ExploreQuickFilterField {
+  key: string;
+  value: string | undefined;
+}
