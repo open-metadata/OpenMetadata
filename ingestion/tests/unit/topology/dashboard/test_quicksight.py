@@ -169,6 +169,10 @@ EXPECTED_DASHBOARDS = [
 ]
 
 
+def mock_get_dashboard_embed_url(AwsAccountId, DashboardId, IdentityType):
+    return {"EmbedUrl": "https://dashboards.example.com/embed/1234"}
+
+
 class QuickSightUnitTest(TestCase):
     """
     Implements the necessary methods to extract
@@ -176,8 +180,7 @@ class QuickSightUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.test_connection")
-    @patch("metadata.clients.connection_clients.QuickSightClient")
-    def __init__(self, methodName, quicksight_client, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_quicksight_config)
@@ -187,10 +190,9 @@ class QuickSightUnitTest(TestCase):
         )
         self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
         self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
-        self.client = quicksight_client.return_value
-        self.client.get_dashboard_embed_url.return_value = {
-            "EmbedUrl": "https://dashboards.example.com/embed/1234"
-        }
+        self.quicksight.quicksight.get_dashboard_embed_url = (
+            mock_get_dashboard_embed_url
+        )
 
     def test_dashboard(self):
         dashboard_list = []
