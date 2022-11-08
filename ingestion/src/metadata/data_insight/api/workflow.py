@@ -30,6 +30,10 @@ from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.processor.entity_report_data_processor import (
     EntityReportDataProcessor,
 )
+from metadata.data_insight.processor.web_analytic_report_data_processor import (
+    WebAnalyticEntityViewReportDataProcessor,
+    WebAnalyticUserActivityReportDataProcessor,
+)
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -70,7 +74,12 @@ class DataInsightWorkflow:
 
         self.status = ProcessorStatus()
         self.data_processor: Optional[
-            Union[DataProcessor, EntityReportDataProcessor]
+            Union[
+                DataProcessor,
+                EntityReportDataProcessor,
+                WebAnalyticEntityViewReportDataProcessor,
+                WebAnalyticUserActivityReportDataProcessor,
+            ]
         ] = None
 
         if self.config.sink:

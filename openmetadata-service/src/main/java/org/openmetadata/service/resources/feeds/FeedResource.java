@@ -339,8 +339,8 @@ public class FeedResource {
 
       // check if logged in user satisfies any of the following
       // - Creator of the task
-      // - logged in user or the teams they belong to were assigned the task
-      // - logged in user or the teams they belong to owns the entity that the task is about
+      // - logged-in user or the teams they belong to were assigned the task
+      // - logged-in user or the teams they belong to, owns the entity that the task is about
       List<String> finalTeamNames = teamNames;
       if (createdBy.equals(userName)
           || assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))

@@ -96,6 +96,7 @@ const EditAnnouncementModal: FC<Props> = ({
         onFinish={handleConfirm}>
         <Form.Item
           label="Title:"
+          messageVariables={{ fieldName: 'title' }}
           name="title"
           rules={[
             {
@@ -114,6 +115,7 @@ const EditAnnouncementModal: FC<Props> = ({
         <Space className="announcement-date-space" size={16}>
           <Form.Item
             label={`Start Date: (${getTimeZone()})`}
+            messageVariables={{ fieldName: 'startDate' }}
             name="startDate"
             rules={[
               {
@@ -128,6 +130,7 @@ const EditAnnouncementModal: FC<Props> = ({
           </Form.Item>
           <Form.Item
             label={`End Date: (${getTimeZone()})`}
+            messageVariables={{ fieldName: 'endDate' }}
             name="endDate"
             rules={[
               {

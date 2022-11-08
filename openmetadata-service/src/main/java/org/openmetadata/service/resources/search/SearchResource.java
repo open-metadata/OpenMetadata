@@ -93,7 +93,7 @@ public class SearchResource {
 
   public SearchResource() {}
 
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
     }

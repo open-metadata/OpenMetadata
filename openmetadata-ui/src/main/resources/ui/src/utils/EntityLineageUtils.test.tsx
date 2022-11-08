@@ -25,6 +25,7 @@ import {
   EDGE_TO_BE_REMOVED,
   MOCK_COLUMN_LINEAGE_EDGE,
   MOCK_LINEAGE_DATA,
+  MOCK_NODES_AND_EDGES,
   MOCK_NORMAL_LINEAGE_EDGE,
   MOCK_PARAMS_FOR_DOWN_STREAM,
   MOCK_PARAMS_FOR_UP_STREAM,
@@ -40,12 +41,18 @@ import {
 import {
   createNewEdge,
   findUpstreamDownStreamEdge,
+  getAllTracedColumnEdge,
+  getAllTracedEdges,
+  getAllTracedNodes,
+  getClassifiedEdge,
   getEdgeType,
   getRemovedNodeData,
   getUpdatedEdge,
   getUpdatedEdgeWithPipeline,
   getUpdatedUpstreamDownStreamEdgeArr,
   getUpStreamDownStreamColumnLineageArr,
+  isColumnLineageTraced,
+  isTracedEdge,
 } from './EntityLineageUtils';
 
 describe('Test EntityLineageUtils utility', () => {
@@ -205,5 +212,91 @@ describe('Test EntityLineageUtils utility', () => {
 
     expect(lineageEdge).toMatchObject(updatedData);
     expect(noData).toMatchObject([]);
+  });
+
+  it('getAllTracedNodes & isTracedEdge function should work properly', () => {
+    const { nodes, edges } = MOCK_NODES_AND_EDGES;
+    const incomerNode = getAllTracedNodes(nodes[1], nodes, edges, [], true);
+    const outGoverNode = getAllTracedNodes(nodes[1], nodes, edges, [], false);
+    const noData = getAllTracedNodes(nodes[0], [], [], [], true);
+
+    const incomerNodeId = incomerNode.map((node) => node.id);
+    const outGoverNodeId = outGoverNode.map((node) => node.id);
+    const isTracedTruthy = isTracedEdge(
+      nodes[1],
+      edges[1],
+      incomerNodeId,
+      outGoverNodeId
+    );
+    const isTracedFalsy = isTracedEdge(
+      nodes[1],
+      edges[0],
+      incomerNodeId,
+      outGoverNodeId
+    );
+
+    expect(incomerNode).toStrictEqual([nodes[0]]);
+    expect(outGoverNode).toStrictEqual([]);
+    expect(isTracedTruthy).toBeTruthy();
+    expect(isTracedFalsy).toBeFalsy();
+    expect(noData).toMatchObject([]);
+  });
+
+  it('getAllTracedEdges function should work properly', () => {
+    const { edges } = MOCK_NODES_AND_EDGES;
+    const selectedIncomerColumn =
+      'sample_data.ecommerce_db.shopify.dim_location.location_id';
+    const incomerNode = getAllTracedEdges(
+      selectedIncomerColumn,
+      edges,
+      [],
+      true
+    );
+    const noData = getAllTracedEdges(selectedIncomerColumn, [], [], true);
+
+    expect(incomerNode).toStrictEqual([
+      'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+    ]);
+    expect(noData).toStrictEqual([]);
+  });
+
+  it('getClassifiedEdge & getAllTracedColumnEdge function should work properly', () => {
+    const { edges } = MOCK_NODES_AND_EDGES;
+    const selectedColumn =
+      'sample_data.ecommerce_db.shopify.dim_location.location_id';
+    const classifiedEdges = getClassifiedEdge(edges);
+    const allTracedEdges = getAllTracedColumnEdge(
+      selectedColumn,
+      classifiedEdges.columnEdge
+    );
+    const isColumnTracedTruthy = isColumnLineageTraced(
+      selectedColumn,
+      edges[0],
+      allTracedEdges.incomingColumnEdges,
+      allTracedEdges.outGoingColumnEdges
+    );
+    const isColumnTracedFalsy = isColumnLineageTraced(
+      selectedColumn,
+      edges[1],
+      allTracedEdges.incomingColumnEdges,
+      allTracedEdges.outGoingColumnEdges
+    );
+
+    expect(classifiedEdges).toStrictEqual({
+      normalEdge: [edges[1]],
+      columnEdge: [edges[0]],
+    });
+    expect(allTracedEdges).toStrictEqual({
+      incomingColumnEdges: [
+        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+      ],
+      outGoingColumnEdges: [],
+      connectedColumnEdges: [
+        'sample_data.ecommerce_db.shopify.dim_location.location_id',
+        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+      ],
+    });
+    expect(isColumnTracedTruthy).toBeTruthy();
+    expect(isColumnTracedFalsy).toBeFalsy();
   });
 });

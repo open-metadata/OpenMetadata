@@ -21,6 +21,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
@@ -52,7 +53,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_table
+from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.gcs_utils import (
     read_csv_from_gcs,
     read_json_from_gcs,
@@ -132,6 +133,45 @@ class DatalakeSource(DatabaseServiceSource):
             ),
         )
 
+    def fetch_gcs_bucket_names(self):
+        for bucket in self.client.list_buckets():
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=bucket.name,
+            )
+            if filter_by_schema(
+                self.config.sourceConfig.config.schemaFilterPattern,
+                schema_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else bucket.name,
+            ):
+                self.status.filter(schema_fqn, "Bucket Filtered Out")
+                continue
+
+            yield bucket.name
+
+    def fetch_s3_bucket_names(self):
+        for bucket in self.client.list_buckets()["Buckets"]:
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=bucket["Name"],
+            )
+            if filter_by_schema(
+                self.config.sourceConfig.config.schemaFilterPattern,
+                schema_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else bucket["Name"],
+            ):
+                self.status.filter(schema_fqn, "Bucket Filtered Out")
+                continue
+            yield bucket["Name"]
+
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
@@ -141,15 +181,13 @@ class DatalakeSource(DatabaseServiceSource):
             if bucket_name:
                 yield bucket_name
             else:
-                for bucket in self.client.list_buckets():
-                    yield bucket.name
+                yield from self.fetch_gcs_bucket_names()
 
         if isinstance(self.service_connection.configSource, S3Config):
             if bucket_name:
                 yield bucket_name
             else:
-                for bucket in self.client.list_buckets()["Buckets"]:
-                    yield bucket["Name"]
+                yield from self.fetch_s3_bucket_names()
 
     def yield_database_schema(
         self, schema_name: str
@@ -164,9 +202,13 @@ class DatalakeSource(DatabaseServiceSource):
         )
 
     def _list_s3_objects(self, **kwargs) -> Iterable:
-        paginator = self.client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(**kwargs):
-            yield from page["Contents"]
+        try:
+            paginator = self.client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(**kwargs):
+                yield from page["Contents"]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception to yield s3 object [{page}]: {exc}")
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """

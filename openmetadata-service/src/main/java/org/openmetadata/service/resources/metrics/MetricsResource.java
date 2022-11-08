@@ -155,7 +155,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
       throws IOException {
     addToMetrics(securityContext, metrics);
-    return create(uriInfo, securityContext, metrics);
+    return super.create(uriInfo, securityContext, metrics);
   }
 
   @PUT
@@ -174,7 +174,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
     addToMetrics(securityContext, metrics);
-    return createOrUpdate(uriInfo, securityContext, metrics);
+    return super.createOrUpdate(uriInfo, securityContext, metrics);
   }
 
   private void addToMetrics(SecurityContext securityContext, Metrics metrics) {

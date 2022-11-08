@@ -3158,7 +3158,7 @@ public interface CollectionDAO {
     public static Settings getSettings(SettingsType configType, String json) {
       Settings settings = new Settings();
       settings.setConfigType(configType);
-      Object value = null;
+      Object value;
       try {
         if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
           value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
@@ -3206,7 +3206,7 @@ public interface CollectionDAO {
     }
 
     public static TokenInterface getToken(TokenType type, String json) throws IOException {
-      TokenInterface resp = null;
+      TokenInterface resp;
       try {
         switch (type) {
           case EMAIL_VERIFICATION:

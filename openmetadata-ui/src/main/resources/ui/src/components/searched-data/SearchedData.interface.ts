@@ -30,7 +30,7 @@ type Fields =
   | 'serviceType'
   | 'deleted';
 
-type SourceType = (
+export type SourceType = (
   | Pick<
       TableSearchSource,
       Fields | 'usageSummary' | 'database' | 'databaseSchema' | 'tableType'

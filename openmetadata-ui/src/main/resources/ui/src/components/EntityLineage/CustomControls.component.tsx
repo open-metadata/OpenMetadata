@@ -129,7 +129,7 @@ const CustomControls: FC<ControlProps> = ({
       <SVGIcons
         alt="icon-edit-lineag"
         className="m--t-xss"
-        icon={isEditMode ? 'icon-edit-lineage' : 'icon-edit-lineage-color'}
+        icon={isEditMode ? 'icon-edit-lineage-color' : 'icon-edit-lineage'}
         width="14"
       />
     );
@@ -209,8 +209,8 @@ const CustomControls: FC<ControlProps> = ({
       {!deleted && (
         <ControlButton
           className={classNames('h-8 w-8 rounded-full p-x-xss tw-shadow-lg', {
-            'bg-primary': isEditMode,
-            'bg-primary-hover-lite': !isEditMode,
+            'bg-primary': !isEditMode,
+            'bg-primary-hover-lite': isEditMode,
           })}
           data-testid="edit-lineage"
           disabled={!hasEditAccess}

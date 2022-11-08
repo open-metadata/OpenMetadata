@@ -11,6 +11,7 @@
 """
 Credentials helper module
 """
+import base64
 import json
 import os
 import tempfile
@@ -130,3 +131,12 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
         f"Error trying to set GCS credentials with {gcs_credentials}."
         " Check https://docs.open-metadata.org/openmetadata/connectors/database/bigquery "
     )
+
+
+def generate_http_basic_token(username, password):
+    """
+    Generates a HTTP basic token from username and password
+    Returns a token string (not a byte)
+    """
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
+    return token

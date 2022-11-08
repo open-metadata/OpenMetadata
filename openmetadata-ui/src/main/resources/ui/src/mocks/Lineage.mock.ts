@@ -1,3 +1,5 @@
+import { MarkerType, Position } from 'reactflow';
+
 /* eslint-disable max-len */
 export const MOCK_LINEAGE_DATA = {
   entity: {
@@ -436,4 +438,134 @@ export const UPDATED_NORMAL_LINEAGE = {
     id: '0667877f-b8f1-4fe1-b125-85879be68e43',
     type: 'pipeline',
   },
+};
+
+export const MOCK_NODES_AND_EDGES = {
+  nodes: [
+    {
+      id: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      type: 'default',
+      className: 'leaf-node core',
+      data: {
+        label: 'ecommerce_db.shopify.raw_product_catalog',
+        isEditMode: false,
+        columns: {
+          'sample_data.ecommerce_db.shopify.raw_product_catalog.comments': {
+            name: 'comments',
+            dataType: 'STRING',
+            dataLength: 1,
+            dataTypeDisplay: 'string',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+            constraint: 'NULL',
+            ordinalPosition: 1,
+            type: 'input',
+          },
+        },
+        isExpanded: true,
+        node: {
+          id: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+          type: 'table',
+          name: 'raw_product_catalog',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_product_catalog',
+          description: 'description ',
+          deleted: false,
+          href: 'href',
+        },
+      },
+      position: {
+        x: 0,
+        y: 0,
+      },
+    },
+    {
+      id: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      type: 'output',
+      className: 'leaf-node',
+      data: {
+        label: 'ecommerce_db.shopify.dim_location',
+        entityType: 'table',
+        isEditMode: false,
+        isExpanded: true,
+        columns: {
+          'sample_data.ecommerce_db.shopify.dim_location.location_id': {
+            name: 'location_id',
+            dataType: 'NUMERIC',
+            dataTypeDisplay: 'numeric',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.dim_location.location_id',
+            constraint: 'PRIMARY_KEY',
+            ordinalPosition: 1,
+            type: 'output',
+          },
+        },
+        node: {
+          id: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+          type: 'table',
+          name: 'dim_location',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
+          description: 'description',
+          deleted: false,
+          href: 'href',
+        },
+      },
+      position: {
+        x: 650,
+        y: 0,
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'column-sample_data.ecommerce_db.shopify.raw_product_catalog.comments-sample_data.ecommerce_db.shopify.dim_location.location_id-edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
+      source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+      target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+      targetHandle: 'sample_data.ecommerce_db.shopify.dim_location.location_id',
+      sourceHandle:
+        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+      type: 'buttonedge',
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+      data: {
+        id: 'column-sample_data.ecommerce_db.shopify.raw_product_catalog.comments-sample_data.ecommerce_db.shopify.dim_location.location_id-edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
+        source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+        target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+        targetHandle:
+          'sample_data.ecommerce_db.shopify.dim_location.location_id',
+        sourceHandle:
+          'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+        isEditMode: false,
+        isColumnLineage: true,
+      },
+    },
+    {
+      id: 'edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
+      source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+      target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+      type: 'buttonedge',
+      animated: false,
+      style: {
+        strokeWidth: '2px',
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+      data: {
+        id: 'edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
+        label: '',
+        source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+        target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+        sourceType: 'table',
+        targetType: 'table',
+        isEditMode: false,
+        isColumnLineage: false,
+      },
+    },
+  ],
 };
