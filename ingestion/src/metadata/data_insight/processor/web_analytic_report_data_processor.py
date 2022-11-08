@@ -269,9 +269,9 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
             if not refined_data.get(user_id):
                 refined_data[user_id] = {
-                    "userName": user_details.get("user_name"),
+                    "userName": user_details[user_id].get("user_name"),
                     "userId": user_id,
-                    "team": user_details.get("team"),
+                    "team": user_details[user_id].get("team"),
                     "sessions": {
                         session_id: [timestamp],
                     },
