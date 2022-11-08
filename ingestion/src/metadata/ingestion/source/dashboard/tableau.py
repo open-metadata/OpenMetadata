@@ -194,7 +194,6 @@ class TableauSource(DashboardServiceSource):
                 category_name=CreateTagCategoryRequest(
                     name=TABLEAU_TAG_CATEGORY,
                     description="Tags associates with tableau entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(name=tag, description="Tableau Tag"),
             )

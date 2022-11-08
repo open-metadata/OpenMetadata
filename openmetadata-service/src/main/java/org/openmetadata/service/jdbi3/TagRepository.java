@@ -144,6 +144,9 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      // TODO mutuallyExclusive from false to true?
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      // TODO check the below
       updateName(original, updated);
     }
 
