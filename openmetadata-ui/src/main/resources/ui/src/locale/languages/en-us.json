@@ -198,7 +198,6 @@
     "start-date": "Start Date",
     "view-dag": "View Dag",
     "search-team": "Search Team",
-    "end-date": "End Date",
     "show-deleted": "Show deleted",
     "add-bot": "Add Bot",
     "search-for-bots": "Search for bots...",
@@ -228,8 +227,21 @@
     "entity-restored-success": "{{entity}} restored successfully",
     "entity-restored-error": "Error while restoring {{entity}}",
     "no-ingestion-available": "No ingestion data available",
-    "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the"
+    "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the",
+    "no-followed-entities": "You have not followed anything yet.",
+    "no-owned-entities": "You have not owned anything yet.",
+    "entity-fetch-error": "Error while fetching {{entity}}",
+    "feed-post-error": "Error while posting the message!",
+    "unexpected-error": "An unexpected error occurred.",
+    "entity-creation-error": "Error while creating {{entity}}",
+    "entity-updation-error": "Error while updating {{entity}}",
+    "join-team-success": "Team joined successfully!",
+    "leave-team-success": "Left the team successfully!",
+    "join-team-error": "Error while joining the team!",
+    "leave-team-error": "Error while leaving the team!"
   },
-  "server": {},
+  "server": {
+    "unexpected-response": "Unexpected response from server!"
+  },
   "url": {}
 }

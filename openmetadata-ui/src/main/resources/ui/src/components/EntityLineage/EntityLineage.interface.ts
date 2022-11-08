@@ -75,6 +75,12 @@ export interface CustomEdgeData {
   isColumnLineage: boolean;
   sourceHandle: string;
   targetHandle: string;
+  selectedColumns?: string[];
+  isTraced?: boolean;
+  selected?: boolean;
+  columnFunctionValue?: string;
+  edge?: Edge;
+  isExpanded?: false;
 }
 
 export interface SelectedEdge {
