@@ -430,12 +430,12 @@ class AirflowSource(PipelineServiceSource):
                             )
                             yield lineage
                         else:
-                            logger.warn(
+                            logger.warning(
                                 f"Could not find Table [{to_fqn}] from "
                                 f"[{self.context.pipeline_entity.fullyQualifiedName.__root__}] outlets"
                             )
                 else:
-                    logger.warn(
+                    logger.warning(
                         f"Could not find Table [{from_fqn}] from "
                         f"[{self.context.pipeline_entity.fullyQualifiedName.__root__}] inlets"
                     )

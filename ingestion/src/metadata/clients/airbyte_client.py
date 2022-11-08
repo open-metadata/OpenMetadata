@@ -18,7 +18,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
     AirbyteConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
-from metadata.utils.helpers import generate_http_basic_token
+from metadata.utils.credentials import generate_http_basic_token
 
 
 class AirbyteClient:
