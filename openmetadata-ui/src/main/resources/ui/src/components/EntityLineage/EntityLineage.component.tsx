@@ -1151,6 +1151,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
       return node;
     });
+
+    setTimeout(() => {
+      reactFlowInstance?.fitView();
+    }, 100);
   };
 
   const handleExpandColumnClick = () => {
