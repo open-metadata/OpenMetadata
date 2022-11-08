@@ -148,7 +148,7 @@ class ElasticSearchConfig(ConfigModel):
         "web_analytic_user_activity_report_data_index"
     )
     web_analytic_entity_view_report_data_name: str = (
-        "web_analytic_entity_view_report_data"
+        "web_analytic_entity_view_report_data_index"
     )
     scheme: str = "http"
     use_ssl: bool = False
