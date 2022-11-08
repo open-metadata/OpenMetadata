@@ -129,7 +129,14 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     )
 
 
-def ometa_to_orm(
+def ometa_to_dl_orm(table: Table, metadata: OpenMetadata):
+    """
+    Given an OpenMetadata instance, prepare
+    the class to run pandas top of it.
+    """
+
+
+def ometa_to_sqa_orm(
     table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
 ) -> DeclarativeMeta:
     """

@@ -62,7 +62,6 @@ class CountInSet(StaticMetric):
             logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None
 
-
     @_label
     def dl_fn(self):
         if not hasattr(self, "values"):

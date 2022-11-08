@@ -35,7 +35,7 @@ class Loggers(Enum):
     INGESTION = "Ingestion"
     UTILS = "Utils"
     GREAT_EXPECTATIONS = "GreatExpectations"
-    SQA_PROFILER_INTERFACE = "SQAInterface"
+    ProfilerInterface = "ProfilerInterface"
     TEST_SUITE = "TestSuite"
     DATA_INSIGHT = "DataInsight"
 
@@ -72,12 +72,12 @@ def test_suite_logger():
     return logging.getLogger(Loggers.TEST_SUITE.value)
 
 
-def sqa_interface_registry_logger():
+def profiler_interface_registry_logger():
     """
-    Method to get the SQA PROFILER INTERFACE logger
+    Method to get the PROFILER INTERFACE logger
     """
 
-    return logging.getLogger(Loggers.SQA_PROFILER_INTERFACE.value)
+    return logging.getLogger(Loggers.ProfilerInterface.value)
 
 
 def ingestion_logger():

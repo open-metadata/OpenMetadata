@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.entity.data.table import (
+    ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
     TableProfile,
@@ -137,14 +138,18 @@ class Profiler(Generic[TMetric]):
             self._columns = [
                 column
                 for column in self.profiler_interface.get_columns()
-                if column.name in self._get_included_columns()
+                if isinstance(column.name, ColumnName)
+                and column.name.__root__ in self._get_included_columns()
+                or column.name in self._get_included_columns()
             ]
 
         if not self._get_included_columns():
             self._columns = [
                 column
                 for column in self._columns or self.profiler_interface.get_columns()
-                if column.name not in self._get_excluded_columns()
+                if isinstance(column.name, ColumnName)
+                and column.name.__root__ not in self._get_excluded_columns()
+                or column.name not in self._get_excluded_columns()
             ]
 
         return self._columns
@@ -309,7 +314,9 @@ class Profiler(Generic[TMetric]):
         columns = [
             column
             for column in self.columns
-            if column.type.__class__ not in NOT_COMPUTE
+            if isinstance(column, Column)
+            and column.type.__class__ not in NOT_COMPUTE
+            or column.dataType.value not in NOT_COMPUTE
         ]
 
         column_metrics_for_thread_pool = [
@@ -390,7 +397,10 @@ class Profiler(Generic[TMetric]):
                 logger.info(
                     f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
-                sample_data = self.profiler_interface.fetch_sqa_sample_data(self.table)
+                sample_data = self.profiler_interface.fetch_sample_data(self.table)
+                logger.info(
+                    f"Successfully fetched sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error fetching sample data: {err}")

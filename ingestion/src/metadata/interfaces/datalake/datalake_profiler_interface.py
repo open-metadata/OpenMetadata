@@ -29,29 +29,33 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.interfaces.datalake.mixins.datalake_interface_mixin import (
+    DatalakeInterfaceMixin,
+)
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
 )
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
 from metadata.orm_profiler.api.models import TablePartitionConfig
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.metrics.sqa_metrics_computation_registry import (
+from metadata.orm_profiler.metrics.datalake_metrics_computation_registry import (
     compute_metrics_registry,
 )
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.utils.connections import (
     create_and_bind_thread_safe_session,
     get_connection,
 )
-from metadata.utils.logger import sqa_interface_registry_logger
+from metadata.utils.dispatch import enum_register
+from metadata.utils.logger import profiler_interface_registry_logger
 
-logger = sqa_interface_registry_logger()
+logger = profiler_interface_registry_logger()
 thread_local = threading.local()
 
 
-class DataLakeProfilerInterface(ProfilerProtocol):
+class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -65,6 +69,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         self.service_connection_config = (
             profiler_interface_args.service_connection_config
         )
+
         self.client = get_connection(self.service_connection_config).client
         self.processor_status = ProfilerProcessorStatus()
         self.processor_status.entity = (
@@ -72,6 +77,51 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             if self.table_entity.fullyQualifiedName
             else None
         )
+
+        self.profile_sample = profiler_interface_args.table_sample_precentage
+        self.profile_query = profiler_interface_args.table_sample_query
+        self.partition_details = None
+        self._table = profiler_interface_args.table_entity
+
+    def _create_thread_safe_sampler(self, session, table):
+        """Create thread safe runner"""
+        if not hasattr(thread_local, "sampler"):
+            thread_local.sampler = Sampler(
+                session=session,
+                table=table,
+                profile_sample=self.profile_sample,
+                partition_details=self.partition_details,
+                profile_sample_query=self.profile_query,
+            )
+        return thread_local.sampler
+
+    def compute_metrics_in_thread(
+        self,
+        metric_funcs,
+    ):
+        """Run metrics in processor worker"""
+        (
+            metrics,
+            metric_type,
+            column,
+            table,
+        ) = metric_funcs
+        logger.debug(
+            f"Running profiler for {table} on thread {threading.current_thread()}"
+        )
+        session = self.client  # pylint: disable=invalid-name
+
+        row = compute_metrics_registry.registry[metric_type.value](
+            metrics,
+            session=session,
+            column=column,
+            processor_status=self.processor_status,
+        )
+
+        if column is not None:
+            column = column.name
+
+        return row, column
 
     def fetch_sample_data(self, table) -> TableData:
         """Fetch sample data from database
@@ -89,7 +139,8 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-        return sampler.fetch_dl_sample_data()
+
+        return sampler.fetch_dl_sample_data(self.service_connection_config.configSource)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -108,7 +159,6 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception computing metrics: {exc}")
-            self.session.rollback()
             return None
 
     def get_all_metrics(
@@ -145,9 +195,10 @@ class DataLakeProfilerInterface(ProfilerProtocol):
                 )
         return profile_results
 
+    @property
     def table(self):
         """OM Table entity"""
-        raise NotImplementedError
+        return self._table
 
     def get_columns(self):
-        pass
+        return self._table.columns

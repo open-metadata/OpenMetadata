@@ -33,10 +33,10 @@ from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.test_suite.validations.core import validation_enum_registry
 from metadata.utils.connections import create_and_bind_session, get_connection
 from metadata.utils.constants import TEN_MIN
-from metadata.utils.logger import sqa_interface_registry_logger
+from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.timeout import cls_timeout
 
-logger = sqa_interface_registry_logger()
+logger = profiler_interface_registry_logger()
 
 
 class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):

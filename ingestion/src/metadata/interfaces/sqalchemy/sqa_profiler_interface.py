@@ -45,9 +45,9 @@ from metadata.utils.connections import (
     create_and_bind_thread_safe_session,
     get_connection,
 )
-from metadata.utils.logger import sqa_interface_registry_logger
+from metadata.utils.logger import profiler_interface_registry_logger
 
-logger = sqa_interface_registry_logger()
+logger = profiler_interface_registry_logger()
 thread_local = threading.local()
 
 

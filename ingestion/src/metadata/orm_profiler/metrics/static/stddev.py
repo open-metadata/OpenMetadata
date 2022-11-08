@@ -86,7 +86,6 @@ class StdDev(StaticMetric):
         )
         return None
 
-
     @_label
     def dl_fn(self):
         if is_quantifiable(self.col.type):

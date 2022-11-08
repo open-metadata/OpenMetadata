@@ -46,5 +46,6 @@ class RowCount(StaticMetric):
         return func.count()
 
     @_label
-    def dl_fn(self):
-        return func.count()
+    def dl_fn(self, row):
+        print(row)
+        pass
