@@ -1,0 +1,37 @@
+{
+    "DashboardId":"552315335",
+    "Arn":"arn:aws:quicksight:us-east-2:673353295256:dashboard/85648f16-52ca-4a3d-9516-bf3298715a2e",
+    "Name":"New Dashboard",
+    "Version": {
+        "CreatedTime": "2022-10-07T12:05:38.903Z",
+        "Errors": [],
+        "VersionNumber": 123,
+        "Status": "UPDATE_SUCCESSFUL",
+        "Arn": "arn:aws:quicksight:us-east-2:673353295256:dashboard/85648f16-52ca-4a3d-9516-bf3298715a2e",
+        "SourceEntityArn": "99429b3c-36eb-40d8-90a5-a59d76e4d242",
+        "DataSetArns": [
+            "arn:aws:quicksight:us-east-2:673353295256:dataset/1eb93e0f-a262-4f62-a948-ad9a52b5d0b5",
+            "arn:aws:quicksight:us-east-2:673353295256:dataset/2e41e76b-fc02-480d-a932-91bdbea40fe5",
+            "arn:aws:quicksight:us-east-2:673353295256:dataset/eb319fef-58ee-4dcb-986d-90a885269bc6"
+        ],
+        "Description": "",
+        "ThemeArn": "21a5c41c-da65-4531-83cb-e6d3425c4ec7",
+        "Sheets":[
+            {
+              "SheetId":"1108771657",
+              "Name":"Top Salespeople"
+            },
+            {
+              "SheetId":"1985861713",
+              "Name":"Milan Datasets"
+            },
+            {
+              "SheetId":"2025899139",
+              "Name":"Page Fans"
+            }
+        ]
+    },
+    "CreatedTime": "2022-10-06T13:32:59.000Z",
+    "LastPublishedTime": "2022-10-07T12:05:38.903Z",
+    "LastUpdatedTime": "2022-10-07T12:05:38.903Z"
+ }

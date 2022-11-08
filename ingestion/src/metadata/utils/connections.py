@@ -47,6 +47,7 @@ from metadata.clients.connection_clients import (
     ModeClient,
     NifiClientWrapper,
     PowerBiClient,
+    QuickSightClient,
     RedashClient,
     SageMakerClient,
     SalesforceClient,
@@ -71,6 +72,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.modeConnect
 )
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
+    QuickSightConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
@@ -842,6 +846,36 @@ def _(
 def _(connection: LookerClient) -> None:
     try:
         connection.client.me()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(
+    connection: QuickSightConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> QuickSightClient:
+    from metadata.clients.aws_client import AWSClient
+
+    quicksight_connection = AWSClient(connection.awsConfig).get_quicksight_client()
+    return quicksight_connection
+
+
+@test_connection.register
+def _(connection: QuickSightClient) -> None:
+    """
+    Test that we can connect to the QuickSight source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_dashboards(AwsAccountId=connection.awsAccountId)
+    except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
