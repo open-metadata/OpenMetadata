@@ -51,6 +51,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     supportsFollowers = false;
     supportsAuthorizedMetadataOperations = false;
     supportsOwner = false;
+    supportsPatch = false;
   }
 
   public void setupKpi(TestInfo test) throws IOException {
