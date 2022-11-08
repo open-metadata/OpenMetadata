@@ -40,6 +40,7 @@ import {
   SelectedEdge,
   SelectedNode,
 } from '../components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from '../components/EntityLineage/LineageNodeLabel';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
@@ -167,7 +168,6 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLabel: (node: EntityReference) => React.ReactNode,
   isEditMode: boolean,
   edgeType: string,
   onEdgeClick: (
@@ -176,12 +176,12 @@ export const getLineageData = (
   ) => void,
   removeNodeHandler: (node: Node) => void,
   columns: { [key: string]: Column[] },
-  currentData: { nodes: Node[]; edges: Edge[] },
   addPipelineClick?: (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
   ) => void,
-  handleColumnClick?: (value: string) => void
+  handleColumnClick?: (value: string) => void,
+  isExpanded?: boolean
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -221,6 +221,9 @@ export const getLineageData = (
                 isEditMode,
                 onEdgeClick,
                 isColumnLineage: true,
+                isExpanded,
+                columnFunctionValue: e.function,
+                edge,
               },
             });
           });
@@ -250,6 +253,8 @@ export const getLineageData = (
         onEdgeClick,
         addPipelineClick,
         isColumnLineage: false,
+        isExpanded,
+        edge,
       },
     });
   });
@@ -265,7 +270,6 @@ export const getLineageData = (
           : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
       };
     });
-    const currentNode = currentData?.nodes?.find((n) => n.id === node.id);
 
     return {
       id: `${node.id}`,
@@ -300,7 +304,7 @@ export const getLineageData = (
               </div>
             )}
 
-            <div>{getNodeLabel(node)}</div>
+            <LineageNodeLabel node={node} />
 
             {type === EntityLineageNodeType.OUTPUT && (
               <div
@@ -330,7 +334,7 @@ export const getLineageData = (
         entityType: node.type,
         removeNodeHandler,
         isEditMode,
-        isExpanded: currentNode?.data?.isExpanded || false,
+        isExpanded,
         columns: cols,
         handleColumnClick,
         node,
@@ -351,8 +355,6 @@ export const getLineageData = (
         : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
     };
   });
-  const currentNode = currentData?.nodes?.find((n) => n.id === mainNode.id)
-    ?.data.isExpanded;
 
   const lineageData = [
     {
@@ -362,12 +364,12 @@ export const getLineageData = (
       type: getNodeType(entityLineage, mainNode.id),
       className: `leaf-node core`,
       data: {
-        label: getNodeLabel(mainNode),
+        label: <LineageNodeLabel node={mainNode} />,
         isEditMode,
         removeNodeHandler,
         handleColumnClick,
         columns: mainCols,
-        isExpanded: currentNode || false,
+        isExpanded,
         node: mainNode,
       },
       position: { x: x, y: y },

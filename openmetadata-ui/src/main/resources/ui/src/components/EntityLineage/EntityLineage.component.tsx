@@ -106,7 +106,6 @@ import {
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
@@ -129,6 +128,7 @@ import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
 
 import './entityLineage.style.less';
+import LineageNodeLabel from './LineageNodeLabel';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -217,25 +217,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const resetSelectedData = () => {
     setNewAddedNode({} as Node);
     setSelectedEntity({} as EntityReference);
-  };
-
-  /**
-   *
-   * @param node
-   * @returns label for given node
-   */
-  const getNodeLabel = (node: EntityReference) => {
-    return (
-      <p className="tw-flex tw-items-center tw-m-0 tw-py-3">
-        <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-        {getDataLabel(
-          node.displayName,
-          node.fullyQualifiedName,
-          false,
-          node.type
-        )}
-      </p>
-    );
   };
 
   const handleNodeSelection = (node: Node) => {
@@ -495,25 +476,20 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const setElementsHandle = (data: EntityLineage) => {
     if (!isEmpty(data)) {
-      const currentData = {
-        nodes: [...(nodes || [])],
-        edges: [...(edges || [])],
-      };
       const graphElements = getLineageData(
         data,
         selectNodeHandler,
         loadNodeHandler,
         lineageLeafNodes,
         isNodeLoading,
-        getNodeLabel,
         isEditMode,
         'buttonedge',
         onEdgeClick,
         removeNodeHandler,
         tableColumnsRef.current,
-        currentData,
         addPipelineClick,
-        handleColumnClick
+        handleColumnClick,
+        expandAllColumns
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -1111,7 +1087,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   isEditMode,
                   label: (
                     <Fragment>
-                      {getNodeLabel(selectedEntity)}
+                      <LineageNodeLabel node={selectedEntity} />
                       {getNodeRemoveButton(() => {
                         removeNodeHandler({
                           ...el,
@@ -1154,6 +1130,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const toggleColumnView = (value: boolean) => {
     setExpandAllColumns(value);
+    setEdges((prevEdges) => {
+      return prevEdges.map((edge) => {
+        edge.data.isExpanded = value;
+
+        return edge;
+      });
+    });
     setNodes((prevNodes) => {
       const updatedNode = prevNodes.map((node) => {
         node.data.isExpanded = value;
@@ -1168,6 +1151,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
       return node;
     });
+
+    setTimeout(() => {
+      reactFlowInstance?.fitView();
+    }, 100);
   };
 
   const handleExpandColumnClick = () => {
@@ -1210,7 +1197,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   /**
-   * Handle updated linegae nodes
+   * Handle updated lineage nodes
    * Change newly added node label based on entity:EntityReference
    */
   const handleUpdatedLineageNode = () => {
@@ -1225,7 +1212,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         if (el.id === newlyAddedNode?.id) {
           return {
             ...el,
-            data: { ...el.data, label: getNodeLabel(newlyAddedNode) },
+            data: {
+              ...el.data,
+              label: <LineageNodeLabel node={newlyAddedNode} />,
+            },
           };
         } else {
           return el;

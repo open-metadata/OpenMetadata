@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import React, { Fragment } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
-import {
-  FOREIGN_OBJECT_SIZE,
-  PIPELINE_EDGE_WIDTH,
-} from '../../constants/Lineage.constants';
+import { ReactComponent as FunctionIcon } from '../../assets/svg/ic-function.svg';
+import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-grey.svg';
+import { FOREIGN_OBJECT_SIZE } from '../../constants/Lineage.constants';
 import { EntityType } from '../../enums/entity.enum';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
+
+interface LineageEdgeIconProps {
+  children: React.ReactNode;
+  x: number;
+  y: number;
+  offset: number;
+}
 
 export const CustomEdge = ({
   id,
@@ -96,87 +103,96 @@ export const CustomEdge = ({
 
       {!data.isColumnLineage && isTableToTableEdge() ? (
         data.label ? (
-          <foreignObject
-            data-testid="pipeline-label"
-            height={FOREIGN_OBJECT_SIZE}
-            requiredExtensions="http://www.w3.org/1999/xhtml"
-            width={PIPELINE_EDGE_WIDTH}
-            x={edgeCenterX - PIPELINE_EDGE_WIDTH / 2}
-            y={edgeCenterY - FOREIGN_OBJECT_SIZE / 2}>
-            <div
-              className="tw-flex-center tw-bg-body-main tw-gap-2 tw-border tw-rounded tw-p-2"
+          <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
+            <Button
+              className="custom-edge-pipeline-button"
+              data-testid="pipeline-label"
+              icon={<PipelineIcon />}
+              type="primary"
               onClick={(event) =>
                 data.isEditMode &&
                 addPipelineClick?.(event, rest as CustomEdgeData)
-              }>
-              <div className="tw-flex tw-items-center tw-gap-2">
-                <SVGIcons
-                  alt="times-circle"
-                  icon={Icons.PIPELINE_GREY}
-                  width="14px"
-                />
-                <span data-testid="pipeline-name">{data.label}</span>
-              </div>
-              {data.isEditMode && (
-                <button className="tw-cursor-pointer tw-flex tw-z-9999">
-                  <SVGIcons
-                    alt="times-circle"
-                    icon={Icons.EDIT_OUTLINE_PRIMARY}
-                    width="16px"
-                  />
-                </button>
-              )}
-            </div>
-          </foreignObject>
+              }
+            />
+          </LineageEdgeIcon>
         ) : (
           selected &&
           data.isEditMode && (
-            <foreignObject
-              data-testid="add-pipeline"
-              height={FOREIGN_OBJECT_SIZE}
-              requiredExtensions="http://www.w3.org/1999/xhtml"
-              width={FOREIGN_OBJECT_SIZE}
-              x={edgeCenterX - FOREIGN_OBJECT_SIZE / offset}
-              y={edgeCenterY - FOREIGN_OBJECT_SIZE / offset}>
-              <button
+            <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
+              <Button
                 className="tw-cursor-pointer tw-flex tw-z-9999"
+                data-testid="add-pipeline"
+                icon={
+                  <SVGIcons
+                    alt="times-circle"
+                    icon="icon-times-circle"
+                    width="16px"
+                  />
+                }
                 style={{
                   transform: 'rotate(45deg)',
                 }}
+                type="link"
                 onClick={(event) =>
                   addPipelineClick?.(event, rest as CustomEdgeData)
-                }>
+                }
+              />
+            </LineageEdgeIcon>
+          )
+        )
+      ) : data.isEditMode ? (
+        selected && (
+          <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
+            <Button
+              className="tw-cursor-pointer tw-flex tw-z-9999"
+              data-testid="delete-button"
+              icon={
                 <SVGIcons
                   alt="times-circle"
                   icon="icon-times-circle"
                   width="16px"
                 />
-              </button>
-            </foreignObject>
-          )
+              }
+              type="link"
+              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}
+            />
+          </LineageEdgeIcon>
         )
       ) : (
-        selected &&
-        data.isEditMode && (
-          <foreignObject
-            data-testid="delete-button"
-            height={FOREIGN_OBJECT_SIZE}
-            requiredExtensions="http://www.w3.org/1999/xhtml"
-            width={FOREIGN_OBJECT_SIZE}
-            x={edgeCenterX - FOREIGN_OBJECT_SIZE / offset}
-            y={edgeCenterY - FOREIGN_OBJECT_SIZE / offset}>
-            <button
-              className="tw-cursor-pointer tw-flex tw-z-9999"
-              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
-              <SVGIcons
-                alt="times-circle"
-                icon="icon-times-circle"
-                width="16px"
-              />
-            </button>
-          </foreignObject>
+        data.columnFunctionValue &&
+        data.isExpanded && (
+          <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
+            <Button
+              className="custom-edge-pipeline-button"
+              data-tesid="function-icon"
+              icon={<FunctionIcon />}
+              type="primary"
+              onClick={(event) =>
+                data.isEditMode &&
+                addPipelineClick?.(event, rest as CustomEdgeData)
+              }
+            />
+          </LineageEdgeIcon>
         )
       )}
     </Fragment>
+  );
+};
+
+export const LineageEdgeIcon = ({
+  children,
+  x,
+  y,
+  offset,
+}: LineageEdgeIconProps) => {
+  return (
+    <foreignObject
+      height={FOREIGN_OBJECT_SIZE}
+      requiredExtensions="http://www.w3.org/1999/xhtml"
+      width={FOREIGN_OBJECT_SIZE}
+      x={x - FOREIGN_OBJECT_SIZE / offset}
+      y={y - FOREIGN_OBJECT_SIZE / offset}>
+      {children}
+    </foreignObject>
   );
 };
