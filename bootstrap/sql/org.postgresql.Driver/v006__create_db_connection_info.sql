@@ -58,7 +58,7 @@ UPDATE pipeline_service_entity
 SET json = json::jsonb #- '{connection,config,hostPort}' #- '{connection,config,numberOfStatus}'
 where servicetype = 'Dagster';
 
-CREATE TABLE IF NOT EXISTS system_service_entity (
+CREATE TABLE IF NOT EXISTS metadata_service_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'serviceType') STORED NOT NULL,

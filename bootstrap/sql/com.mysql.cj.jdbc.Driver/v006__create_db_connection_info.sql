@@ -53,7 +53,7 @@ UPDATE pipeline_service_entity
 SET json = JSON_REMOVE(json ,'$.connection.config.hostPort', '$.connection.config.numberOfStatus')
 WHERE serviceType = 'Dagster';
 
-CREATE TABLE IF NOT EXISTS system_service_entity (
+CREATE TABLE IF NOT EXISTS metadata_service_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.serviceType') NOT NULL,

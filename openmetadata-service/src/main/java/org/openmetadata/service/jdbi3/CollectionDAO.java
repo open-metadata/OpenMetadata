@@ -69,10 +69,10 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
-import org.openmetadata.schema.entity.services.SystemService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Role;
@@ -187,7 +187,7 @@ public interface CollectionDAO {
   DatabaseServiceDAO dbServiceDAO();
 
   @CreateSqlObject
-  SystemServiceDAO systemServiceDAO();
+  MetadataServiceDAO metadataServiceDAO();
 
   @CreateSqlObject
   PipelineServiceDAO pipelineServiceDAO();
@@ -328,15 +328,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface SystemServiceDAO extends EntityDAO<SystemService> {
+  interface MetadataServiceDAO extends EntityDAO<MetadataService> {
     @Override
     default String getTableName() {
-      return "system_service_entity";
+      return "metadata_service_entity";
     }
 
     @Override
-    default Class<SystemService> getEntityClass() {
-      return SystemService.class;
+    default Class<MetadataService> getEntityClass() {
+      return MetadataService.class;
     }
 
     @Override

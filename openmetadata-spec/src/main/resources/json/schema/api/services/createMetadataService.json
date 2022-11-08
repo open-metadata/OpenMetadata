@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/api/services/createSystemService.json",
+  "$id": "https://open-metadata.org/schema/api/services/createMetadataService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateSystemServiceRequest",
-  "description": "Create System service entity request",
+  "title": "CreateMetadataServiceRequest",
+  "description": "Create Metadata Service entity request",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.services.CreateSystemService",
+  "javaType": "org.openmetadata.schema.api.services.CreateMetadataService",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {
@@ -12,21 +12,21 @@
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this System service.",
+      "description": "Display Name that identifies this Metadata service.",
       "type": "string"
     },
     "description": {
-      "description": "Description of System entity.",
+      "description": "Description of Metadata entity.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
-      "$ref": "../../entity/services/systemService.json#/definitions/systemServiceType"
+      "$ref": "../../entity/services/metadataService.json#/definitions/metadataServiceType"
     },
     "connection": {
-      "$ref": "../../entity/services/systemService.json#/definitions/systemsConnection"
+      "$ref": "../../entity/services/metadataService.json#/definitions/metadataConnection"
     },
     "owner": {
-      "description": "Owner of this System service.",
+      "description": "Owner of this Metadata service.",
       "$ref": "../../type/entityReference.json"
     }
   },

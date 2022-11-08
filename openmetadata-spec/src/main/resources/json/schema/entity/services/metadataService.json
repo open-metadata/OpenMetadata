@@ -3,12 +3,18 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Metadata Service",
   "description": "This schema defines the Metadata Service entity, such as Amundsen, Atlas etc.",
+  "javaType": "org.openmetadata.schema.entity.services.MetadataService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
   "type": "object",
   "definitions": {
     "metadataServiceType": {
       "description": "Type of database service such as Amundsen, Atlas...",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas"],
+      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas", "ElasticSearch"],
       "javaEnums": [
         {
           "name": "Amundsen"
@@ -26,6 +32,10 @@
     },
     "metadataConnection": {
       "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.MetadataConnection",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
       "description": "Metadata Service Connection.",
       "properties": {
         "config": {
@@ -42,6 +52,9 @@
             },
             {
               "$ref": "./connections/metadata/atlasConnection.json"
+            },
+            {
+              "$ref": "connections/system/esConnection.json"
             }
           ]
         }
