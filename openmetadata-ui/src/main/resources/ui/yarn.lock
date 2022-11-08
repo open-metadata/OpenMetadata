@@ -47,6 +47,16 @@
   dependencies:
     "@analytics/global-storage-utils" "^0.1.5"
 
+"@analytics/session-utils@^0.1.17":
+  version "0.1.17"
+  resolved "https://registry.yarnpkg.com/@analytics/session-utils/-/session-utils-0.1.17.tgz#556fc15bd30aaec5e71e422fbad1463f1c6a0bc1"
+  integrity sha512-QAOZIRTTg238klYRhEVlOtRKJGwAfUWTfrjLgw7RHbFM7DU6whohi8HPffiChDjOwuhUsG55ymQPxSuco7DsKA==
+  dependencies:
+    "@analytics/cookie-utils" "^0.2.10"
+    "@analytics/global-storage-utils" "^0.1.5"
+    "@analytics/session-storage-utils" "^0.0.5"
+    analytics-utils "^1.0.10"
+
 "@analytics/storage-utils@^0.4.0":
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/@analytics/storage-utils/-/storage-utils-0.4.0.tgz#12e5c0683f0124e189650a4989a627f3318d7995"

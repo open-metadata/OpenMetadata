@@ -4,7 +4,7 @@
   "title": "entityReportData",
   "type": "object",
   "javaType": "org.openmetadata.schema.analytics.EntityReportData",
-  "description": "Page view data event",
+  "description": "Refined data for Entity Report.",
   "properties": {
     "entityType": {
       "type": "string",
@@ -42,5 +42,6 @@
       "type": "integer",
       "description": "number of entities"
     }
-  }
+  },
+  "additionalProperties": false
 }
