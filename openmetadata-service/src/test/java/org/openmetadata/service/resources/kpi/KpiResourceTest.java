@@ -232,7 +232,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .withEndDate(30L)
         .withDataInsightChart(DI_CHART1_REFERENCE)
         .withOwner(USER1_REF)
-        .withMetricType(KpiTargetType.PERCENT)
+        .withMetricType(KpiTargetType.PERCENTAGE)
         .withTargetDefinition(List.of(KPI_TARGET));
   }
 
