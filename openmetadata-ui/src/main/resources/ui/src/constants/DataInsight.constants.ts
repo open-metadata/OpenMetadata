@@ -41,6 +41,7 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
 ];
 
 export const BAR_SIZE = 15;
+export const DEFAULT_DAYS = 30;
 
 export const ENTITIES_BAR_COLO_MAP: Record<string, string> = {
   Chart: '#E7B85D',
@@ -112,6 +113,6 @@ export const TIER_FILTER = [
 ];
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
-  startTs: getPastDaysDateTimeMillis(30),
+  startTs: getPastDaysDateTimeMillis(DEFAULT_DAYS),
   endTs: getCurrentDateTimeMillis(),
 };

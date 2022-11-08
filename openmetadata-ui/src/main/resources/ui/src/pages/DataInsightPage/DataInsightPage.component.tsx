@@ -11,10 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Radio, Row, Select, Space, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Radio,
+  Row,
+  Select,
+  SelectProps,
+  Space,
+  Typography,
+} from 'antd';
 import React, { useEffect, useState } from 'react';
-import { TEAM_FILTER } from './DataInsight.mock';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 
+import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
@@ -26,19 +37,89 @@ import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityIn
 import {
   DATA_INSIGHT_TAB,
   DAY_FILTER,
+  DEFAULT_DAYS,
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getTeamFilter } from '../../utils/DataInsightUtils';
+import {
+  getCurrentDateTimeMillis,
+  getFormattedDateFromMilliSeconds,
+  getPastDaysDateTimeMillis,
+} from '../../utils/TimeUtils';
 import './DataInsight.less';
 
+const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
+
 const DataInsightPage = () => {
+  const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
   const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.Datasets);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
 
   useEffect(() => {
     setChartFilter(INITIAL_CHART_FILTER);
+  }, []);
+
+  const handleTierChange = (tiers: string[] = []) => {
+    setChartFilter((previous) => ({
+      ...previous,
+      tier: tiers.length ? tiers.join(',') : undefined,
+    }));
+  };
+
+  const handleDaysChange = (days: number) => {
+    setChartFilter((previous) => ({
+      ...previous,
+      startTs: getPastDaysDateTimeMillis(days),
+      endTs: getCurrentDateTimeMillis(),
+    }));
+  };
+
+  const handleTeamChange = (teams: string[] = []) => {
+    setChartFilter((previous) => ({
+      ...previous,
+      team: teams.length ? teams.join(',') : undefined,
+    }));
+  };
+
+  const handleTeamSearch = async (query: string) => {
+    if (fetchTeamSuggestions) {
+      try {
+        const response = await fetchTeamSuggestions(query, 5);
+        setTeamOptions(getTeamFilter(response.values));
+      } catch (_error) {
+        // we will not show the toast error message for suggestion API
+      }
+    }
+  };
+
+  const fetchDefaultTeamOptions = async () => {
+    try {
+      const response = await searchQuery({
+        searchIndex: SearchIndex.TEAM,
+        query: '*',
+        pageSize: 5,
+      });
+      const hits = response.hits.hits;
+      const teamFilterOptions = hits.map((hit) => {
+        const source = hit._source;
+
+        return {
+          label: source.displayName || source.name,
+          value: source.fullyQualifiedName || source.name,
+        };
+      });
+      setTeamOptions(teamFilterOptions);
+    } catch (_error) {
+      // we will not show the toast error message for search API
+    }
+  };
+
+  useEffect(() => {
+    fetchDefaultTeamOptions();
   }, []);
 
   return (
@@ -59,10 +140,47 @@ const DataInsightPage = () => {
           <Card>
             <Space className="w-full justify-between">
               <Space className="w-full">
-                <Select options={TEAM_FILTER} placeholder="Select teams" />
-                <Select options={TIER_FILTER} placeholder="Select tier" />
+                <Select
+                  allowClear
+                  showArrow
+                  className="data-insight-select-dropdown"
+                  mode="multiple"
+                  notFoundContent={null}
+                  options={teamsOptions}
+                  placeholder="Select teams"
+                  onChange={handleTeamChange}
+                  onSearch={handleTeamSearch}
+                />
+                <Select
+                  allowClear
+                  showArrow
+                  className="data-insight-select-dropdown"
+                  mode="multiple"
+                  notFoundContent={null}
+                  options={TIER_FILTER}
+                  placeholder="Select tier"
+                  onChange={handleTierChange}
+                />
               </Space>
-              <Select options={DAY_FILTER} value={7} />
+              <Space>
+                <Typography className="data-insight-label-text text-xs">
+                  {getFormattedDateFromMilliSeconds(
+                    chartFilter.startTs,
+                    'dd MMM yyyy'
+                  )}{' '}
+                  -{' '}
+                  {getFormattedDateFromMilliSeconds(
+                    chartFilter.endTs,
+                    'dd MMM yyyy'
+                  )}
+                </Typography>
+                <Select
+                  className="data-insight-select-dropdown"
+                  defaultValue={DEFAULT_DAYS}
+                  options={DAY_FILTER}
+                  onChange={handleDaysChange}
+                />
+              </Space>
             </Space>
           </Card>
         </Col>

@@ -14,6 +14,7 @@
 import { Card, Typography } from 'antd';
 import { isInteger, last, toNumber } from 'lodash';
 import React from 'react';
+import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface, TooltipProps } from 'recharts';
 import {
   DataInsightChartResult,
@@ -213,4 +214,11 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
     tiers,
     total: getLatestCount(latestData),
   };
+};
+
+export const getTeamFilter = (suggestionValues: ListValues = []) => {
+  return (suggestionValues as ListItem[]).map((suggestion: ListItem) => ({
+    label: suggestion.title,
+    value: suggestion.value,
+  }));
 };

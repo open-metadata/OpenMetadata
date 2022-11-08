@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-@primary-color: #7147e8;
+@import '../../styles/variables.less';
+
 @primary-color-lite: #7147e833;
 
 .data-insight-switch {
@@ -35,5 +36,12 @@
       color: @primary-color;
       border-color: @primary-color-lite;
     }
+  }
+}
+
+.data-insight-select-dropdown {
+  min-width: 136px;
+  .ant-select-arrow {
+    color: @text-color !important;
   }
 }
