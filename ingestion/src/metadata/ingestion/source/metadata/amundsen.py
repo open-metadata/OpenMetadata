@@ -13,9 +13,7 @@
 Amundsen source to extract metadata
 """
 
-import json
 import traceback
-from pathlib import Path
 from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
@@ -69,6 +67,7 @@ from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
+from metadata.utils.amundsen_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -506,25 +505,15 @@ class AmundsenSource(Source[Entity]):
         """
         Method to get and create Database Service
         """
-        try:
-            file_path = (
-                Path(__file__).parent.parent.parent.parent
-                / "examples/resources/amundsen_data/service_type.json"
-            )
-            with open(file_path, encoding="UTF-8") as file:
-                service_type: dict = json.load(file)
-
-        except FileNotFoundError as err:
-            raise FileNotFoundError(
-                f"Could not get service mapping file from {file_path} - {err}"
-            )
 
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name=service_name,
                 displayName=service_name,
-                connection=service_type.get(service_name, "mysql")["connection"],
-                serviceType=service_type.get(service_name, "mysql")["service_name"],
+                connection=SERVICE_TYPE_MAPPER.get(service_name, "mysql")["connection"],
+                serviceType=SERVICE_TYPE_MAPPER.get(service_name, "mysql")[
+                    "service_name"
+                ],
             ),
         )
 
