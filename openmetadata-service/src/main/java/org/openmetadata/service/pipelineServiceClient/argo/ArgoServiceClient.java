@@ -1,16 +1,22 @@
 package org.openmetadata.service.pipelineServiceClient.argo;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.gson.Gson;
+import io.argoproj.workflow.ApiException;
+import io.argoproj.workflow.apis.CronWorkflowServiceApi;
+import io.argoproj.workflow.models.IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest;
+import io.argoproj.workflow.models.IoArgoprojWorkflowV1alpha1CronWorkflow;
+import java.io.IOException;
 import java.net.URL;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
-
-import io.argoproj.workflow.ApiClient;
 import org.openmetadata.schema.api.configuration.argo.ArgoConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.pipelineServiceClient.PipelineServiceClient;
 import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
 
@@ -20,9 +26,12 @@ public class ArgoServiceClient extends PipelineServiceClient {
   protected final String token;
   protected final String namespace;
   protected final WorkflowClient workflowClient;
+  protected final CronWorkflowServiceApi apiInstance;
 
   public ArgoServiceClient(
-      PipelineServiceClientConfiguration pipelineServiceClientConfiguration, ArgoConfiguration argoConfig, String clusterName) {
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      ArgoConfiguration argoConfig,
+      String clusterName) {
     super(pipelineServiceClientConfiguration);
 
     this.serviceURL = validateServiceURL(argoConfig.getApiEndpoint());
@@ -31,11 +40,12 @@ public class ArgoServiceClient extends PipelineServiceClient {
     this.namespace = clusterName;
 
     this.workflowClient = new WorkflowClient(this.serviceURL.toString(), this.token, this.namespace);
+    this.apiInstance = new CronWorkflowServiceApi(this.workflowClient.client);
   }
 
   @Override
   public Response getServiceStatus() {
-    return null;
+    return Response.status(Response.Status.OK).build();
   }
 
   @Override
@@ -45,7 +55,37 @@ public class ArgoServiceClient extends PipelineServiceClient {
 
   @Override
   public String deployPipeline(IngestionPipeline ingestionPipeline) {
-    return null;
+    try {
+
+      // TODO: validate ingestion bot token. Check that exists, it is not expired and has a valid signature.
+      IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow = this.workflowClient.buildCronWorkflow(ingestionPipeline);
+
+      IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest cronWorkflowCreateRequest =
+          new IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest();
+      cronWorkflowCreateRequest.setCronWorkflow(cronWorkflow);
+      cronWorkflowCreateRequest.setNamespace(this.workflowClient.namespace);
+      System.out.println(new Gson().toJson(cronWorkflowCreateRequest));
+
+      IoArgoprojWorkflowV1alpha1CronWorkflow result =
+          this.apiInstance.cronWorkflowServiceCreateCronWorkflow(
+              this.workflowClient.namespace, cronWorkflowCreateRequest);
+
+      return result.toString();
+
+    } catch (JsonProcessingException e) {
+      throw new PipelineServiceClientException(
+          String.format(
+              "%s Failed to build Ingestion Workflow due to %s", ingestionPipeline.getName(), e.getMessage()));
+    } catch (ApiException e) {
+      throw new PipelineServiceClientException(
+          String.format(
+              "%s Failed to deploy Ingestion Workflow due to %s", ingestionPipeline.getName(), e.getMessage()));
+    } catch (IOException e) {
+      throw new PipelineServiceClientException(
+          String.format(
+              "%s Failed retrieving the service %s - %s",
+              ingestionPipeline.getName(), ingestionPipeline.getService().getName(), e.getMessage()));
+    }
   }
 
   @Override

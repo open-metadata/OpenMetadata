@@ -29,7 +29,9 @@ public class PipelineServiceClientFactory {
             new AirflowRESTClient(pipelineServiceClientConfiguration, config.getAirflowConfiguration());
         break;
       case ARGO:
-        pipelineServiceClient = new ArgoServiceClient(pipelineServiceClientConfiguration, config.getArgoConfiguration(), config.getClusterName());
+        pipelineServiceClient =
+            new ArgoServiceClient(
+                pipelineServiceClientConfiguration, config.getArgoConfiguration(), config.getClusterName());
         break;
       default:
         throw new IllegalArgumentException("Not implemented pipeline service client: " + pipelineServiceClientProvider);
