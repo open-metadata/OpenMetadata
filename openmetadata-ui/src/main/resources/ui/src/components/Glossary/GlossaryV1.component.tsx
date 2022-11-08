@@ -27,7 +27,7 @@ import {
 import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
-import { GlossaryTermAssets, LoadingState } from 'Models';
+import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
@@ -67,7 +67,7 @@ import './GlossaryV1.style.less';
 const { Title } = Typography;
 
 type Props = {
-  assetData: GlossaryTermAssets;
+  assetData: AssetsDataType;
   deleteStatus: LoadingState;
   isSearchResultEmpty: boolean;
   glossaryList: ModifiedGlossaryData[];

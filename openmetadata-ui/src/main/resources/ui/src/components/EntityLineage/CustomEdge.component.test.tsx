@@ -99,10 +99,7 @@ describe('Test CustomEdge Component', () => {
     );
 
     const pipelineLabelAsEdge = await screen.findByTestId('pipeline-label');
-    const pipelineName = await screen.findByTestId('pipeline-name');
 
     expect(pipelineLabelAsEdge).toBeInTheDocument();
-    expect(pipelineName).toBeInTheDocument();
-    expect(pipelineName.textContent).toEqual('Pipeline');
   });
 });

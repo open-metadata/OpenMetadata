@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSession, setSession } from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
 import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
 import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
@@ -59,6 +60,9 @@ export const getPageLoadTime = (performance: Performance) => {
  * @param userId string
  */
 export const trackPageView = async (pageData: WebPageData, userId: string) => {
+  // Get the current session
+  const currentSession = getSession();
+
   const { payload } = pageData;
 
   const { location, navigator, performance, document } = window;
@@ -66,7 +70,7 @@ export const trackPageView = async (pageData: WebPageData, userId: string) => {
 
   const pageLoadTime = getPageLoadTime(performance);
 
-  const { anonymousId, properties, meta } = payload;
+  const { properties, meta } = payload;
 
   const referrer = properties.referrer ?? document.referrer;
 
@@ -81,7 +85,7 @@ export const trackPageView = async (pageData: WebPageData, userId: string) => {
       language: navigator.language,
       screenSize: `${properties.width}x${properties.height}`,
       userId,
-      sessionId: anonymousId,
+      sessionId: currentSession.id,
       referrer,
       pageLoadTime,
     };
@@ -93,6 +97,13 @@ export const trackPageView = async (pageData: WebPageData, userId: string) => {
     };
 
     try {
+      /**
+       * extend the session expiry if user continues to interact
+       * Let say expiry is at "5:45:23 PM", and user spent some time and then
+       * interact with other page in 2 minutes so expiry time will be extended to "5:47:23 PM"
+       */
+      setSession(30, {}, true);
+
       // collect the page event
       await postPageView(webAnalyticEventData);
     } catch (_error) {

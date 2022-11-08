@@ -31,6 +31,7 @@ import {
   CurrentState,
   EntityFieldThreadCount,
   ExtraInfo,
+  FormattedTableData,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -87,6 +88,7 @@ import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
+import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -1003,3 +1005,10 @@ export const getLoadingStatus = (
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
+
+export const getTierFromEntityInfo = (entity: FormattedTableData) => {
+  return (
+    entity.tier?.tagFQN ||
+    getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
+  )?.split(FQN_SEPARATOR_CHAR)[1];
+};
