@@ -44,6 +44,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   totalValue,
   isFilterSelected,
   searchText,
+  handleSummaryPanelDisplay,
 }) => {
   const highlightSearchResult = () => {
     return data.map(({ _source: table, highlight, _index }, index) => {
@@ -89,6 +90,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       return (
         <div className="tw-mb-3" key={index}>
           <TableDataCardV2
+            handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
             searchIndex={_index}

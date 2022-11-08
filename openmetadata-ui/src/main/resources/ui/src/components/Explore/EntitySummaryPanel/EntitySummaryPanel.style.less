@@ -1,0 +1,71 @@
+@white: #ffffff;
+@summary-panel-offset: 118px; // (topnav height) 64px + (margin) 16px + (tabs height) 38px
+@label-color: #37352f99;
+@succesColor: #28a745;
+@failedColor: #cb2431;
+@abortedColor: #efae2f;
+
+.summary-panel-container {
+  width: 380px;
+  display: none;
+  background-color: @white;
+  height: calc(100vh - @summary-panel-offset);
+}
+
+.show-panel {
+  display: block;
+  position: fixed;
+  top: @summary-panel-offset;
+  right: 0px;
+  z-index: 1000;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+  font-size: 14px;
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  .basic-info-container {
+    width: calc(100% - 32px);
+  }
+
+  .text-gray {
+    color: @label-color;
+  }
+
+  .section-header {
+    font-size: 16px;
+  }
+
+  .success {
+    color: @succesColor;
+  }
+  .failed {
+    color: @failedColor;
+  }
+  .aborted {
+    color: @abortedColor;
+  }
+
+  .column-name {
+    font-weight: 500;
+  }
+
+  .ant-divider-horizontal {
+    margin: 8px 0px;
+  }
+
+  div.ant-typography {
+    margin-top: 16px;
+    margin-bottom: 0px;
+  }
+
+  .close-icon {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+  }
+}
+
+.show-panel::-webkit-scrollbar {
+  display: none;
+}
