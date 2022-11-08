@@ -342,6 +342,12 @@ def _(connection: HiveConnection):
         url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
 
+    elif connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+
     url += connection.hostPort
     url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
