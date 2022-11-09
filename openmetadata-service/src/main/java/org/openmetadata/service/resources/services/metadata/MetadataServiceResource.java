@@ -66,20 +66,28 @@ public class MetadataServiceResource
   }
 
   private void registerMetadataServices(OpenMetadataApplicationConfig config) throws IOException {
-    MetadataConnection esMetadataConnection =
-        new MetadataConnection().withConfig(getElasticSearchConnection(config.getElasticSearchConfiguration()));
-    List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
-    servicesList.forEach(
-        (service) -> {
-          try {
-            // populate values for the Metadata Service
-            service.setConnection(esMetadataConnection);
-            dao.initializeEntity(service);
-          } catch (IOException e) {
-            LOG.error(
-                "[MetadataService] Failed to initialize a Metadata Service {}", service.getFullyQualifiedName(), e);
-          }
-        });
+    try {
+      if (config.getElasticSearchConfiguration() != null) {
+        MetadataConnection esMetadataConnection =
+            new MetadataConnection().withConfig(getElasticSearchConnection(config.getElasticSearchConfiguration()));
+        List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
+        servicesList.forEach(
+            (service) -> {
+              try {
+                // populate values for the Metadata Service
+                service.setConnection(esMetadataConnection);
+                dao.initializeEntity(service);
+              } catch (IOException e) {
+                LOG.error(
+                    "[MetadataService] Failed to initialize a Metadata Service {}", service.getFullyQualifiedName(), e);
+              }
+            });
+      } else {
+        LOG.error("[MetadataService] Missing Elastic Search Config");
+      }
+    } catch (Exception ex) {
+      LOG.error("[MetadataService] Error in creating Metadata Services");
+    }
   }
 
   @Override
