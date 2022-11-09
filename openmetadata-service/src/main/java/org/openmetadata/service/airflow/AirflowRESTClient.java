@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.airflow;
 
+
+
+
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
@@ -112,12 +116,17 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline) {
-    HttpResponse<String> response;
+    HttpResponse<String>  response;
+    
+    
+    
     try {
+      
+      
       String toggleEndPoint;
       String toggleUrl;
-      JSONObject requestPayload = new JSONObject();
-      requestPayload.put(DAG_ID, ingestionPipeline.getName());
+      JSONObject requestPayload  =  new  JSONObject();
+                requestPayload.put(DAG_ID, ingestionPipeline.getName());
       // If the pipeline is currently enabled, disable it
       if (ingestionPipeline.getEnabled().equals(Boolean.TRUE)) {
         toggleEndPoint = "%s/%s/disable";
