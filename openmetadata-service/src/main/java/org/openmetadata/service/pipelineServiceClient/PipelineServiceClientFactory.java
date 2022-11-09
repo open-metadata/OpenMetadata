@@ -16,7 +16,9 @@ public class PipelineServiceClientFactory {
     }
 
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
-        config.getPipelineServiceClientConfiguration();
+        config.getPipelineServiceClientConfiguration() != null
+                ? config.getPipelineServiceClientConfiguration()
+                : new PipelineServiceClientConfiguration();
 
     PipelineServiceClientProvider pipelineServiceClientProvider =
         pipelineServiceClientConfiguration.getPipelineServiceClient() != null
