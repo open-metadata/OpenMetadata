@@ -39,11 +39,11 @@
       "description": "Metrics from the chart and the target to achieve the result.",
       "type": "array",
       "items": {
-        "$ref": "../../../analytics/kpi/basic.json#/definitions/kpiTarget"
+        "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTarget"
       }
     },
     "metricType": {
-      "$ref": "../../../analytics/kpi/basic.json#/definitions/kpiTargetType"
+      "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"
     }
   },
   "required": ["name", "dataInsightChart", "startDate", "endDate", "targetDefinition", "metricType"],

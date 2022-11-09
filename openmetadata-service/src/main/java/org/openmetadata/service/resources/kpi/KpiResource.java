@@ -37,7 +37,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
-import org.openmetadata.schema.tests.type.KpiResult;
+import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
