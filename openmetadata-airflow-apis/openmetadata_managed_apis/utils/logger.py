@@ -14,6 +14,7 @@ class Loggers(Enum):
     API = "AirflowAPI"
     OPERATIONS = "AirflowOperations"
     WORKFLOW = "AirflowWorkflow"
+    UTILS = "AirflowUtils"
 
 
 def build_logger(logger_name: str) -> logging.Logger:
@@ -44,3 +45,7 @@ def operations_logger():
 
 def workflow_logger():
     return build_logger(Loggers.WORKFLOW.value)
+
+
+def utils_logger():
+    return build_logger(Loggers.UTILS.value)
