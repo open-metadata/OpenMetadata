@@ -23,6 +23,9 @@ on:
     paths:
       - 'openmetadata-airflow-apis/**'
 
+permissions:
+  contents: read
+
 concurrency: 
   group: airflow-apis-tests-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -30,6 +33,13 @@ jobs:
   airflow-apis-tests:
     runs-on: ubuntu-latest
     steps:
+    - name: Wait for approval
+      uses: lewagon/wait-on-check-action@v1.2.0
+      with:
+        ref: ${{ github.ref }}
+        check-name: 'approval'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Checkout
       uses: actions/checkout@v2
       with:
