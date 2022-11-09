@@ -15,7 +15,7 @@ import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 
 export interface LineageDrawerProps {
   show: boolean;
-  onCancel: (value: boolean) => void;
+  onCancel: () => void;
   selectedNode: SelectedNode;
   isMainNode: boolean;
 }
