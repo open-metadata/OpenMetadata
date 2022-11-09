@@ -137,7 +137,7 @@ class Sampler:
         for col in table_columns:
             cols.append(col.name.__root__)
         self._sample_rows = data_frame.values.tolist()
-        return TableData(columns=cols, rows=self._sample_rows)
+        return TableData(columns=cols, rows=self._sample_rows), data_frame
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""

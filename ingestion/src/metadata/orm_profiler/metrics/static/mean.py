@@ -74,12 +74,14 @@ class Mean(StaticMetric):
         return None
 
     @_label
-    def dl_fn(self):
+    def dl_fn(self, data_frame):
         if is_quantifiable(self.col.dataType.value):
-            return func.avg(column(self.col.name.__root__))
+            print(data_frame)
+            return data_frame
 
         if is_concatenable(self.col.dataType.value):
-            return func.avg(LenFn(column(self.col.name.__root__)))
+            print(data_frame)
+            return data_frame
 
         logger.debug(
             f"Don't know how to process type {self.col.dataType.value} when computing MEAN"

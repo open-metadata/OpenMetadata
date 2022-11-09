@@ -47,6 +47,8 @@ def _label(_fn):
 
         # If the metric computation returns some value
         if res is not None:
+            if not hasattr(res, "label"):
+                return res
             return res.label(self.name())
 
         return None

@@ -48,6 +48,10 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
+
 
 class MissingMetricException(Exception):
     """
@@ -390,8 +394,19 @@ class Profiler(Generic[TMetric]):
         logger.info(
             f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
         )
-        self.compute_metrics()
 
+        if (
+            isinstance(self.table.serviceType, DatabaseServiceType)
+            and self.table.serviceType == DatabaseServiceType.Datalake
+        ):
+            (
+                self.sample_data,
+                self.data_frame,
+            ) = self.profiler_interface.fetch_sample_data(self.table)
+            self.compute_metrics()
+            return
+
+        self.compute_metrics()
         if generate_sample_data:
             try:
                 logger.info(

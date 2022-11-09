@@ -54,3 +54,15 @@ class Median(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing Median"
         )
         return None
+
+    @_label
+    def dl_fn(self):
+        if is_quantifiable(self.col.dataType.value):
+            return MedianFn(
+                column(self.col.name.__root__), self.col.table.name.__root__
+            )
+
+        logger.debug(
+            f"Don't know how to process type {self.col.dataType.value} when computing Median"
+        )
+        return None

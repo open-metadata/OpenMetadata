@@ -26,9 +26,12 @@ from sqlalchemy import Column, MetaData
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeType,
+    GCSConfig,
+    S3Config,
 )
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.datalake import DatalakeSource
 from metadata.interfaces.datalake.mixins.datalake_interface_mixin import (
     DatalakeInterfaceMixin,
 )
@@ -109,15 +112,16 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         logger.debug(
             f"Running profiler for {table} on thread {threading.current_thread()}"
         )
-        session = self.client  # pylint: disable=invalid-name
-
-        row = compute_metrics_registry.registry[metric_type.value](
-            metrics,
-            session=session,
-            column=column,
-            processor_status=self.processor_status,
-        )
-
+        try:
+            row = compute_metrics_registry.registry[metric_type.value](
+                metrics,
+                session=self.client,
+                data_frame=self.data_frame,
+                column=column,
+                processor_status=self.processor_status,
+            )
+        except Exception as err:
+            print(err)
         if column is not None:
             column = column.name
 
@@ -139,8 +143,10 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-
-        return sampler.fetch_dl_sample_data(self.service_connection_config.configSource)
+        sample_data, self.data_frame = sampler.fetch_dl_sample_data(
+            self.service_connection_config.configSource
+        )
+        return sample_data
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -168,31 +174,18 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         """get all profiler metrics"""
         logger.info(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self._thread_count
-        ) as executor:
-            futures = [
-                executor.submit(
-                    self.compute_metrics_in_thread,
-                    metric_func,
-                )
-                for metric_func in metric_funcs
-            ]
-
-        for future in concurrent.futures.as_completed(futures):
-            profile, column = future.result()
-            if not isinstance(profile, dict):
-                profile = dict()
-            if not column:
-                profile_results["table"].update(profile)
-            else:
-                profile_results["columns"][column].update(
-                    {
-                        "name": column,
-                        "timestamp": datetime.now(tz=timezone.utc).timestamp(),
-                        **profile,
-                    }
-                )
+        profile, column = [
+            self.compute_metrics_in_thread(metric_funcs=metric_func)
+            for metric_func in metric_funcs
+        ]
+        profile_results["table"].update(profile)
+        profile_results["columns"][column].update(
+            {
+                "name": column,
+                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                **profile,
+            }
+        )
         return profile_results
 
     @property

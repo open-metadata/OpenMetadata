@@ -31,18 +31,14 @@ from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.dispatch import enum_register
-from metadata.utils.logger import profiler_interface_registry_logger, set_loggers_level
+from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 
 
 def get_table_metrics(
     metrics: List[Metrics],
-    session,
-    column,
-    sample,
-    sampler,
-    processor_status,
+    data_frame,
     *args,
     **kwargs,
 ):
@@ -55,7 +51,7 @@ def get_table_metrics(
         dictionnary of results
     """
     try:
-        row = [metric().dl_fn() for metric in metrics]
+        row = [metric().dl_fn(data_frame) for metric in metrics]
 
         if row:
             return dict(row)
@@ -69,9 +65,9 @@ def get_table_metrics(
 
 def get_static_metrics(
     metrics: List[Metrics],
-    session: Session,
-    column: Column,
     processor_status: ProfilerProcessorStatus,
+    column,
+    data_frame,
     *args,
     **kwargs,
 ) -> Optional[Dict[str, Union[str, int]]]:
@@ -86,7 +82,7 @@ def get_static_metrics(
     """
     try:
         row = [
-            metric(column).dl_fn()
+            metric(column).dl_fn(data_frame)
             for metric in metrics
             if not metric.is_window_metric()
         ]
@@ -99,7 +95,7 @@ def get_static_metrics(
 
 
 compute_metrics_registry = enum_register()
-compute_metrics_registry.add("Static")(get_static_metrics)
 compute_metrics_registry.add("Table")(get_table_metrics)
+compute_metrics_registry.add("Static")(get_static_metrics)
 # compute_metrics_registry.add("Query")(get_query_metrics)
 # compute_metrics_registry.add("Window")(get_window_metrics)
