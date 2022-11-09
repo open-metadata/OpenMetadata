@@ -15,6 +15,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.EmailRequest;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -47,12 +48,11 @@ public class EmailUtil {
   public static final String ACTION_KEY = "action";
   public static final String ACTION_STATUS_KEY = "actionStatus";
   public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change.ftl";
-
   private static final String INVITE_SUBJECT = "Welcome to %s";
-
+  private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
-
+  public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
   private static EmailUtil INSTANCE = null;
   private SmtpSettings defaultSmtpSettings = null;
   private Mailer mailer = null;
@@ -139,6 +139,24 @@ public class EmailUtil {
       templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
 
       sendMail(subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    }
+  }
+
+  public void sendTaskAssignmentNotificationToUser(
+      String assigneeName, String email, String taskLink, Thread thread, String subject, String templateFilePath)
+      throws IOException, TemplateException {
+    if (defaultSmtpSettings.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put("assignee", assigneeName);
+      templatePopulator.put("createdBy", thread.getCreatedBy());
+      templatePopulator.put("taskName", thread.getMessage());
+      templatePopulator.put("taskStatus", thread.getTask().getStatus().toString());
+      templatePopulator.put("taskType", thread.getTask().getType().toString());
+      templatePopulator.put("fieldOldValue", thread.getTask().getOldValue());
+      templatePopulator.put("fieldNewValue", thread.getTask().getSuggestion());
+      templatePopulator.put("taskLink", taskLink);
+
+      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     }
   }
 
@@ -264,6 +282,10 @@ public class EmailUtil {
 
   public String getEmailInviteSubject() {
     return String.format(INVITE_SUBJECT, defaultSmtpSettings.getEmailingEntity());
+  }
+
+  public String getTaskAssignmentSubject() {
+    return String.format(TASK_SUBJECT, defaultSmtpSettings.getEmailingEntity());
   }
 
   public String getEmailingEntity() {

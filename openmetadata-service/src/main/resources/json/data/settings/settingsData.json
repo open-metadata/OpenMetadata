@@ -215,5 +215,18 @@
         ]
       }
     ]
+  },
+  {
+    "config_type": "taskNotificationConfiguration",
+    "config_value": {
+      "enabled" : true
+    }
+  },
+  {
+    "config_type": "testResultNotificationConfiguration",
+    "config_value": {
+      "enabled" : true,
+      "onResult": ["Failed", "Aborted"]
+    }
   }
 ]
