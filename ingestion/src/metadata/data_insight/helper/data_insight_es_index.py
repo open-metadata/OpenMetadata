@@ -20,4 +20,4 @@ class DataInsightEsIndex(enum.Enum):
 
     EntityReportData = "entity_report_data_index"
     WebAnalyticUserActivityReportData = "web_analytic_user_activity_report_data_index"
-    WebAnalyticEntityViewReportData = "web_analytic_entity_view_report_data"
+    WebAnalyticEntityViewReportData = "web_analytic_entity_view_report_data_index"

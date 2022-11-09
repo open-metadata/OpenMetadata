@@ -197,13 +197,32 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_auth(self):
-        expected_result = "hive://localhost:10000"
+        expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             username="username",
             password="password",
             hostPort="localhost:10000",
             connectionArguments={"customKey": "value"},
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_hive_url_without_connection_arguments(self):
+        expected_result = "hive://username:password@localhost:10000"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username",
+            password="password",
+            hostPort="localhost:10000",
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_hive_url_without_connection_arguments_pass(self):
+        expected_result = "hive://username@localhost:10000"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username",
+            hostPort="localhost:10000",
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
