@@ -49,6 +49,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
@@ -59,6 +60,8 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
+import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
@@ -103,6 +106,8 @@ public final class TestUtils {
   public static DashboardConnection SUPERSET_CONNECTION;
 
   public static final MlModelConnection MLFLOW_CONNECTION;
+  public static MetadataConnection AMUNDSEN_CONNECTION;
+  public static MetadataConnection ATLAS_CONNECTION;
 
   public static URI PIPELINE_URL;
 
@@ -201,6 +206,36 @@ public final class TestUtils {
                               .withAwsRegion("eu-west-2")));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      AMUNDSEN_CONNECTION =
+          new MetadataConnection()
+              .withConfig(
+                  new AmundsenConnection()
+                      .withHostPort(new URI("http://localhost:8080"))
+                      .withUsername("admin")
+                      .withPassword("admin"));
+    } catch (URISyntaxException e) {
+      AMUNDSEN_CONNECTION = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      ATLAS_CONNECTION =
+          new MetadataConnection()
+              .withConfig(
+                  new AtlasConnection()
+                      .withHostPort(new URI("http://localhost:8080"))
+                      .withUsername("admin")
+                      .withPassword("admin"));
+    } catch (URISyntaxException e) {
+      ATLAS_CONNECTION = null;
       e.printStackTrace();
     }
   }

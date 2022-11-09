@@ -144,6 +144,7 @@ import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
@@ -226,6 +227,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
+
+  public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
+  public static EntityReference ATLAS_SERVICE_REFERENCE;
 
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
@@ -333,6 +337,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
+    new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions(test);

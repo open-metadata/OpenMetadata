@@ -59,7 +59,7 @@ import org.openmetadata.service.util.ResultList;
 public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
-  static final String FIELDS = "pipelines,owner";
+  public static final String FIELDS = "pipelines,owner";
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     registerMetadataServices(config);
