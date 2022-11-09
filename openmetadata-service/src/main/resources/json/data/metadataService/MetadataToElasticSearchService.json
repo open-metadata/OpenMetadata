@@ -1,0 +1,6 @@
+{
+  "name": "MetadataToElasticSearchService",
+  "displayName": "Metadata To Elastic Search Service",
+  "description": "Metadata Service used for creating pipelines with source as OM and Sink as Elastic Search",
+  "serviceType": "MetadataToElasticSearch"
+}

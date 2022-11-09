@@ -34,7 +34,7 @@ import org.openmetadata.schema.api.services.CreateMetadataService;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.services.connections.metadata.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.metadata.MetadataToElasticSearchConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -55,7 +55,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Metadata service collection", tags = "MetadataServices -> Metadata service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metadataServices", order = 1)
+@Collection(name = "metadataServices")
 public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
@@ -386,9 +386,9 @@ public class MetadataServiceResource
     return service.getServiceType().value();
   }
 
-  private ElasticSearchConnection getElasticSearchConnection(ElasticSearchConfiguration config) {
-    return new ElasticSearchConnection()
-        .withType(ElasticSearchConnection.EsType.ELASTIC_SEARCH)
+  private MetadataToElasticSearchConnection getElasticSearchConnection(ElasticSearchConfiguration config) {
+    return new MetadataToElasticSearchConnection()
+        .withType(MetadataToElasticSearchConnection.EsType.METADATA_TO_ELASTIC_SEARCH)
         .withHost(config.getHost())
         .withPort(config.getPort())
         .withScheme(config.getScheme())

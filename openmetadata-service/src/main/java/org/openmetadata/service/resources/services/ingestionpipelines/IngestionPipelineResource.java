@@ -49,7 +49,7 @@ import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.services.connections.metadata.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.metadata.MetadataToElasticSearchConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -721,8 +721,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private Sink buildElasticSearchSink(EntityReference reference) throws IOException {
     EntityRepository<MetadataService> systemService = Entity.getEntityRepository(reference.getType());
     MetadataService metadataToEs = systemService.get(null, reference.getId(), systemService.getFields("connection"));
-    ElasticSearchConnection connection =
-        JsonUtils.convertValue(metadataToEs.getConnection().getConfig(), ElasticSearchConnection.class);
+    MetadataToElasticSearchConnection connection =
+        JsonUtils.convertValue(metadataToEs.getConnection().getConfig(), MetadataToElasticSearchConnection.class);
 
     Sink sink = new Sink();
     ComponentConfig componentConfig = new ComponentConfig();
