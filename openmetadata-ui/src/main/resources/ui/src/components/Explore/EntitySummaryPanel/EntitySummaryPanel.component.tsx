@@ -88,7 +88,9 @@ export default function EntitySummaryPanel({
         </Row>
       </Space>
       <Divider className="m-0" />
-      <Space className={classNames('m-md')} direction="vertical">
+      <Space
+        className={classNames('m-md basic-info-container')}
+        direction="vertical">
         <Typography.Text className="section-header">
           {t('label.schema')}
         </Typography.Text>
