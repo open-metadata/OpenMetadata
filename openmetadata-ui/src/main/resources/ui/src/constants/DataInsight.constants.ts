@@ -74,42 +74,42 @@ export const DATA_INSIGHT_TAB = {
 export const DAY_FILTER = [
   {
     value: 7,
-    label: i18n.t('label.day-label', { day: 7 }),
+    label: i18n.t('label.last-no-of-days', { day: 7 }),
   },
   {
     value: 14,
-    label: i18n.t('label.day-label', { day: 14 }),
+    label: i18n.t('label.last-no-of-days', { day: 14 }),
   },
   {
     value: 30,
-    label: i18n.t('label.day-label', { day: 30 }),
+    label: i18n.t('label.last-no-of-days', { day: 30 }),
   },
   {
     value: 60,
-    label: i18n.t('label.day-label', { day: 60 }),
+    label: i18n.t('label.last-no-of-days', { day: 60 }),
   },
 ];
 
 export const TIER_FILTER = [
   {
     value: 'Tier.Tier1',
-    label: i18n.t('label.tier-label', { tier: 1 }),
+    label: i18n.t('label.tier-number', { tier: 1 }),
   },
   {
     value: 'Tier.Tier2',
-    label: i18n.t('label.tier-label', { tier: 2 }),
+    label: i18n.t('label.tier-number', { tier: 2 }),
   },
   {
     value: 'Tier.Tier3',
-    label: i18n.t('label.tier-label', { tier: 3 }),
+    label: i18n.t('label.tier-number', { tier: 3 }),
   },
   {
     value: 'Tier.Tier4',
-    label: i18n.t('label.tier-label', { tier: 4 }),
+    label: i18n.t('label.tier-number', { tier: 4 }),
   },
   {
     value: 'Tier.Tier5',
-    label: i18n.t('label.tier-label', { tier: 5 }),
+    label: i18n.t('label.tier-number', { tier: 5 }),
   },
 ];
 
