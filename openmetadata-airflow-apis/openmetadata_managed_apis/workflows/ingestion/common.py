@@ -17,6 +17,10 @@ from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
+from openmetadata_managed_apis.api.utils import clean_dag_id
+from pydantic import ValidationError
+from requests.utils import quote
+
 from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -30,14 +34,20 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import set_loggers_level
-from openmetadata_managed_apis.api.utils import clean_dag_id
-from pydantic import ValidationError
-from requests.utils import quote
 
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
+
+from openmetadata_managed_apis.utils.logger import workflow_logger
+from openmetadata_managed_apis.utils.parser import (
+    parse_service_connection,
+    parse_validation_err,
+)
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -57,14 +67,6 @@ from metadata.ingestion.api.parser import (
 )
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.utils import model_str
-from openmetadata_managed_apis.utils.logger import workflow_logger
-from openmetadata_managed_apis.utils.parser import (
-    parse_service_connection,
-    parse_validation_err,
-)
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 logger = workflow_logger()
 

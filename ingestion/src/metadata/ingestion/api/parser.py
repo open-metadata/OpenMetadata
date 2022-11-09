@@ -13,6 +13,8 @@ Helper to parse workflow configurations
 """
 from typing import Optional, Type, TypeVar, Union
 
+from pydantic import BaseModel, ValidationError
+
 from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
     TestServiceConnectionRequest,
 )
@@ -74,7 +76,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.provider_registry import PROVIDER_CLASS_MAP
 from metadata.utils.logger import ingestion_logger
-from pydantic import BaseModel, ValidationError
 
 logger = ingestion_logger()
 
