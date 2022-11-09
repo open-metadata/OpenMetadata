@@ -58,8 +58,7 @@ public class WorkflowClient {
     IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow = new IoArgoprojWorkflowV1alpha1CronWorkflow();
     cronWorkflow.setKind("CronWorkflow");
     cronWorkflow.setApiVersion("argoproj.io/v1alpha1");
-    cronWorkflow.setMetadata(
-        new V1ObjectMeta().generateName(lowerCaseName + "-").name(lowerCaseName));
+    cronWorkflow.setMetadata(new V1ObjectMeta().generateName(lowerCaseName + "-").name(lowerCaseName));
 
     cronWorkflow.setSpec(
         new IoArgoprojWorkflowV1alpha1CronWorkflowSpec()
