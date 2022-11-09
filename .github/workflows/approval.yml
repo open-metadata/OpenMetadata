@@ -1,0 +1,12 @@
+name: Get Approval
+
+on:
+  pull_request:
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo
+        run: |
+          echo "PRs from external contributors require an approval from the OpenMetadata team."
