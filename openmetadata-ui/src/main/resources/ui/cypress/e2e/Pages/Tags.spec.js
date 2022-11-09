@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-    addNewTagToEntity,
-    descriptionBox,
-    interceptURL,
-    login,
-    verifyResponseStatusCode
-} from '../../common/common';
-import {
-    LOGIN,
-    NEW_TAG,
-    NEW_TAG_CATEGORY,
-    SEARCH_ENTITY_TABLE
-} from '../../constants/constants';
+import { addNewTagToEntity, descriptionBox, interceptURL, login, verifyResponseStatusCode } from '../../common/common';
+import { LOGIN, NEW_TAG, NEW_TAG_CATEGORY, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 describe('Tags page should work', () => {
   beforeEach(() => {
