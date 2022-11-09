@@ -163,6 +163,11 @@ export const getGraphDataByEntityType = (
 
           break;
 
+        case DataInsightChartType.PageViewsByEntities:
+          value = data.pageViews;
+
+          break;
+
         default:
           break;
       }

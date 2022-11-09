@@ -30,6 +30,7 @@ import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
 import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
+import PageViewsByEntitiesChart from '../../components/DataInsightDetail/PageViewsByEntitiesChart';
 import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
@@ -218,6 +219,9 @@ const DataInsightPage = () => {
           <>
             <Col span={24}>
               <TopViewEntities chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <PageViewsByEntitiesChart chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
               <TopActiveUsers chartFilter={chartFilter} />
