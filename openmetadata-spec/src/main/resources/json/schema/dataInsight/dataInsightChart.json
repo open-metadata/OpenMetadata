@@ -49,7 +49,9 @@
       "description": "Index where data are stored",
       "type": "string",
       "enum": [
-        "entity_report_data_index"
+        "entity_report_data_index",
+        "web_analytic_entity_view_report_data_index",
+        "web_analytic_user_activity_report_data_index"
       ]
     }
   },
