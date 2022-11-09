@@ -36,7 +36,7 @@ WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX_MAPPING = textwrap.dedent(
                             "type": "keyword"
                         },
                         "owner": {
-                            "type": "text"
+                            "type": "keyword"
                         },
                         "ownerId": {
                             "type": "text"
