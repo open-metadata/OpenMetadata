@@ -207,7 +207,9 @@
     "select-resource": "Select Resources",
     "select-rule-effect": "Select Rule Effect",
     "field-required": "{{field}} is required",
-    "field-required-plural": "{{field}} are required"
+    "field-required-plural": "{{field}} are required",
+    "day-label": "Last {{day}} Days",
+    "tier-label": "Tier{{tier}}"
   },
   "message": {
     "service-email-required": "Service account Email is required",

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
 import { ChartFilter } from '../interface/data-insight.interface';
 import {
@@ -73,42 +74,42 @@ export const DATA_INSIGHT_TAB = {
 export const DAY_FILTER = [
   {
     value: 7,
-    label: 'Last 7 Days',
+    label: i18n.t('label.day-label', { day: 7 }),
   },
   {
     value: 14,
-    label: 'Last 14 Days',
+    label: i18n.t('label.day-label', { day: 14 }),
   },
   {
     value: 30,
-    label: 'Last 30 Days',
+    label: i18n.t('label.day-label', { day: 30 }),
   },
   {
     value: 60,
-    label: 'Last 60 Days',
+    label: i18n.t('label.day-label', { day: 60 }),
   },
 ];
 
 export const TIER_FILTER = [
   {
     value: 'Tier.Tier1',
-    label: 'Tier1',
+    label: i18n.t('label.tier-label', { tier: 1 }),
   },
   {
     value: 'Tier.Tier2',
-    label: 'Tier2',
+    label: i18n.t('label.tier-label', { tier: 2 }),
   },
   {
     value: 'Tier.Tier3',
-    label: 'Tier3',
+    label: i18n.t('label.tier-label', { tier: 3 }),
   },
   {
     value: 'Tier.Tier4',
-    label: 'Tier4',
+    label: i18n.t('label.tier-label', { tier: 4 }),
   },
   {
     value: 'Tier.Tier5',
-    label: 'Tier5',
+    label: i18n.t('label.tier-label', { tier: 5 }),
   },
 ];
 
