@@ -206,6 +206,10 @@ jest.mock('../../utils/CommonUtils', () => ({
   getCountBadge: jest.fn().mockImplementation((count) => <p>{count}</p>),
 }));
 
+jest.mock('../Execution/Execution.component', () => {
+  return jest.fn().mockImplementation(() => <p>Executions</p>);
+});
+
 describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
     const { container } = render(
@@ -282,7 +286,7 @@ describe('Test PipelineDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is lineage', async () => {
+  it('should render execution tab', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,
       {
@@ -290,6 +294,23 @@ describe('Test PipelineDetails component', () => {
       }
     );
 
+    const activityFeedTab = await findByText(container, 'label.executions');
+
+    await act(async () => {
+      fireEvent.click(activityFeedTab);
+    });
+    const executions = await findByText(container, 'Executions');
+
+    expect(executions).toBeInTheDocument();
+  });
+
+  it('Check if active tab is lineage', async () => {
+    const { container } = render(
+      <PipelineDetails {...PipelineDetailsProps} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
     const activityFeedTab = await findByText(container, 'label.entity-lineage');
 
     await act(async () => {

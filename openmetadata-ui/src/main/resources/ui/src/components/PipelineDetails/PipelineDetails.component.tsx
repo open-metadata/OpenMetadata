@@ -92,12 +92,12 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
+import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
@@ -188,15 +188,8 @@ const PipelineDetails = ({
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-
-  const [selectedExecution, setSelectedExecution] = useState<PipelineStatus>(
-    () => {
-      if (pipelineStatus) {
-        return pipelineStatus;
-      } else {
-        return {} as PipelineStatus;
-      }
-    }
+  const [selectedExecution] = useState<PipelineStatus | undefined>(
+    pipelineStatus
   );
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -930,14 +923,7 @@ const PipelineDetails = ({
           <Tabs.TabPane
             key={PIPELINE_DETAILS_TABS.Executions}
             tab={t('label.executions')}>
-            <PipelineStatusList
-              pipelineFQN={pipelineFQN}
-              pipelineStatus={pipelineStatus}
-              selectedExec={selectedExecution}
-              onSelectExecution={(exec) => {
-                setSelectedExecution(exec);
-              }}
-            />
+            <ExecutionsTab pipelineFQN={pipelineFQN} />
           </Tabs.TabPane>
 
           <Tabs.TabPane
