@@ -145,7 +145,7 @@ const CustomControls: FC<ControlProps> = ({
           }
           options={nodeOptions}
           placeholder={t('label.search-lineage')}
-          style={{ width: 400, height: 32 }}
+          style={{ width: 400, height: 32, marginLeft: isEditMode ? 83 : 0 }}
           onChange={onOptionSelect}
         />
       </Col>
