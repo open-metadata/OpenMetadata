@@ -109,7 +109,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter }) => {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />
           <YAxis />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip isPercentage />} />
           <Legend
             align="left"
             content={(props) => renderLegend(props as LegendProps, `${total}%`)}
