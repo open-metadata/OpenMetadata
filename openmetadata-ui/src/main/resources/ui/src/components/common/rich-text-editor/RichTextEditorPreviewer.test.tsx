@@ -209,7 +209,15 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const link = markdownParser.querySelector('a');
 
-    expect(link).toBeInTheDocument();
+    expect(link).toBeNull();
+
+    const readMoreButton = await findByTestId(container, 'read-more-button');
+
+    expect(readMoreButton).toBeInTheDocument();
+
+    fireEvent.click(readMoreButton);
+
+    expect(markdownParser.querySelector('a')).toBeInTheDocument();
 
     expect(markdownParser).toBeInTheDocument();
   });
