@@ -16,7 +16,9 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
@@ -72,7 +74,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         render: (userName: string) => (
           <Space>
             <ProfilePicture id="" name={userName} type="circle" width="24" />
-            <Typography.Text>{userName}</Typography.Text>
+            <Link to={getUserPath(userName)}>{userName}</Link>
           </Space>
         ),
       },
