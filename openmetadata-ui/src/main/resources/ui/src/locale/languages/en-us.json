@@ -224,7 +224,8 @@
     "pipeline": "Pipeline",
     "function": "Function",
     "edge-information": "Edge Information",
-    "no-owner": "No Owner"
+    "no-owner": "No Owner",
+    "page-views-by-entities": "Page views by entities"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -245,7 +246,10 @@
     "entity-restored-error": "Error while restoring {{entity}}",
     "no-ingestion-available": "No ingestion data available",
     "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the",
-    "fetch-pipeline-status-error": "Error while fetching pipeline status."
+    "fetch-pipeline-status-error": "Error while fetching pipeline status.",
+    "data-insight-page-views": "Displays the number of time an entity type was viewed.",
+    "field-insight": "Display the percentage of datasets with {{field}} by type.",
+    "total-entity-insight": "Display the total of datasets by type."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",
@@ -259,8 +263,6 @@
     "leave-team-success": "Left the team successfully!",
     "join-team-error": "Error while joining the team!",
     "leave-team-error": "Error while leaving the team!",
-    "field-insight": "Display the percentage of datasets with {{field}} by type.",
-    "total-entity-insight": "Display the total of datasets by type.",
     "no-query-available": "No query available",
     "unexpected-response": "Unexpected response from server!"
   },
