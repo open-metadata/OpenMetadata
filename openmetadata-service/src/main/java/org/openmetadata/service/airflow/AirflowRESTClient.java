@@ -80,12 +80,16 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public String deletePipeline(String pipelineName) {
     try {
-      String deleteEndpoint = "%s/%s/delete?dag_id=%s";
+      String deleteEndpoint  =  "%s/%s/delete?dag_id=%s";
+      
+            
+                  
+        
       HttpResponse<String> response =
-          deleteRequestAuthenticatedForJsonContent(deleteEndpoint, serviceURL, API_ENDPOINT, pipelineName);
+              deleteRequestAuthenticatedForJsonContent(deleteEndpoint, serviceURL, API_ENDPOINT, pipelineName);
       return response.body();
     } catch (Exception e) {
-      LOG.error(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
+          LOG.error(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
     }
     return null;
   }
