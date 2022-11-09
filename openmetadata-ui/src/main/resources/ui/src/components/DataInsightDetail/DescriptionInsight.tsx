@@ -98,7 +98,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
             {t('label.data-insight-description-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the percentage of datasets with description by type.
+            {t('message.field-insight', { field: 'description' })}
           </Typography.Text>
         </>
       }>

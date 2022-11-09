@@ -238,7 +238,9 @@
     "join-team-success": "Team joined successfully!",
     "leave-team-success": "Left the team successfully!",
     "join-team-error": "Error while joining the team!",
-    "leave-team-error": "Error while leaving the team!"
+    "leave-team-error": "Error while leaving the team!",
+    "field-insight": "Display the percentage of datasets with {{field}} by type.",
+    "total-entity-insight": "Display the total of datasets by type."
   },
   "server": {
     "unexpected-response": "Unexpected response from server!"

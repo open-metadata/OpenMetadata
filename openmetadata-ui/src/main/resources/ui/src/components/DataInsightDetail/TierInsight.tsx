@@ -94,7 +94,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
             {t('label.data-insight-tier-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the percentage of datasets with tier by type.
+            {t('message.field-insight', { field: 'tier' })}
           </Typography.Text>
         </>
       }>

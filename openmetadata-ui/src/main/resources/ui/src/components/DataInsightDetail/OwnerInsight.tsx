@@ -98,7 +98,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter }) => {
             {t('label.data-insight-owner-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the percentage of datasets with owner by type.
+            {t('message.field-insight', { field: 'owner' })}
           </Typography.Text>
         </>
       }>

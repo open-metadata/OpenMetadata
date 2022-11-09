@@ -97,7 +97,7 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
             {t('label.data-insight-total-entity-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            Display the total of datasets by type.
+            {t('message.total-entity-insight')}
           </Typography.Text>
         </>
       }>
