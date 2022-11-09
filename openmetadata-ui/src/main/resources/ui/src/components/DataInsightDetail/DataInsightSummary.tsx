@@ -88,6 +88,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
         </Col>
         {Object.entries(latestData).map((summary) => {
           const label = summary[0];
+          const value = summary[1] as number;
 
           return label !== 'timestamp' ? (
             <Col data-testid={`summary-item-${label}`} key={label} span={4}>
@@ -95,7 +96,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
                 {label}
               </Typography.Text>
               <Typography className="font-semibold text-2xl">
-                {summary[1]}
+                {value}
               </Typography>
             </Col>
           ) : null;
